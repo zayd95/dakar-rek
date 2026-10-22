@@ -25,26 +25,79 @@ The low model remains 42.4% smaller than full by bytes. In a 375×667 CSS-pixel 
 
 ## Verification
 
-- `npm test`: 151 files, 1,811 passed, 2 skipped. `npm run build` and `npm run typecheck:server` passed.
-- Desktop and phone gait checks: 26/26 passed. Maximum measured foot slide was 1.3 cm per step on desktop and 1.7 cm on phone.
-- Fixed-camera clay views cover the full arm at rest and in Ride/Sit, plus low-mesh mobile views. Side-profile folds are reduced; the rig and pose are unchanged. See [full-arm side views](male-arm-side-before-after.jpg), [Ride/Sit views](male-arm-ride-sit-before-after.jpg), and [low-mesh mobile views](male-arm-mobile-low-before-after.jpg).
-- Earlier interactive car/Jakarta checks verified purchase, Ride/Sit driving poses, steering and vehicle controls but stalled in later reload-while-moving stages. Those interactive checks were not repeated after the arm fairing; the updated Ride/Sit proof is visual.
-- Female GLBs remain byte-identical to the base branch: full SHA `e5fd992c872a222895b1a67192fcab1ec4e7baaa8fe0c50555456d47583e35e3`; low SHA `51b7819cda3e3968e9f8c10adfdcae88a3acf887d97981dcfbbe5c1b05eaeee8`.
+Final state (head of this branch), on a production build served by `vite preview`:
 
-## Review corrections (textured view)
+| Check | Result |
+|---|---|
+| `npx vitest run` | 151 files, 1,811 passed, 2 skipped |
+| `tsc --noEmit`, `npm run typecheck:server` | clean |
+| `check-car` (Berline moderne: buy, board, drive, views, wall, reload) | 44/44 |
+| `check-moto` (Jakarta: buy, ride, reload mid-ride) | 36/36 |
+| `check-tiak-moto` | 57/57 on the re-run; one phone check (« during a Tiak run the parcel is in the box ») failed in the first run of the suite and passed in an isolated re-run of the same build |
+| `check-gait`, `check-sit-stand`, `check-stride`, `check-gestures`, `check-stop` | 26/26, 22/22, 12/12, 20/20, pass |
+| `check-avatar` (femme and homme, studio flow, layout) | 30/30 |
+| `check-studio` (phone portrait and landscape, edit flow, career untouched) | 52/52 |
+| `npm run check:online` (two browsers, local Workers/Durable Objects only) | 46/46 |
+| `scripts/meshy/audit-male-hands.mjs`, full and low | pass (below) |
+| two complete rebuilds from the private sources | identical bytes; femme identical to the base |
 
-The first version of this repair was judged from clay renders, which cannot show colour or texture. In the textured view three defects showed:
+The arm part of the earlier rounds (Taubin fairing of the upper arm and forearm, 2.5 cm cap, sleeve excluded) is unchanged; its clay views are [full-arm side](male-arm-side-before-after.jpg), [Ride/Sit](male-arm-ride-sit-before-after.jpg) and [low-mesh mobile](male-arm-mobile-low-before-after.jpg).
 
-1. **Hands the wrong colour.** The rebuilt hands took one UV texel from the palm (RGB 220,137,112), about twice as bright as the forearm (116,63,44); the studio's skin shader tones each texel against the body's mean skin, so on the lightest tone the hands read nearly white. `repair-male-hands.mjs` now takes the candidate texel whose colour is nearest the forearm's own mean.
-2. **Gold and black band at both wrists.** The collar's quads interpolated the wrist cut's old UVs towards the palm texel and swept the atlas between them. The collar's first ring is now a copy of the wrist cut (same place, weights, normals, morphs) carrying the skin texel's UV; the forearm keeps the original cut vertices.
-3. **Olive fringe along the sleeve hem.** `repair-male-arms.mjs` also faired the sleeve and its hem vertices, which pulled the hem's olive rim into view. Vertices more than 6.5 cm above the elbow along the upper arm (the sleeve and its hem) are no longer moved.
+## Final correction (textured, six tones)
 
-Textured before/after: [hands on three skin tones](male-hands-skin-tones-textured-before-after.jpg), [arm](male-arm-textured-before-after.jpg), [low model hands](male-hands-mobile-low-textured-before-after.jpg), [low model arm](male-arm-mobile-low-textured-before-after.jpg). Top rows are the base (PR #60), bottom rows this branch.
+The previous round fixed the three defects it was shown, but the hands still read as smooth plastic: one texel for the whole hand, fingers 13 to 16 mm wide with pointed tips, a ledge where the thumb left the palm, and four extra non-manifold edges at the wrist. This round rebuilds the hand's shape and its texture mapping, and it was judged on textured renders in matching light (the sheets below), not on clay.
 
-The Measurements section above predates these corrections; the current figures are: `body_m.glb` 14,025 vertices / 13,496 triangles / 1,462,636 bytes (SHA-256 `8b12adcc222d39c2aa5156d354425671556b071e72b0401cbfb3255959bc7a3f`); `body_m_low.glb` 7,980 / 7,418 / 842,548 bytes (`31be7db61a7daca49f09f100b183d39dc59bc19142272f017183eb24f7548f21`). A full four-asset rebuild from the Meshy source (`scripts/meshy/build-bodies.mjs`, source archive present) reproduces both male files byte for byte and leaves the female GLBs byte-identical to the base. Rig, inverse binds, 13 clips, morph names and textures are unchanged. The car, Jakarta, moto, Tiak moto, gait, sit/stand, stride, gestures, stop, avatar and studio checks and the unit tests were re-run on this build.
+### 1. Skin colour (`repair-male-hands.mjs`)
 
-Remaining limits: the hands are smooth and thin, without knuckle or nail detail; a faint olive tint can remain at the sleeve hem of the low model; the new hands add four non-manifold edges to the full model.
+- The atlas is a patchwork of Meshy islands: the old hand's UVs are scattered over all of it (bounding box 0..1024 px on both axes), so nothing can be fitted to the new fingers. The hand is now mapped *smoothly* (no seam, hence no ring) onto a small all-skin rectangle of the atlas (40 px on the 1024 px atlas, 20 px on the 512 px low one), chosen by search: every sampled texel within 60 RGB of the forearm, mean as near the forearm's as possible, with some grain left in it (a flat patch is a flat hand). The mapping is folded (mirrored), so it never leaves the patch and never jumps.
+- What the forearm shows at the wrist is what its *triangles* sweep over the atlas, not its vertices' texels (vertex mean RGB 116,66,48; triangles within 6.5 cm of the wrist 102,53,36). The target is the triangle-sampled colour. The chosen patch is within 1.5 RGB of it on the full atlas (1.0 on the low one). Rendered unlit (`raw=1`), the forearm just above the wrist and the back of the hand measure RGB 103,41,25 and 105,43,24.
+- The skin shader tones every texel against the body's mean skin, so equal texels give an equal result on all six tones: the hand and the forearm match on Clair, Medium and Ébène in the sheets below, and by construction on the three between.
+- The mapping is not one pixel any more: the palm and the back of the hand carry the patch's own shading. Palm and back are not the same colour (a hand's never are); they are the same *family* as the forearm.
 
-## Limitation
+### 2. Wrists
 
-The checkout lacks `private-archive/meshy-20261017/sources`, so the complete four-asset source build could not be rerun. The two male GLBs were corrected directly and reproducibly, and both male-only passes are integrated into `scripts/meshy/build-bodies.mjs`.
+- No band: the collar's first ring is still a copy of the wrist cut (same place, weights, normals, morphs), but each of its vertices now takes the patch texel nearest to the colour its own forearm vertex shows; between a collar vertex and the next, and from the collar to the first generated ring, the UVs only travel inside the patch, so no quad can sweep the atlas (the gold and black band) and no texel jumps at the cut.
+- The shape step is gone too: the ledge where the thumb left the palm (a socket ring whose plane was 90 degrees off the thumb's first ring) is replaced by a thumb that leaves the socket straight out and bends towards the index, with the ring's own offsets rotated along the path; the web between thumb and palm is an ordinary concave crease.
+- Wrist slivers: a cut through a vertex or along a UV seam's twin left zero-area triangles with two vertices in one place, which added a face to their edge. They are dropped, and the wrist loop is welded with the same 10 micrometre key as the audit.
+
+### 3. Sleeves
+
+- `repair-male-arms.mjs` (unchanged this round) excludes the sleeve and its hem from the fairing: nothing more than 6.5 cm above the elbow along the upper arm moves. Audited: **0 of 1,138** sleeve vertices move on the full model (0 of 669 on the low one); nothing outside the arms and hands moves (head, face, nose, chin, shoulders, torso, legs: 0 of 11,084 vertices, 0 mm).
+- The greenish fringe at the hem was not geometry. Meshy's olive bled into the atlas along the sleeve, and the skin shader carried each texel's chroma onto the bare arm (`chroma` took the texel's hue relative to the reference skin, clamped at +40% green). The homme's bare arms are skin *by position*, not by hue; their chroma now follows the texel only where the texel is skin-coloured (`meshyLook.ts`: `chromaW = mix(max(hueSkin, head), 1., uFemale)`). The femme's pixels are unchanged by construction (`uFemale = 1`). The sleeve itself is not touched: its cloth mask, print and colour are as before.
+
+### 4. Fingers
+
+- Widths 15 / 17 / 18.5 / 17.5 mm (pinky to index; was 13 to 16) with a 2.2 mm web and a slight fan towards the tips; lengths 56 / 76 / 82 / 73 mm; curvature 34 to 43 degrees at rest, a 28 mm radius closed on the bar. Fingertips close into hemispheres (4 rings on the full mesh, 2 on the low one), not points.
+- The build **refuses** a hand whose digits touch: the centrelines are checked against the radii, open and closed. Minimum flesh between neighbours, in mm (full mesh): pinky-ring 2.6, ring-middle 2.2, middle-index 2.5 at rest (2.5, 2.2, 2.4 closed); index-thumb 2.7 at rest, thumb-fingers 11 to 17 closed.
+- The knuckle line rounds off to the fingers' own thickness and the vertex normals of the new shell are angle-weighted, so a sliver of a quad no longer decides the normal where a tube meets the palm.
+
+### 5. Mesh health and preservation (`scripts/meshy/audit-male-hands.mjs`)
+
+| | #60 base | previous round | this PR |
+|---|---:|---:|---:|
+| non-manifold welded edges, full / low | 9 / 8 | 13 / 8 | **9 / 8** |
+| open edges, full / low | 8 / 4 | 8 / 4 | **8 / 4** |
+| vertices / triangles, full | 15,354 / 13,904 | 14,025 / 13,496 | 14,261 / 13,970 |
+| vertices / triangles, low | 8,533 / 6,952 | 7,980 / 7,418 | 8,100 / 7,658 |
+| bytes, full / low | 1,574,552 / 847,840 | 1,462,636 / 842,548 | 1,488,264 / 855,508 |
+
+The audit also checks that the arm skin moves at most 25 mm, that the sleeve and everything outside the arms and hands stays put, and that the skeleton is the same. Female GLBs are byte-identical to the base (`body_f` `e5fd992c…`, `body_f_low` `51b7819c…`). No Meshy credit, generation, purchase, force push, production or Cloudflare action was used.
+
+Determinism: two complete runs of `scripts/meshy/build-bodies.mjs` from the private source archive give identical files. Full `78eb6991f9e891a019dd2bf44dee611d0f82fbaae6d3f84e0e71be9f1ab8b7e2`, low `a568d28a4dfae6d75b7c47683c676884da78aa568a4411d9087d89fd167ec536`.
+
+### Renders (textured, same light and cameras, #60 before / this PR)
+
+- All six tones, wrist to fingertips, back and palm, full and low meshes: [male-hands-six-tones-textured.jpg](male-hands-six-tones-textured.jpg).
+- Hands and wrists, palm / back / thumb edge / little-finger edge, both hands, full and mobile-low meshes, three tones: [Light](male-hands-textured-tone0.jpg), [Medium](male-hands-textured-tone2.jpg), [Darkest](male-hands-textured-tone5.jpg).
+- Arms at rest, shoulder to wrist, three tones, full and low: [male-arms-rest-textured.jpg](male-arms-rest-textured.jpg).
+- Closed on the Jakarta grips, lab (three tones): [male-hands-ride-textured.jpg](male-hands-ride-textured.jpg); in game, with the bike, four cameras per hand: [male-hands-jakarta-grip-textured.jpg](male-hands-jakarta-grip-textured.jpg) (`scripts/avatar/hands-ingame-ride.mjs`).
+- Walking and sitting: [walk](male-hands-walk-textured.jpg), [sit](male-hands-sit-textured.jpg).
+- At the car's wheel, in game: [male-hands-car-wheel-textured.jpg](male-hands-car-wheel-textured.jpg) (`scripts/avatar/hands-ingame-car.mjs`). The game has no hands-on-the-wheel pose: the driver uses the `Sit` pose (hands forward, resting), and the cockpit view hides the body. The renders show that pose through the door window, the windscreen and from above; no pose was added.
+- The lab (`scripts/avatar/hairlab.html`, `?frame=hand&hand=L|R&views=palm,dorsal,front,back`) gained a hand-following camera, palm and dorsal views (the torso clipped away), `raw=1` (the atlas as painted, no shader) and `normals=1`.
+
+### Known limits
+
+- The thumb root's web reads as a small grey crease in some lights (a concave surface at grazing angle takes the shader's rim sheen); it is a crease, not a hole (the mesh is closed there; the orientation audit is identical to the base).
+- The low mesh gains 706 triangles over the base (6,952 to 7,658) for the fingertips' and thumb's rings; the full mesh is +66.
+- The elbow's inner crook of the *low* mesh still shows a small navy triangle where its simplified UVs reach the texture's seam colour; it is in the base GLB as well and is not part of this correction.
+

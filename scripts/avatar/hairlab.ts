@@ -14,7 +14,7 @@ const rows = (q.get('rows') ?? 'f:natural:4:0:0').split(',').map(r => {
     look: hair === 'none' ? null : { hair: hair as HairId, skin: +skin, outfit: +outfit, color: +color } as Appearance };
 });
 const views = (q.get('views') ?? 'front,34,side,back').split(','), frame = q.get('frame') ?? 'head', light = q.get('light') ?? 'studio', cell = +(q.get('cell') ?? 300);
-const YAW: Record<string, number> = { front: 0, '34': -0.65, side: -Math.PI / 2, back: Math.PI, '34b': 2.4 };
+const YAW: Record<string, number> = { front: 0, '34': -0.65, side: -Math.PI / 2, back: Math.PI, '34b': 2.4, '34r': 0.65, sideR: Math.PI / 2 };   // (34r, sideR: the same from the other side, for a right hand)
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const tall = frame === 'body', W = cell * views.length, H = (tall ? cell * 2 : cell) * rows.length;
 const r = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(W, H);
@@ -50,6 +50,9 @@ for (const row of rows) {
   if (q.get('probe')) h.group.traverse(o => { const m = o as THREE.SkinnedMesh; if (!m.isSkinnedMesh) return; const g = m.geometry, ha = g.getAttribute('_hair'), p = g.getAttribute('position'); let n = 0, mx = 0; const names = Object.keys(g.attributes).join(','); if (ha) for (let i = 0; i < p.count; i++) if (p.getY(i) < 1.6 && ha.getX(i) > 0.01) { n++; mx = Math.max(mx, ha.getX(i)); } console.error(`probe ${m.name}: attrs ${names} count ${p.count} hair-below-1.6 ${n} max ${mx}`); });
   // ?clay=1: the geometry alone (one plain material, the skinning and morphs kept): a fold shows as a fold, never hidden or faked by the texture
   if (q.get('clay')) h.group.traverse(o => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && !m.name.startsWith('hair')) m.material = new THREE.MeshLambertMaterial({ color: 0xb98a6a }); });
+  if (q.get('normals')) h.group.traverse(o => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && !m.name.startsWith('hair')) m.material = new THREE.MeshNormalMaterial(); });
+  // ?raw=1: the texture as painted (no skin or garment shader, no light), to see which texels a surface really shows
+  if (q.get('raw')) h.group.traverse(o => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && !m.name.startsWith('hair')) { const map = (m.material as THREE.MeshLambertMaterial).map; m.material = new THREE.MeshBasicMaterial({ map }); } });
   if (q.get('wire')) h.group.traverse(o => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && !m.name.startsWith('hair')) { const w = new THREE.SkinnedMesh(m.geometry, new THREE.MeshBasicMaterial({ color: 0x66ffcc, wireframe: true, transparent: true, opacity: 0.3 })); w.bind(m.skeleton, m.bindMatrix); m.parent!.add(w); } });
   const speed = LOCO[row.clip] ?? 0;
   for (let i = 0, n = Math.max(1, Math.round(row.t * 60)); i < n; i++) { h.group.position.z += speed / 60; h.animate(1 / 60, speed); }
@@ -62,10 +65,29 @@ rows.forEach((row, ri) => {
   const sc = h.group.scale.x, headY = (row.avatar === 'femme' ? 1.74 : 1.79) * sc;
   views.forEach((v, vi) => {
     h.group.rotation.y = YAW[v] ?? 0; h.group.updateMatrixWorld(true);
+    r.clippingPlanes = [];
+    // frame=hand, views palm / dorsal: the hand seen from the body's side (the torso and the thigh between are clipped away) or from outside it
+    if (frame === 'hand' && (v === 'palm' || v === 'dorsal')) {
+      const hb = h.group.getObjectByName('hand' + (q.get('hand') ?? 'L')) ?? h.group.getObjectByName('hand.' + (q.get('hand') ?? 'L'))!;
+      h.group.rotation.y = 0; h.group.position.set(0, 0, 0); h.group.updateMatrixWorld(true);
+      const w0 = hb.getWorldPosition(new THREE.Vector3());
+      h.group.rotation.y = Math.atan2(w0.x, -w0.z) + (v === 'dorsal' ? Math.PI : 0); h.group.updateMatrixWorld(true);
+      if (v === 'palm') r.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, -1), +(q.get('clipz') ?? 0.06) * sc)];
+    }
     if (frame === 'body') { cam.position.set(0, 1.0 * sc, 5.2 * sc); cam.lookAt(0, 0.98 * sc, 0); }
     else if (frame === 'bust') { cam.position.set(0, 1.42 * sc, 2.6 * sc); cam.lookAt(0, 1.38 * sc, 0); }   // head to hips: shoulders, arms, elbows
     else if (frame === 'arm') { cam.position.set(0, 1.22 * sc, 1.6 * sc); cam.lookAt(0, 1.2 * sc, 0); h.group.position.x = -Math.cos(h.group.rotation.y) * 0.24 * sc; h.group.position.z = Math.sin(h.group.rotation.y) * 0.24 * sc; }   // the left arm, shoulder to wrist
-    else if (frame === 'hand') { cam.position.set(0, 0.84 * sc, 0.62 * sc); cam.lookAt(0, 0.8 * sc, 0); h.group.position.x = -Math.cos(h.group.rotation.y) * 0.31 * sc; h.group.position.z = Math.sin(h.group.rotation.y) * 0.31 * sc; }   // the left hand, wrist to fingertips
+    else if (frame === 'hand') {   // a hand, wrist to fingertips, turned about itself (?hand=L|R &d=distance &lift=above the wrist, metres)
+      const side = q.get('hand') ?? 'L', hb = h.group.getObjectByName('hand' + side) ?? h.group.getObjectByName('hand.' + side)!;
+      h.group.position.set(0, 0, 0); h.group.updateMatrixWorld(true);
+      const wp = hb.getWorldPosition(new THREE.Vector3());
+      h.group.position.set(-wp.x, 0, -wp.z); h.group.updateMatrixWorld(true);
+      const hy = wp.y - +(q.get('lift') ?? 0.07) * sc, dist = +(q.get('d') ?? 0.5) * sc; cam.position.set(0, hy, dist); cam.lookAt(0, hy, 0);
+    }   // (the wrist is on the camera's axis whatever the pose)
+    else if (frame === 'look') {   // any point of the body (?lx=&ly=&lz= metres, model space; ?d= distance), turned about itself
+      const t = new THREE.Vector3(+(q.get('lx') ?? 0.27), +(q.get('ly') ?? 1.2), +(q.get('lz') ?? 0)).multiplyScalar(sc).applyAxisAngle(new THREE.Vector3(0, 1, 0), h.group.rotation.y);
+      h.group.position.set(-t.x, 0, -t.z); cam.position.set(0, t.y, +(q.get('d') ?? 0.5) * sc); cam.lookAt(0, t.y, 0);
+    }
     else if (frame === 'neck') { cam.position.set(0, 1.6 * sc, 0.75 * sc); cam.lookAt(0, 1.58 * sc, 0); }   // the neck and the collar
     else { cam.position.set(0, headY + 0.03, 0.95); cam.lookAt(0, headY, 0); }
     const ch = tall ? cell * 2 : cell, y = H - (ri + 1) * ch;
