@@ -89,10 +89,13 @@ export function onPlayClock(l: LoanState, day: number): boolean {
   l.openedDay = day - Math.floor(l.paid / l.installment) * l.every; l.checkedDay = day; l.clock = 'play';
   return true;
 }
-/** The part of a VTC fare that goes to Pape Sarr while his car credit runs (rounded down to 500 F, never more than is left). 0 when turned off. */
+/**
+ * The part of a VTC fare that goes to Pape Sarr while his car credit runs: his 30 %, rounded down to 50 F (a coin; the fares go by 500 F, so it is exact),
+ * never more than is left. 0 when turned off. (Rounded to 500 F it was 0 on every short ride: 30 % of 1 000 F.)
+ */
 export function fareShare(l: LoanState | undefined, fare: number): number {
   if (!l || l.status !== 'open' || l.kind !== 'vehicle' || l.share === false) return 0;
-  return Math.min(l.principal - l.paid, Math.floor((fare * C.dealer.fareShare) / 500) * 500);
+  return Math.min(l.principal - l.paid, Math.floor((fare * C.dealer.fareShare) / 50) * 50);
 }
 
 /** Repays up to `amount` (never more than what is left); closes the debt when it is all repaid. Returns what was taken. */

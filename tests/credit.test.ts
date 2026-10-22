@@ -68,7 +68,8 @@ describe('the schedule (dueBy, standing, repay, settle)', () => {
     expect(onPlayClock(old, 14)).toBe(true); expect(onPlayClock(old, 14)).toBe(false);
     expect(old).toMatchObject({ clock: 'play', installment: C.dealer.installment, every: 1, paid: 297_000, missed: 1, checkedDay: 14, share: true });
     expect(standing(old, 14).behind).toBe(0); expect(settle(old, 30)).toBeGreaterThan(0);          // from now on, the player's days count
-    expect(fareShare(old, 3500)).toBe(1000); expect(fareShare({ ...old, share: false }, 3500)).toBe(0); expect(fareShare(loan({ paid: 3_949_500 }), 5000)).toBe(500);
+    expect(fareShare(old, 3500)).toBe(1050); expect(fareShare({ ...old, share: false }, 3500)).toBe(0); expect(fareShare(loan({ paid: 3_949_500 }), 5000)).toBe(500);
+    expect(fareShare(old, 1000)).toBe(300); expect(fareShare(old, 1500)).toBe(450); expect(fareShare(old, 4000)).toBe(1200);   // every ride pays its 30 %, the short ones too
   });
   it('repays no more than what is left and closes the debt when it is all repaid', () => {
     const l = loan({ principal: 100_000, installment: 50_000 });
