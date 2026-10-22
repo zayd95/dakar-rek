@@ -472,7 +472,9 @@ J.C = async () => {
   const g1 = await goal(); await shot('nav-to-passenger');
   check('at the wheel with a ride in hand: the goal line gives the next turn and the distance to the passenger', g1?.nav && /[↰↱↑↶]/.test(g1.text) && /\d+ (m|km)/.test(g1.text), JSON.stringify(g1));
   const stops = await d(() => window.__dakar.vtc.stops());
-  { const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) }; await pilot(page, t, 'teranga', [{ x: K.x - F.x * 12, z: K.z - F.z * 12, tol: 3, speed: 5 }, { x: K.x - F.x * 3, z: K.z - F.z * 3, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 }); }
+  // in the lane until 10 m short of the passenger, then into the kerb (a slant from far back meets the cars parked along it), as in scripts/check-vtc-ride.mjs
+  { const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) }, ln = runUp(K, 60), inLane = Math.abs(F.z) > 0.5 ? { x: ln.x, z: K.z - F.z * 10 } : { x: K.x - F.x * 10, z: ln.z };
+    await pilot(page, t, 'teranga', [{ ...inLane, tol: 3, speed: 5 }, { x: K.x - F.x * 2.5, z: K.z - F.z * 2.5, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 }); }
   await wait(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, 90000);
   await page.waitForTimeout(1000);
   const g2 = await goal(); await shot('nav-to-dropoff');
