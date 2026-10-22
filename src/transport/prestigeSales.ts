@@ -194,6 +194,7 @@ export class PrestigeSales implements GameModule, TargetSource {
     const close = () => { ctx.hud.closeModal(); ctx.setMode('play'); };
     ctx.menu(this.cfg.title, 'Prix fixes, affichés. Essaie d’abord : c’est gratuit.', [
       ...cars.map(({ o, c }) => ({ icon: o.tall ? '🚙' : '🚘', label: `${c.name} · ${c.colour}`, detail: c.locked ?? 'Essayer gratuitement ou acheter', right: fcfa(c.price), disabled: !!c.locked, onPick: () => this.carMenu(o, c) })),
+      ...(this.cfg.talkExtra?.(ctx) ?? []),                                           // what the dealer himself offers (Pape Sarr's errands and credit) is at his desk too
       { icon: '↩️', label: 'Fermer', onPick: close },
     ]);
   }

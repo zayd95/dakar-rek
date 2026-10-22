@@ -38,8 +38,14 @@ let t;
 const open = async (q = '') => { await page.goto(`${base}?debug&touch${q}`, { timeout: 180000 }); await ready(); t = await realTouch(page); };
 /** Tap a menu row by its text, with a real finger. */
 const tapItem = async text => {
-  const c = await d(tx => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => x.textContent.includes(tx)); if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, text);
-  if (!c) return false; await page.waitForTimeout(150); await t.down(8, c.x, c.y); await page.waitForTimeout(70); await t.up(8); return true;
+  const at = () => d(tx => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => x.textContent.includes(tx)); if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, text);
+  for (let k = 0; k < 2; k++) {                                                      // the sheet slides in: let it settle, tap, and once more if it is still there
+    await page.waitForTimeout(500);
+    const c = await at(); if (!c) return k > 0;
+    await t.down(8, c.x, c.y); await page.waitForTimeout(70); await t.up(8);
+    await page.waitForTimeout(700);
+  }
+  return true;
 };
 const modalText = () => d(() => document.querySelector('#modal.on')?.textContent ?? '');
 const card = () => d(() => { const c = document.querySelector('.mo.bc'); return c ? c.innerText : null; });
@@ -231,6 +237,15 @@ const takeJob = async (text, routeId) => {
 };
 /** Drive or ride `key` along the streets to the kerb of a place (x, z) of this district. */
 const toKerb = async (key, place, o = {}) => { const a = await d(k => window.__dakar[k].at(), key), k = kerbOf(place), r = route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise: o.cruise ?? 6 }); if (!r) throw new Error(`no street route to ${JSON.stringify(place)}`); return pilot(page, t, key, r, { cruise: o.cruise ?? 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); };
+/** A Tiak stop: ridden to the kerb of the place, off the bike, and on foot to its door if the kerb is not close enough; waits for `until` (in the page). */
+const atStop = async (key, place, until) => {
+  await toKerb(key, place);
+  await getOff(key);
+  if (!(await wait(until, null, 6000).then(() => true, () => false))) {
+    const k = kerbOf(place); await walkTo(page, t, place.x, (place.z + k.z) / 2, { tol: 0.6, ms: 40000 });
+    await wait(until, null, 20000);
+  }
+};
 /** The work card on screen, read; then dismissed by a tap, as a player would. */
 const readCard = async () => {
   await wait(() => !!document.querySelector('.mo.bc'), null, 30000);
@@ -275,40 +290,39 @@ J.A = async () => {
   const g1 = await goal(), n1 = await d(() => window.__dakar.nav.info().now);
   check('on the bike with the job in hand, the goal line gives directions: the next turn and the distance left, to the pick-up', g1?.nav && /[↰↱↑↶]/.test(g1.text) && /Maïga/.test(g1.text) && /\d+ (m|km)/.test(g1.text), JSON.stringify({ g1, n1: n1 && { text: n1.text, dist: n1.dist } }));
   await shot('nav-to-pickup');
-  await toKerb('tiak', { x: 78, z: -5.5 });
-  await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
+  await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver');
+  await shot('parcel-picked-up');
+  await boardVehicle(page, t, 'tiak'); await page.waitForTimeout(1200);
   const g2 = await goal();
   check('parcel picked up at the kerb of the Maïga: the directions turn to the client', /Garage Modou/.test(g2?.text ?? ''), JSON.stringify(g2));
   await shot('nav-to-client');
   const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
-  await toKerb('tiak', { x: 102, z: -5.5 });
-  await wait(() => !window.__dakar.activeJob(), null, 30000);
+  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
   const c1 = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0);
   check('delivered: paid ONCE (one wallet line)', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went', /Livraison/.test(c1.text) && /Garage Modou/.test(c1.text) && new RegExp(`${(w1 - w0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`).test(c1.text) && /Durée/.test(c1.text) && /Distance/.test(c1.text) && /1 jour actif/.test(c1.text) && /Premier jour actif/.test(c1.text) && /Livré/.test(c1.text) && !/★/.test(c1.text), c1.text.replace(/\s+/g, ' '));
   check('the card is brief, clear of the stick and the action button, and a tap dismisses it', c1.gone && !c1.overControls, JSON.stringify({ gone: c1.gone, over: c1.overControls }));
-  await getOff('tiak');
   await phoneApp('profil'); const prof1 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-1'); await phoneClose();
   check('the Profile: « 1 jour actif »', /1 jour actif/.test(prof1), prof1.replace(/\s+/g, ' ').slice(0, 200));
   // a second delivery the same day: no second day
-  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
+  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
   await boardVehicle(page, t, 'tiak');
-  await toKerb('tiak', { x: 78, z: -5.5 }); await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
-  await toKerb('tiak', { x: 102, z: -5.5 }); await wait(() => !window.__dakar.activeJob(), null, 30000);
+  await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver'); await boardVehicle(page, t, 'tiak');
+  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
   const c2 = await readCard();
   check('a second delivery the same day pays, and the card says the day is already counted (no farming)', /Aujourd’hui est déjà compté/.test(c2.text) && (await d(() => window.__dakar.streak.info().streak.run)) === 1, c2.text.replace(/\s+/g, ' '));
   // the next day (a debug shortcut for the city day the journey cannot wait for, labelled): a delivery, the run of 2, its short celebration
   await d(() => { window.__dakar.streak.nextDay(); window.__dakar.streak.later(); });
-  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
-  await toKerb('tiak', { x: 78, z: -5.5 }); await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
-  await toKerb('tiak', { x: 102, z: -5.5 }); await wait(() => !window.__dakar.activeJob(), null, 30000);
+  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
+  await boardVehicle(page, t, 'tiak');
+  await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver'); await boardVehicle(page, t, 'tiak');
+  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
   const c3 = await readCard();
   check('the next day\'s delivery: the card counts the day: « 2 jours d’affilée »', /2 jours d’affilée/.test(c3.text) && /Jour actif compté/.test(c3.text), c3.text.replace(/\s+/g, ' '));
   await wait(() => [...document.querySelectorAll('.mo')].some(e => /2 jours d’affilée !/.test(e.textContent)), null, 20000).catch(() => {});
   const mile = await d(() => [...document.querySelectorAll('.mo')].map(e => e.innerText.replace(/\s+/g, ' ')).find(x => /affilée !/.test(x)) ?? null);
   await shot('milestone-2-days');
   check('… then a short celebration of the milestone, saying what it opens (the dealers know the player) and that it is never the only way', mile && /2 jours d’affilée !/.test(mile) && /jamais/.test(mile), mile ?? 'none');
-  await getOff('tiak');
   await phoneApp('profil'); const prof2 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-2'); await phoneClose();
   check('the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open', /2 jours d’affilée/.test(prof2) && /À 3 jours/.test(prof2), prof2.replace(/\s+/g, ' ').slice(0, 300));
   const st = await d(() => window.__dakar.streak.info());
@@ -405,7 +419,9 @@ J.D = async () => {
   await open('&heure=9&argent=4500000');
   await wait(() => window.__dakar.teranga.info().floor.length > 0);
   await d(() => window.__dakar.teranga.own()); await wait(() => window.__dakar.teranga.info().owned);
-  await d(() => window.__dakar.teleport('corniche')); await wait(() => window.__dakar.pos().hub === 'corniche');
+  // setup: the car parked in the Corniche (the drive there from Pikine is journey E's kind of trip), as the save records a parked car
+  await d(() => { const c = window.__dakar.state.data.counters; c['vehicle:teranga:hub'] = 1; c['vehicle:teranga:x'] = -2.1; c['vehicle:teranga:z'] = -40; c['vehicle:teranga:yaw'] = 0; });
+  await d(() => window.__dakar.teleport('corniche')); await wait(() => window.__dakar.pos().hub === 'corniche' && window.__dakar.teranga.info().here);
   const all = await d(() => { const A = window.__dakar, out = []; for (let h = 6; h <= 22; h++) { A.setHour(h); for (const r of A.vtc.requests()) out.push({ h, to: r.to, fare: r.fare, from: r.pickup.name, dest: r.dropoff.name, hubs: r.hubs }); } A.setHour(9); return out; });
   const toPl = all.filter(r => r.to === 'plateau'), town = all.filter(r => r.to === 'corniche');
   fs.writeFileSync(`${out}/fares.json`, JSON.stringify(all, null, 1));
@@ -460,9 +476,8 @@ J.E = async () => {
   await page.waitForTimeout(1200);
   const g0 = await goal(); await shot('nav-to-pickup');
   check('on the Jakarta: the next turn and the distance to the Maïga', g0?.nav && /Maïga/.test(g0.text) && /\d+ m/.test(g0.text), JSON.stringify(g0));
-  await toKerb('moto', { x: 78, z: -5.5 });
-  await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
-  await page.waitForTimeout(800);
+  await atStop('moto', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver');
+  await boardVehicle(page, t, 'moto'); await page.waitForTimeout(1200);
   const g1 = await goal(), n1 = await d(() => window.__dakar.nav.info().now); await shot('nav-out-of-pikine');
   check('the parcel aboard: the directions lead to the way out of Pikine toward the Almadies, the whole distance left', g1?.nav && /Le Pointe/.test(g1.text) && /km/.test(g1.text) && /Almadies/.test(n1?.local?.name ?? ''), JSON.stringify({ g1, local: n1?.local }));
   const mm = await d(() => window.__dakar.minimap?.info?.() ?? null);
@@ -475,8 +490,7 @@ J.E = async () => {
   const g2 = await goal(); await shot('nav-in-the-almadies');
   check('in the Almadies, the street directions to the restaurant take over (survived the crossing)', g2?.nav && /Le Pointe/.test(g2.text) && /[↰↱↑↶]/.test(g2.text), JSON.stringify(g2));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
-  await toKerb('moto', { x: -102, z: -54.5 }, { cruise: 7 });
-  await wait(() => !window.__dakar.activeJob(), null, 30000);
+  await atStop('moto', { x: -102, z: -54.5 }, () => !window.__dakar.activeJob());
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0);
   check('handed over at the Restaurant Le Pointe: paid once', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: Maïga → Le Pointe, the pay, the time, the distance in km, the run, one line', /Le Pointe/.test(c.text) && /km/.test(c.text) && /jour actif|affilée/.test(c.text), c.text.replace(/\s+/g, ' '));
