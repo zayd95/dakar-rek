@@ -46,37 +46,41 @@ for (const name of list.split(',')) {
   await page.waitForTimeout(1200);
   await startSound(page); await page.waitForTimeout(1400);
   const t0 = Date.now(), at = () => +((Date.now() - t0) / 1000).toFixed(2), marks = [];
-  const mark = m => marks.push([m, at()]);
+  // each moment on the wall clock and on the page's sound clock: headless Chromium without a sound card runs its sound clock slower than the wall clock,
+  // and the recording holds the sound as that clock made it, so the moments are found in the film by the sound's own clock
+  const sclock = () => d(() => window.__dakar.car.lab().va.bus?.ctx.currentTime ?? null);
+  const mark = async m => marks.push([m, at(), await sclock()]);
   const A = () => d(k => window.__dakar[k].at(), S.key);
-  mark('getting on / in'); await boardVehicle(page, t, S.key); await page.waitForTimeout(2200);
-  mark('idle'); await page.waitForTimeout(3000);
+  await mark('getting on / in'); await boardVehicle(page, t, S.key); await page.waitForTimeout(2200);
+  await mark('idle'); await page.waitForTimeout(3000);
   if (name === 'radio') {
     const has = await d(() => !!document.querySelector('#ridepad .rp-radio') && getComputedStyle(document.querySelector('#ridepad .rp-radio')).display !== 'none');
     report.scenes[name] = { hasRadio: has };
     if (has) {
-      for (let i = 0; i < 4; i++) { mark(`radio: ${i === 0 ? 'on' : 'next'}`); await t.tap('#ridepad .rp-radio'); await page.waitForTimeout(5500); report.scenes[name][`station${i}`] = await d(() => window.__dakar.teranga.radio().station ?? null); }
-      mark('pulling away with the radio on'); await padDrive(page, t, { fwd: 1, hold: () => page.waitForFunction(() => window.__dakar.teranga.at().z > -10, null, { timeout: 120000 }) });
-      mark('horn over the radio'); { const h = await t.centre('#ridepad .rp-horn'); await t.down(6, h.x, h.y); await page.waitForTimeout(900); await t.up(6); }
+      for (let i = 0; i < 4; i++) { await mark(`radio: ${i === 0 ? 'on' : 'next'}`); await t.tap('#ridepad .rp-radio'); await page.waitForTimeout(5500); report.scenes[name][`station${i}`] = await d(() => window.__dakar.teranga.radio().station ?? null); }
+      await mark('pulling away with the radio on'); await padDrive(page, t, { fwd: 1, hold: () => page.waitForFunction(() => window.__dakar.teranga.at().z > -10, null, { timeout: 120000 }) });
+      await mark('horn over the radio'); { const h = await t.centre('#ridepad .rp-horn'); await t.down(6, h.x, h.y); await page.waitForTimeout(900); await t.up(6); }
       await page.waitForTimeout(2000);
-      mark('braking'); await padDrive(page, t, { brake: true, hold: () => page.waitForFunction(() => Math.abs(window.__dakar.teranga.at().speed) < 0.2, null, { timeout: 60000 }) });
-      mark('radio: off'); for (let i = 0; i < 6 && (await d(() => window.__dakar.teranga.radio().station !== null)); i++) { await t.tap('#ridepad .rp-radio'); await page.waitForTimeout(600); }
+      await mark('braking'); await padDrive(page, t, { brake: true, hold: () => page.waitForFunction(() => Math.abs(window.__dakar.teranga.at().speed) < 0.2, null, { timeout: 60000 }) });
+      await mark('radio: off'); for (let i = 0; i < 6 && (await d(() => window.__dakar.teranga.radio().station !== null)); i++) { await t.tap('#ridepad .rp-radio'); await page.waitForTimeout(600); }
       await page.waitForTimeout(2500);
       report.scenes[name].radio = await d(() => window.__dakar.teranga.radio());
     }
   } else {
-    mark('full throttle'); await padDrive(page, t, { fwd: 1, boost: name !== 'jakarta', hold: () => page.waitForFunction(([k, s]) => window.__dakar[k].at().speed > s, [S.key, name === 'jakarta' ? 9 : 12], { timeout: 120000 }) });
-    mark('cruise'); await padDrive(page, t, { fwd: 0.55, hold: () => page.waitForTimeout(3500) });
-    mark('hard brake'); await padDrive(page, t, { brake: true, hold: () => page.waitForFunction(k => Math.abs(window.__dakar[k].at().speed) < 0.2, S.key, { timeout: 60000 }) });
-    mark('stopped, nothing near'); await page.waitForTimeout(4000);
+    await mark('full throttle'); await padDrive(page, t, { fwd: 1, boost: name !== 'jakarta', hold: () => page.waitForFunction(([k, s]) => window.__dakar[k].at().speed > s, [S.key, name === 'jakarta' ? 9 : 12], { timeout: 120000 }) });
+    await mark('cruise'); await padDrive(page, t, { fwd: 0.55, hold: () => page.waitForTimeout(3500) });
+    await mark('hard brake'); await padDrive(page, t, { brake: true, hold: () => page.waitForFunction(k => Math.abs(window.__dakar[k].at().speed) < 0.2, S.key, { timeout: 60000 }) });
+    await mark('stopped, nothing near'); await page.waitForTimeout(4000);
     report.scenes[name] = { traffic: await d(k => window.__dakar[k].audio().traffic ?? null, S.key), end: await A() };
   }
-  mark('end');
-  const wall = at() + 1.4;
+  await mark('end');
+  const wall = at() + 1.4, beepAt = await d(() => window.__avrec?.beepAt ?? null);
   await stopSound(page, `${out}/raw/${name}.webm`);
   // an overloaded machine starves the page's sound thread: the recording then holds less sound than the clock ran, and the moments no longer line up
   const heard = execFileSync('ffmpeg', ['-v', 'error', '-i', `${out}/raw/${name}.webm`, '-vn', '-ac', '1', '-ar', '8000', '-f', 'f32le', '-'], { maxBuffer: 1 << 28 }).byteLength / 32000;
-  const sound = { recorded: +heard.toFixed(1), clock: +wall.toFixed(1), complete: heard > wall * 0.95 };
-  if (!sound.complete) console.log(`${name}: only ${sound.recorded} s of sound for ${sound.clock} s of clock (the machine was overloaded): the levels are not comparable`);
+  const m0 = marks[0], mN = marks[marks.length - 1], rate = m0[2] !== null && mN[2] !== null ? +((mN[2] - m0[2]) / Math.max(0.001, mN[1] - m0[1])).toFixed(3) : null;
+  const sound = { recorded: +heard.toFixed(1), clock: +wall.toFixed(1), complete: heard > wall * 0.95, soundClockRate: rate, measuredOn: beepAt !== null && rate !== null ? 'the sound clock' : 'the wall clock' };
+  if (!sound.complete) console.log(`${name}: ${sound.recorded} s of sound for ${sound.clock} s of wall clock (the page's sound clock ran at ${rate}× the wall clock): moments measured on ${sound.measuredOn}`);
   const video = await page.video().path(); await context.close();
   const clap = sync(video, `${out}/raw/${name}.webm`);
   if (clap) {
@@ -86,7 +90,11 @@ for (const name of list.split(',')) {
       '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-shortest', '-movflags', '+faststart', `${out}/${name}.mp4`]);
     const lv = loudness(`${out}/${name}.mp4`, 0.25), shift = 0.3 + 1.4;           // the film starts 0.3 s before the clap; the marks start 1.4 s after it
     const seg = (a, b) => { const w = lv.filter(x => x.t >= a + shift && x.t < b + shift); if (!w.length) return null; const power = w.reduce((s, x) => s + 10 ** (x.rmsDb / 10), 0) / w.length; return { peakDb: Math.max(...w.map(x => x.peakDb)), rmsDb: +(10 * Math.log10(power || 1e-12)).toFixed(1) }; };   // the mean power of the windows, in dBFS
-    report.scenes[name] = { ...report.scenes[name], sound, marks, levels: marks.slice(0, -1).map(([m, a], i) => ({ moment: m, from: a, to: marks[i + 1][1], ...seg(a, marks[i + 1][1]) })), errors };
+    report.scenes[name] = { ...report.scenes[name], sound, marks, levels: marks.slice(0, -1).map(([m, a, sa], i) => {
+      // on the sound clock: the film's sound starts 0.3 s before the clap's beep, so a moment sits at 0.3 + (its sound time − the beep's)
+      if (beepAt !== null && sa !== null && marks[i + 1][2] !== null) { const f = 0.3 + sa - beepAt, t2 = 0.3 + marks[i + 1][2] - beepAt; return { moment: m, from: +f.toFixed(2), to: +t2.toFixed(2), ...seg(f - shift, t2 - shift) }; }
+      return { moment: m, from: a, to: marks[i + 1][1], ...seg(a, marks[i + 1][1]) };
+    }), errors };
   } else report.scenes[name] = { ...report.scenes[name], sound, marks, clap: null, errors };
   console.log(name, JSON.stringify(report.scenes[name]).slice(0, 900));
 }
