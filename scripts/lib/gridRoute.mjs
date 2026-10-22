@@ -67,3 +67,13 @@ export function kerbOf(p) {
   const yaw = alongZ ? (side < 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2);
   return alongZ ? { x: rx + side * 4.3, z: p.z, yaw } : { x: p.x, z: rz + side * 4.3, yaw };
 }
+
+/**
+ * Where to put a car to drive up to a kerb spot k ({ x, z, yaw }): in the lane of k's street, `want` metres back along k's heading, but never past the district's
+ * outer street (beyond it the district's edge holds a car where it stands).
+ */
+export function runUp(k, want = 60) {
+  const f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) }, alongZ = Math.abs(f.z) > 0.5, s = Math.sign(alongZ ? f.z : f.x), at = alongZ ? k.z : k.x;
+  const back = Math.max(15, Math.min(want, STREETS[STREETS.length - 1] - 2 + s * at));
+  return alongZ ? { x: near(k.x) - s * LANE, z: k.z - s * back } : { x: k.x - s * back, z: near(k.z) + s * LANE };
+}

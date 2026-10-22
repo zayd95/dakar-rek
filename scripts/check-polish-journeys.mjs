@@ -13,7 +13,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { realTouch, pilot, walkTo, boardVehicle } from './lib/realTouch.mjs';
-import { route, kerbOf } from './lib/gridRoute.mjs';
+import { route, kerbOf, runUp } from './lib/gridRoute.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
 
 const [base = 'http://127.0.0.1:4511/', outRoot = '/tmp/claude-0/veh/polish', which = 'G'] = process.argv.slice(2);
@@ -245,11 +245,16 @@ const phoneApp = async id => {
 const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().open)) { await t.tap('#phone [data-nav="close"]'); await wait(() => !window.__dakar.phoneInfo().open, null, 20000); } };
 /** A job offer of the « Travail » app, tapped by its text (the cards use short names: « 🥬 Maïga → 🔧 Garage »). */
 const takeJob = async (text, routeId) => {
-  await phoneApp('travail'); await page.waitForSelector('#modal.on', T);
-  const c = page.locator('#modal .dcard', { hasText: text }).first();
-  await c.scrollIntoViewIfNeeded(); await page.waitForTimeout(400);
-  const b = await c.boundingBox(); await t.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await t.up(5);
-  await wait(id => window.__dakar.activeJob()?.routeId === id, routeId, 20000);
+  for (let k = 0; k < 2; k++) {                                                      // the sheet slides in: tap once it has settled, and once more if no job started
+    await phoneApp('travail'); await page.waitForSelector('#modal.on', T);
+    const c = page.locator('#modal .dcard', { hasText: text }).first();
+    await c.evaluate(e => e.scrollIntoView({ block: 'center' }));
+    let b = null; for (let i = 0; i < 20; i++) { await page.waitForTimeout(250); const n = await c.boundingBox(); if (b && n && Math.abs(n.y - b.y) < 0.5) break; b = n; }
+    await t.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await t.up(5);
+    if (await wait(id => window.__dakar.activeJob()?.routeId === id, routeId, 20000).then(() => true, () => false)) return;
+    await phoneClose().catch(() => {});
+  }
+  throw new Error(`the job ${routeId} did not start`);
 };
 /** Drive or ride `key` along the streets to the kerb of a place (x, z) of this district (never through the arena's pedestrian street, as the game's own directions). */
 const toKerb = async (key, place, o = {}) => { const a = await d(k => window.__dakar[k].at(), key), k = kerbOf(place), avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [], r = route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise: o.cruise ?? 6, avoid }); if (!r) throw new Error(`no street route to ${JSON.stringify(place)}`); return pilot(page, t, key, r, { cruise: o.cruise ?? 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); };
@@ -413,7 +418,7 @@ J.C = async () => {
   await wait(() => window.__dakar.teranga.info().here, null, 60000);
   // setup: the car put in the passenger's street, 60 m back (driving off his lot is journey B's), the player at its door
   { const st0 = await d(() => window.__dakar.vtc.stops()), K = st0.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
-    const p0 = Math.abs(F.z) > 0.5 ? { x: Math.round(K.x / 60) * 60 - Math.sign(F.z) * 2.1, z: K.z - F.z * 60 } : { x: K.x - F.x * 60, z: Math.round(K.z / 60) * 60 + Math.sign(F.x) * 2.1 };
+    const p0 = runUp(K, 60);
     await d(([x, z, y]) => { window.__dakar.teranga.place(x, z, y); window.__dakar.place(x + Math.cos(y) * 2.4, z - Math.sin(y) * 2.4, y); }, [p0.x, p0.z, K.yaw]); }
   await page.waitForTimeout(800);
   await boardVehicle(page, t, 'teranga');
@@ -462,7 +467,7 @@ J.D = async () => {
   await phoneClose().catch(() => {});
   // to the passenger (the car is put in the Corniche street the passenger's kerb is on: the drive from Pikine is journey E's)
   const stops = await d(() => window.__dakar.vtc.stops()), K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
-  const st = Math.abs(F.z) > 0.5 ? { x: Math.round(K.x / 60) * 60 - Math.sign(F.z) * 2.1, z: K.z - F.z * 50 } : { x: K.x - F.x * 50, z: Math.round(K.z / 60) * 60 + Math.sign(F.x) * 2.1 };
+  const st = runUp(K, 50);
   await d(([x, z, y]) => window.__dakar.teranga.place(x, z, y), [st.x, st.z, K.yaw]);
   await d(([x, z, y]) => window.__dakar.place(x + Math.cos(y) * 2.4, z - Math.sin(y) * 2.4, y), [st.x, st.z, K.yaw]);
   await page.waitForTimeout(800);

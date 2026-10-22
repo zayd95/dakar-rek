@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, boardVehicle } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route } from './lib/gridRoute.mjs';
+import { route, runUp } from './lib/gridRoute.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-e'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -59,10 +59,10 @@ await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'pick
 const v0 = await V(), wallet0 = await d(() => window.__dakar.state.wallet), ledger0 = await d(() => window.__dakar.phoneHooks.ledger?.().length ?? 0);
 check('« Courses VTC » on the phone: the Pikine → Plateau ride accepted with a tap; fare fixed, saved', v0.trip && v0.trip.from === 'pikine' && v0.trip.to === 'plateau' && v0.trip.fare === pick.r.fare, JSON.stringify({ id: v0.trip?.id, fare: v0.trip?.fare }));
 
-// the car is put in the street the passenger's kerb is on, 60 m back; the player gets in with the real controls
+// the car is put in the street the passenger's kerb is on, 60 m back (less near the district's edge); the player gets in with the real controls
 const stops = await d(() => window.__dakar.vtc.stops());
 const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
-const lane = Math.abs(F.z) > 0.5 ? { x: Math.round(K.x / 60) * 60 - Math.sign(F.z) * 2.1, z: K.z - F.z * 60 } : { x: K.x - F.x * 60, z: Math.round(K.z / 60) * 60 + Math.sign(F.x) * 2.1 };
+const lane = runUp(K, 60);                                                          // never past the district's outer street
 await d(([x, z, yaw]) => window.__dakar.teranga.place(x, z, yaw), [lane.x, lane.z, K.yaw]);
 await d(([x, z]) => window.__dakar.place(x, z, 0), [lane.x + Math.cos(K.yaw) * 2.6, lane.z - Math.sin(K.yaw) * 2.6]);
 await page.waitForTimeout(800);
