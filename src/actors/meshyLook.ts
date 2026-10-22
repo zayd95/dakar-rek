@@ -86,7 +86,9 @@ if (uOn > .5) {
   // re-toned in gamma space: the texture's shading and its local colour (lips, blush) carried onto the tone; gentler contrast on dark tones
   vec3 L = vec3(.299,.587,.114);
   float lg = dot(g, L), lr = dot(uSkinRef, L), k = lg / lr;
-  vec3 chroma = mix(vec3(1.), clamp((g / max(lg, .004)) / (uSkinRef / lr), vec3(.62, .62, .62), vec3(1.4, 1.2, 1.1)), .6);   // lips and blush keep their red, never turn mauve
+  // (his bare arms count as skin by position, not by hue: the olive that bled into the texture along the sleeve's hem must not tint them)
+  float chromaW = mix(max(hueSkin, head), 1., uFemale);
+  vec3 chroma = mix(vec3(1.), clamp((g / max(lg, .004)) / (uSkinRef / lr), vec3(.62, .62, .62), vec3(1.4, 1.2, 1.1)), .6 * chromaW);   // lips and blush keep their red, never turn mauve
   float tl = dot(uSkin, L), con = mix(.55, 1., smoothstep(.3, .62, tl));
   float kk = k > 1. ? 1. + (k - 1.) * .45 : 1. + (k - 1.) * con;                           // the texture's baked highlights never bleach a light tone
   vec3 o = uSkin * max(kk, .32) * chroma;
