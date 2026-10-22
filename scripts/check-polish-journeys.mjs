@@ -259,6 +259,7 @@ const takeJob = async (text, routeId) => {
 /**
  * Drive or ride `key` along the streets to a kerb spot k ({ x, z, yaw }) of this district, never through the arena's pedestrian street (as the game's own directions).
  * Held up for long on the way (a car rapide at its stop: its dwell lasts minutes of wall clock on a software renderer), it plans again from where it stands, twice at most.
+ * Already in the kerb's street and lane, short of it, it just runs in.
  */
 /** The streets closed to cars here (the arena's pedestrian zone), for the test's own street planner. */
 const closedZones = async () => (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
@@ -269,7 +270,7 @@ const driveToKerb = async (key, k, o = {}) => {
     const a = await d(kk => window.__dakar[kk].at(), key);
     if (Math.hypot(a.x - k.x, a.z - k.z) < 5) break;
     const along = (k.x - a.x) * f.x + (k.z - a.z) * f.z, side = Math.abs((k.x - a.x) * f.z - (k.z - a.z) * f.x);
-    const r = n && along > 3 && along < 80 && side < 4 && Math.cos(a.yaw - k.yaw) > 0.8
+    const r = (n || along < 40) && along > 3 && along < 80 && side < 4 && Math.cos(a.yaw - k.yaw) > 0.8
       ? [{ x: k.x - f.x * 5, z: k.z - f.z * 5, tol: 2.2, speed: 2.2 }, { x: k.x + f.x * 1.5, z: k.z + f.z * 1.5, tol: 2, speed: 2.2 }]     // already in the kerb's street, short of it
       : route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise, avoid });
     if (!r) { if (n) break; throw new Error(`no street route to ${JSON.stringify(k)}`); }
@@ -286,7 +287,11 @@ const atStop = async (key, place, until) => {
   await toKerb(key, place);
   await getOff(key);
   if (!(await wait(until, null, 6000).then(() => true, () => false))) {
-    const k = kerbOf(place); await walkTo(page, t, place.x, (place.z + k.z) / 2, { tol: 0.6, ms: 40000 });
+    // the rider steps off on the street side, the place is on the other: round the end of the bike nearer to it, then to the door
+    const k = kerbOf(place), b = await d(kk => window.__dakar[kk].at(), key), F = { x: Math.sin(b.yaw), z: Math.cos(b.yaw) }, L = { x: Math.cos(b.yaw), z: -Math.sin(b.yaw) };
+    const end = Math.sign((place.x - b.x) * F.x + (place.z - b.z) * F.z) || 1;
+    await walkTo(page, t, b.x + F.x * 2.4 * end + L.x * 1.2, b.z + F.z * 2.4 * end + L.z * 1.2, { tol: 0.7, ms: 30000 });
+    await walkTo(page, t, place.x, (place.z + k.z) / 2, { tol: 0.6, ms: 60000 });
     await wait(until, null, 20000);
   }
 };
@@ -327,9 +332,8 @@ J.A = async () => {
   check('the Profile says how a day counts, and no run yet', /Comment ça marche|0 jour/.test(prof0), prof0.replace(/\s+/g, ' ').slice(0, 200));
   await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
   await shot('job-taken');
-  // the Tiak Tiak bike lent by the stand (the walk to the stand is not this journey's: the player is put beside it)
-  const bike = await d(() => window.__dakar.tiak.at());
-  await d(b => window.__dakar.place(b.x + Math.cos(b.yaw) * 1.8, b.z - Math.sin(b.yaw) * 1.8, b.yaw), bike);
+  // the Tiak Tiak bike lent by the stand, in the street south of the Maïga (setup, as journey E: the ride out of the gare's corner is not this journey's), the player beside it
+  await d(() => { window.__dakar.tiak.place(62.1, -30, 0); window.__dakar.place(64.2, -30, 0); });
   await page.waitForTimeout(800);
   await boardVehicle(page, t, 'tiak');
   await page.waitForTimeout(1200);
@@ -459,7 +463,7 @@ J.C = async () => {
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), ln1 = (await d(() => window.__dakar.credit.info())).loans.find(l => l.lender === 'sarr'), share = Math.round(pick.r.fare * 0.3);
   check('dropped off: the fare paid once; Pape Sarr\'s 30 % taken off it toward the debt, the rest in the wallet', ln1.paid - paid0 === share && w1 - w0 === pick.r.fare - share, JSON.stringify({ fare: pick.r.fare, toSarr: ln1.paid - paid0, wallet: w1 - w0 }));
-  check('the card shows the fare, Pape Sarr\'s share and what is left to repay', /Course VTC/.test(c.text) && /Pape Sarr/.test(c.text) && /F/.test(c.text), c.text.replace(/\s+/g, ' '));
+  check('the card shows the fare, Pape Sarr\'s share and what is left to repay', /Course terminée/.test(c.text) && /Pape Sarr/.test(c.text) && /remboursés/.test(c.text) && /reste [\d\s]+ F/.test(c.text), c.text.replace(/\s+/g, ' '));
   await page.waitForTimeout(1500);
   check('the directions clear when the ride is over', !(await goal())?.nav, JSON.stringify(await goal()));
 };
@@ -514,7 +518,7 @@ J.D = async () => {
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0).filter(l => /VTC/.test(l.label));
   check(`dropped off in the Plateau: ${pick.fare} F paid once (one wallet line), never above 5 000 F`, w1 - w0 === pick.fare && lines.length === 1 && pick.fare <= 5000, JSON.stringify({ paid: w1 - w0, lines: lines.length }));
-  check('the card: the ride, the fare, the real time and distance (kilometres)', /Course VTC/.test(c.text) && /km/.test(c.text), c.text.replace(/\s+/g, ' '));
+  check('the card: the ride, the fare, the real time and distance (kilometres)', /Course terminée/.test(c.text) && /km/.test(c.text), c.text.replace(/\s+/g, ' '));
 };
 
 // ---- E: a Tiak parcel from the Maïga (Pikine) to the Restaurant Le Pointe (Almadies) on the player's Jakarta, by the directions
