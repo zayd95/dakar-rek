@@ -469,6 +469,8 @@ J.D = async () => {
   await boardVehicle(page, t, 'teranga');
   await pilot(page, t, 'teranga', [{ x: K.x - F.x * 12, z: K.z - F.z * 12, tol: 3, speed: 5 }, { x: K.x - F.x * 3, z: K.z - F.z * 3, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
   await wait(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, 90000);
+  // the directions are worked out five times a second of game time: on a loaded software renderer, give them that moment to turn to the drop-off
+  await wait(() => { const n = window.__dakar.nav.info().now; return !!n && /Plateau|Route vers/.test(`${n.text} ${n.local?.name}`); }, null, 15000).catch(() => {});
   const n1 = await d(() => window.__dakar.nav.info().now); await shot('aboard-nav');
   check('the passenger aboard, the directions lead out of the Corniche toward the Plateau', n1 && /Plateau|Route vers/.test(`${n1.text} ${n1.local?.name}`), JSON.stringify(n1 && { text: n1.text, local: n1.local, dist: n1.dist }));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
