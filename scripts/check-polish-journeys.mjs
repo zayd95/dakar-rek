@@ -35,7 +35,22 @@ const wait = (fn, a, ms = 240000) => page.waitForFunction(fn, a, { timeout: ms }
 let shotN = 0; const shot = async n => { await page.waitForTimeout(350); await page.screenshot({ path: `${out}/${String(++shotN).padStart(2, '0')}-${n}.png` }); };
 const ready = () => wait(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.streak, null);
 let t;
-const open = async (q = '') => { await page.goto(`${base}?debug&touch${q}`, { timeout: 180000 }); await ready(); t = await realTouch(page); };
+const open = async (q = '') => { await page.goto(`${base}?debug&touch${q}`, { timeout: 180000 }); await ready(); t = await realTouch(page); await watchCards(); };
+/** Every work card the page shows, noted the moment it appears (it goes by itself after 7 s: a loaded software renderer may look too late). */
+let cardsRead = 0;
+const watchCards = async () => {
+  cardsRead = 0;
+  await d(() => {
+    const seen = new WeakSet(); window.__cards = [];
+    const look = () => {
+      const c = document.querySelector('.mo.bc'); if (!c || seen.has(c)) return; seen.add(c);
+      const r = c.getBoundingClientRect(), j = document.querySelector('#joy')?.getBoundingClientRect(), a = document.querySelector('#act')?.getBoundingClientRect();
+      const over = b => !!b && b.width > 0 && !(r.right <= b.left || r.left >= b.right || r.bottom <= b.top || r.top >= b.bottom);
+      window.__cards.push({ at: performance.now(), text: c.innerText, overControls: over(j) || over(a) });
+    };
+    new MutationObserver(look).observe(document.body, { childList: true, subtree: true });
+  });
+};
 /** Tap a menu row by its text, with a real finger. */
 const tapItem = async text => {
   const at = () => d(tx => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => x.textContent.includes(tx)); if (!e) return null; e.scrollIntoView({ block: 'center' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, text);
@@ -249,14 +264,16 @@ const atStop = async (key, place, until) => {
 };
 /** The work card on screen, read; then dismissed by a tap, as a player would. */
 const readCard = async () => {
-  await wait(() => !!document.querySelector('.mo.bc'), null, 30000);
+  await wait(n => (window.__cards?.length ?? 0) > n, cardsRead, 30000);
+  const rec = await d(n => window.__cards[n], cardsRead); cardsRead++;
+  if (!(await d(() => !!document.querySelector('.mo.bc')))) { note('the card had already gone by itself when the check looked (it shows 7 s): its text as it appeared'); return { text: rec.text, gone: true, tapped: false, overControls: rec.overControls }; }
   await page.waitForTimeout(600);
   const text = await card();
   await shot('work-card');
   const c = await d(() => { const r = document.querySelector('.mo.bc').getBoundingClientRect(), j = document.querySelector('#joy')?.getBoundingClientRect(), a = document.querySelector('#act')?.getBoundingClientRect(); const over = b => b && b.width && !(r.right <= b.left || r.left >= b.right || r.bottom <= b.top || r.top >= b.bottom); return { x: r.left + r.width / 2, y: r.top + r.height / 2, overJoy: over(j), overAct: over(a) }; });
   await t.down(6, c.x, c.y); await page.waitForTimeout(60); await t.up(6);
   const gone = await wait(() => !document.querySelector('.mo.bc'), null, 8000).then(() => true, () => false);
-  return { text, gone, overControls: c.overJoy || c.overAct };
+  return { text, gone, tapped: true, overControls: c.overJoy || c.overAct };
 };
 const ledger = () => d(() => window.__dakar.ledger());
 /** Stand within reach of a person or thing and wait until the action button acts on it (`id`), trying a few spots round (x, z) (as scripts/check-first-car.mjs). */
@@ -302,7 +319,7 @@ J.A = async () => {
   const c1 = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0);
   check('delivered: paid ONCE (one wallet line)', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went', /Livraison/.test(c1.text) && /Garage Modou/.test(c1.text) && new RegExp(`${(w1 - w0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`).test(c1.text) && /Durée/.test(c1.text) && /Distance/.test(c1.text) && /1 jour actif/.test(c1.text) && /Premier jour actif/.test(c1.text) && /Livré/.test(c1.text) && !/★/.test(c1.text), c1.text.replace(/\s+/g, ' '));
-  check('the card is brief, clear of the stick and the action button, and a tap dismisses it', c1.gone && !c1.overControls, JSON.stringify({ gone: c1.gone, over: c1.overControls }));
+  check('the card is brief, clear of the stick and the action button, and a tap dismisses it', c1.tapped && c1.gone && !c1.overControls, JSON.stringify({ tapped: c1.tapped, gone: c1.gone, over: c1.overControls }));
   await phoneApp('profil'); const prof1 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-1'); await phoneClose();
   check('the Profile: « 1 jour actif »', /1 jour actif/.test(prof1), prof1.replace(/\s+/g, ' ').slice(0, 200));
   // a second delivery the same day: no second day
