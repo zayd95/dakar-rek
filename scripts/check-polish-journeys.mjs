@@ -149,8 +149,8 @@ J.arena = async () => {
   const js = sampler('moto');
   const j1 = await pilot(page, t, 'moto', [{ x: -2.1, z: -60, tol: 3, speed: 7 }, { x: -2.1, z: -22, tol: 3, speed: 7 }], { cruise: 7, stall: 20000, brakeAtEnd: true });
   js.stop = true;
-  const jc = js.at.filter(a => a.z > -72 && a.z < -48), jSlow = jc.length ? Math.min(...jc.map(a => a.speed)) : null;
-  check('Jakarta: straight through the junction west of the zone, never slowed', Math.abs(j1.z + 22) < 4 && jSlow > 3, JSON.stringify({ end: [j1.x, j1.z], slowest: jSlow }));
+  const jc = js.at.filter(a => a.z > -72 && a.z < -48), jLow = jc.length ? jc.reduce((b, a) => (a.speed < b.speed ? a : b)) : null, jSlow = jLow?.speed ?? null, jFelt = await d(() => window.__dakar.moto.feel());
+  check('Jakarta: straight through the junction west of the zone, never slowed (no knock, never below 0.8 m/s, as the car)', Math.abs(j1.z + 22) < 4 && jSlow > 0.8 && jFelt.impacts.length === 0, JSON.stringify({ end: [j1.x, j1.z], slowest: jSlow, where: jLow && [jLow.x, jLow.z], rapideAhead: jLow?.rap ?? null, impacts: jFelt.impacts }));
 };
 
 // ---- P0: into the Almadies by both ways in, and the coast road past the pier
