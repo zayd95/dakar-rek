@@ -236,8 +236,8 @@ const takeJob = async (text, routeId) => {
   const b = await c.boundingBox(); await t.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await t.up(5);
   await wait(id => window.__dakar.activeJob()?.routeId === id, routeId, 20000);
 };
-/** Drive or ride `key` along the streets to the kerb of a place (x, z) of this district. */
-const toKerb = async (key, place, o = {}) => { const a = await d(k => window.__dakar[k].at(), key), k = kerbOf(place), r = route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise: o.cruise ?? 6 }); if (!r) throw new Error(`no street route to ${JSON.stringify(place)}`); return pilot(page, t, key, r, { cruise: o.cruise ?? 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); };
+/** Drive or ride `key` along the streets to the kerb of a place (x, z) of this district (never through the arena's pedestrian street, as the game's own directions). */
+const toKerb = async (key, place, o = {}) => { const a = await d(k => window.__dakar[k].at(), key), k = kerbOf(place), avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [], r = route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise: o.cruise ?? 6, avoid }); if (!r) throw new Error(`no street route to ${JSON.stringify(place)}`); return pilot(page, t, key, r, { cruise: o.cruise ?? 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); };
 /** A Tiak stop: ridden to the kerb of the place, off the bike, and on foot to its door if the kerb is not close enough; waits for `until` (in the page). */
 const atStop = async (key, place, until) => {
   await toKerb(key, place);
