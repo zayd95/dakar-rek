@@ -230,7 +230,8 @@ check('at the destination the passenger gets out and walks off; paid once (one w
 await getOut('teranga');
 
 // ------------------------------------------------------------------------------------------------ 4. repaying (what the ride earned) and reloading
-const wallet5 = await WAL();
+const wallet5 = await WAL(), paid5 = (await S()).loans[0].paid;
+check('the ride already paid Pape Sarr his 30 % of the fare toward the debt (since the polish pass)', paid5 === Math.floor(pickHour.r.fare * 0.3 / 50) * 50 && paid5 > 0, JSON.stringify({ fare: pickHour.r.fare, toSarr: paid5 }));
 await talkToSarr(); await pick('Rembourser');
 await shot('repay-menu');
 // the day's installment (10 000 F), or what the wallet holds when it is less (« Verser ce que j’ai »; « Payer ce que j’ai » before the polish pass)
@@ -238,7 +239,7 @@ await shot('repay-menu');
   for (const p of part) if (await page.locator('#modal .item:not(.dis)', { hasText: p }).count()) { label = p; break; }
   await pick(label); }
 const l2 = (await S()).loans[0], wallet6 = await WAL();
-check('part of the installment repaid from the ride\'s money (one wallet line « Remboursement »), the rest still owed', l2.paid > 0 && wallet5 - wallet6 === l2.paid && l2.status === 'open', JSON.stringify({ paid: l2.paid, left: l2.principal - l2.paid }));
+check('part of the installment repaid from the ride\'s money (one wallet line « Remboursement »), the rest still owed', l2.paid > paid5 && wallet5 - wallet6 === l2.paid - paid5 && l2.status === 'open', JSON.stringify({ repaid: l2.paid - paid5, fromWallet: wallet5 - wallet6, paid: l2.paid, left: l2.principal - l2.paid }));
 await d(() => window.__dakar.save());
 await page.reload(); await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.teranga?.info().here, null, T);
 const r = await d(() => ({ owned: window.__dakar.teranga.info().owned, uid: window.__dakar.teranga.info().asset?.uid, loans: window.__dakar.state.data.loans.list, vtc: window.__dakar.state.data.vtc, wallet: window.__dakar.state.wallet }));
