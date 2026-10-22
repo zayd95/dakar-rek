@@ -11,7 +11,8 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, boardVehicle, padDrive } from './lib/realTouch.mjs';
-import { startSound, stopSound, sync, mux, loudness } from './lib/avRecord.mjs';
+import { execFileSync } from 'node:child_process';
+import { startSound, stopSound, sync, loudness } from './lib/avRecord.mjs';
 
 const [base = 'http://127.0.0.1:4511/', outRoot = '/tmp/claude-0/veh/polish-av', label = 'after', list = 'jakarta,brake,prestige,radio'] = process.argv.slice(2);
 const out = `${outRoot}/${label}`;
@@ -74,11 +75,13 @@ for (const name of list.split(',')) {
   const video = await page.video().path(); await context.close();
   const clap = sync(video, `${out}/raw/${name}.webm`);
   if (clap) {
-    mux(video, `${out}/raw/${name}.webm`, clap.offset, `${out}/${name}.mp4`, { from: Math.max(0, clap.offset - 0.3) });
+    // the sound decides the length: the software renderer records fewer frames than the clock, so the picture is held on its last frame rather than the sound cut short
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', video, '-itsoffset', String(clap.offset), '-i', `${out}/raw/${name}.webm`, '-map', '0:v', '-map', '1:a', '-ss', String(Math.max(0, clap.offset - 0.3)),
+      '-vf', 'tpad=stop_mode=clone:stop_duration=600,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-r', '25', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-shortest', '-movflags', '+faststart', `${out}/${name}.mp4`]);
     const lv = loudness(`${out}/${name}.mp4`, 0.25), shift = 0.3 + 1.4;           // the film starts 0.3 s before the clap; the marks start 1.4 s after it
-    const seg = (a, b) => { const w = lv.filter(x => x.t >= a + shift && x.t < b + shift); if (!w.length) return null; const rms = Math.sqrt(w.reduce((s, x) => s + 10 ** (x.rmsDb / 10), 0) / w.length); return { peakDb: Math.max(...w.map(x => x.peakDb)), rmsDb: +(10 * Math.log10(rms || 1e-12)).toFixed(1) }; };
+    const seg = (a, b) => { const w = lv.filter(x => x.t >= a + shift && x.t < b + shift); if (!w.length) return null; const power = w.reduce((s, x) => s + 10 ** (x.rmsDb / 10), 0) / w.length; return { peakDb: Math.max(...w.map(x => x.peakDb)), rmsDb: +(10 * Math.log10(power || 1e-12)).toFixed(1) }; };   // the mean power of the windows, in dBFS
     report.scenes[name] = { ...report.scenes[name], marks, levels: marks.slice(0, -1).map(([m, a], i) => ({ moment: m, from: a, to: marks[i + 1][1], ...seg(a, marks[i + 1][1]) })), errors };
-    fs.rmSync(video, { force: true });
   } else report.scenes[name] = { ...report.scenes[name], marks, clap: null, errors };
   console.log(name, JSON.stringify(report.scenes[name]).slice(0, 900));
 }

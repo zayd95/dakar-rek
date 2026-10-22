@@ -91,7 +91,7 @@ check('at the garage, owing Modou: « Rembourser Modou » is the prompt', /Rembo
 await t.tap('#act');
 await page.waitForSelector('#modal.on', T); await shot('repay-menu');
 const menu = await modal();
-const payInst = await tapItem('Payer une échéance') || await tapItem('Payer ce que j’ai') || await tapItem('Payer le retard');
+const payInst = await tapItem('Verser') || await tapItem('Rattraper le retard') || await tapItem('Payer ce que j’ai');   // « Verser 7 500 F »: the day's installment (the menu of src/economy/creditModule.ts)
 await page.waitForTimeout(800);
 const L3 = (await loans()).find(l => l.id === slate.id), w2 = await W();
 check('an installment repaid: the slate goes down by what was paid, the wallet by the same', payInst && L3.paid > 0 && wb - w2 === L3.paid, JSON.stringify({ menu: menu.slice(0, 160), paid: L3.paid, wallet: wb - w2 }));

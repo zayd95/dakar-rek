@@ -57,7 +57,7 @@ const lane = (street, along, dir, axis) => (axis === 'z' ? { x: street - Math.si
 /** Samples a vehicle while a drive runs: the slowest moment away from the start and the end, the impacts. */
 function sampler(key) {
   const s = { at: [], stop: false };
-  (async () => { while (!s.stop) { try { const a = await d(k => window.__dakar[k].at(), key); if (a) s.at.push(a); } catch { /* reloading */ } await page.waitForTimeout(250); } })();
+  (async () => { while (!s.stop) { try { const a = await d(k => window.__dakar[k].at(), key); if (a) s.at.push(a); await page.waitForTimeout(250); } catch { if (page.isClosed()) return; } } })();
   return s;
 }
 /** The slowest moment of a drive once the car has got going and before its final stop (a stop there means something held it), and where. */
@@ -102,7 +102,7 @@ J.arena = async () => {
   await boardVehicle(page, t, 'teranga');
   await pilot(page, t, 'teranga', [{ ...lane(-60, -6, 1, 'x'), tol: 3, speed: 5 }, { ...lane(-60, 28, 1, 'x'), tol: 1.5, speed: 3 }], { cruise: 5, stall: 9000 });
   await page.waitForTimeout(1500);
-  const stopAt = await d(() => window.__dakar.teranga.at()), why = await d(([x, z]) => window.__dakar.teranga.solidAt(x + 2.6, z, 0.9), [stopAt.x, stopAt.z]);
+  const stopAt = await d(() => window.__dakar.teranga.at()), why = await d(([x, z]) => window.__dakar.teranga.solidAt(x + 2.45, z, 0.3), [stopAt.x, stopAt.z]);   // just past the front bumper
   check('car, toward the gate: it stops with its bumper at the line of bollards (x = 15.5), held by them and nothing else', stopAt.x > 11 && stopAt.x < 14.2 && /footprint/.test(why?.why ?? ''), JSON.stringify({ x: stopAt.x, z: stopAt.z, why }));
   await shot('car-stopped-at-bollards');
   await getOff('teranga');
@@ -118,7 +118,8 @@ J.arena = async () => {
   ms.stop = true; await page.waitForTimeout(1200);
   const mAt = await d(() => window.__dakar.moto.at());
   check('Jakarta: in by the kerb, past its guarded places, between two posts of the east line into the zone', ms.at.some(a => a.x < 43.5) && mAt.x < 44, JSON.stringify({ end: [mAt.x, mAt.z], minX: Math.min(...ms.at.map(a => a.x)) }));
-  check('Jakarta: stopped in the zone by the queue\'s crowd barriers (x = 32.6), which are drawn across the street', mAt.x > 32.4 && mAt.x < 35.5, JSON.stringify({ x: mAt.x }));
+  const mWhy = await d(([x, z]) => window.__dakar.moto.solidAt(x - 1.15, z, 0.3), [mAt.x, mAt.z]);
+  check('Jakarta: in the zone, held only by what is drawn there (a stall, the queue\'s crowd barriers), never by the zone itself', mAt.x > 32.4 && mAt.x < 43 && !!mWhy && (/collider/.test(mWhy.why) || (/footprint/.test(mWhy.why) && (mWhy.foot?.hw ?? 1) < 0.2)), JSON.stringify({ x: mAt.x, why: mWhy }));
   await shot('jakarta-at-the-barriers');
   await d(() => window.__dakar.moto.place(-2.1, -96, 0)); await page.waitForTimeout(400);
   await d(() => window.__dakar.moto.feelReset());
@@ -393,13 +394,17 @@ J.C = async () => {
   await wait(() => window.__dakar.vtc.info().trip?.stage === 'pickup', null, 20000);
   await phoneClose().catch(() => {});
   await wait(() => window.__dakar.teranga.info().here, null, 60000);
-  await walkTo(page, t, sl.counter.x + 1.7, sl.counter.z - 0.2, { tol: 0.5 }); await walkTo(page, t, sl.counter.x + 1.7, 1.8, { tol: 0.6 });   // between two of his cars, out to the road side
+  // setup: the car put in the passenger's street, 60 m back (driving off his lot is journey B's), the player at its door
+  { const st0 = await d(() => window.__dakar.vtc.stops()), K = st0.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
+    const p0 = Math.abs(F.z) > 0.5 ? { x: Math.round(K.x / 60) * 60 - Math.sign(F.z) * 2.1, z: K.z - F.z * 60 } : { x: K.x - F.x * 60, z: Math.round(K.z / 60) * 60 + Math.sign(F.x) * 2.1 };
+    await d(([x, z, y]) => { window.__dakar.teranga.place(x, z, y); window.__dakar.place(x + Math.cos(y) * 2.4, z - Math.sin(y) * 2.4, y); }, [p0.x, p0.z, K.yaw]); }
+  await page.waitForTimeout(800);
   await boardVehicle(page, t, 'teranga');
   await page.waitForTimeout(1200);
   const g1 = await goal(); await shot('nav-to-passenger');
   check('at the wheel with a ride in hand: the goal line gives the next turn and the distance to the passenger', g1?.nav && /[↰↱↑↶]/.test(g1.text) && /\d+ (m|km)/.test(g1.text), JSON.stringify(g1));
   const stops = await d(() => window.__dakar.vtc.stops());
-  { const a = await d(() => window.__dakar.teranga.at()), po = pullOut(a), last = po[po.length - 1], r = route({ x: last.x, z: last.z, yaw: a.yaw }, stops.pickup.car, { cruise: 6 }); await pilot(page, t, 'teranga', [...po, ...r], { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); }
+  { const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) }; await pilot(page, t, 'teranga', [{ x: K.x - F.x * 12, z: K.z - F.z * 12, tol: 3, speed: 5 }, { x: K.x - F.x * 3, z: K.z - F.z * 3, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 }); }
   await wait(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, 90000);
   await page.waitForTimeout(1000);
   const g2 = await goal(); await shot('nav-to-dropoff');
