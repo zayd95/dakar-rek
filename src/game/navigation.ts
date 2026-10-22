@@ -6,7 +6,8 @@ import { phoneHooks } from '../ui/phoneHooks';
 import { HUB_NAMES } from '../world/content';
 import { GRID, roadCentre } from '../transport/lines';
 import { missionTarget } from './missionGuide';
-import { HUB_SHORT, TURN_GLYPH, gridMetres, legEnds, navDistance, nextTurn, turnText, type Pt } from './navRules';
+import { HUB_SHORT, TURN_GLYPH, gridMetres, legEnds, navDistance, nextTurn, openEdges, turnText, type Pt } from './navRules';
+import { closuresNow } from '../actors/npc';
 
 /**
  * Driving directions (rules: src/game/navRules.ts). The goal is the job in hand (a VTC passenger, then their destination; a Tiak parcel's pick-up, then its
@@ -93,8 +94,10 @@ class Navigation implements GameModule {
       remaining = Math.max(0, left) + (g.hub === here ? gridMetres(mouth, local) : Math.max(0, beyond - cv.road.length));
       glyph = TURN_GLYPH.straight; text = `Tout droit sur la route · ${g.name}`;
     } else {
-      const key = `${here}|${local.x | 0},${local.z | 0}|${Math.round(p.x / 6)},${Math.round(p.z / 6)}`;
-      if (key !== this.routeKey) { this.routeKey = key; this.route = routePath(w.edges, { x: p.x, z: p.z }, local); }
+      // at the wheel the way keeps off the streets closed to cars (the arena's pedestrian zone, a road event)
+      const shut = driving ? closuresNow() : [];
+      const key = `${here}|${local.x | 0},${local.z | 0}|${Math.round(p.x / 6)},${Math.round(p.z / 6)}|${shut.length}`;
+      if (key !== this.routeKey) { this.routeKey = key; this.route = routePath(openEdges(w.edges, shut), { x: p.x, z: p.z }, local); }
       const pts = [{ x: p.x, z: p.z }, ...(this.route?.points ?? [local])];
       const turn = nextTurn(pts, ctx.player.facing());
       remaining = (this.route?.length ?? Math.hypot(local.x - p.x, local.z - p.z)) + beyond;

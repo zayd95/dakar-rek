@@ -9,6 +9,8 @@ import {
   approach, dedupePlaces, northAngle, nightness, onRing, placeKind, project, routePath, whereLabel, zoomRadius,
   type MapPlace, type Pt,
 } from './minimapMath';
+import { openEdges } from '../game/navRules';
+import { closuresNow } from '../actors/npc';
 
 /**
  * The minimap (top-left, Habib's reference): a round dark map of the hub that turns with the camera, the player's arrow at
@@ -259,8 +261,9 @@ export function minimapModule(): GameModule {
       const gd = mapBridge.guide;
       if (!gd) { mapBridge.route = null; routeKey = ''; }
       else if ((routeT -= step) <= 0) {
-        const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)}`;
-        if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(hub.edges, { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+        const shut = p.driving ? closuresNow() : [];   // at the wheel, as the goal line: off the streets closed to cars
+        const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
+        if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
         routeT = 0.5;
       }
       if (!free) return;

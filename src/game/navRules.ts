@@ -11,6 +11,11 @@ const TAU = Math.PI * 2;
 const wrap = (a: number) => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; };
 const heading = (a: Pt, b: Pt) => Math.atan2(b.x - a.x, b.z - a.z);
 
+/** A driver's streets: the network without the segments closed to cars (the arena's pedestrian zone, a road event), so the way never runs into bollards. */
+export function openEdges<E extends { ax: number; az: number; bx: number; bz: number }>(edges: readonly E[], shut: readonly ((ax: number, az: number, bx: number, bz: number) => boolean)[]): readonly E[] {
+  return shut.length ? edges.filter(e => !shut.some(f => f(e.ax, e.az, e.bx, e.bz))) : edges;
+}
+
 /** Where a district is left for the next one on a leg (its own frame), and where the next one is entered (that one's frame). */
 export function legEnds(leg: Leg): { exit: Pt; entry: Pt } {
   const r = leg.edge.road;
