@@ -111,7 +111,8 @@ try {
   // get off again (the next steps place both players on foot)
   await b.keyboard.down('KeyS'); await b.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.5, null, { timeout: 20000 }).catch(() => {}); await b.keyboard.up('KeyS');
   await b.keyboard.press('KeyE');
-  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false, null, { timeout: 15000 });
+  // off and on foot: the dismount places the rider beside the bike when it ends, so B is moved only once it has (a slow runner took longer than the next step)
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false && !window.__dakar.tiak.info().exit && window.__dakar.pos().mode === 'play', null, { timeout: 15000 });
   // a passenger in another vehicle (a car rapide) is not drawn on a bike for the other player
   const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
   await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
