@@ -46,6 +46,17 @@ describe('save extras: debts survive an older client', () => {
     expect(loadSave(s)!.vtc).toMatchObject({ active: null, done: ['V1', 'V2'] });
   });
 
+  it('a client that knew the debts but not the fare share (PR #63) keeps the loan; its share of the fares comes back from the backup', () => {
+    const s = mem(), d0 = withDebt(); d0.loans.list[0].clock = 'play'; d0.loans.list[0].share = true; writeSave(s, d0);
+    const raw = JSON.parse(s.getItem(SAVE_KEY)!); delete raw.play; delete raw.streak;
+    raw.loans.list[0] = { ...raw.loans.list[0], paid: 130_000 }; delete raw.loans.list[0].clock; delete raw.loans.list[0].share;
+    s.setItem(SAVE_KEY, JSON.stringify(raw));
+    const d = loadSave(s)!;
+    expect(d.loans.list[0]).toMatchObject({ id: 'L1', paid: 130_000, share: true });      // what that client paid is kept
+    expect(d.loans.list[0].clock).toBeUndefined();                                         // its due dates: moved onto the player's days by the credit clock
+    expect(d.streak.run).toBe(3);
+  });
+
   it('a save this client wrote is never touched by the backup', () => {
     const s = mem(), d0 = withDebt(); writeSave(s, d0);
     const b = JSON.parse(s.getItem(EXTRAS_KEY)!); b.loans.list[0].paid = 999_999; s.setItem(EXTRAS_KEY, JSON.stringify(b));

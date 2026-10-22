@@ -1012,6 +1012,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!this.dealer || !this.hub || this.vehicle || ownsVehicle(ctx.state, this.def.asset)) return;
     const d = this.dealer.site.delivery;
     this.trial = true;
+    this.road = { ok: true, supervised: false, line: '', saidHeld: false, saidEdge: false, t: 0, called: false };   // a kerb test ride (the Jakarta at Modou's) is a ride, never a floor trial's held car
     this.parkedTarget.name = 'Véhicule d’essai';
     this.spawn(d.x, d.z, d.yaw);
     ctx.toast('Essai gratuit : monte et roule. Le vendeur le reprend quand tu descends.');

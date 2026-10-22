@@ -32,6 +32,9 @@ const count = () => d(() => { const names = []; window.__dakar.three.scene.trave
 await d(() => { window.__dakar.teleport('almadies', -100.5, 4.6, 0); window.__dakar.setHour(11); });
 await wait(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.suv?.info().floor.length >= 2);
 await d(() => { window.__dakar.state.data.wallet = 1200000; });
+// a worker of five days in a row (the run written as the save would hold it: the days themselves are scripts/check-polish-journeys.mjs A): Prestige Auto's road tests are for
+// a customer who can pay, or for such a worker (src/transport/trialRules.ts); without it the trial is « à l'arrêt »
+await d(() => { const s = window.__dakar.state.data; s.streak.run = 5; s.streak.best = 5; s.streak.last = s.play.day; s.streak.lastMs = s.playedMs; s.streak.total = 5; s.streak.seen = [2, 3, 5]; });
 await page.waitForTimeout(1500);
 const v0 = await V(), red = v0.floor.find(c => c.colour === 'rouge');
 check('the red Lamane Sport is on the floor, in its bay, at its price (70 000 000 F)', !!red && red.here && red.state === 'display' && v0.price === 70000000, JSON.stringify({ floor: v0.floor.map(c => [c.slot, c.colour, c.here]), price: v0.price }));

@@ -21,15 +21,15 @@ const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.goto(`${base}?debug&touch`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
 const t = await realTouch(page);
-const d = (fn, arg) => page.evaluate(fn, arg), B = () => d(() => window.__dakar.berline.info()), AT = () => d(() => window.__dakar.berline.at());
+const d = (fn, arg) => page.evaluate(fn, arg), B = () => d(() => window.__dakar.gainde.info()), AT = () => d(() => window.__dakar.gainde.at());
 const shot = async n => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/trial-${n}.png` }); };
 const click = async text => { await page.locator('#modal .item', { hasText: text }).first().click(); };
 await d(() => { window.__dakar.teleport('almadies', -94, 14, Math.PI); window.__dakar.setHour(11); window.__dakar.state.data.wallet = 200000000; });
-await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.berline?.info().floor.length === 1, null, T);   // one berline on the floor, beside the two Lamane Sports and the Gaïndé
+await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.gainde?.info().floor.length === 2, null, T);   // two Gaïndés on the floor, beside the two Lamane Sports
 
-// take the white berline (slot 0) on a trial, through the real prompts
+// take the night-blue Gaïndé (slot 0) on a trial, through the real prompts (the wallet can pay for it: a supervised road test)
 await d(() => window.__dakar.place(-92.6, 19.7, Math.PI));
-await page.waitForFunction(() => window.__dakar.focus()?.id === 'berline:floor:0', null, T);
+await page.waitForFunction(() => window.__dakar.focus()?.id === 'gainde:floor:0', null, T);
 await d(() => window.__dakar.act());
 await page.waitForFunction(() => /clés/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T);
 await click('Prendre les clés');
@@ -37,12 +37,12 @@ const f0 = (await B()).floor[0];
 await d(s => window.__dakar.place(s.x, s.z, Math.PI / 2), f0.step);
 await page.waitForFunction(() => /Ouvrir/.test(window.__dakar.focus()?.primary ?? ''), null, T);
 await d(() => window.__dakar.act());
-await page.waitForFunction(() => window.__dakar.berline.info().driving, null, T);
+await page.waitForFunction(() => window.__dakar.gainde.info().driving, null, T);
 // out through the bay to the forecourt with the real pedals, then out of the car by the real button
-await pilot(page, t, 'berline', [{ x: -92.6, z: 12, tol: 1.6, speed: 2.5 }], { brakeAtEnd: true });
+await pilot(page, t, 'gainde', [{ x: -92.6, z: 12, tol: 1.6, speed: 2.5 }], { brakeAtEnd: true });
 await t.tap('#ridepad .rp-off');
-await page.waitForFunction(() => window.__dakar.berline.info().exit, null, T);   // the door opens and the player steps out: wait for that to begin, then to end
-await page.waitForFunction(() => { const b = window.__dakar.berline.info(); return !b.driving && !b.exit && b.here && window.__dakar.pos().mode === 'play'; }, null, T);
+await page.waitForFunction(() => window.__dakar.gainde.info().exit, null, T);   // the door opens and the player steps out: wait for that to begin, then to end
+await page.waitForFunction(() => { const b = window.__dakar.gainde.info(); return !b.driving && !b.exit && b.here && window.__dakar.pos().mode === 'play'; }, null, T);
 const parked = await AT();
 check('left on the forecourt, the trial car stays where it was parked and is the same car the bay lost', (await B()).trial && !(await B()).floor[0].here && (await B()).floor[0].state === 'out' && (await B()).trialSlot === 0, JSON.stringify(parked));
 check('nothing was paid or saved', (await d(() => window.__dakar.state.wallet)) === 200000000 && !(await B()).record && !(await B()).owned);
@@ -56,7 +56,7 @@ await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).c
 const menu = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
 if (/Rendre/.test(menu)) await click('Rendre la voiture');
 else { await d(() => document.querySelector('#modal .item.close')?.click()); const s = await d(() => window.__dakar.sales.info()); await d(p => window.__dakar.place(p.x + 1.2, p.z + 0.2, 0), s); await page.waitForFunction(() => window.__dakar.focus()?.id === 'prestige:sales', null, T).catch(async e => { console.log('FOCUS', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), sales: window.__dakar.sales.info(), m: document.querySelector('#modal.on')?.textContent ?? '' }))), menu.slice(0, 200)); throw e; }); await d(() => window.__dakar.act()); await page.waitForSelector('#modal.on', T); await click('Rendre la voiture'); }
-await page.waitForFunction(() => window.__dakar.berline.info().returned, null, T);
+await page.waitForFunction(() => window.__dakar.gainde.info().returned, null, T);
 await page.waitForTimeout(4000);
 const still = await B(), at1 = await AT();
 check('handed back in view, the car does not vanish and the bay does not refill in front of them', still.returned && still.here && still.trialSlot === 0 && !still.floor[0].here && Math.abs(at1.x - parked.x) < 0.05 && Math.abs(at1.z - parked.z) < 0.05, JSON.stringify({ x: at1.x, z: at1.z, trialSlot: still.trialSlot }));
@@ -66,11 +66,11 @@ await shot('2-handed-back');
 
 // the player walks off, out of sight (the north end of the back yard, looking away): the dealership takes it back, the bay refills with the same car
 await d(() => window.__dakar.place(-86, 50, 0));
-await page.waitForFunction(() => window.__dakar.berline.info().trialSlot === -1, null, T);
+await page.waitForFunction(() => window.__dakar.gainde.info().trialSlot === -1, null, T);
 const back = await B();
 check('out of sight, the dealership put it back in its bay: same car, same paint, free to try again; nothing owned', !back.here && !back.trial && back.floor[0].here && back.floor[0].state === 'display' && !back.owned && (await d(() => window.__dakar.state.wallet)) === 200000000, JSON.stringify(back.floor));
 await d(() => window.__dakar.place(-92.6, 19.7, Math.PI));
-await page.waitForFunction(() => window.__dakar.focus()?.id === 'berline:floor:0' && window.__dakar.focus().primary === 'Essayer cette voiture', null, T);
+await page.waitForFunction(() => window.__dakar.focus()?.id === 'gainde:floor:0' && window.__dakar.focus().primary === 'Essayer cette voiture', null, T);
 check('and it can be tried again', true);
 await shot('3-back');
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));

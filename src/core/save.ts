@@ -404,12 +404,17 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
  */
 function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData): string[] {
   const missing = EXTRA_FIELDS.filter(k => raw[k] === undefined);
-  if (!missing.length) return [];
+  const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
+  const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
+  if (!missing.length && !lostShare) return [];
   let b: Record<string, unknown> | null = null;
   try { b = JSON.parse(store.getItem(EXTRAS_KEY) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
   if (!b || b.guestId !== data.guestId) return [];
   const back = migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }), out: string[] = [];
   if (!back) return [];
+  // a client that knew the debts but not the share of the fares (PR #63) kept each loan without it: the same loan in the backup says whether it was on
+  // (its due dates are left as that client left them: a loan without its player-day clock is moved onto it by src/economy/credit.ts onPlayClock)
+  if (lostShare) for (const l of data.loans.list) { const was = back.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
   for (const k of missing) {
     if (b[k] === undefined) continue;
     if (k === 'loans') { if (!back.loans.list.length) continue; data.loans = back.loans; }

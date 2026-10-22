@@ -230,7 +230,7 @@ await getOut('teranga');
 const wallet5 = await WAL();
 await talkToSarr(); await pick('Rembourser');
 await shot('repay-menu');
-await pick('Payer ce que j’ai');
+await pick((await page.locator('#modal .item', { hasText: 'Payer ce que j’ai' }).count()) ? 'Payer ce que j’ai' : 'Verser 10');   // the day's installment (10 000 F), or what the wallet holds when it is less
 const l2 = (await S()).loans[0], wallet6 = await WAL();
 check('part of the installment repaid from the ride\'s money (one wallet line « Remboursement »), the rest still owed', l2.paid > 0 && wallet5 - wallet6 === l2.paid && l2.status === 'open', JSON.stringify({ paid: l2.paid, left: l2.principal - l2.paid }));
 await d(() => window.__dakar.save());
