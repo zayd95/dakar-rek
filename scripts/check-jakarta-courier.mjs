@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, walkTo, boardVehicle, STICK } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route, kerbOf } from './lib/gridRoute.mjs';
+import { route, kerbOf, closedZones } from './lib/gridRoute.mjs';
 import { startSound, stopSound, sync, mux } from './lib/avRecord.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-c'] = process.argv.slice(2);
@@ -110,7 +110,7 @@ await boardVehicle(page, t, 'moto');
 check('… back on the Jakarta with the parcel in hand (one delivery, nothing paid yet)', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await AT()).driving, JSON.stringify(await d(() => window.__dakar.activeJob())));
 a = await AT();
 // to the way out, never through the arena's pedestrian street (on a fight evening its bollards and the queue's barriers stop the bike there, as a driver's directions know)
-const avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
+const avoid = await closedZones(page);
 await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid }), { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
 await driveRoad(page, t, 'moto', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });

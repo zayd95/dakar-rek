@@ -13,7 +13,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { realTouch, pilot, walkTo, boardVehicle } from './lib/realTouch.mjs';
-import { route, kerbOf, runUp } from './lib/gridRoute.mjs';
+import { route, kerbOf, runUp, closedZones as closedStreets } from './lib/gridRoute.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
 
 const [base = 'http://127.0.0.1:4511/', outRoot = '/tmp/claude-0/veh/polish', which = 'G'] = process.argv.slice(2);
@@ -275,8 +275,8 @@ const takeJob = async (text, routeId) => {
  * Held up for long on the way (a car rapide at its stop: its dwell lasts minutes of wall clock on a software renderer), it plans again from where it stands, twice at most.
  * Already in the kerb's street and lane, short of it, it just runs in.
  */
-/** The streets closed to cars here (the arena's pedestrian zone), for the test's own street planner. */
-const closedZones = async () => (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
+/** The streets closed to cars here (the arena's pedestrian zone, a road event's closed segment), for the test's own street planner. */
+const closedZones = () => closedStreets(page);
 const driveToKerb = async (key, k, o = {}) => {
   const avoid = await closedZones(), cruise = o.cruise ?? 6, f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) };
   let at = null;

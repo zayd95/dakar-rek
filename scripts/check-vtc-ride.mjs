@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, boardVehicle } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route, runUp } from './lib/gridRoute.mjs';
+import { route, runUp, closedZones } from './lib/gridRoute.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-e'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -94,7 +94,7 @@ check('back at the wheel, the passenger has not moved from the back seat', still
 // out of Pikine on the road to the Plateau
 const hpTrip0 = await d(() => window.__dakar.teranga.health());
 const a1 = await AT();
-const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7 });
+const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
 await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
 await driveRoad(page, t, 'teranga', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
@@ -104,7 +104,7 @@ check('in the Plateau with the passenger aboard: the same ride, the person came 
 await shot('plateau-aboard');
 // to the drop-off kerb
 const S2 = await d(() => window.__dakar.vtc.stops()), a2 = await AT();
-const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 7 });
+const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 7, avoid: await closedZones(page) });   // round a street a road event has closed (cones), as the directions do
 check('a street route to the drop-off exists from where the road ends', !!toDrop, JSON.stringify({ at: [a2.x, a2.z, a2.yaw], drop: S2.dropoff.car }));
 if (toDrop) await pilot(page, t, 'teranga', toDrop, { cruise: 7, stall: 60000, ms: 1500000, brakeAtEnd: true });
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).catch(() => {});

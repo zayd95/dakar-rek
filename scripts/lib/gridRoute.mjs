@@ -77,3 +77,15 @@ export function runUp(k, want = 60) {
   const back = Math.max(15, Math.min(want, STREETS[STREETS.length - 1] - 2 + s * at));
   return alongZ ? { x: near(k.x) - s * LANE, z: k.z - s * back } : { x: k.x - s * back, z: near(k.z) + s * LANE };
 }
+
+/**
+ * The streets closed to cars in the page's district now, as rectangles for `route`'s `avoid`: the arena's pedestrian zone (fight evenings) and the segments a road
+ * event has closed (src/city/roadEvents.ts), each kept 6 m short of its junctions so the crossing streets stay open, as the game's own directions see them.
+ */
+export async function closedZones(page) {
+  const plaza = (await page.evaluate(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
+  const events = (await page.evaluate(() => window.__dakar.roadEvents?.() ?? [])).filter(e => e.closed).map(({ edge: e }) => (Math.abs(e.bx - e.ax) > Math.abs(e.bz - e.az)
+    ? { x0: Math.min(e.ax, e.bx) + 6, x1: Math.max(e.ax, e.bx) - 6, z0: e.az - 1, z1: e.az + 1 }
+    : { x0: e.ax - 1, x1: e.ax + 1, z0: Math.min(e.az, e.bz) + 6, z1: Math.max(e.az, e.bz) - 6 }));
+  return [...plaza, ...events];
+}
