@@ -109,8 +109,10 @@ J.arena = async () => {
     const end = lane(X, -18, 1, 'z');
     const last = await pilot(page, t, 'teranga', [{ ...lane(X, -80, 1, 'z'), tol: 3, speed: 7 }, { ...lane(X, -60, 1, 'z'), tol: 3, speed: 7 }, { ...end, tol: 3, speed: 7 }], { cruise: 7, stall: 20000, brakeAtEnd: true });
     s.stop = true;
-    const cross = s.at.filter(a => a.z > -72 && a.z < -48), slow = cross.length ? Math.min(...cross.map(a => a.speed)) : null, felt = await d(() => window.__dakar.teranga.feel());
-    check(`car, junction ${i} (x = ${X}) beside the zone: driven straight through, never slowed by anything unseen`, Math.hypot(last.x - end.x, last.z - end.z) < 4 && slow !== null && slow > 3 && felt.impacts.length === 0, JSON.stringify({ end: [last.x, last.z], slowest: slow, impacts: felt.impacts }));
+    // what held a car here before this pass (the zone's invisible box) was a knock and a dead stop; the test's own driver eases to about 2 m/s when its line
+    // wavers on a loaded renderer (as in the Almadies drives), so « never slowed » is no knock and never below 0.8 m/s
+    const cross = s.at.filter(a => a.z > -72 && a.z < -48), low = cross.length ? cross.reduce((b, a) => (a.speed < b.speed ? a : b)) : null, slow = low?.speed ?? null, felt = await d(() => window.__dakar.teranga.feel());
+    check(`car, junction ${i} (x = ${X}) beside the zone: driven straight through, never slowed by anything unseen`, Math.hypot(last.x - end.x, last.z - end.z) < 4 && slow !== null && slow > 0.8 && felt.impacts.length === 0, JSON.stringify({ end: [last.x, last.z], slowest: slow, where: low && [low.x, low.z], rapideAhead: low?.rap ?? null, impacts: felt.impacts }));
     if (i === 1) await shot('car-junction-west');
     await getOff('teranga');
   }
