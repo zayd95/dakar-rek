@@ -315,6 +315,9 @@ const readCard = async () => {
   return { text, gone, tapped: true, overControls: c.overJoy || c.overAct };
 };
 const ledger = () => d(() => window.__dakar.ledger());
+/** The wallet's lines written since `mark` (the newest line when it was taken): the phone's ledger is newest first and keeps a fixed number of lines. */
+const ledgerMark = async () => (await ledger())[0] ?? null;
+const ledgerSince = async mark => { const all = await ledger(), i = mark ? all.findIndex(e => e.at === mark.at && e.label === mark.label && e.amount === mark.amount) : -1; return i < 0 ? all : all.slice(0, i); };
 /** Stand within reach of a person or thing and wait until the action button acts on it (`id`), trying a few spots round (x, z) (as scripts/check-first-car.mjs). */
 const focusOn = async (id, x, z) => {
   for (const [dx, dz] of [[1.2, -0.8], [-1.2, -0.8], [0, -1.3], [1.4, 0], [-1.4, 0]]) {
@@ -352,9 +355,9 @@ J.A = async () => {
   const g2 = await goal();
   check('parcel picked up at the kerb of the Maïga: the directions turn to the client', /Garage Modou/.test(g2?.text ?? ''), JSON.stringify(g2));
   await shot('nav-to-client');
-  const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
+  const w0 = await d(() => window.__dakar.state.wallet), l0 = await ledgerMark();
   await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
-  const c1 = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0);
+  const c1 = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0));
   check('delivered: paid ONCE (one wallet line)', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went', /Livraison/.test(c1.text) && /Garage Modou/.test(c1.text) && new RegExp(`${(w1 - w0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`).test(c1.text) && /Durée/.test(c1.text) && /Distance/.test(c1.text) && /1 jour actif/.test(c1.text) && /Premier jour actif/.test(c1.text) && /Livré/.test(c1.text) && !/★/.test(c1.text), c1.text.replace(/\s+/g, ' '));
   check('the card is brief, clear of the stick and the action button, and a tap dismisses it', c1.tapped && c1.gone && !c1.overControls, JSON.stringify({ tapped: c1.tapped, gone: c1.gone, over: c1.overControls }));
@@ -511,7 +514,7 @@ J.D = async () => {
   await wait(() => { const n = window.__dakar.nav.info().now; return !!n && /Plateau|Route vers/.test(`${n.text} ${n.local?.name}`); }, null, 15000).catch(() => {});
   const n1 = await d(() => window.__dakar.nav.info().now); await shot('aboard-nav');
   check('the passenger aboard, the directions lead out of the Corniche toward the Plateau', n1 && /Plateau|Route vers/.test(`${n1.text} ${n1.local?.name}`), JSON.stringify(n1 && { text: n1.text, local: n1.local, dist: n1.dist }));
-  const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
+  const w0 = await d(() => window.__dakar.state.wallet), l0 = await ledgerMark();
   // out of the Corniche by the road to the Plateau, then to the drop-off kerb
   const mouth = await d(() => { const p = window.__dakar.road.at('corniche-plateau', 0, 0); return p; });
   { const a = await d(() => window.__dakar.teranga.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: mouth.x, z: mouth.z }, { cruise: 7, avoid: await closedZones() }); await pilot(page, t, 'teranga', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
@@ -522,7 +525,7 @@ J.D = async () => {
   await shot('plateau-arrival');
   await driveToKerb('teranga', (await d(() => window.__dakar.vtc.stops())).dropoff.car, { cruise: 7 });
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
-  const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0).filter(l => /VTC/.test(l.label));
+  const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0)).filter(l => /VTC/.test(l.label));
   check(`dropped off in the Plateau: ${pick.fare} F paid once (one wallet line), never above 5 000 F`, w1 - w0 === pick.fare && lines.length === 1 && pick.fare <= 5000, JSON.stringify({ paid: w1 - w0, lines: lines.length }));
   check('the card: the ride, the fare, the real time and distance (kilometres)', /Course terminée/.test(c.text) && /km/.test(c.text), c.text.replace(/\s+/g, ' '));
 };
@@ -551,9 +554,9 @@ J.E = async () => {
   await page.waitForTimeout(1500);
   const g2 = await goal(); await shot('nav-in-the-almadies');
   check('in the Almadies, the street directions to the restaurant take over (survived the crossing)', g2?.nav && /Le Pointe/.test(g2.text) && /[↰↱↑↶]/.test(g2.text), JSON.stringify(g2));
-  const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
+  const w0 = await d(() => window.__dakar.state.wallet), l0 = await ledgerMark();
   await atStop('moto', { x: -102, z: -54.5 }, () => !window.__dakar.activeJob());
-  const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0);
+  const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0));
   check('handed over at the Restaurant Le Pointe: paid once', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: Maïga → Le Pointe, the pay, the time, the distance in km, the run, one line', /Le Pointe/.test(c.text) && /km/.test(c.text) && /jour actif|affilée/.test(c.text), c.text.replace(/\s+/g, ' '));
   await page.waitForTimeout(1500);
