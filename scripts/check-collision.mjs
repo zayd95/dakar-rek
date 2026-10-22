@@ -46,7 +46,9 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
 // ============================== a phone that can vibrate
 {
   const s = await session(true);
-  const save0 = await s.d(() => JSON.stringify([window.__dakar.state.data.counters, window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
+  // the save as a crash could touch it: money, the wallet's lines, the counters (but where the bought car stands, src/transport/owned.ts, which moves with it)
+  const saved = () => s.d(() => JSON.stringify([Object.entries(window.__dakar.state.data.counters).filter(([k]) => !k.startsWith('vehicle:')), window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
+  const save0 = await saved();
   const a0 = await s.au();
   // ---- 1. a hard hit, head on: this also finds a CLEAN wall (a run-up of 9 m that really arrives at speed, nothing else in the way) which every later step uses
   const aH = await s.au(), nv0 = (await s.vib()).length;
@@ -117,8 +119,8 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   await s.page.waitForTimeout(300);
   const off = await s.feel(), nvO = (await s.vib()).length;
   check('with the setting off the same hit is felt in sound and camera but the phone does not vibrate', off.impacts.length >= 1 && off.shakePeak >= 0.6 && nvO === nvS, JSON.stringify({ impacts: off.impacts.length, shakePeak: off.shakePeak, buzzes: nvO - nvS }));
-  const save1 = await s.d(() => JSON.stringify([window.__dakar.state.data.counters, window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
-  check('none of it touched the save (counters, ledger, wallet)', save0 === save1, '');
+  const save1 = await saved();
+  check('none of it touched the save (counters, ledger, wallet; the car\'s own parking place aside)', save0 === save1, save0 === save1 ? '' : `${save0.slice(0, 300)} → ${save1.slice(0, 300)}`);
   check('no JavaScript errors', s.errors.length === 0, s.errors.slice(0, 3).join(' | '));
   await s.context.close();
 }
