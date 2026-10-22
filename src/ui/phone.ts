@@ -327,8 +327,9 @@ export class Phone {
         this.ctx.toast(on ? 'Raccourci ajouté' : 'Raccourci retiré');
         s.dispatchEvent(new Event('carte:refresh')); return;
       }
-      const act = t.closest<HTMLElement>('.fm-card [data-dealer], .fm-card [data-walk]');           // the cards are filled after the screen is bound
-      if (act?.dataset.dealer) this.dealerAct(act); else if (act?.dataset.walk) { const h = act.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }
+      const act = t.closest<HTMLElement>('.fm-card [data-dealer], .fm-card [data-walk], .fm-card [data-drive]');           // the cards are filled after the screen is bound
+      if (act?.dataset.drive !== undefined) { const h = (act.dataset.drive || null) as HubId | null, n = act.dataset.name; this.launch(() => phoneHooks.driveTo?.(h, n)); }
+      else if (act?.dataset.dealer) this.dealerAct(act); else if (act?.dataset.walk) { const h = act.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }
     };
     s.addEventListener('click', onClick);
     if (vehiclesOpen) lit(s.querySelector('[data-cm="dealers"]'));
@@ -616,6 +617,7 @@ export class Phone {
     s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
     s.querySelectorAll<HTMLElement>('.cm-sheet [data-dealer]').forEach(b => b.addEventListener('click', () => this.dealerAct(b)));
     s.querySelectorAll<HTMLElement>('[data-walk]').forEach(b => b.addEventListener('click', () => { const h = b.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }));
+    s.querySelectorAll<HTMLElement>('.cm-sheet [data-drive]').forEach(b => b.addEventListener('click', () => { const h = (b.dataset.drive || null) as HubId | null, n = b.dataset.name; this.launch(() => phoneHooks.driveTo?.(h, n)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;

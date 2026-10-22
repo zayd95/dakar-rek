@@ -1,3 +1,4 @@
+import type { HubId } from '../core/types';
 /**
  * Shared contract between the in-game phone (src/ui/phone*.ts) and the modules that provide its apps.
  * A module registers what it provides; the phone shows an app only when its hook exists.
@@ -39,6 +40,12 @@ export const phoneHooks: {
   wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
   /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
+  /** Driving directions to a district (and a place of it), or none (src/game/navigation.ts). */
+  driveTo?: (hub: HubId | null, name?: string) => void;
+  /** The player is at the wheel (or on a saddle) now: the map offers directions first, not a walk. */
+  driving?: () => boolean;
+  /** The district chosen for directions, if any. */
+  navGoal?: () => { hub: HubId; name: string } | null;
   /** « Profil »: the run of days worked and what it opens (src/economy/streakModule.ts). */
   streakProfile?: () => { label: string; detail: string }[];
   /**

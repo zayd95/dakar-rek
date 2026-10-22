@@ -26,6 +26,7 @@ import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadGlbVehicles } from './actors/glbVehicle';
 import { missionTarget } from './game/missionGuide';
+import { navigation } from './game/navigation';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -1276,6 +1277,7 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
   { const m = destination ? null : missionTarget(); if (m && m.hub === world.id) return m; }
+  { const n = destination?.hub === world.id ? null : navigation.localGoal(); if (n) return n; }   // driving directions: the way out toward the goal's district, or the place chosen on the map
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {

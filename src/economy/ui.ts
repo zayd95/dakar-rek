@@ -21,6 +21,7 @@ import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotB
 import { fcfaShort } from './format';
 import './economy.css';
 import { streak } from './streakModule';
+import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
 
 /**
  * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
@@ -94,6 +95,17 @@ export class Economy {
     phoneHooks.openHome = () => this.openShop(true);
     phoneHooks.openBusiness = () => this.openBusiness();
     phoneHooks.wealth = () => ({ assets: assetsValue(d.state), perHour: allIncome(d.state), charges: chargesPerHour(d.state), polyvalence: polyLine(d.state) });
+    addMissionGuide(() => this.jobTarget());
+  }
+
+  /** The parcel's next place, in any district (driving directions: src/game/navigation.ts); its coordinates when it is in the loaded district. */
+  private jobTarget(): MissionTarget | null {
+    const s = this.s, a = s.data.jobs.active; if (!a) return null;
+    const tc = currentTour(s), r = !a.tour ? routeById(a.routeId) : undefined;
+    const place = tc ? tc.stop.place : r ? (a.stage === 'pickup' ? r.from : r.to) : null; if (!place) return null;
+    const hub = (r && a.stage === 'deliver' ? deliveryHub(r) : a.hub) as HubId, w = this.world;
+    const it = w && w.id === hub ? this.placeOf(place.frag) : undefined;
+    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0 };
   }
 
   private get s() { return this.d.state; }
