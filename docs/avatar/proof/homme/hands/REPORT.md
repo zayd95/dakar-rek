@@ -31,6 +31,20 @@ The low model remains 42.4% smaller than full by bytes. In a 375×667 CSS-pixel 
 - Earlier interactive car/Jakarta checks verified purchase, Ride/Sit driving poses, steering and vehicle controls but stalled in later reload-while-moving stages. Those interactive checks were not repeated after the arm fairing; the updated Ride/Sit proof is visual.
 - Female GLBs remain byte-identical to the base branch: full SHA `e5fd992c872a222895b1a67192fcab1ec4e7baaa8fe0c50555456d47583e35e3`; low SHA `51b7819cda3e3968e9f8c10adfdcae88a3acf887d97981dcfbbe5c1b05eaeee8`.
 
+## Review corrections (textured view)
+
+The first version of this repair was judged from clay renders, which cannot show colour or texture. In the textured view three defects showed:
+
+1. **Hands the wrong colour.** The rebuilt hands took one UV texel from the palm (RGB 220,137,112), about twice as bright as the forearm (116,63,44); the studio's skin shader tones each texel against the body's mean skin, so on the lightest tone the hands read nearly white. `repair-male-hands.mjs` now takes the candidate texel whose colour is nearest the forearm's own mean.
+2. **Gold and black band at both wrists.** The collar's quads interpolated the wrist cut's old UVs towards the palm texel and swept the atlas between them. The collar's first ring is now a copy of the wrist cut (same place, weights, normals, morphs) carrying the skin texel's UV; the forearm keeps the original cut vertices.
+3. **Olive fringe along the sleeve hem.** `repair-male-arms.mjs` also faired the sleeve and its hem vertices, which pulled the hem's olive rim into view. Vertices more than 6.5 cm above the elbow along the upper arm (the sleeve and its hem) are no longer moved.
+
+Textured before/after: [hands on three skin tones](male-hands-skin-tones-textured-before-after.jpg), [arm](male-arm-textured-before-after.jpg), [low model hands](male-hands-mobile-low-textured-before-after.jpg), [low model arm](male-arm-mobile-low-textured-before-after.jpg). Top rows are the base (PR #60), bottom rows this branch.
+
+The Measurements section above predates these corrections; the current figures are: `body_m.glb` 14,025 vertices / 13,496 triangles / 1,462,636 bytes (SHA-256 `8b12adcc222d39c2aa5156d354425671556b071e72b0401cbfb3255959bc7a3f`); `body_m_low.glb` 7,980 / 7,418 / 842,548 bytes (`31be7db61a7daca49f09f100b183d39dc59bc19142272f017183eb24f7548f21`). A full four-asset rebuild from the Meshy source (`scripts/meshy/build-bodies.mjs`, source archive present) reproduces both male files byte for byte and leaves the female GLBs byte-identical to the base. Rig, inverse binds, 13 clips, morph names and textures are unchanged. The car, Jakarta, moto, Tiak moto, gait, sit/stand, stride, gestures, stop, avatar and studio checks and the unit tests were re-run on this build.
+
+Remaining limits: the hands are smooth and thin, without knuckle or nail detail; a faint olive tint can remain at the sleeve hem of the low model; the new hands add four non-manifold edges to the full model.
+
 ## Limitation
 
 The checkout lacks `private-archive/meshy-20261017/sources`, so the complete four-asset source build could not be rerun. The two male GLBs were corrected directly and reproducibly, and both male-only passes are integrated into `scripts/meshy/build-bodies.mjs`.

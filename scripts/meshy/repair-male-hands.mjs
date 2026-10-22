@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as THREE from 'three';
-const VERSION = 2, CUT = -.025;
+import sharp from 'sharp';
+const VERSION = 3, CUT = -.025;
 const vec = a => new THREE.Vector3(...a), lerp = (a,b,t) => a+(b-a)*t;
 const smooth = t => { t=Math.max(0,Math.min(1,t));return t*t*(3-2*t); };
 export async function repairMaleHands(file) {
@@ -21,7 +22,7 @@ export async function repairMaleHands(file) {
   const targets=prim.listTargets().map(t=>Object.fromEntries(t.listSemantics().map(s=>[s,{acc:t.getAttribute(s),array:Array.from(t.getAttribute(s).getArray()),size:3}])));
   const P=attrs.POSITION.array, J=attrs.JOINTS_0.array, W=attrs.WEIGHTS_0.array, UV=attrs.TEXCOORD_0.array;
   const originalCount=P.length/3, originalIndices=Array.from(prim.getIndices().getArray());let indices=originalIndices;
-  const report={file,version:VERSION,before:{vertices:originalCount,triangles:indices.length/3},hands:[]};
+  const keepNormal=new Set(),report={file,version:VERSION,before:{vertices:originalCount,triangles:indices.length/3},hands:[]};
   const point=i=>new THREE.Vector3().fromArray(P,i*3);
   const append=(values,morphs=[])=>{const id=P.length/3;for(const s of semantics)attrs[s].array.push(...values[s]);targets.forEach((t,k)=>{for(const s in t)t[s].array.push(...(morphs[k]?.[s]??[0,0,0]));});return id;};
   for(const side of ['L','R']){
@@ -37,7 +38,14 @@ export async function repairMaleHands(file) {
     if(candidates.length<50)throw Error('Unexpected male topology: no hand region');
     // A real skin texel from this hand, selected well inside its original UV island.
     // Keep the atlas byte-for-byte; a tiny patch avoids projecting the old webbed triangles onto the new fingers.
-    const uvId=candidates.reduce((best,i)=>{const p=local(i),b=local(best);return Math.hypot(p[0],p[1]-.05,p[2])<Math.hypot(b[0],b[1]-.05,b[2])?i:best;},candidates[0]);
+    // The palm is painted ~2x brighter than the arm, and the studio's skin shader tones each texel against the body's mean skin: one palm texel over the
+    // whole hand read chalk-white on light skin tones. Take the candidate texel whose colour is nearest the forearm's own mean.
+    const tex=root.listTextures()[0],{data:img,info}=await sharp(Buffer.from(tex.getImage())).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    const texel=i=>{const x=Math.min(info.width-1,Math.floor(UV[2*i]*info.width)),y=Math.min(info.height-1,Math.floor(UV[2*i+1]*info.height)),o=(y*info.width+x)*3;return[img[o],img[o+1],img[o+2]];};
+    const fore=Array.from({length:originalCount},(_,i)=>i).filter(i=>{let w=0;for(let k=0;k<4;k++)if(J[4*i+k]===faId)w+=W[4*i+k];return w>.99&&local(i)[1]<-.03&&local(i)[1]>-.22;}).map(texel);
+    if(fore.length<8)throw Error('Unexpected male topology: no forearm skin to match');
+    const mean=[0,1,2].map(c=>fore.reduce((a,t)=>a+t[c],0)/fore.length),dist=i=>{const t=texel(i);return Math.hypot(t[0]-mean[0],t[1]-mean[1],t[2]-mean[2]);};
+    const uvId=candidates.reduce((best,i)=>dist(i)<dist(best)?i:best,candidates[0]);
     const uv=[UV[2*uvId],UV[2*uvId+1]];
     const edgeCache=new Map(),segments=[];const next=[];let removed=0,clipped=0;
     function intersect(a,b){const key=[Math.min(a,b),Math.max(a,b)].join(':');if(edgeCache.has(key))return edgeCache.get(key);
@@ -129,7 +137,12 @@ export async function repairMaleHands(file) {
     const tip=vertex(thumbPath(1.006),thumbGrip(1.006));for(let k=0;k<6;k++)face(ring[k],ring[(k+1)%6],tip);
     // Connect the unchanged cut edge to the palm's proximal rim. Resample only the NEW collar.
     const rim=[...grid[0][0],...grid[1][0].slice().reverse()].sort((a,b)=>Math.atan2(local(a)[2],local(a)[0])-Math.atan2(local(b)[2],local(b)[0]));
-    const rings=[loop],collarSteps=file.includes('_low')?1:2;for(let j=1;j<=collarSteps;j++){
+    // The collar's first ring is a copy of the wrist cut (same place, weights, normals and morphs) with the skin texel's UV: its quads interpolated the cut's
+    // old UVs towards the palm texel and swept the atlas between them (a gold and black band at the wrist). The forearm keeps the cut's own vertices.
+    const dupVert=i=>{const v={};for(const s of semantics)v[s]=attrs[s].array.slice(i*attrs[s].size,(i+1)*attrs[s].size);v.TEXCOORD_0=[uv[0],uv[1]];
+      const id=append(v,targets.map(t=>Object.fromEntries(Object.keys(t).map(s=>[s,t[s].array.slice(3*i,3*i+3)]))));keepNormal.add(id);return id;};
+    const collar=loop.map(dupVert);
+    const rings=[collar],collarSteps=file.includes('_low')?1:2;for(let j=1;j<=collarSteps;j++){
       const t=j/(collarSteps+1),rr=[];for(const i of loop){const lp=local(i),angle=Math.atan2(lp[2],lp[0]),x=-.012+Math.cos(angle)*.0245,c=-.006+Math.sin(angle)*.010,pp=[lerp(lp[0],x,smooth(t)),lerp(CUT,.03,t),lerp(lp[2],c,smooth(t))];
         const wh=lerp(hw(i),1,smooth(t)),id=vertex(pp,pp,[handId,wh,faId,1-wh],true);rr.push(id);}
       rings.push(rr);
@@ -156,7 +169,7 @@ export async function repairMaleHands(file) {
   function normals(morph=false){const out=new Float64Array(P.length),delta=targets[0]?.POSITION?.array;
     const at=i=>{const p=point(i);if(morph&&delta)p.add(new THREE.Vector3().fromArray(delta,3*i));return p;};
     for(const [a,b,c]of faces){if(a<originalCount&&b<originalCount&&c<originalCount)continue;const n=at(b).sub(at(a)).cross(at(c).sub(at(a)));for(const id of[a,b,c])for(let k=0;k<3;k++)out[3*id+k]+=n.getComponent(k);}
-    for(let i=originalCount;i<P.length/3;i++){const n=new THREE.Vector3().fromArray(out,3*i).normalize();if(morph){if(targets[0]?.NORMAL)targets[0].NORMAL.array.splice(3*i,3,...n.sub(new THREE.Vector3().fromArray(attrs.NORMAL.array,3*i)).toArray());}else attrs.NORMAL.array.splice(3*i,3,...n.toArray());}
+    for(let i=originalCount;i<P.length/3;i++){if(keepNormal.has(i))continue;const n=new THREE.Vector3().fromArray(out,3*i).normalize();if(morph){if(targets[0]?.NORMAL)targets[0].NORMAL.array.splice(3*i,3,...n.sub(new THREE.Vector3().fromArray(attrs.NORMAL.array,3*i)).toArray());}else attrs.NORMAL.array.splice(3*i,3,...n.toArray());}
   }normals();normals(true);
   // Drop only unused vertices; retain order and every attribute/morph value of used original vertices.
   const used=new Set(indices),ids=[...used].sort((a,b)=>a-b),remap=new Map(ids.map((id,i)=>[id,i]));

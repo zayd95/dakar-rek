@@ -65,6 +65,7 @@ rows.forEach((row, ri) => {
     if (frame === 'body') { cam.position.set(0, 1.0 * sc, 5.2 * sc); cam.lookAt(0, 0.98 * sc, 0); }
     else if (frame === 'bust') { cam.position.set(0, 1.42 * sc, 2.6 * sc); cam.lookAt(0, 1.38 * sc, 0); }   // head to hips: shoulders, arms, elbows
     else if (frame === 'arm') { cam.position.set(0, 1.22 * sc, 1.6 * sc); cam.lookAt(0, 1.2 * sc, 0); h.group.position.x = -Math.cos(h.group.rotation.y) * 0.24 * sc; h.group.position.z = Math.sin(h.group.rotation.y) * 0.24 * sc; }   // the left arm, shoulder to wrist
+    else if (frame === 'hand') { cam.position.set(0, 0.84 * sc, 0.62 * sc); cam.lookAt(0, 0.8 * sc, 0); h.group.position.x = -Math.cos(h.group.rotation.y) * 0.31 * sc; h.group.position.z = Math.sin(h.group.rotation.y) * 0.31 * sc; }   // the left hand, wrist to fingertips
     else if (frame === 'neck') { cam.position.set(0, 1.6 * sc, 0.75 * sc); cam.lookAt(0, 1.58 * sc, 0); }   // the neck and the collar
     else { cam.position.set(0, headY + 0.03, 0.95); cam.lookAt(0, headY, 0); }
     const ch = tall ? cell * 2 : cell, y = H - (ri + 1) * ch;

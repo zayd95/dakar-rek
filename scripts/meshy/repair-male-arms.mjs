@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 
-const VERSION = 1, CYCLES = 16, LAMBDA = 0.24, MU = -0.252, MAX_MOVE = 0.025;
+const VERSION = 2, SLEEVE = 0.065, CYCLES = 16, LAMBDA = 0.24, MU = -0.252, MAX_MOVE = 0.025;
 const qkey = p => p.map(x => Math.round(x * 1e6)).join(',');
 export async function repairMaleArms(file) {
   if (!/^body_m(?:_low)?\.glb$/.test(path.basename(file))) throw Error('Male-only pass: expected body_m.glb or body_m_low.glb');
@@ -36,9 +36,17 @@ export async function repairMaleArms(file) {
     if (name === 'shoulder.L' || name === 'shoulder.R') shoulder[i] += w;
     if (name === 'hand.L' || name === 'hand.R') hand[i] += w;
   }
+  // The sleeve and its hem (above SLEEVE metres from the elbow along the upper arm) are cloth, not skin: fairing them pulled the hem's olive rim into view.
+  const joint = n => skin.listJoints().find(j => j.getName() === n), axis = {};
+  for (const side of ['L', 'R']) { const sh = joint(`upper_arm.${side}`).getWorldTranslation(), el = joint(`forearm.${side}`).getWorldTranslation(), u = el.map((x, k) => x - sh[k]), l = Math.hypot(...u); axis[side] = { el, u: u.map(x => x / l) }; }
+  const sleeve = new Uint8Array(originalVertices);
+  for (let i = 0; i < originalVertices; i++) {
+    let side = null; for (let k = 0; k < 4; k++) { const name = bones[joints[4 * i + k]]; if (weights[4 * i + k] > 0 && /^(upper_arm|forearm)\.[LR]$/.test(name)) side = name.slice(-1); }
+    if (side) { const { el, u } = axis[side]; sleeve[i] = Number((el[0] - pos[3 * i]) * u[0] + (el[1] - pos[3 * i + 1]) * u[1] + (el[2] - pos[3 * i + 2]) * u[2] > SLEEVE); }
+  }
   const selected = new Uint8Array(points.length).fill(1), seen = new Uint8Array(points.length);
   for (let i = 0; i < originalVertices; i++) {
-    const r = representatives[i], eligible = arm[i] >= 0.35 && shoulder[i] < 0.20 && hand[i] < 0.08;
+    const r = representatives[i], eligible = arm[i] >= 0.35 && shoulder[i] < 0.20 && hand[i] < 0.08 && !sleeve[i];
     if (seen[r]) selected[r] &= Number(eligible); else { seen[r] = 1; selected[r] = Number(eligible); }
   }
   if (selected.reduce((a, b) => a + b, 0) < 100) throw Error('Unexpected arm topology: refusing to modify the model');
