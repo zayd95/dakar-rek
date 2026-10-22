@@ -254,10 +254,13 @@ const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().op
 const takeJob = async (text, routeId) => {
   for (let k = 0; k < 3; k++) {                                                      // the sheet slides in: tap once it has settled, and again if no job (or another) started
     await phoneApp('travail'); await page.waitForSelector('#modal.on', T);
+    // the sheet slides up: a slow page can hold a frame between two looks and slide on after (the finger then lands on the card below)
+    await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'), null, { timeout: 8000 }).catch(() => {});
     const c = page.locator('#modal .dcard', { hasText: text }).first();
     await c.evaluate(e => e.scrollIntoView({ block: 'center' }));
-    // the point tapped is on this card when the finger goes down (the list can move under a slow page): measured, settled, and checked in the page
-    let at = null; for (let i = 0; i < 24 && !at; i++) { await page.waitForTimeout(250); at = await c.evaluate(e => { const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, prev = e.__at; e.__at = y; return prev !== undefined && Math.abs(prev - y) < 0.5 && document.elementFromPoint(x, y)?.closest('.dcard') === e ? { x, y } : null; }); }
+    // the point tapped is on this card when the finger goes down: measured three times running at the same place, and checked in the page
+    let at = null; for (let i = 0; i < 30 && !at; i++) { await page.waitForTimeout(300); at = await c.evaluate(e => { const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2; e.__ats = [...(e.__ats ?? []), y].slice(-3);
+      return e.__ats.length === 3 && Math.max(...e.__ats) - Math.min(...e.__ats) < 0.5 && document.getAnimations().every(a => a.playState !== 'running') && document.elementFromPoint(x, y)?.closest('.dcard') === e ? { x, y } : null; }); }
     if (at) { await t.down(5, at.x, at.y); await page.waitForTimeout(60); await t.up(5); }
     if (await wait(id => window.__dakar.activeJob()?.routeId === id, routeId, 20000).then(() => true, () => false)) return;
     const other = await d(() => window.__dakar.activeJob()?.routeId ?? null);
