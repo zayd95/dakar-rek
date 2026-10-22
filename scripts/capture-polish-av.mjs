@@ -71,7 +71,12 @@ for (const name of list.split(',')) {
     report.scenes[name] = { traffic: await d(k => window.__dakar[k].audio().traffic ?? null, S.key), end: await A() };
   }
   mark('end');
+  const wall = at() + 1.4;
   await stopSound(page, `${out}/raw/${name}.webm`);
+  // an overloaded machine starves the page's sound thread: the recording then holds less sound than the clock ran, and the moments no longer line up
+  const heard = execFileSync('ffmpeg', ['-v', 'error', '-i', `${out}/raw/${name}.webm`, '-vn', '-ac', '1', '-ar', '8000', '-f', 'f32le', '-'], { maxBuffer: 1 << 28 }).byteLength / 32000;
+  const sound = { recorded: +heard.toFixed(1), clock: +wall.toFixed(1), complete: heard > wall * 0.95 };
+  if (!sound.complete) console.log(`${name}: only ${sound.recorded} s of sound for ${sound.clock} s of clock (the machine was overloaded): the levels are not comparable`);
   const video = await page.video().path(); await context.close();
   const clap = sync(video, `${out}/raw/${name}.webm`);
   if (clap) {
@@ -81,8 +86,8 @@ for (const name of list.split(',')) {
       '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-shortest', '-movflags', '+faststart', `${out}/${name}.mp4`]);
     const lv = loudness(`${out}/${name}.mp4`, 0.25), shift = 0.3 + 1.4;           // the film starts 0.3 s before the clap; the marks start 1.4 s after it
     const seg = (a, b) => { const w = lv.filter(x => x.t >= a + shift && x.t < b + shift); if (!w.length) return null; const power = w.reduce((s, x) => s + 10 ** (x.rmsDb / 10), 0) / w.length; return { peakDb: Math.max(...w.map(x => x.peakDb)), rmsDb: +(10 * Math.log10(power || 1e-12)).toFixed(1) }; };   // the mean power of the windows, in dBFS
-    report.scenes[name] = { ...report.scenes[name], marks, levels: marks.slice(0, -1).map(([m, a], i) => ({ moment: m, from: a, to: marks[i + 1][1], ...seg(a, marks[i + 1][1]) })), errors };
-  } else report.scenes[name] = { ...report.scenes[name], marks, clap: null, errors };
+    report.scenes[name] = { ...report.scenes[name], sound, marks, levels: marks.slice(0, -1).map(([m, a], i) => ({ moment: m, from: a, to: marks[i + 1][1], ...seg(a, marks[i + 1][1]) })), errors };
+  } else report.scenes[name] = { ...report.scenes[name], sound, marks, clap: null, errors };
   console.log(name, JSON.stringify(report.scenes[name]).slice(0, 900));
 }
 await browser.close();
