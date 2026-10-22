@@ -68,7 +68,9 @@ await d(([x, z]) => window.__dakar.place(x, z, 0), [lane.x + Math.cos(K.yaw) * 2
 await page.waitForTimeout(800);
 await boardVehicle(page, t, 'teranga');
 const persons = []; const sample = setInterval(async () => { try { persons.push(await d(() => window.__dakar.vtc.info().persons)); } catch { /* reloading */ } }, 1500);
-await pilot(page, t, 'teranga', [{ x: K.x - F.x * 12, z: K.z - F.z * 12, tol: 3, speed: 5 }, { x: K.x - F.x * 3, z: K.z - F.z * 3, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
+// in the lane until 10 m short of the passenger, then into the kerb (a slant from far back meets the cars parked along it)
+const inLane = Math.abs(F.z) > 0.5 ? { x: lane.x, z: K.z - F.z * 10 } : { x: K.x - F.x * 10, z: lane.z };
+await pilot(page, t, 'teranga', [{ ...inLane, tol: 3, speed: 5 }, { x: K.x - F.x * 2.5, z: K.z - F.z * 2.5, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
 const waiting = await V();
 check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && (waiting.phase === 'walk' || waiting.phase === 'seated'), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
 await page.waitForTimeout(1200); await shot('passenger-walks');
