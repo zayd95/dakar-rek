@@ -27,6 +27,7 @@ import { berline, suv } from '../transport/premiumCars';
 import { gainde, ndiayeSales, rafet, sarrSales, teranga } from '../transport/modelCars';
 import { sarrAuto } from '../transport/sarrAuto';
 import { creditClock } from '../economy/creditModule';
+import { streak } from '../economy/streakModule';
 import { vtc } from '../transport/vtc';
 import { garage } from '../transport/garageModule';
 import { prestige } from '../transport/prestigeSales';
@@ -245,7 +246,7 @@ const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.h
 
 export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
-  wolofModule, assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, creditClock, vtc, taxi, ESTATE_MODULE, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  wolofModule, assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, creditClock, vtc, taxi, ESTATE_MODULE, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)

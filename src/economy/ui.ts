@@ -20,6 +20,7 @@ import type { ActivityCategory } from '../activity/types';
 import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
 import { fcfaShort } from './format';
 import './economy.css';
+import { streak } from './streakModule';
 
 /**
  * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
@@ -291,8 +292,9 @@ export class Economy {
     const msg = [`${c.late ? '⏰' : '✓'} ${c.stop.place.name} +${fcfa(c.paid)}`];
     if (c.finished) msg.push(`🎁 +${fcfa(c.bonus)}`);
     else { const next = currentTour(this.s); if (next) msg.push(`→ ${next.stop.place.name}`); }
-    msg.push(c.trust > 0 ? '★'.repeat(c.trust) : c.trust < 0 ? '😒' : '');
-    this.d.hud.toast(msg.filter(Boolean).join(' · '));
+    msg.push(c.trust > 0 ? `confiance ${c.trust}` : c.trust < 0 ? '😒' : '');
+    if (c.finished) streak.done(`tiak:${runId}`, { kind: 'tour', title: 'Tournée terminée', to: c.stop.place.name, paid: c.paid + c.bonus, late: c.late });
+    else this.d.hud.toast(msg.filter(Boolean).join(' · '));
     this.d.save();
     return c;
   }
@@ -302,9 +304,9 @@ export class Economy {
     const c = completeJob(this.s, runId);
     if (!c) return null;
     this.unmark();
-    const msg = [`${c.late ? 'Livré en retard' : 'Livraison réussie'} ✓ +${fcfa(c.paid)}`];
-    if (c.newClient) msg.push(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
-    this.d.hud.toast(msg.join(' · '));
+    // the card says what was done (paid above, once): what, where, how long, how far, the run of days, how it went
+    streak.done(`tiak:${runId}`, { kind: 'tiak', title: c.late ? 'Livré en retard' : 'Livraison réussie', from: c.route.from.name, to: c.route.to.name, paid: c.paid, late: c.late });
+    if (c.newClient) this.d.hud.toast(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
     this.d.save();
     return c;
   }

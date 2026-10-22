@@ -39,6 +39,8 @@ export const phoneHooks: {
   wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
   /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
+  /** « Profil »: the run of days worked and what it opens (src/economy/streakModule.ts). */
+  streakProfile?: () => { label: string; detail: string }[];
   /**
    * Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module), and
    * the change since the last day played (« +6 depuis hier », '' when none; real saved values only).

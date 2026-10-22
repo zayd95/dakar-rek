@@ -25,6 +25,8 @@ export const PARK_OFFSET = 4.3;
 const BUSY_PARK = 14;
 /** Parked cars keep this far from the arena gate (its queue lane, the drop-off and the outflow are the arena lane's). */
 const ARENA_CLEAR = 46;
+/** Distance from a junction's centre to the first parking place of a street (m, the car's centre). */
+export const JUNCTION_CLEAR = 17;
 /** « Stationnement sauvage »: this share of the cars stands half on the pavement, at this distance from the centre line. */
 const ON_PAVEMENT = { share: 0.3, off: 4.65 };
 
@@ -53,7 +55,9 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
   world.edges.forEach((e, ei) => {
     const len = Math.hypot(e.bx - e.ax, e.bz - e.az); if (len < 30) return;
     const main = edgeWeight(e, busyStreets) > 1, w = main ? BUSY_PARK : nearSpawn(world, e) ? 3 : 1;
-    for (const side of [1, -1] as const) for (let t = 12; t <= len - 12; t += 6.4) slots.push({ e: ei, side, t: t + (R() - 0.5) * 2, w: w * (0.6 + R() * 0.8), main });
+    // never at a junction's mouth: a parked car's near end stays ≥ 13 m from the junction's centre (6 m past its box), so two cars on opposite kerbs
+    // never make a chicane of the way into a street
+    for (const side of [1, -1] as const) for (let t = JUNCTION_CLEAR; t <= len - JUNCTION_CLEAR; t += 6.4) slots.push({ e: ei, side, t: t + (R() - 0.5) * 2, w: w * (0.6 + R() * 0.8), main });
   });
   let tries = 0;
   while (g.children.length < count && slots.length && tries++ < count * 40) {

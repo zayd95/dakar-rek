@@ -20,6 +20,7 @@ import { garage } from './garageModule';
 import { SARR_HUB, sarrLot, sarrSales, teranga, PAINTS } from './modelCars';
 import { footprint } from './ownedModule';
 import { kitCarSpec, sedanSeed } from './car';
+import { noteWork } from '../economy/streakModule';
 
 /**
  * « Sarr Auto » (fictional), Pikine: a used-car lot on the kerb across the road from Garage Modou, and its owner Pape Sarr — a real person with his hours
@@ -44,6 +45,8 @@ const ERRANDS: Record<ErrandKind, { label: string; detail: string; pay: number }
 };
 const ORDER: ErrandKind[] = ['client', 'garage', 'wash', 'papers'];
 const day = (ctx: GameCtx) => ctx.day();
+/** The player's day: the debts' calendar (src/economy/creditModule.ts). */
+const pday = (ctx: GameCtx) => ctx.state.data.play.day;
 const key = { day: 'sarr:errands:day', n: 'sarr:errands:n', done: (k: ErrandKind) => `sarr:errand:${k}`, ask: 'sarr:credit:ask', met: 'sarr_met', count: 'sarr:errands:total' };
 
 class SarrAuto implements GameModule, TargetSource {
@@ -146,7 +149,7 @@ class SarrAuto implements GameModule, TargetSource {
   private loans() { return this.ctx.state.data.loans.list; }
   private intro(ctx: GameCtx, trial: boolean): string {
     const t = this.trust(ctx), l = openLoans(this.loans(), 'sarr')[0];
-    if (l) { const st = standing(l, day(ctx)); if (st.late > 0) return `Tu as ${fcfa(st.late)} de retard sur la Teranga. Je ne t’en veux pas, mais pense à moi.`; return `Alors, elle roule bien, la Teranga ? Il te reste ${fcfa(st.left)} à me rendre.`; }
+    if (l) { const st = standing(l, pday(ctx)); if (st.late > 0) return `Tu as ${fcfa(st.late)} de retard sur la Teranga. Je ne t’en veux pas, mais pense à moi.`; return `Alors, elle roule bien, la Teranga ? Tu m’as déjà rendu ${fcfa(st.paid)}, il te reste ${fcfa(st.left)}.`; }
     if (this.errand?.stage === 'report') return 'Alors, c’est fait ?';
     if (trial) return `Alors, elle te plaît ? Le prix est affiché. Et si tu n’as pas tout, on peut parler.`;
     const label = Relations.label(t);
@@ -230,6 +233,7 @@ class SarrAuto implements GameModule, TargetSource {
     const n = c[key.n] ?? 0, gain = C.trust.errands[n] ?? 0;
     c[key.n] = n + 1; c[key.done(e.kind)] = d; ctx.state.count(key.count);
     ctx.state.addMoney(e.pay, `Course pour Sarr Auto : ${ERRANDS[e.kind].label}`);
+    noteWork('errand');
     if (gain) relate(ctx, 'sarr', gain);
     this.errand = null; this.log.errands.push(`done:${e.kind}`);
     ctx.toast(`Pape Sarr : « ${say('Jërëjëf')} ! » +${fcfa(e.pay)}${gain ? ' · il te fait un peu plus confiance' : ''}`);
@@ -280,7 +284,7 @@ class SarrAuto implements GameModule, TargetSource {
       ctx.menu('Pape Sarr · crédit', `« ${o.line} »`, [{ icon: '↩️', label: 'D’accord', onPick: close }]);
       return;
     }
-    const sched = `${o.installments} × ${fcfa(o.installment)}, tous les ${o.every} jours`;
+    const sched = `${fcfa(o.installment)} par jour de jeu (${o.installments} versements), plus ${Math.round(C.dealer.fareShare * 100)} % de chaque course VTC, ou plus quand tu veux`;
     ctx.menu('Pape Sarr · crédit pour une Teranga', `« ${o.line} » · Prix ${fcfa(price)} · Avance ${fcfa(o.down)} · puis ${sched}`, [
       ...cars.map(c => ({ icon: '🚗', label: `Signer · Teranga ${c.colour}`, detail: o.verdict === 'accept' ? `Avance ${fcfa(o.down)} maintenant · cette voiture-là, tu repars avec` : `Il faut ${fcfa(o.down)} d’avance (tu as ${fcfa(ctx.state.wallet)})`, right: '−' + fcfa(o.down), disabled: o.verdict !== 'accept' || !!c.locked, reason: c.locked ?? undefined, onPick: () => { close(); this.sign(c.slot, o.down, o.installment, o.every, o.principal, c.colour); } })),
       { icon: '↩️', label: 'Pas maintenant', onPick: close },
@@ -288,14 +292,14 @@ class SarrAuto implements GameModule, TargetSource {
   }
   /** Signed: the car chosen is the player's for the down payment, the debt recorded against it (one credit at a time: checked again here). */
   sign(slot: number, down: number, installment: number, every: number, principal: number, colour: string) {
-    const ctx = this.ctx, d = day(ctx);
+    const ctx = this.ctx, d = pday(ctx);
     if (openLoans(this.loans(), 'sarr').length) return false;
     const fresh = dealerOffer({ trust: this.trust(), price: specOf('teranga')?.price ?? 0, wallet: ctx.state.wallet, loans: this.loans() });
     if (fresh.verdict !== 'accept' || fresh.down !== down) { ctx.toast('Pape Sarr : « Ce n’est plus possible aujourd’hui. »'); return false; }
     const ok = teranga.buyFinanced(slot, down, 'Sarr Auto', a => {
       openLoan(this.loans(), nextLoanSeq(ctx.state), { lender: 'sarr', kind: 'vehicle', label: `Teranga ${colour} · crédit Sarr Auto`, principal, installment, every, day: d, asset: a.uid, spec: 'teranga' });
     });
-    if (ok) { relate(ctx, 'sarr', 3); ctx.toast(`Pape Sarr te donne les clés : « Elle est à toi. Rembourse-moi ${fcfa(installment)} tous les ${every} jours, avec tes courses. ${say('Jërëjëf')} ! »`); ctx.save(); }
+    if (ok) { relate(ctx, 'sarr', 3); ctx.toast(`Pape Sarr te donne les clés : « Elle est à toi. ${fcfa(installment)} par jour${every > 1 ? ` tous les ${every} jours` : ''}, et un peu de chaque course. ${say('Jërëjëf')} ! »`); ctx.save(); }
     return ok;
   }
   repayMenu(l: LoanState) { creditClock.repayMenu(this.ctx, l); }

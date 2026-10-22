@@ -246,7 +246,7 @@ export class GarageModule implements GameModule, TargetSource {
     j.paid = true;
     if (!ok) { this.job = null; ctx.toast('Impossible de finir : rien n’a été pris.'); this.goHome(); return; }
     if (plan.debt > 0) {
-      openLoan(ctx.state.data.loans.list, nextLoanSeq(ctx.state), { lender: 'modou', kind: 'repair', label: `${plan.label.split(' · ')[0]} ${j.v.name} · ardoise Modou`, principal: plan.debt, installment: Math.ceil(plan.debt / C.garage.installments / 500) * 500, every: C.garage.every, day: ctx.day(), asset: j.v.uid, spec: j.v.asset });
+      openLoan(ctx.state.data.loans.list, nextLoanSeq(ctx.state), { lender: 'modou', kind: 'repair', label: `${plan.label.split(' · ')[0]} ${j.v.name} · ardoise Modou`, principal: plan.debt, installment: Math.ceil(plan.debt / C.garage.installments / 500) * 500, every: C.garage.every, day: ctx.state.data.play.day, asset: j.v.uid, spec: j.v.asset });
       ctx.toast(`Modou note ${fcfa(plan.debt)} sur ton ardoise : « Tu me le rends en ${C.garage.installments} fois. »`);
     }
     this.log.paid++; this.log.charged += plan.pay;

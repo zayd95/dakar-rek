@@ -136,8 +136,12 @@ describe('the gate’s pedestrian zone', () => {
     const out: { x: number; z: number; yaw: number; hl: number; hw: number }[] = [];
     transport.obstacles(out, 'sedan');
     expect(out).toEqual(expect.arrayContaining(plazaFootprints(plaza)));
-    transport.obstacles(out, 'moto');
-    expect(out.length).toBe(0);
+    transport.obstacles(out, 'moto');                                                          // a motorbike: only the bollards and the queue's barriers
+    const { plazaMotoFootprints } = await import('../src/arena/exteriorRules');
+    expect(out).toEqual(plazaMotoFootprints(a));
+    const mb = (x: number, z: number, r: number) => out.some(o => Math.abs(x - o.x) < o.hw + r && Math.abs(z - o.z) < o.hl + r);
+    for (const sl of motoLot(a).slots) expect(hits(motoSpec().drive!, sl.x, sl.z, sl.yaw, mb)).toBe(false);
+    expect(hits(motoSpec().drive!, motoLot(a).kerb.x, motoLot(a).kerb.z, Math.PI / 2, mb)).toBe(false);
     // a car on the street, heading for the gate, stops short of it; the moto rides on to its place
     const boxes = plazaFootprints(plaza), blocked = (x: number, z: number, r: number) => boxes.some(o => Math.abs(x - o.x) < o.hw + r && Math.abs(z - o.z) < o.hl + r);
     expect(hits(carSpec().drive!, a.cx, roadCentre(1), Math.PI / 2, blocked)).toBe(true);
@@ -148,5 +152,31 @@ describe('the gate’s pedestrian zone', () => {
     arenaExteriorModule.hubLoaded!(ctx, { ...hub, arena: null } as HubWorld);                    // another hub: gone
     expect([...trafficClosures.more].some(f => f(roadCentre(2), roadCentre(1), roadCentre(3), roadCentre(1)))).toBe(false);
     transport.obstacles(out, 'sedan'); expect(out.length).toBe(0);
+  });
+});
+
+describe('the zone\'s ends: what stops a car is what the driver sees', () => {
+  it('a line of bollards stands exactly on each end of the zone, across the street and its pavements', async () => {
+    const { plazaBollards, plazaMotoFootprints, BOLLARD_STEP } = await import('../src/arena/exteriorRules');
+    const r = plaza[0], posts = plazaBollards(a);
+    for (const x of [r.x0, r.x1]) {
+      const line = posts.filter(p => p.x === x).map(p => p.z).sort((u, v) => u - v);
+      expect(line.length).toBeGreaterThanOrEqual(9);
+      expect(line[0] - r.z0).toBeLessThan(BOLLARD_STEP); expect(r.z1 - line[line.length - 1]).toBeLessThan(BOLLARD_STEP + 0.4);
+      for (let i = 1; i < line.length; i++) expect(line[i] - line[i - 1]).toBeCloseTo(BOLLARD_STEP, 5);
+    }
+    // a car (half width 0.97) cannot pass between two posts; a motorbike (0.42) can
+    expect(BOLLARD_STEP - 0.24).toBeLessThan(2 * CAR.hw); expect(BOLLARD_STEP - 0.24).toBeGreaterThan(2 * MOTO.hw + 0.1);
+    // the motorbike's own obstacles: every post, and the queue's two barrier lines
+    expect(plazaMotoFootprints(a)).toHaveLength(posts.length + 2);
+  });
+  it('a motorbike rides between two posts of the east line, along the kerb to the guarded lot', async () => {
+    const { plazaMotoFootprints, plazaBollards } = await import('../src/arena/exteriorRules');
+    const f = plazaMotoFootprints(a), mb = (x: number, z: number, r: number) => f.some(o => Math.abs(x - o.x) < o.hw + r && Math.abs(z - o.z) < o.hl + r);
+    const east = plaza[0].x1, lot = motoLot(a), posts = plazaBollards(a).filter(p => p.x === east).map(p => p.z).sort((u, v) => u - v);
+    const gapZ = posts.map((z, i) => (i ? (z + posts[i - 1]) / 2 : NaN)).filter(z => Math.abs(z - lot.kerb.z) < 1)[0];
+    expect(gapZ).toBeDefined();
+    for (let x = east + 3; x >= east - 3; x -= 0.25) expect(hits(motoSpec().drive!, x, gapZ, -Math.PI / 2, mb)).toBe(false);
+    expect(hits(carSpec().drive!, east + 1.2, gapZ, -Math.PI / 2, (x, z, r) => plazaFootprints(plaza).some(o => Math.abs(x - o.x) < o.hw + r && Math.abs(z - o.z) < o.hl + r))).toBe(true);
   });
 });

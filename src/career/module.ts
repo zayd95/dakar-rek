@@ -23,6 +23,7 @@ import {
 } from './roster';
 import { boutCard, boutRecap, deltaText, dimMoves, galaRecap, nextSteps, recordDay, scoresOf, sinceYesterday, stepsCrossed, type AfterBoutFacts, type BoutFacts } from './progress';
 import type { Dim, DimId } from './career';
+import { noteWork } from '../economy/streakModule';
 
 /**
  * Career module (docs/CAREER.md): keeps the fight record from every finished bout, pays the purse of ranked bouts,
@@ -200,7 +201,7 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   const entry: BoutEntry = { at: ctx.state.data.playedMs, day: ctx.day(), mode: e.mode, opp: e.opponent.name, style: e.opponent.label, level: e.level, res, how: HOW[e.outcome] ?? e.outcome, purse, pts, ...(kind ? { kind } : {}) };
   c.bouts.push(entry);
   if (c.bouts.length > BOUTS_MAX) c.bouts.splice(0, c.bouts.length - BOUTS_MAX);
-  if (purse) ctx.state.addMoney(purse, `Cachet · ${kind === 'title' ? 'combat pour le titre' : kind === 'gala' ? 'gala' : 'combat classé'} contre ${e.opponent.name}`);
+  if (purse) { ctx.state.addMoney(purse, `Cachet · ${kind === 'title' ? 'combat pour le titre' : kind === 'gala' ? 'gala' : 'combat classé'} contre ${e.opponent.name}`); noteWork('combat'); }
   const after = rank(ctx), beltAfter = belt(ctx);
   const lines: string[] = [];
   if (beltAfter.held && !beltBefore.held) lines.push('Ceinture de champion de l’Arène de Pikine !');

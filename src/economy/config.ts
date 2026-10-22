@@ -97,10 +97,17 @@ export const ECONOMY = {
     dealer: {
       /** He finances a car up to this price (a city car), one credit at a time. */
       maxPrice: 6_000_000,
-      /** Terms by trust, best first: a fixed down payment or a share of the price, and in how many installments the rest is repaid. */
-      tiers: [{ trust: 60, down: 15_000, n: 40 }, { trust: 45, share: 0.05, n: 36 }, { trust: 30, share: 0.15, n: 30 }, { trust: 20, share: 0.3, n: 20 }],
-      /** City days between installments (one city day is 24 minutes of play). */
-      every: 2,
+      /** Terms by trust, best first: the down payment, fixed or a share of the price (the more he trusts, the less he asks up front). */
+      tiers: [{ trust: 60, down: 15_000 }, { trust: 45, share: 0.05 }, { trust: 30, share: 0.15 }, { trust: 20, share: 0.3 }],
+      /**
+       * The rest is repaid like a Dakar driver pays a car's owner: a small « versement » every one of the PLAYER's days (src/economy/streak.ts: time away
+       * never counts against them), about three or four short VTC rides; more whenever they like. A long road for 4 000 000 F, every franc of it visible.
+       */
+      installment: 10_000, every: 1,
+      /** A due date counts as missed only when more than this many installments are behind (a slow day is not a broken promise). */
+      grace: 2,
+      /** While his credit runs, this share of each VTC fare goes to him (shown on the ride's card; « Crédits » turns it off). */
+      fareShare: 0.3,
       /** Due dates missed with him before he refuses any new credit. */
       missedLimit: 3,
     },
@@ -111,17 +118,26 @@ export const ECONOMY = {
       partKnown: 0.6, partTrusted: 0.35,
       /** Never less than this now; never more than this on the slate; the trusted, reliable customer's discount. */
       minNow: 1000, maxDebt: 60_000, discount: 0.1,
-      /** The rest is repaid in this many installments, one every `every` city days. */
-      installments: 3, every: 1, missedLimit: 2,
+      /** The rest is repaid in this many installments, one every `every` of the player's days; missed beyond `grace` installments behind. */
+      installments: 3, every: 1, grace: 1, missedLimit: 2,
     },
     /** Trust: an errand done (the first, second… of a city day; nothing after the fourth), a first visit, an installment on time, a due date missed, a debt repaid in full. */
-    trust: { errands: [10, 8, 6, 4], firstVisit: 4, paidOnTime: 2, missed: -6, repaidAll: 6 },
+    trust: { errands: [10, 8, 6, 4], firstVisit: 4, paidOnTime: 2, missed: -4, repaidAll: 6 },
   },
   /**
-   * VTC rides (src/transport/vtc.ts): the fare is fixed when the ride is accepted. Placeholder numbers: a base, a rate per metre of the trip (as the
-   * crow flies inside a district, the roads' lengths between districts), and a supplement per district boundary crossed; rounded to 500 F.
+   * VTC rides (src/transport/vtc.ts): the fare is fixed when the ride is accepted, from the length of the way by road (the streets' grid inside a district,
+   * the roads between districts), in the bands a Dakar ride costs: a few streets 1 000–2 000 F, across a district 2 000–3 500 F, to the next district
+   * 3 500–4 500 F, two districts away 3 500–5 000 F; never more than 5 000 F, never a multiplier. Rounded to 500 F.
    */
-  vtc: { base: 2500, perMetre: 9, perDistrict: 2500, step: 500 },
+  vtc: {
+    step: 500,
+    /** Inside a district: a pick-up charge and a rate per metre of street, between a minimum and a maximum. */
+    town: { base: 1000, perMetre: 1.6, min: 1000, max: 3500 },
+    /** To another district: from `min` for the first `from` metres of road, `perMetre` beyond, capped by how many districts away it is (1, 2). */
+    away: { min: 3500, from: 1500, perMetre: 0.6, max: [4500, 5000] as readonly number[] },
+    /** The time a ride should take (late beyond it): the way at this mean speed (m/s), times the slack, plus the pick-up. */
+    speed: 7, slack: 1.6, pickupS: 90,
+  },
   /**
    * Repairs (src/transport/garage.ts): the work a car needs is priced by how much is wrong, not by what the car cost: a touch-up is free, ordinary damage
    * costs what a garage in Pikine would ask, and a dearer car only costs somewhat more (its class factor, (price / ref)^exp, within [min, max]).

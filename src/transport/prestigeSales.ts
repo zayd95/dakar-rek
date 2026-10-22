@@ -10,6 +10,9 @@ import { say } from '../i18n/wolof';
 import { fcfa } from '../ui/hud';
 import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
+import { roadTest, type Dealer, type RoadTest } from './trialRules';
+import { runOf } from '../economy/streak';
+import { relLevel } from '../venues/venue';
 
 /**
  * « Prestige Auto »'s salesperson: a real person with a real position, who walks (never teleports) on a walking map of the hall and the forecourt
@@ -78,6 +81,11 @@ export interface SalesConfig {
   talkIntro?(ctx: GameCtx, trial: boolean): string | null;
   /** He has just greeted the customer (a relationship counts the visit). */
   onGreet?(ctx: GameCtx): void;
+}
+/** Whether this dealer lets a car on the road for this customer now (src/transport/trialRules.ts): the money, his trust, a run of days worked. */
+export function roadTestAt(cfg: SalesConfig, ctx: GameCtx, price: number): RoadTest {
+  const dealer: Dealer = cfg.key === 'sarr' ? 'sarr' : cfg.key === 'ndiaye' ? 'ndiaye' : 'prestige';
+  return roadTest({ dealer, price, wallet: ctx.state.wallet, trust: dealer === 'sarr' ? relLevel(ctx, 'sarr') : 0, run: runOf(ctx.state.data) });
 }
 const PRESTIGE_LAYOUT: SalesConfig['layout'] = hub => (hub.id === PRESTIGE_HUB ? { home: { x: SALES_HOME.x, z: SALES_HOME.z, yaw: Math.PI }, grid: GRID, grounds: inGrounds } : null);
 const GREETINGS = [

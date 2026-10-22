@@ -1034,13 +1034,17 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         break;
       }
       case 'port': {
-        plain.box(6, 0.4, 36, cx, B, bz - 8, 0x8b6a47);                                 // pier toward the sea
-        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });   // walked on: feet on the planks (flat)
-        for (let k = 0; k < 12; k++) plain.box(6.05, 0.05, 0.12, cx, B + 0.4, bz - 25 + k * 3, 0x6b4f33);
+        // the pier toward the sea, in two parts: the boardwalk on the block and the pier from the far kerb out over the beach. The coast road between them
+        // (z bz − 14 … bz) stays a road: a 0.4 m platform laid across it stopped every car and motorbike on the Almadies' coast road.
+        plain.box(6, 0.4, 10, cx, B, bz + 5, 0x8b6a47);
+        plain.box(6, 0.4, 11.7, cx, B, bz - 14.3 - 5.85, 0x8b6a47);
+        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });             // walked on: feet on the planks (flat)
+        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz - 14.3, y0: 0.4, y1: 0.4, xEnd: cx + 3 });
+        for (let k = 0; k < 12; k++) { const pz = bz - 25 + k * 3; if (pz > bz - 14.4 && pz < bz + 0.1) continue; plain.box(6.05, 0.05, 0.12, cx, B + 0.4, pz, 0x6b4f33); }
         const cols = [0x1e6fd9, 0xe7b82f, 0xd9482b, 0x2f8f4e];
         for (let k = 0; k < 5; k++) {
-          // painted pirogues on the beach
-          const bx2 = cx - 17 + k * 8, bz2 = bz - 16 - R() * 4;
+          // painted pirogues on the beach, clear of the coast road (they reached 4 m into it; nothing stops a car there, so it drove through them)
+          const bx2 = cx - 17 + k * 8, bz2 = bz - 21.5 - R() * 3;
           plain.box(1.8, 0.9, 9, bx2, 0.05, bz2, cols[k % 4]);
           plain.box(1.9, 0.25, 9.1, bx2, 0.95, bz2, cols[(k + 1) % 4]);
           plain.box(1.2, 1.1, 1.8, bx2, 0.05, bz2 - 5.1, cols[(k + 2) % 4]);

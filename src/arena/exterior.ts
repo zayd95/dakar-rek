@@ -9,8 +9,9 @@ import { isMuted } from '../core/audioSettings';
 import {
   ECURIES, crossesQueue, drummerAt, drumsCentre, drumVolume, fighterDrumVolume, gateOf, isFightEvening, murmurVolume, queueDistance, stallsOf, vendorPlaces,
   VENDORS, exteriorPhase, outflowDestinations, stallFronts, weekday, WEEKDAY_FR, type ArenaGate, type ExteriorPhase,
-  footprintInPlaza, gatePlaza, inPlaza, plazaClosure, plazaFootprints, streetEnds, type Rect,
+  footprintInPlaza, gatePlaza, inPlaza, plazaClosure, plazaFootprints, plazaMotoFootprints, streetEnds, type Rect,
 } from './exteriorRules';
+import { buildPlazaEnds } from './plazaEnds';
 import { linesOf } from '../transport/lines';
 import { carRapideSpec } from '../transport/carRapide';
 import { GALA_DONE_COUNTER, streetAt } from './program';
@@ -397,10 +398,14 @@ const owed = new Pace();
  * still reach its guarded place beside it).
  */
 let plaza: Rect[] | null = null;
+/** What a motorbike runs into in the zone (its bollards, the queue's barriers), and the zone's ends as drawn. */
+let plazaMoto: ReturnType<typeof plazaMotoFootprints> = [];
+let plazaEnds: ReturnType<typeof buildPlazaEnds> | null = null;
 let plazaShut: ((ax: number, az: number, bx: number, bz: number) => boolean) | null = null;
 const plazaClosed = (ax: number, az: number, bx: number, bz: number) => plazaShut?.(ax, az, bx, bz) ?? false;
 function setPlaza(a: { cx: number; cz: number } | null) {
   plaza = a ? gatePlaza(a) : null;
+  plazaMoto = a ? plazaMotoFootprints(a) : [];
   plazaShut = plaza ? plazaClosure(plaza) : null;
   if (plaza) trafficClosures.more.add(plazaClosed); else trafficClosures.more.delete(plazaClosed);
 }
@@ -469,14 +474,17 @@ export const arenaExteriorModule: GameModule = {
   name: 'arenaExterior',
   init() {
     listenForGesture();
-    transport.addObstacles((out, kind) => { if (plaza && kind && kind !== 'moto') out.push(...plazaFootprints(plaza)); });   // a car stops at the zone
+    // a car stops at the zone, whose ends are lines of bollards it can see; a motorbike rides between the bollards and stops at the queue's barriers
+    transport.addObstacles((out, kind) => { if (!plaza || !kind) return; if (kind !== 'moto') out.push(...plazaFootprints(plaza)); else out.push(...plazaMoto); });
   },
   hubLoaded(ctx, hub) {
     owed.reset();
     ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
     setPlaza(hub.arena);                                                // the gate's pedestrian zone, at all hours
+    plazaEnds?.dispose(); plazaEnds = null;
     if (!hub.arena) return;
+    plazaEnds = buildPlazaEnds(hub.arena); ctx.extra.add(plazaEnds.group);
     gate = gateOf(hub.arena);
     ext = new Exterior(ctx, hub, hub.arena, gate, ctx.quality());
     setPhase(ctx, phaseNow(ctx));

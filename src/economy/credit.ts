@@ -43,7 +43,7 @@ export function dealerOffer(o: { trust: number; price: number; wallet: number; l
   const tier = D.tiers.find(t => o.trust >= t.trust);
   if (!tier) return { verdict: 'refuse', line: 'Je ne te connais pas encore assez. Rends-moi quelques services d’abord, on en reparle.', ...none };
   const down = 'down' in tier ? tier.down : round(o.price * tier.share, 5000);
-  const principal = o.price - down, installment = round(principal / tier.n, 500);
+  const principal = o.price - down, installment = Math.min(principal, D.installment);
   const terms = { down, installments: Math.ceil(principal / installment), installment, every: D.every, principal };
   if (o.wallet < down) return { verdict: 'counter', line: `Apporte-moi ${fmt(down)} d’avance et elle est à toi. Le reste, tu me le rends petit à petit.`, ...terms };
   return { verdict: 'accept', line: tier.trust >= D.tiers[0].trust ? 'Ta parole me suffit. Une petite avance, et tu me rembourses avec tes courses.' : 'D’accord. Une avance maintenant, le reste en plusieurs fois.', ...terms };
@@ -54,23 +54,45 @@ export function dueBy(l: LoanState, day: number): number {
   const n = Math.max(0, Math.floor((day - l.openedDay) / l.every));
   return Math.min(l.principal, n * l.installment);
 }
+/** How far behind a debt may fall before a due date counts as missed (its lender's grace, in installments). */
+export const graceOf = (l: LoanState) => (l.lender === 'sarr' ? C.dealer.grace : C.garage.grace) * l.installment;
 /**
- * Where a debt stands on city day `day`: what is late (due on an earlier day and not repaid), what is left, and the next installment to pay (amount, day):
- * an installment that falls due today is today's, not late — the whole of its day is there to pay it.
+ * Where a debt stands on the player's day `day`: what is behind the schedule (due on an earlier day and not repaid), the part of it beyond the lender's
+ * grace (`late`: that is a missed promise), what is left, what was repaid (and its share of the whole), and the next installment to pay (amount, day): an
+ * installment that falls due today is today's, not late — the whole of its day is there to pay it.
  */
 export function standing(l: LoanState, day: number) {
-  const left = l.principal - l.paid, late = Math.max(0, dueBy(l, day - 1) - l.paid), owed = Math.max(0, dueBy(l, day) - l.paid);
-  if (owed > late) return { late, left, next: Math.min(left, owed), nextDay: day };
+  const left = l.principal - l.paid, behind = Math.max(0, dueBy(l, day - 1) - l.paid), late = Math.max(0, behind - graceOf(l)), owed = Math.max(0, dueBy(l, day) - l.paid);
+  const done = { paid: l.paid, pct: l.principal ? Math.floor((l.paid / l.principal) * 100) : 100 };
+  if (owed > behind) return { late, behind, left, next: Math.min(left, owed), nextDay: day, ...done };
   const k = Math.floor((day - l.openedDay) / l.every) + 1, nextDay = l.openedDay + k * l.every;
-  return { late, left, next: Math.min(left, Math.max(0, dueBy(l, nextDay) - l.paid)), nextDay };
+  return { late, behind, left, next: Math.min(left, Math.max(0, dueBy(l, nextDay) - l.paid)), nextDay, ...done };
 }
 
-/** Opens a debt (the caller has taken the down payment): the schedule starts today, the first installment is due `every` days later. */
+/** Opens a debt (the caller has taken the down payment): the schedule starts on the player's day `day`, the first installment is due `every` days later. */
 export function openLoan(list: LoanState[], seq: number, o: { lender: Lender; kind: LoanState['kind']; label: string; principal: number; installment: number; every: number; day: number; asset?: string; spec?: string }): LoanState {
-  const l: LoanState = { id: `L${seq}`, lender: o.lender, kind: o.kind, label: o.label, principal: Math.round(o.principal), paid: 0, installment: Math.max(1, Math.round(o.installment)), every: o.every, openedDay: o.day, checkedDay: o.day, missed: 0, status: 'open' };
+  const l: LoanState = { id: `L${seq}`, lender: o.lender, kind: o.kind, label: o.label, principal: Math.round(o.principal), paid: 0, installment: Math.max(1, Math.round(o.installment)), every: o.every, openedDay: o.day, checkedDay: o.day, missed: 0, status: 'open', clock: 'play' };
   if (o.asset) l.asset = o.asset; if (o.spec) l.spec = o.spec;
+  if (o.kind === 'vehicle') l.share = true;
   list.push(l);
   return l;
+}
+/**
+ * A debt signed before the player's days (its days were city days, which ran on while the player was away: dozens of « missed » dates for a night's sleep)
+ * moves onto the player's days now, as it stands: what was repaid stays repaid, the schedule restarts from today as if every installment so far had been
+ * met, the dates already counted missed stay (the lender remembers). Pape Sarr's car credits take his present terms (a smaller installment, every day).
+ * Returns true when it moved.
+ */
+export function onPlayClock(l: LoanState, day: number): boolean {
+  if (l.clock === 'play') return false;
+  if (l.lender === 'sarr' && l.kind === 'vehicle') { l.installment = Math.min(l.principal, C.dealer.installment); l.every = C.dealer.every; if (l.share === undefined) l.share = true; }
+  l.openedDay = day - Math.floor(l.paid / l.installment) * l.every; l.checkedDay = day; l.clock = 'play';
+  return true;
+}
+/** The part of a VTC fare that goes to Pape Sarr while his car credit runs (rounded down to 500 F, never more than is left). 0 when turned off. */
+export function fareShare(l: LoanState | undefined, fare: number): number {
+  if (!l || l.status !== 'open' || l.kind !== 'vehicle' || l.share === false) return 0;
+  return Math.min(l.principal - l.paid, Math.floor((fare * C.dealer.fareShare) / 500) * 500);
 }
 
 /** Repays up to `amount` (never more than what is left); closes the debt when it is all repaid. Returns what was taken. */
@@ -91,7 +113,7 @@ export function settle(l: LoanState, day: number): number {
   const over = day - 1;                                                                // the last city day that has ended
   if (l.status !== 'open' || over <= l.checkedDay) { if (l.status !== 'open') l.checkedDay = Math.max(l.checkedDay, over); return 0; }
   let missed = 0;
-  for (let d = l.checkedDay + 1; d <= over; d++) if ((d - l.openedDay) % l.every === 0 && d > l.openedDay && l.paid < dueBy(l, d)) missed++;
+  for (let d = l.checkedDay + 1; d <= over; d++) if ((d - l.openedDay) % l.every === 0 && d > l.openedDay && l.paid < dueBy(l, d) - graceOf(l)) missed++;
   l.missed += missed; l.checkedDay = over;
   return missed;
 }

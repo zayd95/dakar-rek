@@ -224,3 +224,26 @@ export function plazaClosure(rects: readonly Rect[]): (ax: number, az: number, b
 }
 /** The zone as footprints for drive mode (yaw 0: half widths along x and z). */
 export const plazaFootprints = (rects: readonly Rect[]) => rects.map(r => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2, yaw: 0, hl: (r.z1 - r.z0) / 2, hw: (r.x1 - r.x0) / 2 }));
+
+/** Spacing of the steel bollards across each end of the zone (m, centre to centre): a person or a motorbike passes between two, a car does not. */
+export const BOLLARD_STEP = 1.5;
+/**
+ * The bollards that close the street at both ends of the zone, across the carriageway and both pavements, exactly on the line where the zone stops a car:
+ * what stops the car is what the driver sees (src/arena/plazaEnds.ts draws them).
+ */
+export function plazaBollards(a: { cx: number; cz: number }): { x: number; z: number }[] {
+  const r = gatePlaza(a)[0], out: { x: number; z: number }[] = [];
+  for (const x of [r.x0, r.x1]) for (let z = r.z0 + 0.6; z <= r.z1 - 0.3; z += BOLLARD_STEP) out.push({ x, z });
+  return out;
+}
+/**
+ * What a motorbike runs into in the zone (it may ride in, as the fans walk in): each bollard, and the two lines of crowd barriers along the queue lane
+ * (src/world/builder.ts draws them across the street, six frames of 2.1 m on each side of the lane). Footprints for drive mode, yaw 0.
+ */
+export function plazaMotoFootprints(a: { cx: number; cz: number }) {
+  const g = gateOf(a), z0 = g.z - 2.5 - 5 * 2.2 - 1.05, z1 = g.z - 2.5 + 1.05;
+  return [
+    ...plazaBollards(a).map(p => ({ x: p.x, z: p.z, yaw: 0, hl: 0.12, hw: 0.12 })),
+    ...[-1, 1].map(sx => ({ x: a.cx + sx * 2.6, z: (z0 + z1) / 2, yaw: 0, hl: (z1 - z0) / 2, hw: 0.06 })),
+  ];
+}

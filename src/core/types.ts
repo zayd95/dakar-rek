@@ -54,9 +54,36 @@ export interface SaveData {
   loans: LoansState;
   /** VTC rides (src/transport/vtc.ts): the ride in hand and the ones already paid (a ride is paid once). Additive field. */
   vtc: VtcState;
+  /**
+   * The player's own days (« jours de jeu », src/economy/streak.ts): one more each time a city day begins while they play, or when they come back on a
+   * later city day (however many went by while they were away: time away is never counted against them). Additive field.
+   */
+  play: PlayDays;
+  /** Days worked in a row (src/economy/streak.ts), counted in the player's own days. Additive field: a save without it starts with no streak. */
+  streak: StreakState;
 }
 
-/** One debt. The schedule is fixed when it is signed: `installment` every `every` city days from `openedDay`, until `principal` is repaid. */
+export interface PlayDays {
+  /** The player's day (1 on the first day played). */
+  day: number;
+  /** The city day it was last advanced on (−1: never). */
+  city: number;
+}
+export interface StreakState {
+  /** Days in a row with real work done, and the longest run ever. */
+  run: number; best: number;
+  /** The player's day the run was last counted on (−1: never), the played time then (ms), and the active days ever. */
+  last: number; lastMs: number; total: number;
+  /** Days that may be skipped without breaking the run (given back at each week). */
+  grace: number;
+  /** Milestones (2, 3, 5, 7 days) already celebrated once: later runs reaching them get a short word, not the whole card. */
+  seen: number[];
+}
+
+/**
+ * One debt. The schedule is fixed when it is signed: `installment` every `every` days from `openedDay`, until `principal` is repaid. Days are the player's
+ * own (`clock: 'play'`, SaveData.play); a debt signed before them counted city days and is moved onto the player's days the first time it is looked at.
+ */
 export interface LoanState {
   id: string;
   /** Who lent: Pape Sarr (Sarr Auto) or Modou (Garage Modou). */
@@ -73,6 +100,10 @@ export interface LoanState {
   checkedDay: number; missed: number;
   status: 'open' | 'closed';
   closedDay?: number;
+  /** 'play': the days above are the player's days. Absent: city days (a debt from before them). */
+  clock?: 'play';
+  /** A car credit: a share of each VTC fare goes to the lender (true by default; the player can turn it off). */
+  share?: boolean;
 }
 export interface LoansState { list: LoanState[]; seq: number }
 
