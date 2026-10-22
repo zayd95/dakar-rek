@@ -582,6 +582,22 @@ J.E = async () => {
   void mm;
 };
 
+// ---- card: the work card itself, as a player meets it: up after the job, clear of the stick and the action button, a tap puts it away, left alone it goes
+// by itself (the jobs done with the debug hooks: the card is what is checked here; journeys A, C, D, E do the jobs themselves and read the same card)
+J.card = async () => {
+  await open('&heure=10');
+  await d(() => { window.__dakar.acceptJob('pk_maiga_garage', true); window.__dakar.completeJob(); });
+  const c1 = await readCard();
+  check('the card after a delivery: what was done, where, what it paid, the run of days', /Livraison/.test(c1.text) && /Garage Modou/.test(c1.text) && /F/.test(c1.text) && /jour actif|affilée/.test(c1.text), c1.text.replace(/\s+/g, ' '));
+  check('the card is clear of the stick and the action button, and a tap puts it away', c1.tapped && c1.gone && !c1.overControls, JSON.stringify({ tapped: c1.tapped, gone: c1.gone, over: c1.overControls }));
+  await page.waitForTimeout(1500);
+  await d(() => { window.__dakar.acceptJob('pk_maiga_garage', true); window.__dakar.completeJob(); });
+  const up = await wait(() => !!document.querySelector('.mo.bc'), null, 20000).then(() => Date.now(), () => null);
+  await shot('work-card-left-alone');
+  const gone = up && await wait(() => !document.querySelector('.mo.bc'), null, 30000).then(() => Date.now(), () => null);
+  check('left alone, the card goes by itself (7 s of the page\'s time; longer on this software renderer)', !!up && !!gone, JSON.stringify({ shownForMs: up && gone ? gone - up : null }));
+};
+
 // ---- F: the Jakarta backed out with the feet (no engine reverse), and the car's brake-to-reverse for comparison
 J.F = async () => {
   await open('&heure=10&argent=1500000');
