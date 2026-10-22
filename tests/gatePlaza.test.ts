@@ -161,12 +161,15 @@ describe('the zone\'s ends: what stops a car is what the driver sees', () => {
     const r = plaza[0], posts = plazaBollards(a);
     for (const x of [r.x0, r.x1]) {
       const line = posts.filter(p => p.x === x).map(p => p.z).sort((u, v) => u - v);
-      expect(line.length).toBeGreaterThanOrEqual(9);
+      expect(line.length).toBeGreaterThanOrEqual(8);
       expect(line[0] - r.z0).toBeLessThan(BOLLARD_STEP); expect(r.z1 - line[line.length - 1]).toBeLessThan(BOLLARD_STEP + 0.4);
       for (let i = 1; i < line.length; i++) expect(line[i] - line[i - 1]).toBeCloseTo(BOLLARD_STEP, 5);
     }
-    // a car (half width 0.97) cannot pass between two posts; a motorbike (0.42) can
-    expect(BOLLARD_STEP - 0.24).toBeLessThan(2 * CAR.hw); expect(BOLLARD_STEP - 0.24).toBeGreaterThan(2 * MOTO.hw + 0.1);
+    // a car (half width 0.97) cannot pass between two posts; a motorbike (0.42) can, with room to spare for a thumb on a phone (0.3 m either side)
+    expect(BOLLARD_STEP - 0.24).toBeLessThan(2 * CAR.hw); expect((BOLLARD_STEP - 0.24 - 2 * MOTO.hw) / 2).toBeGreaterThan(0.3);
+    // a gap centred on each parking lane (the street's centre line ± 4.3: where a motorbike keeps to the kerb)
+    const road = r.z1 - 7, east = posts.filter(p => p.x === r.x1).map(p => p.z);
+    for (const lane of [road - 4.3, road + 4.3]) expect(east.some(z => Math.abs(z + BOLLARD_STEP / 2 - lane) < 1e-6)).toBe(true);
     // the motorbike's own obstacles: every post, and the queue's two barrier lines
     expect(plazaMotoFootprints(a)).toHaveLength(posts.length + 2);
   });

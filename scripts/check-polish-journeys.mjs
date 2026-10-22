@@ -134,7 +134,8 @@ J.arena = async () => {
   await boardVehicle(page, t, 'moto');
   await d(() => window.__dakar.moto.feelReset());
   const ms = sampler('moto');
-  const m1 = await pilot(page, t, 'moto', [{ x: 60, z: -55.6, tol: 2.5, speed: 5 }, { x: 47, z: -55.9, tol: 2, speed: 3 }, { x: 44.5, z: -55.45, tol: 1.4, speed: 2 }, { x: 40, z: -55.45, tol: 1.5, speed: 2.5 }, { x: 31, z: -55.45, tol: 1.2, speed: 2.5 }], { cruise: 4, stall: 9000 });
+  // along the kerb lane (z = −55.7), where the east line of bollards has its gap (src/arena/exteriorRules.ts plazaBollards)
+  const m1 = await pilot(page, t, 'moto', [{ x: 60, z: -55.7, tol: 2.5, speed: 5 }, { x: 47, z: -55.7, tol: 2, speed: 3 }, { x: 44.5, z: -55.7, tol: 1.4, speed: 2 }, { x: 40, z: -55.7, tol: 1.5, speed: 2.5 }, { x: 31, z: -55.7, tol: 1.2, speed: 2.5 }], { cruise: 4, stall: 9000 });
   ms.stop = true; await page.waitForTimeout(1200);
   const mAt = await d(() => window.__dakar.moto.at());
   check('Jakarta: in by the kerb, past its guarded places, between two posts of the east line into the zone', ms.at.some(a => a.x < 43.5) && mAt.x < 44, JSON.stringify({ end: [mAt.x, mAt.z], minX: Math.min(...ms.at.map(a => a.x)) }));

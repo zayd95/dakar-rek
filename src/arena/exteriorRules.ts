@@ -225,15 +225,21 @@ export function plazaClosure(rects: readonly Rect[]): (ax: number, az: number, b
 /** The zone as footprints for drive mode (yaw 0: half widths along x and z). */
 export const plazaFootprints = (rects: readonly Rect[]) => rects.map(r => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2, yaw: 0, hl: (r.z1 - r.z0) / 2, hw: (r.x1 - r.x0) / 2 }));
 
-/** Spacing of the steel bollards across each end of the zone (m, centre to centre): a person or a motorbike passes between two, a car does not. */
-export const BOLLARD_STEP = 1.5;
+/** The street's parking lanes, either side of its centre line (where a motorbike keeps to the kerb: src/arena/arrivalRules.ts motoLot). */
+const PARK_LANE = 4.3;
+/**
+ * Spacing of the steel bollards across each end of the zone (m, centre to centre): a person or a motorbike passes between two, a car does not. Five steps
+ * from one parking lane to the other, so a gap opens on each: 1.48 m between two posts, a Jakarta (0.84 m) passes with 0.32 m either side.
+ */
+export const BOLLARD_STEP = (2 * PARK_LANE) / 5;
 /**
  * The bollards that close the street at both ends of the zone, across the carriageway and both pavements, exactly on the line where the zone stops a car:
- * what stops the car is what the driver sees (src/arena/plazaEnds.ts draws them).
+ * what stops the car is what the driver sees (src/arena/plazaEnds.ts draws them). A gap is centred on each parking lane.
  */
 export function plazaBollards(a: { cx: number; cz: number }): { x: number; z: number }[] {
-  const r = gatePlaza(a)[0], out: { x: number; z: number }[] = [];
-  for (const x of [r.x0, r.x1]) for (let z = r.z0 + 0.6; z <= r.z1 - 0.3; z += BOLLARD_STEP) out.push({ x, z });
+  const r = gatePlaza(a)[0], road = r.z1 - 7, out: { x: number; z: number }[] = [];        // gatePlaza: the zone's edge is 7 m from the street's centre line
+  const gap = road + PARK_LANE, first = gap + BOLLARD_STEP / 2 - Math.floor((gap + BOLLARD_STEP / 2 - (r.z0 + 0.3)) / BOLLARD_STEP) * BOLLARD_STEP;
+  for (const x of [r.x0, r.x1]) for (let k = 0, z = first; z <= r.z1 - 0.3; z = first + ++k * BOLLARD_STEP) out.push({ x, z });
   return out;
 }
 /**
