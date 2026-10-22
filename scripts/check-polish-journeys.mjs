@@ -378,13 +378,13 @@ J.C = async () => {
   await t.tap('#act'); await page.waitForSelector('#modal.on', T);
   await tapItem('Demander un crédit'); await page.waitForTimeout(800);
   const offer = await modalText(); await shot('credit-offer');
-  check('Pape Sarr offers credit at this trust: a small advance, then 10 000 F a day of play, and a share of each VTC fare', /Avance 200\s000 F/.test(offer.replace(/ /g, ' ')) && /10\s000 F par jour de jeu/.test(offer.replace(/ /g, ' ')) && /30 %/.test(offer), offer.replace(/\s+/g, ' ').slice(0, 300));
+  check('Pape Sarr offers credit at this trust: a small advance, then 10 000 F a day of play, and a share of each VTC fare', /Avance\s200\s000\sF/.test(offer) && /10\s000\sF\spar\sjour\sde\sjeu/.test(offer) && /30\s%/.test(offer), offer.replace(/\s+/g, ' ').slice(0, 300));
   await tapItem('Signer · Teranga');
   await wait(() => window.__dakar.teranga.info().owned, null, 30000);
   const ln = (await d(() => window.__dakar.credit.info())).loans.find(l => l.lender === 'sarr');
   check('signed: the Teranga is the player\'s, the debt is on the phone with its days', ln && ln.installment === 10000 && ln.clock === 'play' && ln.share === true && ln.left === ln.principal, JSON.stringify(ln));
   await phoneApp('credits'); await page.waitForSelector('#modal.on', T); await shot('credits-app'); const credApp = await modalText(); await t.tap('#modal.on .item.close'); await phoneClose().catch(() => {});
-  check('« Crédits »: the balance, what is repaid, the next payment, in plain sight', /reste|Reste/.test(credApp) && /10\s000 F/.test(credApp.replace(/ /g, ' ')), credApp.replace(/\s+/g, ' ').slice(0, 300));
+  check('« Crédits »: the balance, what is repaid, the next payment, in plain sight', /reste|Reste/.test(credApp) && /10\s000\sF/.test(credApp), credApp.replace(/\s+/g, ' ').slice(0, 300));
   // a VTC ride in Pikine, the shortest the city asks for at this hour
   const pick = await d(() => { const A = window.__dakar, R = [-120, -60, 0, 60, 120], near = v => R.reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b); let best = null; A.vtc.requests().forEach((r, i) => { if (r.to !== 'pikine') return; const len = Math.abs(r.pickup.x - r.dropoff.x) + Math.abs(r.pickup.z - r.dropoff.z); if (!best || len < best.len) best = { i, len, r }; }); return best; });
   check('a ride inside Pikine is on offer, its fare shown before it is taken, in its band (1 000 – 2 000 F)', pick && pick.r.fare >= 1000 && pick.r.fare <= 2000, JSON.stringify(pick && { fare: pick.r.fare, from: pick.r.pickup.name, to: pick.r.dropoff.name }));
