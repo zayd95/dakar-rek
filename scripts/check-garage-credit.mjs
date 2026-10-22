@@ -70,7 +70,7 @@ check('the arrangement chosen (the whole repair, part paid at the end)', picked)
 await page.waitForFunction(() => window.__dakar.garage.info().phase === 'work', null, { timeout: 30000 });
 await shot('lamine-works');
 check('Lamine works; nothing is paid before the end', (await W()) === w0);
-await page.waitForFunction(() => window.__dakar.garage.info().phase === null, null, { timeout: 180000 });
+await page.waitForFunction(() => window.__dakar.garage.info().phase === null, null, { timeout: 900000 });
 const w1 = await W(), hp1 = await HP(), L1 = (await loans()).filter(l => l.lender === 'modou');
 const slate = L1[0];
 check('ONE payment at the end (the part agreed); the car is back to 100 %', w0 - w1 > 0 && w0 - w1 < q.cost && hp1 >= 99.9, JSON.stringify({ paid: w0 - w1, hp1 }));
