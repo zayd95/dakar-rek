@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { driveStep, newDriveState, targetSpeed, type Blocked } from '../src/transport/drive';
+import { driveStep, newDriveState, stopping, targetSpeed, type Blocked } from '../src/transport/drive';
 import { motoSpec, jakartaSeed, MOTO_ASSET } from '../src/transport/moto';
 import { migrateOwned, ownsVehicle, park, parked, unpark } from '../src/transport/owned';
 import { buyAsset, holding, sellAsset } from '../src/economy/assets';
@@ -99,5 +99,23 @@ describe('the Jakarta motorbike', () => {
     expect(Object.keys(s.data.counters).some(k => k.startsWith('asset:moto_jakarta:'))).toBe(false);
     expect(migrateOwned(s)).toBe(false);                                  // once
     expect(s.data.assets.list.filter(a => a.spec === 'jakarta')).toHaveLength(1);
+  });
+});
+
+describe('« Descendre » while still rolling', () => {
+  const d = motoSpec().drive!;
+  it('brakes to a standstill without swinging past it, even on slow frames (0.1 s), so the rider always gets off', () => {
+    for (const dt of [1 / 60, 1 / 30, 0.1]) for (const v of [0.35, -0.5, 0.78, 4, 11]) {
+      const s = newDriveState(0, 0, 0); s.speed = v;
+      let n = 0, flips = 0, prev = Math.sign(v);
+      while (Math.abs(s.speed) >= 0.3 && n < 200) { driveStep(s, stopping(), d, dt, open); n++; if (s.speed && Math.sign(s.speed) !== prev) flips++; }
+      expect(Math.abs(s.speed), `from ${v} m/s at dt ${dt}`).toBeLessThan(0.3);
+      expect(flips).toBe(0);
+    }
+  });
+  it('the old way (asking for the other direction) could swing for ever at 0.1 s a frame: the case it fixes', () => {
+    const s = newDriveState(0, 0, 0); s.speed = 0.35;
+    for (let i = 0; i < 50; i++) driveStep(s, { throttle: s.speed > 0.3 ? -1 : s.speed < -0.3 ? 1 : 0, steer: 0 }, d, 0.1, open);
+    expect(Math.abs(s.speed)).toBeGreaterThanOrEqual(0.3);
   });
 });

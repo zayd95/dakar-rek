@@ -18,7 +18,7 @@ import { mountAudioDiag } from './audioDiag';
 import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
-import { driveStep, newDriveState, type DriveState } from './drive';
+import { driveStep, newDriveState, stopping, type DriveState } from './drive';
 import { DriveControls, forwardIntent, type DriveCmd } from './controls';
 import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
 import type { AssetState } from '../core/types';
@@ -419,7 +419,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       ? { fwd: forwardIntent(joy.x, joy.y), steer: mv.x, boost: ridePad.gas, brake: ridePad.brake || joy.y < -0.6 }
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
-    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
+    const input = this.leaving ? stopping() : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
     if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground
     const held = this.trial && !this.road.ok;                                     // « essai à l'arrêt »: the engine runs, the car stays in its bay
     const rev = held ? Math.max(cmd.fwd, cmd.boost ? 1 : 0) : 0;

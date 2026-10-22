@@ -39,6 +39,12 @@ export const steerCurve = (x: number, speed = 0) => { const c = Math.max(-1, Mat
 /** The brake's build-up time (s) and the share it bites with at once. */
 export const BRAKE_RAMP = 0.3, BRAKE_START = 0.45;
 
+/**
+ * « Descendre » asked while the vehicle still moves: brake to a standstill and no further. Asking for the other way instead overshoots on a slow frame (a
+ * motorbike's 8.5 m/s² over 0.1 s is 0.85 m/s, more than the ±0.3 m/s the rider waits for), and the speed then swings to and fro without ever stopping.
+ */
+export const stopping = (): DriveInput => ({ throttle: 0, steer: 0, target: 0, braking: true });
+
 /** Coasting deceleration with the throttle released (m/s²). */
 const COAST = 1.4;
 
