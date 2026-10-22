@@ -203,6 +203,8 @@ export class Phone {
   }
 
   get isOpen() { return this.el.classList.contains('on'); }
+  /** Draws the open screen again (a picture or a value it shows became ready). */
+  refresh() { if (this.isOpen) this.render(); }
   get current(): ScreenId { return this.stack[this.stack.length - 1] ?? 'home'; }
 
   /** Opens the phone where it was left, or on the given app (an app id or 'home'). Returns false for an unknown app. */
@@ -423,7 +425,8 @@ export class Phone {
     // the run of days worked (src/economy/streakModule.ts): « 3 jours d'affilée », what it opens, what the next milestone opens
     const streak = phoneHooks.streakProfile?.() ?? [];
     const streakHtml = streak.length ? `<h3>Régularité</h3><div class="ph-rows ph-streak">${streak.map((r, i) => `<div${i ? '' : ' class="run"'}><span>${esc(r.label)}<small>${esc(r.detail)}</small></span></div>`).join('')}</div>` : '';
-    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+    return `<div class="ph-profile">${((pic: string | null) => pic ? `<img class="ph-portrait" src="${pic}" alt="Ton personnage">` : '<i>🧑🏾</i>')(phoneHooks.profilePortrait?.() ?? null)}<b>${esc(phoneHooks.profileName?.() || 'Toi')}</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+      ${phoneHooks.editCharacter ? '<button type="button" class="ph-btn" data-act="editchar">Modifier mon personnage<small>Corps, peau, cheveux, tenue et couleur : tu ne perds rien</small></button>' : ''}
       ${streakHtml}
       ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
@@ -642,6 +645,7 @@ export class Phone {
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
     act('new', () => this.go('nouvelle'));
+    act('editchar', () => this.launch(() => phoneHooks.editCharacter?.()));
     act('cancel', () => this.back());
     act('wipe', () => this.ctx.newGame());
   }

@@ -6,8 +6,12 @@ import { fovFor } from './core/view';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
-import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras } from './core/save';
+import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { readTestParams } from './core/testParams';
+import { loadPlayerBody, bodyOf } from './actors/playerBody';
+import { openStudio, type StudioResult } from './ui/characterStudio';
+import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
+import { renderPortrait } from './actors/portrait';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { HALF, buildHub, buildHubSteps, hubLayout } from './world/builder';
@@ -62,7 +66,7 @@ import { mapBridge } from './ui/minimap';
 import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
 import { EMOTE_INFO, Emoter, Notice, PlayerSocial, seatedPeers } from './multiplayer/social';
-import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
+import { isHub, lookIndex, nickname, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
 import { activityOf } from './economy/polyvalence';
@@ -175,6 +179,7 @@ const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
 if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money - state.wallet, 'Test');
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
+presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the studio's look travels with the connection (servers that relay it)
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
@@ -199,6 +204,78 @@ const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTim
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
+/** The player's body for the identity in the save (v4 for a save without one, or when the Meshy file cannot be loaded). Rebuilt when the quality class changes. */
+let bodyLow: boolean | null = null;
+async function makePlayerBody() {
+  const low = quality === 'low', id = await loadPlayerBody(TEST.avatar === 'v4' ? null : state.data.avatar, low);   // (`?avatar=v4`: the shipped v4 body, for the checks)
+  if (playerBody && playerBody.body === id && bodyLow === low) { playerBody.setAppearance(state.data.appearance); return; }
+  const old = playerBody;
+  playerBody = new Humanoid(PLAYER_LOOK, id); playerBody.fullRate = true; playerBody.hold = old?.hold ?? null; bodyLow = low;
+  playerBody.setAppearance(state.data.appearance);                  // the creator's skin, hair and outfit (null: the body as it was)
+  scene.add(playerBody.group); player.group.visible = false;
+  old?.dispose();
+}
+/** New Game (no save, not a ?debug run): the character studio (src/ui/characterStudio.ts) opens at once, before the assets finish loading. Test links can force the body (src/core/testParams.ts). */
+const creating = isNewGame && TEST.avatar !== 'homme' && TEST.avatar !== 'femme' && TEST.avatar !== 'v4' && (TEST.avatar === 'choose' || !DEBUG);
+function settleAvatar(made: StudioResult | null) {
+  if (TEST.avatar === 'homme' || TEST.avatar === 'femme') state.data.avatar = TEST.avatar;
+  else if (made) { applyCharacter(made); writeSave(store, state.data); }   // saved at once (the world is not built yet): leaving before the first autosave keeps the character
+}
+/** The first name and the shirt colour go to the device's presence profile (what other players read: a name, a colour index and, where the server relays it, the look); the body and the look to the save. */
+function setPresenceProfile(name: string | null, color: number) {
+  presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the profile change below reconnects with it
+  const profile = { name: nickname(name ?? presence.profile.name), look: lookIndex(color) };
+  try { store?.setItem('dakarrek.presence.profile', JSON.stringify(profile)); } catch { /* session-only profile */ }
+  presence.setProfile(profile); Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK);
+}
+function applyCharacter(r: StudioResult) {
+  state.data.avatar = r.avatar; state.data.appearance = r.appearance ? appearanceOf(r.appearance, r.avatar) : null;   // (before the profile: the presence carries the look)
+  setPresenceProfile(r.name, r.appearance?.color ?? presence.profile.look);
+  if (r.portrait) storePortrait(r.portrait);
+}
+// ------------------------------------------------------------------ the Profile picture: the player's own avatar, drawn once (by the studio, or here by the game's renderer) and kept on the device
+const PORTRAIT_KEY = 'dakarrek.portrait';
+const portraitFor = () => state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : `${state.data.avatar}:made`;
+let portraitWanted = false;
+/** The picture of this session (kept here too: without storage, or with it full, it is still drawn only once per look), and the looks already tried. */
+let portraitMem: { key: string; url: string } | null = null;
+const portraitTried = new Set<string>();
+function storePortrait(url: string) { portraitMem = { key: portraitFor(), url }; try { store?.setItem(PORTRAIT_KEY, JSON.stringify(portraitMem)); } catch { /* full storage: this session keeps it */ } }
+function profilePortrait(): string | null {
+  const key = portraitFor();
+  if (portraitMem?.key === key) return portraitMem.url;
+  try { const p = JSON.parse(store?.getItem(PORTRAIT_KEY) ?? 'null') as { key?: string; url?: string } | null; if (p?.key === key && typeof p.url === 'string' && p.url.startsWith('data:image/')) { portraitMem = { key, url: p.url }; return p.url; } } catch { /* unreadable */ }
+  if (!portraitTried.has(key)) { portraitTried.add(key); portraitWanted = true; }   // once per look: a picture that cannot be drawn leaves the icon, never a loop
+  return null;
+}
+/** Draws the Profile picture with the game's own renderer (a body of its own, just before the frame is drawn: nothing of it is ever seen). */
+function drawPortrait() {
+  portraitWanted = false;
+  const id = playerBody?.body; if (!id || id === 'v4') return;
+  const h = new Humanoid(undefined, id); h.fullRate = true; h.play('Idle', 0); h.setAppearance(state.data.appearance);
+  for (let i = 0; i < 4; i++) h.animate(1 / 60, 0);
+  let made = false;
+  try { const c = renderPortrait(renderer, h, { width: 160, height: 160, focus: 'face', yaw: -0.42, bg: 0x1d2438 }); storePortrait(c.toDataURL('image/jpeg', 0.86)); made = true; } catch { /* no picture: the Profile keeps its icon */ }
+  h.dispose();
+  if (made) phone.refresh();
+}
+/** Phone › Profil › « Modifier mon personnage »: the same studio on the current look, over the paused game; nothing else changes (no new game, no loss). */
+let studioOpen = false;
+async function editCharacter() {
+  if (studioOpen) return;
+  const was = mode; mode = 'busy'; input.enabled = false; input.reset(); hud.resetControls(); studioOpen = true;
+  try {
+    // a save from before the studio has no look: it starts from the body's own, in the shirt colour the others already see
+    const appearance = state.data.appearance ?? { ...defaultAppearance(state.data.avatar), color: presence.profile.look };
+    const r = await openStudio({ mode: 'edit', low: quality === 'low', avatar: state.data.avatar, appearance, keep: state.data.appearance, name: presence.profile.name });
+    studioOpen = false;
+    if (r) { applyCharacter(r); saveNow(); await makePlayerBody(); hud.toast('Ton personnage est enregistré.'); }   // saved before the body loads: leaving at once keeps the choice
+  } catch { /* the studio could not open or close cleanly: the game goes on as it was */ }
+  finally {
+    studioOpen = false;
+    if (mode === 'busy') { mode = was === 'menu' ? 'play' : was; input.enabled = mode === 'play'; }
+  }
+}
 const debugPeople: Humanoid[] = [];
 /** ?debug: bodies walking in a straight line at a set speed (the gait checks: near and far from the camera, ANIM_LOD). */
 const debugWalkers: { h: Humanoid; vx: number; vz: number; x0: number; z0: number; t: number; run: number }[] = [];
@@ -221,7 +298,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); if (state.data.appearance && state.data.appearance.color !== profile.look) { state.data.appearance = { ...state.data.appearance, color: profile.look }; playerBody?.setAppearance(state.data.appearance); presence.setAppearance(encodeAppearance(state.data.avatar, state.data.appearance), false); } }, () => { mode = 'menu'; input.enabled = false; });   // (the look follows the colour before the profile's reconnection, which carries it: one socket)
 const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
@@ -1118,12 +1195,20 @@ function openOutfit() {
 let previewT = 0;
 /** Wrestling attire and emotes shown on the player's Blender body (box character fallback). */
 let proxy = false;
+/** A Meshy body is dressed (no ngemb, no wrestler's build): for the attire preview and the emotes a v4 body in ngemb stands in for it (like the arena's wrestlers). */
+let ngembBody: Humanoid | null = null;
 function showProxy(clip: Clip) {
   if (!playerBody) { player.setWrestler(state.data.wrestler); return; }
-  const w = state.data.wrestler; playerBody.setWrestler(w, w.ngembPattern === 'bordure' ? 'B' : 'A'); playerBody.hold = clip; proxy = true;
+  const w = state.data.wrestler, cut = w.ngembPattern === 'bordure' ? 'B' : 'A';
+  if (playerBody.body !== 'v4') {
+    if (!ngembBody) { ngembBody = new Humanoid(PLAYER_LOOK); ngembBody.fullRate = true; scene.add(ngembBody.group); }
+    ngembBody.setWrestler(w, cut, PLAYER_LOOK.skin); ngembBody.hold = clip; proxy = true; return;
+  }
+  playerBody.setWrestler(w, cut); playerBody.hold = clip; proxy = true;
 }
 function hideProxy() {
-  if (playerBody && proxy) { playerBody.setLook(PLAYER_LOOK); playerBody.hold = null; }
+  if (ngembBody) { ngembBody.dispose(); ngembBody = null; }
+  if (playerBody && proxy && playerBody.body === 'v4') { playerBody.setLook(PLAYER_LOOK); playerBody.hold = null; }
   proxy = false; player.setWrestler(null);
 }
 function previewOutfit() { showProxy('Idle'); previewT = 6; hud.toast('Aperçu de la tenue (6 s)'); }
@@ -1215,6 +1300,9 @@ phoneHooks.walkTo = doWalk;
 phoneHooks.dealers = () => dealerDirectory(state);
 phoneHooks.markPlace = (id, hub, name) => { destination = id && hub ? { id, hub, name } : null; };
 phoneHooks.marked = () => destination;
+phoneHooks.editCharacter = () => { void editCharacter(); };
+phoneHooks.profileName = () => presence.profile.name;
+phoneHooks.profilePortrait = profilePortrait;
 phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
@@ -1326,6 +1414,7 @@ function setQuality(q: Quality) {
   const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
   const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
   quality = q; applyQuality();
+  if (state.data.avatar && humanoidReady()) void makePlayerBody();      // the light body files on the low preset
   if (world) {
     loadHub(world.id, at);
     // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
@@ -1542,8 +1631,9 @@ function frameStep(now: number, dt: number, draw = true) {
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
 
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
-  } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
+    if (playerBody) { playerBody.group.visible = !ngembBody; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+    if (ngembBody) { ngembBody.group.position.copy(pos); ngembBody.group.rotation.y = facing; ngembBody.animate(dt, speed); }
+  } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; if (ngembBody) ngembBody.group.visible = false; }
   let tSys = profOn ? performance.now() : 0;
   // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
   // at 4 Hz with the time gone by
@@ -1562,7 +1652,9 @@ function frameStep(now: number, dt: number, draw = true) {
   for (const w of debugWalkers) { w.t += dt; const u = w.t % w.run; w.h.group.position.set(w.x0 + w.vx * u, 0.1, w.z0 + w.vz * u); w.h.group.updateMatrixWorld(true); w.h.animate(dt, Math.hypot(w.vx, w.vz)); }
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing, eating at a table): a narrow list, anything else is Idle
-  const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  // (a Meshy body dances through its v4 stand-in, src/actors/playerBody.ts: what others see is the stand-in's pose)
+  const shown = proxy && ngembBody ? ngembBody : playerBody;
+  const clip = mode !== 'scene' && shown?.clipName && PRESENCE_CLIPS.includes(shown.clipName as PresenceClip) ? shown.clipName as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
   // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
@@ -1591,7 +1683,8 @@ function frameStep(now: number, dt: number, draw = true) {
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
   if (draw && prewarm?.warm && !prewarm.warm.done) warmStep(WARM_VERTS);
-  if (draw) { const tr = performance.now(); renderer.render(scene, camera); const done = performance.now(); frameRing.push([Math.round(tr - tFrame0), Math.round(done - tr), renderer.info.memory.geometries, renderer.info.memory.textures, renderer.info.programs?.length ?? 0]); if (frameRing.length > 400) frameRing.shift(); }
+  if (portraitWanted && playerBody && !studioOpen) drawPortrait();     // (before the frame: the picture's corner of the canvas is drawn over)
+  if (draw && !studioOpen) { const tr = performance.now(); renderer.render(scene, camera); const done = performance.now(); frameRing.push([Math.round(tr - tFrame0), Math.round(done - tr), renderer.info.memory.geometries, renderer.info.memory.textures, renderer.info.programs?.length ?? 0]); if (frameRing.length > 400) frameRing.shift(); }   // the studio covers the screen and draws itself
   if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
@@ -1601,9 +1694,16 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
+  const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
+  // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
+  const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
+    name: /^Dakarois [0-9A-F]{4}$/.test(presence.profile.name) ? '' : presence.profile.name }) : null;
+  if (studio) { studioOpen = true; input.enabled = false; }                      // touches on the studio never reach the game's stick or camera
+  const [, made] = await Promise.all([loading, studio]);
+  studioOpen = false; if (studio) { input.enabled = true; input.reset(); }
+  settleAvatar(made);
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) await makePlayerBody();
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -1611,6 +1711,8 @@ async function start() {
   else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
   started = true; markStarted();
   requestAnimationFrame(frame);
+  if (made) requestAnimationFrame(() => requestAnimationFrame(() => made.arrive()));   // the arrival card fades once the game has drawn
+  else setTimeout(() => { profilePortrait(); }, 1500);                               // a save without its Profile picture yet gets it drawn, soon after the start
 }
 void start();
 
@@ -1691,6 +1793,10 @@ if (DEBUG) {
     cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
+    presenceLook: () => presence.appearance ?? null,
+    /** The checks: a body and a look as « Modifier mon personnage » would save them (the presence reconnects with the look). */
+    character: (avatar: StudioResult['avatar'], appearance: StudioResult['appearance']) => { applyCharacter({ name: null, avatar, appearance, portrait: null, arrive() {} }); saveNow(); return makePlayerBody(); },
+    avatar: () => ({ identity: state.data.avatar, appearance: state.data.appearance, drawn: playerBody?.appearance ?? null, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
     stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),

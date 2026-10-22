@@ -1,4 +1,5 @@
 import type { CareerSave } from '../career/career';
+import type { Appearance } from '../actors/appearance';
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 /**
@@ -30,7 +31,7 @@ export interface SaveData {
   beats: Record<string, string>;
   /** Wrestling identity (cosmetic only, never combat power). */
   wrestler: WrestlerLook;
-  /** Which city player model is drawn (cosmetic only; the Meshy avatar lane, branch claude/lucid-cori-60vlgt). Carried through every migration. */
+  /** Which city player model is drawn (cosmetic only): the Meshy body of that identity (src/actors/playerBody.ts). Carried through every migration. */
   avatar: Avatar;
   /** v3: wallet history on this device (last 100 money changes). Not a server ledger. */
   ledger: LedgerEntry[];
@@ -61,6 +62,11 @@ export interface SaveData {
   play: PlayDays;
   /** Days worked in a row (src/economy/streak.ts), counted in the player's own days. Additive field: a save without it starts with no streak. */
   streak: StreakState;
+  /**
+   * The look chosen in the character studio (src/actors/appearance.ts: skin tone, hairstyle, outfit, outfit colour), for the body above. Additive field, no version
+   * change: a save without it (every save made before the studio) is null and draws the body exactly as it was made.
+   */
+  appearance: Appearance | null;
 }
 
 export interface PlayDays {
@@ -202,6 +208,7 @@ export interface ActivityState {
   known: ActivityId[]; last: Partial<Record<ActivityId, number>>;
 }
 
+/** The two playable identities: the Meshy bodies (src/actors/playerBody.ts). */
 export type Avatar = 'homme' | 'femme';
 export const AVATARS: Avatar[] = ['homme', 'femme'];
 

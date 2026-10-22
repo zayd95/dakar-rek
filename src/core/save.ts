@@ -2,6 +2,7 @@ import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Ava
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
+import { appearanceOf } from '../actors/appearance';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -58,7 +59,7 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(),
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null,
   };
 }
 
@@ -115,6 +116,7 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     const id = k.slice(4);
     if (v >= 1 && ID.test(id) && !(id in inventory)) inventory[id] = Math.min(1e6, Math.floor(v));
   }
+  const avatar: Avatar = AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar;
   return {
     schemaVersion: SCHEMA_VERSION,
     guestId: typeof r.guestId === 'string' && r.guestId ? r.guestId : base.guestId,
@@ -133,7 +135,7 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     beats,
     wrestler: wrestlerOf(r.wrestler),
     // cosmetic city player model (additive, no version change: a save without it gets the default)
-    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar,
+    avatar,
     // v2 -> v3: wallet history and deliveries start empty.
     ledger: ledgerOf(r.ledger),
     jobs: jobsOf(r.jobs),
@@ -151,6 +153,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     // the player's own days and the work streak (additive, no version change: a save without them starts on day 0 with no streak)
     play: playOf(r.play),
     streak: streakOf(r.streak, playedMs),
+    // the look chosen in the character studio (additive, no version change): missing or unreadable is « no look » (the body as it was made)
+    appearance: appearanceOf(r.appearance, avatar),
   };
 }
 

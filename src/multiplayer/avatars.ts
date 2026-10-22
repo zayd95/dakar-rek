@@ -6,11 +6,32 @@ import type { PresenceClip } from './protocol';
 import type { EmotePresence, Peer } from './protocol';
 import { EMOTE_INFO, EMOTE_SHOW_MS, RECEIVE_GAP_MS, emoteChanged, shownHere } from './social';
 import { buildVehicle } from '../actors/vehicleKit';
+import { COLORS, OUTFITS, SKINS, decodeAppearance, type Appearance } from '../actors/appearance';
+import type { Avatar as Identity } from '../core/types';
 
 export const SHIRT_COLORS = [0x1a9d54, 0x2f6fb3, 0xd9482b, 0xf4c20d, 0x6b3fa0, 0xf2f2ec];
 export function avatarLook(index: number): PersonLook { return { skin: 0x6b3f25, style: 'tee', top: SHIRT_COLORS[index] ?? SHIRT_COLORS[0], accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec }; }
+/**
+ * Another player's studio look on the shared standard body (v4): their complexion, garment colour and print, trousers, the femme's shape, and their hairstyle
+ * or headwear as near as v4 has it. Other players are not drawn with the Meshy bodies (their memory and draw cost, many at once); this is the same person, recognisable.
+ */
+export function appearanceLook(body: Identity, a: Appearance): PersonLook {
+  const female = body === 'femme', o = OUTFITS[a.outfit], top = COLORS[a.color].hex;
+  const look: PersonLook = { skin: SKINS[a.skin].hex, style: 'tee', top, accent: 0xf3ead6, pattern: o.print === 'stripe' ? 'rayure' : o.print === 'print' ? 'wax' : 'uni',
+    bottom: o.bottom ?? (female ? 0x22344f : 0x1d2230), shoes: 0xf2f2ec, female, hair: female ? 'puff' : 'short', beard: female ? null : 0x16100d };
+  if (a.hair === 'shaved') look.hair = 'none';
+  if (a.hair === 'afro' || a.hair === 'puff') look.hair = 'puff';
+  if (a.hair === 'wrap') { look.hat = 'headwrap'; look.hatColor = top; }
+  if (a.hair === 'kufi') { look.hat = 'kufi'; look.hatColor = 0xeee7d6; }
+  return look;
+}
+/** How a peer is drawn: their studio look when the server relayed it, else the shirt colour of their profile. */
+export function peerLook(peer: Pick<Peer, 'look' | 'app'>): PersonLook {
+  const d = decodeAppearance(peer.app);
+  return d ? appearanceLook(d.body, d.look) : avatarLook(peer.look);
+}
 interface Glyph { sprite: THREE.Sprite; texture: THREE.CanvasTexture; until: number; clip: PresenceClip; t0: number }
-interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; label: string; rec: string; h: number; bike?: THREE.Group; glyph?: Glyph; lastEmoteAt: number }
+interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; app: string; label: string; rec: string; h: number; bike?: THREE.Group; glyph?: Glyph; lastEmoteAt: number }
 
 /** Only the nearest visible players get an animated body; peers outside the view remain lightweight state. */
 export class RemoteAvatars {
@@ -36,7 +57,7 @@ export class RemoteAvatars {
     for (const [id, avatar] of this.avatars) if (!keep.has(id)) { this.drop(avatar); this.avatars.delete(id); }
     for (const peer of visible) {
       let a = this.avatars.get(peer.id);
-      if (a && (a.look !== peer.look || a.label !== peer.name || a.rec !== (peer.rec ?? ''))) { this.drop(a); this.avatars.delete(peer.id); a = undefined; }
+      if (a && (a.look !== peer.look || a.app !== (peer.app ?? '') || a.label !== peer.name || a.rec !== (peer.rec ?? ''))) { this.drop(a); this.avatars.delete(peer.id); a = undefined; }
       if (!a) { a = this.make(peer); this.avatars.set(peer.id, a); this.group.add(a.body.group); }
       const target = new THREE.Vector3(peer.x, peer.y, peer.z);
       if (a.body.group.position.distanceTo(target) > 12) a.body.group.position.copy(target);
@@ -99,7 +120,7 @@ export class RemoteAvatars {
   /** What each drawn peer's body wears in an écurie's colours ('baobab:scarf'…; null: nothing), for the checks. */
   gear(): Record<string, string | null> { return Object.fromEntries([...this.avatars].map(([id, a]) => [id, (a.body.group.userData.fan as string | null | undefined) ?? null])); }
   private make(peer: Peer): Avatar {
-    const body = humanoidReady() ? new Humanoid(avatarLook(peer.look)) : new Character({ ...PLAYER_OUTFIT, top: SHIRT_COLORS[peer.look] });
+    const body = humanoidReady() ? new Humanoid(peerLook(peer)) : new Character({ ...PLAYER_OUTFIT, top: SHIRT_COLORS[peer.look] });
     body.group.name = `player:${peer.id}`; body.group.position.set(peer.x, peer.y, peer.z);
     // name, and under it the public sporting record when the player has one (« Undercards · 3-1 · Écurie Baobab »)
     const rec = peer.rec ?? '', h = rec ? 74 : 48;
@@ -111,7 +132,7 @@ export class RemoteAvatars {
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false }));
     name.position.y = rec ? 2.45 : 2.35; body.group.add(name);
-    return { body, name, texture, look: peer.look, label: peer.name, rec, h, lastEmoteAt: -Infinity };
+    return { body, name, texture, look: peer.look, app: peer.app ?? '', label: peer.name, rec, h, lastEmoteAt: -Infinity };
   }
   private disposeBike(a: Avatar) {
     if (!a.bike) return;
