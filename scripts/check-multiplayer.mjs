@@ -119,7 +119,10 @@ try {
   await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'waiting', null, { timeout: 30000 });
   const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
   if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
-  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 });
+  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 }).catch(async e => {   // on a miss, say where the line's cars were and why none took B
+    console.log('RAPIDE STATE', JSON.stringify(await b.evaluate(l => ({ trip: window.__dakar.transport.trip(), next: window.__dakar.transport.nextAt(l, 0), me: window.__dakar.pos(), cars: window.__dakar.transport.lines().find(x => x.id === l)?.vehicles.map(c => ({ x: +c.x.toFixed(1), z: +c.z.toFixed(1), s: +c.s.toFixed(1), v: +c.v.toFixed(2), dwell: c.dwell, next: c.next, free: c.free })) }), L0.id)));
+    throw e;
+  });
   await sleep(1500);
   const inCar = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space]) }; });
   check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify(inCar));
