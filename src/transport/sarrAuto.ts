@@ -101,6 +101,17 @@ class SarrAuto implements GameModule, TargetSource {
     const tc = at(0, 7.0);
     for (const [a, l] of [[-1.6, 5.6], [1.6, 5.6], [-1.6, 8.2], [1.6, 8.2]] as const) { const p = at(a, l); box(0.07, l < 6 ? 2.35 : 2.75, 0.07, p.x, 0.12 + (l < 6 ? 1.17 : 1.37), p.z, steel); solid(p.x, p.z, 0.08, 0.08, 2.5); }
     box(3.6, 0.04, 2.9, tc.x, 2.62, tc.z, blue, yaw + Math.PI / 2, 0.14);
+    // his office, made of the tarp's frame (a street lot, not a showroom): a whitewashed back wall with a window and a key board, low side partitions,
+    // a grey filing cabinet, a calendar; all at the back edge of the pavement, behind the desk, so the walkers and his own walks keep their way
+    { const back = at(0, 8.25), cream = mat(0xe9e2d0), trim = mat(0x2f6fa8), glass = mat(0x8fb3c9), grey = mat(0x6b6f75);
+      box(3.3, 2.2, 0.12, back.x, 0.12 + 1.1, back.z, cream, yaw + Math.PI / 2); solid(back.x, back.z, Math.abs(f.x) * 1.65 + Math.abs(n.x) * 0.1, Math.abs(f.z) * 1.65 + Math.abs(n.z) * 0.1, 2.3);
+      box(3.32, 0.22, 0.14, back.x, 0.12, back.z, trim, yaw + Math.PI / 2);
+      const w = at(0.6, 8.17); box(1.1, 0.7, 0.04, w.x, 1.45, w.z, glass, yaw + Math.PI / 2); box(1.2, 0.06, 0.06, w.x, 1.8, w.z, trim, yaw + Math.PI / 2); box(1.2, 0.06, 0.06, w.x, 1.1, w.z, trim, yaw + Math.PI / 2);
+      const kb = at(-0.9, 8.17); box(0.5, 0.4, 0.03, kb.x, 1.55, kb.z, wood, yaw + Math.PI / 2);
+      for (let k = 0; k < 4; k++) { const kk = at(-1.08 + k * 0.12, 8.15); box(0.03, 0.08, 0.02, kk.x, 1.5, kk.z, mat(0xd8b23a), yaw + Math.PI / 2); }
+      const cal = at(1.25, 8.17); box(0.3, 0.42, 0.02, cal.x, 1.45, cal.z, white, yaw + Math.PI / 2); box(0.3, 0.1, 0.022, cal.x, 1.62, cal.z, red, yaw + Math.PI / 2);
+      for (const a of [-1.65, 1.65]) { const sp = at(a, 7.8); box(0.08, 1.1, 0.8, sp.x, 0.12 + 0.55, sp.z, cream, yaw + Math.PI / 2); }
+      const cab = at(1.2, 7.85); box(0.45, 1.0, 0.45, cab.x, 0.12 + 0.5, cab.z, grey, yaw); solid(cab.x, cab.z, 0.24, 0.24, 1.1); }
     // the desk and two red plastic chairs
     if (L.desk) {
       box(1.4, 0.75, 0.7, L.desk.x, 0.5, L.desk.z, wood, L.desk.yaw); solid(L.desk.x, L.desk.z, 0.6, 0.6, 0.9);

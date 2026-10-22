@@ -215,7 +215,11 @@ export function tintBody(g: THREE.Object3D, hex: number) {
     const m = o as THREE.Mesh; if (!m.isMesh || Array.isArray(m.material)) return;
     if (painted && m.material.name !== 'paint') return;
     const key = `${m.material.uuid}:${hex}`; let t = tints.get(key);
-    if (!t) { t = m.material.clone(); (t as THREE.MeshLambertMaterial).color.setHex(hex); t.userData.shared = true; tints.set(key, t); }
+    if (!t) {
+      t = m.material.clone(); const L = t as THREE.MeshLambertMaterial; L.color.setHex(hex); t.userData.shared = true; tints.set(key, t);
+      // a paint keeps its colour in the shade (a Lambert white turns a dull grey on the side away from the sun): a little of it glows, more for a light paint
+      if (painted && L.emissive) { const c = L.color, lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; L.emissive.copy(c).multiplyScalar(lum > 0.7 ? 0.17 : 0.05); }
+    }
     m.material = t;
   });
 }
