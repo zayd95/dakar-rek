@@ -20,5 +20,6 @@ describe('trial rules', () => {
   it('Prestige: five days of work in a row give a supervised loop, never less than that', () => {
     expect(roadTest({ ...base, dealer: 'prestige', price: 70_000_000, run: 4 }).ok).toBe(false);
     expect(roadTest({ ...base, dealer: 'prestige', price: 70_000_000, run: 5 })).toMatchObject({ ok: true, supervised: true });
+    expect(roadTest({ ...base, dealer: 'prestige', price: 70_000_000, run: 5 }).line).toMatch(/Moussa Ndiaye/);          // what the 5-day card promised: his recommendation
   });
 });

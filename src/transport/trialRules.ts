@@ -28,7 +28,7 @@ export function roadTest(o: { dealer: Dealer; price: number; wallet: number; tru
   const p = perks(o.run), can = o.wallet >= o.price;
   if (o.dealer === 'prestige') {
     if (can) return { ok: true, supervised: true, line: 'Vous pouvez vous l’offrir : faites un petit tour aux Almadies avec, sans engagement.' };
-    if (p.prestigeTest) return { ok: true, supervised: true, line: 'On me dit que vous êtes un travailleur sérieux. Un petit tour encadré aux Almadies, et vous me la ramenez.' };
+    if (p.prestigeTest) return { ok: true, supervised: true, line: 'Moussa Ndiaye, de Ndiaye Auto, m’a parlé de vous : un travailleur sérieux. Un petit tour encadré aux Almadies, et vous me la ramenez.' };
     return { ok: false, supervised: false, line: 'Ici l’essai se fait à l’arrêt : asseyez-vous, démarrez-la. Sur la route, c’est pour qui peut la payer, ou pour un travailleur régulier (5 jours d’affilée).' };
   }
   if (o.dealer === 'sarr') {

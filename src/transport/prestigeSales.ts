@@ -11,7 +11,7 @@ import { fcfa } from '../ui/hud';
 import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
 import { roadTest, type Dealer, type RoadTest } from './trialRules';
-import { runOf } from '../economy/streak';
+import { perks, runOf } from '../economy/streak';
 import { relLevel } from '../venues/venue';
 
 /**
@@ -314,7 +314,10 @@ export class PrestigeSales implements GameModule, TargetSource {
     const t = this.task; if (t?.kind !== 'greet') return;
     t.arrived = true; t.t = 0;
     const n = this.cfg.greetings.length; let i = this.greetN++ % n; if (i === this.lastGreet) i = (i + 1) % n; this.lastGreet = i;
-    const G = this.cfg.greetings, g = G[i % G.length]; this.speak(g.bubble); this.ctx.toast(`${this.cfg.person === 'le vendeur' ? 'Le vendeur' : this.cfg.person} : « ${g.say()} »`);
+    const G = this.cfg.greetings, g = G[i % G.length], who = this.cfg.person === 'le vendeur' ? 'Le vendeur' : this.cfg.person;
+    // a regular worker (2 days in a row and more, src/economy/streak.ts) is recognised: a warmer word before the usual one
+    const tu = this.cfg.key === 'sarr', known = !perks(runOf(this.ctx.state.data)).known ? '' : tu ? `${say('Kaay fi')} ! On m’a dit que tu travailles tous les jours, ça me plaît. ` : 'On m’a dit que vous travaillez tous les jours : ça se remarque. ';
+    this.speak(known ? (tu ? 'Ah, te revoilà !' : 'Ah, vous revoilà !') : g.bubble); this.ctx.toast(`${who} : « ${known}${g.say()} »`);
     this.log.greetings++; this.cfg.onGreet?.(this.ctx);
   }
 

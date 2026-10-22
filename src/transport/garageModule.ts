@@ -14,6 +14,7 @@ import { C, garageDeals, nextLoanSeq, openLoan, openLoans } from '../economy/cre
 import { creditClock } from '../economy/creditModule';
 import { relLevel } from '../venues/venue';
 import { specOf } from '../economy/catalog';
+import { perks, runOf } from '../economy/streak';
 import { healthTag } from './condition';
 import { INSPECT_SECONDS, REPAIR_SECONDS, REPAIR_STEPS, garageOpen, garageQuote, inBay, reopens, type Bay, type Quote } from './garage';
 import { OWNED_VEHICLES } from './fleet';
@@ -211,7 +212,7 @@ export class GarageModule implements GameModule, TargetSource {
   /** « Discuter »: Modou's answer for the full and the partial repair (src/economy/credit.ts garageDeals), by what he thinks of the player and their slate. */
   private discuss() {
     const j = this.job, ctx = this.ctx; if (!j?.quote) return;
-    const q = j.quote, trust = relLevel(ctx, 'modou'), trusted = ctx.state.data.flags.includes('modou_trust'), loans = ctx.state.data.loans.list, name = j.v.name;
+    const q = j.quote, trust = relLevel(ctx, 'modou'), trusted = ctx.state.data.flags.includes('modou_trust') || perks(runOf(ctx.state.data)).dependable, loans = ctx.state.data.loans.list, name = j.v.name;   // a « travailleur fiable » (7 days in a row) is a customer he trusts
     const scopes = [{ to: 100, cost: q.cost, what: 'tout' }, ...(q.partial ? [{ to: q.partial.to, cost: q.partial.cost, what: `jusqu’à ${q.partial.to} %` }] : [])];
     const items: Parameters<GameCtx['menu']>[2] = []; let line = '';
     for (const sc of scopes) {
