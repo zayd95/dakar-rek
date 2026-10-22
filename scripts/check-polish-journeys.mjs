@@ -251,13 +251,17 @@ const phoneApp = async id => {
 const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().open)) { await t.tap('#phone [data-nav="close"]'); await wait(() => !window.__dakar.phoneInfo().open, null, 20000); } };
 /** A job offer of the « Travail » app, tapped by its text (the cards use short names: « 🥬 Maïga → 🔧 Garage »). */
 const takeJob = async (text, routeId) => {
-  for (let k = 0; k < 2; k++) {                                                      // the sheet slides in: tap once it has settled, and once more if no job started
+  for (let k = 0; k < 3; k++) {                                                      // the sheet slides in: tap once it has settled, and again if no job (or another) started
     await phoneApp('travail'); await page.waitForSelector('#modal.on', T);
     const c = page.locator('#modal .dcard', { hasText: text }).first();
     await c.evaluate(e => e.scrollIntoView({ block: 'center' }));
-    let b = null; for (let i = 0; i < 20; i++) { await page.waitForTimeout(250); const n = await c.boundingBox(); if (b && n && Math.abs(n.y - b.y) < 0.5) break; b = n; }
-    await t.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await t.up(5);
+    // the point tapped is on this card when the finger goes down (the list can move under a slow page): measured, settled, and checked in the page
+    let at = null; for (let i = 0; i < 24 && !at; i++) { await page.waitForTimeout(250); at = await c.evaluate(e => { const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, prev = e.__at; e.__at = y; return prev !== undefined && Math.abs(prev - y) < 0.5 && document.elementFromPoint(x, y)?.closest('.dcard') === e ? { x, y } : null; }); }
+    if (at) { await t.down(5, at.x, at.y); await page.waitForTimeout(60); await t.up(5); }
     if (await wait(id => window.__dakar.activeJob()?.routeId === id, routeId, 20000).then(() => true, () => false)) return;
+    const other = await d(() => window.__dakar.activeJob()?.routeId ?? null);
+    if (other) { note(`the tap took another offer (${other}): dropped (debug hook), tapped again`); await d(() => window.__dakar.cancelJob()); }
+    else note(`the tap on the offer started nothing (${at ? 'tapped' : 'the card never settled under the finger'}): the phone again`);
     await phoneClose().catch(() => {});
   }
   throw new Error(`the job ${routeId} did not start`);
