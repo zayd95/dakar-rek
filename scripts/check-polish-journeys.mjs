@@ -482,7 +482,7 @@ J.C = async () => {
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), ln1 = (await d(() => window.__dakar.credit.info())).loans.find(l => l.lender === 'sarr'), share = Math.round(pick.r.fare * 0.3);
   check('dropped off: the fare paid once; Pape Sarr\'s 30 % taken off it toward the debt, the rest in the wallet', ln1.paid - paid0 === share && w1 - w0 === pick.r.fare - share, JSON.stringify({ fare: pick.r.fare, toSarr: ln1.paid - paid0, wallet: w1 - w0 }));
-  check('the card shows the fare, Pape Sarr\'s share and what is left to repay', /Course terminée/.test(c.text) && /Pape Sarr/.test(c.text) && /remboursés/.test(c.text) && /reste [\d\s]+ F/.test(c.text), c.text.replace(/\s+/g, ' '));
+  check('the card shows the fare, Pape Sarr\'s share and what is left to repay', /Course terminée/.test(c.text) && /Pape Sarr/.test(c.text) && /remboursés/.test(c.text) && /reste\s[\d\s]+F/.test(c.text), c.text.replace(/\s+/g, ' '));
   await page.waitForTimeout(1500);
   check('the directions clear when the ride is over', !(await goal())?.nav, JSON.stringify(await goal()));
 };
