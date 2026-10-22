@@ -185,6 +185,6 @@ export const rafet = new OwnedVehicleModule({
 export const gainde = new OwnedVehicleModule({
   key: 'gainde', asset: 'gainde', detail: 'SUV coupé · 5 places · se gare où tu le laisses', icon: '🚙', kit: 'suv',
   seed: () => paintSeedOf(0), spec: gaindeSpec, visual: modelVisual('gainde'), height: 1.7, space: 'car:gainde',
-  dealer: { hub: 'almadies', name: 'Prestige Auto · SUV coupé', catalogue: 'suv-coupes', site: prestigeFloor('gainde', [paintSeedOf(0)], [PAINTS.gainde[0].name]), sign: PRESTIGE_SIGN },
+  dealer: { hub: 'almadies', name: 'Prestige Auto · SUV coupé', catalogue: 'suv-coupes', site: prestigeFloor('gainde', [paintSeedOf(2), paintSeedOf(0)], [PAINTS.gainde[2].name, PAINTS.gainde[0].name]), sign: PRESTIGE_SIGN },
   text: CAR_TEXT('Gaïndé', false), exit: 'pavement', reach: 1.6,
 });

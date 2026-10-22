@@ -4,7 +4,7 @@ import { stubCanvas } from './hubstub';
 import { CITY_BLOCKS } from '../src/world/city';
 import { COUNTER, DESK, FORECOURT_PARK, FRONT, HALL, MOTO_PLINTH, PARCEL, PRESTIGE_BLOCK, SALES_HOME, SLOTS, inGrounds } from '../src/world/prestige';
 import { NavGrid } from '../src/world/navgrid';
-import { berline, suv, BERLINE_NAVY, BERLINE_WHITE, berlineSeed } from '../src/transport/premiumCars';
+import { berline, suv, BERLINE_NAVY, berlineSeed } from '../src/transport/premiumCars';
 import { buildVehicle, setKitDoor, vehicleKey } from '../src/actors/vehicleKit';
 import { paintSeed, park, parked, setPaintSeed, unpark } from '../src/transport/owned';
 import { GameState } from '../src/core/state';
@@ -24,7 +24,7 @@ describe('Prestige Auto: the reserved parcel of the Almadies', () => {
     expect(PARCEL.z0).toBe(7);                                                          // the block starts where the pavement ends (the road's centre line is z = 0)
     for (const s of SLOTS) { expect(s.x).toBeGreaterThan(FRONT.bay[0] + 0.9); expect(s.x).toBeLessThan(FRONT.bay[1] - 0.9); expect(s.yaw).toBeCloseTo(Math.PI); }
     for (let i = 1; i < SLOTS.length; i++) expect(SLOTS[i].x - SLOTS[i - 1].x).toBeGreaterThanOrEqual(4.2);   // a door's width and room to walk between the cars
-    expect(SLOTS.map(s => s.model)).toEqual(['berline', 'suv', 'suv', 'gainde']);
+    expect(SLOTS.map(s => s.model)).toEqual(['gainde', 'suv', 'suv', 'gainde']);   // the generic saloon is no longer on show
     expect(FRONT.door[1] - FRONT.door[0]).toBeGreaterThan(3);                           // a doorway to walk through
     expect(MOTO_PLINTH.x1).toBeLessThan(FRONT.door[0]);                                 // the motorbike plinth does not block the entrance
     expect(inGrounds(COUNTER.x, COUNTER.z)).toBe(true); expect(inGrounds(0, 100)).toBe(false);
@@ -65,14 +65,14 @@ describe('Prestige Auto: the reserved parcel of the Almadies', () => {
     expect(DESK.z).toBeLessThan(HALL.z1);
   });
 
-  it('the white saloon, the Lamane Sport in red (the flagship) and black, the Gaïndé in white', () => {
+  it('the Gaïndé in night blue and in white, the Lamane Sport in red (the flagship) and black; the old generic saloon off the floor, still delivered and still listed nowhere', () => {
     const hubStub = { id: 'almadies' } as HubWorld;
     const b = berline.def.dealer!.site(hubStub)!, s = suv.def.dealer!.site(hubStub)!, g = gainde.def.dealer!.site(hubStub)!;
-    expect(b.floor!.slots.map(x => x.seed)).toEqual([berlineSeed(BERLINE_WHITE)]);
+    expect(b.floor!.slots).toEqual([]); expect(berline.def.dealer!.unlisted).toBe(true);
     expect(s.floor!.slots.map(x => [x.seed, x.colour])).toEqual([[paintSeedOf(0), 'rouge'], [paintSeedOf(1), 'noir']]);
-    expect(g.floor!.slots.map(x => x.colour)).toEqual(['blanc']);
+    expect(g.floor!.slots.map(x => x.colour)).toEqual(['bleu nuit', 'blanc']);
     expect(b.floor!.slots.length + s.floor!.slots.length + g.floor!.slots.length).toBe(SLOTS.length);
-    expect(b.floor!.slots.every(x => x.x >= FRONT.bay[0] && x.x <= FRONT.bay[1])).toBe(true);
+    expect([...s.floor!.slots, ...g.floor!.slots].every(x => x.x >= FRONT.bay[0] && x.x <= FRONT.bay[1])).toBe(true);
     expect(berline.def.dealer!.site({ id: 'plateau' } as HubWorld)).toBeNull();
     // the bought car delivered by phone waits on the forecourt, not in the bay
     expect(b.delivery.z).toBeLessThan(HALL.z0);

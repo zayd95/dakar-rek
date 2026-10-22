@@ -70,7 +70,7 @@ export class PassengerCamera {
     // speed: the view pulls back and widens a little as the vehicle goes faster (a sense of speed, room to see the road ahead), and its heading follows a touch more calmly
     this.speedK += (Math.max(0, Math.min(1, speedShare)) - this.speedK) * Math.min(1, dt * 1.5);
     const k = this.speedK;
-    this.yaw += wrapAngle(v.yaw - this.yaw) * Math.min(1, dt * (3 - 0.9 * k));
+    this.yaw += wrapAngle(v.yaw - this.yaw) * Math.min(1, dt * (2.4 - 0.8 * k));      // a calm swing through a corner, calmer still at speed
     anchorToWorld(v, this.yaw + this.orbit, anchor, this.lift, this.want, this.wantLook, camera.aspect < 1);
     if (!anchor.inside && k > 0.001) { const f = 1 + 0.24 * k; this.want.x = this.wantLook.x + (this.want.x - this.wantLook.x) * f; this.want.z = this.wantLook.z + (this.want.z - this.wantLook.z) * f; this.want.y += 0.5 * k; }
     this.want.y += bounce * 0.6;
@@ -79,7 +79,7 @@ export class PassengerCamera {
     if (kc < 1) this.want.lerpVectors(this.from, this.want, kc);
     this.want.x -= v.x; this.want.y -= v.y; this.want.z -= v.z;
     this.wantLook.x -= v.x; this.wantLook.y -= v.y; this.wantLook.z -= v.z;
-    const a = 1 - Math.exp(-dt * 5), b = 1 - Math.exp(-dt * 7);
+    const a = 1 - Math.exp(-dt * 4.2), b = 1 - Math.exp(-dt * 6);
     this.rel.lerp(this.want, a); this.relLook.lerp(this.wantLook, b);
     camera.position.set(v.x + this.rel.x, v.y + this.rel.y, v.z + this.rel.z);
     if (this.baseFov) { const fov = this.baseFov + (anchor.inside ? 3 : 9) * k; if (Math.abs(camera.fov - fov) > 0.02) { camera.fov = fov; camera.updateProjectionMatrix(); } }

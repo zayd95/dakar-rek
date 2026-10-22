@@ -17,6 +17,8 @@ export interface DriveState {
   accel: number;
   /** Metres travelled (road bumps). */
   odo: number;
+  /** How far the brake has built up, 0…1: a hard stop eases in over a moment instead of biting at once (analog model). */
+  brakeK?: number;
 }
 export interface DriveInput {
   throttle: number; steer: number;
@@ -27,7 +29,15 @@ export interface DriveInput {
 /** Is a circle of radius r at (x, z) inside something solid? */
 export type Blocked = (x: number, z: number, r: number) => boolean;
 
-export const newDriveState = (x: number, z: number, yaw: number): DriveState => ({ x, z, yaw, speed: 0, steer: 0, accel: 0, odo: 0 });
+export const newDriveState = (x: number, z: number, yaw: number): DriveState => ({ x, z, yaw, speed: 0, steer: 0, accel: 0, odo: 0, brakeK: 0 });
+
+/**
+ * The steering asked for from the stick (analog model): at a walking pace finer around the centre, so a thumb's small wobble in a tight street is not a swerve;
+ * from about 30 km/h straight in proportion to the stick (predictable at speed). Full lock at full push always.
+ */
+export const steerCurve = (x: number, speed = 0) => { const c = Math.max(-1, Math.min(1, x)), e = 1 + 0.25 * Math.max(0, 1 - Math.abs(speed) / 8); return Math.sign(c) * Math.abs(c) ** e; };
+/** The brake's build-up time (s) and the share it bites with at once. */
+export const BRAKE_RAMP = 0.3, BRAKE_START = 0.45;
 
 /** Coasting deceleration with the throttle released (m/s²). */
 const COAST = 1.4;
@@ -60,15 +70,20 @@ export function hits(d: DriveSpec, x: number, z: number, yaw: number, blocked: B
  */
 export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: number, blocked: Blocked): boolean {
   const analog = inp.target !== undefined, v0 = Math.abs(s.speed);
-  // steering: the wheel follows the stick, more slowly the faster the vehicle goes (the analog model), so a fast bike or car does not wobble
-  const follow = d.grip ? d.steer / (1 + 0.035 * v0) : d.steer;
-  s.steer += (Math.max(-1, Math.min(1, inp.steer)) - s.steer) * Math.min(1, follow * dt);
+  // steering: the wheel follows the stick, more slowly the faster the vehicle goes (the analog model), so a fast bike or car does not wobble; finer around the
+  // centre; and it comes back to straight more readily than it turns in (the self-centring of a real wheel), so letting go of the stick straightens the car
+  const want = d.grip ? steerCurve(inp.steer, v0) : Math.max(-1, Math.min(1, inp.steer));
+  const back = d.grip && Math.abs(want) < Math.abs(s.steer) && Math.sign(want) !== -Math.sign(s.steer);
+  const follow = (d.grip ? d.steer / (1 + 0.035 * v0) : d.steer) * (back ? 1.3 : 1);
+  s.steer += (want - s.steer) * Math.min(1, follow * dt);
   const target = analog ? inp.target! : targetSpeed(d, s.speed, inp.throttle);
   const before = s.speed;
   let rate: number;
   if (analog) {
     const sameWay = Math.sign(target) === Math.sign(s.speed) || (target === 0 && s.speed > 0) || v0 < 0.3, top = d.boostSpeed ?? d.maxSpeed;
-    if (inp.braking) rate = d.brake;
+    // the brake builds up over a moment (no snap of the nose at the first touch), and lets go at once
+    s.brakeK = inp.braking ? Math.min(1, (s.brakeK ?? 0) + dt / BRAKE_RAMP) : 0;
+    if (inp.braking) rate = d.brake * (BRAKE_START + (1 - BRAKE_START) * s.brakeK);
     else if (Math.abs(target) > Math.abs(s.speed) && sameWay) rate = (target < 0 ? inp.reverseAccel ?? 1.6 : d.accel * (1 - 0.5 * v0 / top) * (1 + 0.25 * (inp.boost ?? 0)));
     else if (!sameWay) rate = d.brake * 0.8;                                         // asked the other way: it stops first
     else rate = Math.min(2.2, COAST + 0.06 * Math.abs(s.speed - target));   // lifting off: engine braking, stronger the further above the target

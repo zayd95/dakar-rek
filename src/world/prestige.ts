@@ -27,11 +27,12 @@ export const HALL = { x0: -109, x1: -69, z0: 17, z1: 33, h: 4.8 } as const;
 /** Street front, from the west: glass, the entrance (a walkable gap), glass, the vehicle bay (open), glass. */
 export const FRONT = { door: [-103, -99.4], bay: [-95.5, -77.5] } as const;
 /**
- * The four cars on the floor, nose to the street (yaw π), 4.3 m apart, each with a straight way out through the bay: the saloon, the flagship Lamane Sport
- * in red at the centre of the bay with a black one beside it, the Gaïndé SUV coupé.
+ * The four cars on the floor, nose to the street (yaw π), 4.3 m apart, each with a straight way out through the bay: a Gaïndé SUV coupé in night blue, the
+ * flagship Lamane Sport in red at the centre of the bay (on its own platform) with a black one beside it, the white Gaïndé. The old generic saloon (the
+ * procedural « berline ») is no longer shown here; it stays its owners' car, and the catalogue still delivers it.
  */
 export const SLOTS: readonly { x: number; z: number; yaw: number; model: 'berline' | 'suv' | 'gainde' }[] = [
-  { x: -92.6, z: 23, yaw: Math.PI, model: 'berline' }, { x: -88.3, z: 23, yaw: Math.PI, model: 'suv' },
+  { x: -92.6, z: 23, yaw: Math.PI, model: 'gainde' }, { x: -88.3, z: 23, yaw: Math.PI, model: 'suv' },
   { x: -84.0, z: 23, yaw: Math.PI, model: 'suv' }, { x: -79.7, z: 23, yaw: Math.PI, model: 'gainde' },
 ];
 /** Jakarta motorbikes on a plinth by the west glass: for show only (they are sold at Garage Modou, Pikine). */
@@ -104,6 +105,35 @@ export function buildPrestige(c: CityContext) {
   b.box(1.1, 0.4, 0.5, -99.6, FL, 26.8, 0x3a3d44); b.box(1.1, 0.4, 0.5, -102, FL, 26.8, 0x3a3d44); b.box(0.9, 0.35, 0.9, -100.8, FL, 25.2, 0x3a3d44);
   solid(-102.7, -99, 26.5, 27.1, 0.8); solid(-101.3, -100.3, 24.7, 25.7, 0.5);
 
+  // the hall is a showroom, not a garage (the brief of § 6): the flagship on its own platform under a feature wall, each model's plaque on the back wall
+  // above it, spots over the cars, a lounge in each corner, plants. Floor props are flat or by the walls: the cars' ways out and the salesperson's
+  // walks (src/world/navgrid.ts, tests/navgrid.test.ts) stay as they were.
+  const flag = SLOTS.find(sl => sl.model === 'suv')!;
+  b.cyl(3.15, 3.15, 0.03, flag.x, FL + 0.005, flag.z, GRAPHITE, 40); b.cyl(3.3, 3.3, 0.02, flag.x, FL, flag.z, GOLD, 40);                 // the Lamane's platform (flush: the wheels stand on it)
+  b.box(7.2, 3.2, 0.12, flag.x, 0.6, z1 - 0.32, 0x1b1c20); b.box(7.4, 0.06, 0.16, flag.x, 3.8, z1 - 0.32, GOLD); b.box(7.4, 0.06, 0.16, flag.x, 0.6, z1 - 0.32, GOLD);
+  c.sign('LAMANE SPORT', '#1b1c20', '#e9c85a', flag.x, 2.75, z1 - 0.4, Math.PI, 5.6, 0.9);
+  c.sign('Le 4 × 4 de prestige · 70 000 000 F', '#1b1c20', '#f4efe2', flag.x, 1.85, z1 - 0.4, Math.PI, 5.2, 0.45);
+  const plaque: Record<string, string> = { gainde: 'GAÏNDÉ · SUV coupé · 65 000 000 F', suv: 'LAMANE SPORT · 70 000 000 F' };
+  for (const sl of SLOTS) {
+    if (sl !== flag) c.sign(plaque[sl.model] ?? '', '#16171b', '#e9c85a', sl.x, 2.1, z1 - 0.2, Math.PI, 3.4, 0.42);
+    b.cyl(0.16, 0.2, 0.18, sl.x, h - 0.4, sl.z, INK, 10); b.cyl(0.13, 0.13, 0.02, sl.x, h - 0.42, sl.z, 0xfff4d6, 10);                  // a spot over each car
+    c.pool(sl.x, sl.z, sl === flag ? 7 : 5);
+  }
+  // the east corner, empty until now: a second lounge (two armchairs, a low table, a rug), brochures on a stand by the wall, plants in the corners
+  b.box(4.2, 0.012, 3.2, -73.4, FL + 0.01, 28.4, 0x5b1e24);
+  b.box(1.1, 0.4, 0.55, -74.8, FL, 29.6, 0x3a3d44); b.box(1.1, 0.75, 0.15, -74.8, FL, 29.95, 0x3a3d44); b.box(1.1, 0.4, 0.55, -72, FL, 29.6, 0x3a3d44); b.box(1.1, 0.75, 0.15, -72, FL, 29.95, 0x3a3d44);
+  b.box(1.2, 0.36, 0.7, -73.4, FL, 27.9, 0x1b1c20); b.box(1.24, 0.03, 0.74, -73.4, FL + 0.36, 27.9, GOLD); b.box(0.32, 0.02, 0.24, -73.6, FL + 0.39, 27.85, 0xe9e4d8);
+  solid(-75.4, -71.4, 29.3, 30.1, 0.8); solid(-74, -72.8, 27.55, 28.25, 0.45);
+  b.box(0.7, 1.3, 0.3, -69.8, FL, 25.4, 0x1b1c20); for (let k = 0; k < 3; k++) b.box(0.55, 0.32, 0.04, -69.8, FL + 0.25 + k * 0.38, 25.24, [0xc8322a, 0xe9e4d8, 0x1d3557][k]);
+  solid(-70.2, -69.4, 25.2, 25.6, 1.3);
+  b.box(3.4, 0.012, 2.6, -100.8, FL + 0.01, 26, 0x5b1e24);                                         // a rug under the west lounge
+  for (const [px2, pz2] of [[-107.9, 31.9], [-70, 31.9], [-70, 18.1], [-104.4, 18.1]] as const) {
+    b.cyl(0.32, 0.25, 0.55, px2, FL, pz2, 0x1b1c20, 10); b.blob(0.55, px2, FL + 1.05, pz2, 0x2f6b3c, 1.25); b.blob(0.38, px2 + 0.2, FL + 1.5, pz2 - 0.1, 0x3b8049, 1.2);
+    solid(px2 - 0.35, px2 + 0.35, pz2 - 0.35, pz2 + 0.35, 1.6);
+  }
+  // behind the desk: the logo, lit
+  b.box(3.2, 0.9, 0.08, DESK.x, 2.2, z1 - 0.2, 0x1b1c20);
+
   // the motorbike plinth (display only): a low gold-edged platform with a plaque
   const pw = MOTO_PLINTH.x1 - MOTO_PLINTH.x0, pd = MOTO_PLINTH.z1 - MOTO_PLINTH.z0, px = (MOTO_PLINTH.x0 + MOTO_PLINTH.x1) / 2, pz = (MOTO_PLINTH.z0 + MOTO_PLINTH.z1) / 2;
   b.box(pw, 0.12, pd, px, FL + 0.02, pz, GRAPHITE); b.box(pw + 0.1, 0.03, pd + 0.1, px, FL + 0.14, pz, GOLD);
@@ -112,8 +142,8 @@ export function buildPrestige(c: CityContext) {
 
   // signs: the fascia over the glass facing the street, the pylon on the forecourt, a line on the back wall inside
   c.sign('PRESTIGE AUTO', '#16171b', '#e9c85a', (x0 + x1) / 2 - 8, h - 0.25, z0 - 0.17, Math.PI, 17, 1.7);
-  c.sign(`BERLINES · 4 × 4 · ${say('Dalal ak jàmm')}`, '#16171b', '#f4efe2', (x0 + x1) / 2 + 12, h - 0.25, z0 - 0.17, Math.PI, 13, 1.2);
-  c.sign('PRESTIGE AUTO · ALMADIES', '#16171b', '#e9c85a', -86.5, 3.6, z1 - 0.2, Math.PI, 9, 0.9);
+  c.sign(`SUV · 4 × 4 · ${say('Dalal ak jàmm')}`, '#16171b', '#f4efe2', (x0 + x1) / 2 + 12, h - 0.25, z0 - 0.17, Math.PI, 13, 1.2);
+  c.sign('PRESTIGE AUTO · ALMADIES', '#16171b', '#e9c85a', DESK.x, 2.2, z1 - 0.26, Math.PI, 3, 0.5);
   b.box(0.35, 7, 0.35, -70.6, 0, 9.4, INK); solid(-70.8, -70.4, 9.2, 9.6, 7);
   c.sign('PRESTIGE', '#16171b', '#e9c85a', -70.6, 6.1, 9.2, Math.PI, 3.4, 1.1);
   c.sign('PRESTIGE', '#16171b', '#e9c85a', -70.6, 6.1, 9.6, 0, 3.4, 1.1);

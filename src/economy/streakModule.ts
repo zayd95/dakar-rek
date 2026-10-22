@@ -3,6 +3,7 @@ import { relate } from '../venues/venue';
 import { phoneHooks } from '../ui/phoneHooks';
 import { PERK_TEXT, STREAK, advancePlay, creditWork, perks, runLabel, runOf, type Credit, type WorkKind } from './streak';
 import { workCard, type Card, type WorkDone } from './workCard';
+import { radio } from '../transport/radio';
 
 /**
  * The player's days and the run of days worked (rules: src/economy/streak.ts), and the card after each job (src/economy/workCard.ts).
@@ -76,6 +77,7 @@ class StreakModule implements GameModule {
     this.log.cards.push({ title: card.title, rows: card.rows.map(r => `${r.k}: ${r.v}${r.note ? ` (${r.note})` : ''}`), next: card.next });
     if (this.log.cards.length > 20) this.log.cards.shift();
     ctx.hud.boutCard(card, 7000);
+    radio.duck(0.45, 3.5);                                                          // the car's radio steps back while the card speaks
     this.carding = false;
     this.flushMilestone();
   }

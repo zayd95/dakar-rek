@@ -27,6 +27,7 @@ import { quietLog, ago } from './quiet';
 import { walkMinutes } from '../world/walk';
 import { restSpotHere } from '../game/rest';
 import { mountSoundTest, soundTestHtml, type TestKit } from './soundTest';
+import { radio, VOLUMES } from '../transport/radio';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -498,6 +499,8 @@ export class Phone {
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
       <button type="button" class="ph-btn" data-act="soundtest">Tester le son<small>Démarrage, moteur, klaxon, chocs : le vrai son du jeu, et ce qui l’empêche</small></button>
+      <p class="ph-note">Radio de la voiture (📻 au volant) : son volume, sous celui du jeu.</p>
+      <div class="seg">${VOLUMES.map(v => `<button type="button" data-radio="${v.v}" class="${Math.abs(radio.volume - v.v) < 0.01 ? 'on' : ''}" aria-pressed="${Math.abs(radio.volume - v.v) < 0.01}">${v.label}</button>`).join('')}</div>
       ${canVibrate()
         ? `<button type="button" class="ph-toggle ${hapticsOn() ? 'on' : ''}" data-act="haptics" aria-pressed="${hapticsOn()}"><span>Vibrations (chocs, klaxon)</span><em>${hapticsOn() ? 'Activées' : 'Coupées'}</em></button>`
         : `<p class="ph-note">Ce navigateur ne fait pas vibrer le téléphone : les chocs se sentent par le son et la caméra.</p>`}
@@ -625,6 +628,7 @@ export class Phone {
       this.render();
     }));
     s.querySelectorAll<HTMLButtonElement>('button[data-theme]').forEach(b => b.addEventListener('click', () => { theme.setMode(b.dataset.theme as ThemeMode); this.render(); }));
+    s.querySelectorAll<HTMLButtonElement>('button[data-radio]').forEach(b => b.addEventListener('click', () => { radio.setVolume(Number(b.dataset.radio)); this.render(); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-sens]').forEach(b => b.addEventListener('click', () => {
       this.ctx.input.sensitivity = Number(b.dataset.sens);
       try { store()?.setItem(SENS_KEY, b.dataset.sens!); } catch { /* session only */ }

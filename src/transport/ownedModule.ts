@@ -29,6 +29,10 @@ import { migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, park
 import { prestige, roadTestAt, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
 import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
+import { trafficPositions } from '../actors/npc';
+import { radio, STATIONS } from './radio';
+import { CockpitKit } from './cockpitKit';
+import { navigation } from '../game/navigation';
 import { seatClip, sitOriginY } from '../interact/seats';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
@@ -139,6 +143,8 @@ export interface DealerDef {
   sales?: PrestigeSales;
   /** The counter's prompt priority among the dealership's modules (one of them leads: −0.2; the default 4 stays behind). */
   counterBias?: number;
+  /** Not on the phone's list of dealers (a model no longer shown on the floor: still delivered when bought from the catalogue, still the owners' own). */
+  unlisted?: boolean;
 }
 
 const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
@@ -316,7 +322,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private sales(): PrestigeSales { return this.dd?.sales ?? prestige; }
   /** The dealerships as the phone's map lists them: one row for each (src/transport/dealers.ts). */
   directoryRows(state: GameCtx['state']) {
-    return [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d).map(D => ({ id: `${this.def.key}:dealer:${D.hub}`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) }));
+    return [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d && !d.unlisted).map(D => ({ id: `${this.def.key}:dealer:${D.hub}`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) }));
   }
   /** Name and price from the catalogue. */
   /** The dealer as the phone's map lists it, from any district (src/transport/dealers.ts). */
@@ -406,7 +412,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (ctx.player.seated()?.id !== m.driverSeat.id) { this.getOff(false); return; }   // taken off by a door, a trip…
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
     const moto = this.def.kit === 'moto';
-    ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1) });
+    ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1), ...(moto ? {} : { radio: () => this.radioNext() }) });
     // the stick: forward = throttle, left / right = steering, both at once on a diagonal. « Accélérer » (held) opens the boosted speed range, « Frein » brakes and, held at a standstill, backs a car up gently.
     const keys = ctx.input.keys, joy = ctx.mode() === 'play' ? ctx.input.joy : { x: 0, y: 0 }, pressed = (...c: string[]) => ctx.mode() === 'play' && c.some(k => keys.has(k));
     const cmd: DriveCmd = ridePad.active
@@ -431,6 +437,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     }
     ridePad.reversing = this.ctl.showR;
     transport.obstacles(this.obst, this.def.kit);
+    vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
     const z0 = this.st.z, hit = driveStep(this.st, input, drv, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
@@ -448,6 +455,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
     vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
     if (vehicleAudio.running) vehicleAudio.update(dt, this.st.speed, drv.boostSpeed ?? drv.maxSpeed, held ? rev : input.throttle);
+    // the car's radio (src/transport/radio.ts): scheduled while the player is at the wheel, under the engine when accelerating, lowered by the horn and the phone
+    if (!moto) radio.update(vehicleAudio.radioBus(), { throttle: held ? rev : Math.max(0, ('target' in input ? (input.target ?? 0) / (drv.boostSpeed ?? drv.maxSpeed) : input.throttle)), horn: vehicleAudio.honking, phone: ctx.mode() === 'menu' });
     ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
     if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
     this.fx.hard = Math.max(0, this.fx.hard - dt);
@@ -798,6 +807,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const cam = ctx.camera, base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
     if (Math.abs(cam.fov - want) > 0.01) { cam.fov = want; cam.updateProjectionMatrix(); }
     this.fovSet = want !== base;
+    this.cockpit(ctx, m, !!a.inside && this.def.kit !== 'moto', Math.max(dt, real));
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
     if (body) this.leanRider(body.group, m);
@@ -829,6 +839,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
+        radio: () => radio.info(),
+        radioNext: () => this.radioNext(),
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
         lab: () => ({ va: vehicleAudio, PROFILES, HORNS }),                                // the audio review's recordings (scripts/audio/render-clips.mjs)
@@ -1098,6 +1110,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (dead) { vehicleAudio.crank(prof); ctx.toast(canMakeshift(this.hp()) ? 'Ça ne démarre pas. Descends : une réparation de fortune devant le capot, ou le Garage Modou.' : 'Ça ne démarre pas.'); }
     else vehicleAudio.run(prof, catches);
     this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
+    if (this.def.kit !== 'moto' && !dead && radio.remembered >= 0) radio.set(vehicleAudio.radioBus(), radio.remembered);   // the radio comes back on where it was left (it starts after the engine)
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
   }
@@ -1141,7 +1154,26 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   /** Off the vehicle, beside it; it stays parked there. `normal`: the player chose to get off. A car with a door steps out through it (stepExit). */
+  /** The cockpit at the wheel (src/transport/cockpitKit.ts): built the first time, framed in the camera's view every frame, hidden outside the « Au volant » view. */
+  private kit: CockpitKit | null = null;
+  private cockpit(ctx: GameCtx, m: Vehicle, on: boolean, dt: number) {
+    if (!on) { if (this.kit) this.kit.group.visible = false; return; }
+    if (!this.kit) { this.kit = new CockpitKit(this.def.kit === 'sedan' ? 'city' : 'premium'); ctx.extra.add(this.kit.group); }
+    const old = m.group.getObjectByName('cockpit_wheel'); if (old) old.visible = false;          // the older shared cockpit's own wheel: the kit's turns instead
+    const k = this.kit, h = ctx.hour();
+    if (!k.group.parent) ctx.extra.add(k.group);                                                  // a district crossed at the wheel: the new one's layer
+    k.group.visible = true; k.place(ctx.camera as THREE.PerspectiveCamera);
+    const st = radio.info().station, name = st ? STATIONS.find(x => x.id === st)?.name ?? null : null;
+    k.update({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, steer: this.st.steer, nav: navigation.current(), radio: name, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` }, dt);
+  }
+  /** « 📻 »: the next station (off → Sénégal Hits → Radio Téranga → Corniche FM → off), said in one line. */
+  private radioNext() {
+    const st = radio.next(vehicleAudio.radioBus());
+    this.ctx.toast(st ? `📻 ${st.name} · ${st.freq}` : '📻 Radio éteinte');
+    document.querySelector('#ridepad .rp-radio')?.classList.toggle('on', !!st);
+  }
   private getOff(normal: boolean) {
+    if (this.def.kit !== 'moto') { radio.leave(); document.querySelector('#ridepad .rp-radio')?.classList.remove('on'); }   // never in the street
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
     this.driving = false; this.leaving = false; ridePad.hide(this);
     vehicleAudio.stop();
@@ -1186,6 +1218,13 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return { x: this.st.x - Math.sin(yaw) * back, z: this.st.z - Math.cos(yaw) * back };
   }
 
+  /** How much traffic is around, 0…1: the vehicles of the street, of the road between districts and the car rapides within 45 m (four or more: 1). */
+  private trafficAround() {
+    const x = this.st.x, z = this.st.z, R2 = 45 * 45; let n = 0;
+    for (const o of this.obst) if (o.hl < 6 && o.hw < 2 && (o.x - x) ** 2 + (o.z - z) ** 2 < R2) n++;
+    for (const c of trafficPositions()) if ((c.x - x) ** 2 + (c.z - z) ** 2 < R2) n++;
+    return Math.min(1, n / 4);
+  }
   /** Within `m` metres of the district's outer streets' far side (a way out: a corridor's mouth, a border street's line). */
   private nearDistrictEdge(m: number) {
     const R = roadCentre(GRID.nb) + 3.5, x = this.st.x, z = this.st.z;
@@ -1238,6 +1277,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
     this.salesReg?.unregister(this); this.salesReg = null;
+    if (!ride) { this.kit?.dispose(); this.kit = null; }
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
