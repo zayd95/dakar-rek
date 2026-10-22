@@ -69,14 +69,19 @@ const goal = () => d(() => { const g = document.querySelector('#goal'); return g
 const getOff = async key => { await t.tap('#ridepad .rp-off'); await wait(k => !window.__dakar[k].info().driving && !window.__dakar[k].info().exit && window.__dakar.pos().mode === 'play', key); };
 /** A lane point on a grid street (right-hand traffic): heading +z the lane is at x − 2.1, heading −z at x + 2.1, heading +x at z + 2.1, heading −x at z − 2.1. */
 const lane = (street, along, dir, axis) => (axis === 'z' ? { x: street - Math.sign(dir) * 2.1, z: along } : { x: along, z: street + Math.sign(dir) * 2.1 });
-/** Samples a vehicle while a drive runs: the slowest moment away from the start and the end, the impacts. */
+/**
+ * Samples a vehicle while a drive runs: the slowest moment away from the start and the end, the impacts. Each sample also notes how far ahead the nearest car rapide
+ * is (`rap`, metres along the heading, in a 4 m wide strip; null when none): they are solid to the player's car, so a car slowed behind one is held by what the driver sees.
+ */
 function sampler(key) {
   const s = { at: [], stop: false };
-  (async () => { while (!s.stop) { try { const a = await d(k => window.__dakar[k].at(), key); if (a) s.at.push(a); await page.waitForTimeout(250); } catch { if (page.isClosed()) return; } } })();
+  (async () => { while (!s.stop) { try { const a = await d(k => { const a = window.__dakar[k].at(); if (!a) return null; const f = { x: Math.sin(a.yaw), z: Math.cos(a.yaw) }; let rap = null;
+    for (const l of window.__dakar.transport?.lines?.() ?? []) for (const c of l.vehicles) { const dx = c.x - a.x, dz = c.z - a.z, along = dx * f.x + dz * f.z, side = Math.abs(dx * f.z - dz * f.x); if (along > 0 && along < 25 && side < 2 && (rap === null || along < rap)) rap = along; }
+    return { ...a, rap: rap === null ? null : +rap.toFixed(1) }; }, key); if (a) s.at.push(a); await page.waitForTimeout(250); } catch { if (page.isClosed()) return; } } })();
   return s;
 }
-/** The slowest moment of a drive once the car has got going and before its final stop (a stop there means something held it), and where. */
-const cruising = (at, end, from = 3) => { const i0 = at.findIndex(a => a.speed > from); if (i0 < 0) return { slowest: 0, where: null }; const mid = at.slice(i0).filter(a => Math.hypot(a.x - end.x, a.z - end.z) > 20); if (!mid.length) return { slowest: null, where: null }; let m = mid[0]; for (const a of mid) if (a.speed < m.speed) m = a; return { slowest: +m.speed.toFixed(2), where: [+m.x.toFixed(1), +m.z.toFixed(1)] }; };
+/** The slowest moment of a drive once the car has got going and before its final stop (a stop there means something held it), where, and the car rapide ahead then. */
+const cruising = (at, end, from = 3) => { const i0 = at.findIndex(a => a.speed > from); if (i0 < 0) return { slowest: 0, where: null }; const mid = at.slice(i0).filter(a => Math.hypot(a.x - end.x, a.z - end.z) > 20); if (!mid.length) return { slowest: null, where: null }; let m = mid[0]; for (const a of mid) if (a.speed < m.speed) m = a; return { slowest: +m.speed.toFixed(2), where: [+m.x.toFixed(1), +m.z.toFixed(1)], rapideAhead: m.rap ?? null }; };
 const ff = async (raw, mp4) => { try { execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', raw, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '30', '-preset', 'veryfast', '-movflags', '+faststart', mp4]); return true; } catch (e) { note('ffmpeg', e.message); return false; } };
 /** The 5-day run, written as the save would hold it after five days worked (a debug shortcut: the days themselves are journeys A and B's). */
 const giveRun = n => d(n => { const s = window.__dakar.state.data, day = s.play.day; s.streak.run = n; s.streak.best = Math.max(s.streak.best, n); s.streak.last = day; s.streak.lastMs = s.playedMs; s.streak.total = Math.max(s.streak.total, n); s.streak.seen = [2, 3, 5, 7].filter(m => m <= n); return window.__dakar.streak.info().run; }, n);
@@ -169,7 +174,8 @@ J.almadies = async () => {
     const end = r.pts[r.pts.length - 1], cr = cruising(s.at, end), slow = cr.slowest, felt = await d(() => window.__dakar.gainde.feel());
     const blocks = [];
     for (let k = 0; k < r.pts.length; k++) { const p = r.pts[k]; const why = await d(([x, z]) => window.__dakar.gainde.solidAt(x, z, 1), [p.x, p.z]); if (why) blocks.push({ at: [p.x, p.z], why: why.why, rect: why.rect }); }
-    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && slow > 2.5, JSON.stringify({ end: [last.x, last.z], ...cr, impacts: felt.impacts.map(i => i.what ?? i) }));
+    // slower than a walking pace only queued behind a car rapide (solid, in sight, 12 m ahead at most): the way itself never holds the car
+    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && (slow > 2.5 || (cr.rapideAhead !== null && cr.rapideAhead < 12)), JSON.stringify({ end: [last.x, last.z], ...cr, impacts: felt.impacts.map(i => i.what ?? i) }));
     check(`Almadies, ${r.name}: nothing solid on the lane at any junction`, blocks.length === 0, JSON.stringify(blocks));
     await shot(r.name.split(' ').slice(0, 3).join('-'));
   }
