@@ -553,6 +553,9 @@ J.E = async () => {
   const g1 = await goal(), n1 = await d(() => window.__dakar.nav.info().now); await shot('nav-out-of-pikine');
   check('the parcel aboard: the directions lead to the way out of Pikine toward the Almadies, the whole distance left', g1?.nav && /Le Pointe/.test(g1.text) && /km/.test(g1.text) && /Almadies/.test(n1?.local?.name ?? ''), JSON.stringify({ g1, local: n1?.local }));
   const mm = await d(() => window.__dakar.minimap?.info?.() ?? null);
+  // setup: the bike and its rider set on Pikine's z = −60 street short of the way out west (the ride across Pikine's corners is journey A's; on a loaded software
+  // renderer the test's driver can cut one into a wall and a motorbike does not back out under it), then on along the street and the road to the Almadies
+  await d(() => window.__dakar.moto.place(-96, -62.1, -Math.PI / 2)); await page.waitForTimeout(800);
   { const a = await d(() => window.__dakar.moto.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -140, z: -60 }, { cruise: 7, avoid: await closedZones() }); await pilot(page, t, 'moto', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
   const len = await d(() => { const p = window.__dakar.road.at('pikine-almadies', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
   const onRoad = []; await driveRoad(page, t, 'moto', 'pikine-almadies', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 2400000, onTick: async () => { if (onRoad.length < 2) { const g = await goal(); if (g?.nav) { onRoad.push(g.text); if (onRoad.length === 1) await shot('nav-on-the-road'); } } } });
@@ -560,9 +563,14 @@ J.E = async () => {
   await wait(() => window.__dakar.pos().hub === 'almadies', null, 240000).catch(() => {});
   await page.waitForTimeout(1500);
   const g2 = await goal(); await shot('nav-in-the-almadies');
-  check('in the Almadies, the street directions to the restaurant take over (survived the crossing)', g2?.nav && /Le Pointe/.test(g2.text) && /[↰↱↑↶]/.test(g2.text), JSON.stringify(g2));
+  const hub2 = await d(() => window.__dakar.pos().hub);
+  check('in the Almadies, the street directions to the restaurant take over (survived the crossing)', hub2 === 'almadies' && g2?.nav && /Le Pointe/.test(g2.text) && /[↰↱↑↶]/.test(g2.text), JSON.stringify({ hub: hub2, g2 }));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await ledgerMark();
-  await atStop('moto', { x: -102, z: -54.5 }, () => !window.__dakar.activeJob());
+  // the restaurant is across the coast avenue the bike comes in on: stopped opposite it, the parcel walked over (its own kerb faces the other way: a loop round a block)
+  await pilot(page, t, 'moto', [{ x: 60, z: -62.1, tol: 4, speed: 7 }, { x: 0, z: -62.1, tol: 4, speed: 7 }, { x: -60, z: -62.1, tol: 4, speed: 7 }, { x: -94, z: -62.1, tol: 3, speed: 4 }, { x: -101, z: -62.1, tol: 2, speed: 2.2 }], { cruise: 7, stall: 60000, ms: 1500000, brakeAtEnd: true });
+  await getOff('moto');
+  await walkTo(page, t, -101.5, -60, { tol: 0.8, ms: 40000 }); await walkTo(page, t, -102, -56.2, { tol: 0.6, ms: 40000 });
+  await wait(() => !window.__dakar.activeJob(), null, 20000).catch(() => {});
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0));
   check('handed over at the Restaurant Le Pointe: paid once', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
   check('the card: Maïga → Le Pointe, the pay, the time, the distance in km, the run, one line', /Le Pointe/.test(c.text) && /km/.test(c.text) && /jour actif|affilée/.test(c.text), c.text.replace(/\s+/g, ' '));
