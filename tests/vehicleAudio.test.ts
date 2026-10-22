@@ -24,9 +24,14 @@ describe('the engine of a driven vehicle', () => {
     for (const p of Object.values(PROFILES)) { expect(SAMPLE_NAMES).toContain(p.idle); expect(SAMPLE_NAMES).toContain(p.rev); expect(p.xf[0]).toBeLessThan(p.xf[1]); }
     expect(profileFor('unknown')).toBe(PROFILES.sedan);
   });
-  it('the engine is a quiet background presence while driving (a life simulation, not a racing game): the Jakarta slightly more present than the cars; the ignition and the other sounds keep their own levels', () => {
-    for (const k of ['sedan', 'luxury', 'suv'] as const) { expect(PROFILES[k].drive).toBeGreaterThan(0.01); expect(PROFILES[k].swell).toBe(1); }
+  it('the engine is a quiet background presence while driving (a life simulation, not a racing game): the Jakarta no louder than a car, the dear cars deeper and smoother; the ignition and the other sounds keep their own levels', () => {
+    for (const k of ['sedan', 'luxury', 'suv'] as const) expect(PROFILES[k].drive).toBeGreaterThan(0.01);
+    expect(PROFILES.sedan.swell).toBe(1);
     expect(PROFILES.moto.swell).toBeLessThan(1);                                            // the Jakarta's level hardly follows the revs
+    expect(PROFILES.moto.drive * PROFILES.moto.level).toBeLessThanOrEqual(PROFILES.sedan.drive * PROFILES.sedan.level);   // quieter than it was (0.024): never over a car
+    for (const k of ['luxury', 'suv'] as const) {                                           // the Lamane Sport, the Gaïndé, the berline: lower notes, a softer top, a fifth gear
+      expect(PROFILES[k].idleRate[0]).toBeLessThan(PROFILES.sedan.idleRate[0]); expect(PROFILES[k].lpTop).toBeLessThan(PROFILES.sedan.lpTop); expect(PROFILES[k].gears).toBe(5);
+    }
     for (const p of Object.values(PROFILES)) expect(p.level).toBeGreaterThan(0.85);       // `level` also scales the ignition: it stays as approved
     expect(vehicleAudio.cabin).toBe(false);                                                // exterior views by default; the vehicle module sets it in a car's wheel view
   });
@@ -40,8 +45,9 @@ describe('contacts and brakes', () => {
   it('only a hard stop from speed squeals; coasting and a gentle brake do not', () => {
     expect(brakeIntensity(1.4, 12)).toBe(0);                // coasting
     expect(brakeIntensity(3, 12)).toBe(0);
+    expect(brakeIntensity(4.5, 12)).toBe(0);                // an ordinary firm stop: silent
     expect(brakeIntensity(6.5, 12)).toBeGreaterThan(0.3);
-    expect(brakeIntensity(9, 12)).toBe(1);
+    expect(brakeIntensity(10.5, 12)).toBe(1);
     expect(brakeIntensity(9, 2)).toBe(0);                   // too slow to squeal
   });
 });

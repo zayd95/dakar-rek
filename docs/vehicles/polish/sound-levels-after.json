@@ -1,0 +1,477 @@
+{
+ "base": "http://127.0.0.1:4517/",
+ "label": "after",
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "scenes": {
+  "jakarta": {
+   "traffic": null,
+   "end": {
+    "t": 23.217,
+    "x": -62.1,
+    "z": -3.27,
+    "yaw": 0,
+    "speed": 0,
+    "driving": true,
+    "mounting": false,
+    "box": false,
+    "parcel": null,
+    "pad": true,
+    "paddling": false,
+    "rBadge": false,
+    "clip": "Ride"
+   },
+   "sound": {
+    "recorded": 24.7,
+    "clock": 39.6,
+    "complete": false,
+    "soundClockRate": 0.999,
+    "measuredOn": "the sound clock"
+   },
+   "marks": [
+    [
+     "getting on / in",
+     0,
+     3.6019954648526076
+    ],
+    [
+     "idle",
+     19.2,
+     22.78167800453515
+    ],
+    [
+     "full throttle",
+     22.21,
+     25.782857142857143
+    ],
+    [
+     "cruise",
+     26.5,
+     30.072743764172337
+    ],
+    [
+     "hard brake",
+     31.85,
+     35.39011337868481
+    ],
+    [
+     "stopped, nothing near",
+     34.19,
+     37.73242630385487
+    ],
+    [
+     "end",
+     38.19,
+     41.74077097505669
+    ]
+   ],
+   "levels": [
+    {
+     "moment": "getting on / in",
+     "from": 1.19,
+     "to": 20.37,
+     "peakDb": -12,
+     "rmsDb": -36.2
+    },
+    {
+     "moment": "idle",
+     "from": 20.37,
+     "to": 23.37,
+     "peakDb": -28.9,
+     "rmsDb": -42.8
+    },
+    {
+     "moment": "full throttle",
+     "from": 23.37,
+     "to": 27.66,
+     "peakDb": -29.5,
+     "rmsDb": -42.6
+    },
+    {
+     "moment": "cruise",
+     "from": 27.66,
+     "to": 32.98
+    },
+    {
+     "moment": "hard brake",
+     "from": 32.98,
+     "to": 35.32
+    },
+    {
+     "moment": "stopped, nothing near",
+     "from": 35.32,
+     "to": 39.33
+    }
+   ],
+   "errors": []
+  },
+  "brake": {
+   "traffic": null,
+   "end": {
+    "t": 17.1,
+    "x": -62.1,
+    "z": 19.66,
+    "yaw": 0,
+    "speed": 0,
+    "driving": true,
+    "mounting": false,
+    "box": false,
+    "parcel": null,
+    "pad": true,
+    "paddling": false,
+    "rBadge": false,
+    "clip": null
+   },
+   "sound": {
+    "recorded": 31,
+    "clock": 31.8,
+    "complete": true,
+    "soundClockRate": 1,
+    "measuredOn": "the sound clock"
+   },
+   "marks": [
+    [
+     "getting on / in",
+     0,
+     3.480090702947846
+    ],
+    [
+     "idle",
+     9.06,
+     12.521360544217687
+    ],
+    [
+     "full throttle",
+     12.06,
+     15.53124716553288
+    ],
+    [
+     "cruise",
+     17.88,
+     21.35074829931973
+    ],
+    [
+     "hard brake",
+     23.71,
+     27.18185941043084
+    ],
+    [
+     "stopped, nothing near",
+     26.43,
+     29.901496598639454
+    ],
+    [
+     "end",
+     30.44,
+     33.91274376417233
+    ]
+   ],
+   "levels": [
+    {
+     "moment": "getting on / in",
+     "from": 0.94,
+     "to": 9.98,
+     "peakDb": -2.7,
+     "rmsDb": -25.1
+    },
+    {
+     "moment": "idle",
+     "from": 9.98,
+     "to": 12.99,
+     "peakDb": -27.1,
+     "rmsDb": -39.3
+    },
+    {
+     "moment": "full throttle",
+     "from": 12.99,
+     "to": 18.81,
+     "peakDb": -22.1,
+     "rmsDb": -35.9
+    },
+    {
+     "moment": "cruise",
+     "from": 18.81,
+     "to": 24.64,
+     "peakDb": -21.5,
+     "rmsDb": -35.9
+    },
+    {
+     "moment": "hard brake",
+     "from": 24.64,
+     "to": 27.36,
+     "peakDb": -17.5,
+     "rmsDb": -35.4
+    },
+    {
+     "moment": "stopped, nothing near",
+     "from": 27.36,
+     "to": 31.37,
+     "peakDb": -25.8,
+     "rmsDb": -39
+    }
+   ],
+   "errors": []
+  },
+  "prestige": {
+   "traffic": null,
+   "end": {
+    "t": 19.85,
+    "x": -62.1,
+    "z": 27.38,
+    "yaw": 0,
+    "speed": 0,
+    "driving": true,
+    "mounting": false,
+    "box": false,
+    "parcel": null,
+    "pad": true,
+    "paddling": false,
+    "rBadge": false,
+    "clip": null
+   },
+   "sound": {
+    "recorded": 28.5,
+    "clock": 29.8,
+    "complete": true,
+    "soundClockRate": 1,
+    "measuredOn": "the sound clock"
+   },
+   "marks": [
+    [
+     "getting on / in",
+     0,
+     5.691791383219955
+    ],
+    [
+     "idle",
+     8.05,
+     13.740408163265306
+    ],
+    [
+     "full throttle",
+     11.05,
+     16.741587301587302
+    ],
+    [
+     "cruise",
+     16.3,
+     21.99219954648526
+    ],
+    [
+     "hard brake",
+     22.16,
+     27.85233560090703
+    ],
+    [
+     "stopped, nothing near",
+     24.35,
+     30.032108843537415
+    ],
+    [
+     "end",
+     28.37,
+     34.06077097505669
+    ]
+   ],
+   "levels": [
+    {
+     "moment": "getting on / in",
+     "from": 1.19,
+     "to": 9.24,
+     "peakDb": -2.6,
+     "rmsDb": -27.7
+    },
+    {
+     "moment": "idle",
+     "from": 9.24,
+     "to": 12.24,
+     "peakDb": -24.9,
+     "rmsDb": -38.6
+    },
+    {
+     "moment": "full throttle",
+     "from": 12.24,
+     "to": 17.49,
+     "peakDb": -24.6,
+     "rmsDb": -37.3
+    },
+    {
+     "moment": "cruise",
+     "from": 17.49,
+     "to": 23.35,
+     "peakDb": -20.9,
+     "rmsDb": -37.1
+    },
+    {
+     "moment": "hard brake",
+     "from": 23.35,
+     "to": 25.53,
+     "peakDb": -27.3,
+     "rmsDb": -39.7
+    },
+    {
+     "moment": "stopped, nothing near",
+     "from": 25.53,
+     "to": 29.56,
+     "peakDb": -26.4,
+     "rmsDb": -40
+    }
+   ],
+   "errors": []
+  },
+  "radio": {
+   "hasRadio": true,
+   "station0": "hits",
+   "station1": "teranga",
+   "station2": "corniche",
+   "station3": null,
+   "radio": {
+    "station": null,
+    "volume": 0.7,
+    "playing": false,
+    "want": -1,
+    "ducks": 0,
+    "started": 3,
+    "ducked": 0,
+    "ticks": 107,
+    "level": 0.020999999999999998
+   },
+   "sound": {
+    "recorded": 52.4,
+    "clock": 53.1,
+    "complete": true,
+    "soundClockRate": 1,
+    "measuredOn": "the sound clock"
+   },
+   "marks": [
+    [
+     "getting on / in",
+     0,
+     3.5816780045351475
+    ],
+    [
+     "idle",
+     7.8,
+     11.380680272108844
+    ],
+    [
+     "radio: on",
+     10.81,
+     14.390566893424037
+    ],
+    [
+     "radio: next",
+     17.08,
+     20.662857142857142
+    ],
+    [
+     "radio: next",
+     23.28,
+     26.862585034013605
+    ],
+    [
+     "radio: next",
+     29.53,
+     33.111655328798186
+    ],
+    [
+     "pulling away with the radio on",
+     35.59,
+     39.172063492063494
+    ],
+    [
+     "horn over the radio",
+     43.6,
+     47.18004535147392
+    ],
+    [
+     "braking",
+     47.22,
+     50.80235827664399
+    ],
+    [
+     "radio: off",
+     49.16,
+     52.74122448979592
+    ],
+    [
+     "end",
+     51.67,
+     55.251882086167804
+    ]
+   ],
+   "levels": [
+    {
+     "moment": "getting on / in",
+     "from": 0.9,
+     "to": 8.7,
+     "peakDb": -2.4,
+     "rmsDb": -23.7
+    },
+    {
+     "moment": "idle",
+     "from": 8.7,
+     "to": 11.71,
+     "peakDb": -25.5,
+     "rmsDb": -39.1
+    },
+    {
+     "moment": "radio: on",
+     "from": 11.71,
+     "to": 17.98,
+     "peakDb": -22,
+     "rmsDb": -38
+    },
+    {
+     "moment": "radio: next",
+     "from": 17.98,
+     "to": 24.18,
+     "peakDb": -22.4,
+     "rmsDb": -38.4
+    },
+    {
+     "moment": "radio: next",
+     "from": 24.18,
+     "to": 30.43,
+     "peakDb": -21,
+     "rmsDb": -36.8
+    },
+    {
+     "moment": "radio: next",
+     "from": 30.43,
+     "to": 36.49,
+     "peakDb": -25.3,
+     "rmsDb": -39
+    },
+    {
+     "moment": "pulling away with the radio on",
+     "from": 36.49,
+     "to": 44.5,
+     "peakDb": -23,
+     "rmsDb": -35.8
+    },
+    {
+     "moment": "horn over the radio",
+     "from": 44.5,
+     "to": 48.12,
+     "peakDb": -21.9,
+     "rmsDb": -36.9
+    },
+    {
+     "moment": "braking",
+     "from": 48.12,
+     "to": 50.06,
+     "peakDb": -1.4,
+     "rmsDb": -16.8
+    },
+    {
+     "moment": "radio: off",
+     "from": 50.06,
+     "to": 52.57,
+     "peakDb": -10.1,
+     "rmsDb": -29
+    }
+   ],
+   "errors": []
+  }
+ }
+}

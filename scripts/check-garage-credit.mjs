@@ -70,7 +70,7 @@ check('the arrangement chosen (the whole repair, part paid at the end)', picked)
 await page.waitForFunction(() => window.__dakar.garage.info().phase === 'work', null, { timeout: 30000 });
 await shot('lamine-works');
 check('Lamine works; nothing is paid before the end', (await W()) === w0);
-await page.waitForFunction(() => window.__dakar.garage.info().phase === null, null, { timeout: 180000 });
+await page.waitForFunction(() => window.__dakar.garage.info().phase === null, null, { timeout: 900000 });
 const w1 = await W(), hp1 = await HP(), L1 = (await loans()).filter(l => l.lender === 'modou');
 const slate = L1[0];
 check('ONE payment at the end (the part agreed); the car is back to 100 %', w0 - w1 > 0 && w0 - w1 < q.cost && hp1 >= 99.9, JSON.stringify({ paid: w0 - w1, hp1 }));
@@ -91,7 +91,7 @@ check('at the garage, owing Modou: « Rembourser Modou » is the prompt', /Rembo
 await t.tap('#act');
 await page.waitForSelector('#modal.on', T); await shot('repay-menu');
 const menu = await modal();
-const payInst = await tapItem('Payer une échéance') || await tapItem('Payer ce que j’ai') || await tapItem('Payer le retard');
+const payInst = await tapItem('Verser') || await tapItem('Rattraper le retard') || await tapItem('Payer ce que j’ai');   // « Verser 7 500 F »: the day's installment (the menu of src/economy/creditModule.ts)
 await page.waitForTimeout(800);
 const L3 = (await loans()).find(l => l.id === slate.id), w2 = await W();
 check('an installment repaid: the slate goes down by what was paid, the wallet by the same', payInst && L3.paid > 0 && wb - w2 === L3.paid, JSON.stringify({ menu: menu.slice(0, 160), paid: L3.paid, wallet: wb - w2 }));

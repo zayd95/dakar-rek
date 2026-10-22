@@ -18,7 +18,7 @@ import { mountAudioDiag } from './audioDiag';
 import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
-import { driveStep, newDriveState, type DriveState } from './drive';
+import { driveStep, newDriveState, stopping, type DriveState } from './drive';
 import { DriveControls, forwardIntent, type DriveCmd } from './controls';
 import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
 import type { AssetState } from '../core/types';
@@ -26,7 +26,13 @@ import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
 import { migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, setPaintSeed, unpark, type VehicleAsset } from './owned';
-import { prestige, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
+import { prestige, roadTestAt, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
+import { SUPERVISED_S } from './trialRules';
+import { streak } from '../economy/streakModule';
+import { trafficPositions } from '../actors/npc';
+import { radio, STATIONS } from './radio';
+import { CockpitKit } from './cockpitKit';
+import { navigation } from '../game/navigation';
 import { seatClip, sitOriginY } from '../interact/seats';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
@@ -137,6 +143,8 @@ export interface DealerDef {
   sales?: PrestigeSales;
   /** The counter's prompt priority among the dealership's modules (one of them leads: −0.2; the default 4 stays behind). */
   counterBias?: number;
+  /** Not on the phone's list of dealers (a model no longer shown on the floor: still delivered when bought from the catalogue, still the owners' own). */
+  unlisted?: boolean;
 }
 
 const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
@@ -237,6 +245,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private ctl = new DriveControls();
   /** A free test drive from the dealer (« Essayer »): the vehicle on the road is the dealer's, not the player's. Never saved; it goes back when the player gets off. */
   private trial = false;
+  /**
+   * What the trial allows (src/transport/trialRules.ts): `road` false is « l'essai à l'arrêt » (sit, look, start the engine: the salesperson keeps the handbrake
+   * on); `supervised` a Prestige loop he calls back after SUPERVISED_S; `line` his words; `said*` whether the held car and the district's edge were explained.
+   */
+  private road = { ok: true, supervised: false, line: '', saidHeld: false, saidEdge: false, t: 0, called: false };
   /** The field of view is the wheel view's own (portrait): given back when the view ends. */
   private fovSet = false;
   /** The cars on a showroom's floor (a floor dealer), the interaction targets of their cards and the cards' textures. */
@@ -309,7 +322,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private sales(): PrestigeSales { return this.dd?.sales ?? prestige; }
   /** The dealerships as the phone's map lists them: one row for each (src/transport/dealers.ts). */
   directoryRows(state: GameCtx['state']) {
-    return [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d).map(D => ({ id: `${this.def.key}:dealer:${D.hub}`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) }));
+    return [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d && !d.unlisted).map(D => ({ id: `${this.def.key}:dealer:${D.hub}`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) }));
   }
   /** Name and price from the catalogue. */
   /** The dealer as the phone's map lists it, from any district (src/transport/dealers.ts). */
@@ -399,17 +412,32 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (ctx.player.seated()?.id !== m.driverSeat.id) { this.getOff(false); return; }   // taken off by a door, a trip…
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
     const moto = this.def.kit === 'moto';
-    ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1) });
+    ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1), ...(moto ? {} : { radio: () => this.radioNext() }) });
     // the stick: forward = throttle, left / right = steering, both at once on a diagonal. « Accélérer » (held) opens the boosted speed range, « Frein » brakes and, held at a standstill, backs a car up gently.
     const keys = ctx.input.keys, joy = ctx.mode() === 'play' ? ctx.input.joy : { x: 0, y: 0 }, pressed = (...c: string[]) => ctx.mode() === 'play' && c.some(k => keys.has(k));
     const cmd: DriveCmd = ridePad.active
       ? { fwd: forwardIntent(joy.x, joy.y), steer: mv.x, boost: ridePad.gas, brake: ridePad.brake || joy.y < -0.6 }
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
-    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
+    const input = this.leaving ? stopping() : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
     if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground
+    const held = this.trial && !this.road.ok;                                     // « essai à l'arrêt »: the engine runs, the car stays in its bay
+    const rev = held ? Math.max(cmd.fwd, cmd.boost ? 1 : 0) : 0;
+    if (held) {
+      if ((cmd.fwd > 0.3 || cmd.boost || cmd.brake) && !this.road.saidHeld) { this.road.saidHeld = true; ctx.toast(`Essai à l’arrêt : ${this.road.line}`); }
+      hold(input, 0);
+    } else if (this.trial && this.leavingDistrict()) {                          // a road test keeps to its district: slowed to a stop at its way out, and told why
+      if (input.throttle > 0 || ('target' in input && (input.target ?? 0) > 0)) hold(input, 0);
+      if (!this.road.saidEdge) { this.road.saidEdge = true; ctx.toast(`${this.sales().cfg.person === 'le vendeur' ? 'Le vendeur' : this.sales().cfg.person} : « L’essai reste dans le quartier. Fais demi-tour, s’il te plaît. »`); }
+    } else if (this.trial && this.leavingDistrict(12) && 'target' in input && (input.target ?? 0) > 5) input.target = 5;   // nearing it: slower, so the stop is gentle
+    else if (this.road.saidEdge && !this.nearDistrictEdge(10)) this.road.saidEdge = false;
+    if (this.trial && this.road.supervised && this.road.ok) {
+      this.road.t += dt;
+      if (!this.road.called && this.road.t > SUPERVISED_S) { this.road.called = true; ctx.toast('Le vendeur t’appelle : « Ramenez-la au garage maintenant, s’il vous plaît. »'); }
+    }
     ridePad.reversing = this.ctl.showR;
     transport.obstacles(this.obst, this.def.kit);
+    vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
     const z0 = this.st.z, hit = driveStep(this.st, input, drv, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
@@ -426,7 +454,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
     if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
     vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
-    if (vehicleAudio.running) vehicleAudio.update(dt, this.st.speed, drv.boostSpeed ?? drv.maxSpeed, input.throttle);
+    if (vehicleAudio.running) vehicleAudio.update(dt, this.st.speed, drv.boostSpeed ?? drv.maxSpeed, held ? rev : input.throttle);
+    // the car's radio (src/transport/radio.ts): scheduled while the player is at the wheel, under the engine when accelerating, lowered by the horn and the phone
+    if (!moto) radio.update(vehicleAudio.radioBus(), { throttle: held ? rev : Math.max(0, ('target' in input ? (input.target ?? 0) / (drv.boostSpeed ?? drv.maxSpeed) : input.throttle)), horn: vehicleAudio.honking, phone: ctx.mode() === 'menu' });
     ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
     if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
     this.fx.hard = Math.max(0, this.fx.hard - dt);
@@ -603,6 +633,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!fc?.vehicle || fc.state !== 'unlocked' || !this.sales().hasKeys(this, slot) || this.vehicle || ctx.activities.running) return;
     this.adoptFloor(fc);
     this.trial = true; this.trialSlot = slot; this.returned = false; this.parkedT = 0;
+    const rt = this.errand ? { ok: true, supervised: false, line: '' } : roadTestAt(this.sales().cfg, ctx, this.price());
+    this.road = { ok: rt.ok, supervised: rt.supervised, line: rt.line, saidHeld: false, saidEdge: false, t: 0, called: false };
+    if (rt.line) ctx.toast(`${this.sales().cfg.person === 'le vendeur' ? 'Le vendeur' : this.sales().cfg.person} : « ${rt.line} »`);
     this.parkedTarget.name = 'Voiture d’essai';
     this.sales().trialStarted(this);
     this.beginEntry();
@@ -710,7 +743,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   /** One contact, felt: the crash (or tap) sound, the shake and the lurch of the camera, the knock of the body, a buzz of the phone where it has one. */
   private onImpact(im: Impact, m: Vehicle) {
-    this.bumps++;
+    this.bumps++; if (!this.trial) streak.bump();                              // the job in hand's « sans accroc » (src/economy/streakModule.ts)
     vehicleAudio.impact(im.speed);                                               // a tap or a real impact, by the speed at contact
     const hit = im.kind === 'hit', side = Math.sign(this.st.steer) || 1;
     this.fx.shake = Math.max(this.fx.shake, hit ? 0.35 + 0.65 * im.strength : 0.12);
@@ -774,6 +807,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const cam = ctx.camera, base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
     if (Math.abs(cam.fov - want) > 0.01) { cam.fov = want; cam.updateProjectionMatrix(); }
     this.fovSet = want !== base;
+    this.cockpit(ctx, m, !!a.inside && this.def.kit !== 'moto', Math.max(dt, real));
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
     if (body) this.leanRider(body.group, m);
@@ -797,7 +831,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return {
       [this.def.key]: {
         info: () => ({ id: this.def.asset, drive: this.spec?.drive ? { maxSpeed: this.spec.drive.maxSpeed, boostSpeed: this.spec.drive.boostSpeed ?? null, turnRadius: this.spec.drive.turnRadius, grip: this.spec.drive.grip ?? null, accel: this.spec.drive.accel } : null, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, trial: this.trial, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
-          floor: this.floorCars().map(c => ({ slot: c.slot, state: c.state, x: c.x, z: c.z, stand: c.stand, step: c.step, colour: c.colour, here: !!this.floor[c.slot]?.vehicle })), entry: !!this.entry, exit: !!this.exit, door: +this.doorK.toFixed(2), trialSlot: this.trialSlot, returned: this.returned, seed: this.seed, paint: paintSeed(ctx.state.data, this.def.asset), cockpit: !!this.vehicle?.hasDoor,
+          floor: this.floorCars().map(c => ({ slot: c.slot, state: c.state, x: c.x, z: c.z, stand: c.stand, step: c.step, colour: c.colour, here: !!this.floor[c.slot]?.vehicle })), entry: !!this.entry, exit: !!this.exit, door: +this.doorK.toFixed(2), road: { ...this.road }, trialSlot: this.trialSlot, returned: this.returned, seed: this.seed, paint: paintSeed(ctx.state.data, this.def.asset), cockpit: !!this.vehicle?.hasDoor,
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
@@ -805,6 +839,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
+        radio: () => radio.info(),
+        radioNext: () => this.radioNext(),
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
         lab: () => ({ va: vehicleAudio, PROFILES, HORNS }),                                // the audio review's recordings (scripts/audio/render-clips.mjs)
@@ -817,6 +853,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         hurt: (speed: number, headOn = true) => this.hurt({ kind: 'hit', speed, strength: Math.min(1, speed / 12), headOn, dir: 1 }),
         own: () => this.buy(),
         boost: (v: number) => { if (this.driving) this.st.speed = v; },
+        /** Checks: what would stop this vehicle at (x, z) with radius r (the drive's own test, footprints of the other systems refreshed). */
+        solidAt: (x: number, z: number, r = 1) => { transport.obstacles(this.obst, this.def.kit); const why = this.solidAt(x, z, r); const i = why?.startsWith('footprint:') ? +why.slice(10) : -1, k = why?.startsWith('collider:') ? +why.slice(9) : -1; return why === null ? null : { why, foot: i >= 0 ? this.obst[i] : null, rect: k >= 0 ? this.hub?.colliders[k] ?? null : null }; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */
         place: (x: number, z: number, yaw: number) => { if (!this.vehicle) return; this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0; this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0); if (!this.driving) this.setSolid(true); },
       },
@@ -974,6 +1012,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!this.dealer || !this.hub || this.vehicle || ownsVehicle(ctx.state, this.def.asset)) return;
     const d = this.dealer.site.delivery;
     this.trial = true;
+    this.road = { ok: true, supervised: false, line: '', saidHeld: false, saidEdge: false, t: 0, called: false };   // a kerb test ride (the Jakarta at Modou's) is a ride, never a floor trial's held car
     this.parkedTarget.name = 'Véhicule d’essai';
     this.spawn(d.x, d.z, d.yaw);
     ctx.toast('Essai gratuit : monte et roule. Le vendeur le reprend quand tu descends.');
@@ -1072,6 +1111,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (dead) { vehicleAudio.crank(prof); ctx.toast(canMakeshift(this.hp()) ? 'Ça ne démarre pas. Descends : une réparation de fortune devant le capot, ou le Garage Modou.' : 'Ça ne démarre pas.'); }
     else vehicleAudio.run(prof, catches);
     this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
+    if (this.def.kit !== 'moto' && !dead && radio.remembered >= 0) radio.set(vehicleAudio.radioBus(), radio.remembered);   // the radio comes back on where it was left (it starts after the engine)
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
   }
@@ -1115,7 +1155,26 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   /** Off the vehicle, beside it; it stays parked there. `normal`: the player chose to get off. A car with a door steps out through it (stepExit). */
+  /** The cockpit at the wheel (src/transport/cockpitKit.ts): built the first time, framed in the camera's view every frame, hidden outside the « Au volant » view. */
+  private kit: CockpitKit | null = null;
+  private cockpit(ctx: GameCtx, m: Vehicle, on: boolean, dt: number) {
+    if (!on) { if (this.kit) this.kit.group.visible = false; return; }
+    if (!this.kit) { this.kit = new CockpitKit(this.def.kit === 'sedan' ? 'city' : 'premium'); ctx.extra.add(this.kit.group); }
+    const old = m.group.getObjectByName('cockpit_wheel'); if (old) old.visible = false;          // the older shared cockpit's own wheel: the kit's turns instead
+    const k = this.kit, h = ctx.hour();
+    if (!k.group.parent) ctx.extra.add(k.group);                                                  // a district crossed at the wheel: the new one's layer
+    k.group.visible = true; k.place(ctx.camera as THREE.PerspectiveCamera);
+    const st = radio.info().station, name = st ? STATIONS.find(x => x.id === st)?.name ?? null : null;
+    k.update({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, steer: this.st.steer, nav: navigation.current(), radio: name, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` }, dt);
+  }
+  /** « 📻 »: the next station (off → Sénégal Hits → Radio Téranga → Corniche FM → off), said in one line. */
+  private radioNext() {
+    const st = radio.next(vehicleAudio.radioBus());
+    this.ctx.toast(st ? `📻 ${st.name} · ${st.freq}` : '📻 Radio éteinte');
+    document.querySelector('#ridepad .rp-radio')?.classList.toggle('on', !!st);
+  }
   private getOff(normal: boolean) {
+    if (this.def.kit !== 'moto') { radio.leave(); document.querySelector('#ridepad .rp-radio')?.classList.remove('on'); }   // never in the street
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
     this.driving = false; this.leaving = false; ridePad.hide(this);
     vehicleAudio.stop();
@@ -1160,29 +1219,50 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return { x: this.st.x - Math.sin(yaw) * back, z: this.st.z - Math.cos(yaw) * back };
   }
 
+  /** How much traffic is around, 0…1: the vehicles of the street, of the road between districts and the car rapides within 45 m (four or more: 1). */
+  private trafficAround() {
+    const x = this.st.x, z = this.st.z, R2 = 45 * 45; let n = 0;
+    for (const o of this.obst) if (o.hl < 6 && o.hw < 2 && (o.x - x) ** 2 + (o.z - z) ** 2 < R2) n++;
+    for (const c of trafficPositions()) if ((c.x - x) ** 2 + (c.z - z) ** 2 < R2) n++;
+    return Math.min(1, n / 4);
+  }
+  /** Within `m` metres of the district's outer streets' far side (a way out: a corridor's mouth, a border street's line). */
+  private nearDistrictEdge(m: number) {
+    const R = roadCentre(GRID.nb) + 3.5, x = this.st.x, z = this.st.z;
+    return Math.abs(x) > R - m || Math.abs(z) > R - m;
+  }
+  /** Beyond the outer lane of the district's perimeter street and heading out of the district: a road test turns back there. */
+  private leavingDistrict(before = 0) {
+    const R = roadCentre(GRID.nb) + 3.5 - before, x = this.st.x, z = this.st.z, v = this.st.speed, vx = Math.sin(this.st.yaw) * v, vz = Math.cos(this.st.yaw) * v;
+    return (x > R && vx > 0.3) || (x < -R && vx < -0.3) || (z > R && vz > 0.3) || (z < -R && vz < -0.3);
+  }
   /** Solid things for the vehicle: walls and parked vehicles (colliders), stairs and terraces, the hub's edge, the car rapides. */
-  private blocked = (x: number, z: number, r: number): boolean => {
-    const w = this.hub; if (!w) return false;
+  private blocked = (x: number, z: number, r: number): boolean => this.solidAt(x, z, r) !== null;
+  /** What stops the vehicle at (x, z): the district's edge, a collider (its index), raised ground, another system's footprint (its index); null: nothing. */
+  private solidAt(x: number, z: number, r: number): string | null {
+    const w = this.hub; if (!w) return null;
     const b = w.bounds;
     if (x < b.x0 + r || x > b.x1 - r || z < b.z0 + r || z > b.z1 - r) {                    // the district's edge: a wall, except where a road leaves it (src/road)
-      if (this.trial || !w.corridors?.some(c => c.contains(x, z, r))) return true;          // a dealer's test drive stays in its district
+      if (this.trial || !w.corridors?.some(c => c.contains(x, z, r))) return 'edge';        // a dealer's test drive stays in its district
     }
-    for (const c of w.colliders) if (x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r) return true;
-    if (w.heightAt(x, z) > 0.3) return true;
-    for (const o of this.obst) {
-      const dx = x - o.x, dz = z - o.z, c = Math.cos(o.yaw), s = Math.sin(o.yaw);
+    const cs = w.colliders;
+    for (let i = 0; i < cs.length; i++) { const c = cs[i]; if (x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r) return `collider:${i}`; }
+    if (w.heightAt(x, z) > 0.3) return 'ground';
+    for (let i = 0; i < this.obst.length; i++) {
+      const o = this.obst[i], dx = x - o.x, dz = z - o.z, c = Math.cos(o.yaw), s = Math.sin(o.yaw);
       const lx = dx * c - dz * s, lz = dx * s + dz * c;
-      if (Math.abs(lx) < o.hw + r && Math.abs(lz) < o.hl + r) return true;
+      if (Math.abs(lx) < o.hw + r && Math.abs(lz) < o.hl + r) return `footprint:${i}`;
     }
-    return false;
-  };
+    return null;
+  }
 
   private refreshCard() {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
     const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
     const hp = this.hp(), tag = healthTag(hp);
-    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : HINT, req: healthAlert(hp) });
+    const trialSub = !this.trial || this.errand ? null : !this.road.ok ? 'Essai à l’arrêt · frein à main du vendeur' : this.road.supervised ? (this.road.called ? 'Essai encadré · ramène-la au garage' : 'Essai encadré · un tour dans le quartier') : 'Essai sur route · reste dans le quartier';
+    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : trialSub ?? HINT, req: healthAlert(hp) });
   }
 
   private upright() {
@@ -1198,6 +1278,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
     this.salesReg?.unregister(this); this.salesReg = null;
+    if (!ride) { this.kit?.dispose(); this.kit = null; }
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
@@ -1318,4 +1399,9 @@ function signTexture(o: NonNullable<OwnedDef['dealer']>['sign']): THREE.CanvasTe
   c.font = '900 40px system-ui, sans-serif'; c.fillText(o.title, 192, 48, 360);
   c.fillStyle = o.subColor; c.font = '800 22px system-ui, sans-serif'; c.fillText(o.sub, 192, 111, 360);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/** Drive input that brings the vehicle to a stop (analog target 0, braking) and keeps it there: a held trial car, a road test at its district's edge. */
+function hold(input: { throttle: number; target?: number; braking?: boolean }, target: number) {
+  input.throttle = 0; if ('target' in input) input.target = target; input.braking = true;
 }

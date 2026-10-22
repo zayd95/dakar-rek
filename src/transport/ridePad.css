@@ -22,3 +22,7 @@ body.klaxon #ridepad .rp-horn { display: block; }
 #ridepad.reversing .rp-r { display: block; }
 /* the pad takes the place of the action button while driving (the only action is getting off, which the pad holds) */
 body.ridepad #ui > #actbar { display: none; }
+/* the car's radio (src/transport/radio.ts): a small round button by « Vue », in a car only */
+#ridepad .rp-radio { display: none; width: 46px; height: 46px; padding: 0; background: rgba(17, 24, 39, .72); font-size: 20px; }
+body.ridepad-radio #ridepad .rp-radio { display: block; }
+#ridepad .rp-radio.on { box-shadow: 0 3px 12px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(251, 191, 36, .9); }

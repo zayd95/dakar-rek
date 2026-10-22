@@ -1,0 +1,53 @@
+{
+ "journey": "D",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 16.4,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "every Corniche → Plateau ride the city asks for, 6 h to 22 h (17), is between 3 500 and 5 000 F",
+   "ok": true,
+   "detail": "[4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000,4000]"
+  },
+  {
+   "name": "rides inside the Corniche (17) stay between 1 000 F (a short hop) and 3 500 F (across the district)",
+   "ok": true,
+   "detail": "[1000,1000,1000,1500,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1500,1000,1000]"
+  },
+  {
+   "name": "the fare is on the offer before it is taken",
+   "ok": true,
+   "detail": "🛣️ Café Touba · Fann → Gargote Chez Fatou Babacar · Corniche → Plateau · ≈ 2,0 km 4 000 F"
+  },
+  {
+   "name": "taken: the fare is fixed at the offer's, with no multiplier",
+   "ok": true,
+   "detail": "{\"trip\":4000,\"offer\":4000}"
+  },
+  {
+   "name": "the passenger aboard, the directions lead out of the Corniche toward the Plateau",
+   "ok": true,
+   "detail": "{\"text\":\"À droite dans 10 m · Gargote Chez Fatou · dépose\",\"local\":{\"x\":127,\"z\":60,\"name\":\"Route vers Plateau\"},\"dist\":\"2,2 km\"}"
+  },
+  {
+   "name": "on the road between districts: « Tout droit » and the kilometres left",
+   "ok": true,
+   "detail": "[\"↶ Fais demi-tour · Gargote Chez Fatou · dépose 2,0 km\",\"↶ Fais demi-tour · Gargote Chez Fatou · dépose 2,0 km\",\"↑ Tout droit sur la route · Gargote Chez Fatou · dépose 1,9 km\"]"
+  },
+  {
+   "name": "dropped off in the Plateau: 4000 F paid once (one wallet line), never above 5 000 F",
+   "ok": true,
+   "detail": "{\"paid\":4000,\"lines\":1}"
+  },
+  {
+   "name": "the card: the ride, the fare, the real time and distance (kilometres)",
+   "ok": true,
+   "detail": "🚗 Course terminée · Babacar Café Touba · Fann (Corniche) → Gargote Chez Fatou (Plateau) Payé 4 000 F +4 000 F Durée 4 min 42 s Distance 2,3 km Série 1 jour actif Premier jour actif ENSUITE À l’heure. ✕"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

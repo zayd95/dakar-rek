@@ -46,13 +46,16 @@ car, nothing saved; buying after a drive buys that car where it stands.
   Paid on time: +2; a missed due date: −6; a debt repaid in full: +6.
 * **Credit is his decision** (pure rules, unit-tested): a stranger is refused; from trust 20 he accepts with a large down payment and a short schedule, and the terms soften with trust:
 
-  | Trust | Down payment (Teranga) | Instalments | Each (every 2 city days) |
-  |---|---|---|---|
-  | < 20 | refused | — | — |
-  | 20 | 1 200 000 F | 20 | 140 000 F |
-  | 30 | 600 000 F | 30 | 113 500 F |
-  | 45 | 200 000 F | 36 | 106 000 F |
-  | 60 | 15 000 F | 40 | 100 000 F |
+  | Trust | Down payment (Teranga) |
+  |---|---|
+  | < 20 | refused |
+  | 20 | 1 200 000 F |
+  | 30 | 600 000 F |
+  | 45 | 200 000 F |
+  | 60 | 15 000 F |
+
+  The rest (since the polish pass, docs/vehicles/POLISH.md § 2): **10 000 F per day of play** (the player's days: time away never makes it late), more whenever they like, and
+  **30 % of each VTC fare** while the credit runs (turned off in « Crédits »); two instalments behind is « à rattraper », not yet late.
 
   Not enough for the down payment: he **counters** (same terms, signing waits). One credit at a time, city cars only (≤ 6 000 000 F), refused after letting him down, or with Modou's slate in arrears.
 * **The same car**: signing hands over the Teranga that stands on his kerb (`buyInPlace`): same place, same paint, one copy, nothing delivered.
@@ -68,7 +71,7 @@ Almadies → Plateau by the Corniche), one to a neighbour, one inside the distri
 walks to the car and sits in its right rear seat** (the seat registry: they ride in it). Drive on — across districts on the roads; the passenger crosses with the car (rebuilt with it, never a
 copy) and survives a reload. At the destination kerb they get out and walk off; the fare is paid **once** (the ride id is remembered: a reload never pays twice). Cancel: nothing paid.
 
-Placeholder fares (`ECONOMY.vtc`): 2 500 F base + 9 F/m + 2 500 F per district boundary, by 500 F. Examples: inside Pikine ≈ 3 500 F; Pikine → Plateau ≈ 18 000 F; Plateau → Almadies ≈ 28 000 F.
+Fares (`ECONOMY.vtc`, since the polish pass: docs/vehicles/POLISH.md § 2) follow the road distance in Dakar's bands: 1 000 – 3 500 F inside a district, 3 500 – 4 500 F to the next one, 5 000 F at most; shown before the ride is taken, paid once, no multiplier.
 
 **Player-to-player rides: not implemented.** The multiplayer layer syncs presence, greetings, emotes and sitting together; it does not sync a driven vehicle's seats. Faking it (a ghost
 passenger) was ruled out by the brief; doing it for real needs vehicle-seat replication in the server protocol, a separate change.

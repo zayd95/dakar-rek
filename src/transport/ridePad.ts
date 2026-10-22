@@ -13,9 +13,11 @@ export interface PadOptions {
   car?: boolean;
   /** « Vue »: next camera. */
   view?: () => void;
+  /** « 📻 »: the car's radio, next station (a car only). */
+  radio?: () => void;
 }
-let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement;
-let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null, onHorn: ((on: boolean) => void) | null = null;
+let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement, radioB: HTMLButtonElement;
+let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null, onHorn: ((on: boolean) => void) | null = null, onRadio: (() => void) | null = null;
 /** What the pad's own buttons count (the on-device diagnostics: whether a thumb's touch reached the Klaxon button at all). */
 const seen = { hornDown: 0, hornUp: 0, hornCancel: 0 };
 export const ridePad = {
@@ -38,7 +40,7 @@ export const ridePad = {
     const row = (cls: string) => { const r = document.createElement('div'); r.className = cls; root!.appendChild(r); return r; };
     const top = row('rp-top'), pedals = row('rp-pedals');
     const mk = (into: HTMLElement, cls: string, label: string) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; into.appendChild(b); return b; };
-    offB = mk(top, 'rp-off', 'Descendre'); hornB = mk(top, 'rp-horn', 'Klaxon'); viewB = mk(top, 'rp-view', 'Vue');
+    offB = mk(top, 'rp-off', 'Descendre'); hornB = mk(top, 'rp-horn', 'Klaxon'); radioB = mk(top, 'rp-radio', '📻'); radioB.setAttribute('aria-label', 'Radio : station suivante'); viewB = mk(top, 'rp-view', 'Vue');
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
     const rb = document.createElement('div'); rb.className = 'rp-r'; rb.textContent = 'R'; rb.setAttribute('aria-hidden', 'true'); pedals.insertBefore(rb, brakeB);   // shown only while the vehicle really reverses
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void, count?: (what: 'down' | 'up' | 'cancel') => void) => {
@@ -67,13 +69,15 @@ export const ridePad = {
     };
     tap(offB, () => onDescend?.());
     tap(viewB, () => onView?.());
+    tap(radioB, () => onRadio?.());
     parent.appendChild(root);
   },
   /** The driven vehicle shows the pad on touch screens; `stopped` shows « Descendre » (and the reverse gear of a car). */
   show(by: Owner, stopped: boolean, descend: () => void, o: PadOptions = {}) {
     if (!root || !document.body.classList.contains('touch')) return;
-    owner = by; onDescend = descend; onView = o.view ?? null;
+    owner = by; onDescend = descend; onView = o.view ?? null; onRadio = o.radio ?? null;
     document.body.classList.add('ridepad');
+    document.body.classList.toggle('ridepad-radio', !!o.radio);
     document.body.classList.toggle('ridepad-car', !!o.car);
     root.classList.toggle('stopped', stopped);
   },
@@ -81,8 +85,8 @@ export const ridePad = {
   hide(by: Owner) {
     if (owner !== by) return;
     if (this.horn) onHorn?.(false);
-    owner = null; onDescend = null; onView = null; onHorn = null; this.gas = false; this.brake = false; this.horn = false;
-    document.body.classList.remove('ridepad', 'ridepad-car'); root?.classList.remove('stopped', 'reversing');
+    owner = null; onDescend = null; onView = null; onHorn = null; onRadio = null; this.gas = false; this.brake = false; this.horn = false;
+    document.body.classList.remove('ridepad', 'ridepad-car', 'ridepad-radio'); root?.classList.remove('stopped', 'reversing');
     gasB?.classList.remove('down'); brakeB?.classList.remove('down'); hornB?.classList.remove('down');
   },
 };

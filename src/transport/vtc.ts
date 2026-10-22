@@ -12,7 +12,10 @@ import { practise } from '../economy/polyvalence';
 import { addMissionGuide } from '../game/missionGuide';
 import { callTexture } from './vehicle';
 import { CARS } from './fleet';
-import { atStop, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { streak } from '../economy/streakModule';
+import { creditClock } from '../economy/creditModule';
+import { fareShare, openLoans } from '../economy/credit';
 
 /**
  * « Courses VTC » (inspired by the ride apps of Dakar; no real service, no real money): the phone lists rides asked for in this district; one accepted,
@@ -198,10 +201,17 @@ class Vtc implements GameModule {
       st.trips += 1; st.earned += t.fare; this.log.paid++; practise(this.ctx.state, 'service');
     }
     st.active = null; this.log.events.push(`paid:${t.id}:${t.fare}`);
-    this.speak(`${say('Jërëjëf')} !`);
-    this.ctx.toast(`${t.passenger.name} descend : « ${say('Jërëjëf')}, bonne route ! » +${fcfa(t.fare)} · ★★★★★`);
+    this.speak(`${say('Jërëjëf')}, bonne route !`);
+    // the card says what was done (paid above, once): no stars, one line from what happened (late against the time the ride should take, bumps)
+    // while Pape Sarr's car credit runs, his share of the fare goes to him (src/economy/credit.ts fareShare: shown on the card, turned off in « Crédits »)
+    const loan = openLoans(this.ctx.state.data.loans.list, 'sarr').find(l => l.kind === 'vehicle'), share = arrived ? fareShare(loan, t.fare) : 0;
+    const extra = loan && share > 0 && this.ctx.state.canAfford(share) ? [{ k: 'Pape Sarr', v: `${fcfa(share)} remboursés`, d: `−${fcfa(share)}`, tone: 'down', note: `reste ${fcfa(loan.principal - loan.paid - share)} sur la Teranga` }] : [];
+    streak.done(`vtc:${t.id}`, { kind: 'vtc', title: `Course terminée · ${t.passenger.name}`, from: `${t.pickup.name} (${hubShort(t.from)})`, to: `${t.dropoff.name} (${hubShort(t.to)})`, paid: t.fare, late: this.lateRide(t) }, extra);
+    if (loan && extra.length) creditClock.pay(this.ctx, loan, share, true);
     this.ctx.save();
   }
+  /** Longer than the ride should have taken (src/transport/vtcRules.ts rideLimitMs), counted from its acceptance. */
+  private lateRide(t: VtcTrip) { return this.ctx.state.data.playedMs - t.acceptedMs > rideLimitMs(t); }
   private clearPerson() {
     if (this.h) { this.h.group.removeFromParent(); this.h.dispose(); this.h = null; }
     if (this.bubble) this.bubble.visible = false;

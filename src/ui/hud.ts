@@ -324,8 +324,26 @@ export class Hud {
   }
 
   // ---------------------------------------------------------------- hints, scene, toasts, progress
+  /**
+   * Driving directions (src/game/navigation.ts): while set, the goal line is the next turn (its glyph, unturned), the goal's name and the distance left by
+   * road; the walking compass and the goal text wait underneath and come back when it is cleared.
+   */
+  setNav(n: { glyph: string; text: string; dist: string } | null) {
+    const key = n ? `${n.glyph}|${n.text}|${n.dist}` : '';
+    if (key === this.navKey) return; this.navKey = key;
+    const g = this.el.goal, gi = g.querySelector('.gi') as HTMLElement, gt = g.querySelector('.gt') as HTMLElement, gd = g.querySelector('.gd') as HTMLElement;
+    this.navOn = !!n;
+    g.classList.toggle('nav', !!n);
+    if (n) { g.classList.add('on'); gi.style.transform = ''; gi.textContent = n.glyph; gt.textContent = n.text; gd.textContent = n.dist; return; }
+    // back to the goal line and the compass as they stand
+    this.guideOn = false; this.guideDeg = NaN; this.guideDist = -1; gi.textContent = '➜';
+    const text = this.goalText; this.goalKey = '\u0001'; this.setGoal(text);
+  }
+  private navOn = false; private navKey = ''; private goalText: string | null = null;
   /** One suggested next step at most (nothing is compulsory). A leading direction arrow becomes the compass badge. */
   setGoal(text: string | null) {
+    this.goalText = text;
+    if (this.navOn) return;
     const key = text ?? '';
     if (key === this.goalKey) return; this.goalKey = key;
     const g = this.el.goal;
@@ -346,6 +364,7 @@ export class Hud {
    * ahead, clockwise) and its distance in metres; null when there is no place to walk to. Called every frame.
    */
   setGuide(dir: { angle: number; dist: number } | null) {
+    if (this.navOn) return;
     const g = this.el.goal, gi = g.querySelector('.gi') as HTMLElement;
     if (!dir) {
       if (this.guideOn) { this.guideOn = false; gi.style.transform = ''; gi.textContent = '➜'; this.goalKey = '\u0000'; this.guideDist = -1; this.paintGuideDistance(); }

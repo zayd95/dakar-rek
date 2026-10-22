@@ -45,18 +45,31 @@ describe('the schedule (dueBy, standing, repay, settle)', () => {
     expect(dueBy(l, 10_000)).toBe(l.principal);
     const st = standing(l, 11); expect(st.late).toBe(0); expect(st.next).toBe(99_000); expect(st.nextDay).toBe(12);
   });
-  it('an installment that falls due today is today\'s, not late; the day after, it is late', () => {
+  it('an installment that falls due today is today\'s; the day after it is behind (to catch up), and late only beyond the lender\'s grace', () => {
     const l = loan();
-    const today = standing(l, 12); expect(today.late).toBe(0); expect(today.next).toBe(99_000); expect(today.nextDay).toBe(12);
-    const after = standing(l, 13); expect(after.late).toBe(99_000); expect(after.nextDay).toBe(14);
+    const today = standing(l, 12); expect(today.late).toBe(0); expect(today.behind).toBe(0); expect(today.next).toBe(99_000); expect(today.nextDay).toBe(12);
+    const after = standing(l, 13); expect(after.behind).toBe(99_000); expect(after.late).toBe(0); expect(after.nextDay).toBe(14);
+    expect(standing(l, 17)).toMatchObject({ behind: 297_000, late: 297_000 - C.dealer.grace * 99_000 });
     repay(l, 99_000, 12); const paid = standing(l, 12); expect(paid.late).toBe(0); expect(paid.nextDay).toBe(14); expect(paid.next).toBe(99_000);
+    expect(paid).toMatchObject({ paid: 99_000, pct: 2 });
   });
-  it('a due date is missed only once its day is over unpaid, counted once however often it is looked at; paying on the day misses nothing', () => {
+  it('a due date is missed only once its day is over with more behind than the grace, counted once however often it is looked at', () => {
     const l = loan();
-    expect(settle(l, 11)).toBe(0); expect(settle(l, 12)).toBe(0);                     // the due day itself: still time to pay
-    expect(settle(l, 13)).toBe(1); expect(settle(l, 13)).toBe(0); expect(l.missed).toBe(1);
-    const ok = loan(); repay(ok, 99_000, 12); expect(settle(ok, 13)).toBe(0); expect(ok.missed).toBe(0);
-    const far = loan(); expect(settle(far, 17)).toBe(3); expect(far.missed).toBe(3);
+    expect(settle(l, 11)).toBe(0); expect(settle(l, 12)).toBe(0); expect(settle(l, 13)).toBe(0);   // one installment behind: a slow day, not a broken promise
+    expect(settle(l, 17)).toBe(1); expect(settle(l, 17)).toBe(0); expect(l.missed).toBe(1);        // the third one behind: missed, once
+    const ok = loan(); repay(ok, 99_000, 12); expect(settle(ok, 17)).toBe(0); expect(ok.missed).toBe(0);
+  });
+  it('Pape Sarr\'s terms: a small payment every one of the player\'s days, whatever the trust (trust lowers the down payment)', () => {
+    for (const t of [20, 30, 45, 60]) { const o = dealerOffer({ trust: t, price: TERANGA, wallet: 1e9, loans: [] }); expect(o.installment).toBe(C.dealer.installment); expect(o.every).toBe(1); }
+  });
+  it('a debt from before the player\'s days moves onto them as it stands: nothing repaid is lost, no date is missed for the nights away', async () => {
+    const { onPlayClock, fareShare } = await import('../src/economy/credit');
+    const old = loan({ paid: 297_000, openedDay: 900, checkedDay: 905, missed: 1 });
+    expect(onPlayClock(old, 14)).toBe(true); expect(onPlayClock(old, 14)).toBe(false);
+    expect(old).toMatchObject({ clock: 'play', installment: C.dealer.installment, every: 1, paid: 297_000, missed: 1, checkedDay: 14, share: true });
+    expect(standing(old, 14).behind).toBe(0); expect(settle(old, 30)).toBeGreaterThan(0);          // from now on, the player's days count
+    expect(fareShare(old, 3500)).toBe(1050); expect(fareShare({ ...old, share: false }, 3500)).toBe(0); expect(fareShare(loan({ paid: 3_949_500 }), 5000)).toBe(500);
+    expect(fareShare(old, 1000)).toBe(300); expect(fareShare(old, 1500)).toBe(450); expect(fareShare(old, 4000)).toBe(1200);   // every ride pays its 30 %, the short ones too
   });
   it('repays no more than what is left and closes the debt when it is all repaid', () => {
     const l = loan({ principal: 100_000, installment: 50_000 });

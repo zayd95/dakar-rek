@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, walkTo, boardVehicle, STICK } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route, kerbOf } from './lib/gridRoute.mjs';
+import { route, kerbOf, closedZones } from './lib/gridRoute.mjs';
 import { startSound, stopSound, sync, mux } from './lib/avRecord.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-c'] = process.argv.slice(2);
@@ -109,13 +109,16 @@ check('at Boutique Diallo, on foot at the counter: the parcel is picked up', (aw
 await boardVehicle(page, t, 'moto');
 check('… back on the Jakarta with the parcel in hand (one delivery, nothing paid yet)', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await AT()).driving, JSON.stringify(await d(() => window.__dakar.activeJob())));
 a = await AT();
-await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7 }), { cruise: 7, stall: 60000, ms: 1500000 });
+// to the way out, never through the arena's pedestrian street (on a fight evening its bollards and the queue's barriers stop the bike there, as a driver's directions know)
+const avoid = await closedZones(page);
+await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid }), { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
 await driveRoad(page, t, 'moto', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
 await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, { timeout: 240000 }).catch(() => {});
 check('in the Plateau on the Jakarta with the parcel (one delivery in hand, nothing paid yet)', (await d(() => window.__dakar.pos().hub)) === 'plateau' && (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await d(() => window.__dakar.state.wallet)) === wallet0);
 await shot('plateau');
 const pl = (await d(() => window.__dakar.cityPlaces())).find(p => p.id.startsWith('plateau:') && p.id.includes(':city:boutique'));
+await page.waitForFunction(() => !!window.__dakar.moto.at(), null, { timeout: 60000 });   // the bike is handed over to the new district a moment after the crossing
 a = await AT(); const K2 = kerbOf(pl);
 const r2 = route({ x: a.x, z: a.z, yaw: a.yaw }, K2, { cruise: 6 });
 if (r2) await pilot(page, t, 'moto', r2, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });

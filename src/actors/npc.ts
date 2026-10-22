@@ -88,6 +88,8 @@ export class Crowd {
  */
 export type Closure = (ax: number, az: number, bx: number, bz: number) => boolean;
 export const trafficClosures: { closed: Closure | null; more: Set<Closure> } = { closed: null, more: new Set() };
+/** Every closure in force now (the driver's way, src/game/navRules.ts `openEdges`, keeps off them too). */
+export const closuresNow = (): Closure[] => [trafficClosures.closed, ...trafficClosures.more].filter((f): f is Closure => !!f);
 /** The arena's closure and the road events' (src/city/roadEvents.ts) together, or null when the roads are all open. */
 function closures(): Closure | null {
   const a = trafficClosures.closed, more = trafficClosures.more;

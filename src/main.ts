@@ -6,7 +6,7 @@ import { fovFor } from './core/view';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
-import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
+import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras } from './core/save';
 import { readTestParams } from './core/testParams';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
@@ -26,6 +26,7 @@ import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadGlbVehicles } from './actors/glbVehicle';
 import { missionTarget } from './game/missionGuide';
+import { navigation } from './game/navigation';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -94,6 +95,9 @@ import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride, type RunLevel } from './game/stride';
 import { StrideUi } from './ui/stride';
+import { noteWork } from './economy/streakModule';
+/** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
+const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -165,6 +169,8 @@ window.visualViewport?.addEventListener('resize', queueResize);
 const input = new Input(canvas);
 const hud = new Hud(document.getElementById('ui')!, input);
 const saved = loadSave(store);
+/** A save written by an older client lost the debts, the rides' record, the player's days or the streak: they were taken back from the extras backup (said once, below). */
+const restored = [...restoredExtras];
 const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
 if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money - state.wallet, 'Test');
@@ -576,7 +582,8 @@ const activities = new ActivityRunner({
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
   // polyvalence: the category of each activity is practised, and work pay is scaled by the variety (src/economy)
-  category: c => economy.practiseCategory(c), pay: (m, c) => economy.scalePay(m, c), payPreview: (m, c) => economy.previewPay(m, c),
+  // a paid piece of work (a shift, a service, a sale…) is also a day worked (src/economy/streakModule.ts); leisure, prayer and travel are not
+  category: c => economy.practiseCategory(c), pay: (m, c) => { const v = economy.scalePay(m, c); if (v > 0 && c && WORK_CATEGORIES.has(c)) noteWork('job'); return v; }, payPreview: (m, c) => economy.previewPay(m, c),
   gesture: (g, label, done) => gestures.play(g, label, done),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
@@ -1270,6 +1277,7 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
   { const m = destination ? null : missionTarget(); if (m && m.hub === world.id) return m; }
+  { const n = destination?.hub === world.id ? null : navigation.localGoal(); if (n) return n; }   // driving directions: the way out toward the goal's district, or the place chosen on the map
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {
@@ -1600,6 +1608,7 @@ async function start() {
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
   if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
+  else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
   started = true; markStarted();
   requestAnimationFrame(frame);
 }

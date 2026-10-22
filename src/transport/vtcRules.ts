@@ -38,14 +38,25 @@ export function stopOf(p: { x: number; z: number }) {
   return { car: k, wait: { x: k.x + out.x * 2.6, z: k.z + out.z * 2.6 }, out };
 }
 
-/** The fare (game money): base, distance (straight inside a district, the roads' lengths between districts), a supplement per boundary crossed. */
+/**
+ * The fare (game money, ECONOMY.vtc) and the length of the way by road: inside a district, along its grid of streets (from one kerb to the other); to
+ * another district, the roads between them (src/road/graph.ts) and the streets at both ends. In bands, 1 000 F to 5 000 F at most; no multiplier.
+ */
 export function vtcFare(from: HubId, a: { x: number; z: number }, to: HubId, b: { x: number; z: number }): { fare: number; metres: number; hubs: HubId[] } {
-  const V = ECONOMY.vtc;
-  if (from === to) { const m = Math.hypot(a.x - b.x, a.z - b.z); return { fare: Math.max(V.base, Math.round((V.base + V.perMetre * m) / V.step) * V.step), metres: Math.round(m), hubs: [from] }; }
-  const plan = planTrip(from, to);
-  const metres = (plan?.metres ?? 2000) + Math.hypot(a.x, a.z) * 0.3 + Math.hypot(b.x, b.z) * 0.3;
-  const crossings = (plan?.hubs.length ?? 2) - 1;
-  return { fare: Math.round((V.base + V.perMetre * metres + V.perDistrict * crossings) / V.step) * V.step, metres: Math.round(metres), hubs: plan?.hubs ?? [from, to] };
+  const V = ECONOMY.vtc, r = (v: number) => Math.round(v / V.step) * V.step, clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  if (from === to) {
+    const m = Math.abs(a.x - b.x) + Math.abs(a.z - b.z);                                  // the grid's streets: along x, then along z
+    return { fare: clampTo(r(V.town.base + V.town.perMetre * m), V.town.min, V.town.max), metres: Math.round(m), hubs: [from] };
+  }
+  const plan = planTrip(from, to), hubs = plan?.hubs ?? [from, to], away = Math.max(1, hubs.length - 1);
+  const metres = (plan?.metres ?? 2000) + (Math.abs(a.x) + Math.abs(a.z)) * 0.5 + (Math.abs(b.x) + Math.abs(b.z)) * 0.5;
+  const cap = V.away.max[Math.min(V.away.max.length, away) - 1];
+  return { fare: clampTo(r(V.away.min + Math.max(0, metres - V.away.from) * V.away.perMetre), V.away.min, cap), metres: Math.round(metres), hubs };
+}
+/** The played time a ride should take from its acceptance (beyond it, the passenger finds it late): the way at a city pace, with slack, plus the pick-up. */
+export function rideLimitMs(t: Pick<VtcTrip, 'from' | 'to' | 'pickup' | 'dropoff'>): number {
+  const V = ECONOMY.vtc, m = vtcFare(t.from, t.pickup, t.to, t.dropoff).metres;
+  return (V.pickupS + (m / V.speed) * V.slack) * 1000;
 }
 
 const NAMES = ['Awa', 'Fatou', 'Ibrahima', 'Aminata', 'Cheikh', 'Mariama', 'Ousmane', 'Khady', 'Moussa', 'Ndeye', 'Abdou', 'Coumba', 'Babacar', 'Sokhna', 'Pape', 'Astou'];

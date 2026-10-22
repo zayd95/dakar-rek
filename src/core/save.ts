@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, SaveData, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -22,6 +22,15 @@ export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
  * choice of look (the Meshy avatar lane's picker) shows it pre-selected, and the player confirms it or chooses again.
  */
 export const AVATAR_SUGGESTION_KEY = 'dakarrek.guest.save.v6.avatar-suggestion';
+/**
+ * What an older v6 client cannot keep (docs/SAVES.md § « Debts and older clients »). A v6 client rebuilds the save from the fields it knows, so one
+ * served again after this one (a rollback, a stale cached page) would drop the debts, the VTC record, the player's days and the streak at its first save.
+ * This client writes them a second time under this key at every save, with the guest id; loading a save that LACKS one of those fields (only an older client
+ * writes such a save: this one always writes them all) takes it back from here, for the same guest only. Older clients never read or write this key.
+ */
+export const EXTRAS_KEY = 'dakarrek.guest.save.v6.extras';
+/** The fields an older v6 client drops, and that the extras backup keeps. */
+export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak'] as const;
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -49,6 +58,7 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
+    play: { day: 0, city: -1 }, streak: newStreak(),
   };
 }
 
@@ -138,7 +148,21 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     // debts and VTC rides (additive, no version change: a save without them owes nothing and has no ride in hand)
     loans: loansOf(r.loans),
     vtc: vtcOf(r.vtc, playedMs),
+    // the player's own days and the work streak (additive, no version change: a save without them starts on day 0 with no streak)
+    play: playOf(r.play),
+    streak: streakOf(r.streak, playedMs),
   };
+}
+
+export const newStreak = (): StreakState => ({ run: 0, best: 0, last: -1, lastMs: 0, total: 0, grace: 1, seen: [] });
+function playOf(v: unknown): PlayDays {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return { day: clamp(Math.round(num(o.day, 0)), 0, 1e7), city: clamp(Math.round(num(o.city, -1)), -1, 1e9) };
+}
+function streakOf(v: unknown, playedMs: number): StreakState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, n = (x: unknown, d: number, hi = 1e7) => clamp(Math.round(num(x, d)), 0, hi);
+  const run = n(o.run, 0), seen = Array.isArray(o.seen) ? [...new Set((o.seen as unknown[]).filter((d): d is number => typeof d === 'number' && Number.isInteger(d) && d > 0 && d <= 365))].slice(0, 16) : [];
+  return { run, best: Math.max(run, n(o.best, 0)), last: clamp(Math.round(num(o.last, -1)), -1, 1e7), lastMs: clamp(num(o.lastMs, 0), 0, playedMs), total: Math.max(run, n(o.total, 0)), grace: n(o.grace, 1, 3), seen };
 }
 
 const LOAN_ID = /^L\d{1,6}$/;
@@ -161,6 +185,8 @@ function loansOf(v: unknown): LoansState {
     if (typeof x.asset === 'string' && UID.test(x.asset)) l.asset = x.asset;
     if (typeof x.spec === 'string' && ID.test(x.spec)) l.spec = x.spec;
     if (typeof x.closedDay === 'number') l.closedDay = Math.max(0, Math.round(x.closedDay));
+    if (x.clock === 'play') l.clock = 'play';
+    if (typeof x.share === 'boolean') l.share = x.share;
     if (l.paid >= l.principal) l.status = 'closed';
     list.push(l);
   }
@@ -342,11 +368,14 @@ function wrestlerOf(v: unknown): WrestlerLook {
 
 export interface KV { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void }
 
+/** Fields taken back from the extras backup by the last `loadSave` (the game says so once), e.g. ['loans']. */
+export let restoredExtras: string[] = [];
 export function loadSave(store: KV | null): SaveData | null {
+  restoredExtras = [];
   if (!store) return null;
   try {
     const own = store.getItem(SAVE_KEY);
-    if (own) return migrate(JSON.parse(own));   // a v6 save wins for good, even when it cannot be read: nothing falls back to an older one
+    if (own) { const raw = JSON.parse(own), data = migrate(raw); if (data) restoreExtras(store, raw, data); return data; }   // a v6 save wins for good, even when it cannot be read: nothing falls back to an older one
     if (store.getItem(IMPORT_DONE_KEY)) return null;   // New Game: the older saves stay on the device for an older client, they do not come back
     // one-time migration from the newest older save: v5, else the legacy one (production, schema 3). Written at once so a second tab
     // or a reload takes the v6 save; the older bytes are never touched.
@@ -363,7 +392,39 @@ function carryOver(store: KV, data: SaveData | null): SaveData | null {
   return data;
 }
 export function writeSave(store: KV | null, data: SaveData): boolean {
-  try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); return !!store; } catch { return false; }
+  let ok = false;
+  try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); ok = !!store; } catch { return false; }
+  try { store?.setItem(EXTRAS_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) })); } catch { /* full storage: the save itself was written */ }
+  return ok;
+}
+/**
+ * A save written by an older v6 client lacks the fields it did not know: take each missing one back from the extras backup of the same guest (sanitised
+ * like any save). A debt is owed again exactly as it stood (even if that client sold the car meanwhile: the money of the sale is in the wallet); a ride
+ * that was in hand is not resumed (the passenger is long gone), but the rides already paid stay paid. Returns the fields restored.
+ */
+function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData): string[] {
+  const missing = EXTRA_FIELDS.filter(k => raw[k] === undefined);
+  const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
+  const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
+  if (!missing.length && !lostShare) return [];
+  let b: Record<string, unknown> | null = null;
+  try { b = JSON.parse(store.getItem(EXTRAS_KEY) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
+  if (!b || b.guestId !== data.guestId) return [];
+  const back = migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }), out: string[] = [];
+  if (!back) return [];
+  // a client that knew the debts but not the share of the fares (PR #63) kept each loan without it: the same loan in the backup says whether it was on
+  // (its due dates are left as that client left them: a loan without its player-day clock is moved onto it by src/economy/credit.ts onPlayClock)
+  if (lostShare) for (const l of data.loans.list) { const was = back.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
+  for (const k of missing) {
+    if (b[k] === undefined) continue;
+    if (k === 'loans') { if (!back.loans.list.length) continue; data.loans = back.loans; }
+    else if (k === 'vtc') data.vtc = { ...back.vtc, active: null };
+    else if (k === 'play') data.play = back.play;
+    else data.streak = back.streak;
+    out.push(k);
+  }
+  restoredExtras = out;
+  return out;
 }
 /**
  * New Game: forget the v6 save and never carry an older one over again (they stay in the storage, for an older client). The marker is
@@ -378,5 +439,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
+  try { store.removeItem(EXTRAS_KEY); } catch { /* ignore: a new game has a new guest id, never matched */ }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }

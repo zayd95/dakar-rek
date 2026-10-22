@@ -43,7 +43,7 @@ export const berline = new OwnedVehicleModule({
   key: 'berline', asset: BERLINE_ASSET, detail: BERLINE_DETAIL, icon: '🚘', kit: 'luxury',
   seed: () => berlineSeed(), spec: berlineSpec, height: 1.5, space: 'car:berline',
   dealer: {
-    hub: 'almadies', name: 'Prestige Auto · Berlines', catalogue: 'berlines', site: prestigeFloor('berline', [berlineSeed(BERLINE_WHITE)], ['blanche']),
+    hub: 'almadies', name: 'Prestige Auto · Berlines', catalogue: 'berlines', site: prestigeFloor('berline', [berlineSeed(BERLINE_WHITE)], ['blanche']), unlisted: true,
     sign: { bg: '#1c1d21', band: '#c9a227', title: 'BERLINES', sub: 'Prestige Auto · Almadies', subColor: '#1c1d21' }, counterBias: -0.2,
   },
   text: {

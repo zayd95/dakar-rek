@@ -3,6 +3,7 @@ import { isMuted } from '../core/audioSettings';
 import { hasGestured, listenForGesture } from '../arena/exteriorAudio';
 import { keepAlive, nudge, sessionType, setPlaybackSession } from './audioUnlock';
 import { SampleBank, type SampleName } from './vehicleSamples';
+import { radio } from './radio';
 
 /**
  * The sounds of a vehicle the player drives: door, engine start, idle, an engine that rises and falls with the speed through its gears, brake squeal, a tap or a real impact, a scrape,
@@ -36,9 +37,11 @@ const CABIN = 0.5;
 
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
   sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 40, lpIdle: 2400, lpTop: 4600, air: 3, excite: 0.35 },
-  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.02, swell: 1, hp: 40, lpIdle: 1700, lpTop: 3400, air: 2, excite: 0.3 },
-  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 32, lpIdle: 1900, lpTop: 3800, air: 3, excite: 0.45 },
-  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.024, swell: 0.5, hp: 230, lpIdle: 3800, lpTop: 5600, air: 6, excite: 0.5 },
+  // the dear cars (the berline, the Lamane Sport and the Gaïndé): deeper (the loops played slower), smoother (a lower, softer top end, a fifth gear), a touch quieter
+  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.74, 1.25], revRate: [0.8, 1.45], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.019, swell: 0.9, hp: 40, lpIdle: 1500, lpTop: 3000, air: 1.5, excite: 0.25 },
+  suv: { start: 'start-car', startRate: 0.9, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.66, 1.18], revRate: [0.7, 1.4], xf: [0.3, 0.72], gears: 5, level: 1, drive: 0.021, swell: 0.9, hp: 32, lpIdle: 1600, lpTop: 3200, air: 2, excite: 0.35 },
+  // the Jakarta: about 3.5 dB under what it was (a small 125 cc, heard over the street, never over it)
+  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.0165, swell: 0.5, hp: 230, lpIdle: 3600, lpTop: 5200, air: 5, excite: 0.45 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -73,7 +76,7 @@ export function rpmOf(speed: number, maxSpeed: number, gears: number, throttle =
 export const IMPACT_SPEED = 2.5;
 export function impactKind(speed: number): 'tap' | 'impact' { return Math.abs(speed) >= IMPACT_SPEED ? 'impact' : 'tap'; }
 /** How hard a brake is, 0…1: the deceleration against what a hard stop is (m/s²), only while really moving. */
-export function brakeIntensity(decel: number, speed: number): number { return speed < 4 ? 0 : Math.max(0, Math.min(1, (decel - 3) / 6)); }
+export function brakeIntensity(decel: number, speed: number): number { return speed < 4 ? 0 : Math.max(0, Math.min(1, (decel - 4.5) / 6)); }   // an ordinary stop is silent; only a real hard stop is heard
 
 /** Below this (Hz) a phone's loudspeaker gives next to nothing. */
 export const SPEAKER_HZ = 300;
@@ -241,7 +244,7 @@ class VehicleAudio {
     n2.connect(bedF).connect(bed).connect(b.gain);
     sIdle.start(t + delay, Math.random() * idle.duration); sRev.start(t + delay, Math.random() * rev.duration); n1.start(t + delay); n2.start(t + delay); lfo.start(t + delay);
     gEng.gain.setTargetAtTime(prof.level * prof.drive, t + delay, 0.22);
-    bed.gain.setTargetAtTime(0.011, t + delay + 0.5, 0.8);
+    this.trafficK = 0;                                                          // the bed comes in with the traffic around (update)
     this.eng = { prof, sIdle, sRev, gIdle, gRev, lp, gEng, road, roadF, bed, srcs: [sIdle, sRev, n1, n2, lfo], rpm: 0.15, ready: t + delay };
     this.bedTimer = 7 + Math.random() * 8;
   }
@@ -263,9 +266,11 @@ class VehicleAudio {
     const swell = (1 + P.swell * (0.45 * e.rpm + 0.55 * load)) * (lift ? 0.78 : 1), cab = this.cabin ? CABIN : 1;
     e.gEng.gain.setTargetAtTime(swell * P.level * P.drive * cab, t, 0.08);
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
-    e.road.gain.setTargetAtTime(0.035 * v * v * (P === PROFILES.moto ? 1.3 : 1) * (this.cabin ? 0.5 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
-    e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
-    if ((this.bedTimer -= dt) <= 0) { this.bedTimer = 12 + Math.random() * 14; this.distantHorn(); }
+    e.road.gain.setTargetAtTime(0.022 * v * v * (this.cabin ? 0.5 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(240 + 760 * v, t, 0.1);
+    // the city's traffic noise only where there IS traffic (`traffic`: 0 on an empty road, 1 in a busy street), never a constant roar; and its far-off horns with it
+    this.trafficK += (this.traffic - this.trafficK) * Math.min(1, dt * 0.8);
+    e.bed.gain.setTargetAtTime((this.horn ? 0.15 : 1) * 0.011 * this.trafficK, t, 0.3);
+    if ((this.bedTimer -= dt) <= 0) { this.bedTimer = 12 + Math.random() * 14; if (this.trafficK > 0.3) this.distantHorn(); }
     if (this.hornWanted && !this.horn) this.startHorn(this.bus, this.hornWanted);       // the button was pressed before the recording was decoded
     if (this.scr && performance.now() - this.scrLast > 220) this.scrapeOff();           // a scrape that is not renewed ends
   }
@@ -282,6 +287,12 @@ class VehicleAudio {
   }
   /** The player is inside a car (the wheel view): the engine is heard through the cabin. Set by the vehicle module every frame. */
   cabin = false;
+  /** The car radio's way out (src/transport/radio.ts): the same bus, so the same mute, the same first-tap rule. Null when sound may not play. */
+  radioBus() { return this.open(); }
+  /** The horn sounds now (the radio steps back under it). */
+  get honking() { return !!this.horn || !!this.hornWanted; }
+  /** How much traffic is around the vehicle, 0…1 (set by the vehicle module every frame), and the bed's smoothed share of it. */
+  traffic = 0; private trafficK = 0;
   get running() { return !!this.eng; }
   get rpm() { return this.eng?.rpm ?? 0; }
 
@@ -290,7 +301,8 @@ class VehicleAudio {
     if (intensity <= 0.05) return;
     const b = this.ready('brake', 0.9); if (!b) return;
     const buf = this.bank.get('squeal'); if (!buf) return;
-    this.shot(b, 'squeal', { offset: Math.random() * (buf.duration - 1.2), dur: 0.4 + 0.5 * intensity, rate: 0.92 + Math.random() * 0.16, gain: 0.12 + 0.3 * intensity, hp: 500, attack: 0.03, release: 0.18 });
+    // much softer than it was (about −9 dB): a short, rounded chirp of the tyres, never a shriek over the street
+    this.shot(b, 'squeal', { offset: Math.random() * (buf.duration - 1.2), dur: 0.28 + 0.35 * intensity, rate: 0.9 + Math.random() * 0.12, gain: 0.04 + 0.1 * intensity, hp: 600, lp: 4200, attack: 0.06, release: 0.2 });
   }
   /**
    * A light tap (a soft bump of the body) or a real impact (a solid metallic hit, and for a heavy one a crash with its long tail), by the speed at the moment of contact. Layers of the recordings,
@@ -298,6 +310,7 @@ class VehicleAudio {
    */
   impact(speed: number) {
     const kind = impactKind(speed), b = this.ready(kind, kind === 'tap' ? 0.25 : 0.4); if (!b) return;
+    radio.duck(kind === 'tap' ? 0.55 : 0.25, kind === 'tap' ? 1 : 2.5);
     const v = Math.abs(speed), j = (this.hitN = (this.hitN + 1) % 3), jit = [1, 0.93, 1.08][j] * (0.97 + Math.random() * 0.06);
     if (kind === 'tap') {
       this.shot(b, 'thud', { dur: 0.16, rate: 1.7 * jit, gain: 0.18 + 0.05 * v, hp: 110, release: 0.05 });

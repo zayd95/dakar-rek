@@ -20,6 +20,7 @@ import { garage } from './garageModule';
 import { SARR_HUB, sarrLot, sarrSales, teranga, PAINTS } from './modelCars';
 import { footprint } from './ownedModule';
 import { kitCarSpec, sedanSeed } from './car';
+import { noteWork } from '../economy/streakModule';
 
 /**
  * « Sarr Auto » (fictional), Pikine: a used-car lot on the kerb across the road from Garage Modou, and its owner Pape Sarr — a real person with his hours
@@ -44,6 +45,8 @@ const ERRANDS: Record<ErrandKind, { label: string; detail: string; pay: number }
 };
 const ORDER: ErrandKind[] = ['client', 'garage', 'wash', 'papers'];
 const day = (ctx: GameCtx) => ctx.day();
+/** The player's day: the debts' calendar (src/economy/creditModule.ts). */
+const pday = (ctx: GameCtx) => ctx.state.data.play.day;
 const key = { day: 'sarr:errands:day', n: 'sarr:errands:n', done: (k: ErrandKind) => `sarr:errand:${k}`, ask: 'sarr:credit:ask', met: 'sarr_met', count: 'sarr:errands:total' };
 
 class SarrAuto implements GameModule, TargetSource {
@@ -98,6 +101,17 @@ class SarrAuto implements GameModule, TargetSource {
     const tc = at(0, 7.0);
     for (const [a, l] of [[-1.6, 5.6], [1.6, 5.6], [-1.6, 8.2], [1.6, 8.2]] as const) { const p = at(a, l); box(0.07, l < 6 ? 2.35 : 2.75, 0.07, p.x, 0.12 + (l < 6 ? 1.17 : 1.37), p.z, steel); solid(p.x, p.z, 0.08, 0.08, 2.5); }
     box(3.6, 0.04, 2.9, tc.x, 2.62, tc.z, blue, yaw + Math.PI / 2, 0.14);
+    // his office, made of the tarp's frame (a street lot, not a showroom): a whitewashed back wall with a window and a key board, low side partitions,
+    // a grey filing cabinet, a calendar; all at the back edge of the pavement, behind the desk, so the walkers and his own walks keep their way
+    { const back = at(0, 8.25), cream = mat(0xe9e2d0), trim = mat(0x2f6fa8), glass = mat(0x8fb3c9), grey = mat(0x6b6f75);
+      box(3.3, 2.2, 0.12, back.x, 0.12 + 1.1, back.z, cream, yaw + Math.PI / 2); solid(back.x, back.z, Math.abs(f.x) * 1.65 + Math.abs(n.x) * 0.1, Math.abs(f.z) * 1.65 + Math.abs(n.z) * 0.1, 2.3);
+      box(3.32, 0.22, 0.14, back.x, 0.12, back.z, trim, yaw + Math.PI / 2);
+      const w = at(0.6, 8.17); box(1.1, 0.7, 0.04, w.x, 1.45, w.z, glass, yaw + Math.PI / 2); box(1.2, 0.06, 0.06, w.x, 1.8, w.z, trim, yaw + Math.PI / 2); box(1.2, 0.06, 0.06, w.x, 1.1, w.z, trim, yaw + Math.PI / 2);
+      const kb = at(-0.9, 8.17); box(0.5, 0.4, 0.03, kb.x, 1.55, kb.z, wood, yaw + Math.PI / 2);
+      for (let k = 0; k < 4; k++) { const kk = at(-1.08 + k * 0.12, 8.15); box(0.03, 0.08, 0.02, kk.x, 1.5, kk.z, mat(0xd8b23a), yaw + Math.PI / 2); }
+      const cal = at(1.25, 8.17); box(0.3, 0.42, 0.02, cal.x, 1.45, cal.z, white, yaw + Math.PI / 2); box(0.3, 0.1, 0.022, cal.x, 1.62, cal.z, red, yaw + Math.PI / 2);
+      for (const a of [-1.65, 1.65]) { const sp = at(a, 7.8); box(0.08, 1.1, 0.8, sp.x, 0.12 + 0.55, sp.z, cream, yaw + Math.PI / 2); }
+      const cab = at(1.2, 7.85); box(0.45, 1.0, 0.45, cab.x, 0.12 + 0.5, cab.z, grey, yaw); solid(cab.x, cab.z, 0.24, 0.24, 1.1); }
     // the desk and two red plastic chairs
     if (L.desk) {
       box(1.4, 0.75, 0.7, L.desk.x, 0.5, L.desk.z, wood, L.desk.yaw); solid(L.desk.x, L.desk.z, 0.6, 0.6, 0.9);
@@ -146,7 +160,7 @@ class SarrAuto implements GameModule, TargetSource {
   private loans() { return this.ctx.state.data.loans.list; }
   private intro(ctx: GameCtx, trial: boolean): string {
     const t = this.trust(ctx), l = openLoans(this.loans(), 'sarr')[0];
-    if (l) { const st = standing(l, day(ctx)); if (st.late > 0) return `Tu as ${fcfa(st.late)} de retard sur la Teranga. Je ne t’en veux pas, mais pense à moi.`; return `Alors, elle roule bien, la Teranga ? Il te reste ${fcfa(st.left)} à me rendre.`; }
+    if (l) { const st = standing(l, pday(ctx)); if (st.late > 0) return `Tu as ${fcfa(st.late)} de retard sur la Teranga. Je ne t’en veux pas, mais pense à moi.`; return `Alors, elle roule bien, la Teranga ? Tu m’as déjà rendu ${fcfa(st.paid)}, il te reste ${fcfa(st.left)}.`; }
     if (this.errand?.stage === 'report') return 'Alors, c’est fait ?';
     if (trial) return `Alors, elle te plaît ? Le prix est affiché. Et si tu n’as pas tout, on peut parler.`;
     const label = Relations.label(t);
@@ -230,6 +244,7 @@ class SarrAuto implements GameModule, TargetSource {
     const n = c[key.n] ?? 0, gain = C.trust.errands[n] ?? 0;
     c[key.n] = n + 1; c[key.done(e.kind)] = d; ctx.state.count(key.count);
     ctx.state.addMoney(e.pay, `Course pour Sarr Auto : ${ERRANDS[e.kind].label}`);
+    noteWork('errand');
     if (gain) relate(ctx, 'sarr', gain);
     this.errand = null; this.log.errands.push(`done:${e.kind}`);
     ctx.toast(`Pape Sarr : « ${say('Jërëjëf')} ! » +${fcfa(e.pay)}${gain ? ' · il te fait un peu plus confiance' : ''}`);
@@ -280,7 +295,7 @@ class SarrAuto implements GameModule, TargetSource {
       ctx.menu('Pape Sarr · crédit', `« ${o.line} »`, [{ icon: '↩️', label: 'D’accord', onPick: close }]);
       return;
     }
-    const sched = `${o.installments} × ${fcfa(o.installment)}, tous les ${o.every} jours`;
+    const sched = `${fcfa(o.installment)} par jour de jeu (${o.installments} versements), plus ${Math.round(C.dealer.fareShare * 100)} % de chaque course VTC, ou plus quand tu veux`;
     ctx.menu('Pape Sarr · crédit pour une Teranga', `« ${o.line} » · Prix ${fcfa(price)} · Avance ${fcfa(o.down)} · puis ${sched}`, [
       ...cars.map(c => ({ icon: '🚗', label: `Signer · Teranga ${c.colour}`, detail: o.verdict === 'accept' ? `Avance ${fcfa(o.down)} maintenant · cette voiture-là, tu repars avec` : `Il faut ${fcfa(o.down)} d’avance (tu as ${fcfa(ctx.state.wallet)})`, right: '−' + fcfa(o.down), disabled: o.verdict !== 'accept' || !!c.locked, reason: c.locked ?? undefined, onPick: () => { close(); this.sign(c.slot, o.down, o.installment, o.every, o.principal, c.colour); } })),
       { icon: '↩️', label: 'Pas maintenant', onPick: close },
@@ -288,14 +303,14 @@ class SarrAuto implements GameModule, TargetSource {
   }
   /** Signed: the car chosen is the player's for the down payment, the debt recorded against it (one credit at a time: checked again here). */
   sign(slot: number, down: number, installment: number, every: number, principal: number, colour: string) {
-    const ctx = this.ctx, d = day(ctx);
+    const ctx = this.ctx, d = pday(ctx);
     if (openLoans(this.loans(), 'sarr').length) return false;
     const fresh = dealerOffer({ trust: this.trust(), price: specOf('teranga')?.price ?? 0, wallet: ctx.state.wallet, loans: this.loans() });
     if (fresh.verdict !== 'accept' || fresh.down !== down) { ctx.toast('Pape Sarr : « Ce n’est plus possible aujourd’hui. »'); return false; }
     const ok = teranga.buyFinanced(slot, down, 'Sarr Auto', a => {
       openLoan(this.loans(), nextLoanSeq(ctx.state), { lender: 'sarr', kind: 'vehicle', label: `Teranga ${colour} · crédit Sarr Auto`, principal, installment, every, day: d, asset: a.uid, spec: 'teranga' });
     });
-    if (ok) { relate(ctx, 'sarr', 3); ctx.toast(`Pape Sarr te donne les clés : « Elle est à toi. Rembourse-moi ${fcfa(installment)} tous les ${every} jours, avec tes courses. ${say('Jërëjëf')} ! »`); ctx.save(); }
+    if (ok) { relate(ctx, 'sarr', 3); ctx.toast(`Pape Sarr te donne les clés : « Elle est à toi. ${fcfa(installment)} par jour${every > 1 ? ` tous les ${every} jours` : ''}, et un peu de chaque course. ${say('Jërëjëf')} ! »`); ctx.save(); }
     return ok;
   }
   repayMenu(l: LoanState) { creditClock.repayMenu(this.ctx, l); }

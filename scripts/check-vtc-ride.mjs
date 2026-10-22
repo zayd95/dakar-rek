@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, boardVehicle } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route } from './lib/gridRoute.mjs';
+import { route, runUp, closedZones } from './lib/gridRoute.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-e'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -59,16 +59,18 @@ await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'pick
 const v0 = await V(), wallet0 = await d(() => window.__dakar.state.wallet), ledger0 = await d(() => window.__dakar.phoneHooks.ledger?.().length ?? 0);
 check('« Courses VTC » on the phone: the Pikine → Plateau ride accepted with a tap; fare fixed, saved', v0.trip && v0.trip.from === 'pikine' && v0.trip.to === 'plateau' && v0.trip.fare === pick.r.fare, JSON.stringify({ id: v0.trip?.id, fare: v0.trip?.fare }));
 
-// the car is put in the street the passenger's kerb is on, 60 m back; the player gets in with the real controls
+// the car is put in the street the passenger's kerb is on, 60 m back (less near the district's edge); the player gets in with the real controls
 const stops = await d(() => window.__dakar.vtc.stops());
 const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
-const lane = Math.abs(F.z) > 0.5 ? { x: Math.round(K.x / 60) * 60 - Math.sign(F.z) * 2.1, z: K.z - F.z * 60 } : { x: K.x - F.x * 60, z: Math.round(K.z / 60) * 60 + Math.sign(F.x) * 2.1 };
+const lane = runUp(K, 60);                                                          // never past the district's outer street
 await d(([x, z, yaw]) => window.__dakar.teranga.place(x, z, yaw), [lane.x, lane.z, K.yaw]);
 await d(([x, z]) => window.__dakar.place(x, z, 0), [lane.x + Math.cos(K.yaw) * 2.6, lane.z - Math.sin(K.yaw) * 2.6]);
 await page.waitForTimeout(800);
 await boardVehicle(page, t, 'teranga');
 const persons = []; const sample = setInterval(async () => { try { persons.push(await d(() => window.__dakar.vtc.info().persons)); } catch { /* reloading */ } }, 1500);
-await pilot(page, t, 'teranga', [{ x: K.x - F.x * 12, z: K.z - F.z * 12, tol: 3, speed: 5 }, { x: K.x - F.x * 3, z: K.z - F.z * 3, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
+// in the lane until 10 m short of the passenger, then into the kerb (a slant from far back meets the cars parked along it)
+const inLane = Math.abs(F.z) > 0.5 ? { x: lane.x, z: K.z - F.z * 10 } : { x: K.x - F.x * 10, z: lane.z };
+await pilot(page, t, 'teranga', [{ ...inLane, tol: 3, speed: 5 }, { x: K.x - F.x * 2.5, z: K.z - F.z * 2.5, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
 const waiting = await V();
 check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && (waiting.phase === 'walk' || waiting.phase === 'seated'), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
 await page.waitForTimeout(1200); await shot('passenger-walks');
@@ -92,7 +94,7 @@ check('back at the wheel, the passenger has not moved from the back seat', still
 // out of Pikine on the road to the Plateau
 const hpTrip0 = await d(() => window.__dakar.teranga.health());
 const a1 = await AT();
-const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7 });
+const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
 await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
 await driveRoad(page, t, 'teranga', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
@@ -102,7 +104,7 @@ check('in the Plateau with the passenger aboard: the same ride, the person came 
 await shot('plateau-aboard');
 // to the drop-off kerb
 const S2 = await d(() => window.__dakar.vtc.stops()), a2 = await AT();
-const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 7 });
+const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 7, avoid: await closedZones(page) });   // round a street a road event has closed (cones), as the directions do
 check('a street route to the drop-off exists from where the road ends', !!toDrop, JSON.stringify({ at: [a2.x, a2.z, a2.yaw], drop: S2.dropoff.car }));
 if (toDrop) await pilot(page, t, 'teranga', toDrop, { cruise: 7, stall: 60000, ms: 1500000, brakeAtEnd: true });
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).catch(() => {});

@@ -111,15 +111,25 @@ try {
   // get off again (the next steps place both players on foot)
   await b.keyboard.down('KeyS'); await b.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.5, null, { timeout: 20000 }).catch(() => {}); await b.keyboard.up('KeyS');
   await b.keyboard.press('KeyE');
-  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false, null, { timeout: 15000 });
+  // off and on foot: the dismount places the rider beside the bike when it ends, so B is moved only once it has (a slow runner took longer than the next step)
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false && !window.__dakar.tiak.info().exit && window.__dakar.pos().mode === 'play', null, { timeout: 15000 });
   // a passenger in another vehicle (a car rapide) is not drawn on a bike for the other player
   const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
   await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
-  await b.waitForTimeout(1200); await b.evaluate(() => window.__dakar.act());
-  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'waiting', null, { timeout: 30000 });
+  await b.waitForTimeout(1200);
+  const atStop = await b.evaluate(() => ({ focus: window.__dakar.focus()?.id ?? null, pos: window.__dakar.pos() }));
+  await b.evaluate(() => window.__dakar.act());
+  // waiting at the stop, or already taken by a car standing there (« Le 23 est là : on monte ! » boards within a frame, before a poll sees « waiting »)
+  await b.waitForFunction(() => ['waiting', 'boarding', 'riding'].includes(window.__dakar.transport.trip().phase), null, { timeout: 30000 }).catch(async e => {
+    console.log('STOP STATE', JSON.stringify({ atStop, after: await b.evaluate(() => ({ trip: window.__dakar.transport.trip(), focus: window.__dakar.focus(), pos: window.__dakar.pos(), toast: document.querySelector('.toast')?.textContent ?? null })) }));
+    throw e;
+  });
   const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
   if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
-  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 });
+  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 }).catch(async e => {   // on a miss, say where the line's cars were and why none took B
+    console.log('RAPIDE STATE', JSON.stringify(await b.evaluate(l => ({ trip: window.__dakar.transport.trip(), next: window.__dakar.transport.nextAt(l, 0), me: window.__dakar.pos(), cars: window.__dakar.transport.lines().find(x => x.id === l)?.vehicles.map(c => ({ x: +c.x.toFixed(1), z: +c.z.toFixed(1), s: +c.s.toFixed(1), v: +c.v.toFixed(2), dwell: c.dwell, next: c.next, free: c.free })) }), L0.id)));
+    throw e;
+  });
   await sleep(1500);
   const inCar = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space]) }; });
   check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify(inCar));

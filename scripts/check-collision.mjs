@@ -12,7 +12,6 @@ const base = process.argv[2] ?? 'http://localhost:4214/', out = process.argv[3] 
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 240000 }, results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
-const near = v => [-120, -60, 0, 60, 120].reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 
 async function session(vibrate) {
@@ -23,16 +22,13 @@ async function session(vibrate) {
   const info = () => d(() => window.__dakar.car.info()), au = () => d(() => window.__dakar.car.audio()), feel = () => d(() => window.__dakar.car.feel()), at = () => d(() => window.__dakar.car.at()), meter = () => d(() => window.__dakar.car.audioMeter());
   const vib = () => d(() => window.__vib ?? null);
   const simWait = async (s, ms = 120000) => { const t0 = (await at()).t; await page.waitForFunction(([a, s]) => window.__dakar.car.at().t >= a + s, [t0, s], { timeout: ms }).catch(() => {}); };
-  await page.goto(`${base}?debug&touch&heure=11`, { timeout: 120000 });
+  await page.goto(`${base}?debug&touch&heure=11&argent=50000000`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   await d(() => window.__dakar.teleport('plateau'));
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().dealer, null, T);
-  const dealer = (await info()).dealer, rx = near(dealer.x), rz = near(dealer.z), road = Math.abs(dealer.z - rz) < Math.abs(dealer.x - rx) ? { x: 0, z: Math.sign(rz - dealer.z) || 1 } : { x: Math.sign(rx - dealer.x) || 1, z: 0 };
-  await d(([p, r]) => window.__dakar.place(p.x + r.x * 0.7 + (r.x ? 0 : 0.4), p.z + r.z * 0.7 + (r.z ? 0 : 0.4), Math.atan2(-r.x, -r.z)), [dealer, road]);
-  await page.waitForFunction(() => /Voir les articles/.test(window.__dakar.focus()?.all?.join('|') ?? ''), null, T).catch(() => {});
-  await tr.tap('#act'); await page.waitForSelector('#modal.on', T);
-  await page.locator('#modal .item', { hasText: 'Essayer gratuitement' }).first().tap();
-  await page.waitForFunction(() => window.__dakar.car.info().here, null, T);
+  // the saloon, bought outright and delivered at the kerb (a debug shortcut: since PR #63's dealer floors it has no kerb test drive; the hits wear it, which these checks do not read)
+  await d(() => window.__dakar.car.own());
+  await page.waitForFunction(() => window.__dakar.car.info().here && window.__dakar.car.info().owned, null, T);
   const c0 = await info();
   await d(c => { const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }; window.__dakar.place(c.x - f.x * 3.3, c.z - f.z * 3.3, c.yaw); }, c0);
   await page.waitForTimeout(1200); await tr.tap('#act');
@@ -50,7 +46,9 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
 // ============================== a phone that can vibrate
 {
   const s = await session(true);
-  const save0 = await s.d(() => JSON.stringify([window.__dakar.state.data.counters, window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
+  // the save as a crash could touch it: money, the wallet's lines, the counters (but where the bought car stands, src/transport/owned.ts, which moves with it)
+  const saved = () => s.d(() => JSON.stringify([Object.entries(window.__dakar.state.data.counters).filter(([k]) => !k.startsWith('vehicle:')), window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
+  const save0 = await saved();
   const a0 = await s.au();
   // ---- 1. a hard hit, head on: this also finds a CLEAN wall (a run-up of 9 m that really arrives at speed, nothing else in the way) which every later step uses
   const aH = await s.au(), nv0 = (await s.vib()).length;
@@ -121,8 +119,8 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   await s.page.waitForTimeout(300);
   const off = await s.feel(), nvO = (await s.vib()).length;
   check('with the setting off the same hit is felt in sound and camera but the phone does not vibrate', off.impacts.length >= 1 && off.shakePeak >= 0.6 && nvO === nvS, JSON.stringify({ impacts: off.impacts.length, shakePeak: off.shakePeak, buzzes: nvO - nvS }));
-  const save1 = await s.d(() => JSON.stringify([window.__dakar.state.data.counters, window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
-  check('none of it touched the save (counters, ledger, wallet)', save0 === save1, '');
+  const save1 = await saved();
+  check('none of it touched the save (counters, ledger, wallet; the car\'s own parking place aside)', save0 === save1, save0 === save1 ? '' : `${save0.slice(0, 300)} → ${save1.slice(0, 300)}`);
   check('no JavaScript errors', s.errors.length === 0, s.errors.slice(0, 3).join(' | '));
   await s.context.close();
 }

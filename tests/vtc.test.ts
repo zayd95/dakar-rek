@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HUB_IDS } from '../src/core/types';
+import { HUB_IDS, type HubId } from '../src/core/types';
 import { GRID, roadCentre } from '../src/transport/lines';
 import { STOP_RADIUS, VTC_POINTS, atStop, stopOf, tripOf, vtcFare, vtcRequests } from '../src/transport/vtcRules';
 
@@ -44,8 +44,28 @@ describe('VTC: the requests and the fare', () => {
   it('a ride across districts pays more than one inside a district; more districts crossed, more paid; rounded to 500 F', () => {
     const P = VTC_POINTS;
     const inside = vtcFare('pikine', P.pikine[0], 'pikine', P.pikine[4]).fare, one = vtcFare('pikine', P.pikine[0], 'plateau', P.plateau[0]).fare, two = vtcFare('almadies', P.almadies[0], 'plateau', P.plateau[0]).fare;
-    expect(one).toBeGreaterThan(inside); expect(two).toBeGreaterThan(one);
+    expect(one).toBeGreaterThan(inside); expect(two).toBeGreaterThanOrEqual(one);
     for (const f of [inside, one, two]) expect(f % 500).toBe(0);
+  });
+  it('fares sit in Dakar\'s bands, by the length of the way by road: never above 5 000 F, Corniche → Plateau included', () => {
+    const P = VTC_POINTS, all: { from: HubId; to: HubId; fare: number; metres: number; hubs: number }[] = [];
+    for (const from of HUB_IDS) for (const to of HUB_IDS) for (const a of P[from]) for (const b of P[to]) {
+      if (from === to && a.id === b.id) continue;
+      const f = vtcFare(from, a, to, b); all.push({ from, to, fare: f.fare, metres: f.metres, hubs: f.hubs.length });
+    }
+    for (const f of all) {
+      expect(f.fare % 500).toBe(0); expect(f.fare).toBeLessThanOrEqual(5000); expect(f.fare).toBeGreaterThanOrEqual(1000);
+      if (f.from === f.to) { expect(f.fare).toBeLessThanOrEqual(3500); if (f.metres < 400) expect(f.fare).toBeLessThanOrEqual(2000); }
+      else if (f.hubs === 2) { expect(f.fare).toBeGreaterThanOrEqual(3500); expect(f.fare).toBeLessThanOrEqual(4500); }
+      else { expect(f.fare).toBeGreaterThanOrEqual(3500); expect(f.fare).toBeLessThanOrEqual(5000); }
+    }
+    const cp = all.filter(f => f.from === 'corniche' && f.to === 'plateau');
+    expect(cp.length).toBeGreaterThan(0); for (const f of cp) expect(f.fare).toBeLessThanOrEqual(5000);
+  });
+  it('the time a ride should take grows with the way (late beyond it)', async () => {
+    const { rideLimitMs } = await import('../src/transport/vtcRules');
+    const P = VTC_POINTS, near = rideLimitMs({ from: 'pikine', to: 'pikine', pickup: P.pikine[0], dropoff: P.pikine[1] }), far = rideLimitMs({ from: 'almadies', to: 'plateau', pickup: P.almadies[0], dropoff: P.plateau[0] });
+    expect(near).toBeGreaterThan(90_000); expect(far).toBeGreaterThan(near);
   });
   it('a trip in hand keeps the fare and the places it was accepted with', () => {
     const r = vtcRequests('pikine', 1, 12)[0], t = tripOf(r, 'V7', 1234);

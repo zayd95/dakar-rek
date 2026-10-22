@@ -14,7 +14,7 @@ export async function startSound(page) {
     // the clapperboard: a magenta flash on screen and the test tone in the sound at the same instant, so the two tracks are lined up exactly (see `sync`)
     setTimeout(() => {
       const f = document.createElement('div'); f.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#ff00ff;pointer-events:none'; document.body.appendChild(f);
-      requestAnimationFrame(() => { va.beep(); setTimeout(() => f.remove(), 400); });
+      requestAnimationFrame(() => { window.__avrec.beepAt = va.bus?.ctx.currentTime ?? null; va.beep(); setTimeout(() => f.remove(), 400); });
     }, 400);
     return Date.now();
   });

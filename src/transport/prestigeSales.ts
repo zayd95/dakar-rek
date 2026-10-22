@@ -10,6 +10,9 @@ import { say } from '../i18n/wolof';
 import { fcfa } from '../ui/hud';
 import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
+import { roadTest, type Dealer, type RoadTest } from './trialRules';
+import { perks, runOf } from '../economy/streak';
+import { relLevel } from '../venues/venue';
 
 /**
  * « Prestige Auto »'s salesperson: a real person with a real position, who walks (never teleports) on a walking map of the hall and the forecourt
@@ -78,6 +81,11 @@ export interface SalesConfig {
   talkIntro?(ctx: GameCtx, trial: boolean): string | null;
   /** He has just greeted the customer (a relationship counts the visit). */
   onGreet?(ctx: GameCtx): void;
+}
+/** Whether this dealer lets a car on the road for this customer now (src/transport/trialRules.ts): the money, his trust, a run of days worked. */
+export function roadTestAt(cfg: SalesConfig, ctx: GameCtx, price: number): RoadTest {
+  const dealer: Dealer = cfg.key === 'sarr' ? 'sarr' : cfg.key === 'ndiaye' ? 'ndiaye' : 'prestige';
+  return roadTest({ dealer, price, wallet: ctx.state.wallet, trust: dealer === 'sarr' ? relLevel(ctx, 'sarr') : 0, run: runOf(ctx.state.data) });
 }
 const PRESTIGE_LAYOUT: SalesConfig['layout'] = hub => (hub.id === PRESTIGE_HUB ? { home: { x: SALES_HOME.x, z: SALES_HOME.z, yaw: Math.PI }, grid: GRID, grounds: inGrounds } : null);
 const GREETINGS = [
@@ -186,6 +194,7 @@ export class PrestigeSales implements GameModule, TargetSource {
     const close = () => { ctx.hud.closeModal(); ctx.setMode('play'); };
     ctx.menu(this.cfg.title, 'Prix fixes, affichés. Essaie d’abord : c’est gratuit.', [
       ...cars.map(({ o, c }) => ({ icon: o.tall ? '🚙' : '🚘', label: `${c.name} · ${c.colour}`, detail: c.locked ?? 'Essayer gratuitement ou acheter', right: fcfa(c.price), disabled: !!c.locked, onPick: () => this.carMenu(o, c) })),
+      ...(this.cfg.talkExtra?.(ctx) ?? []),                                           // what the dealer himself offers (Pape Sarr's errands and credit) is at his desk too
       { icon: '↩️', label: 'Fermer', onPick: close },
     ]);
   }
@@ -306,7 +315,10 @@ export class PrestigeSales implements GameModule, TargetSource {
     const t = this.task; if (t?.kind !== 'greet') return;
     t.arrived = true; t.t = 0;
     const n = this.cfg.greetings.length; let i = this.greetN++ % n; if (i === this.lastGreet) i = (i + 1) % n; this.lastGreet = i;
-    const G = this.cfg.greetings, g = G[i % G.length]; this.speak(g.bubble); this.ctx.toast(`${this.cfg.person === 'le vendeur' ? 'Le vendeur' : this.cfg.person} : « ${g.say()} »`);
+    const G = this.cfg.greetings, g = G[i % G.length], who = this.cfg.person === 'le vendeur' ? 'Le vendeur' : this.cfg.person;
+    // a regular worker (2 days in a row and more, src/economy/streak.ts) is recognised: a warmer word before the usual one
+    const tu = this.cfg.key === 'sarr', known = !perks(runOf(this.ctx.state.data)).known ? '' : tu ? `${say('Kaay fi')} ! On m’a dit que tu travailles tous les jours, ça me plaît. ` : 'On m’a dit que vous travaillez tous les jours : ça se remarque. ';
+    this.speak(known ? (tu ? 'Ah, te revoilà !' : 'Ah, vous revoilà !') : g.bubble); this.ctx.toast(`${who} : « ${known}${g.say()} »`);
     this.log.greetings++; this.cfg.onGreet?.(this.ctx);
   }
 

@@ -20,6 +20,8 @@ import type { ActivityCategory } from '../activity/types';
 import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
 import { fcfaShort } from './format';
 import './economy.css';
+import { streak } from './streakModule';
+import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
 
 /**
  * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
@@ -93,6 +95,17 @@ export class Economy {
     phoneHooks.openHome = () => this.openShop(true);
     phoneHooks.openBusiness = () => this.openBusiness();
     phoneHooks.wealth = () => ({ assets: assetsValue(d.state), perHour: allIncome(d.state), charges: chargesPerHour(d.state), polyvalence: polyLine(d.state) });
+    addMissionGuide(() => this.jobTarget());
+  }
+
+  /** The parcel's next place, in any district (driving directions: src/game/navigation.ts); its coordinates when it is in the loaded district. */
+  private jobTarget(): MissionTarget | null {
+    const s = this.s, a = s.data.jobs.active; if (!a) return null;
+    const tc = currentTour(s), r = !a.tour ? routeById(a.routeId) : undefined;
+    const place = tc ? tc.stop.place : r ? (a.stage === 'pickup' ? r.from : r.to) : null; if (!place) return null;
+    const hub = (r && a.stage === 'deliver' ? deliveryHub(r) : a.hub) as HubId, w = this.world;
+    const it = w && w.id === hub ? this.placeOf(place.frag) : undefined;
+    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0 };
   }
 
   private get s() { return this.d.state; }
@@ -291,8 +304,9 @@ export class Economy {
     const msg = [`${c.late ? '⏰' : '✓'} ${c.stop.place.name} +${fcfa(c.paid)}`];
     if (c.finished) msg.push(`🎁 +${fcfa(c.bonus)}`);
     else { const next = currentTour(this.s); if (next) msg.push(`→ ${next.stop.place.name}`); }
-    msg.push(c.trust > 0 ? '★'.repeat(c.trust) : c.trust < 0 ? '😒' : '');
-    this.d.hud.toast(msg.filter(Boolean).join(' · '));
+    msg.push(c.trust > 0 ? `confiance ${c.trust}` : c.trust < 0 ? '😒' : '');
+    if (c.finished) streak.done(`tiak:${runId}`, { kind: 'tour', title: 'Tournée terminée', to: c.stop.place.name, paid: c.paid + c.bonus, late: c.late });
+    else this.d.hud.toast(msg.filter(Boolean).join(' · '));
     this.d.save();
     return c;
   }
@@ -302,9 +316,9 @@ export class Economy {
     const c = completeJob(this.s, runId);
     if (!c) return null;
     this.unmark();
-    const msg = [`${c.late ? 'Livré en retard' : 'Livraison réussie'} ✓ +${fcfa(c.paid)}`];
-    if (c.newClient) msg.push(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
-    this.d.hud.toast(msg.join(' · '));
+    // the card says what was done (paid above, once): what, where, how long, how far, the run of days, how it went
+    streak.done(`tiak:${runId}`, { kind: 'tiak', title: c.late ? 'Livré en retard' : 'Livraison réussie', from: c.route.from.name, to: c.route.to.name, paid: c.paid, late: c.late });
+    if (c.newClient) this.d.hud.toast(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
     this.d.save();
     return c;
   }

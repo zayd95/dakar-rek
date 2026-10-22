@@ -27,6 +27,7 @@ import { quietLog, ago } from './quiet';
 import { walkMinutes } from '../world/walk';
 import { restSpotHere } from '../game/rest';
 import { mountSoundTest, soundTestHtml, type TestKit } from './soundTest';
+import { radio, VOLUMES } from '../transport/radio';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -327,8 +328,9 @@ export class Phone {
         this.ctx.toast(on ? 'Raccourci ajouté' : 'Raccourci retiré');
         s.dispatchEvent(new Event('carte:refresh')); return;
       }
-      const act = t.closest<HTMLElement>('.fm-card [data-dealer], .fm-card [data-walk]');           // the cards are filled after the screen is bound
-      if (act?.dataset.dealer) this.dealerAct(act); else if (act?.dataset.walk) { const h = act.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }
+      const act = t.closest<HTMLElement>('.fm-card [data-dealer], .fm-card [data-walk], .fm-card [data-drive]');           // the cards are filled after the screen is bound
+      if (act?.dataset.drive !== undefined) { const h = (act.dataset.drive || null) as HubId | null, n = act.dataset.name; this.launch(() => phoneHooks.driveTo?.(h, n)); }
+      else if (act?.dataset.dealer) this.dealerAct(act); else if (act?.dataset.walk) { const h = act.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }
     };
     s.addEventListener('click', onClick);
     if (vehiclesOpen) lit(s.querySelector('[data-cm="dealers"]'));
@@ -418,7 +420,11 @@ export class Phone {
     // What the player became, read from what they did (career module): four light gauges, never a class to pick.
     const dims = phoneHooks.profileDims?.() ?? [];
     const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}${d.delta ? `<span class="dl ${d.delta.startsWith('+') ? 'up' : 'down'}">${esc(d.delta)}</span>` : ''}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
+    // the run of days worked (src/economy/streakModule.ts): « 3 jours d'affilée », what it opens, what the next milestone opens
+    const streak = phoneHooks.streakProfile?.() ?? [];
+    const streakHtml = streak.length ? `<h3>Régularité</h3><div class="ph-rows ph-streak">${streak.map((r, i) => `<div${i ? '' : ' class="run"'}><span>${esc(r.label)}<small>${esc(r.detail)}</small></span></div>`).join('')}</div>` : '';
     return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+      ${streakHtml}
       ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
       <p class="ph-note">Partie invité : ton profil est enregistré sur cet appareil.</p>`;
@@ -493,6 +499,8 @@ export class Phone {
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
       <button type="button" class="ph-btn" data-act="soundtest">Tester le son<small>Démarrage, moteur, klaxon, chocs : le vrai son du jeu, et ce qui l’empêche</small></button>
+      <p class="ph-note">Radio de la voiture (📻 au volant) : son volume, sous celui du jeu.</p>
+      <div class="seg">${VOLUMES.map(v => `<button type="button" data-radio="${v.v}" class="${Math.abs(radio.volume - v.v) < 0.01 ? 'on' : ''}" aria-pressed="${Math.abs(radio.volume - v.v) < 0.01}">${v.label}</button>`).join('')}</div>
       ${canVibrate()
         ? `<button type="button" class="ph-toggle ${hapticsOn() ? 'on' : ''}" data-act="haptics" aria-pressed="${hapticsOn()}"><span>Vibrations (chocs, klaxon)</span><em>${hapticsOn() ? 'Activées' : 'Coupées'}</em></button>`
         : `<p class="ph-note">Ce navigateur ne fait pas vibrer le téléphone : les chocs se sentent par le son et la caméra.</p>`}
@@ -612,6 +620,7 @@ export class Phone {
     s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
     s.querySelectorAll<HTMLElement>('.cm-sheet [data-dealer]').forEach(b => b.addEventListener('click', () => this.dealerAct(b)));
     s.querySelectorAll<HTMLElement>('[data-walk]').forEach(b => b.addEventListener('click', () => { const h = b.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }));
+    s.querySelectorAll<HTMLElement>('.cm-sheet [data-drive]').forEach(b => b.addEventListener('click', () => { const h = (b.dataset.drive || null) as HubId | null, n = b.dataset.name; this.launch(() => phoneHooks.driveTo?.(h, n)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;
@@ -619,6 +628,7 @@ export class Phone {
       this.render();
     }));
     s.querySelectorAll<HTMLButtonElement>('button[data-theme]').forEach(b => b.addEventListener('click', () => { theme.setMode(b.dataset.theme as ThemeMode); this.render(); }));
+    s.querySelectorAll<HTMLButtonElement>('button[data-radio]').forEach(b => b.addEventListener('click', () => { radio.setVolume(Number(b.dataset.radio)); this.render(); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-sens]').forEach(b => b.addEventListener('click', () => {
       this.ctx.input.sensitivity = Number(b.dataset.sens);
       try { store()?.setItem(SENS_KEY, b.dataset.sens!); } catch { /* session only */ }

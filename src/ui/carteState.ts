@@ -49,13 +49,17 @@ export function remoteCardHtml(f: Focus, here: HubId | null): string {
   const min = here && !there ? walkMinutes(here, f.hub) : 0, leg = here && !there ? travelLeg(here, f.hub) : null;
   const trip = here && !there ? planTrip(here, f.hub) : null;                                              // the way to drive there (through the districts in between, when it is not a direct road)
   const facts = there ? '' : `<p class="cm-facts"><span>🚶 ${min} min · gratuit</span>${leg ? `<span>🚌 Car rapide ${esc(fcfa(leg.cost))} · ≈ ${leg.minutes} min</span>` : ''}${trip ? `<span>🛣️ Au volant · ${driveKm(trip.metres)}${trip.hubs.length > 2 ? ` · via ${esc(trip.hubs.slice(1, -1).map(short).join(' → '))}` : ''}</span>` : ''}</p>`;
+  // at the wheel the map gives directions (src/game/navigation.ts), never a walk; on foot both, the walk first
+  const driving = !!phoneHooks.driving?.(), nav = phoneHooks.navGoal?.(), going = !!nav && nav.hub === f.hub && (f.kind === 'hub' || nav.name === f.name);
+  const drive = phoneHooks.driveTo && trip ? (going ? `<button type="button" class="ph-btn" data-drive="">Arrêter l’itinéraire</button>` : `<button type="button" class="ph-btn cm-go" data-drive="${f.hub}" data-name="${esc(f.kind === 'hub' ? short(f.hub) : f.name)}">🚗 Itinéraire en voiture</button>`) : '';
   if (f.kind === 'hub') {
     return `<div class="fm-row"><b>${esc(HUB_NAMES[f.hub])}</b>${there ? '<em>Tu es ici</em>' : ''}</div>${facts}
-      ${!there && walk ? `<div class="cm-acts"><button type="button" class="ph-btn cm-go" data-walk="${f.hub}">🚶 Y aller à pied</button></div>` : ''}`;
+      ${!there && (walk || drive) ? `<div class="cm-acts">${driving ? drive : `${walk ? `<button type="button" class="ph-btn cm-go" data-walk="${f.hub}">🚶 Y aller à pied</button>` : ''}${drive.replace(' cm-go', '')}`}</div>` : ''}`;
   }
   const marked = phoneHooks.marked?.()?.id === f.id, icon = f.icon ?? '📍';
+  const walkBtn = `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">🚶 Y aller · repère gardé</button>`;
   return `<div class="fm-row"><span class="cm-ic" aria-hidden="true">${esc(icon)}</span><b>${esc(f.name)}</b><em>${esc(short(f.hub))}</em></div>${facts}
-    <div class="cm-acts">${!there && walk ? `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">🚶 Y aller · repère gardé</button>`
+    <div class="cm-acts">${!there && driving && drive ? drive : !there && walk ? `${walkBtn}${drive.replace(' cm-go', '')}`
       : `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button>`}${pinHtml({ id: f.id, name: f.name, hub: f.hub, icon })}</div>`;
 }
 

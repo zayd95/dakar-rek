@@ -19,8 +19,10 @@ function behind(k) {
   if (ns) { const s = Math.sign(f.z), prev = STREETS.filter(c => (k.z - c) * s > 8).sort((a, b) => (b - a) * s)[0]; return prev === undefined ? null : { x: cx, z: prev }; }
   const s = Math.sign(f.x), prev = STREETS.filter(c => (k.x - c) * s > 8).sort((a, b) => (b - a) * s)[0]; return prev === undefined ? null : { x: prev, z: cz };
 }
-/** Shortest junction path from `a` (reached from `from`) to `b`, never turning back the way it came, and not arriving at `b` from `notFrom`. */
-function bfs(a, from, b, notFrom) {
+/** Does the street between junctions p and q cross one of the rectangles ({ x0, x1, z0, z1 }: a zone closed to cars, the arena's pedestrian street)? */
+const crosses = (p, q, rects) => rects.some(r => Math.min(p.x, q.x) < r.x1 && Math.max(p.x, q.x) > r.x0 && Math.min(p.z, q.z) < r.z1 && Math.max(p.z, q.z) > r.z0);
+/** Shortest junction path from `a` (reached from `from`) to `b`, never turning back the way it came, and not arriving at `b` from `notFrom`; never through `avoid`. */
+function bfs(a, from, b, notFrom, avoid = []) {
   const key = (p, q) => `${p.x},${p.z}|${q ? `${q.x},${q.z}` : '-'}`, same = (p, q) => p && q && p.x === q.x && p.z === q.z;
   const start = { p: a, q: from }, prev = new Map([[key(a, from), null]]), queue = [start];
   let goal = null;
@@ -30,7 +32,7 @@ function bfs(a, from, b, notFrom) {
     const i = STREETS.indexOf(s.p.x), j = STREETS.indexOf(s.p.z);
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= STREETS.length || nj >= STREETS.length) continue;
-      const n = { x: STREETS[ni], z: STREETS[nj] }; if (same(n, s.q)) continue;          // no turning back
+      const n = { x: STREETS[ni], z: STREETS[nj] }; if (same(n, s.q) || crosses(s.p, n, avoid)) continue;          // no turning back, no closed street
       const k = key(n, s.p); if (prev.has(k)) continue;
       prev.set(k, s); queue.push({ p: n, q: s.p });
     }
@@ -41,13 +43,13 @@ function bfs(a, from, b, notFrom) {
 
 /**
  * From the car (x, z, yaw) to a kerb spot k ({ x, z, yaw }): the pilot's waypoints (lane points at each junction, then a slow run-in along the kerb).
- * `end` instead of a kerb: a junction or a point straight on from one (a road's mouth): the route ends there.
+ * `end` instead of a kerb: a junction or a point straight on from one (a road's mouth): the route ends there. `avoid`: rectangles closed to cars (never crossed).
  */
-export function route(from, k, { cruise = 6, slow = 2.2 } = {}) {
+export function route(from, k, { cruise = 6, slow = 2.2, avoid = [] } = {}) {
   const j0 = ahead(from.x, from.z, from.yaw), jEnd = k.yaw === undefined ? { x: near(k.x), z: near(k.z) } : behind(k);
   if (!j0 || !jEnd) return null;
   const back = ahead(from.x, from.z, from.yaw + Math.PI), beyond = k.yaw === undefined ? null : ahead(k.x, k.z, k.yaw);
-  const js = bfs(j0, back, jEnd, beyond), pts = [];
+  const js = bfs(j0, back, jEnd, beyond, avoid), pts = [];
   if (!js.length) return null;
   // the junctions, each crossed in the lane of the leg that reaches it
   js.forEach((b, i) => { const p = i === 0 ? b : lanePt(js[i - 1], b, b); pts.push({ x: p.x, z: p.z, tol: 4, speed: cruise }); });
@@ -64,4 +66,26 @@ export function kerbOf(p) {
   const rx = near(p.x), rz = near(p.z), alongZ = Math.abs(p.x - rx) <= Math.abs(p.z - rz), side = Math.sign(alongZ ? p.x - rx : p.z - rz) || -1;
   const yaw = alongZ ? (side < 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2);
   return alongZ ? { x: rx + side * 4.3, z: p.z, yaw } : { x: p.x, z: rz + side * 4.3, yaw };
+}
+
+/**
+ * Where to put a car to drive up to a kerb spot k ({ x, z, yaw }): in the lane of k's street, `want` metres back along k's heading, but never past the district's
+ * outer street (beyond it the district's edge holds a car where it stands).
+ */
+export function runUp(k, want = 60) {
+  const f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) }, alongZ = Math.abs(f.z) > 0.5, s = Math.sign(alongZ ? f.z : f.x), at = alongZ ? k.z : k.x;
+  const back = Math.max(15, Math.min(want, STREETS[STREETS.length - 1] - 2 + s * at));
+  return alongZ ? { x: near(k.x) - s * LANE, z: k.z - s * back } : { x: k.x - s * back, z: near(k.z) + s * LANE };
+}
+
+/**
+ * The streets closed to cars in the page's district now, as rectangles for `route`'s `avoid`: the arena's pedestrian zone (fight evenings) and the segments a road
+ * event has closed (src/city/roadEvents.ts), each kept 6 m short of its junctions so the crossing streets stay open, as the game's own directions see them.
+ */
+export async function closedZones(page) {
+  const plaza = (await page.evaluate(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
+  const events = (await page.evaluate(() => window.__dakar.roadEvents?.() ?? [])).filter(e => e.closed).map(({ edge: e }) => (Math.abs(e.bx - e.ax) > Math.abs(e.bz - e.az)
+    ? { x0: Math.min(e.ax, e.bx) + 6, x1: Math.max(e.ax, e.bx) - 6, z0: e.az - 1, z1: e.az + 1 }
+    : { x0: e.ax - 1, x1: e.ax + 1, z0: Math.min(e.az, e.bz) + 6, z1: Math.max(e.az, e.bz) - 6 }));
+  return [...plaza, ...events];
 }

@@ -315,6 +315,19 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
       colliders.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, h: 4 });
     }
   }
+  // the long stretches: every 500 m, each way, a board with the district ahead and the kilometres left (none near a junction: its own boards speak there)
+  for (let k = 0; 250 + k * 500 < L; k++) for (const dir of [1, -1]) {
+    const s = 250 + k * 500 + (dir < 0 ? 40 : 0);
+    if (s < s0 || s >= s0 + CHUNK || s < 160 || s > L - 160 || nearJunction(s, 110)) continue;
+    const left = dir > 0 ? L - s : s, km = `${(left / 1000).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
+    const lat = dir > 0 ? -(VERGE - 0.2) : VERGE - 0.2, f = frame(road, s), x = f.x + f.lx * lat, z = f.z + f.lz * lat;
+    if (typeof document !== 'undefined') {
+      const board = directionBoard(signTarget(road, dir), km, f.yaw + (dir > 0 ? Math.PI : 0), x, z);
+      group.add(board.mesh); disposables.push(board.mesh.geometry, board.mat, board.tex);
+    }
+    plain.cyl(0.08, 0.08, 4, x, 0, z, 0x555a60, 6);
+    colliders.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, h: 4 });
+  }
   return {
     index, group, colliders, people, s0, s1,
     dispose() { for (const d of disposables) d.dispose(); group.removeFromParent(); },

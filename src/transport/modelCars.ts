@@ -165,7 +165,7 @@ const T = PAINTS.teranga;
 export const teranga = new OwnedVehicleModule({
   key: 'teranga', asset: 'teranga', detail: 'Citadine moderne · 5 portes · 5 places · idéale pour les courses VTC', icon: '🚗', kit: 'sedan',
   seed: () => paintSeedOf(0), spec: terangaSpec, visual: modelVisual('teranga'), height: 1.5, space: 'car:teranga',
-  dealer: { hub: 'pikine', name: 'Sarr Auto', catalogue: 'voitures', site: sarrFloorBoth(), sign: SARR_SIGN, sales: sarrSales, counterBias: -0.2 },
+  dealer: { hub: 'pikine', name: 'Sarr Auto', catalogue: 'voitures', site: sarrFloorBoth(), sign: SARR_SIGN, sales: sarrSales, counterBias: 2.5 },   // Pape Sarr himself wins the prompt at his desk; the till only when he is away
   branches: [{ hub: 'plateau', name: 'Ndiaye Auto', catalogue: 'voitures', site: ndiayeFloor(NDIAYE_LOTS.teranga, paintSeedOf(2), T[2].name), sign: NDIAYE_SIGN, sales: ndiayeSales }],
   text: CAR_TEXT('Teranga', true), exit: 'pavement', reach: 1.4,
 });
@@ -185,6 +185,6 @@ export const rafet = new OwnedVehicleModule({
 export const gainde = new OwnedVehicleModule({
   key: 'gainde', asset: 'gainde', detail: 'SUV coupé · 5 places · se gare où tu le laisses', icon: '🚙', kit: 'suv',
   seed: () => paintSeedOf(0), spec: gaindeSpec, visual: modelVisual('gainde'), height: 1.7, space: 'car:gainde',
-  dealer: { hub: 'almadies', name: 'Prestige Auto · SUV coupé', catalogue: 'suv-coupes', site: prestigeFloor('gainde', [paintSeedOf(0)], [PAINTS.gainde[0].name]), sign: PRESTIGE_SIGN },
+  dealer: { hub: 'almadies', name: 'Prestige Auto · SUV coupé', catalogue: 'suv-coupes', site: prestigeFloor('gainde', [paintSeedOf(2), paintSeedOf(0)], [PAINTS.gainde[2].name, PAINTS.gainde[0].name]), sign: PRESTIGE_SIGN },
   text: CAR_TEXT('Gaïndé', false), exit: 'pavement', reach: 1.6,
 });
