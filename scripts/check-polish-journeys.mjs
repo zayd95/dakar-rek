@@ -54,6 +54,8 @@ function sampler(key) {
   (async () => { while (!s.stop) { try { const a = await d(k => window.__dakar[k].at(), key); if (a) s.at.push(a); } catch { /* reloading */ } await page.waitForTimeout(250); } })();
   return s;
 }
+/** The slowest moment of a drive once the car has got going and before its final stop (a stop there means something held it), and where. */
+const cruising = (at, end, from = 3) => { const i0 = at.findIndex(a => a.speed > from); if (i0 < 0) return { slowest: 0, where: null }; const mid = at.slice(i0).filter(a => Math.hypot(a.x - end.x, a.z - end.z) > 20); if (!mid.length) return { slowest: null, where: null }; let m = mid[0]; for (const a of mid) if (a.speed < m.speed) m = a; return { slowest: +m.speed.toFixed(2), where: [+m.x.toFixed(1), +m.z.toFixed(1)] }; };
 const ff = async (raw, mp4) => { try { execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', raw, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '30', '-preset', 'veryfast', '-movflags', '+faststart', mp4]); return true; } catch (e) { note('ffmpeg', e.message); return false; } };
 /** The 5-day run, written as the save would hold it after five days worked (a debug shortcut: the days themselves are journeys A and B's). */
 const giveRun = n => d(n => { const s = window.__dakar.state.data, day = s.play.day; s.streak.run = n; s.streak.best = Math.max(s.streak.best, n); s.streak.last = day; s.streak.lastMs = s.playedMs; s.streak.total = Math.max(s.streak.total, n); s.streak.seen = [2, 3, 5, 7].filter(m => m <= n); return window.__dakar.streak.info().run; }, n);
@@ -73,7 +75,7 @@ J.arena = async () => {
   for (const [i, X] of [[1, 0], [2, 60]]) {
     const a0 = lane(X, -104, 1, 'z');
     await d(([x, z]) => window.__dakar.teranga.place(x, z, 0), [a0.x, a0.z]);
-    await d(([x, z]) => window.__dakar.place(x - 2.4, z, 0), [a0.x, a0.z]);
+    await d(([x, z]) => window.__dakar.place(x + 2.4, z, 0), [a0.x, a0.z]);                    // the driver's side (the car's left: +x heading north)
     await page.waitForTimeout(600);
     await boardVehicle(page, t, 'teranga');
     await d(() => window.__dakar.teranga.feelReset());
@@ -101,7 +103,7 @@ J.arena = async () => {
   // the Jakarta: east of the zone along the kerb into its guarded places, then between two posts into the zone, up to the queue's barriers
   const m0 = { x: 72, z: -55.6 };
   await d(([x, z]) => window.__dakar.moto.place(x, z, -Math.PI / 2), [m0.x, m0.z]);
-  await d(([x, z]) => window.__dakar.place(x, z - 1.6, -Math.PI / 2), [m0.x, m0.z]);
+  await d(([x, z]) => window.__dakar.place(x, z + 1.6, -Math.PI / 2), [m0.x, m0.z]);           // the saddle's side (heading west the bike's left is +z)
   await page.waitForTimeout(600);
   await boardVehicle(page, t, 'moto');
   await d(() => window.__dakar.moto.feelReset());
@@ -142,10 +144,10 @@ J.almadies = async () => {
     const s = sampler('gainde');
     const last = await pilot(page, t, 'gainde', r.pts.map(p => ({ ...p, tol: 3.5, speed: 7 })), { cruise: 7, stall: 15000, brakeAtEnd: true });
     s.stop = true;
-    const end = r.pts[r.pts.length - 1], mid = s.at.slice(4, -4), slow = mid.length ? Math.min(...mid.map(a => a.speed)) : null, felt = await d(() => window.__dakar.gainde.feel());
+    const end = r.pts[r.pts.length - 1], cr = cruising(s.at, end), slow = cr.slowest, felt = await d(() => window.__dakar.gainde.feel());
     const blocks = [];
     for (let k = 0; k < r.pts.length; k++) { const p = r.pts[k]; const why = await d(([x, z]) => window.__dakar.gainde.solidAt(x, z, 1), [p.x, p.z]); if (why) blocks.push({ at: [p.x, p.z], why: why.why, rect: why.rect }); }
-    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && slow > 2.5, JSON.stringify({ end: [last.x, last.z], slowest: slow, impacts: felt.impacts.map(i => i.what ?? i) }));
+    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && slow > 2.5, JSON.stringify({ end: [last.x, last.z], ...cr, impacts: felt.impacts.map(i => i.what ?? i) }));
     check(`Almadies, ${r.name}: nothing solid on the lane at any junction`, blocks.length === 0, JSON.stringify(blocks));
     await shot(r.name.split(' ').slice(0, 3).join('-'));
   }
@@ -219,7 +221,7 @@ const phoneApp = async id => {
   await t.tap(`#phone [data-app="${id}"]`); await page.waitForTimeout(500);
 };
 const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().open)) { await t.tap('#phone [data-nav="close"]'); await wait(() => !window.__dakar.phoneInfo().open, null, 20000); } };
-/** A job offer of the « Travail » app, tapped by its text. */
+/** A job offer of the « Travail » app, tapped by its text (the cards use short names: « 🥬 Maïga → 🔧 Garage »). */
 const takeJob = async (text, routeId) => {
   await phoneApp('travail'); await page.waitForSelector('#modal.on', T);
   const c = page.locator('#modal .dcard', { hasText: text }).first();
@@ -241,6 +243,14 @@ const readCard = async () => {
   return { text, gone, overControls: c.overJoy || c.overAct };
 };
 const ledger = () => d(() => window.__dakar.ledger());
+/** Stand within reach of a person or thing and wait until the action button acts on it (`id`), trying a few spots round (x, z) (as scripts/check-first-car.mjs). */
+const focusOn = async (id, x, z) => {
+  for (const [dx, dz] of [[1.2, -0.8], [-1.2, -0.8], [0, -1.3], [1.4, 0], [-1.4, 0]]) {
+    await d(([x, z, yaw]) => window.__dakar.place(x, z, yaw), [x + dx, z + dz, Math.atan2(-dx, -dz)]);
+    if (await wait(i => window.__dakar.focus()?.id === i, id, 2500).then(() => true, () => false)) return true;
+  }
+  return false;
+};
 /** Out of a kerb lane with a car parked ahead: into the lane at a slant, then straight (as scripts/check-first-car.mjs). */
 const pullOut = c => { const F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, R = { x: -Math.cos(c.yaw), z: Math.sin(c.yaw) }, p = { x: c.x + F.x * 9, z: c.z + F.z * 9 };
   const snap = v => [-120, -60, 0, 60, 120].reduce((b, q) => (Math.abs(q - v) < Math.abs(b - v) ? q : b));
@@ -254,7 +264,7 @@ J.A = async () => {
   check('a new player: no day worked, no run', st0.streak.run === 0 && st0.streak.total === 0, JSON.stringify(st0.streak));
   await phoneApp('profil'); const prof0 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-new'); await phoneClose();
   check('the Profile says how a day counts, and no run yet', /Comment ça marche|0 jour/.test(prof0), prof0.replace(/\s+/g, ' ').slice(0, 200));
-  await takeJob('Riz au poisson', 'pk_maiga_garage');
+  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
   await shot('job-taken');
   // the Tiak Tiak bike lent by the stand (the walk to the stand is not this journey's: the player is put beside it)
   const bike = await d(() => window.__dakar.tiak.at());
@@ -281,7 +291,7 @@ J.A = async () => {
   await phoneApp('profil'); const prof1 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-1'); await phoneClose();
   check('the Profile: « 1 jour actif »', /1 jour actif/.test(prof1), prof1.replace(/\s+/g, ' ').slice(0, 200));
   // a second delivery the same day: no second day
-  await takeJob('Riz au poisson', 'pk_maiga_garage');
+  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
   await boardVehicle(page, t, 'tiak');
   await toKerb('tiak', { x: 78, z: -5.5 }); await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
   await toKerb('tiak', { x: 102, z: -5.5 }); await wait(() => !window.__dakar.activeJob(), null, 30000);
@@ -289,7 +299,7 @@ J.A = async () => {
   check('a second delivery the same day pays, and the card says the day is already counted (no farming)', /Aujourd’hui est déjà compté/.test(c2.text) && (await d(() => window.__dakar.streak.info().streak.run)) === 1, c2.text.replace(/\s+/g, ' '));
   // the next day (a debug shortcut for the city day the journey cannot wait for, labelled): a delivery, the run of 2, its short celebration
   await d(() => { window.__dakar.streak.nextDay(); window.__dakar.streak.later(); });
-  await takeJob('Riz au poisson', 'pk_maiga_garage');
+  await takeJob(/Maïga.*Garage/, 'pk_maiga_garage');
   await toKerb('tiak', { x: 78, z: -5.5 }); await wait(() => window.__dakar.activeJob()?.stage === 'deliver', null, 30000);
   await toKerb('tiak', { x: 102, z: -5.5 }); await wait(() => !window.__dakar.activeJob(), null, 30000);
   const c3 = await readCard();
@@ -348,8 +358,8 @@ J.C = async () => {
   await d(() => { window.__dakar.state.data.rel['player|sarr'] = 45; });
   note('setup: Pape Sarr\'s trust at 45 (the errands that earn it are journey A of PR #63, scripts/check-first-car.mjs), 230 000 F');
   const sl = await d(() => window.__dakar.sarr.info().lot);
-  await d(L => window.__dakar.place(L.counter.x + 0.4, L.counter.z - 1.4, 0), sl);
-  await wait(() => /sarr/.test(window.__dakar.focus()?.id ?? ''), null, 60000);
+  const ss = await d(() => window.__dakar.sales_sarr.info());
+  if (!(await focusOn('sarr:sales', ss.x, ss.z))) throw new Error('no focus on Pape Sarr ' + JSON.stringify(await d(() => window.__dakar.focus())));
   await t.tap('#act'); await page.waitForSelector('#modal.on', T);
   await tapItem('Demander un crédit'); await page.waitForTimeout(800);
   const offer = await modalText(); await shot('credit-offer');
@@ -369,6 +379,7 @@ J.C = async () => {
   await wait(() => window.__dakar.vtc.info().trip?.stage === 'pickup', null, 20000);
   await phoneClose().catch(() => {});
   await wait(() => window.__dakar.teranga.info().here, null, 60000);
+  await walkTo(page, t, sl.counter.x + 1.7, sl.counter.z - 0.2, { tol: 0.5 }); await walkTo(page, t, sl.counter.x + 1.7, 1.8, { tol: 0.6 });   // between two of his cars, out to the road side
   await boardVehicle(page, t, 'teranga');
   await page.waitForTimeout(1200);
   const g1 = await goal(); await shot('nav-to-passenger');
@@ -442,7 +453,7 @@ J.D = async () => {
 J.E = async () => {
   await open('&heure=10&argent=1500000');
   await d(() => window.__dakar.moto.own()); await wait(() => window.__dakar.moto.info().owned && window.__dakar.moto.info().here);
-  await takeJob('Bissap', 'x_pk_al_maiga_pointe'); await shot('job-taken'); await phoneClose().catch(() => {});
+  await takeJob(/Maïga.*Le Pointe/, 'x_pk_al_maiga_pointe'); await shot('job-taken'); await phoneClose().catch(() => {});
   await d(() => { window.__dakar.moto.place(62.1, -30, 0); window.__dakar.place(64.2, -30, 0); });       // setup: the bike in the street south of the Maïga
   await page.waitForTimeout(800);
   await boardVehicle(page, t, 'moto');
