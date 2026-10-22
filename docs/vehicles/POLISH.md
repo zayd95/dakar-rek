@@ -68,7 +68,8 @@ stand. The 70 000 000 F Lamane Sport is not made easier.
 - While driving or riding, the goal line says the next turn and the distance left by road: « ↱ À droite dans 80 m · Restaurant Le Pointe · 2,4 km ». In the
   goal's district the way follows the streets; elsewhere it follows them to the way out toward the next district of the trip; out on a road between districts
   it is « Tout droit sur la route » with the kilometres left. The minimap's dotted route and the phone's map follow the same point; the car's centre screen
-  shows the same turn. It survives crossing into the next district, switches from pick-up to drop-off by itself and clears when the job ends.
+  shows the same turn. It survives crossing into the next district, switches from pick-up to drop-off by itself and clears when the job ends. At the wheel
+  the way keeps off the streets closed to cars (the arena's pedestrian zone, a street a road event has closed), as the city's own cars do; on foot it does not.
 - **On the ground**: a green welcome board at each way into a district (« PIKINE · Bienvenue · la banlieue qui bouge », …) on the right of the arriving traffic
   (`src/world/arrivalSigns.ts`); on the roads between districts a board every 500 m each way with the district ahead and the kilometres left
   (`src/road/chunks.ts`).
