@@ -116,6 +116,7 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, {
 check('in the Plateau on the Jakarta with the parcel (one delivery in hand, nothing paid yet)', (await d(() => window.__dakar.pos().hub)) === 'plateau' && (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await d(() => window.__dakar.state.wallet)) === wallet0);
 await shot('plateau');
 const pl = (await d(() => window.__dakar.cityPlaces())).find(p => p.id.startsWith('plateau:') && p.id.includes(':city:boutique'));
+await page.waitForFunction(() => !!window.__dakar.moto.at(), null, { timeout: 60000 });   // the bike is handed over to the new district a moment after the crossing
 a = await AT(); const K2 = kerbOf(pl);
 const r2 = route({ x: a.x, z: a.z, yaw: a.yaw }, K2, { cruise: 6 });
 if (r2) await pilot(page, t, 'moto', r2, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
