@@ -256,8 +256,29 @@ const takeJob = async (text, routeId) => {
   }
   throw new Error(`the job ${routeId} did not start`);
 };
-/** Drive or ride `key` along the streets to the kerb of a place (x, z) of this district (never through the arena's pedestrian street, as the game's own directions). */
-const toKerb = async (key, place, o = {}) => { const a = await d(k => window.__dakar[k].at(), key), k = kerbOf(place), avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [], r = route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise: o.cruise ?? 6, avoid }); if (!r) throw new Error(`no street route to ${JSON.stringify(place)}`); return pilot(page, t, key, r, { cruise: o.cruise ?? 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); };
+/**
+ * Drive or ride `key` along the streets to a kerb spot k ({ x, z, yaw }) of this district, never through the arena's pedestrian street (as the game's own directions).
+ * Held up for long on the way (a car rapide at its stop: its dwell lasts minutes of wall clock on a software renderer), it plans again from where it stands, twice at most.
+ */
+const driveToKerb = async (key, k, o = {}) => {
+  const avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [], cruise = o.cruise ?? 6, f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) };
+  let at = null;
+  for (let n = 0; n < 3; n++) {
+    const a = await d(kk => window.__dakar[kk].at(), key);
+    if (Math.hypot(a.x - k.x, a.z - k.z) < 5) break;
+    const along = (k.x - a.x) * f.x + (k.z - a.z) * f.z, side = Math.abs((k.x - a.x) * f.z - (k.z - a.z) * f.x);
+    const r = n && along > 3 && along < 80 && side < 4 && Math.cos(a.yaw - k.yaw) > 0.8
+      ? [{ x: k.x - f.x * 5, z: k.z - f.z * 5, tol: 2.2, speed: 2.2 }, { x: k.x + f.x * 1.5, z: k.z + f.z * 1.5, tol: 2, speed: 2.2 }]     // already in the kerb's street, short of it
+      : route({ x: a.x, z: a.z, yaw: a.yaw }, k, { cruise, avoid });
+    if (!r) { if (n) break; throw new Error(`no street route to ${JSON.stringify(k)}`); }
+    at = await pilot(page, t, key, r, { cruise, stall: 60000, ms: 1500000, brakeAtEnd: true });
+    if (Math.hypot(at.x - k.x, at.z - k.z) < 5) break;
+    note(`held up ${Math.hypot(at.x - k.x, at.z - k.z).toFixed(0)} m short of the kerb: on again from where it stands`);
+  }
+  return at;
+};
+/** Drive or ride `key` to the kerb of a place (x, z) of this district. */
+const toKerb = (key, place, o = {}) => driveToKerb(key, kerbOf(place), o);
 /** A Tiak stop: ridden to the kerb of the place, off the bike, and on foot to its door if the kerb is not close enough; waits for `until` (in the page). */
 const atStop = async (key, place, until) => {
   await toKerb(key, place);
@@ -432,7 +453,7 @@ J.C = async () => {
   const g2 = await goal(); await shot('nav-to-dropoff');
   check('the passenger aboard: the directions turn to the drop-off by themselves', g2?.nav && new RegExp(pick.r.dropoff.name.split(' ')[0]).test(g2.text), JSON.stringify(g2));
   const w0 = await d(() => window.__dakar.state.wallet), paid0 = ln.paid;
-  { const S2 = await d(() => window.__dakar.vtc.stops()), a = await d(() => window.__dakar.teranga.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, S2.dropoff.car, { cruise: 6 }); await pilot(page, t, 'teranga', r, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true }); }
+  await driveToKerb('teranga', (await d(() => window.__dakar.vtc.stops())).dropoff.car, { cruise: 6 });
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), ln1 = (await d(() => window.__dakar.credit.info())).loans.find(l => l.lender === 'sarr'), share = Math.round(pick.r.fare * 0.3);
   check('dropped off: the fare paid once; Pape Sarr\'s 30 % taken off it toward the debt, the rest in the wallet', ln1.paid - paid0 === share && w1 - w0 === pick.r.fare - share, JSON.stringify({ fare: pick.r.fare, toSarr: ln1.paid - paid0, wallet: w1 - w0 }));
@@ -487,7 +508,7 @@ J.D = async () => {
   check('on the road between districts: « Tout droit » and the kilometres left', sOnRoad.some(x => /Tout droit/.test(x) && /km/.test(x)), JSON.stringify(sOnRoad));
   await wait(() => window.__dakar.pos().hub === 'plateau', null, 240000).catch(() => {});
   await shot('plateau-arrival');
-  { const S2 = await d(() => window.__dakar.vtc.stops()), a = await d(() => window.__dakar.teranga.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, S2.dropoff.car, { cruise: 7 }); if (r) await pilot(page, t, 'teranga', r, { cruise: 7, stall: 60000, ms: 1500000, brakeAtEnd: true }); }
+  await driveToKerb('teranga', (await d(() => window.__dakar.vtc.stops())).dropoff.car, { cruise: 7 });
   await wait(() => !window.__dakar.vtc.info().trip, null, 60000);
   const c = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledger()).slice(l0).filter(l => /VTC/.test(l.label));
   check(`dropped off in the Plateau: ${pick.fare} F paid once (one wallet line), never above 5 000 F`, w1 - w0 === pick.fare && lines.length === 1 && pick.fare <= 5000, JSON.stringify({ paid: w1 - w0, lines: lines.length }));
