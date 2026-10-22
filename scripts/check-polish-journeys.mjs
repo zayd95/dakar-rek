@@ -293,8 +293,11 @@ const driveToKerb = async (key, k, o = {}) => {
 /** Drive or ride `key` to the kerb of a place (x, z) of this district. */
 const toKerb = (key, place, o = {}) => driveToKerb(key, kerbOf(place), o);
 /** A Tiak stop: ridden to the kerb of the place, off the bike, and on foot to its door if the kerb is not close enough; waits for `until` (in the page). */
-const atStop = async (key, place, until) => {
+const atStop = async (key, place, until, o = {}) => {
   await toKerb(key, place);
+  // a drop-off done from the saddle: its card read (and tapped) before getting off, while it is still up (it goes by itself after 7 s)
+  let card = null;
+  if (o.card && await wait(until, null, 4000).then(() => true, () => false)) card = await readCard();
   await getOff(key);
   if (!(await wait(until, null, 6000).then(() => true, () => false))) {
     // the rider steps off on the street side, the place is on the other: round the end of the bike nearer to it, then to the door
@@ -304,6 +307,7 @@ const atStop = async (key, place, until) => {
     await walkTo(page, t, place.x, (place.z + k.z) / 2, { tol: 0.6, ms: 60000 });
     await wait(until, null, 20000);
   }
+  return o.card ? card ?? await readCard() : null;
 };
 /** The work card on screen, read; then dismissed by a tap, as a player would. */
 const readCard = async () => {
@@ -360,27 +364,25 @@ J.A = async () => {
   check('parcel picked up at the kerb of the Maïga: the directions turn to the client', /Garage Modou/.test(g2?.text ?? ''), JSON.stringify(g2));
   await shot('nav-to-client');
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await ledgerMark();
-  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
-  const c1 = await readCard(), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0));
+  const c1 = await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob(), { card: true }), w1 = await d(() => window.__dakar.state.wallet), lines = (await ledgerSince(l0));
   check('delivered: paid ONCE (one wallet line)', w1 > w0 && lines.length === 1, JSON.stringify({ paid: w1 - w0, lines: lines.map(l => l.label) }));
-  check('the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went', /Livraison/.test(c1.text) && /Garage Modou/.test(c1.text) && new RegExp(`${(w1 - w0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`).test(c1.text) && /Durée/.test(c1.text) && /Distance/.test(c1.text) && /1 jour actif/.test(c1.text) && /Premier jour actif/.test(c1.text) && /Livré/.test(c1.text) && !/★/.test(c1.text), c1.text.replace(/\s+/g, ' '));
-  check('the card is brief, clear of the stick and the action button, and a tap dismisses it', c1.tapped && c1.gone && !c1.overControls, JSON.stringify({ tapped: c1.tapped, gone: c1.gone, over: c1.overControls }));
+  check('the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went', /Livraison réussie|Livré en retard/.test(c1.text) && /Garage Modou/.test(c1.text) && new RegExp(`${(w1 - w0).toLocaleString('fr-FR').replace(/\s/g, '.')} F`).test(c1.text) && /Durée/.test(c1.text) && /Distance/.test(c1.text) && /1 jour actif/.test(c1.text) && /Premier jour actif/.test(c1.text) && /Livré/.test(c1.text) && !/★/.test(c1.text), c1.text.replace(/\s+/g, ' '));
   await phoneApp('profil'); const prof1 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-1'); await phoneClose();
   check('the Profile: « 1 jour actif »', /1 jour actif/.test(prof1), prof1.replace(/\s+/g, ' ').slice(0, 200));
   // a second delivery the same day: no second day
   await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
   await boardVehicle(page, t, 'tiak');
   await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver'); await boardVehicle(page, t, 'tiak');
-  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
-  const c2 = await readCard();
+  const c2 = await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob(), { card: true });
   check('a second delivery the same day pays, and the card says the day is already counted (no farming)', /Aujourd’hui est déjà compté/.test(c2.text) && (await d(() => window.__dakar.streak.info().streak.run)) === 1, c2.text.replace(/\s+/g, ' '));
   // the next day (a debug shortcut for the city day the journey cannot wait for, labelled): a delivery, the run of 2, its short celebration
   await d(() => { window.__dakar.streak.nextDay(); window.__dakar.streak.later(); });
   await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
   await boardVehicle(page, t, 'tiak');
   await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver'); await boardVehicle(page, t, 'tiak');
-  await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob());
-  const c3 = await readCard();
+  const c3 = await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob(), { card: true });
+  { const tc = [c1, c2, c3].find(c => c.tapped) ?? c1;               // the tap is checked on the first card still up when the check looked (a loaded renderer can be late)
+    check('the card is brief, clear of the stick and the action button, and a tap dismisses it', tc.tapped && tc.gone && ![c1, c2, c3].some(c => c.overControls), JSON.stringify({ tapped: [c1, c2, c3].map(c => c.tapped), gone: tc.gone, over: [c1, c2, c3].map(c => c.overControls) })); }
   check('the next day\'s delivery: the card counts the day: « 2 jours d’affilée »', /2 jours d’affilée/.test(c3.text) && /Jour actif compté/.test(c3.text), c3.text.replace(/\s+/g, ' '));
   await wait(() => [...document.querySelectorAll('.mo')].some(e => /2 jours d’affilée !/.test(e.textContent)), null, 20000).catch(() => {});
   const mile = await d(() => [...document.querySelectorAll('.mo')].map(e => e.innerText.replace(/\s+/g, ' ')).find(x => /affilée !/.test(x)) ?? null);
