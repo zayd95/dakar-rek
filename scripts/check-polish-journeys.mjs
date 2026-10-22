@@ -174,8 +174,9 @@ J.almadies = async () => {
     const end = r.pts[r.pts.length - 1], cr = cruising(s.at, end), slow = cr.slowest, felt = await d(() => window.__dakar.gainde.feel());
     const blocks = [];
     for (let k = 0; k < r.pts.length; k++) { const p = r.pts[k]; const why = await d(([x, z]) => window.__dakar.gainde.solidAt(x, z, 1), [p.x, p.z]); if (why) blocks.push({ at: [p.x, p.z], why: why.why, rect: why.rect }); }
-    // slower than a walking pace only queued behind a car rapide (solid, in sight, 12 m ahead at most): the way itself never holds the car
-    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && (slow > 2.5 || (cr.rapideAhead !== null && cr.rapideAhead < 12)), JSON.stringify({ end: [last.x, last.z], ...cr, impacts: felt.impacts.map(i => i.what ?? i) }));
+    // what held a car here was solid and unseen (the gate's wall, the pier across the road): a knock and a dead stop. The test's driver slows itself to about 2 m/s at a
+    // waypoint or when its line wavers (scripts/lib/realTouch.mjs pilot), so « no stop » is: never a knock, never below 0.8 m/s unless queued behind a car rapide (solid, in sight)
+    check(`Almadies, ${r.name}: driven to the end, no stop on the way`, Math.hypot(last.x - end.x, last.z - end.z) < 5 && felt.impacts.length === 0 && (slow > 0.8 || (cr.rapideAhead !== null && cr.rapideAhead < 12)), JSON.stringify({ end: [last.x, last.z], ...cr, impacts: felt.impacts.map(i => i.what ?? i) }));
     check(`Almadies, ${r.name}: nothing solid on the lane at any junction`, blocks.length === 0, JSON.stringify(blocks));
     await shot(r.name.split(' ').slice(0, 3).join('-'));
   }
