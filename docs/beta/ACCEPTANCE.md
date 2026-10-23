@@ -103,6 +103,9 @@ and the CI) were re-run on the final code.
   gone when the check looked, so its tap-to-dismiss was not seen in that run (journey `card` covers that tap: 4/4);
   or the city's day turned between two deliveries (the card then rightly says « un peu plus tard »: the check now accepts
   both). The checks were made robust to these two, and the last run is 13/14 with the tap-to-dismiss only.
+- **CI, one flaky step.** On the last commit, the « push » run of `check:online` stopped at « a passenger in a car rapide is
+  not drawn on a bike » (the second player had not yet boarded the rapide when the first looked), while the « pull request »
+  run of the same commit passed it, as did the four runs before. That step races a boarding against a poll.
 - **Flaky under load, passed on rerun:**
   - `check-roadside checkpoint`, 1st run: the scripted driver hit a traffic vehicle on the way in. The 2nd run was clean.
   - `check-vtc-ride`, 1st run: the scripted driver, which does not see traffic, wore the car by 22 points. The rerun lost 2.6.
