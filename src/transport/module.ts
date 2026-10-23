@@ -84,6 +84,16 @@ export type { LineFans };
 export interface StopArrival { key: string; vehicle: string; fans: boolean }
 /** A vehicle's footprint for drive mode: centre, heading, half length and half width. */
 export interface Footprint { x: number; z: number; yaw: number; hl: number; hw: number }
+/**
+ * The line cars drive mode collides with: only a RUNNING line's. A line that does not run now (Ligne 23's evening route `23s` by day, its day route on
+ * the arena's evenings) has its cars hidden wherever they last stood — `23s`'s two by day in the middle of the junction at the arena's north-west
+ * corner (0, 0), where they were made, Ligne 23's at its « Arène » stop on the arena's west road from the evening on — and a hidden car is never solid:
+ * those were the « invisible » walls a driver met beside the arena (scripts/probe-arena-lanes.mjs, tests/arenaLanes.test.ts).
+ */
+export function lineFootprints(lines: readonly { on: boolean; spec: { length: number; width: number }; vehicles: readonly { pose: { x: number; z: number; yaw: number } }[] }[], out: Footprint[]): Footprint[] {
+  for (const rt of lines) if (rt.on) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
+  return out;
+}
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
 interface Walk { fx: number; fz: number; tx: number; tz: number; t0: number; ms: number; done: () => void }
@@ -320,13 +330,13 @@ export class TransportModule implements GameModule {
   }
 
   /**
-   * Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width; then those of
+   * Footprints of the running lines' cars (drive mode collides with them, `lineFootprints`): centre, heading, half length and width; then those of
    * the other systems' solid things (`addObstacles`: the gala road's jam, src/city/galaTraffic.ts; the gate's pedestrian
    * zone for a car, src/arena/exterior.ts). `kind`: the kit kind of the vehicle asking ('moto', 'sedan'…).
    */
   obstacles(out: Footprint[], kind?: string) {
     out.length = 0;
-    for (const rt of this.lines) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
+    lineFootprints(this.lines, out);
     for (const fn of this.obstacleFns) fn(out, kind);
     return out;
   }
