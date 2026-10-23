@@ -265,10 +265,10 @@ export class DancePlay implements InWorldPlayer {
     }
     const b = this.beat();
     if (r.phase === 'count' && b >= r.startBeat - 0.25) r.phase = 'dance';
-    // cues gone by unanswered: missed
+    // cues gone by unanswered: missed (a little after the window closes: a touch made in time on a phone that drew a slow frame still lands)
     for (const c of r.cues) {
       if (r.judged.has(c.i)) continue;
-      if ((b - c.beat) * BEAT <= WINDOWS.ok) break;
+      if ((b - c.beat) * BEAT <= WINDOWS.catch + 0.1) break;
       r.judged.add(c.i); r.scores.set(c.i, 0); r.grades.set(c.i, 'raté'); r.streak = 0;
       const p = this.screenOf(c.kind); if (p) this.layer?.word(WORD.raté[0], WORD.raté[1], p.x, p.y - 30);
     }
