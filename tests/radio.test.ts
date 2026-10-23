@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONNECT_TIMEOUT, RADIO_LEVEL, Radio, SILENT_PROBE, STALL_TIMEOUT, STATIONS, VOLUMES, duckFactor, radioGain, radioSettings, unavailable, type MediaLike, type RadioEnv } from '../src/transport/radio';
+import { CONNECT_TIMEOUT, ELEMENT_GAIN, RADIO_LEVEL, Radio, SILENT_PROBE, STALL_TIMEOUT, STATIONS, VOLUMES, duckFactor, radioGain, radioSettings, unavailable, type MediaLike, type RadioEnv } from '../src/transport/radio';
 
 /** The car radio (src/transport/radio.ts): live Senegalese stations, ducked under the horn, the phone, a knock and the job's card; released whenever it is not heard. */
 describe('the car radio: stations and level', () => {
@@ -81,12 +81,13 @@ describe('the car radio: streaming', () => {
     const plain = k.els[1];
     expect(plain.crossOrigin).toBeNull(); expect(plain.src).toBe(STATIONS[0].url); expect(k.r.mode).toBe('element');
     plain.fire('playing'); k.tick(300);
-    expect(plain.volume).toBeCloseTo(RADIO_LEVEL * k.r.volume, 5);
+    expect(plain.volume).toBeCloseTo(RADIO_LEVEL * k.r.volume * ELEMENT_GAIN, 5);                // as loud as through the bus (its limiter's make-up gain)
     k.drive.horn = true; k.tick(200);
-    expect(plain.volume).toBeLessThan(RADIO_LEVEL * k.r.volume * 0.4);
+    expect(plain.volume).toBeLessThan(RADIO_LEVEL * k.r.volume * ELEMENT_GAIN * 0.4);
     expect(k.notices).toEqual([]);
-    k.r.next(k.bus); expect(k.els[0].src).toBe('');                                     // the next station goes straight to a plain element (the graph's way is known to fail)
-    expect(k.r.mode).toBe('element'); expect(plain.src).toBe(STATIONS[1].url);
+    k.r.next(k.bus); expect(k.r.mode).toBe('graph'); expect(k.els[0].src).toBe(STATIONS[1].url);   // another station tries the graph first
+    k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus);                        // …and back to RFM: straight to a plain element (its graph load is known to fail)
+    expect(k.r.mode).toBe('element'); expect(plain.src).toBe(STATIONS[0].url); expect(k.r.info().noCors).toEqual(['rfm']);
   });
   it('on an iPhone a plain element\'s volume cannot be set: the horn and the phone mute it instead', () => {
     const k = rig();
@@ -103,12 +104,12 @@ describe('the car radio: streaming', () => {
     k.tick(20000); expect(k.notices.length).toBe(1); expect(k.streaming()).toEqual([]);
     expect(k.r.next(k.bus)?.name).toBe('Sud FM'); expect(k.streaming().length).toBe(1);
   });
-  it('a station that never starts is unavailable after the timeout (blocked media, a dead stream, a preview\'s CSP)', () => {
+  it('a station that never starts is unavailable after the timeout (a dead stream that keeps the connection open)', () => {
     const k = rig();
-    k.r.next(k.bus); k.tick(CONNECT_TIMEOUT + 200);
-    expect(k.r.mode).toBe('element'); expect(k.notices).toEqual([]);
-    k.tick(CONNECT_TIMEOUT + 200);
-    expect(k.r.status).toBe('failed'); expect(k.notices).toEqual(['📻 RFM indisponible']); expect(k.streaming()).toEqual([]);
+    k.r.next(k.bus); k.tick(CONNECT_TIMEOUT - 500);
+    expect(k.r.status).toBe('connecting'); expect(k.notices).toEqual([]);
+    k.tick(800);
+    expect(k.r.status).toBe('failed'); expect(k.els.length).toBe(1); expect(k.notices).toEqual(['📻 RFM indisponible']); expect(k.streaming()).toEqual([]);
   });
   it('a stall reconnects to the live broadcast once; a second one for good says unavailable', () => {
     const k = rig();
@@ -119,7 +120,6 @@ describe('the car radio: streaming', () => {
     el.fire('playing'); el.fire('stalled'); k.tick(STALL_TIMEOUT + 200);
     expect(k.r.info().reconnects).toBe(2);                                               // it played again in between: a new chance
     k.tick(CONNECT_TIMEOUT + 200);                                                       // …but this time it never comes back
-    k.tick(CONNECT_TIMEOUT + 200);
     expect(k.r.status).toBe('failed'); expect(k.notices).toEqual(['📻 RFM indisponible']);
   });
   it('no hidden download: out of the car, the sound off, the page hidden, a phone call — the stream is let go, and comes back with the sound', () => {

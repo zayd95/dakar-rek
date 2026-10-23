@@ -25,10 +25,13 @@ export const STATIONS: readonly Station[] = [
   { id: 'rewmi', name: 'Rewmi FM', freq: '97.5', full: 'Radio Rewmi FM Dakar', url: 'https://stream.zeno.fm/smw7kg16t8quv', page: 'https://zeno.fm/radio/radiorewmi/' },
 ];
 /**
- * The radio's gain at full volume, before ducking, for a broadcast mastered near −16 dBFS rms: about −30 dB rms at the speaker on « Moyen »
- * (measured with a stand-in stream: docs/audio/ARENA_AND_RADIO.md), above the cabin's quiet engine (about −40 dB), under the horn.
+ * The radio's gain at full volume, before ducking, for a broadcast mastered near −14 LUFS: about −30 dB rms at the speaker on « Moyen »
+ * (measured with a stand-in stream, the vehicles' bus and its limiter included: docs/audio/ARENA_AND_RADIO.md), some 10 dB above the cabin's
+ * quiet engine at idle (about −40 dB), under the horn and the arena's drums.
  */
-export const RADIO_LEVEL = 0.28;
+export const RADIO_LEVEL = 0.1;
+/** A plain element plays outside the vehicles' bus, whose limiter adds about 6 dB of make-up gain: its volume is raised as much to sound the same. */
+export const ELEMENT_GAIN = 2;
 /** Volume settings (Réglages › Son › Radio de la voiture). */
 export const VOLUMES = [{ id: 'bas', label: 'Bas', v: 0.45 }, { id: 'moyen', label: 'Moyen', v: 0.7 }, { id: 'fort', label: 'Fort', v: 1 }] as const;
 /** How long a station may take to start, and to recover from a stall, before it is said to be unavailable (ms). */
@@ -107,7 +110,9 @@ export class Radio {
   private probe: AnalyserNode | null = null;
   private plainEl: MediaLike | null = null;
   private since = 0; private stallSince = 0; private playingSince = 0; private heard = false;
-  private triedPlain = false; private retried = false; private corsBroken = false; private releasing = false;
+  private triedPlain = false; private retried = false; private releasing = false;
+  /** Stations whose stream played only on a plain element (no CORS headers): straight there next time. */
+  private noCors = new Set<string>();
   /** iOS: a plain element's volume cannot be set (it stays at 1). */
   private volumeFixed = false;
   private ducks: { f: number; until: number }[] = [];
@@ -164,8 +169,8 @@ export class Radio {
     if (this.mode === 'graph' && this.out) this.out.gain.setTargetAtTime(g, bus.ctx.currentTime, 0.25);
     else if (this.mode === 'element') {
       const el = this.el;
-      try { el.volume = Math.max(0, Math.min(1, g)); } catch { /* read-only */ }
-      if (g < 0.99 && el.volume >= 0.999) this.volumeFixed = true;
+      try { el.volume = Math.max(0, Math.min(1, g * ELEMENT_GAIN)); } catch { /* read-only */ }
+      if (g * ELEMENT_GAIN < 0.99 && el.volume >= 0.999) this.volumeFixed = true;
       if (this.volumeFixed) el.muted = g < RADIO_LEVEL * this.volume * 0.45;     // iPhone: no volume of its own, so the horn and the phone mute it
     }
   }
@@ -183,7 +188,7 @@ export class Radio {
   private connect(bus: Bus) {
     const st = this.current; if (!st) return;
     this.bus = bus;
-    const plain = this.corsBroken || this.triedPlain;
+    const plain = this.noCors.has(st.id) || this.triedPlain;
     const el = plain ? this.plainElement() : this.graphElement(bus);
     if (!el) { this.fail('no audio element'); return; }
     this.mode = plain ? 'element' : 'graph';
@@ -224,7 +229,7 @@ export class Radio {
     this.watch(el); this.plainEl = el; return el;
   }
   private watch(el: MediaLike) {
-    el.addEventListener('playing', () => { if (el !== this.el) return; this.status = 'playing'; this.playingSince = this.e.now(); this.retried = false; this.log.played++; if (this.mode === 'element') this.corsBroken = this.triedPlain; });
+    el.addEventListener('playing', () => { if (el !== this.el) return; this.status = 'playing'; this.playingSince = this.e.now(); this.retried = false; this.log.played++; const st = this.current; if (st && this.mode === 'element' && this.triedPlain) this.noCors.add(st.id); });
     for (const t of ['waiting', 'stalled']) el.addEventListener(t, () => { if (el === this.el && this.status === 'playing') { this.status = 'stalled'; this.stallSince = this.e.now(); } });
     el.addEventListener('pause', () => { if (el === this.el && !this.releasing && this.status === 'playing') { this.status = 'stalled'; this.stallSince = this.e.now(); } });   // paused by the system (a call)
     el.addEventListener('ended', () => { if (el === this.el) this.fail('ended'); });
@@ -238,11 +243,14 @@ export class Radio {
     for (const x of buf) if (x !== 0) { this.heard = true; return; }
     if (now - this.playingSince > SILENT_PROBE) this.fail('silent');
   }
-  /** Something went wrong: the plain element once (a stream without CORS headers), a reconnection once (a stall), then « indisponible ». */
+  /**
+   * Something went wrong: the plain element once when the graph's load failed (a stream without CORS headers fails at once, with an error, as a
+   * blocked or dead one does), a reconnection once after a stall, then « indisponible ». A stream that never starts is not retried.
+   */
   private fail(why: string) {
     const st = this.current, bus = this.bus;
     this.log.lastError = why;
-    if (st && bus && this.mode === 'graph' && !this.triedPlain && why !== 'stall' && why !== 'ended') {
+    if (st && bus && this.mode === 'graph' && !this.triedPlain && why !== 'stall' && why !== 'ended' && why !== 'timeout') {
       this.release(); this.triedPlain = true; this.log.fallbacks++; this.connect(bus); return;
     }
     if (st && bus && !this.retried && (why === 'stall' || why === 'ended')) {
@@ -263,7 +271,7 @@ export class Radio {
   info() {
     const st = this.current;
     return { station: st?.id ?? null, name: st ? `${st.name} ${st.freq}` : null, status: this.status, mode: this.mode, streaming: !!this.el, volume: this.volume, volumeFixed: this.volumeFixed,
-      corsBroken: this.corsBroken, ducks: this.ducks.length, playing: this.status === 'playing', ...this.log };
+      noCors: [...this.noCors], ducks: this.ducks.length, playing: this.status === 'playing', ...this.log };
   }
 }
 export const radio = new Radio();
