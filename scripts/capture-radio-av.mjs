@@ -102,13 +102,13 @@ for (const scene of list.split(',')) {
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', video, '-itsoffset', String(clap.offset), '-i', `${out}/raw/${scene}.webm`, '-map', '0:v', '-map', '1:a', '-ss', String(from),
       '-vf', 'tpad=stop_mode=clone:stop_duration=600,scale=360:-2,fps=15', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '32', '-pix_fmt', 'yuv420p',
       '-c:a', 'aac', '-b:a', '96k', '-ar', '44100', '-shortest', '-movflags', '+faststart', film]);
-    const lv = loudness(film, 0.25), filmAt = i => (beepAt !== null && marks[i][2] !== null ? 0.3 + marks[i][2] - beepAt : marks[i][1] + 1.7);
+    const lv = loudness(film, 0.25), filmAt = i => (beepAt !== null && marks[i][2] !== null ? clap.beep + 0.3 + marks[i][2] - beepAt : marks[i][1] + 1.7);   // the clap sits at clap.beep + 0.3 s in the film
     const levels = marks.slice(0, -1).map(([m], i) => {
       const a = filmAt(i) + 0.6, b = filmAt(i + 1), w = lv.filter(x => x.t >= a && x.t < b); if (!w.length) return { moment: m };
       const p = w.reduce((s, x) => s + 10 ** (x.rmsDb / 10), 0) / w.length;
       return { moment: m, from: +a.toFixed(1), to: +b.toFixed(1), peakDb: Math.max(...w.map(x => x.peakDb)), rmsDb: +(10 * Math.log10(p || 1e-12)).toFixed(1) };
     });
-    report.scenes[scene] = { film, bytes: fs.statSync(film).size, levels, toasts, marks: marks.map(([m, a, , r]) => ({ moment: m, at: a, radio: r && { station: r.station, status: r.status, mode: r.mode, streaming: r.streaming } })), log, media: media.slice(0, 40), errors };
+    report.scenes[scene] = { film, bytes: fs.statSync(film).size, levels, toasts, clap, beepAt, marks: marks.map(([m, a, sc, r]) => ({ moment: m, at: a, sound: sc, radio: r && { station: r.station, status: r.status, mode: r.mode, streaming: r.streaming } })), log, media: media.slice(0, 40), errors };
   } else report.scenes[scene] = { clap: null, toasts, log, media, errors };
   console.log(scene, JSON.stringify({ toasts, levels: report.scenes[scene].levels, media: media.slice(0, 8) }, null, 0).slice(0, 2500));
 }
@@ -119,7 +119,7 @@ fs.writeFileSync(`${out}/radio.json`, JSON.stringify(report, null, 1));
 /** The clapperboard with the beep found by its pitch (as scripts/capture-arena-av.mjs). */
 function syncBeep(video, audio) {
   const W = 8, H = 8, fps = 50;
-  const v = execFileSync('ffmpeg', ['-v', 'error', '-i', video, '-vf', `fps=${fps},crop=${W}:${H}:2:2`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 28 });
+  const v = execFileSync('ffmpeg', ['-v', 'error', '-i', video, '-vf', `fps=${fps},crop=${W}:${H}:(iw-${W})/2:(ih-${H})/2`, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 29 });
   let flash = null;
   for (let i = 0; i * W * H * 3 < v.length; i++) { const o = i * W * H * 3; if (v[o] > 200 && v[o + 1] < 70 && v[o + 2] > 200) { flash = i / fps; break; } }
   const a = execFileSync('ffmpeg', ['-v', 'error', '-i', audio, '-ac', '1', '-ar', '8000', '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
