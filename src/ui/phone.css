@@ -19,7 +19,7 @@
 /* The handset (large screens) */
 #phone .ph-device { position:relative; flex:1; min-height:0; width:100%; padding:9px; border-radius:54px; background:#0b0b0e;
   box-shadow:0 0 0 2px #2b2b31, 0 30px 70px rgba(0,0,0,.55); animation:phIn .16s ease-out; }
-@keyframes phIn { from { transform:translateY(20px) scale(.97); opacity:0; } to { transform:none; opacity:1; } }
+@keyframes phIn { from { transform:translateY(20px) scale(.97); } to { transform:none; } }   /* no fade: a slow frame never shows an empty dim */
 .ph-glass { position:relative; display:flex; flex-direction:column; height:100%; overflow:hidden; border-radius:45px; color:var(--ios-ink); background:var(--ios-bg); }
 #phone[data-look="home"] .ph-glass { color:#fff; background:linear-gradient(180deg,#071a33 0%,#0b3a5c 30%,#0f6f86 56%,#2bb3a6 76%,#f2d48b 100%); }
 .ph-wall { position:absolute; left:0; right:0; bottom:0; height:30%; pointer-events:none; display:none; }
@@ -102,6 +102,7 @@ button.pk-row:active { background-image:linear-gradient(var(--pk-press), var(--p
 .pk-stat { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:62px; padding:8px 4px; border:0; border-radius:var(--pk-r-sm); background:var(--ios-card); color:var(--ios-ink); text-align:center; }
 .pk-stat b { font-size:20px; font-weight:750; line-height:1.15; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
 .pk-stat small { font-size:12px; font-weight:600; color:var(--ios-sub); overflow-wrap:anywhere; }
+button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { content:' ›'; color:#b0b0b6; } button.pk-stat:active { background-image:linear-gradient(var(--pk-press), var(--pk-press)); }
 .pk-empty { display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px 18px; border-radius:var(--pk-r); background:var(--ios-card); text-align:center; }
 .pk-empty i { font-style:normal; font-size:30px; }
 .pk-empty p { margin:0; font-size:14px; line-height:1.4; color:var(--ios-sub); }
@@ -334,6 +335,7 @@ button.pk-row:active { background-image:linear-gradient(var(--pk-press), var(--p
 /* ================================================================ on a phone: the whole screen, inside the safe areas */
 @media (max-width:540px), (max-height:560px) {
   #phone { padding:0; background:var(--ios-bg); }
+  #phone[data-look="home"] { background:#071a33; } #phone[data-look="dark"] { background:#000; }
   .ph-stage { width:100%; height:100%; }
   #phone .ph-device { padding:0; border-radius:0; background:none; box-shadow:none; animation:phUp .18s ease-out; }
   @keyframes phUp { from { transform:translateY(16px); } }
@@ -389,7 +391,7 @@ body.theme-night .hm-tile { background:rgba(28,28,30,.94); color:#f5f5f7; } body
 body.theme-night .hm-chip { background:rgba(28,28,30,.92); color:#f5f5f7; } body.theme-night .hm-chip small { color:#a1a1a8; }
 body.theme-night .hm-chip.streak.on b { color:#ffc56b; }
 body.theme-night .pf-streak { background:#2c2c2e; color:#d1d1d6; } body.theme-night .pf-streak.on { background:#3a2e0b; color:#ffd666; }
-body.theme-night .pf-miles li { background:#2c2c2e; color:#a1a1a8; } body.theme-night .pf-miles li.on { color:#2b2000; }
+body.theme-night .pf-miles li { background:#2c2c2e; color:#a1a1a8; } body.theme-night .pf-miles li.on { background:var(--pk-sun); color:#2b2000; }
 body.theme-night .ph-close { background:#2c2c2e; color:#f5f5f7; }
 body.theme-night .ph-btn:active, body.theme-night .ph-table > button:active { background:#3a3a3c; }
 body.theme-night .ph-table .you { background:#2e2610; }

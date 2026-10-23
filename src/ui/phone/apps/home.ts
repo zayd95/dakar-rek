@@ -1,7 +1,7 @@
 import type { Screen, PhoneApi } from '../types';
 import { esc } from '../kit';
 import { APPS, GROUPS, visibleApps, type AppDef } from '../registry';
-import { contextualShortcut, debtsNow, metCount, missionNow, residenceLine, streakView, type Shortcut } from '../selectors';
+import { contextualShortcut, debtsNow, metCount, missionNow, perkKey, residenceLine, streakView, type Shortcut } from '../selectors';
 import { phoneHooks } from '../../phoneHooks';
 import { quietLog } from '../../quiet';
 import { suggestion } from '../../../social/beats';
@@ -30,8 +30,12 @@ function nowLine(api: PhoneApi): string {
   return next ? `➜ ${next.hint}` : '➜ La ville est à toi : promène-toi, travaille, rencontre du monde.';
 }
 
+const PERK_KEY = 'dakarrek.phone.perkSeen';
+/** The streak privilege the player has looked at (Profil › Progression): its shortcut then leaves the home screen. */
+export function seePerk(api: PhoneApi) { try { localStorage.setItem(PERK_KEY, perkKey(api.ctx.state.data)); } catch { /* session only */ } }
 function shortcutNow(api: PhoneApi): Shortcut | null {
-  return contextualShortcut(api.ctx.state, { hub: api.ctx.hub(), hour: cityTimeAt(api.ctx.now()).hourFloat, homeHub: phoneHooks.homeHub?.() ?? null, inside: false });
+  let perkSeen: string | undefined; try { perkSeen = localStorage.getItem(PERK_KEY) ?? undefined; } catch { /* none */ }
+  return contextualShortcut(api.ctx.state, { hub: api.ctx.hub(), hour: cityTimeAt(api.ctx.now()).hourFloat, homeHub: phoneHooks.homeHub?.() ?? null, inside: false, perkSeen });
 }
 
 function runShortcut(api: PhoneApi, id: Shortcut['id']) {
@@ -73,7 +77,7 @@ export const homeScreen: Screen = {
           <button type="button" class="hm-bell" data-go="notifs" aria-label="Notifications${unread ? ` : ${unread} nouvelle${unread > 1 ? 's' : ''}` : ''}">🔔${unread ? `<em>${unread > 9 ? '9+' : unread}</em>` : ''}</button></div>
         <div class="hm-chips"><button type="button" class="hm-chip money" data-go="portefeuille"><small>Solde</small><b class="hm-money">${esc(fcfaShort(s.wallet))}</b></button>
           <button type="button" class="hm-chip streak${st.run ? ' on' : ''}${st.today ? ' today' : ''}" data-go="profil" data-arg="progression"><small>Série</small><b class="hm-streak">${esc(st.chip)}</b></button></div>
-        <p class="hm-now">${esc(nowLine(api))}</p>
+        ${sc?.id === 'follow-job' || sc?.id === 'resume-vtc' ? '' : `<p class="hm-now">${esc(nowLine(api))}</p>`}
       </header>
       ${sc ? `<button type="button" class="hm-short" data-act="shortcut" data-id="${sc.id}"><i aria-hidden="true">${esc(sc.icon)}</i><span><b>${esc(sc.label)}</b>${sc.sub ? `<small>${esc(sc.sub)}</small>` : ''}</span><span class="pk-chev" aria-hidden="true">›</span></button>` : ''}
       ${destinations(api)}`;

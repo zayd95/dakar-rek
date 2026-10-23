@@ -558,6 +558,10 @@ body.theme-night #streakChip.on .sc-n { color:#ffc56b; }
   #ui:has(#chatBtn) #presenceBtn { right:calc(150px + var(--sa-r)); }
   #ui #chatBtn { right:calc(62px + var(--sa-r)); }
 }
+/* ONE primary nearby action: on a touch screen the action button says it; the bubble over the target is only its pin (the icon), never the same
+   words twice — except a refusal, whose reason stays where the eye is */
+body.touch #wprompt .wp:not(.why) > span, body.touch #wprompt .wp:not(.why) > em { display:none; }
+body.touch #wprompt .wp:not(.why) { gap:0; padding:3px; }
 /* the build tag: developers only (?debug, or phone › Réglages › Avancé › Mode développeur) */
 body.dev-mode #temp { display:block; }
 /* solo: no pill to say so */

@@ -80,6 +80,18 @@ try {
     let o = await d(hudOverlaps);
     check(`${vp}: on foot, no HUD controls overlap`, !o.pairs.length && !o.off.length, [...o.pairs, ...o.off].join(' ; ') || o.shown.join(' '));
 
+    // ---- one action nearby: the action button and its pin over the target
+    const near = await d(() => { const k = window.__dakar, me = k.pos(); const list = k.interactables().map(i => ({ ...i, d: Math.hypot(i.x - me.x, i.z - me.z) })).sort((a, b) => a.d - b.d); return list.slice(0, 8); });
+    for (const it of near) {
+      await d(i => { const k = window.__dakar, me = k.pos(), a = Math.atan2(i.x - me.x, i.z - me.z), x = i.x - Math.sin(a) * 1.6, z = i.z - Math.cos(a) * 1.6; k.place(x, z, a); }, it);
+      if (await page.waitForFunction(() => !!window.__dakar.focus()?.primary, null, { timeout: 6000 }).then(() => true, () => false)) break;
+    }
+    await page.waitForTimeout(1500);
+    await shot('hud-interact');
+    o = await d(hudOverlaps);
+    check(`${vp}: one action nearby, no HUD controls overlap`, !o.pairs.length && !o.off.length, [...o.pairs, ...o.off].join(' ; ') || o.shown.join(' '));
+    await d(() => window.__dakar.place(-42, -66, Math.PI / 2)); await page.waitForTimeout(800);
+
     // ---- the phone's screens
     const screens = [['home', 'phone-home'], ['profil', 'profile'], ['portefeuille', 'money'], [label === 'before' ? 'travail' : 'travailler', 'work'], ['reglages', 'settings']];
     for (const [app, n] of quick ? screens.slice(0, 2) : screens) {

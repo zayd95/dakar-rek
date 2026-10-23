@@ -52,8 +52,8 @@ export function btn(label: string, t: Target & { kind?: 'primary' | 'secondary' 
 /** A small pill. */
 export const badge = (text: string, tone: Tone = '') => `<span class="pk-badge ${tone}">${esc(text)}</span>`;
 /** Stat tiles in a row (2–4). */
-export const stats = (list: { value: string; label: string; act?: string; go?: string; arg?: string }[]) =>
-  `<div class="pk-stats" style="--n:${list.length}">${list.map(s => { const tap = !!(s.act || s.go); return `<${tap ? 'button type="button"' : 'div'} class="pk-stat"${attrs(s)}><b>${esc(s.value)}</b><small>${esc(s.label)}</small></${tap ? 'button' : 'div'}>`; }).join('')}</div>`;
+export const stats = (list: { value: string; label: string; act?: string; go?: string; app?: string; arg?: string }[]) =>
+  `<div class="pk-stats" style="--n:${list.length}">${list.map(s => { const tap = !!(s.act || s.go || s.app); return `<${tap ? 'button type="button"' : 'div'} class="pk-stat"${attrs(s)}><b>${esc(s.value)}</b><small>${esc(s.label)}</small></${tap ? 'button' : 'div'}>`; }).join('')}</div>`;
 /** An empty state: an icon and one short line (and an optional button). */
 export const empty = (icon: string, text: string, action = '') => `<div class="pk-empty"><i aria-hidden="true">${esc(icon)}</i><p>${esc(text)}</p>${action}</div>`;
 /** A segmented control (tabs or a setting): `name` is the data attribute each button carries. */

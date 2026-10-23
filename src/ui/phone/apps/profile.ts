@@ -3,6 +3,7 @@ import { bar, badge, btn, card, empty, esc, more, row, rows, section, seg, stats
 import { highlights, historyRows, lifeLine, residenceLine, statRows, streakView } from '../selectors';
 import { phoneHooks } from '../../phoneHooks';
 import { STREAK, runLabel } from '../../../economy/streak';
+import { seePerk } from './home';
 
 /**
  * Profil (« Ma vie »): above the fold the character's own portrait (drawn from the Avatar Studio's look), the name, one line of life, the home, the
@@ -24,7 +25,7 @@ function head(api: PhoneApi): string {
         <button type="button" class="pf-streak${st.run ? ' on' : ''}" data-tab-go="progression" aria-label="Série : ${esc(st.label)}">${esc(st.chip)}${st.best > st.run ? `<small> · record ${st.best} j</small>` : ''}</button></div>
     </div>
     ${phoneHooks.editCharacter ? btn('Modifier mon personnage', { act: 'editchar', icon: '✏️', cls: 'pf-edit' }) : ''}
-    ${stats(highlights(s, api.ctx.rel).map(h => ({ value: h.value.toLocaleString('fr-FR'), label: h.label })))}`;
+    ${stats(highlights(s, api.ctx.rel).map(h => ({ value: h.value.toLocaleString('fr-FR'), label: h.label, go: h.go, app: h.app && phoneHooks.openAssets ? h.app : undefined })))}`;
 }
 
 function progression(api: PhoneApi): string {
@@ -62,6 +63,7 @@ export const profileScreen: Screen = {
     const pane = page.querySelector<HTMLElement>('.pf-pane')!;
     const show = (t: Tab, scroll = false) => {
       tab = t; lastTab = t;
+      if (t === 'progression') seePerk(api);
       page.querySelectorAll<HTMLElement>('[data-tab]').forEach(b => { const on = b.dataset.tab === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
       pane.innerHTML = PANES[t](api);
       if (scroll) pane.scrollIntoView({ block: 'start', behavior: 'smooth' });

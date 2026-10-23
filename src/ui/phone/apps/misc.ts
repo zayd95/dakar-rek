@@ -1,31 +1,18 @@
 import type { Screen } from '../types';
 import { btn, empty, esc, note, row, rows, section } from '../kit';
 import { phoneHooks } from '../../phoneHooks';
-import { quietLog, ago } from '../../quiet';
-import { journalView } from '../../journal';
 import { cityTimeAt, CITY_DAY_MS } from '../../../core/clock';
 import { HUB_NAMES } from '../../../world/content';
 import { restSpotHere } from '../../../game/rest';
 import { clock } from './home';
 
 /**
- * The smaller apps (Notifications, Santé, Carnet, Arène and Lutteurs, Ce soir, Actus, Météo, Horloge, Calculatrice, Aide), each one short screen made
+ * The smaller apps (Santé, Arène and Lutteurs, Ce soir, Actus, Météo, Horloge, Calculatrice, Aide), each one short screen made
  * of the shared pieces. They read the game; they never keep their own copy of it.
  */
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const hubShort = (h: string | null) => (h ? HUB_NAMES[h as keyof typeof HUB_NAMES].split(' · ')[0] : 'Dakar');
-
-/** Notifications: the quiet log (src/ui/quiet.ts), newest first; opening it marks them seen. */
-export const notifsScreen: Screen = {
-  title: 'Notifications',
-  mount(page) {
-    const list = quietLog.entries, now = Date.now(), unseen = quietLog.unread;
-    page.innerHTML = list.length ? `<ul class="ph-log">${list.map((e, i) => `<li class="${i < unseen ? 'new' : ''}${e.kind === 'warn' ? ' warn' : ''}"><span>${esc(e.text)}</span><small>${ago(now - e.at)}</small></li>`).join('')}</ul>`
-      : empty('🔔', 'Rien de nouveau. Achats, paies et conseils arrivent ici sans t’arrêter.');
-    quietLog.markRead();
-  },
-};
 
 export const healthScreen: Screen = {
   title: 'Santé',
@@ -39,11 +26,6 @@ export const healthScreen: Screen = {
       <div class="ph-rings">${NEEDS.map(([k, l, c]) => `<div>${ring(n[k] ?? 0, c)}<span>${l}</span></div>`).join('')}</div>
       ${section('Conseils', low.length ? rows(low.map(([, l, , tip]) => row({ label: l, sub: tip }))) : empty('😄', 'Tout va bien. Profite de la ville !'))}`;
   },
-};
-
-export const carnetScreen: Screen = {
-  title: 'Carnet',
-  mount(page, api) { const j = journalView(api.ctx.rel, api.ctx.state); page.innerHTML = `<p class="pk-note">${esc(j.subtitle)}</p><div class="ph-journal">${j.html}</div>`; },
 };
 
 export const arenaScreen: Screen = {

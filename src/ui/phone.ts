@@ -26,7 +26,8 @@ import { workScreen } from './phone/apps/work';
 import { houseScreen } from './phone/apps/house';
 import { mapScreen } from './phone/apps/map';
 import { settingsScreen, newGameScreen, soundTestScreen, restoreSensitivity } from './phone/apps/settings';
-import { arenaScreen, calcScreen, carnetScreen, clockScreen, healthScreen, helpScreen, lutteursScreen, newsScreen, notifsScreen, tonightScreen, weatherScreen } from './phone/apps/misc';
+import { arenaScreen, calcScreen, clockScreen, healthScreen, helpScreen, lutteursScreen, newsScreen, tonightScreen, weatherScreen } from './phone/apps/misc';
+import { carnetScreen, notifsScreen } from './phone/apps/social';
 
 export type Quality = 'low' | 'medium' | 'high';
 

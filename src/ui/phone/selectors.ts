@@ -74,12 +74,12 @@ export function metCount(rel: Relations): number {
 export const vehicleCount = (state: GameState) => assetsOf(state, 'vehicle').length;
 
 /** The 2–4 short highlights under the Profile's head. */
-export function highlights(state: GameState, rel: Relations): { value: number; label: string }[] {
+export function highlights(state: GameState, rel: Relations): { value: number; label: string; go?: string; app?: string }[] {
   const c = state.data.counters, v = vehicleCount(state);
   return [
     { value: c.actions ?? 0, label: 'Activités' },
-    { value: metCount(rel), label: 'Relations' },
-    { value: v, label: v > 1 ? 'Véhicules' : 'Véhicule' },
+    { value: metCount(rel), label: 'Relations', go: 'carnet' },                     // who the player knows: the Carnet
+    { value: v, label: v > 1 ? 'Véhicules' : 'Véhicule', app: 'biens' },
   ];
 }
 
@@ -148,19 +148,21 @@ export function debtsNow(state: GameState): { count: number; left: number; next:
   return { count: loans.length, left, next, inDays: Number.isFinite(inDays) ? inDays : 0, late };
 }
 
+/** Which privilege the player has already looked at (the day and the run): the shortcut to it shows until then, not all day. */
+export const perkKey = (d: Pick<SaveData, 'play' | 'streak'>) => `${d.play.day}:${runOf(d)}`;
 export interface Shortcut { id: 'resume-vtc' | 'follow-job' | 'repay' | 'perk' | 'home'; icon: string; label: string; sub: string }
 /**
  * The home screen's one contextual shortcut, only when relevant: a job in hand first (resume the VTC ride, follow the parcel), then a debt falling due,
  * then a streak privilege earned today, then going home late at night or worn out. Null most of the time.
  */
-export function contextualShortcut(state: GameState, o: { hub: HubId | null; hour: number; homeHub: HubId | null; inside: boolean }): Shortcut | null {
+export function contextualShortcut(state: GameState, o: { hub: HubId | null; hour: number; homeHub: HubId | null; inside: boolean; perkSeen?: string }): Shortcut | null {
   const m = missionNow(state);
   if (m?.kind === 'vtc') return { id: 'resume-vtc', icon: '🚖', label: 'Reprendre la course VTC', sub: m.title };
   if (m) return { id: 'follow-job', icon: '📦', label: 'Suivre la livraison', sub: m.sub ? `${m.title} · ${m.sub}` : m.title };
   const debt = debtsNow(state);
   if (debt && (debt.late > 0 || (debt.next > 0 && debt.inDays <= 0))) return { id: 'repay', icon: '💳', label: 'Rembourser ce qui est dû', sub: debt.late > 0 ? 'Un remboursement est en retard' : 'Un remboursement tombe aujourd’hui' };
   const s = streakView(state.data);
-  if (s.today && STREAK.milestones.includes(s.run)) return { id: 'perk', icon: '🔥', label: `Série de ${s.run} jours : ton privilège`, sub: PERK_TEXT[s.run] ?? '' };
+  if (s.today && STREAK.milestones.includes(s.run) && o.perkSeen !== perkKey(state.data)) return { id: 'perk', icon: '🔥', label: `Série de ${s.run} jours : ton privilège`, sub: PERK_TEXT[s.run] ?? '' };
   const late = o.hour >= 22 || o.hour < 5, tired = (state.data.needs.energie ?? 100) < 25;
   if ((late || tired) && o.homeHub && o.homeHub !== o.hub) return { id: 'home', icon: '🏠', label: 'Rentrer chez moi', sub: `${short(o.homeHub)} · à pied, gratuit` };
   return null;
