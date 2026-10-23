@@ -19,7 +19,8 @@ import { say } from '../i18n/wolof';
 import { arenaFighter } from './fighter';
 /** How much louder the drums play while a wrestler of tonight gets ready and walks out. */
 export const FIGHTER_DRUMS = 1.3;
-import { ExteriorAudio, listenForGesture } from './exteriorAudio';
+import { ExteriorAudio, listenForGesture, type HearingExtra } from './exteriorAudio';
+import { arenaHearing } from './hearing';
 import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
 import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
@@ -36,7 +37,7 @@ import { len2 } from '../core/math';
  * from the street in their écurie's colours, a queue moving through the gate, sabar drummers and dancers beside it,
  * and vendors at the four stalls who are real places of the shared registry (drinks, grilled peanuts and brochettes,
  * scarves and flags, water). Supporters carry a scarf or a small flag of their écurie (two instanced meshes for every
- * fan). The drummers are heard by distance, with a soft murmur near the queue (src/arena/exteriorAudio.ts), and the
+ * fan). The drummers are heard by distance, with the crowd's murmur near the queue and the stands over the wall (src/arena/exteriorAudio.ts, src/arena/soundscape.ts), and the
  * decorative traffic keeps off the road in front of the gate. Quiet otherwise: nobody is drawn and the stalls sell nothing. Everything stays outside the
  * arena wall; the visit itself (ticket, stands, bout) belongs to the arena flow.
  *
@@ -455,8 +456,9 @@ function phaseNow(ctx: GameCtx): ExteriorPhase {
   return exteriorPhase(arenaExterior.isEventDay(day, hour), after);
 }
 let forcedOut = false;
-/** Loudness of the drums and of the murmur where the player stands (0 when the evening is quiet). */
-function loudness(ctx: GameCtx) {
+const camDir = new THREE.Vector3();
+/** Loudness of the drums and of the murmur where the player stands (0 when the evening is quiet), and what else the soundscape needs (src/arena/soundscape.ts Hearing). */
+function loudness(ctx: GameCtx): { drums: number; murmur: number; extra?: HearingExtra } {
   if (!ext?.active) return { drums: 0, murmur: 0 };
   // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
   const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
@@ -467,7 +469,15 @@ function loudness(ctx: GameCtx) {
   const moment = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' || partyDrums.loud;
   const within = len2(p.x - ext.arena.cx, p.z - ext.arena.cz) < WALL_R;
   const drums = moment ? fighterDrumVolume(dist, within, inside, muted, FIGHTER_DRUMS) : drumVolume(dist, inside, muted);
-  return { drums, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // the soundscape: which drummers are nearer (the wall between them and the player muffles them), on which side of the camera
+  // (inside the walls, the deck's; outside, the gate's — or the deck's through the wall when it is nearer)
+  const deckNearer = len2(p.x - dk.x, p.z - dk.z) < len2(p.x - c.x, p.z - c.z), src = within || deckNearer ? dk : c, cam = ctx.camera.position;
+  ctx.camera.getWorldDirection(camDir);
+  const dx = src.x - cam.x, dz = src.z - cam.z, dl = Math.max(0.5, Math.hypot(dx, dz)), fl = Math.max(1e-6, Math.hypot(camDir.x, camDir.z));
+  const pan = (dx * -camDir.z + dz * camDir.x) / dl / fl;
+  const extra: HearingExtra = { phase: arenaHearing.phase, crowd: arenaHearing.crowd, excite: arenaHearing.excite, fighter: arenaFighter.phase(), party: partyDrums.loud, within, standsDist: len2(p.x - ext.arena.cx, p.z - ext.arena.cz),
+    pan, occluded: !within && deckNearer, indoors: inside, muted };
+  return { drums, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted), extra };
 }
 
 export const arenaExteriorModule: GameModule = {
@@ -502,7 +512,7 @@ export const arenaExteriorModule: GameModule = {
     const walled = insideWalls(ext.arena, ctx.camera.position), run = owed.step(dt, walled ? HIDDEN_EVERY : 0);
     if (run !== null) ext.update(run, ctx.player.pos, !ctx.inside() && !walled);
     const v = loudness(ctx);
-    audio.set(v.drums, v.murmur);
+    audio.set(v.drums, v.murmur, v.extra);
   },
   debug: ctx => ({
     /** State of the arena's surroundings: event on, people present / drawn, queue, vendors, the gate, sound, traffic. */

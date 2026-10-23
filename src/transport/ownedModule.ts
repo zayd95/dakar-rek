@@ -1111,6 +1111,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (dead) { vehicleAudio.crank(prof); ctx.toast(canMakeshift(this.hp()) ? 'Ça ne démarre pas. Descends : une réparation de fortune devant le capot, ou le Garage Modou.' : 'Ça ne démarre pas.'); }
     else vehicleAudio.run(prof, catches);
     this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
+    radio.notify = msg => ctx.toast(msg);                                     // « RFM indisponible » when a stream cannot be played
     if (this.def.kit !== 'moto' && !dead && radio.remembered >= 0) radio.set(vehicleAudio.radioBus(), radio.remembered);   // the radio comes back on where it was left (it starts after the engine)
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
@@ -1167,8 +1168,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const st = radio.info().station, name = st ? STATIONS.find(x => x.id === st)?.name ?? null : null;
     k.update({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, steer: this.st.steer, nav: navigation.current(), radio: name, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` }, dt);
   }
-  /** « 📻 »: the next station (off → Sénégal Hits → Radio Téranga → Corniche FM → off), said in one line. */
+  /** « 📻 »: the next station (off → RFM → Sud FM → Zik FM → Rewmi FM → off: live streams, src/transport/radio.ts), said in one line. */
   private radioNext() {
+    radio.notify = msg => this.ctx.toast(msg);
     const st = radio.next(vehicleAudio.radioBus());
     this.ctx.toast(st ? `📻 ${st.name} · ${st.freq}` : '📻 Radio éteinte');
     document.querySelector('#ridepad .rp-radio')?.classList.toggle('on', !!st);
