@@ -58,14 +58,14 @@ if (mode === 'checkpoint') {
   const sampler = () => { const s = { at: [], stop: false }; (async () => { while (!s.stop) { try { const a = await d(() => { const D = window.__dakar, a = D.teranga.at(); if (!a) return null; const w = D.teranga.solidAt(a.x + Math.sin(a.yaw) * 2.4, a.z + Math.cos(a.yaw) * 2.4, 0.9); return { ...a, ahead: w && { why: w.why, rect: w.rect, foot: w.foot } }; }); if (a) s.at.push(a); await page.waitForTimeout(250); } catch { if (page.isClosed()) return; } } })(); return s; };
   for (const [name, from, to, lat] of [['into the Plateau', S - 70, null, -2.8], ['out of the Plateau', null, S - 70, 2.8]]) {
     let start, pts;
-    if (from !== null) { start = await roadAt(ID, from, lat); pts = [await roadAt(ID, S - 20, lat), await roadAt(ID, S + 20, lat), { x: -62.1, z: -100 }]; }
+    if (from !== null) { start = await roadAt(ID, from, lat); pts = [await roadAt(ID, S - 20, lat), await roadAt(ID, S + 20, lat), { x: -62.1, z: -116 }]; }
     else { start = { x: -57.9, z: -104, yaw: Math.PI }; pts = [await roadAt(ID, S + 20, lat), await roadAt(ID, S - 20, lat), await roadAt(ID, to, lat)]; }
     const yaw = from !== null ? start.yaw : Math.PI;
     await d(([x, z, y]) => window.__dakar.teranga.place(x, z, y), [start.x, start.z, yaw]);
     if (!(await d(() => window.__dakar.teranga.info().driving))) { await d(([x, z, y]) => window.__dakar.place(x + Math.cos(y) * 2.4, z - Math.sin(y) * 2.4, y), [start.x, start.z, yaw]); await page.waitForTimeout(600); await boardVehicle(page, t, 'teranga'); }
     await page.waitForTimeout(500); await d(() => window.__dakar.teranga.feelReset());
     const s = sampler();
-    const last = await pilot(page, t, 'teranga', pts.map(p => ({ x: p.x, z: p.z, tol: 3, speed: 7 })), { cruise: 7, stall: 15000, brakeAtEnd: true });
+    const last = await pilot(page, t, 'teranga', pts.map(p => ({ x: p.x, z: p.z, tol: 3, speed: 7 })), { cruise: 7, stall: 15000, brakeAtEnd: true, ms: 600000 });
     s.stop = true;
     const end = pts[pts.length - 1], felt = await d(() => window.__dakar.teranga.feel());
     const near = s.at.filter(a => Math.hypot(a.x - top.x, a.z - top.z) < 25), passed = near.length > 0;

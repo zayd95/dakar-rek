@@ -25,7 +25,8 @@ const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
 /**
  * Pikine's Cité Jàmm (block 1,0, left open here and built by src/economy/citeJamm.ts, whose (u, v) are metres from this block's north-west corner): the
  * ground kept open in front of it, down to the kerb of the first road (z = −60) — Keur Meubles' open showroom (u 2…16) and the walk to it, the Résidence
- * Jàmm's door (u 31) — and the loading bay at the kerb in front of the shop, where a car or a delivery pick-up stops (the parked cars keep off it).
+ * Jàmm's door (u 31) — and the loading bay at the kerb in front of the shop, where a car or a delivery pick-up stops (the parked cars keep off it and
+ * off the few metres before it, so a car in the lane can angle in).
  * Nothing of the street dressing stands there: the shop is seen from the street, its door is reached, its bay is free (src/world/types.ts keepClear).
  */
 export function citeFronts(): KeepClear[] {
@@ -34,6 +35,7 @@ export function citeFronts(): KeepClear[] {
     { x0: bx + 0.5, x1: bx + 18, z0: bz + 41.6, z1: kerb, why: 'keur_meubles' },
     { x0: bx + 28, x1: bx + 34, z0: bz + 41.2, z1: kerb, why: 'residence_jamm' },
     { x0: bx + 3, x1: bx + 13.5, z0: kerb, z1: kerb + 2.1, why: 'loading_bay' },
+    { x0: bx + 13.5, x1: bx + 21, z0: kerb, z1: kerb + 2.1, why: 'bay_approach' },          // no car parked just before it: a driver in the lane angles in
   ];
 }
 
