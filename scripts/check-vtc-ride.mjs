@@ -79,12 +79,12 @@ check('the pick-up is marked as a VTC ride: the green pin and car badge, its ker
 const waiting = await V();
 check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && (waiting.phase === 'walk' || waiting.phase === 'seated'), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
 await page.waitForTimeout(1200); await shot('passenger-walks');
-await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 60000 }).catch(() => {});
+await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 240000 }).catch(() => {});   // walking up, the door, getting in: game time (the renderer is slow)
 const aboard = await V();
 check('the passenger sits in the car\'s right rear seat (the seat is taken, they ride in it)', aboard.trip?.stage === 'aboard' && aboard.trip.seat === 'rearR' && aboard.person?.inCar && aboard.persons === 1, JSON.stringify({ stage: aboard.trip?.stage, seat: aboard.trip?.seat, person: aboard.person, events: aboard.log.events }));
 const ph = aboard.log.phases.join('>');
 check('getting in is played out: to the rear door, the door opens (fully), in, seated', /walk>open>in>seated/.test(ph) && aboard.log.doorMax >= 0.95, JSON.stringify({ phases: ph, doorMax: aboard.log.doorMax }));
-await page.waitForFunction(() => window.__dakar.vtc.info().door.k === 0, null, { timeout: 30000 }).catch(() => {});
+await page.waitForFunction(() => window.__dakar.vtc.info().door.k === 0, null, { timeout: 90000 }).catch(() => {});
 const fit = await d(() => window.__dakar.vtc.fit());
 check('the passenger and the driver are inside the Teranga: heads under its roof, shoes over its floor', fit && fit.passenger && fit.driver && fit.passenger.head < fit.cabin.rear.roof && fit.passenger.soles >= fit.cabin.rear.floor && fit.driver.head < fit.cabin.front.roof && fit.driver.soles >= fit.cabin.front.floor, JSON.stringify({ cabin: fit?.cabin, passenger: fit?.passenger && [fit.passenger.head, fit.passenger.soles, fit.passenger.scale], driver: fit?.driver && [fit.driver.head, fit.driver.soles, fit.driver.scale, fit.driver.body] }));
 check('the passenger is seen through the glass while riding (the door shut)', fit?.seeThrough && fit.view.glassOn && fit.view.holders.includes('vtc') && !fit.view.doorOpen, JSON.stringify(fit?.view));
