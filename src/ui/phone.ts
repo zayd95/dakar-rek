@@ -20,6 +20,8 @@ import { HUB_NAMES } from '../world/content';
 import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
 import { phoneHooks } from './phoneHooks';
+import { bindSaveCard, saveCardHtml } from './saveCard';
+import { betaFooter, reportText } from './betaInfo';
 import { journalView, esc } from './journal';
 import { glossesShown, setGlossesShown } from '../i18n/wolof';
 import { fcfa } from './hud';
@@ -430,7 +432,7 @@ export class Phone {
       ${streakHtml}
       ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
-      <p class="ph-note">Partie invité : ton profil est enregistré sur cet appareil.</p>`;
+      ${savedNoteHtml()}`;
   }
 
   private clockHtml(): string {
@@ -518,10 +520,12 @@ export class Phone {
       <button type="button" class="ph-toggle ${gloss ? 'on' : ''}" data-act="gloss" aria-pressed="${gloss}"><span>Traduction des expressions wolof</span><em>${gloss ? 'Affichée' : 'Masquée'}</em></button>
       <p class="ph-note">${gloss ? '« Jërëjëf (merci) » : la traduction suit l’expression.' : '« Jërëjëf » : le wolof seul, sans traduction.'}</p>
       <h3>Partie</h3>
-      <button type="button" class="ph-btn" data-act="save">Sauvegarder maintenant</button>
+      ${phoneHooks.saveCard ? saveCardHtml() : '<button type="button" class="ph-btn" data-act="save">Sauvegarder maintenant</button>'}
       <button type="button" class="ph-btn" data-act="new">Nouvelle partie<small>Efface la sauvegarde de cet appareil</small></button>
       <button type="button" class="ph-btn" data-app="aide">Aide et commandes</button>
-      <div class="kv">Temps de jeu : ${Math.floor(this.ctx.state.data.playedMs / 60000)} min · Repas : ${c.meals ?? 0} · Services : ${c.shifts ?? 0} · Forme : ${c.forme ?? 0} · Trajets : ${c.trips ?? 0}<br>Sauvegarde invité : sur cet appareil seulement (pas de compte).<br>Dakar Rek · version de développement 0.1</div>`;
+      <div class="kv">Temps de jeu : ${Math.floor(this.ctx.state.data.playedMs / 60000)} min · Repas : ${c.meals ?? 0} · Services : ${c.shifts ?? 0} · Forme : ${c.forme ?? 0} · Trajets : ${c.trips ?? 0}<br>Partie invité, sans compte : elle n’est pas synchronisée entre appareils.<br>${esc(betaFooter())}</div>
+      <button type="button" class="ph-btn" data-act="report">Signaler un problème<small>Copie la version du jeu, ton écran et l’endroit : colle-les dans ton message</small></button>
+      <textarea class="ph-code" data-report readonly rows="6" hidden aria-label="Infos pour ton message"></textarea>`;
   }
 
   private walletHtml(): string {
@@ -541,7 +545,7 @@ export class Phone {
       </div>${phoneHooks.openAssets ? '<button type="button" class="ph-btn" data-app="biens">Biens<small>Logements, terrains, panneau, annonces</small></button>' : ''}${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter et voir les revenus</small></button>' : ''}` : '';
     return `<div class="ph-balance"><small>Solde</small><b class="${size}">${full}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
       ${wealth}
-      <p class="ph-note">Partie invité : cet argent est enregistré sur cet appareil seulement.</p>
+      ${savedNoteHtml()}
       <h3>Historique</h3>${history}`;
   }
 
@@ -644,6 +648,12 @@ export class Phone {
     act('haptics', () => { setHaptics(!hapticsOn()); this.render(); });
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
+    bindSaveCard(s, () => this.render());
+    act('report', () => {
+      const d = this.ctx.state.data, text = reportText({ hub: this.ctx.hub(), x: d.x, z: d.z, quality: this.ctx.quality(), playedMin: Math.floor(d.playedMs / 60000) });
+      const box = s.querySelector<HTMLTextAreaElement>('[data-report]'); if (box) { box.value = text; box.hidden = false; box.addEventListener('focus', () => box.select()); }
+      try { navigator.clipboard.writeText(text).then(() => this.ctx.toast('Infos copiées : colle-les dans ton message'), () => this.ctx.toast('Sélectionne les infos affichées et copie-les')); } catch { this.ctx.toast('Sélectionne les infos affichées et copie-les'); }
+    });
     act('new', () => this.go('nouvelle'));
     act('editchar', () => this.launch(() => phoneHooks.editCharacter?.()));
     act('cancel', () => this.back());
@@ -651,6 +661,8 @@ export class Phone {
   }
 }
 
+/** What the phone may say about the save: only what the storage really did (src/core/saveHealth.ts). */
+const savedNoteHtml = () => { const st = phoneHooks.saveStatus?.(); return st ? `<p class="ph-note${st.ok ? '' : ' warn'}">${st.ok ? `Partie invité : gardée sur ${esc(st.where)}.` : 'Partie invité : la sauvegarde ne marche pas bien ici. Copie-la dans Réglages › Partie.'}</p>` : ''; };
 const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** One app icon: emoji on its gradient tile (or the fallback line icon), with its label under it in the grid. */

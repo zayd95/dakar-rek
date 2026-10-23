@@ -7,6 +7,8 @@ import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
+import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
+import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
 import { readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
@@ -110,6 +112,7 @@ const TEST = readTestParams(location.hostname, location.search);   // preview-on
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
 try { store = window.localStorage; store.getItem('x'); } catch { store = null; }
+initSaveHealth(!!store);
 
 // ------------------------------------------------------------------ renderer and scene
 const canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -219,7 +222,7 @@ async function makePlayerBody() {
 const creating = isNewGame && TEST.avatar !== 'homme' && TEST.avatar !== 'femme' && TEST.avatar !== 'v4' && (TEST.avatar === 'choose' || !DEBUG);
 function settleAvatar(made: StudioResult | null) {
   if (TEST.avatar === 'homme' || TEST.avatar === 'femme') state.data.avatar = TEST.avatar;
-  else if (made) { applyCharacter(made); writeSave(store, state.data); }   // saved at once (the world is not built yet): leaving before the first autosave keeps the character
+  else if (made) { applyCharacter(made); reportWrite(writeSave(store, state.data)); }   // saved at once (the world is not built yet): leaving before the first autosave keeps the character
 }
 /** The first name and the shirt colour go to the device's presence profile (what other players read: a name, a colour index and, where the server relays it, the look); the body and the look to the save. */
 function setPresenceProfile(name: string | null, color: number) {
@@ -269,7 +272,7 @@ async function editCharacter() {
     const appearance = state.data.appearance ?? { ...defaultAppearance(state.data.avatar), color: presence.profile.look };
     const r = await openStudio({ mode: 'edit', low: quality === 'low', avatar: state.data.avatar, appearance, keep: state.data.appearance, name: presence.profile.name });
     studioOpen = false;
-    if (r) { applyCharacter(r); saveNow(); await makePlayerBody(); hud.toast('Ton personnage est enregistré.'); }   // saved before the body loads: leaving at once keeps the choice
+    if (r) { applyCharacter(r); const kept = saveNow(); await makePlayerBody(); hud.toast(kept ? 'Ton personnage est enregistré.' : 'Ton personnage a changé, mais ce navigateur n’a pas pu l’enregistrer (Réglages › Partie).'); }   // saved before the body loads: leaving at once keeps the choice
   } catch { /* the studio could not open or close cleanly: the game goes on as it was */ }
   finally {
     studioOpen = false;
@@ -1432,7 +1435,7 @@ const phone = new Phone({
   state, rel, input, hub: () => world?.id ?? null, now: () => presence.serverNow(),
   places: () => world?.interactables.filter(i => !i.npc && i.kind !== 'walk').map(i => i.name) ?? [],
   quality: () => quality, setQuality, save: saveNow, toast: m => hud.toast(m),
-  newGame: () => { clearSave(store); world = null; location.reload(); },   // world = null: no save on the way out
+  newGame: () => { holdSaves(); clearSave(store); world = null; location.reload(); },   // saves held, world = null: no save on the way out
   lock: on => {
     if (on) { if (mode === 'play') mode = 'menu'; if (mode === 'menu') { input.enabled = false; hud.resetControls(); } }
     else if (mode === 'menu' && !hud.modalOpen) { mode = 'play'; input.enabled = true; }
@@ -1456,12 +1459,28 @@ mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.pe
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 
 function saveNow(): boolean {
+  if (savesHeld()) return false;                          // an import or a New Game is reloading the page: nothing writes the old game back
   // indoors, save the street position at the door: interiors are rebuilt on load
   // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
   const safe = inside || !ctxReady ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
   if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
-  return writeSave(store, state.data);
+  const ok = writeSave(store, state.data);
+  reportWrite(ok);
+  return ok;
 }
+// « Partie » in the phone's settings (src/ui/saveCard.ts): save now, copy the game as a code, import one, undo the last import
+const savedProfile = () => { try { return JSON.parse(store?.getItem('dakarrek.presence.profile') ?? 'null') as { name: string; look: number } | null; } catch { return null; } };
+phoneHooks.saveCard = {
+  save: () => !!world && saveNow(),
+  code: () => { if (world) saveNow(); return exportCode(state.data, savedProfile() ?? presence.profile); },
+  replace: (data, profile) => { if (!importSave(store, data, profile)) return false; holdSaves(); world = null; location.reload(); return true; },
+  canUndo: () => !!backupOf(store),
+  undo: () => { if (!undoImport(store)) return false; holdSaves(); world = null; location.reload(); return true; },
+  nameOf: spec => { const sp = catalogSpec(spec); return sp ? { name: sp.name, kind: sp.kind } : undefined; },
+  toast: m => hud.toast(m),
+  framed: saveHealth().framed,
+};
+phoneHooks.saveStatus = () => { const h = saveHealth(); return h.ok === null ? undefined : { ok: h.ok && saveLine().tone === 'ok', at: h.at, where: saveMirror()?.ok ? 'cet appareil et ' + saveMirror()!.label : 'cet appareil' }; };
 
 hud.onAction = () => {
   hud.markAct();                                           // what the game says next answers it (src/ui/quiet.ts)

@@ -252,3 +252,13 @@ button.ph-wid { cursor:pointer; }
 .ph-streak span { display:block; font-weight:600; }
 .ph-streak small { display:block; margin-top:2px; font-size:13px; font-weight:500; color:var(--ios-sub); line-height:1.35; }
 .ph-streak .run span { font-size:17px; font-weight:800; }
+
+/* « Partie »: where the save is kept, copy and import (src/ui/saveCard.ts) */
+.ph-save-line { margin:4px 0 0; padding:10px 12px; border-radius:12px; font-size:13px; line-height:1.4; background:var(--ios-card); color:var(--ios-ink); border-left:4px solid #34c759; }
+.ph-save-line.warn { border-left-color:#ff9f0a; }
+.ph-save-line.bad { border-left-color:#ff3b30; }
+.ph-save-io { margin-top:8px; padding:10px; border-radius:12px; background:rgba(118,118,128,.08); }
+.ph-save-io .ph-btn:first-child { margin-top:0; }
+.ph-code { box-sizing:border-box; width:100%; min-height:64px; padding:8px 10px; border:1px solid var(--ios-sep); border-radius:10px; background:var(--ios-card); color:var(--ios-ink);
+  font:12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; word-break:break-all; resize:vertical; user-select:text; -webkit-user-select:text; }
+.ph-file { text-align:center; }

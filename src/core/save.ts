@@ -25,13 +25,13 @@ export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
 export const AVATAR_SUGGESTION_KEY = 'dakarrek.guest.save.v6.avatar-suggestion';
 /**
  * What an older v6 client cannot keep (docs/SAVES.md § « Debts and older clients »). A v6 client rebuilds the save from the fields it knows, so one
- * served again after this one (a rollback, a stale cached page) would drop the debts, the VTC record, the player's days and the streak at its first save.
+ * served again after this one (a rollback, a stale cached page) would drop the debts, the VTC record, the player's days, the streak and the look chosen in the studio at its first save.
  * This client writes them a second time under this key at every save, with the guest id; loading a save that LACKS one of those fields (only an older client
  * writes such a save: this one always writes them all) takes it back from here, for the same guest only. Older clients never read or write this key.
  */
 export const EXTRAS_KEY = 'dakarrek.guest.save.v6.extras';
 /** The fields an older v6 client drops, and that the extras backup keeps. */
-export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak'] as const;
+export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as const;
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -424,6 +424,7 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     if (k === 'loans') { if (!back.loans.list.length) continue; data.loans = back.loans; }
     else if (k === 'vtc') data.vtc = { ...back.vtc, active: null };
     else if (k === 'play') data.play = back.play;
+    else if (k === 'appearance') { const look = appearanceOf(b.appearance, data.avatar); if (!look) continue; data.appearance = look; }   // for this save's own body
     else data.streak = back.streak;
     out.push(k);
   }

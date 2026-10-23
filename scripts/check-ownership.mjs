@@ -190,7 +190,7 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-confirm-rent.png` });
   await pick(page, /^✅/);
   check('apartment rented', (await est(page)).assets.some(a => a.spec === 'appart_jamm' && a.how === 'rented'));
-  await pick(page, 'Emménager ici');
+  await pick(page, 'Définir comme domicile principal');
   e = await est(page);
   const appart = e.assets.find(a => a.spec === 'appart_jamm');
   check('moved in: the chair followed and is set up there', e.home === 'appart_jamm' && e.assets.find(a => a.uid === chair.uid).home === appart.uid && !!e.assets.find(a => a.uid === chair.uid).at, JSON.stringify(e.assets.find(a => a.uid === chair.uid)));

@@ -50,13 +50,14 @@ export const specOfAsset = (a: AssetState) => specOf(a.spec)!;
 /** The asset held for this catalogue entry (homes, land, billboards: one each), if any. */
 export const holding = (s: GameState, specId: string) => s.data.assets.list.find(a => a.spec === specId && !a.home);
 export const holds = (s: GameState, specId: string) => !!holding(s, specId);
-/** The home the player lives in (the starter room when nothing else). */
+/** The player's principal residence (« domicile principal »): the starter room when nothing else. */
 export function currentHome(s: GameState): AssetState {
   const st = s.data.assets;
   const h = assetByUid(s, st.home);
   if (h && homeSpec(h.spec)) return h;
   const starter = st.list.find(a => a.spec === STARTER_HOME)!;
   st.home = starter.uid;
+  takenBack(s);
   return starter;
 }
 /** Furniture of a home (placed or stored). */
@@ -249,7 +250,7 @@ export function endLease(s: GameState, uid: string, settle = true): boolean {
 /** Furniture of a home that is left (lease ended, sold): it moves to the home the player lives in, stored. */
 function leaveHome(s: GameState, home: AssetState) {
   const st = s.data.assets;
-  if (st.home === home.uid) st.home = st.list.find(a => a.spec === STARTER_HOME)!.uid;
+  if (st.home === home.uid) { st.home = st.list.find(a => a.spec === STARTER_HOME)!.uid; takenBack(s); }
   const to = currentHome(s);
   for (const f of furnitureIn(s, home.uid)) { f.home = to.uid; f.at = null; }
   settleFurniture(s, to.uid);
@@ -280,6 +281,7 @@ export function cannotMoveIn(s: GameState, uid: string): string | null {
   const a = assetByUid(s, uid), sp = a && homeSpec(a.spec);
   if (!a || !sp) return 'Inconnu';
   if (s.data.assets.home === uid) return 'Tu y habites déjà';
+  if (a.spec === STARTER_HOME && roomReturned(s)) return 'Rendue à la famille : redemande-la d’abord';
   if (a.leased) return 'Il est loué à quelqu’un : arrête la location d’abord';
   return null;
 }
@@ -362,6 +364,38 @@ export function repairAsset(s: GameState, uid: string, price?: number, label?: s
   bump();
   return true;
 }
+
+// ------------------------------------------------------------------ the family room (« Ma chambre »)
+/**
+ * The starter room is lent by the family: it is never sold or let. Once the player lives elsewhere they keep it as a family room (nothing to do),
+ * or give it back; asking to sublet it waits for a family conversation that does not exist yet. Giving it back is a story flag (`data.flags`, kept
+ * by every client, older ones included: they simply show the room as kept), so the save's shape does not change.
+ */
+export const ROOM_RETURNED = 'chambre:rendue';
+export const roomReturned = (s: GameState) => s.data.flags.includes(ROOM_RETURNED);
+const starterOf = (s: GameState) => s.data.assets.list.find(a => a.spec === STARTER_HOME)!;
+export function cannotReturnRoom(s: GameState): string | null {
+  if (roomReturned(s)) return 'Déjà rendue à la famille';
+  if (s.data.assets.home === starterOf(s).uid) return 'Tu y habites : définis d’abord un autre domicile principal';
+  return null;
+}
+/** Give the room back: its furniture goes to the principal residence (stored, then set up), what lies on the family bed stays there. */
+export function returnRoom(s: GameState): boolean {
+  if (cannotReturnRoom(s)) return false;
+  const room = starterOf(s), to = currentHome(s);
+  for (const f of furnitureIn(s, room.uid)) if (!furnitureSpec(f.spec)!.fixed) { f.home = to.uid; f.at = null; }
+  settleFurniture(s, to.uid);
+  s.data.flags.push(ROOM_RETURNED); bump();
+  return true;
+}
+/** Ask the family for the room again (or they take the player back: `takenBack`). */
+export function reclaimRoom(s: GameState): boolean {
+  const i = s.data.flags.indexOf(ROOM_RETURNED); if (i < 0) return false;
+  s.data.flags.splice(i, 1); bump();
+  return true;
+}
+/** The player has nowhere else to live (a home sold, a lease ended): the family takes them back in the room they had given back. */
+function takenBack(s: GameState) { if (reclaimRoom(s)) notices.push('Tu n’as plus d’autre logement : la famille te rend ta chambre à Pikine'); }
 
 // ------------------------------------------------------------------ furniture in homes
 /**
