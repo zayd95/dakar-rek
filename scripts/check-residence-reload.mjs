@@ -1,6 +1,6 @@
 // The persistence release blocker, end to end on a phone page (390 × 844, real touches): buy the Teranga, park it in front of the Cité Jàmm, buy the
 // family house through its sheet and make it the principal residence (« Définir comme domicile principal »), furnish it, move and turn a piece in
-// « Aménager », then RELOAD THE PAGE (a real reload, from inside the house) — the house, the residence, every piece with its spot and turn, the car
+// « Aménager », then LEAVE AND COME BACK (the page left from inside the house and opened again) — the house, the residence, every piece with its spot and turn, the car
 // where it was left, the wallet and the spawn come back. Then « Ma chambre »'s options, the save card (honest status, copy), an import into a wiped
 // browser, and a browser whose storage refuses every write (never shown as saved).
 // Usage: node scripts/check-residence-reload.mjs <baseUrl> [outDir]   (a localhost preview: ?argent= is honoured there)
@@ -100,7 +100,8 @@ try {
   check('the wallet paid the car, the house and the furniture', wallet0 - before.wallet > 90_000_000, `${wallet0} → ${before.wallet}`);
 
   // ------------------------------------------------------------------ 2. leave and come back: a real reload, from inside the house
-  await page.reload({ timeout: 180000 }); await ready(page);
+  // leave and come back: the same page opened again, without the test link's ?argent= top-up (it would be applied again on arrival)
+  await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 }); await ready(page);
   await page.waitForTimeout(2500);
   const e5 = await d(() => window.__dakar.estate());
   check('after reload: the house is still owned and still the principal residence', e5.home === 'maison_cite' && e5.assets.some(a => a.spec === 'maison_cite' && a.how === 'owned'), `home=${e5.home}`);

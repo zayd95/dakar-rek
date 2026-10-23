@@ -1473,7 +1473,7 @@ const savedProfile = () => { try { return JSON.parse(store?.getItem('dakarrek.pr
 phoneHooks.saveCard = {
   save: () => !!world && saveNow(),
   code: () => { if (world) saveNow(); return exportCode(state.data, savedProfile() ?? presence.profile); },
-  replace: (data, profile) => { if (!importSave(store, data, profile)) return false; holdSaves(); world = null; location.reload(); return true; },
+  replace: (data, profile) => { if (world) saveNow(); if (!importSave(store, data, profile)) return false; holdSaves(); world = null; location.reload(); return true; },   // saved first: the game it replaces is the one kept aside
   canUndo: () => !!backupOf(store),
   undo: () => { if (!undoImport(store)) return false; holdSaves(); world = null; location.reload(); return true; },
   nameOf: spec => { const sp = catalogSpec(spec); return sp ? { name: sp.name, kind: sp.kind } : undefined; },
