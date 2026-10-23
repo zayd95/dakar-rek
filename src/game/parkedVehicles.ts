@@ -40,7 +40,7 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
   const R = rng(0x5eed + seedSalt + world.id.length * 977 + Math.round(world.spawn.x * 13 + world.spawn.z * 7));
   const mix = PARKED_MIX[world.id] ?? PARKED_MIX.plateau, total = mix.reduce((a, [, w]) => a + w, 0);
   const pickKind = () => { let x = R() * total; for (const [k, w] of mix) { x -= w; if (x <= 0) return k; } return mix[0][0]; };
-  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [];
+  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [...(world.keepClear ?? [])];   // ground kept open (a loading bay, a shop's frontage): no car parks there
   const hits = (r: { x0: number; z0: number; x1: number; z1: number }) =>
     world.colliders.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0) || taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
   const gate = world.arena ? { x: world.arena.cx, z: world.arena.cz - 30 } : null;

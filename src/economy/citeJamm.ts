@@ -193,6 +193,21 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
   const lights = new THREE.Group();
   for (const s of [-1.2, 1.2]) { const lb = new Batch(); lb.box(0.25, 0.15, 0.25, bb.x + rx * s + fx * 0.9, G + 6.55, bb.z + rz * s + fz * 0.9, 0x222222, yaw); const m = lb.build(M.plain, false, false); if (m) lights.add(m); }
   lights.visible = false; hub.group.add(lights);
+  // ---------------------------------------------------------------- the shop's loading bay at the kerb (src/world/builder.ts citeFronts keeps it free of
+  // parked cars and street furniture): a painted yellow box with its hatching, LIVRAISON on the asphalt, and a board on the pavement that a driver reads
+  const bay = hub.keepClear?.find(r => r.why === 'loading_bay');
+  if (bay) {
+    const cx = (bay.x0 + bay.x1) / 2, cz = (bay.z0 + bay.z1) / 2, w = bay.x1 - bay.x0 - 0.3, d = bay.z1 - bay.z0 - 0.2, Y = 0.088, YEL = 0xf2c230;
+    plain.flat(w, 0.16, cx, Y, bay.z1 - 0.18, YEL); plain.flat(0.16, d, bay.x0 + 0.23, Y, cz, YEL); plain.flat(0.16, d, bay.x1 - 0.23, Y, cz, YEL);
+    for (let k = 0; k < 5; k++) plain.flat(0.14, d * 1.25, bay.x0 + 0.8 + k * 0.45, Y, cz, YEL, 0.65);            // the hatching at the bay's west end
+    const word = signPanel(signTexture('LIVRAISON', '#4d4f55', '#f2c230', 512, 112), 4.2, 0.92);
+    word.rotation.x = -Math.PI / 2; word.position.set(cx + 1.4, Y + 0.004, cz + 0.05); hub.group.add(word);
+    const b = { x: bay.x1 + 0.9, z: bay.z0 - 0.75 };                                                               // the board, on the pavement past the bay's east end
+    for (const dx of [-0.62, 0.62]) plain.box(0.08, 2.5, 0.08, b.x + dx, G, b.z, 0x3b2414);
+    cols.push({ x0: b.x - 0.7, z0: b.z - 0.08, x1: b.x + 0.7, z1: b.z + 0.08, h: 2.5 });
+    sign('KEUR MEUBLES', '#3b2414', '#ffd98a', b.x - BX, G + 2.15, b.z - BZ + 0.05, 1.5, 0.5);
+    sign('Livraison · arrêt 10 min', '#f2c230', '#3b2414', b.x - BX, G + 1.72, b.z - BZ + 0.05, 1.5, 0.3);
+  }
   // ---------------------------------------------------------------- shade and a bench by the street
   tree(1.6, 44.4, 1); tree(45, 28, 1.1); tree(20.5, 28.5, 0.9);
   {

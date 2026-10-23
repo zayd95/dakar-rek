@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture, signCanvasSize } from './batch';
 import { ACTIONS, ENTER } from './content';
-import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, KeepClear, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
@@ -21,6 +21,23 @@ export const HALF = (NB * PITCH + ROAD) / 2;
 const LS = (BLK - 2) / 2; // lot size
 const roadC = (k: number) => -HALF + ROAD / 2 + k * PITCH;
 const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
+
+/**
+ * Pikine's Cité Jàmm (block 1,0, left open here and built by src/economy/citeJamm.ts, whose (u, v) are metres from this block's north-west corner): the
+ * ground kept open in front of it, down to the kerb of the first road (z = −60) — Keur Meubles' open showroom (u 2…16) and the walk to it, the Résidence
+ * Jàmm's door (u 31) — and the loading bay at the kerb in front of the shop, where a car or a delivery pick-up stops (the parked cars keep off it and
+ * off the few metres before it, so a car in the lane can angle in).
+ * Nothing of the street dressing stands there: the shop is seen from the street, its door is reached, its bay is free (src/world/types.ts keepClear).
+ */
+export function citeFronts(): KeepClear[] {
+  const bx = blockMin(1), bz = blockMin(0), kerb = roadC(1) - ROAD / 2 + SIDEWALK;
+  return [
+    { x0: bx + 0.5, x1: bx + 18, z0: bz + 41.6, z1: kerb, why: 'keur_meubles' },
+    { x0: bx + 28, x1: bx + 34, z0: bz + 41.2, z1: kerb, why: 'residence_jamm' },
+    { x0: bx + 3, x1: bx + 13.5, z0: kerb, z1: kerb + 2.1, why: 'loading_bay' },
+    { x0: bx + 13.5, x1: bx + 21, z0: kerb, z1: kerb + 2.1, why: 'bay_approach' },          // no car parked just before it: a driver in the lane angles in
+  ];
+}
 
 type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
 type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
@@ -648,12 +665,15 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const ghosts: Collider[] = [];
   const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
   const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
+  /** Ground kept open (a shop's frontage, a loading bay: `citeFronts`), returned with the hub for the street dressing that comes after. */
+  const keepClear: KeepClear[] = id === 'pikine' ? citeFronts() : [];
+  const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
-   * Street dressing that would fall inside a composed site is not drawn, but it draws its random numbers and keeps its
+   * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
    * collider as a ghost exactly as before, so every later tree, palm and stall of the hub stays where it was.
    */
   const dress = (x: number, z: number, place: () => void) => {
-    if (!inSite(x, z)) { place(); return; }
+    if (!inSite(x, z) && !kept(x, z)) { place(); return; }
     const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
     place();
     [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
@@ -1353,7 +1373,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear,
     dispose() { disposeGroup(group); },
   };
 }
