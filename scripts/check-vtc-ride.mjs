@@ -106,7 +106,7 @@ const still = await V();
 check('back at the wheel, the passenger has not moved from the back seat', still.person?.inCar && still.persons === 1, JSON.stringify(still.person));
 
 // out of Pikine on the road to the Plateau
-const hpTrip0 = await d(() => window.__dakar.teranga.health());
+const hpTrip0 = await d(() => { window.__dakar.teranga.feelReset?.(); return window.__dakar.teranga.health(); });   // (the impacts of the trip are listed if it wears the car)
 const a1 = await AT();
 const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
 await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
@@ -125,7 +125,7 @@ await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeou
 const done = await V(), wallet1 = await d(() => window.__dakar.state.wallet), ledger = await d(() => window.__dakar.phoneHooks.ledger?.() ?? []);
 await page.waitForTimeout(1500); await shot('dropoff');
 const hpTrip1 = await d(() => window.__dakar.teranga.health());
-check('a cross-district trip driven normally does not wear the car out (no garage needed after it)', hpTrip1 >= hpTrip0 - 8, JSON.stringify({ before: hpTrip0, after: hpTrip1 }));
+check('a cross-district trip driven normally does not wear the car out (no garage needed after it)', hpTrip1 >= hpTrip0 - 8, JSON.stringify({ before: hpTrip0, after: hpTrip1, impacts: (await d(() => window.__dakar.teranga.feel().impacts)).slice(0, 8), at: await d(() => { const a = window.__dakar.teranga.at(); return { x: a.x, z: a.z }; }) }));
 const lines = ledger.filter(l => /Course VTC/.test(l.label));
 check('at the drop-off the passenger gets out and walks off; the fare is paid ONCE (one wallet line)', !done.trip && done.state.done.includes(v0.trip.id) && wallet1 - wallet0 === v0.trip.fare && lines.length === 1, JSON.stringify({ paid: wallet1 - wallet0, fare: v0.trip.fare, lines: lines.length, events: done.log.events }));
 await page.waitForFunction(() => window.__dakar.vtc.info().log.events.includes('faded'), null, { timeout: 240000 }).catch(() => {});

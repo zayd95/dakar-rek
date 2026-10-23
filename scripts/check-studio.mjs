@@ -19,7 +19,7 @@ const open = async ({ seed = null, viewport = { width: 390, height: 844 } } = {}
   await context.addInitScript(seed => { try { if (!localStorage.getItem('__seeded')) { localStorage.setItem('__seeded', '1'); for (const [k, v] of Object.entries(seed ?? {})) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } } catch { /* */ } }, seed);
   const page = await context.newPage(); page.setDefaultTimeout(120000);
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-  page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+  page.on('console', m => { if (m.type() === 'error' && !/\/assets\/car_rapide\.glb$/.test(m.location()?.url ?? '')) errors.push(`console: ${m.text()}`); });   // (src/actors/vehicles.ts asks for an optional Blender car rapide that is not shipped: a 404 on a static host, the procedural model is used)
   return { context, page };
 };
 const started = p => p.waitForFunction(() => window.__dakar?.pos?.().hub && window.__dakar.avatar, null, { timeout: 180000 });

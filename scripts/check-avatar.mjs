@@ -32,7 +32,7 @@ const open = async ({ viewport = { width: 1280, height: 800 }, touch = false, se
   const page = await context.newPage();
   const requests = []; page.on('request', r => { if (/assets\/meshy\//.test(r.url())) requests.push(r.url().split('/').pop()); });
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
-  page.on('console', m => { if (m.type() === 'error' && !(abort && /Failed to load resource/.test(m.text()))) errors.push(`console: ${m.text()}`); });
+  page.on('console', m => { if (m.type() === 'error' && !(abort && /Failed to load resource/.test(m.text())) && !/\/assets\/car_rapide\.glb$/.test(m.location()?.url ?? '')) errors.push(`console: ${m.text()}`); });   // (the optional Blender car rapide of src/actors/vehicles.ts is not shipped: a 404 on a static host)
   if (abort) await page.route('**/assets/meshy/*.glb', r => r.abort());
   return { context, page, requests };
 };
@@ -71,7 +71,7 @@ const shot = async (p, name) => { await p.waitForTimeout(500); try { await p.scr
   check('the femme is the player\'s body (Meshy femme)', a.identity === 'femme' && a.body === 'meshy_f' && a.expected === 'meshy_f', JSON.stringify(a));
   check('the identity is in the v6 save at once, same schema, same key', s?.avatar === 'femme' && s.schemaVersion === 6, JSON.stringify({ avatar: s?.avatar, v: s?.schemaVersion }));
   const keysNow = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('dakarrek')));
-  check('no other storage key than the Profile picture was added (identity and look in the v6 save; the first name in the existing presence profile)', keysNow.every(k => [KEY, 'dakarrek.quality', 'dakarrek.phone.places', 'dakarrek.presence.profile', 'dakarrek.portrait'].includes(k)), JSON.stringify(keysNow));
+  check('no other storage key than the Profile picture was added (identity and look in the v6 save and its two backups of the extras; the first name in the existing presence profile)', keysNow.every(k => [KEY, KEY + '.extras', KEY + '.extras.2', 'dakarrek.quality', 'dakarrek.phone.places', 'dakarrek.presence.profile', 'dakarrek.portrait'].includes(k)), JSON.stringify(keysNow));
   await shot(p, 'desktop-femme-street');
   const guest = s.guestId;
   // 2 — reload keeps it, with or without the test link
