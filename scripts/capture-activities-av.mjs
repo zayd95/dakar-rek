@@ -88,6 +88,7 @@ for (const name of list.split(',')) {
     while (Date.now() < deadline) {
       const g = await info();
       if (!g) break;
+      if (g.grades) report.liveGrades = { ...(report.liveGrades ?? {}), [g.label]: { grades: g.grades, score: g.score, clock: g.clock, log: g.log } };
       if (g.phase === 'linger' && !(await d(() => !!window.__dakar.activity()))) break;
       if (g.label !== lastPhase && g.phase !== 'linger') { lastPhase = g.label; steps++; mark(`dance: ${g.label}`); }
       for (const c of g.upcoming ?? []) {
@@ -98,19 +99,19 @@ for (const name of list.split(',')) {
         const at = g.epoch + (c.beat - g.beat) * g.beatSec * 1000 + off * 1000;
         plan.push({ at, kind, beat: c.beat });
       }
-      // fire what is due in the next 120 ms (CDP touches carry their own timestamps: when they are sent)
-      const now = Date.now();
-      for (const p of plan.filter(p => !p.done && p.at - now < 140).sort((a, b) => a.at - b.at)) {
-        p.done = true;
-        const wait = p.at - Date.now() - 4; if (wait > 0) await sleep(wait);
-        if (p.kind === 'L' || p.kind === 'R') { const x = p.kind === 'L' ? 95 : 295; await t.down(7, x, 520); await t.up(7); }
-        else if (p.kind === 'up') { await t.down(7, 195, 600); await t.move(7, 195, 470, 2); await t.up(7); }
-        else { await t.down(7, 110, 520); await t.move(7, 280, 520, 2); await t.up(7); }
+      // each touch on its own timer (the page may be busy drawing when it is due: the touch still leaves on time, stamped when sent)
+      for (const p of plan.filter(p => !p.armed)) {
+        p.armed = true;
+        setTimeout(async () => {
+          if (p.kind === 'L' || p.kind === 'R') { const x = p.kind === 'L' ? 95 : 295; await t.down(7, x, 520); await t.up(7); }
+          else if (p.kind === 'up') { await t.down(7, 195, 600); await t.move(7, 195, 470, 2); await t.up(7); }
+          else { await t.down(7, 110, 520); await t.move(7, 280, 520, 2); await t.up(7); }
+        }, Math.max(0, p.at - Date.now() - 4));
       }
-      if (g.phase === 'dance' && shotsTaken < 6 && Date.now() - t0 > 6000 + shotsTaken * 6000) { shotsTaken++; await shot(`move-${shotsTaken}`); }
+      if (!process.env.NOSHOTS && g.phase === 'dance' && shotsTaken < 6 && Date.now() - t0 > 6000 + shotsTaken * 6000) { shotsTaken++; await shot(`move-${shotsTaken}`); }
       await sleep(40);
     }
-    mark('the card, the crowd'); await page.waitForTimeout(300); await shot('card');
+    mark('the card, the crowd'); await page.waitForTimeout(300); if (!process.env.NOSHOTS) await shot('card');
     await page.waitForTimeout(3500);
     const club = await d(() => window.__dakar.venues().find(x => x.type === 'club'));
     report.dance = { steps, touches: perf, music: club.music, dance: club.dance, crowd: { watching: club.crowd.watching, reacting: club.crowd.reacting } };
@@ -121,7 +122,7 @@ for (const name of list.split(',')) {
   const video = await page.video().path(); await context.close();
   const clap = sync(video, `${out}/raw/${name}.webm`);
   if (clap) {
-    const file = `${out}/${name === 'grill' ? 'dibi-grill' : 'la-vague-dance'}.mp4`;
+    const file = `${out}/${name === 'grill' ? 'dibi-grill' : 'la-vague-dance'}${process.env.SUFFIX ?? ''}.mp4`;
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', video, '-itsoffset', String(clap.offset), '-i', `${out}/raw/${name}.webm`, '-map', '0:v', '-map', '1:a', '-ss', String(Math.max(0, clap.offset + 0.6)),
       '-vf', 'tpad=stop_mode=clone:stop_duration=600,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-r', '25', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', process.env.CRF ?? '30', '-pix_fmt', 'yuv420p',
       '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-shortest', '-movflags', '+faststart', file]);

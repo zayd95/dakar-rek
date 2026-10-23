@@ -41,7 +41,7 @@ const G0 = 0.13;            // top of the lot's ground slab
 const GX = -8.0, GZ = 8.6;
 const STAND = { x: GX + 0.78, z: GZ - 0.82 };
 const SIDE = { x: -6.25, z: 8.45, top: G0 + 0.77 };
-const CLIENT = { x: -6.15, z: 7.62, yaw: -Math.PI / 2 };
+const CLIENT = { x: -6.3, z: 7.72, yaw: -Math.PI / 2 };
 const SEAT = 0.57;          // bench and chair tops (the Sit clip's feet rest on the floor)
 const OWNER_LOOK: PersonLook = { skin: 0x5b3420, style: 'tee', top: 0xf2f2ec, bottom: 0x2b2f3a, hat: 'kufi', hatColor: 0xd9d2c4, beard: 0x1a1414, heavy: 0.5, shoes: 0x3a2a1e };
 const COOK_LOOK: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xd9322b, bottom: 0x1c1c1f, muscular: 0.4, shoes: 0x1c1c1f };
