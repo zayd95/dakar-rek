@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { CarInterior, cabinOf, WHEEL_LOCK } from '../src/transport/carInterior';
 import { carModelDims, vehicleSpec, type CarModelId } from '../src/actors/vehicleKit';
 import { PassengerCamera } from '../src/transport/camera';
+import { Vehicle } from '../src/transport/vehicle';
+import { carSpec, sedanSeed } from '../src/transport/car';
 
 /** The player's cars at the wheel: the four with a body of their own, the Berline moderne (the kit saloon), the berline neuve (the kit luxury saloon). */
 const CARS: [string, ReturnType<typeof vehicleSpec>, CarModelId | null][] = [
@@ -124,5 +126,23 @@ describe('the seat camera', () => {
     expect(Math.abs(pc.look.yaw)).toBeLessThan(0.05);
     pc.seat(1 / 30, cam, body, eye, -0.1, { yaw: 9, pitch: -9 }, pose);
     expect(pc.look.yaw).toBeLessThanOrEqual(1.9); expect(pc.look.pitch).toBeLessThanOrEqual(0.6);
+  });
+});
+
+describe('the body seen from the wheel', () => {
+  it('a body not made to be seen from inside (the kit\'s, a generated shell) is not drawn in the wheel view and comes back after; the interior builds from its kit spec', () => {
+    const v = new Vehicle(carSpec(), 'plateau:car:compacte', 1, sedanSeed()), model = v.body.children[0];
+    expect(v.shellInside).toBe(false); expect(v.kitSpec).toBeDefined();
+    v.setCockpit(true); expect(model.visible).toBe(false);
+    v.setCockpit(false); expect(model.visible).toBe(true);
+    const ir = new CarInterior(cabinOf(v.kitSpec!), 'city'); v.body.add(ir.group);
+    expect(ir.group.parent).toBe(v.body);                                                         // in the car's frame: it sways and turns with the body
+  });
+  it('an authored body keeps its shell from inside, only the parts it lists (its door) are put away', () => {
+    const v = new Vehicle(carSpec(), 'plateau:car:test', 1, sedanSeed()), model = v.body.children[0], door = new THREE.Group();
+    model.userData.seenInside = true; model.userData.glbHide = [door];
+    expect(v.shellInside).toBe(true);
+    v.setCockpit(true); expect(model.visible).toBe(true); expect(door.visible).toBe(false);
+    v.setCockpit(false); expect(door.visible).toBe(true);
   });
 });
