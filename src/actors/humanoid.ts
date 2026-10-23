@@ -597,6 +597,11 @@ export class Humanoid {
   private meshy: MeshyLook | null = null;
   /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
   setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
+  /** Barefoot (the mosque's hall): v4 hides its shoe meshes; a Meshy body, whose shoes are baked into its shell, paints them as feet. */
+  setBarefoot(on: boolean) {
+    for (const [k, m] of this.parts) if (k === 'Cloth_Shoes') m.visible = !on;
+    this.meshy?.setBare(on);
+  }
   get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
   /** The body drawn: the one asked for when it is loaded, else v4. */
   readonly body: BodyId;

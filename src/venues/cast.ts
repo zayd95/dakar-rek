@@ -37,6 +37,7 @@ const WP = new THREE.Vector3();
 
 export function hideShoes(h: Humanoid, hide = true) {
   h.group.traverse(o => { if ((o as THREE.Mesh).isMesh && o.name.startsWith('Cloth_Shoes')) o.visible = !hide; });
+  h.setBarefoot(hide);                                                    // (a Meshy body's shoes are baked into its shell: painted as feet)
 }
 
 export class Cast {

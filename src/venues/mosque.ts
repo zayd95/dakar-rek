@@ -371,10 +371,11 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   });
 
   // ---------------------------------------------------------------- the player's shoes and the moments of the day
-  let barefoot = false, moment = '';
+  let barefoot = false, moment = '', shod: object | null = null;
   const setBarefoot = (on: boolean) => {
     barefoot = on; myShoesMesh.visible = on;
     const body = ctx.player.body(); if (body) hideShoes(body, on);
+    shod = body;
   };
   const centre = at(0, 6);
   // the player's own prayer on a row: alone (its own clock) or with the congregation (the imam's, a little behind him)
@@ -421,7 +422,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.5;
     hall.update(h);
     if (space === 'street' && washed && Math.hypot(ctx.player.pos.x - centre.x, ctx.player.pos.z - centre.z) > 40) washed = false;   // ablutions last the visit
-    if ((space === doorId) !== barefoot) setBarefoot(space === doorId);
+    if ((space === doorId) !== barefoot || (barefoot && ctx.player.body() !== shod)) setBarefoot(space === doorId);   // (a body rebuilt inside: barefoot too)
   };
 
   return {
