@@ -37,6 +37,8 @@ export interface RouteDef {
   condensed?: number;
   /** Where the district swap happens, as a fraction of the length: on a plain stretch, out of sight of both districts and of any junction. */
   swap: number;
+  /** A police checkpoint on a small rond-point this many metres before b's mouth (src/road/chunks.ts): seen, slowed for, driven round; nothing enforced. */
+  checkpoint?: number;
 }
 
 /** The look of the roadside: Pikine's dust and breeze block, the market junction, the wide urban road, the white walls and palms of Almadies, the coast road, the old downtown. */
@@ -90,6 +92,7 @@ export const ROUTES: readonly RouteDef[] = [
     ],
     profile: [[0, 'banlieue'], [0.25, 'artery'], [0.55, 'market'], [0.78, 'downtown']],
     swap: 0.55,
+    checkpoint: 46,                                                // the way into the Plateau from the autoroute: a police post at a rond-point
   },
   {
     // Corniche · Fann → the coast road → Gueule Tapée → Plateau: it leaves the Corniche district by its east edge and enters the Plateau by its west edge. Written in the frame of the
@@ -131,6 +134,8 @@ export class Road {
   readonly junctionS: { name: string; s: number; x: number; z: number; yaw: number; arms: Arm[] }[];
   /** The district swap happens here (arc length), well out of sight of both districts; `HYST` metres of play each way so a car that stops on the line does not swap back and forth. */
   readonly swapS: number;
+  /** Arc length of the police checkpoint's rond-point (RouteDef.checkpoint), or null. */
+  readonly checkpointS: number | null;
 
   constructor(def: RouteDef) {
     this.def = def;
@@ -148,6 +153,7 @@ export class Road {
     const last = def.nodes[def.nodes.length - 1];
     this.dx = def.bMouth.x - last.x; this.dz = def.bMouth.z - last.z;
     this.swapS = this.spine.length * def.swap;
+    this.checkpointS = def.checkpoint !== undefined ? this.spine.length - def.checkpoint : null;
     // stops: a pair before each junction (one for each direction), and one every ~250 m along the busy stretches, none near the ends (the districts' own stops are there)
     const stops: RoadStop[] = [], L = this.spine.length, hash = (n: number) => { const x = Math.sin(n * 12.9898 + L * 0.37) * 43758.5453; return x - Math.floor(x); };
     for (const j of this.junctionS) { stops.push({ s: j.s - 40, dir: 1 }); stops.push({ s: j.s + 40, dir: -1 }); }

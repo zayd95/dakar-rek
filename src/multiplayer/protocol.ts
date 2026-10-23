@@ -90,7 +90,7 @@ export function parseArena(value: unknown): ArenaPresence | null {
 /** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
 export type PresenceExtras = Pick<Move, 'arena' | 'fan'>;
 /** `tag` is a stable public key derived server-side from a private device key: mute/block survive reconnects without revealing the key. */
-export interface Peer extends Move { id: string; name: string; look: number; tag?: string; rec?: string; updatedAt: number }
+export interface Peer extends Move { id: string; name: string; look: number; tag?: string; rec?: string; /** The player's chosen look (src/actors/appearance.ts encodeAppearance), when the server relays it. */ app?: string; updatedAt: number }
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
 export interface ChatAck { type: 'chat-ack'; id: string; ok: boolean; reason?: ChatFailure; delivered?: number; duplicate?: boolean; at?: number }
 export type ServerMessage =
@@ -144,6 +144,14 @@ export function deviceKey(value: unknown): string | null { return typeof value =
 /** Rungs of the làmb ladder a public record may name (src/career/career.ts RUNGS labels; a test keeps them in step). */
 export const REC_RUNGS = ['Petits combats', 'Undercards', 'Combats classés', 'Adversaires réputés', 'Contender', 'Champion', 'Roi des Arènes'] as const;
 export const REC_MAX = 48;
+/**
+ * A look from the character studio on the wire (`app` connection parameter → peer field): five characters, body · skin · hair · outfit · colour
+ * (src/actors/appearance.ts encodeAppearance). Strict: anything else is no look. An older server ignores the parameter (peers are then drawn by `look` alone)
+ * and an older client ignores the peer field: nothing breaks either way, and it is sent only at connection (an unknown message would close the socket).
+ */
+export function appearanceCode(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[mf][0-5][nsapwk][0-2][0-5]$/.test(value) ? value : undefined;
+}
 /**
  * A player's public sporting record, shown to others under the name: « <rung> », optionally « · <wins>-<losses> »
  * (« -<draws> ») and « · Écurie <Name> », nothing else. Anything that does not fit this shape is refused (undefined).

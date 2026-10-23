@@ -14,6 +14,7 @@ import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type 
 import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
 import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
 import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
+import { saveLine } from '../core/saveHealth';
 import { homeGoalLine } from './progress';
 import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
 import type { ActivityCategory } from '../activity/types';
@@ -22,6 +23,7 @@ import { fcfaShort } from './format';
 import './economy.css';
 import { streak } from './streakModule';
 import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
+import { JOB, jobBadge } from '../ui/jobMarks';
 
 /**
  * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
@@ -32,7 +34,9 @@ export const JOBS_ACTION: Action = { id: 'tiak', label: 'Livraisons Tiak Tiak', 
 export const SHOP_ACTION: Action = { id: 'meubles', label: 'Voir les meubles', detail: 'Livrés dans ta chambre', seconds: 0, special: 'shop' };
 /** At the Banque Teranga agencies: the ventures (same menu as the phone app). */
 export const BUSINESS_ACTION: Action = { id: 'affaires', label: 'Investir dans une affaire', detail: 'Bana-bana, kiosque, boutique… jusqu’à la grande entreprise', seconds: 0, special: 'business' };
-const LOCAL_NOTE = 'Argent virtuel du jeu, sauvegardé sur cet appareil (pas encore de compte).';
+/** Game money, and where it is kept: only what the storage really did (src/core/saveHealth.ts). */
+const LOCAL_NOTE_OK = 'Argent virtuel du jeu, gardé sur cet appareil (pas encore de compte).';
+const localNote = () => (saveLine().tone === 'ok' ? LOCAL_NOTE_OK : 'Argent virtuel du jeu (pas encore de compte) · pense à copier ta sauvegarde (Réglages › Partie).');
 const INCOME_NOTE = 'Les affaires rapportent à chaque heure en ville (1 min de jeu), seulement pendant que tu joues : rien hors ligne.';
 
 export interface EconomyDeps {
@@ -63,9 +67,10 @@ export class Economy {
   /** The shop the furniture catalogue was last opened from (its title). */
   private shopAt: string | undefined;
   private marker = new THREE.Group();
-  private ringMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  private beamMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  private ringMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  private beamMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
   private arrow: THREE.Mesh;
+  private badge: THREE.Sprite;
   private line: HTMLElement;
   private t = 0;
   private lineT = 0;
@@ -86,7 +91,9 @@ export class Economy {
     const disc = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), this.beamMat); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.05;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 14, 10, 1, true), this.beamMat); beam.position.y = 7;
     this.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), this.ringMat); this.arrow.rotation.x = Math.PI; this.arrow.position.y = 3.2;
-    this.marker.add(ring, disc, beam, this.arrow); this.marker.visible = false; this.marker.renderOrder = 2;
+    // a Tiak Tiak delivery (src/ui/jobMarks.ts): orange, a round ring and the parcel's badge over the arrow, never taken for a VTC ride's green bay
+    this.badge = jobBadge('delivery'); this.badge.position.y = 4.3;
+    this.marker.add(ring, disc, beam, this.arrow, this.badge); this.marker.visible = false; this.marker.renderOrder = 2;
     d.scene.add(this.marker);
     this.line = document.createElement('div'); this.line.id = 'delivery'; this.line.className = 'card';
     (document.getElementById('ui') ?? document.body).appendChild(this.line);
@@ -105,7 +112,7 @@ export class Economy {
     const place = tc ? tc.stop.place : r ? (a.stage === 'pickup' ? r.from : r.to) : null; if (!place) return null;
     const hub = (r && a.stage === 'deliver' ? deliveryHub(r) : a.hub) as HubId, w = this.world;
     const it = w && w.id === hub ? this.placeOf(place.frag) : undefined;
-    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0 };
+    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0, job: 'delivery' };
   }
 
   private get s() { return this.d.state; }
@@ -348,10 +355,10 @@ export class Economy {
       if (!from || Math.hypot(this.here.x - from.x, this.here.z - from.z) > ECONOMY.tiak.tour.departRadius) { depart(s); this.d.save(); }
     }
     if (tgt && w) {
-      const col = a!.stage === 'pickup' ? 0x4fd1ff : 0xffc83d;
-      this.ringMat.color.setHex(col); this.beamMat.color.setHex(col);
+      // the delivery's colour at both stages (the parcel's badge says what it is; the HUD line says « 📦 » until it is picked up)
+      this.ringMat.color.setHex(JOB.delivery.hex); this.beamMat.color.setHex(JOB.delivery.hex);
       this.marker.position.set(tgt.x, w.heightAt(tgt.x, tgt.z) + 0.12, tgt.z);
-      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5;
+      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5; this.badge.position.y = this.arrow.position.y + 1.1;
       const d = Math.hypot(pos.x - tgt.x, pos.z - tgt.z);
       if (playing && !inside && d < ECONOMY.tiak.arriveRadius) {
         if (tc) { if (tc.run.departed) this.finishStop(a!.runId); }
@@ -418,11 +425,12 @@ export class Economy {
       return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => this.confirmPiece(f.id, fromPhone) };
     });
     const owned = FURNITURE.filter(f => owns(s, f.id));
-    const html = `<div class="kv">${owned.length ? 'Dans ta chambre : ' + owned.map(f => esc(f.name)).join(', ') : 'Ta chambre est encore vide.'}<br>${esc(homeGoalLine(s))}</div>
-      <div class="draft">Livré chez toi (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(LOCAL_NOTE)}</div>`;
+    const short = home.split(' · ')[0];
+    const html = `<div class="kv">${owned.length ? `Chez toi (${esc(short)}) : ` + owned.map(f => esc(f.name)).join(', ') : `Rien encore chez toi (${esc(short)}).`}<br>${esc(homeGoalLine(s))}</div>
+      <div class="draft">Livré à ton domicile principal (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(localNote())}</div>`;
     this.d.menu();
     const at = this.shopAt && !/meubles/i.test(this.shopAt) ? `${this.shopAt} · meubles` : 'Quincaillerie · meubles';
-    this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : at, `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
+    this.d.hud.openMenu(fromPhone ? `${short} · meubles` : at, `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
   }
 
   /** What a piece costs and brings, before the one confirmation (owner's rule: no surprise after paying). */
@@ -454,12 +462,12 @@ export class Economy {
     const value = assetsValue(s);
     const html = `<div class="kv">En poche : <b>${fcfa(s.wallet)}</b> · biens : ${fcfa(value)}<br>Fortune totale : <b>${fcfa(s.wallet + value)}</b><br>${esc(polyLine(s))}</div>
       <h3>Historique</h3><div class="rel ledger">${rows.length ? rows.map(e => `<span>${esc(e.label)}<small>${when(e.at)}</small></span><em class="${e.amount >= 0 ? 'plus' : 'minus'}">${e.amount >= 0 ? '+' : '−'}${fcfa(Math.abs(e.amount))}</em>`).join('') : '<span>Aucun mouvement pour l’instant.</span><em></em>'}</div>
-      <div class="draft">${esc(LOCAL_NOTE)} Les 100 derniers mouvements sont gardés.</div>`;
+      <div class="draft">${esc(localNote())} Les 100 derniers mouvements sont gardés.</div>`;
     this.d.menu();
     this.d.hud.openMenu('Portefeuille', `${fcfa(s.wallet)} · ${homeGoalLine(s)}`, [
       { label: 'Petits boulots', detail: 'Tiak Tiak et services payés du quartier', onPick: () => this.openJobs() },
       { label: 'Affaires', detail: unitsOwned(s) ? `${unitsOwned(s)} affaire${unitsOwned(s) > 1 ? 's' : ''} · +${fcfa(incomePerHour(s))} par heure` : firstVentureHint(s) ?? '', onPick: () => this.openBusiness() },
-      { label: 'Ma chambre · meubles', detail: `${furnitureCount(s)} meuble${furnitureCount(s) > 1 ? 's' : ''}`, onPick: () => this.openShop(true) },
+      { label: `${specOfAsset(currentHome(s)).name.split(' · ')[0]} · meubles`, detail: `${furnitureCount(s)} meuble${furnitureCount(s) > 1 ? 's' : ''} · domicile principal`, onPick: () => this.openShop(true) },
     ], html);
   }
 

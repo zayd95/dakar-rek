@@ -63,6 +63,10 @@ export class VagueCrowd {
   private planned = { floor: 0, stand: 0, queue: 0 };
   /** The players the crowd stepped aside for on the last frame drawn. */
   private players: readonly { x: number; z: number }[] = [];
+  /** The player dancing (src/venues/dancePlay.ts): the dancers near them turn to watch; the camera's line is kept clear. */
+  private stageAt: { x: number; z: number } | null = null;
+  private stageCam: { x: number; z: number } | null = null;
+  private watching = 0;
 
   constructor(private frame: ClubFrame, private quality: CrowdQuality, private parent: THREE.Object3D) {}
 
@@ -110,6 +114,11 @@ export class VagueCrowd {
     if (!n.visible) return null;                                            // far away: nothing moves, nothing is drawn
 
     this.players = n.players;
+    // a player dancing: the camera's line to them is kept clear (points along it, stepped aside from like players)
+    const avoid: { x: number; z: number }[] = [...n.players];
+    const sa = this.stageAt, sc = this.stageCam;
+    if (sa && sc) { const L = Math.hypot(sc.x - sa.x, sc.z - sa.z); for (let d = 0.9; d < L - 0.3; d += 0.55) avoid.push({ x: sa.x + (sc.x - sa.x) * d / L, z: sa.z + (sc.z - sa.z) * d / L }); }
+    this.watching = 0;
     const ringOn = this.ringOn = n.open && contestOn(n.contest, n.hour);
     // the soloist in the middle of the ring, in turn (not while a player is there)
     const mid = F.w(VAGUE.floor.x, VAGUE.floor.z), busyMid = n.players.some(p => Math.hypot(p.x - mid.x, p.z - mid.z) < CLEAR_R + 0.3);
@@ -139,18 +148,21 @@ export class VagueCrowd {
       }
       // never on a player: step aside, or not drawn when there is no room
       let x = w.x, z = w.z;
-      for (const p of n.players) {
+      for (const p of avoid) {
         const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz);
         if (d >= PLAYER_ROOM) continue;
         const ux = d < 1e-3 ? 1 : dx / d, uz = d < 1e-3 ? 0 : dz / d;
         x = p.x + ux * PLAYER_ROOM; z = p.z + uz * PLAYER_ROOM;
       }
-      const room = n.players.every(p => Math.hypot(x - p.x, z - p.z) >= PLAYER_ROOM - 0.05);
+      const room = avoid.every(p => Math.hypot(x - p.x, z - p.z) >= PLAYER_ROOM - 0.05);
       this.show(w, room);
       if (!room) continue;
       w.sx = x; w.sz = z;
-      const key = `${x.toFixed(3)},${z.toFixed(3)},${w.yaw.toFixed(3)},${speed}`;
-      if (key !== w.sent) { w.sent = key; c.move(w.id, x, this.y(localZ), z, w.yaw, speed); }
+      // round the player dancing, the floor turns to watch
+      let yaw = w.yaw;
+      if (sa && w.kind === 'floor' && speed === 0 && Math.hypot(x - sa.x, z - sa.z) < 3.4) { yaw = Math.atan2(sa.x - x, sa.z - z); this.watching++; }
+      const key = `${x.toFixed(3)},${z.toFixed(3)},${yaw.toFixed(3)},${speed}`;
+      if (key !== w.sent) { w.sent = key; c.move(w.id, x, this.y(localZ), z, yaw, speed); }
     }
     // the soloist dances harder, the ring claps in turns
     if (soloist !== this.solo) { if (this.solo >= 0) c.calmOne(`vague:floor:${this.solo}`); this.solo = soloist; }
@@ -183,6 +195,13 @@ export class VagueCrowd {
     c.react('floor', 'shout', { share: 0.3, seconds: 2.4 });
     this.harder = HARDER_AFTER;
   }
+  /** A player dances at `at` (null: nobody): the dancers near turn to watch, the camera's line to them is kept clear. */
+  stage(at: { x: number; z: number } | null, camera: { x: number; z: number } | null) { this.stageAt = at; this.stageCam = at ? camera : null; }
+  /** The dancers nearest `at` answer a move: arms up with the player, a clap for a turn, a shout. */
+  react(at: { x: number; z: number }, n: number, kind: 'celebrate' | 'applause' | 'shout') {
+    const c = this.crowd; if (!c) return;
+    for (const w of this.nearest(at, n)) { c.calmOne(w.id); c.reactOne(w.id, kind, kind === 'shout' ? 1.6 : 2.2); }
+  }
   /** The player's song request is playing: the floor answers like a drop. */
   request() { this.requests++; this.burst(); }
   /** A good dance by the player: the dancers nearest them cheer. */
@@ -203,7 +222,7 @@ export class VagueCrowd {
     for (const w of this.who) if (w.on) drawn[w.kind]++;
     const shown = this.who.filter(w => w.on);
     return {
-      night: this.night, quality: this.quality, budget: VAGUE_CROWD[this.quality], ...this.planned, drawn, ring: this.ringOn ? [...this.ring.keys()].filter(i => this.byKind.floor[i]?.on).length : 0, solo: this.solo, drops: this.drops, requests: this.requests,
+      night: this.night, quality: this.quality, budget: VAGUE_CROWD[this.quality], ...this.planned, drawn, watching: this.watching, staged: !!this.stageAt, ring: this.ringOn ? [...this.ring.keys()].filter(i => this.byKind.floor[i]?.on).length : 0, solo: this.solo, drops: this.drops, requests: this.requests,
       reacting: c?.stats().kinds ?? {}, near: c?.people().length ?? 0, drawCalls: c && c.group.visible ? c.drawCalls() : 0,
       // the dancers nearest the player as the checks read them (`clip` Celebrate while they cheer)
       dancers: me ? this.nearest(me, 8).map(w => ({ x: w.sx, z: w.sz, shown: true, clip: c?.reactionOf(w.id) === 'celebrate' ? 'Celebrate' : 'Dance_A' })) : [],

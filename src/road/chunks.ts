@@ -6,6 +6,7 @@ import { generatedTexture } from '../world/textures';
 import { hubSurface, lightPoolTexture } from '../world/builder';
 import { rng } from '../core/rng';
 import type { Collider, HubWorld } from '../world/types';
+import type { PersonLook } from '../actors/humanoid';
 import { ROAD_HALF, SHOULDER, type Profile, type Road } from './routes';
 
 /**
@@ -41,9 +42,14 @@ export interface Chunk {
   colliders: Collider[];
   /** Roadside people to place (road frame), with the clip they play. */
   people: HubWorld['people'];
+  /** The flower and plant sellers on this chunk's verges (arc length of their middle, side: +1 left of a → b, length along the road). */
+  sellers: { s: number; side: number; len: number; big: boolean }[];
   s0: number; s1: number;
   dispose(): void;
 }
+
+/** The chance a 100 m stretch has a flower and plant seller on its verge (a second one, 40 % of it), by the roadside's look: most on the wide urban road (the VDN). */
+export const FLOWER_ODDS: Record<Profile, number> = { artery: 0.8, market: 0.55, villa: 0.5, coast: 0.35, downtown: 0.25, banlieue: 0.3 };
 
 const lerpHex = (a: number, b: number, t: number) => new THREE.Color(a).lerp(new THREE.Color(b), Math.max(0, Math.min(1, t)));
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -86,6 +92,12 @@ const PIKINE_PALETTE = [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8f
 const VILLA_PALETTE = [0xfafafa, 0xf3f0ea, 0xeeeeee, 0xf7efe2];
 const AWNING = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
 const BLOCK = 0xb4a58f;
+
+/** The half size of a district's own ground (world/builder.ts HALF and its 3 m margin: the hub's bounds). */
+const DISTRICT = 130;
+/** Is the point (road frame, district a's) on the ground of one of the road's two districts, or within `pad` of it? */
+export const onDistrict = (road: Road, x: number, z: number, pad = 0) =>
+  (Math.abs(x) < DISTRICT + pad && Math.abs(z) < DISTRICT + pad) || (Math.abs(x + road.dx) < DISTRICT + pad && Math.abs(z + road.dz) < DISTRICT + pad);
 
 export interface ChunkOpts { road: Road; mats: ChunkMats; lite: boolean; /** road-frame positions that must stay clear (the player's own parked vehicle…) */ keepClear?: { x: number; z: number; r: number }[] }
 
@@ -164,7 +176,20 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
 
   // roadside, every few metres of the chunk, by what the road is like there
   const place = (s: number, lat: number) => { const f = frame(road, s); return { x: f.x + f.lx * lat, z: f.z + f.lz * lat, yaw: f.yaw, f }; };
-  const lamp = (s: number, side: number) => {
+  /**
+   * The districts at both ends build their own streets: nothing of the roadside stands on their ground (the last houses of the road into the Plateau
+   * stood across its west perimeter street, blocks in its lanes). A piece is drawn as always, so its random numbers are drawn the same and nothing else
+   * of the chunk moves, and taken back (geometry, colliders, people, light pools) when its footprint — `w` across the road, `d` along it, centred on `p` —
+   * falls on a district's ground (`onDistrict`).
+   */
+  const guarded = (p: { x: number; z: number; yaw: number }, w: number, d: number, draw: () => void) => {
+    const mp = plain.mark(), mb = bulbs.mark(), nc = colliders.length, np = people.length, nl = pools.length;
+    draw();
+    const ax = Math.cos(p.yaw), az = -Math.sin(p.yaw), fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    if (![[-1, -1], [-1, 1], [1, -1], [1, 1], [0, 0]].some(([u, v]) => onDistrict(road, p.x + ax * u * w / 2 + fx * v * d / 2, p.z + az * u * w / 2 + fz * v * d / 2, 0.5))) return;
+    plain.rollback(mp); bulbs.rollback(mb); colliders.length = nc; people.length = np; for (const g of pools.splice(nl)) g.dispose();
+  };
+  const lamp = (s: number, side: number) => guarded(place(s, side * (KERB + 0.6)), 4.6, 0.6, () => {
     const p = place(s, side * (KERB + 0.6)), arm = -side;
     plain.cyl(0.07, 0.1, 6.6, p.x, 0, p.z, 0x3e4349, 6);
     const ax = p.x + p.f.lx * arm * 1.1, az = p.z + p.f.lz * arm * 1.1;
@@ -172,34 +197,35 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     bulbs.box(0.5, 0.14, 0.28, p.x + p.f.lx * arm * 2, 6.5, p.z + p.f.lz * arm * 2, 0xfff1c0, p.yaw + Math.PI / 2);
     const g = new THREE.PlaneGeometry(14, 14); g.rotateX(-Math.PI / 2); g.translate(p.x + p.f.lx * arm * 2, ROAD_Y + 0.06, p.z + p.f.lz * arm * 2); pools.push(g);
     solid(p.x, p.z, 0.5, 0.5, 6.6);
-  };
-  const pole = (s: number, side: number) => {
+  });
+  const pole = (s: number, side: number) => guarded(place(s, side * (VERGE - 0.4)), 2.4, 0.4, () => {
     const p = place(s, side * (VERGE - 0.4));
     plain.cyl(0.1, 0.13, 8, p.x, 0, p.z, 0x7a6a55, 6);
     plain.box(2.4, 0.12, 0.12, p.x, 7.4, p.z, 0x5b4f40, p.yaw + Math.PI / 2);
     for (const k of [-1, 0, 1]) plain.box(0.07, 0.07, 0.07, p.x + p.f.lx * k * 1.0, 7.5, p.z + p.f.lz * k * 1.0, 0xdddddd);
     solid(p.x, p.z, 0.4, 0.4, 8);
-  };
-  const palm = (s: number, lat: number, sc = 1) => {
+  });
+  const palm = (s: number, lat: number, sc = 1) => guarded(place(s, lat), 6 * sc, 6 * sc, () => {
     const p = place(s, lat), h = 6.4 * sc;
     plain.cyl(0.2 * sc, 0.28 * sc, h, p.x, 0.05, p.z, 0x8a6d4a, 5);
     for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2 + R() * 0.5, len = 3.2 * sc; plain.box(0.7 * sc, 0.1 * sc, len, p.x + Math.sin(a) * len * 0.45, h - 0.1, p.z + Math.cos(a) * len * 0.45, k % 2 ? 0x2f7f3e : 0x3d9450, a); }
     if (Math.abs(lat) < VERGE + 0.5) solid(p.x, p.z, 0.6, 0.6, h);
-  };
-  const wall = (s: number, side: number, len: number, col: number, h = 1.6) => {
+  });
+  const wall = (s: number, side: number, len: number, col: number, h = 1.6) => guarded(place(s + len / 2, side * (VERGE + 0.3)), 0.4, len + 0.1, () => {
     const p = place(s + len / 2, side * (VERGE + 0.3));
     plain.box(0.25, h, len, p.x, 0, p.z, col, p.f.yaw);
     plain.box(0.4, 0.15, len + 0.1, p.x, h, p.z, 0xd8d0c0, p.f.yaw);
-  };
-  const house = (s: number, lat: number, w: number, d: number, h: number, col: number, flat = true) => {
-    const p = place(s, lat);
+  });
+  const houses: { s: number; lat: number; w: number; d: number }[] = [];
+  const house = (s: number, lat: number, w: number, d: number, h: number, col: number, flat = true) => guarded(place(s, lat), w + 0.4, d + 0.4, () => {
+    const p = place(s, lat); houses.push({ s, lat, w: w + 0.4, d: d + 0.4 });
     plain.box(w, h, d, p.x, 0, p.z, col, p.f.yaw);
     if (flat) plain.box(w + 0.3, 0.2, d + 0.3, p.x, h, p.z, 0xe2dccf, p.f.yaw);
     else plain.box(w + 0.4, 0.15, d + 0.4, p.x, h, p.z, 0x9a9588, p.f.yaw);
     const door = R() < 0.6;
     if (door) plain.box(1.2, 2.0, 0.1, p.x - p.f.lx * 0, 0.0, p.z, PIKINE_PALETTE[Math.floor(R() * PIKINE_PALETTE.length)], p.f.yaw);
-  };
-  const stall = (s: number, side: number) => {
+  });
+  const stall = (s: number, side: number) => guarded(place(s, side * (VERGE - 1.4)), 3, 3, () => {
     const lat = side * (VERGE - 1.4), p = place(s, lat), col = AWNING[Math.floor(R() * AWNING.length)];
     plain.box(2.6, 0.9, 1.6, p.x, 0, p.z, 0x8a6d4a, p.yaw);
     plain.slab(3.0, 0.12, 2.2, p.x, 2.4, p.z, col, p.yaw, side * 0.12);
@@ -207,21 +233,157 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     for (let k = 0; k < 5; k++) plain.box(0.4, 0.3, 0.4, p.x + Math.sin(p.yaw) * (k - 2) * 0.5, 0.9, p.z + Math.cos(p.yaw) * (k - 2) * 0.5, [0xd9482b, 0xf4c20d, 0x2f8f4e, 0xe8742c, 0xd96f4f][k]);
     solid(p.x, p.z, 3.0, 2.0, 2.4, p.yaw);
     people.push({ x: p.x + p.f.lx * -side * 0.2, z: p.z + p.f.lz * -side * 0.2, yaw: p.yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2), clip: R() < 0.5 ? 'Talk' : 'Idle' });
-  };
-  const billboard = (s: number, side: number) => {
+  });
+  const billboard = (s: number, side: number) => guarded(place(s, side * 15), 1, 8, () => {
     const p = place(s, side * 15), col = [0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e][Math.floor(R() * 4)];
     for (const k of [-2.6, 2.6]) plain.cyl(0.14, 0.14, 6, p.x + Math.sin(p.yaw) * k, 0, p.z + Math.cos(p.yaw) * k, 0x555a60, 6);
     plain.box(8, 3.4, 0.25, p.x, 5, p.z, 0xf1efe8, p.yaw + Math.PI / 2 + (side > 0 ? 0 : Math.PI));
     plain.box(7.4, 2.2, 0.3, p.x, 5.5, p.z, col, p.yaw + Math.PI / 2 + (side > 0 ? 0 : Math.PI));
-  };
-  const station = (s: number, side: number) => {
+  });
+  const station = (s: number, side: number) => guarded(place(s, side * 17.75), 20.5, 9.2, () => {
     const p = place(s, side * 20);
     plain.box(16, 0.4, 9, p.x, 5.2, p.z, 0xe8e4d8, p.yaw); plain.box(16.2, 0.5, 9.2, p.x, 5.6, p.z, 0xc0392b, p.yaw);
     for (const [dx, dz] of [[-6, -3], [6, -3], [-6, 3], [6, 3]]) plain.box(0.4, 5.2, 0.4, p.x + Math.sin(p.yaw) * dx + p.f.lx * dz, 0, p.z + Math.cos(p.yaw) * dx + p.f.lz * dz, 0xe8e4d8);
     for (const k of [-3, 0, 3]) plain.box(0.7, 1.5, 0.5, p.x + Math.sin(p.yaw) * k, 0, p.z + Math.cos(p.yaw) * k, 0xd9d2c4);
     solid(p.x, p.z, 16, 9, 1.5, p.yaw);
     plain.box(9, 3.4, 6, p.x - p.f.lx * side * 8, 0, p.z - p.f.lz * side * 8, 0xdcd6c8, p.yaw);
+  });
+
+  /** A vehicle standing on the verge, a box body, its cabin and four wheels (`p` from `place`). */
+  const parkedCar = (p: ReturnType<typeof place>, col: number, glass: number) => {
+    plain.box(1.9, 0.9, 4.4, p.x, 0.35, p.z, col, p.yaw); plain.box(1.7, 0.75, 2.3, p.x, 1.2, p.z - Math.cos(p.yaw) * 0.2, glass, p.yaw);
+    for (const [dx, dz] of [[-0.85, 1.4], [0.85, 1.4], [-0.85, -1.4], [0.85, -1.4]]) plain.box(0.25, 0.7, 0.7, p.x + p.f.lx * dx + Math.sin(p.yaw) * dz, 0, p.z + p.f.lz * dx + Math.cos(p.yaw) * dz, 0x1d1f22);
   };
+  const nearCheckpoint = (s: number, pad: number) => road.checkpointS !== null && Math.abs(s - road.checkpointS) < pad;
+
+  /**
+   * A police checkpoint on a small rond-point, as at the ways into Dakar's centre: a raised island on the centre line (its kerb painted red and white,
+   * a bed of flowers, the officer's parasol, an officer), a mountable apron painted round it, hatched splitters and cones along the centre line either
+   * side — both lanes pass it at their usual width (a car in its lane clears the island by a metre) — a police post and its pick-up on the right of
+   * the way in, an officer by each, a board each way that says to slow down. Nothing is enforced: a driver slows, drives round and goes on.
+   */
+  const checkpoint = (s: number) => {
+    const c = place(s, 0), POL = 0x1f3f78, WHITE = 0xf2f2ec, RED = 0xd23a2a, KHAKI = 0xc9b07a;
+    const cop: PersonLook = { skin: 0x4a2c1c, style: 'tee', top: KHAKI, bottom: 0x3c3a30, pattern: 'uni', hat: 'kufi', hatColor: POL, shoes: 0x141414 };
+    // the apron, mountable: a disc of pale paving 2.4 m round, its edge a white line; the island 1.0 m round, 0.22 m high
+    plain.cyl(2.4, 2.4, 0.02, c.x, ROAD_Y + 0.004, c.z, 0xb9b2a2, 20); plain.cyl(2.45, 2.45, 0.012, c.x, ROAD_Y, c.z, WHITE, 20);
+    for (let k = 0; k < 12; k++) {                                                                  // the kerb's red and white blocks round the island
+      const a = (k / 12) * Math.PI * 2; plain.box(0.56, 0.22, 0.2, c.x + Math.sin(a) * 1.0, ROAD_Y, c.z + Math.cos(a) * 1.0, k % 2 ? RED : WHITE, a + Math.PI / 2);
+    }
+    plain.cyl(0.92, 0.92, 0.24, c.x, ROAD_Y, c.z, 0x6f9a4a, 12);                                   // its bed
+    for (let k = 0; k < 7; k++) { const a = k * 0.9; plain.blob(0.13, c.x + Math.sin(a) * 0.62, ROAD_Y + 0.36, c.z + Math.cos(a) * 0.62, [0xd23a8c, 0xf4c20d, 0xe8742c, WHITE][k % 4], 0.8, 0); }
+    plain.cyl(0.035, 0.035, 2.6, c.x + 0.35, ROAD_Y + 0.24, c.z, 0x555a60, 5); plain.cyl(0.06, 1.05, 0.38, c.x + 0.35, ROAD_Y + 2.62, c.z, POL, 10);   // the parasol
+    solid(c.x, c.z, 2.0, 2.0, 0.6);                                                                 // the island (the apron is driven over)
+    people.push({ x: c.x - 0.3 * c.f.lx, z: c.z - 0.3 * c.f.lz, yaw: c.yaw + Math.PI, clip: 'Idle', y: 0.24, look: cop });
+    // the splitters: hatching between two white lines on the centre line, and cones on them, before and after the island
+    for (const dir of [-1, 1]) {
+      for (const lat of [-0.55, 0.55]) { const m = place(s + dir * 9, lat); plain.flat(0.12, 13, m.x, MARK_Y, m.z, WHITE, m.yaw); }
+      for (let k = 0; k < 7; k++) { const m = place(s + dir * (3.6 + k * 1.8), 0); plain.flat(0.16, 1.3, m.x, MARK_Y, m.z, WHITE, m.yaw + 0.75); }
+      for (let k = 0; k < 4; k++) { const m = place(s + dir * (4.5 + k * 3.2), 0); plain.cyl(0.03, 0.17, 0.55, m.x, ROAD_Y, m.z, 0xf06a1a, 6); plain.cyl(0.075, 0.115, 0.1, m.x, ROAD_Y + 0.26, m.z, WHITE, 6); }
+    }
+    // the post on the right of the way in (lat < 0 heading a → b): a blue-and-white booth past the verge, the pick-up on the verge before it
+    const post = place(s + 6, -(VERGE + 1.6));
+    plain.box(2.0, 2.5, 1.8, post.x, 0, post.z, WHITE, post.yaw); plain.box(2.04, 0.5, 1.84, post.x, 1.5, post.z, POL, post.yaw); plain.slab(2.5, 0.12, 2.3, post.x, 2.6, post.z, POL, post.yaw);
+    plain.box(0.9, 1.0, 0.06, post.x + post.f.lx * 0.92, 1.1, post.z + post.f.lz * 0.92, 0x9fb3c2, post.yaw + Math.PI / 2);   // its window, toward the road
+    solid(post.x, post.z, 2.2, 2.0, 2.6, post.yaw);
+    const truck = place(s - 9, -(KERB + 1.9));
+    parkedCar(truck, POL, 0xdfe8ef); plain.box(1.92, 0.12, 4.42, truck.x, 1.0, truck.z, WHITE, truck.yaw); plain.box(0.6, 0.12, 0.25, truck.x, 1.98, truck.z + Math.cos(truck.yaw) * 0.3, RED, truck.yaw);   // its white band, its lights
+    solid(truck.x, truck.z, 2.1, 4.6, 1.7, truck.yaw);
+    for (const [ds, lat, yaw, clip] of [[s + 2.5, -(KERB + 0.4), Math.PI / 2, 'Idle'], [s + 6, -(VERGE - 0.3), Math.PI / 2, 'Talk'], [s - 4, -(KERB + 0.5), Math.PI / 2, 'Idle']] as const) {
+      const q = place(ds, lat); people.push({ x: q.x, z: q.z, yaw: q.yaw + yaw * (lat < 0 ? 1 : -1), clip, look: cop });
+    }
+  };
+
+  /**
+   * Flower and plant sellers on the verge, as along the VDN and at Yoff: rows of potted plants — shrubs in black nursery bags, terracotta pots, areca
+   * palms, bougainvillea in flower — buckets of cut flowers on a trestle, a tarpaulin on four poles (a parasol for a small one), the seller on a stool,
+   * now and then a customer on the pavement. Between the kerb and the wall line only (never on the carriageway: the pots start 2 m past its edge), off
+   * the junctions, the stops, the checkpoint and the district ends; one solid box keeps a vehicle out of the pots. Merged into the chunk's one roadside
+   * mesh (no draw call of its own); their own random stream (nothing else of the chunk moves); fewer pots, no customer and no flower heads on Low.
+   */
+  const flowerSellers = () => {
+    const RF = rng(0x7f10 + index * 104729 + road.id.length * 977 + road.id.charCodeAt(0) * 31), lite = o.lite;
+    const prof = road.profileAt(s0 + CHUNK / 2), odds = FLOWER_ODDS[prof];
+    const want = (RF() < odds ? 1 : 0) + (RF() < odds * 0.4 ? 1 : 0);
+    const BAG = 0x1c1c1e, POT = [0xb5562f, 0xa34a26, 0xc96a3a], LEAF = [0x2f6f2e, 0x3d8a3a, 0x4a9a3f, 0x2a5e2a, 0x5aa84a], BLOOM = [0xd23a8c, 0xe8366a, 0xf4c20d, 0xf2f2ec, 0xe8742c, 0xb03ad2, 0xd9322b];
+    const TARP = [0x2f8f4e, 0x1e6fd9, 0xe8742c, 0xd9482b, 0x6b3fa0];
+    let made = 0;
+    for (let tries = 0; made < want && tries < 10; tries++) {
+      const big = RF() < 0.45, len = big ? 9 + RF() * 5 : 4 + RF() * 2.5, s = s0 + 8 + len / 2 + RF() * (CHUNK - 16 - len), side = RF() < 0.5 ? -1 : 1;
+      if (s + len / 2 > L - 2 || nearJunction(s, 22 + len / 2) || nearCheckpoint(s, 40 + len / 2) || road.stops.some(t => Math.abs(t.s - s) < 15 + len / 2)) continue;   // clear of the junction's arms and zebras, of the stops' waiting people
+      const lat0 = KERB + 0.55, lat1 = VERGE - 0.15, mid = place(s, side * (lat0 + lat1) / 2);
+      if (!clear(mid.x, mid.z, len / 2 + 1)) continue;
+      // nothing of the chunk stands there already (a lamp, a pole, a stall, a parked vehicle)
+      const ax = Math.abs(Math.cos(mid.yaw)), az = Math.abs(Math.sin(mid.yaw)), hx = (ax * (lat1 - lat0) + az * len) / 2 + 0.6, hz = (az * (lat1 - lat0) + ax * len) / 2 + 0.6;
+      if (colliders.some(c => mid.x + hx > c.x0 && mid.x - hx < c.x1 && mid.z + hz > c.z0 && mid.z - hz < c.z1)) continue;
+      if (houses.some(h => Math.sign(h.lat) === side && Math.abs(h.s - s) < (len + h.d) / 2 + 0.5 && Math.abs(h.lat) - h.w / 2 < lat1 + 0.4)) continue;   // a house come close to the road
+      if (boardsAt().some(b => Math.abs(b - s) < len / 2 + 2)) continue;                                               // a direction board's post
+      if (sellers.some(o => o.side === side && Math.abs(o.s - s) < (o.len + len) / 2 + 3)) continue;
+      const before = plain.mark();
+      guarded(mid, lat1 - lat0, len, () => {
+        const at = (t: number, lat: number) => place(s + t, side * lat);
+        const g = at(0, (lat0 + lat1) / 2); plain.flat(lat1 - lat0 + 0.6, len + 0.8, g.x, GROUND_Y + 0.045, g.z, 0x6e5a40, g.yaw);   // the watered earth under the pots
+        // the rows of pots, the back rows taller: shrubs and palms at the back, flowers to the front
+        // (each pot is a box or a five-sided cylinder and its plant one low icosahedron: about 30 to 60 triangles a pot, a big seller under 2 500)
+        const rows = lite ? 2 : big ? 3 : 2;
+        for (let r = 0; r < rows; r++) {
+          const lat = lat1 - 0.3 - r * ((lat1 - lat0 - 0.5) / Math.max(1, rows - 1)), step = lite ? 0.95 : 0.72;
+          for (let t = -len / 2 + 0.35 + RF() * 0.2; t < len / 2 - 0.3; t += step + RF() * 0.2) {
+            if (r === rows - 1 && Math.abs(t - (big ? -len / 2 + 2.2 : -len / 2 + 1.2)) < 1.3) continue;     // the trestle and the seller's place, at the front
+            const q = at(t, lat + (RF() - 0.5) * 0.12), bag = RF() < 0.6, pr = 0.13 + RF() * 0.07, ph = 0.2 + RF() * 0.14;
+            if (bag) plain.box(pr * 1.8, ph, pr * 1.8, q.x, GROUND_Y, q.z, BAG, RF() * 1.5);           // a black nursery bag
+            else plain.cyl(pr, pr * 0.8, ph, q.x, GROUND_Y, q.z, POT[Math.floor(RF() * POT.length)], 5);   // a terracotta pot
+            const kind = RF(), back = r === 0;
+            if (back && kind < 0.25) {                                                       // an areca palm: a cane and a few fronds
+              const h = 0.9 + RF() * 0.8; plain.box(0.06, h, 0.06, q.x, GROUND_Y + ph, q.z, 0x6b7a3a);
+              for (let k = 0; k < 3; k++) { const a = k * 2.1 + RF() * 0.6; plain.box(0.16, 0.03, 0.8, q.x + Math.sin(a) * 0.32, GROUND_Y + ph + h - 0.1, q.z + Math.cos(a) * 0.32, LEAF[(k + r) % LEAF.length], a); }
+            } else {
+              const lr = (back ? 0.3 : 0.22) + RF() * 0.14, ly = GROUND_Y + ph + lr * 0.7;
+              plain.blob(lr, q.x, ly, q.z, LEAF[Math.floor(RF() * LEAF.length)], back ? 1.25 : 0.85, 0);
+              if (!lite && kind > 0.55) plain.blob(lr * 0.62, q.x + (RF() - 0.5) * 0.1, ly + lr * 0.55, q.z + (RF() - 0.5) * 0.1, BLOOM[Math.floor(RF() * BLOOM.length)], 0.7, 0);   // in flower: bougainvillea, hibiscus, marigolds
+            }
+          }
+        }
+        // the trestle of cut flowers in buckets, and the seller's stool beside it, at the front by the pavement
+        const tr = at(big ? -len / 2 + 2.2 : -len / 2 + 1.2, lat0 + 0.35);
+        plain.box(1.5, 0.62, 0.55, tr.x, GROUND_Y, tr.z, 0x8a6d4a, tr.yaw + Math.PI / 2);
+        for (let k = 0; k < 3; k++) {
+          const b = at((big ? -len / 2 + 2.2 : -len / 2 + 1.2) + (k - 1) * 0.45, lat0 + 0.35);
+          plain.cyl(0.13, 0.11, 0.24, b.x, GROUND_Y + 0.62, b.z, [0x2b5c9e, 0xd9d2c4, 0x2f8f4e][k], 7);
+          plain.blob(0.17, b.x, GROUND_Y + 0.98, b.z, BLOOM[(k * 2 + Math.floor(RF() * 3)) % BLOOM.length], 0.9, 0);
+        }
+        const st = at(big ? -len / 2 + 0.9 : -len / 2 + 0.25, lat0 + 0.45);
+        plain.cyl(0.17, 0.2, 0.48, st.x, GROUND_Y, st.z, [0xd9322b, 0x2f6fb3, 0xf4c20d][Math.floor(RF() * 3)], 7);
+        const face = st.yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2);                          // toward the road
+        if (RF() < 0.6) people.push({ x: st.x, z: st.z, yaw: face, clip: 'Sit', y: -0.13 });       // on the stool
+        else { const sd = at(big ? -len / 2 + 0.9 : -len / 2 + 0.25, KERB - 0.2); people.push({ x: sd.x, z: sd.z, yaw: face, clip: 'Idle' }); }   // standing by the pots at the kerb's edge, to the passing cars
+        // the shade: a tarpaulin on four poles over a big one, a parasol over a small one; a bulb under it for the evening
+        const col = TARP[Math.floor(RF() * TARP.length)];
+        if (big) {
+          const sl = Math.min(5.5, len * 0.55), c0 = -len / 2 + sl / 2 + 0.3;
+          for (const [t, lat] of [[c0 - sl / 2, lat0 + 0.1], [c0 + sl / 2, lat0 + 0.1], [c0 - sl / 2, lat1], [c0 + sl / 2, lat1]] as const) { const q = at(t, lat); plain.cyl(0.04, 0.05, 2.35, q.x, GROUND_Y, q.z, 0x6b5a45, 5); }
+          const roof = at(c0, (lat0 + lat1) / 2 + 0.05); plain.slab(lat1 - lat0 + 0.5, 0.05, sl + 0.4, roof.x, 2.38, roof.z, col, roof.yaw, side * 0.1);
+          const bulb = at(c0, (lat0 + lat1) / 2); bulbs.box(0.12, 0.14, 0.12, bulb.x, 2.12, bulb.z, 0xfff1c0);
+          const pg = new THREE.PlaneGeometry(4.5, 4.5); pg.rotateX(-Math.PI / 2); pg.translate(bulb.x, GROUND_Y + 0.08, bulb.z); pools.push(pg);   // its light on the pots at night
+        } else {
+          const q = at(-len / 2 + 0.8, (lat0 + lat1) / 2 + 0.1); plain.cyl(0.03, 0.03, 2.2, q.x, GROUND_Y, q.z, 0x555a60, 5); plain.cyl(0.05, 1.3, 0.4, q.x, GROUND_Y + 2.2, q.z, col, 10);
+          bulbs.box(0.1, 0.12, 0.1, q.x, 2.05, q.z, 0xfff1c0);
+        }
+        // a customer now and then, on the pavement in front of the pots, looking at them
+        if (!lite && RF() < (big ? 0.5 : 0.3)) { const cu = at(-len / 2 + len * (0.3 + RF() * 0.4), KERB - 0.6); people.push({ x: cu.x, z: cu.z, yaw: face + Math.PI, clip: RF() < 0.5 ? 'Talk' : 'Idle' }); }
+        solid(mid.x, mid.z, lat1 - lat0, len, 1.0, mid.yaw);
+      });
+      if (plain.mark() > before) { made++; sellers.push({ s, side, len, big }); }                // (nothing kept: it fell on a district's ground)
+    }
+  };
+  /** Where this chunk's direction boards stand (arc lengths): the junctions' boards 62 m before each, and the long stretches' every 500 m (see below). */
+  const boardsAt = () => {
+    const out: number[] = [];
+    for (const j of road.junctionS) for (const dir of [1, -1]) out.push(j.s - dir * 62);
+    for (let k = 0; 250 + k * 500 < L; k++) for (const dir of [1, -1]) out.push(250 + k * 500 + (dir < 0 ? 40 : 0));
+    return out;
+  };
+  const sellers: { s: number; side: number; len: number; big: boolean }[] = [];
 
   for (let s = Math.ceil(s0 / 12) * 12; s < Math.min(L, s0 + CHUNK); s += 12) {
     const prof: Profile = road.profileAt(s), near = nearJunction(s);
@@ -287,14 +449,19 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
 
   // a vehicle parked on the shoulder now and then (an apprentice's car rapide in the market, a pick-up on the artery): a solid box in the road
   if (R() < (road.profileAt(s0 + 50) === 'market' ? 0.6 : 0.3) && !nearJunction(s0 + 50, 70)) {
-    const side = R() < 0.5 ? -1 : 1, p = place(s0 + 40 + R() * 30, side * (KERB + 1.9));
-    if (clear(p.x, p.z, 4)) {
+    const side = R() < 0.5 ? -1 : 1, sp = s0 + 40 + R() * 30, p = place(sp, side * (KERB + 1.9));
+    if (clear(p.x, p.z, 4) && !nearCheckpoint(sp, 30)) guarded(p, 2.1, 4.6, () => {
       const col = [0xd9482b, 0x1e6fd9, 0xf4c20d, 0xdcd6c8, 0x2f8f4e][Math.floor(R() * 5)];
-      plain.box(1.9, 0.9, 4.4, p.x, 0.35, p.z, col, p.yaw); plain.box(1.7, 0.75, 2.3, p.x, 1.2, p.z - Math.cos(p.yaw) * 0.2, 0x9fb3c2, p.yaw);
-      for (const [dx, dz] of [[-0.85, 1.4], [0.85, 1.4], [-0.85, -1.4], [0.85, -1.4]]) plain.box(0.25, 0.7, 0.7, p.x + p.f.lx * dx + Math.sin(p.yaw) * dz, 0, p.z + p.f.lz * dx + Math.cos(p.yaw) * dz, 0x1d1f22);
+      parkedCar(p, col, 0x9fb3c2);
       solid(p.x, p.z, 2.1, 4.6, 1.7, p.yaw);
-    }
+    });
   }
+
+  // the police checkpoint at the way into the Plateau (RouteDef.checkpoint)
+  const cps = road.checkpointS;
+  if (cps !== null && cps >= s0 && cps < s0 + CHUNK) checkpoint(cps);
+  // the flower and plant sellers of the roadside (VDN, Yoff)
+  flowerSellers();
 
   const meshes: THREE.Mesh[] = [];
   const add = (b: Batch, m: THREE.Material, cast: boolean, receive = true) => { const mesh = b.build(m, receive, cast); if (mesh) { mesh.frustumCulled = true; group.add(mesh); meshes.push(mesh); disposables.push(mesh.geometry); } };
@@ -329,7 +496,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     colliders.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, h: 4 });
   }
   return {
-    index, group, colliders, people, s0, s1,
+    index, group, colliders, people, sellers, s0, s1,
     dispose() { for (const d of disposables) d.dispose(); group.removeFromParent(); },
   };
 }

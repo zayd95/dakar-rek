@@ -15,6 +15,8 @@ import { OWNER_BYE, ownerGreeting, ownerNews, ownerSpecial, ownerWork, type Owne
 import { phoneHooks } from '../ui/phoneHooks';
 import { DibiNight, NIGHT } from './dibiNight';
 import { GALA_DONE_COUNTER } from '../arena/program';
+import { GrillPlay } from './grillPlay';
+import { registerInWorld } from '../activity/inWorld';
 
 /**
  * A Dibi (dibiterie) on a lot of the hub (src/world/sites.ts), open-air in the Dakar way: a painted low wall on the two
@@ -35,6 +37,11 @@ export const DIBI_STYLES: Record<string, DibiStyle> = {
 };
 
 const G0 = 0.13;            // top of the lot's ground slab
+/** The grill (local), where the helper stands at it (beside the dibi master, on the right half of the grate), the side table, the customer's spot. */
+const GX = -8.0, GZ = 8.6;
+const STAND = { x: GX + 0.78, z: GZ - 0.82 };
+const SIDE = { x: -6.25, z: 8.45, top: G0 + 0.77 };
+const CLIENT = { x: -6.3, z: 7.72, yaw: -Math.PI / 2 };
 const SEAT = 0.57;          // bench and chair tops (the Sit clip's feet rest on the floor)
 const OWNER_LOOK: PersonLook = { skin: 0x5b3420, style: 'tee', top: 0xf2f2ec, bottom: 0x2b2f3a, hat: 'kufi', hatColor: 0xd9d2c4, beard: 0x1a1414, heavy: 0.5, shoes: 0x3a2a1e };
 const COOK_LOOK: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xd9322b, bottom: 0x1c1c1f, muscular: 0.4, shoes: 0x1c1c1f };
@@ -99,7 +106,6 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   const shutter = shutterB.build(mats.m.metal, true, true)!; k.group.add(shutter); k.keep(shutter.geometry);
 
   // ---------------------------------------------------------------- the grill (corner of the two streets)
-  const GX = -8.0, GZ = 8.6;
   Pl.box(2.8, 0.62, 0.8, GX, G0, GZ, 0x9a4b32);                                                      // brick base
   for (let n = 0; n < 4; n++) Pl.box(2.82, 0.015, 0.82, GX, G0 + 0.15 + n * 0.15, GZ, 0xd8c8b4);       // mortar lines
   Pl.box(2.9, 0.18, 0.9, GX, G0 + 0.62, GZ, 0x2a2a2a);                                                // metal trough
@@ -114,6 +120,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   for (let n = 0; n < 6; n++) Pl.blob(0.07, -10.15 + (n % 2) * 0.12, G0 + 0.9, 6.35 + n * 0.1, n < 3 ? 0xb24b3a : 0xf0e6c8, 0.7, 0);  // meat, onions
   Pl.cyl(0.04, 0.04, 0.18, -9.95, G0 + 0.85, 7.05, 0xf4c20d, 6);                                       // mustard
   k.solid(-10.1, 6.6, 0.7, 1.3, 1);
+  // the side table at the grill's end, where the helper's plate waits for the order (src/venues/grillPlay.ts)
+  Wd.box(0.5, 0.74, 0.42, SIDE.x, G0, SIDE.z, 0x7a5a3c); Pl.box(0.46, 0.03, 0.38, SIDE.x, G0 + 0.74, SIDE.z, 0xbfc3c6);
+  k.solid(SIDE.x, SIDE.z, 0.5, 0.42, 0.8);
   Pl.box(0.08, 2.7, 0.08, -10.45, G0, 8.0, 0x3d4047); Pl.box(0.6, 0.06, 0.06, -10.17, G0 + 2.68, 8.0, 0x3d4047);   // bulb on a post
   Gl.sphere(0.09, -9.9, G0 + 2.56, 8.0, 0xfff1c8);
 
@@ -265,12 +274,21 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   let t = 0, moment = '';
 
   // ---------------------------------------------------------------- helping at the grill: step beside the cook, facing the fire
-  // A plain timed `work` step (hands busy at chest height, 'Talk'); the integration makes it the shared timing gesture.
+  // The shift is the grill gesture (G.grill), played here in the world (src/venues/grillPlay.ts): raw brochettes on the grate,
+  // turned by the player's touches, served to a customer at the side table. The player steps to the right half of the grate.
+  const grillAnchor = () => place.anchors[1];
+  const nearGrill = () => Math.hypot(ctx.player.pos.x - grillAnchor().x, ctx.player.pos.z - grillAnchor().z) < 3;
+  const grill = new GrillPlay({
+    ctx, kit: k, grill: { x: GX, z: GZ, top: G0 + 0.86 }, stand: STAND, table: SIDE, customer: CLIENT, owner: style.owner, seed: hub.length * 131 + 7,
+    here: () => !!ctx.activities.current?.spec.id.startsWith('grill_') && nearGrill() && ctx.space() === 'street',
+    reserve: on => nl.reserve(on),
+  });
+  const unregister = registerInWorld(grill);
   let stanceFor: unknown = null;
   const stance = () => {
     const cur = ctx.activities.current;
-    if (cur && cur.spec.id.startsWith('grill_') && stanceFor !== cur.spec && Math.hypot(ctx.player.pos.x - place.anchors[1].x, ctx.player.pos.z - place.anchors[1].z) < 3) {
-      stanceFor = cur.spec; const p = at(GX + 1.15, GZ - 0.85); ctx.player.place(p.x, p.z, yaw);
+    if (cur && cur.spec.id.startsWith('grill_') && stanceFor !== cur.spec && nearGrill()) {
+      stanceFor = cur.spec; const p = at(STAND.x, STAND.z); ctx.player.place(p.x, p.z, yaw);
     }
     if (!cur) stanceFor = null;
   };
@@ -300,13 +318,15 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     const cur = ctx.activities.current, seat = ctx.player.seated();
     serving = cur?.step.prop && seat && k.seats.includes(seat) && seat.kind !== 'floor' ? cur.step.prop : null;
     stance();
+    grill.update(dt);
   };
   const smoke = new Smoke(new THREE.Vector3(...((): [number, number, number] => { const p = at(GX, GZ); return [p.x, G0 + 1.05, p.z]; })()), lite ? 3 : 6);
   ctx.extra.add(smoke.group);
 
   return {
     id, type: 'dibi', name: site.name, places: [place], update,
-    dispose() { cast.dispose(); smoke.dispose(); k.dispose(); },
+    camera: dt => grill.camera(dt),
+    dispose() { unregister(); grill.dispose(); cast.dispose(); smoke.dispose(); k.dispose(); },
     debug: () => ({
       origin: { x: cx, z: cz }, id, type: 'dibi', name: site.name, owner: style.owner, moment, open: isOpen(place.hours, ctx.hour()),
       anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })),
@@ -314,7 +334,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
       smoke: smoke.on, shutter: shutter.visible, entrance: at(-1.6, 12.6), inside: at(-1.6, 7.5), yaw,
       counters: { meals: counter(ctx, keys.meals), grill: counter(ctx, keys.grill) },
       prop: serving,
-      night: nl.debug(), cook: cast.where('cook'),
+      night: nl.debug(), cook: cast.where('cook'), stand: at(STAND.x, STAND.z), grillPlay: grill.info(),
     }),
   };
 }

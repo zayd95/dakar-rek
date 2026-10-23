@@ -1,0 +1,5 @@
+{
+  "_doc": "Where each Meshy body's skull is, in the shell's model space (metres, +z = face, before the body's draw scale). Measured from the GLBs (nose, ears, forehead, the homme's hair cap). Used by scripts/avatar/add-hair.mjs (the 'shave' morph target; `neck`: the radius the nape's hair is taken in to — the homme's short hair lies on his neck, so it only sinks to just under it) and src/actors/hairStyles.ts (the hair and headwear built on the head).",
+  "homme": { "skull": { "c": [0, 1.8, -0.015], "r": [0.09, 0.115, 0.112] }, "browY": 1.845, "capY": 1.775, "neckTop": 1.745, "neck": 0.08, "faceZ": 0.035, "eyeY": 1.78, "earX": 0.105 },
+  "femme": { "skull": { "c": [0, 1.745, -0.012], "r": [0.083, 0.105, 0.098] }, "browY": 1.77, "capY": 1.72, "neckTop": 1.69, "neck": 0.046, "faceZ": 0.035, "eyeY": 1.736, "earX": 0.092 }
+}

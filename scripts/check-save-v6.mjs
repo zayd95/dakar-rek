@@ -113,7 +113,11 @@ check('the v5 key is still only what the older client wrote', s4b.v5 === s3.v5);
 
 // 5 — New Game on v6: only v6 goes; the v5 save does not come back and stays for the older client
 p = await open('c');
-await p.keyboard.press('Escape'); await p.locator('[data-app="reglages"]').first().click(); await p.locator('[data-act="new"]').click(); await p.locator('[data-act="wipe"]').click();
+// the phone's home, « Toutes les apps » › Réglages › Nouvelle partie (each tap after the phone's 320 ms settle on a new screen)
+await p.keyboard.press('Escape'); await p.waitForTimeout(700);
+if (!(await p.locator('#phone [data-app="reglages"]').count())) { await p.locator('#phone [data-go="apps"]').click(); await p.waitForTimeout(700); }
+await p.locator('#phone [data-app="reglages"]').first().click(); await p.waitForTimeout(700);
+await p.locator('[data-act="new"]').click(); await p.waitForTimeout(700); await p.locator('[data-act="wipe"]').click();
 await p.waitForFunction(() => window.__dakar?.pos?.().hub, null, T); await p.waitForTimeout(1500);
 st = await live(p);
 check('New Game: a fresh game (3000 F), not the v5 save', st.wallet === 3000 && st.v === 6 && st.guestId !== o0.guestId, JSON.stringify(st).slice(0, 120));

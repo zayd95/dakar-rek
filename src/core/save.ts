@@ -2,6 +2,7 @@ import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Ava
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
+import { appearanceOf } from '../actors/appearance';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -24,13 +25,18 @@ export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
 export const AVATAR_SUGGESTION_KEY = 'dakarrek.guest.save.v6.avatar-suggestion';
 /**
  * What an older v6 client cannot keep (docs/SAVES.md § « Debts and older clients »). A v6 client rebuilds the save from the fields it knows, so one
- * served again after this one (a rollback, a stale cached page) would drop the debts, the VTC record, the player's days and the streak at its first save.
+ * served again after this one (a rollback, a stale cached page) would drop the debts, the VTC record, the player's days, the streak and the look chosen in the studio at its first save.
  * This client writes them a second time under this key at every save, with the guest id; loading a save that LACKS one of those fields (only an older client
  * writes such a save: this one always writes them all) takes it back from here, for the same guest only. Older clients never read or write this key.
  */
 export const EXTRAS_KEY = 'dakarrek.guest.save.v6.extras';
+/**
+ * The same backup a second time, under a key only clients from the beta on know. A client that knows the first backup but fewer fields (the polish
+ * pass, PR #64: no `appearance`) rewrites `EXTRAS_KEY` at its saves without the fields it does not know; this one it never touches.
+ */
+export const EXTRAS_V2_KEY = 'dakarrek.guest.save.v6.extras.2';
 /** The fields an older v6 client drops, and that the extras backup keeps. */
-export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak'] as const;
+export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as const;
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -58,7 +64,7 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(),
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null,
   };
 }
 
@@ -115,6 +121,7 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     const id = k.slice(4);
     if (v >= 1 && ID.test(id) && !(id in inventory)) inventory[id] = Math.min(1e6, Math.floor(v));
   }
+  const avatar: Avatar = AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar;
   return {
     schemaVersion: SCHEMA_VERSION,
     guestId: typeof r.guestId === 'string' && r.guestId ? r.guestId : base.guestId,
@@ -133,7 +140,7 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     beats,
     wrestler: wrestlerOf(r.wrestler),
     // cosmetic city player model (additive, no version change: a save without it gets the default)
-    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar,
+    avatar,
     // v2 -> v3: wallet history and deliveries start empty.
     ledger: ledgerOf(r.ledger),
     jobs: jobsOf(r.jobs),
@@ -151,6 +158,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     // the player's own days and the work streak (additive, no version change: a save without them starts on day 0 with no streak)
     play: playOf(r.play),
     streak: streakOf(r.streak, playedMs),
+    // the look chosen in the character studio (additive, no version change): missing or unreadable is « no look » (the body as it was made)
+    appearance: appearanceOf(r.appearance, avatar),
   };
 }
 
@@ -394,7 +403,8 @@ function carryOver(store: KV, data: SaveData | null): SaveData | null {
 export function writeSave(store: KV | null, data: SaveData): boolean {
   let ok = false;
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); ok = !!store; } catch { return false; }
-  try { store?.setItem(EXTRAS_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) })); } catch { /* full storage: the save itself was written */ }
+  const extras = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) });
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store?.setItem(key, extras); } catch { /* full storage: the save itself was written */ } }
   return ok;
 }
 /**
@@ -407,19 +417,28 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
   const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
   const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
   if (!missing.length && !lostShare) return [];
-  let b: Record<string, unknown> | null = null;
-  try { b = JSON.parse(store.getItem(EXTRAS_KEY) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
-  if (!b || b.guestId !== data.guestId) return [];
-  const back = migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }), out: string[] = [];
-  if (!back) return [];
+  // both backups of this guest, newest first; each field is taken from the newest one that has it (an older client may have rewritten the first without it)
+  const backups: { raw: Record<string, unknown>; back: SaveData }[] = [];
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) {
+    let b: Record<string, unknown> | null = null;
+    try { b = JSON.parse(store.getItem(key) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
+    const back = b && b.guestId === data.guestId ? migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }) : null;
+    if (b && back) backups.push({ raw: b, back });
+  }
+  backups.sort((x, y) => num(y.raw.savedAt, 0) - num(x.raw.savedAt, 0));
+  const pick = (k: string) => backups.find(x => x.raw[k] !== undefined);
+  const out: string[] = [];
   // a client that knew the debts but not the share of the fares (PR #63) kept each loan without it: the same loan in the backup says whether it was on
   // (its due dates are left as that client left them: a loan without its player-day clock is moved onto it by src/economy/credit.ts onPlayClock)
-  if (lostShare) for (const l of data.loans.list) { const was = back.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
+  const withLoans = pick('loans')?.back;
+  if (lostShare && withLoans) for (const l of data.loans.list) { const was = withLoans.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
   for (const k of missing) {
-    if (b[k] === undefined) continue;
+    const found = pick(k); if (!found) continue;
+    const { raw: b, back } = found;
     if (k === 'loans') { if (!back.loans.list.length) continue; data.loans = back.loans; }
     else if (k === 'vtc') data.vtc = { ...back.vtc, active: null };
     else if (k === 'play') data.play = back.play;
+    else if (k === 'appearance') { const look = appearanceOf(b.appearance, data.avatar); if (!look) continue; data.appearance = look; }   // for this save's own body
     else data.streak = back.streak;
     out.push(k);
   }
@@ -439,6 +458,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
-  try { store.removeItem(EXTRAS_KEY); } catch { /* ignore: a new game has a new guest id, never matched */ }
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }

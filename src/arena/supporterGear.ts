@@ -129,7 +129,7 @@ export function dressFan(body: Humanoid, fan: FanPresence | null | undefined): s
     // where the neck or the hand is this frame, in the body's own frame (the arms raise the flag)
     if (d.node) { d.node.updateWorldMatrix(true, false); d.node.getWorldPosition(P); body.group.updateWorldMatrix(true, false); body.group.worldToLocal(P); }
     else P.set(d.item === 'flag' ? -0.22 : 0, d.item === 'flag' ? 1.0 : 1.45, 0);
-    if (d.item === 'scarf') { d.mesh.position.set(P.x, P.y - 0.03, P.z); d.mesh.rotation.set(0, 0, 0); }
+    if (d.item === 'scarf') { d.mesh.position.set(P.x, P.y - 0.03 - body.fit.scarfDrop, P.z); d.mesh.rotation.set(0, 0, 0); }
     else { d.mesh.position.copy(P); d.mesh.rotation.set(0, Math.PI / 2, 0.15); }
   }
   body.group.userData.fan = key || null;

@@ -15,6 +15,8 @@ export interface Venue {
   spaceChanged?(space: string): void;
   /** The venue's own presence / interaction space while the player is in it (a club's terrace), else null. */
   space?(): string | null;
+  /** An in-world activity frames the view itself this frame (the grill, the dance floor): true when it set the camera. */
+  camera?(dt: number): boolean;
   dispose(): void;
   debug(): Record<string, unknown>;
 }

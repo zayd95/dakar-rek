@@ -252,7 +252,7 @@ class GalaTraffic {
     // solid for drive mode: the jam's cars near the player, and the agent
     const me = ctx.player.pos;
     this.solid = this.cars.filter(c => len2(c.x - me.x, c.z - me.z) < SOLID).map(c => ({ x: c.x, z: c.z, yaw: c.yaw, hl: c.hl, hw: c.hw }));
-    if (on) this.solid.push({ x: this.geo.agent.x, z: this.geo.agent.z, yaw: 0, hl: 0.3, hw: 0.3 });
+    if (on && this.agent?.h.group.visible) this.solid.push({ x: this.geo.agent.x, z: this.geo.agent.z, yaw: 0, hl: 0.3, hw: 0.3 });   // only the agent who is drawn (no humanoid, nothing in the junction)
     this.lastT = t;
   }
 

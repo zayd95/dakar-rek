@@ -93,8 +93,9 @@ stand. The 70 000 000 F Lamane Sport is not made easier.
   return to straight; the brake builds up over 0.3 s from 45 % instead of biting at once. The chase camera swings more calmly. Analog throttle, « Accélérer »,
   the brake held at a standstill to reverse and the Jakarta's foot paddle are unchanged. « Descendre » asked while the vehicle still rolls brakes to a
   standstill and no further (it used to ask for the other way, which on a slow frame swung past the stop for ever and kept the rider on the bike).
-- **At the wheel** (`src/transport/cockpitKit.ts`): one cockpit kit for every car, framed in the camera's view above the touch pad: the dashboard, a wheel that
-  turns with the steering, the speed in km/h and the revs, a centre screen with the next turn (or the radio's station, or the time). Two trims: « city » (grey
+- **At the wheel** (`src/transport/carInterior.ts`, since the cockpit lane: it replaced the camera-space kit): a physical interior in the car's own frame,
+  the eye fixed at the driver's seat and only the head turning with a drag: the dashboard, a wheel that turns with the steering, the speed in km/h and the
+  revs, a centre screen with the next turn (or the radio's station, or the time), door cards, pillars, header, headliner, mirror, seats. Two trims: « city » (grey
   plastic: the Teranga, the Rafet, the saloons) and « premium » (dark leather, a metal strip, a wider screen: the Lamane Sport, the Gaïndé, the berline).
   Five draw calls; the screens are redrawn at most four times a second.
 - **Sound** (the same Web Audio graph and the same approved recordings, `src/transport/vehicleAudio.ts`): the Jakarta about 3.5 dB quieter; the brake squeal

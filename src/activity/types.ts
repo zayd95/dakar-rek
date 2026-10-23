@@ -6,7 +6,7 @@
  */
 import type { Needs } from '../core/types';
 import type { Clip } from '../actors/humanoid';
-import type { SeatKind } from '../interact/seats';
+import type { Seat, SeatKind } from '../interact/seats';
 
 export type Primitive =
   | 'enter' | 'exit' | 'sit' | 'stand' | 'greet' | 'talk' | 'invite'
@@ -39,7 +39,10 @@ export interface Effects {
 export type Line = string | (() => string);
 
 /** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind (around a point). */
-export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind };
+export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind;
+  /** Order of preference among the free seats, lowest first (a congregation fills its rows from the front, behind the
+   *  imam), instead of the nearest to the player; the seat the player is on counts like the free ones. */
+  rank?: (s: Seat) => number };
 
 /** An option of a « choose » gesture: a tool, an item on the stall, an ingredient. */
 export interface GestureOption { id: string; label: string; icon: string; /** What the person asks for it: « Passe-moi la clé de 13 ! » */ ask?: string }
@@ -49,12 +52,17 @@ export interface GestureOption { id: string; label: string; icon: string; /** Wh
  * money the step pays; needs and counters apply whatever the score.
  * - timing: press when the moving cursor is in the zone (tighten a bolt, turn the skewers, pull the net);
  * - choose: hand over what the person asks for, before they lose patience (serve a customer, pass the right tool);
- * - sequence: do the steps in the right order (change a wheel, cook a dish).
+ * - sequence: do the steps in the right order (change a wheel, cook a dish);
+ * - grill / dance: played in the world itself when the place can (src/activity/inWorld.ts), else as a timing gesture.
  */
 export type Gesture =
   | { kind: 'timing'; prompt: string; rounds: number; verb?: string; icon?: string; speed?: number; zone?: number }
   | { kind: 'choose'; prompt: string; rounds: number; who?: string; options: GestureOption[]; patience?: number }
-  | { kind: 'sequence'; prompt: string; steps: GestureOption[] };
+  | { kind: 'sequence'; prompt: string; steps: GestureOption[] }
+  /** At a Dibi's grill, in the world (src/venues/grillPlay.ts): `skewers` brochettes to brown on both sides and serve; `heat` > 1 cooks faster. */
+  | { kind: 'grill'; prompt: string; skewers: number; heat?: number }
+  /** On La Vague's floor, in the world (src/venues/dancePlay.ts): `rounds` two-bar phrases on the music's beat; `speed` picks harder moves. */
+  | { kind: 'dance'; prompt: string; rounds: number; speed?: number };
 
 export interface Step {
   /** Shown in the progress bar: « Cuisson », « Tu manges », « Ablutions ». */
@@ -75,6 +83,10 @@ export interface Step {
   gesture?: Gesture;
   /** Called when the step ends (after its effects): open a conversation, change the hairstyle, board… */
   then?: () => void;
+  /** The step lasts until this says so (a congregation's prayer ends with the imam's salutation), not `seconds`. */
+  until?: () => boolean;
+  /** No progress pill while it runs (no bar, no percentage): a prayer is not a task to complete. */
+  calm?: boolean;
 }
 
 export interface ActivityCtx {

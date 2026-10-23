@@ -1,4 +1,4 @@
-// Buy an apartment through the real sheets, move in when asked, and see the furniture follow, then reload.
+// Buy an apartment through the real sheets, make it the principal residence when asked, and see the furniture follow, then reload.
 // Usage: node scripts/check-home-move.mjs [baseUrl]   (a preview/dev server on localhost: ?argent= is honoured there)
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -32,12 +32,12 @@ try {
   check('the purchase asks for one confirmation', /^Acheter : /.test(await title()), await title());
   await pick('Acheter');
   const askT = await title();
-  check('right after buying, the game asks « Emménager maintenant ? »', /Emménager maintenant/.test(askT), askT);
+  check('right after buying, the game asks « Définir comme domicile principal ? »', /Définir comme domicile principal/.test(askT), askT);
   const askText = await d(() => document.querySelector('#modal.on .panel')?.textContent ?? '');
   check('the question says the furniture follows', /pièces te suivent/.test(askText), askText.slice(0, 160));
   const e2 = await est(), newHome = e2.assets.find(a => a.spec === 'appart_jamm');
   check('the apartment is bought but not yet lived in', !!newHome && e2.home !== 'appart_jamm', `home=${e2.home}`);
-  await pick('Emménager');
+  await pick('Définir comme domicile principal');
   const e3 = await est();
   check('moved in: the apartment is the home', e3.home === 'appart_jamm', `home=${e3.home}`);
   check('the furniture followed to the new home, none left in the old one', pieces(e3, newHome.uid).includes('miroir') && pieces(e3, newHome.uid).includes('tapis') && pieces(e3, oldUid).length === 0, `new=${pieces(e3, newHome.uid)} old=${pieces(e3, oldUid)}`);

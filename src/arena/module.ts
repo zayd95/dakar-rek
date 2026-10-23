@@ -10,6 +10,7 @@ import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer, paChime } from '../lamb/audio';
 import { hasGestured } from './exteriorAudio';
+import { arenaHearing } from './hearing';
 import { STYLES } from '../lamb/rules';
 import { rosterLook } from '../career/roster';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
@@ -912,7 +913,7 @@ let evening: ArenaEvening | null = null;
 
 /** Who listens to the stands' moments (the supporters' flags: src/arena/supporters.ts). */
 const momentListeners = new Set<(m: Moment, side: StandSide | null) => void>();
-function notifyMoment(m: Moment, side: StandSide | null) { for (const f of momentListeners) f(m, side); }
+function notifyMoment(m: Moment, side: StandSide | null) { arenaHearing.moment = { m, side, at: performance.now() }; for (const f of momentListeners) f(m, side); }
 
 /** The player's evening in the stands: for the HUD (main.ts hides the goal line while the show holds the eye) and as
  * friends share it (src/arena/together.ts): where it is, joining a friend further on, the tiers. */
@@ -942,7 +943,12 @@ export const arenaModule: GameModule = {
     if (hub.arena && hub.id === 'pikine') evening = new ArenaEvening(ctx, hub);
     arenaExterior.schedule(evening ? (d, h) => !!evening?.boutOn(d, h) : null);       // the street lives whenever a bout is on
   },
-  update(_ctx, dt) { evening?.update(dt); },
+  update(_ctx, dt) {
+    evening?.update(dt);
+    // what the arena's sound follows (src/arena/hearing.ts): the show's phase and how full the stands are
+    arenaHearing.phase = evening?.phase ?? 'idle';
+    arenaHearing.crowd = evening ? Math.min(1, evening.crowd.present / Math.max(1, evening.cap)) : 0; arenaHearing.excite = evening ? evening.crowd.level() : 0;
+  },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
   // the player's own bout: the stands react to its moments (Làmb 2.0); on their own main event, their real result is
   // the show's (src/arena/myGala.ts)

@@ -7,6 +7,16 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/** The presence sheet: the HUD's button where it is shown, else the phone's Réglages › « Jouer en ligne » (a touch phone keeps that button off the HUD). */
+async function openPresence(p, tap = false) {
+  if (await p.locator('#presenceBtn').isVisible()) { await (tap ? p.locator('#presenceBtn').tap() : p.click('#presenceBtn')); return; }
+  await p.evaluate(() => window.__dakar.phone('reglages'));
+  await p.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+  await p.waitForTimeout(600);                                   // the phone drops a tap in its first 320 ms on a new screen (a double tap's second half)
+  const row = p.locator('#phone [data-act="presence"]');
+  await (tap ? row.tap() : row.click());
+  await p.waitForSelector('#presenceName', { state: 'visible' });
+}
 const checks = [];
 function check(name, ok, detail = '') { checks.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, detail); assert.ok(ok, name); }
 let base = process.argv[2], worker, logs = '';
@@ -52,6 +62,16 @@ try {
   check('two independent clients see each other', (await a.evaluate(() => window.__dakar.presence().count)) === 2 && (await b.evaluate(() => window.__dakar.presence().count)) === 2);
   await a.waitForFunction(() => window.__dakar.presence().visible === 1);
   check('remote avatar rendered on phone', (await a.evaluate(() => window.__dakar.presence().visible)) === 1);
+  // the studio's look travels with the connection (`app`, src/actors/appearance.ts): B makes her character (femme, Doré, headwrap, Imprimé, Safran: what
+  // « Modifier mon personnage » saves), A gets her body and look and draws her in it; A, who never chose one, sends none
+  {
+    await b.evaluate(() => window.__dakar.character('femme', { skin: 1, hair: 'wrap', outfit: 2, color: 3 }));
+    await b.waitForFunction(() => window.__dakar.presence().status === 'online', null, { timeout: 60000 });
+    const appB = await b.evaluate(() => window.__dakar.presenceLook());
+    const seenApp = await a.waitForFunction(app => window.__dakar.presence().peers.some(p => p.name === 'Awa' && p.app === app), appB, { timeout: 30000 }).then(() => true).catch(() => false);
+    const onA = await b.evaluate(() => window.__dakar.presence().peers.map(p => p.app ?? null));
+    check('the studio look travels: A sees B as she made herself (femme, Doré, headwrap, Imprimé, Safran); A sends none', appB === 'f1w23' && seenApp && onA.every(x => x === null), JSON.stringify({ appB, onA }));
+  }
   await a.evaluate(() => window.__dakar.place(-4, -30, 0));
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Moussa' && Math.abs(p.x + 4) < 0.2 && Math.abs(p.z + 30) < 0.2));
   check('movement replicated', true);
@@ -63,7 +83,7 @@ try {
     const seen = await b.evaluate(id => { const p = window.__dakar.presence(); return { fan: p.peers.find(x => x.id === id)?.fan ?? null, keys: Object.keys(p.peers.find(x => x.id === id) ?? {}), gear: p.gear }; }, idA);
     check('écurie colours: B sees the Baobab scarf A wears (presence fan, on the avatar), and no price or inventory with it', fanSeen && !seen.keys.some(k => /price|wallet|owned|inventory|assets/.test(k)), JSON.stringify(seen));
   }
-  await a.click('#presenceBtn'); await a.fill('#presenceName', 'Mame Moussa');
+  await openPresence(a); await a.fill('#presenceName', 'Mame Moussa');
   check('typing a name keeps the menu open', await a.locator('#modal.on').count() === 1);
   await a.getByRole('button', { name: 'Enregistrer mon profil', exact: true }).click();
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Mame Moussa'));
@@ -93,7 +113,8 @@ try {
   await b.evaluate(() => window.__dakar.teleport('pikine')); await a.evaluate(() => window.__dakar.teleport('pikine'));
   await b.waitForFunction(() => window.__dakar.tiak?.at(), null, { timeout: 60000 });
   await b.evaluate(() => { const k = window.__dakar.tiak.at(); window.__dakar.place(k.x - Math.sin(k.yaw) * 1.6, k.z - Math.cos(k.yaw) * 1.6, k.yaw); });
-  await b.waitForTimeout(1200); await b.keyboard.press('KeyE');
+  // (an action presses what the HUD has in focus: wait for it to be the bike, not a fixed time — a slow frame left the last place's action there)
+  await b.waitForFunction(() => /Tiak/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 }); await b.keyboard.press('KeyE');
   await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === true, null, { timeout: 15000 });
   await b.keyboard.down('KeyW');
   await b.waitForFunction(() => window.__dakar.tiak.at()?.speed > 8, null, { timeout: 25000 }).catch(async () => { console.log('RIDE STATE', JSON.stringify(await b.evaluate(() => ({ t: window.__dakar.tiak.at(), p: window.__dakar.pos(), status: window.__dakar.presence().status })))); });
@@ -117,6 +138,7 @@ try {
   const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
   await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
   await b.waitForTimeout(1200);
+  await b.waitForFunction(() => /Arrêt/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 });   // (the stop in focus, not the bike just left)
   const atStop = await b.evaluate(() => ({ focus: window.__dakar.focus()?.id ?? null, pos: window.__dakar.pos() }));
   await b.evaluate(() => window.__dakar.act());
   // waiting at the stop, or already taken by a car standing there (« Le 23 est là : on monte ! » boards within a frame, before a poll sees « waiting »)
@@ -300,6 +322,15 @@ try {
   fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'teranga', k: 'flag' } }));
   const flagSeen = await b.waitForFunction(() => { const p = window.__dakar.presence(), f = p.peers.find(x => x.name === 'Fatou'); return f?.fan?.e === 'teranga' && f.fan.k === 'flag' && p.gear?.[f.id] === 'teranga:flag'; }, null, { timeout: 30000 }).then(() => true).catch(() => false);
   check('remote colours shown: a Teranga flag in Fatou\'s hand', flagSeen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().gear)));
+  // a look in its strict shape is relayed; anything else is simply no look (the socket stays open: older and odd clients still play)
+  {
+    const aminata = await connect({ hub: 'pikine', name: 'Aminata', app: 'f5w15' }), badou = await connect({ hub: 'pikine', name: 'Badou', app: 'x<b>9' });
+    for (const [c, x] of [[aminata, -2], [badou, -1]]) c.ws.send(JSON.stringify({ type: 'move', x, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle' }));
+    const got = await b.waitForFunction(() => { const ps = window.__dakar.presence().peers, am = ps.find(x => x.name === 'Aminata'), ba = ps.find(x => x.name === 'Badou'); return am && ba ? { am: am.app ?? null, ba: ba.app ?? null } : null; }, null, { timeout: 30000 }).then(h => h.jsonValue()).catch(() => null);
+    check('a look in its shape is relayed, anything else dropped without closing the socket', got?.am === 'f5w15' && got?.ba === null && badou.ws.readyState === 1, JSON.stringify(got));
+    aminata.ws.close(); badou.ws.close();
+    await b.waitForFunction(() => !window.__dakar.presence().peers.some(x => x.name === 'Aminata' || x.name === 'Badou'), null, { timeout: 30000 }).catch(() => {});
+  }
   // anything else in that field (a price, what is owned) closes the socket
   const ibou = await connect({ hub: 'pikine', name: 'Ibou' });
   const priced = new Promise(resolve => ibou.ws.addEventListener('close', e => resolve(e.code), { once: true }));

@@ -13,7 +13,7 @@ const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 try { await fs.access(exe); launch.executablePath = exe; } catch { /* Playwright's own Chromium */ }
 const browser = await chromium.launch(launch);
 
-const APPS = [['portefeuille', 'Portefeuille'], ['carte', 'Carte et déplacements'], ['arene', 'Arène'], ['carnet', 'Carnet'], ['actus', 'Actus · Dakar'], ['sante', 'Santé'], ['profil', 'Profil'], ['horloge', 'Horloge'], ['meteo', 'Météo'], ['calcul', 'Calculatrice'], ['aide', 'Aide'], ['reglages', 'Réglages']];
+const APPS = [['portefeuille', 'Argent'], ['carte', 'Carte'], ['arene', 'Arène'], ['carnet', 'Carnet'], ['actus', 'Actus'], ['sante', 'Santé'], ['profil', 'Profil'], ['horloge', 'Horloge'], ['meteo', 'Météo'], ['calcul', 'Calculatrice'], ['aide', 'Aide'], ['reglages', 'Réglages']];
 
 for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch });
@@ -23,7 +23,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(String(e)));
-  const press = sel => (touch ? page.locator(sel).tap() : page.locator(sel).click());
+  // the phone drops a tap that lands within 320 ms of a screen change (a double tap's second half, src/ui/phone.ts SETTLE_MS): a finger is never that quick
+  const press = async sel => { await page.waitForTimeout(400); return touch ? page.locator(sel).tap() : page.locator(sel).click(); };
   const info = () => page.evaluate(() => window.__dakar.phoneInfo());
   const pos = () => page.evaluate(() => window.__dakar.pos());
   const waitPhone = open => page.waitForFunction(o => window.__dakar.phoneInfo().open === o, open, { timeout: 10000 });
@@ -36,15 +37,19 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#menuBtn'); await waitPhone(true);
   let i = await info(), p = await pos();
   check(`${label}: ☰ opens the phone on the home screen`, i.open && i.screen === 'home' && p.mode === 'menu', JSON.stringify({ ...i, mode: p.mode }));
-  const status = (await page.locator('#phone .ph-status').innerText()).replace(/\s/g, ' ');
-  const balance = (await page.locator('#phone .ph-wid[data-open="portefeuille"]').innerText()).replace(/\s/g, ' ');
-  check(`${label}: status bar shows city time, home widget the FCFA balance`, /\d\d:\d\d/.test(status) && / F/.test(balance), `${status} | ${balance}`);
+  // the home screen: who and where (the city time), the wallet, the five destinations; every app in « Toutes les apps »
+  const status = (await page.locator('#phone .hm-when').innerText()).replace(/\s/g, ' ');
+  const balance = (await page.locator('#phone .hm-chip.money').innerText()).replace(/\s/g, ' ');
+  const dest = await page.locator('#phone .hm-dest [data-go]').evaluateAll(els => els.map(e => e.dataset.go));
+  check(`${label}: the home shows the city time, the FCFA balance and the five destinations`, /\d\d:\d\d/.test(status) && / F/.test(balance) && ['carte', 'travailler', 'profil', 'logement', 'portefeuille', 'apps'].every(g => dest.includes(g)), `${status} | ${balance} | ${dest.join(',')}`);
+  await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });
+  await press('#phone .hm-dest [data-go="apps"]');
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
   // A hook app shows exactly when its module registered the hook (economy, NPCs, chat and city merge in over time).
   const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', affaires: 'openBusiness', maison: 'openHome', biens: 'openAssets', habitants: 'openPeople' };
   const hooked = await page.evaluate(names => Object.fromEntries(Object.entries(names).map(([app, hook]) => [app, typeof window.__dakar.phoneHooks[hook] === 'function'])), HOOK_APPS);
   check(`${label}: hook apps shown only with their module`, Object.entries(hooked).every(([app, on]) => tiles.includes(app) === on) && tiles.includes('reglages'), `${tiles.join(',')} · hooks ${JSON.stringify(hooked)}`);
-  await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });
+  await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-apps.png` });
 
   // Movement is disabled while the phone is open.
   const before = await pos();
@@ -54,7 +59,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
 
   // Every built-in app.
   for (const [app, title] of APPS) {
-    await press('#phone [data-nav="home"]');
+    await page.evaluate(() => window.__dakar.phone('apps'));
     await press(`#phone [data-app="${app}"]`);
     const t = await page.locator('#phone .ph-head h2').innerText();
     i = await info();
@@ -62,19 +67,19 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     await page.waitForTimeout(150); await page.screenshot({ path: `${out}/${label}-${app}.png` });
   }
   // Carte: current hub highlighted, known places listed, no teleport button.
-  await press('#phone [data-nav="home"]'); await press('#phone [data-app="carte"]');
+  await page.evaluate(() => window.__dakar.phone('carte'));
   const map = await page.evaluate(() => ({ hubs: [...document.querySelectorAll('#phone .cm-chip.hub')].map(c => c.dataset.cmHub + ':' + (c.querySelector('small')?.textContent ?? '')), veh: !!document.querySelector('#phone .cm-chip[data-cm="dealers"]'), tabs: [...document.querySelectorAll('#phone .cm-tabs')].length, text: document.querySelector('#phone .ph-screen').innerText }));
   // the map is the screen: the strip under it offers the other districts with their walking time, and a district's card says how to go (on foot, free; the car rapide is the paid, faster way)
   await press('#phone .cm-chip.hub >> nth=0');
   const card = await page.evaluate(() => ({ text: document.querySelector('#phone .fm-card:not([hidden])')?.innerText ?? '', walks: document.querySelectorAll('#phone .fm-card [data-walk]').length }));
   check(`${label}: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide`, map.hubs.length === 3 && map.hubs.every(h => /\d+ min/.test(h)) && map.veh && map.tabs === 2 && /à pied/.test(card.text) && /Car rapide/.test(card.text) && card.walks === 1, JSON.stringify({ hubs: map.hubs, card }));
   // Portefeuille: game money; the history line waits for the economy module's ledger hook.
-  await press('#phone [data-nav="home"]'); await press('#phone [data-app="portefeuille"]');
+  await page.evaluate(() => window.__dakar.phone('portefeuille'));
   const wallet = await page.locator('#phone .ph-screen').innerText();
   const hasLedger = await page.evaluate(() => typeof window.__dakar.phoneHooks.ledger === 'function');
   check(`${label}: wallet shows game money and ${hasLedger ? 'the ledger' : 'the pending history line'}`, wallet.includes('monnaie de jeu') && wallet.includes('arrive avec les métiers') !== hasLedger);
   // Back button: Réglages > Aide > back = Réglages.
-  await press('#phone [data-nav="home"]'); await press('#phone [data-app="reglages"]'); await press('#phone .ph-screen [data-app="aide"]');
+  await page.evaluate(() => window.__dakar.phone('reglages')); await page.waitForTimeout(400); await press('#phone .ph-screen [data-app="aide"]');
   await press('#phone [data-nav="back"]');
   check(`${label}: back returns to the previous screen`, (await info()).screen === 'reglages');
 
@@ -102,9 +107,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#phone [data-act="cancel"]');
   check(`${label}: new game asks for confirmation`, confirmText.includes('définitive') && (await info()).screen === 'reglages');
   // Save now.
-  await press('#phone [data-act="save"]');
+  await press('#phone [data-sv="now"]');                        // the save card's « Sauvegarder maintenant » (src/ui/saveCard.ts)
   await page.waitForTimeout(200);
-  check(`${label}: save now`, (await page.locator('#toast').innerText()).includes('sauvegardée'));
+  check(`${label}: save now (said in the phone)`, (await page.locator('#phone .ph-toast').innerText()).includes('sauvegardée'));
 
   // Escape closes the phone and movement works again.
   await page.keyboard.press('Escape'); await waitPhone(false);
@@ -149,7 +154,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     h.ledger = () => [{ at: Date.now() - 60000, label: 'Dibi mouton', amount: -2000 }, { at: Date.now(), label: 'Service au garage', amount: 2800 }];
     h.arenaProfile = () => [{ label: 'Catégorie', value: 'Poids léger' }];
   });
-  await page.evaluate(() => window.__dakar.phone('home'));
+  await page.evaluate(() => window.__dakar.phone('apps')); await page.waitForTimeout(400);
   await press('#phone [data-app="messages"]');
   const handed = await page.evaluate(() => ({ msg: window.__msg, open: window.__dakar.phoneInfo().open, mode: window.__dakar.pos().mode }));
   check(`${label}: Messages tile closes the phone and calls its hook`, handed.msg === 1 && !handed.open && handed.mode === 'play', JSON.stringify(handed));
@@ -185,8 +190,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     await page.evaluate(() => window.__dakar.phone('home')); await page.waitForTimeout(300);
     // measured once the handset's opening animation (a 20 px slide) has run
     await page.waitForFunction(() => [...document.querySelectorAll('#phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished')), null, { timeout: 30000 }).catch(() => {});
-    const box = await page.locator('#phone .ph-device').boundingBox(), dock = await page.locator('#phone .ph-dock').boundingBox();
-    check('phone: landscape device fits the screen, its dock in view', box.y + box.height <= 390 + 1 && box.width <= 844 && box.width > box.height && !!dock && dock.y + dock.height <= box.y + box.height, JSON.stringify({ box, dock }));
+    const box = await page.locator('#phone .ph-device').boundingBox(), dock = await page.locator('#phone .hm-dest').boundingBox();
+    check('phone: landscape phone fits the screen, the destinations in view', box.y + box.height <= 390 + 1 && box.width <= 844 && box.width > box.height && !!dock && dock.y + dock.height <= box.y + box.height, JSON.stringify({ box, dock }));
     await page.screenshot({ path: `${out}/phone-landscape-home.png` });
     await page.evaluate(() => window.__dakar.phone('reglages')); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/phone-landscape-reglages.png` });
@@ -196,7 +201,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     // Nouvelle partie really wipes the device save (desktop only).
     await page.evaluate(() => { window.__dakar.state.data.wallet = 4321; });
     await page.evaluate(() => window.__dakar.phone('reglages'));
-    await press('#phone [data-act="save"]');
+    await press('#phone [data-sv="now"]');                        // the save card's « Sauvegarder maintenant » (src/ui/saveCard.ts)
     await press('#phone [data-act="new"]');
     await Promise.all([page.waitForEvent('load'), press('#phone [data-act="wipe"]')]);
     await page.waitForFunction(() => window.__dakar?.pos().hub, null, { timeout: 60000 });

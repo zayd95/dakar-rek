@@ -1,0 +1,352 @@
+[
+  {
+    "name": "HUD on foot: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "HUD on foot: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "HUD on foot: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "HUD on foot: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone home: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone home: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone home: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone home: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone home: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone profil: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone profil: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone profil: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone profil: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone profil: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone portefeuille: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone portefeuille: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone portefeuille: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone portefeuille: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone portefeuille: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone travailler: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone travailler: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone travailler: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone travailler: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone travailler: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone logement: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone logement: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone logement: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone logement: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone logement: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carte: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carte: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carte: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone carte: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone carte: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone reglages: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone reglages: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone reglages: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone reglages: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone reglages: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone notifs: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone notifs: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone notifs: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone notifs: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone notifs: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone sante: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone sante: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone sante: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone sante: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone sante: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carnet: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carnet: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone carnet: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone carnet: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone carnet: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone aide: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone aide: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone aide: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "phone aide: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "phone aide: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet Maison: every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet Maison: no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet Maison: one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "sheet Maison: nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "sheet Maison: a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet of an asset (Cité Jàmm house): every control at least 44 px tall",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet of an asset (Cité Jàmm house): no text under 11 px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sheet of an asset (Cité Jàmm house): one type family",
+    "ok": true,
+    "detail": "-apple-system"
+  },
+  {
+    "name": "sheet of an asset (Cité Jàmm house): nothing sticks out sideways",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "sheet of an asset (Cité Jàmm house): a way out (« Fermer » / back)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no JavaScript errors",
+    "ok": true,
+    "detail": ""
+  }
+]

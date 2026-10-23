@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { animateGlbRig, glbVehicle, glbVehiclesWanted, rigOf, setGlbVehicles } from '../src/actors/glbVehicle';
-import { buildCockpit } from '../src/actors/cockpit';
 import { animateVehicle, vehicleSpec } from '../src/actors/vehicleKit';
 import { carSpec } from '../src/transport/car';
 import side from '../public/assets/vehicles/compacte.json';
@@ -80,42 +79,5 @@ describe('the modern sedan\'s generated body against the kit it fits', () => {
     expect(side.provenance.name).toMatch(/Meshy/); expect(side.provenance.licence).toMatch(/unbranded/);
     expect(side.drawCalls).toBeLessThanOrEqual(5); expect(side.tris).toBeLessThanOrEqual(8000); expect(side.bytes).toBeLessThan(1300 * 1024);
     expect(side.textures.every(t => Math.max(...t.size) <= 1024)).toBe(true);
-  });
-});
-
-describe('the shared cockpit of a solid-shell body', () => {
-  const kit = vehicleSpec('sedan', { seed: 14, driver: false, passengers: false });
-  it('is light (two meshes, one shared material, under 500 triangles), hidden until the inside view, inside the car\'s envelope', () => {
-    const ck = buildCockpit(kit);
-    expect(ck.group.visible).toBe(false);
-    const meshes: THREE.Mesh[] = []; ck.group.traverse(o => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
-    expect(meshes).toHaveLength(2); expect(new Set(meshes.map(m => m.material)).size).toBe(1);
-    const tris = meshes.reduce((n, m) => n + m.geometry.index!.count / 3, 0);
-    expect(tris).toBeLessThan(500);
-    const b = new THREE.Box3().setFromObject(ck.group);
-    expect(b.max.x).toBeLessThanOrEqual(kit.width / 2); expect(b.min.x).toBeGreaterThanOrEqual(-kit.width / 2);
-    expect(b.max.y).toBeLessThanOrEqual(kit.height); expect(b.min.y).toBeGreaterThan(0.3);
-    expect(b.max.z).toBeLessThan(kit.length / 2); expect(b.min.z).toBeGreaterThan(-kit.length / 2);
-  });
-  it('leaves the windscreen open: the header is a thin band well above the horizon, the headliner is not cut away by the camera\'s near plane', () => {
-    const VFOV = 58, NEAR = 0.3, deg = (r: number) => (r * 180) / Math.PI;           // the game camera (src/main.ts)
-    const ck = buildCockpit(kit), body = ck.group.getObjectByName('cockpit_body') as THREE.Mesh, [ex, ey, ez] = kit.cameras.driver.pos;
-    const P = body.geometry.getAttribute('position'), above: THREE.Vector3[] = [];
-    for (let i = 0; i < P.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(P, i); if (v.y > ey + 0.1 && v.z > ez + 0.3 && Math.abs(v.x - ex) < 0.5) above.push(v); }   // (the little mirror hangs lower, below the header)
-    const lowest = Math.min(...above.map(v => deg(Math.atan2(v.y - ey, v.z - ez))));
-    expect(lowest).toBeGreaterThan(8);                                                // what the driver looks through starts well above the horizon
-    const liner = [] as THREE.Vector3[]; for (let i = 0; i < P.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(P, i); if (v.y > kit.height - 0.02 && v.y > ey) liner.push(v); }
-    expect(liner.length).toBeGreaterThan(0);
-    for (const v of liner) expect(deg(Math.atan2(v.y - ey, NEAR))).toBeGreaterThan(VFOV / 2 - 3);   // at most a sliver of the picture above the roof lining is cut by the near plane
-  });
-  it('puts the wheel where the kit puts the steering, in front of the driver\'s eye and below it, and turns it with the steering', () => {
-    const ck = buildCockpit(kit), [sx, sy, sz] = kit.controls.steering, eye = kit.cameras.driver.pos;
-    ck.group.updateMatrixWorld(true);
-    const c = new THREE.Box3().setFromObject(ck.wheel).getCenter(new THREE.Vector3());
-    expect(c.distanceTo(new THREE.Vector3(sx, sy, sz))).toBeLessThan(0.02);
-    expect(sz - eye[2]).toBeGreaterThan(0.3); expect(sy).toBeLessThan(eye[1]);
-    const rig = rigOf(fakeCar(), 0.6); rig.cockpitWheel = ck.wheel;
-    animateGlbRig(rig, 5, 0.3, 0.1); expect(ck.wheel.rotation.z).toBeCloseTo(-0.9);
-    animateGlbRig(rig, 5, -0.3, 0.1); expect(ck.wheel.rotation.z).toBeCloseTo(0.9);
   });
 });

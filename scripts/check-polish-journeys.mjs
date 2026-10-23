@@ -249,8 +249,7 @@ J.G = async () => {
 // ---- shared: the phone, a Tiak run on a vehicle, the card
 const phoneApp = async id => {
   if (!(await d(() => window.__dakar.phoneInfo().open))) { await t.tap('#menuBtn'); await wait(() => window.__dakar.phoneInfo().open, null, 30000); }
-  await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
-  await t.tap(`#phone [data-app="${id}"]`); await page.waitForTimeout(500);
+  await d(i => window.__dakar.phone(i), id); await page.waitForTimeout(500);   // (every app is one tap away in « Toutes les apps »; the journeys go straight to it)
 };
 const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().open)) { await t.tap('#phone [data-nav="close"]'); await wait(() => !window.__dakar.phoneInfo().open, null, 20000); } };
 /** A job offer of the « Travail » app, tapped by its text (the cards use short names: « 🥬 Maïga → 🔧 Garage »). */
@@ -324,7 +323,8 @@ const readCard = async () => {
   await page.waitForTimeout(600);
   const text = await card();
   await shot('work-card');
-  const c = await d(() => { const r = document.querySelector('.mo.bc').getBoundingClientRect(), j = document.querySelector('#joy')?.getBoundingClientRect(), a = document.querySelector('#act')?.getBoundingClientRect(); const over = b => b && b.width && !(r.right <= b.left || r.left >= b.right || r.bottom <= b.top || r.top >= b.bottom); return { x: r.left + r.width / 2, y: r.top + r.height / 2, overJoy: over(j), overAct: over(a) }; });
+  const c = await d(() => { const el = document.querySelector('.mo.bc'); if (!el) return null; const r = el.getBoundingClientRect(), j = document.querySelector('#joy')?.getBoundingClientRect(), a = document.querySelector('#act')?.getBoundingClientRect(); const over = b => b && b.width && !(r.right <= b.left || r.left >= b.right || r.bottom <= b.top || r.top >= b.bottom); return { x: r.left + r.width / 2, y: r.top + r.height / 2, overJoy: over(j), overAct: over(a) }; });
+  if (!c) { note('the card went by itself while it was being photographed (it shows 7 s): its text as read'); return { text, gone: true, tapped: false, overControls: rec.overControls }; }
   await t.down(6, c.x, c.y); await page.waitForTimeout(60); await t.up(6);
   const gone = await wait(() => !document.querySelector('.mo.bc'), null, 8000).then(() => true, () => false);
   return { text, gone, tapped: true, overControls: c.overJoy || c.overAct };
@@ -350,6 +350,7 @@ const pullOut = c => { const F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, R =
 // ---- A: a new player, a first delivery, the first day; the next day, a second: « 2 jours d'affilée »
 J.A = async () => {
   await open('&heure=10');
+  await d(() => { window.__moments = []; const grab = () => { for (const e of document.getElementsByClassName('mo')) { const t = e.textContent.replace(/\s+/g, ' ').trim(); if (t && !window.__moments.includes(t)) window.__moments.push(t); } }; new MutationObserver(grab).observe(document.body, { childList: true, subtree: true, characterData: true }); });
   const st0 = await d(() => window.__dakar.streak.info());
   check('a new player: no day worked, no run', st0.streak.run === 0 && st0.streak.total === 0, JSON.stringify(st0.streak));
   await phoneApp('profil'); const prof0 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-new'); await phoneClose();
@@ -380,8 +381,12 @@ J.A = async () => {
   await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
   await boardVehicle(page, t, 'tiak');
   await atStop('tiak', { x: 78, z: -5.5 }, () => window.__dakar.activeJob()?.stage === 'deliver'); await boardVehicle(page, t, 'tiak');
+  const day1 = await d(() => window.__dakar.streak.info().streak.last);          // the player's day the first delivery counted on
   const c2 = await atStop('tiak', { x: 102, z: -5.5 }, () => !window.__dakar.activeJob(), { card: true });
-  check('a second delivery the same day pays, and the card says the day is already counted (no farming)', /Aujourd’hui est déjà compté/.test(c2.text) && (await d(() => window.__dakar.streak.info().streak.run)) === 1, c2.text.replace(/\s+/g, ' '));
+  // the player's day moves with the city's clock (src/economy/streak.ts advancePlay): a slow run can cross midnight between the two deliveries, then the card
+  // rightly says the new day counts « un peu plus tard » (two counted days are 10 played minutes apart): either way the second delivery counts nothing now
+  const sameDay = (await d(() => window.__dakar.state.data.play.day)) === day1;
+  check('a second delivery the same day pays, and the card says the day is already counted (no farming)', (sameDay ? /Aujourd’hui est déjà compté/ : /Compté pour aujourd’hui un peu plus tard/).test(c2.text) && (await d(() => window.__dakar.streak.info().streak.run)) === 1, `${sameDay ? 'same day' : 'the city day turned'}: ${c2.text.replace(/\s+/g, ' ')}`);
   // the next day (a debug shortcut for the city day the journey cannot wait for, labelled): a delivery, the run of 2, its short celebration
   await d(() => { window.__dakar.streak.nextDay(); window.__dakar.streak.later(); });
   await takeJob(/Maïga.*Garage/, 'pk_maiga_garage'); await phoneClose().catch(() => {});
@@ -391,12 +396,13 @@ J.A = async () => {
   { const tc = [c1, c2, c3].find(c => c.tapped) ?? c1;               // the tap is checked on the first card still up when the check looked (a loaded renderer can be late)
     check('the card is brief, clear of the stick and the action button, and a tap dismisses it', tc.tapped && tc.gone && ![c1, c2, c3].some(c => c.overControls), JSON.stringify({ tapped: [c1, c2, c3].map(c => c.tapped), gone: tc.gone, over: [c1, c2, c3].map(c => c.overControls) })); }
   check('the next day\'s delivery: the card counts the day: « 2 jours d’affilée »', /2 jours d’affilée/.test(c3.text) && /Jour actif compté/.test(c3.text), c3.text.replace(/\s+/g, ' '));
-  await wait(() => [...document.querySelectorAll('.mo')].some(e => /2 jours d’affilée !/.test(e.textContent)), null, 20000).catch(() => {});
-  const mile = await d(() => [...document.querySelectorAll('.mo')].map(e => e.innerText.replace(/\s+/g, ' ')).find(x => /affilée !/.test(x)) ?? null);
+  // the celebration is up for a few seconds of the page's own clock: it is caught when it appears (a recorder on the page), not by a poll that a busy renderer can make late
+  await wait(() => (window.__moments ?? []).some(x => /2 jours d’affilée !/.test(x)) || [...document.querySelectorAll('.mo')].some(e => /2 jours d’affilée !/.test(e.textContent)), null, 20000).catch(() => {});
+  const mile = await d(() => (window.__moments ?? []).find(x => /affilée !/.test(x)) ?? [...document.querySelectorAll('.mo')].map(e => e.innerText.replace(/\s+/g, ' ')).find(x => /affilée !/.test(x)) ?? null);
   await shot('milestone-2-days');
   check('… then a short celebration of the milestone, saying what it opens (the dealers know the player) and that it is never the only way', mile && /2 jours d’affilée !/.test(mile) && /jamais/.test(mile), mile ?? 'none');
   await phoneApp('profil'); const prof2 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-2'); await phoneClose();
-  check('the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open', /2 jours d’affilée/.test(prof2) && /À 3 jours/.test(prof2), prof2.replace(/\s+/g, ' ').slice(0, 300));
+  check('the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open', /2 jours d’affilée/i.test(prof2) && /À 3 jours/i.test(prof2), prof2.replace(/\s+/g, ' ').slice(0, 300));
   const st = await d(() => window.__dakar.streak.info());
   check('saved in the v6 save: the run, the days, the milestones seen', st.streak.run === 2 && st.streak.total === 2 && st.streak.seen.includes(2), JSON.stringify(st.streak));
 };

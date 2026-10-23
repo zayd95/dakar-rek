@@ -160,7 +160,7 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
   const gate = hub.arena ? { x: hub.arena.cx, z: hub.arena.cz - 30 } : null;
   const stops: { x: number; z: number }[] = [];
   for (const line of linesOf(hub.id)) for (const def of line.stops) { const l = stopOnLeg(line, def); stops.push({ x: l.x, z: l.z }); }
-  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [];
+  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [...(hub.keepClear ?? [])];   // ground the hub keeps open (a shop's frontage, a loading bay) counts as taken
   const free = (r: { x0: number; z0: number; x1: number; z1: number }) =>
     !hub.colliders.some(c => r.x0 < c.x1 + 0.05 && r.x1 > c.x0 - 0.05 && r.z0 < c.z1 + 0.05 && r.z1 > c.z0 - 0.05) && !taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
   const ok = (x: number, z: number, nodeClear = 12) => {

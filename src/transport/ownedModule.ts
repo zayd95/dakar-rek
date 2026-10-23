@@ -31,9 +31,11 @@ import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
 import { trafficPositions } from '../actors/npc';
 import { radio, STATIONS } from './radio';
-import { CockpitKit } from './cockpitKit';
+import { CarInterior, cabinOf } from './carInterior';
 import { navigation } from '../game/navigation';
-import { seatClip, sitOriginY } from '../interact/seats';
+import { SIT_HIPS, seatClip, sitOriginY } from '../interact/seats';
+import { CABINS, SITTERS, rowOf, scaleAt } from './cabinFit';
+import { cabinView, holdCabin, sitterOrder } from './carCabin';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
@@ -192,6 +194,8 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
 
 /** Vertical field of view at the wheel in portrait (the page's is 66°). */
 const INSIDE_FOV_PORTRAIT = 78;
+/** At the wheel: how far down the eye looks at rest (rad; a phone held upright, on its side), and the camera's near plane (m: the roof lining and the wheel are closer than the street's 0.3). */
+const SEAT_PITCH_PORTRAIT = -0.17, SEAT_PITCH = -0.16, SEAT_NEAR = 0.1;
 
 interface Dealer {
   group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; card: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[];
@@ -271,6 +275,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private exit: { t: number; from: THREE.Vector3; to: { x: number; z: number }; stood: boolean; trial: boolean } | null = null;
   /** The driver's door of the vehicle in hand, 0 shut … 1 open, and where it is heading; the shut sound plays when it lands. */
   private doorK = 0; private doorGoal = 0; private doorSound = false;
+  /** The player's body at the wheel (src/transport/cabinFit.ts): the scale this module has drawn it at (1: none), and whether it holds the car's glass see-through. */
+  private fitK = 1; private seen = false;
   private readonly frustum = new THREE.Frustum(); private readonly pm = new THREE.Matrix4(); private readonly sph = new THREE.Sphere(); private readonly v3 = new THREE.Vector3();
   /** Feel (camera only): the settle at the engine start, the dip under a hard brake, the shake of a contact; and when the brake last squealed. */
   private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0, kickX: 0, kickZ: 0 };
@@ -397,6 +403,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     this.simT += dt;
     this.stepDoor(dt, m);
+    this.cabin(ctx, m);
     if (this.box) this.box.parcel.visible = ctx.state.data.jobs.active?.stage === 'deliver';   // the run's parcel is in the box
     if (this.solidCheck) { this.solidCheck = false; this.setSolid(!this.driving); }
     if (this.entry) { this.stepEntry(ctx, dt, m); return; }
@@ -473,6 +480,25 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return !!this.spec.cameras[this.cam.view % this.spec.cameras.length]?.inside;
   }
 
+  /**
+   * The player in this car (at the wheel, or getting in or out of it): their body drawn at the size that fits under its roof (src/transport/cabinFit.ts),
+   * and seen through its glass from the street (src/transport/carCabin.ts). Each frame.
+   */
+  private cabin(ctx: GameCtx, m: Vehicle) {
+    const inside = this.def.kit !== 'moto' && (this.driving || !!this.entry || (!!this.exit && !this.exit.stood));
+    if (this.driving && this.fitK !== this.fitScale()) this.applyFit(this.fitScale());
+    const b = ctx.player.body();
+    if (inside !== this.seen) { this.seen = inside; holdCabin(m.body, 'driver', inside); if (b && !inside) sitterOrder(b.group, false); }
+    if (inside && b) sitterOrder(b.group, true);                                 // (every frame: a body made again while driving)
+    cabinView(m.body, this.spec ?? null);
+  }
+  /** The scale of the player's body on this car's driver's seat (1 where it fits as drawn, and on a motorbike). */
+  private fitScale(): number {
+    const spec = this.spec, b = this.ctx.player.body(), fit = spec && CABINS[spec.id];
+    return spec && b && fit ? scaleAt(rowOf(fit, 'driver'), spec.driver.y - SIT_HIPS, SITTERS[b.body]).scale : 1;
+  }
+  private applyFit(k: number) { const b = this.ctx.player.body(); if (b) b.seatScale = k; this.fitK = k; }
+
   private stepDoor(dt: number, m: Vehicle) {
     if (!m.hasDoor) return;
     const was = this.doorK;
@@ -511,6 +537,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       ctx.player.place(x, z, face);
       const sy = sitOriginY(seat), gy = a.y, low = ease(Math.max(0, (k - 0.38) / 0.62));
       ctx.player.pos.y = gy + (sy - gy) * low;
+      this.applyFit(1 + (this.fitScale() - 1) * low);
       if (body && k > 0.5) body.hold = seatClip(seat);
     } else if (e.t >= OPEN + GLIDE && !e.seated) {
       e.seated = true; ctx.player.sit(seat);
@@ -531,8 +558,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       const gy = 0.1 + (ctx.world()?.heightAt(x.to.x, x.to.z) ?? 0);
       ctx.player.place(p0.x + (p1.x - p0.x) * u, p0.z + (p1.z - p0.z) * u, this.st.yaw);
       ctx.player.pos.y = x.from.y + (gy - x.from.y) * ease(Math.min(1, k * 1.6));
+      this.applyFit(1 + (this.fitScale() - 1) * (1 - ease(Math.min(1, k * 1.6))));
       if (k >= 1) {
-        const trial = x.trial; this.exit = null; ctx.setMode('play'); this.shutDoor();
+        const trial = x.trial; this.exit = null; ctx.setMode('play'); this.shutDoor(); this.applyFit(1);
         ctx.player.place(x.to.x, x.to.z, this.st.yaw);
         if (trial && this.errand) this.errandParked();
         else if (trial) { this.parkedT = 0; ctx.toast(`Voiture garée. ${this.sales().cfg.person === 'le vendeur' ? 'Le vendeur' : this.sales().cfg.person} vient te voir.`); this.sales().trialEnded(this, x.to.x, x.to.z); }
@@ -757,7 +785,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   /** A few centimetres of the camera, never the physics: it settles when the engine catches, dips under a hard brake, shakes at a contact (a tap a little, a crash more). */
   private feel(cam: THREE.Camera, dt: number, inside: boolean) {
-    const f = this.fx, k = inside ? 0.6 : 1;
+    const f = this.fx, k = inside ? 0.6 : 1, kk = inside ? 0.25 : 1;     // at the wheel the head lurches a few centimetres, never into the wheel
     f.settle = Math.max(0, f.settle - dt / 0.9); f.ignite = Math.max(0, f.ignite - dt);
     f.dip += ((f.hard > 0 ? 0.06 : 0) - f.dip) * Math.min(1, dt * 9);
     f.shake = Math.max(0, f.shake - dt * 2.6);
@@ -768,7 +796,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     cam.position.x += x * k; cam.position.y += y * k;
     this.feelLog.shakePeak = Math.max(this.feelLog.shakePeak, f.shake);
     if (Math.abs(f.kickZ) > 1e-3 || Math.abs(f.kickX) > 1e-3) {
-      cam.translateZ(-f.kickZ * k); cam.translateX(f.kickX * k);                  // along the camera's own axes: forward lurch, sideways throw
+      cam.translateZ(-f.kickZ * kk); cam.translateX(f.kickX * kk);                // along the camera's own axes: forward lurch, sideways throw
       this.feelLog.kickPeak = Math.max(this.feelLog.kickPeak, Math.abs(f.kickZ), Math.abs(f.kickX));
       const keep = Math.max(0, 1 - dt * 9); f.kickZ *= keep; f.kickX *= keep;      // and back in about a third of a second
     } else { f.kickZ = 0; f.kickX = 0; }
@@ -792,22 +820,27 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   camera(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean {
     const m = this.vehicle;
-    if (m && (this.entry || this.exit)) { const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t; this.doorCam(ctx, m, Math.max(dt, real)); return true; }
-    if (m && !(this.driving && this.cam.active && this.spec)) m.setCockpit(false);               // never leave the body hidden after the inside view
+    if (m && (this.entry || this.exit)) { const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t; this.hideInterior(); this.nearAt(ctx.camera, false); this.doorCam(ctx, m, Math.max(dt, real)); return true; }
+    if (m && !(this.driving && this.cam.active && this.spec)) { m.setCockpit(false); this.hideInterior(); }    // never leave the body hidden after the inside view
     if (!m || !this.driving || !this.cam.active || !this.spec) {
       if (this.fovSet) { this.fovSet = false; ctx.camera.fov = fovFor(ctx.camera.aspect * 1000, 1000); ctx.camera.updateProjectionMatrix(); }
+      this.nearAt(ctx.camera, false);
       return false;
     }
     const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t;
-    const a = this.spec.cameras[this.cam.view % this.spec.cameras.length];
-    this.cam.update(Math.max(dt, real), ctx.camera, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)));
-    this.feel(ctx.camera, Math.max(dt, real), !!a.inside);
-    m.setCockpit(!!a.inside);                                  // a solid-shell body's shared cockpit: seen from inside only
+    const a = this.spec.cameras[this.cam.view % this.spec.cameras.length], cam = ctx.camera;
+    // at the wheel of a car: the eye sits in the car's own interior (src/transport/carInterior.ts), fixed in its frame; only the head turns
+    const seat = a.inside && this.def.kit !== 'moto' ? this.interiorOf(m) : null;
+    if (seat) this.cam.seat(Math.max(dt, real), cam, m.body, seat.eye, cam.aspect < 1 ? SEAT_PITCH_PORTRAIT : SEAT_PITCH, drag, m.pose);
+    else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)));
+    this.feel(cam, Math.max(dt, real), !!a.inside);
+    m.setCockpit(!!a.inside);                                  // a body not made to be seen from inside is not drawn in that view
     // at the wheel on a phone held upright (narrow field of view): a wider vertical angle so the road shows above the dashboard; the page's own angle comes back outside
-    const cam = ctx.camera, base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
+    const base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
     if (Math.abs(cam.fov - want) > 0.01) { cam.fov = want; cam.updateProjectionMatrix(); }
     this.fovSet = want !== base;
-    this.cockpit(ctx, m, !!a.inside && this.def.kit !== 'moto', Math.max(dt, real));
+    this.nearAt(cam, !!seat);
+    if (seat) this.dashboard(ctx, m, seat, Math.max(dt, real)); else this.hideInterior();
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
     if (body) this.leanRider(body.group, m);
@@ -841,6 +874,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         audio: () => vehicleAudio.info(),
         radio: () => radio.info(),
         radioNext: () => this.radioNext(),
+        /** Checks: the interior at the wheel (drawn or not, its triangles, the eye in the car's frame, where the head is turned, the camera's near plane). */
+        /** Checks: turn the head at the wheel (rad: + left, + up) and hold it there a while. */
+        lookAt: (yaw: number, pitch = 0, s = 30) => this.cam.holdLook(yaw, pitch, s),
+        interior: () => this.interior ? { visible: this.interior.group.visible && !!this.interior.group.parent, attached: this.interior.group.parent === this.vehicle?.body, tris: this.interior.tris, eye: this.interior.eye.toArray().map(x => +x.toFixed(3)), cabin: this.interior.cabin, look: this.cam.look, near: ctx.camera.near, shellInside: !!this.vehicle?.shellInside } : null,
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
         lab: () => ({ va: vehicleAudio, PROFILES, HORNS }),                                // the audio review's recordings (scripts/audio/render-clips.mjs)
@@ -1111,6 +1148,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (dead) { vehicleAudio.crank(prof); ctx.toast(canMakeshift(this.hp()) ? 'Ça ne démarre pas. Descends : une réparation de fortune devant le capot, ou le Garage Modou.' : 'Ça ne démarre pas.'); }
     else vehicleAudio.run(prof, catches);
     this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
+    radio.notify = msg => ctx.toast(msg);                                     // « RFM indisponible » when a stream cannot be played
     if (this.def.kit !== 'moto' && !dead && radio.remembered >= 0) radio.set(vehicleAudio.radioBus(), radio.remembered);   // the radio comes back on where it was left (it starts after the engine)
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
@@ -1155,20 +1193,36 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   /** Off the vehicle, beside it; it stays parked there. `normal`: the player chose to get off. A car with a door steps out through it (stepExit). */
-  /** The cockpit at the wheel (src/transport/cockpitKit.ts): built the first time, framed in the camera's view every frame, hidden outside the « Au volant » view. */
-  private kit: CockpitKit | null = null;
-  private cockpit(ctx: GameCtx, m: Vehicle, on: boolean, dt: number) {
-    if (!on) { if (this.kit) this.kit.group.visible = false; return; }
-    if (!this.kit) { this.kit = new CockpitKit(this.def.kit === 'sedan' ? 'city' : 'premium'); ctx.extra.add(this.kit.group); }
-    const old = m.group.getObjectByName('cockpit_wheel'); if (old) old.visible = false;          // the older shared cockpit's own wheel: the kit's turns instead
-    const k = this.kit, h = ctx.hour();
-    if (!k.group.parent) ctx.extra.add(k.group);                                                  // a district crossed at the wheel: the new one's layer
-    k.group.visible = true; k.place(ctx.camera as THREE.PerspectiveCamera);
-    const st = radio.info().station, name = st ? STATIONS.find(x => x.id === st)?.name ?? null : null;
-    k.update({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, steer: this.st.steer, nav: navigation.current(), radio: name, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` }, dt);
+  /**
+   * The car's interior at the wheel (src/transport/carInterior.ts): built the first time that view is taken, from the car's own numbers, and carried by
+   * the body of the car being driven (a district crossed, another car of the same model: it moves to it). Drawn only in that view.
+   */
+  private interior: CarInterior | null = null;
+  private interiorOf(m: Vehicle): CarInterior | null {
+    const k = m.kitSpec; if (!k) return null;
+    const ir = this.interior ??= new CarInterior(cabinOf(k), this.def.kit === 'sedan' ? 'city' : 'premium');
+    if (ir.group.parent !== m.body) m.body.add(ir.group);
+    return ir;
   }
-  /** « 📻 »: the next station (off → Sénégal Hits → Radio Téranga → Corniche FM → off), said in one line. */
+  private hideInterior() { if (this.interior) this.interior.group.visible = false; }
+  /** At the wheel: the wheel turns with the steering, the bonnet wears the paint (a body not drawn from inside), the screens show the speed, the next turn, the radio, the time. */
+  private dashboard(ctx: GameCtx, m: Vehicle, ir: CarInterior, dt: number) {
+    ir.group.visible = true;
+    ir.setPaint(m.shellInside ? null : m.kitSpec?.colors.body ?? 0x8a8d92);
+    ir.steer(this.st.steer);
+    if (!ir.due(dt)) return;
+    const h = ctx.hour(), st = radio.info().station;
+    ir.draw({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, nav: navigation.current(), radio: st ? STATIONS.find(x => x.id === st)?.name ?? null : null, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` });
+  }
+  /** At the wheel the camera's near plane comes in (SEAT_NEAR: the roof lining, the pillars and the wheel are nearer than 0.3 m); given back after. */
+  private nearWas = 0;
+  private nearAt(cam: THREE.PerspectiveCamera, on: boolean) {
+    if (on && !this.nearWas) { this.nearWas = cam.near; cam.near = SEAT_NEAR; cam.updateProjectionMatrix(); }
+    else if (!on && this.nearWas) { cam.near = this.nearWas; this.nearWas = 0; cam.updateProjectionMatrix(); }
+  }
+  /** « 📻 »: the next station (off → RFM → Sud FM → Rewmi FM → off: live streams, src/transport/radio.ts), said in one line. */
   private radioNext() {
+    radio.notify = msg => this.ctx.toast(msg);
     const st = radio.next(vehicleAudio.radioBus());
     this.ctx.toast(st ? `📻 ${st.name} · ${st.freq}` : '📻 Radio éteinte');
     document.querySelector('#ridepad .rp-radio')?.classList.toggle('on', !!st);
@@ -1182,6 +1236,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!door && this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
     this.fx.dip = 0; this.fx.hard = 0;
     if (!door && ctx.player.seated()?.id === m.driverSeat.id) ctx.player.standUp(true);
+    if (!door) this.applyFit(1);
     this.st.speed = 0;
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
     m.setRidden(false);                                         // also a fresh model: upright, wheels straight
@@ -1278,7 +1333,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
     this.salesReg?.unregister(this); this.salesReg = null;
-    if (!ride) { this.kit?.dispose(); this.kit = null; }
+    if (!ride) { this.interior?.dispose(); this.interior = null; }
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;

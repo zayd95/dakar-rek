@@ -7,6 +7,8 @@ import { centreZone, lineMs, overlaps, quietLog, route, speechOf, type Rect } fr
 import { placeEvents } from './placeEvent';
 import { fcfaShort, fcfaText } from '../economy/format';
 import { glossed } from '../i18n/wolof';
+import { hudPrefs } from './hudPrefs';
+import { devMode } from './devMode';
 
 export type { MenuItem } from './sheet';
 
@@ -79,6 +81,8 @@ export class Hud {
   onMore: () => void = () => {};
   /** « Arrêter » on the scene banner (a làmb scene the player may leave). */
   onSceneStop: () => void = () => {};
+  /** The streak chip: the phone's Profile on its Progression tab. */
+  onStreak: () => void = () => {};
 
   constructor(root: HTMLElement, private input: Input) {
     root.innerHTML = `
@@ -90,8 +94,9 @@ export class Hud {
           ${NEEDS.map(n => `<div class="nrow" data-row="${n.k}"><b aria-hidden="true">${n.icon}</b><span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
         </div>
       </div>
-      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small><span id="placeEv" aria-live="polite"><i class="pev-tag"></i><span class="pev-tx"><span class="pev-line"></span><small class="pev-sub"></small></span></span><div id="placeMore"></div></div>
+      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small><span id="placeEv" aria-live="polite"><i class="pev-tag"></i><span class="pev-tx"><span class="pev-line"></span><b class="pev-speed"></b><small class="pev-sub"></small></span></span><div id="placeMore"></div></div>
       <div id="menuBtn" class="card" role="button" tabindex="0" aria-label="Téléphone">${PHONE_SVG}<b class="badge" hidden></b></div>
+      <button id="streakChip" class="card" type="button" aria-label="Série : aucun jour actif"><i class="sc-ic" aria-hidden="true">Série</i><b class="sc-n">0 j</b></button>
       <div id="goal" class="card"><i class="gi" aria-hidden="true">➜</i><span class="gt"></span><em class="gd"></em></div>
       <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
       <div id="wprompt" aria-hidden="true"><div class="wp"></div></div>
@@ -102,11 +107,11 @@ export class Hud {
         <button id="actMore" class="off" type="button" aria-label="Autres actions"><span aria-hidden="true">⋯</span></button>
         <button id="act" class="off" type="button">Action</button>
       </div>
-      <div id="temp">Dakar Rek · Alpha</div>
+      <div id="temp"${new URLSearchParams(location.search).has('debug') ? '' : ' hidden'}>Dakar Rek · Alpha</div>
       <div id="toast"><div class="sr" role="status" aria-live="polite"></div></div>
       <div id="fade"></div>
       <div id="modal"></div>`;
-    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'placeEv', 'placeMore', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
+    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'placeEv', 'placeMore', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag', 'streakChip'])
       this.el[id] = root.querySelector('#' + id)!;
     this.el.sr = this.el.toast.querySelector('.sr')!;
     this.el.badge = this.el.menuBtn.querySelector('.badge')!;
@@ -118,6 +123,7 @@ export class Hud {
     tap(this.el.act, () => this.onAction());
     tap(this.el.actMore, () => this.onMore());
     tap(this.el.menuBtn, () => this.onMenu());
+    tap(this.el.streakChip, () => this.onStreak());
     tap(this.el.wprompt, () => this.onAction());                                      // tap the bubble in the world = act
     this.el.sceneTag.querySelector('.st-stop')!.addEventListener('click', () => this.onSceneStop());
     this.el.stats.addEventListener('click', () => this.toggleNeeds());
@@ -128,6 +134,8 @@ export class Hud {
     this.el.stats.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.toggleNeeds(); } });
     try { if (localStorage.getItem('dakarrek.ui.needs') === 'open') this.toggleNeeds(true); } catch { /* storage blocked */ }
     if (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window || new URLSearchParams(location.search).has('touch')) document.body.classList.add('touch');
+    hudPrefs.apply();                                                                 // « HUD compact » (phone › Réglages), a device preference
+    devMode.apply();                                                                  // « Mode développeur »: the build tag, the preview's launchers
     this.setupTouch();
   }
 
@@ -143,7 +151,7 @@ export class Hud {
       if (!this.input.enabled) return;
       if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
       const t = e.target as HTMLElement;
-      if (t.closest('#act,#actMore,#actbar,#menuBtn,#modal,#stats,#wprompt,#sceneTag,#place.ev')) return;
+      if (t.closest('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev')) return;
       if (e.clientX < innerWidth * 0.45 && joyId < 0) {
         // Floating stick: a finger on the base drives it from its centre; anywhere else in the left zone moves the base under the finger.
         joyId = e.pointerId; joy.style.transform = '';
@@ -249,6 +257,10 @@ export class Hud {
     const tag = ev.querySelector('.pev-tag') as HTMLElement;
     tag.textContent = c.ev.tag; tag.dataset.tone = c.ev.tone ?? '';
     (ev.querySelector('.pev-line') as HTMLElement).textContent = c.ev.line;
+    // at the wheel, the chip leads with what matters while driving: the speed and the condition (« 23 km/h · Cabossée »), not the vehicle's name
+    const parts = c.ev.tone === 'ride' ? c.ev.line.split(' · ') : [], at = parts.findIndex(x => /\d+ km\/h$/.test(x));
+    (ev.querySelector('.pev-speed') as HTMLElement).textContent = at >= 0 ? parts.slice(at).join(' · ') : '';
+    p.classList.toggle('speed', at >= 0);
     (ev.querySelector('.pev-sub') as HTMLElement).textContent = c.ev.alert ?? c.ev.sub ?? '';
     p.classList.toggle('alert', !!c.ev.alert);
     const more = this.el.placeMore;
@@ -272,6 +284,26 @@ export class Hud {
     this.el.menuBtn.setAttribute('aria-label', n ? `Téléphone · ${n} notification${n > 1 ? 's' : ''}` : 'Téléphone');
   }
 
+  /**
+   * The streak chip (top right, under the phone button): « Série 0 j » without a run, « 🔥 N j » with one (src/economy/streak.ts, read by main.ts a few
+   * times a second: it follows a qualifying job at once, and the start of the player's next day). Dimmed while today does not count yet; a milestone
+   * (2, 3, 5, 7 days) pulses it once — a CSS animation on the chip only, nothing over the road.
+   */
+  setStreak(run: number, today: boolean, milestone = false) {
+    const key = `${run}|${today}`;
+    if (key === this.streakKey) return;
+    const grew = this.streakRun >= 0 && run > this.streakRun;
+    this.streakKey = key; this.streakRun = run;
+    const c = this.el.streakChip;
+    (c.querySelector('.sc-ic') as HTMLElement).textContent = run > 0 ? '🔥' : 'Série';
+    (c.querySelector('.sc-n') as HTMLElement).textContent = `${run} j`;
+    c.classList.toggle('on', run > 0); c.classList.toggle('today', today);
+    c.setAttribute('aria-label', run > 0 ? `Série : ${run} jour${run > 1 ? 's' : ''} d’affilée${today ? ', aujourd’hui compte' : ''}` : 'Série : aucun jour actif');
+    if (grew) replay(c, milestone ? 'milestone' : 'bump-up');
+  }
+  private streakKey = '';
+  private streakRun = -1;
+
   // ---------------------------------------------------------------- contextual action
   /**
    * Main action button: the focused target's primary verb (`label`, a leading emoji becomes the icon), what it applies
@@ -279,12 +311,14 @@ export class Hud {
    * Called every frame: the DOM changes only when the content does.
    */
   setPrompt(label: string | null, sub = '', more: boolean | number = false, opt: PromptOpts = {}) {
+    // focus « prayer » (document.body.dataset.focus, see style.css): the running activity's stop is one small, quiet « Quitter », nothing else
+    if (document.body.dataset.focus === 'prayer' && label && opt.stop) { label = 'Quitter'; sub = ''; more = false; opt = { stop: true, icon: '' }; }
     const key = JSON.stringify([label, sub, !!more, opt.icon, opt.cost, opt.gain, opt.disabled, opt.stop]);
     if (key === this.promptKey) return; this.promptKey = key;
     const act = this.el.act;
     this.el.actMore.className = label && more ? '' : 'off';
     if (!label) { act.className = 'off'; act.innerHTML = 'Action'; act.removeAttribute('aria-label'); return; }
-    const { icon, text } = opt.icon ? { icon: opt.icon, text: label } : splitIcon(label);
+    const { icon, text } = opt.icon ? { icon: opt.icon, text: label } : opt.icon === '' ? { icon: '', text: label } : splitIcon(label);
     const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
     act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
     act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`

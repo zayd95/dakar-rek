@@ -17,6 +17,10 @@ export const phoneHooks: {
   marked?: () => { id: string; hub: import('../core/types').HubId; name?: string } | null;
   /** The neighbourhood the player lives in (« Rentrer chez moi »), null without a home. */
   homeHub?: () => import('../core/types').HubId | null;
+  /** « Partie » in the settings: save now, copy the save as a code, import one (src/ui/saveCard.ts; main.ts provides it). */
+  saveCard?: import('./saveCard').SaveCardHooks;
+  /** Whether the last save was kept, when, and where (« cet appareil »): never claim a save the storage refused (src/core/saveHealth.ts). */
+  saveStatus?: () => { ok: boolean; at: number; where: string } | undefined;
   /** Wallet history (economy module). Local to the device until a server ledger exists. */
   ledger?: () => LedgerEntry[];
   /** Home app: where the player lives, its furniture, arranging it (ownership module). */
@@ -66,8 +70,16 @@ export const phoneHooks: {
   tonightGo?: (key: string) => void;
   /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
   profileHeadline?: () => string;
+  /** Profile app › « Modifier mon personnage »: the character creator's screen on the current look (main.ts), without a new game. */
+  editCharacter?: () => void;
+  /** Profile app: the player's first name (presence profile). */
+  profileName?: () => string;
+  /** Profile app: a picture of the player's own avatar (data URL), or null while it is not drawn yet. */
+  profilePortrait?: () => string | null;
   /** People app: neighbours the player knows (NPC module). */
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */
   openPlaces?: () => void;
+  /** Réglages › « Jouer en ligne »: the online profile and the invitation (src/multiplayer/ui.ts, wired by main.ts). */
+  openPresence?: () => void;
 } = {};

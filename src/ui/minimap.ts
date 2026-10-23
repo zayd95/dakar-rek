@@ -11,6 +11,7 @@ import {
 } from './minimapMath';
 import { openEdges } from '../game/navRules';
 import { closuresNow } from '../actors/npc';
+import { JOB, drawJobBadge, jobOf } from './jobMarks';
 
 /**
  * The minimap (top-left, Habib's reference): a round dark map of the hub that turns with the camera, the player's arrow at
@@ -38,7 +39,7 @@ export const mapBridge = {
   layer: null as Layer | null,
   places: [] as MapPlace[],
   player: { x: 0, z: 0, yaw: 0, facing: 0, speed: 0, driving: false },
-  guide: null as { name: string; x: number; z: number } | null,
+  guide: null as { name: string; x: number; z: number; job?: 'vtc' | 'delivery' } | null,
   friends: [] as MapFriend[],
   vehicles: [] as MapVehicle[],
   /** The vehicles the player owns, wherever they are parked (wired by main.ts): the city map (src/ui/geoMap.ts) shows them. */
@@ -165,7 +166,7 @@ export function minimapModule(): GameModule {
       rt.points.forEach((q, i) => { const m = P(q.x, q.z); if (i) g.lineTo(m.x, m.y); else g.moveTo(m.x, m.y); });
       g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([0.5, 5]); g.lineDashOffset = -t * 6;
       g.lineWidth = 6; g.strokeStyle = 'rgba(10,14,18,.7)'; g.stroke();
-      g.lineWidth = 3.4; g.strokeStyle = '#ffd23f'; g.stroke();
+      g.lineWidth = 3.4; g.strokeStyle = jobOf(mapBridge.guide) ? JOB[jobOf(mapBridge.guide)!].color : '#ffd23f'; g.stroke();
       g.setLineDash([]);
     }
     // places the player can use
@@ -201,8 +202,11 @@ export function minimapModule(): GameModule {
     const gd = mapBridge.guide;
     if (gd && !ctx.inside()) {
       const m = P(gd.x, gd.z), ring = onRing(m.x - c, c - m.y, R - 6);
-      const pulse = 0.5 + 0.5 * Math.sin(t * 5);
-      if (!ring.outside) {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 5), job = jobOf(gd);
+      if (job) {                                                       // a job: its own badge (a car in a green square, a parcel in an orange circle)
+        if (!ring.outside) drawJobBadge(g, job, m.x, m.y, Math.max(7, S * 0.06), pulse);
+        else drawEdgeArrow(g, c + ring.x, c + ring.y, ring.angle, JOB[job].color, 7 + pulse * 1.5);
+      } else if (!ring.outside) {
         g.beginPath(); g.arc(m.x, m.y, 7 + pulse * 6, 0, TAU); g.fillStyle = `rgba(255,210,63,${0.35 - pulse * 0.2})`; g.fill();
         g.beginPath(); g.arc(m.x, m.y, 5.2, 0, TAU); g.fillStyle = '#ffd23f'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#0c1115'; g.stroke();
         g.beginPath(); g.arc(m.x, m.y, 1.8, 0, TAU); g.fillStyle = '#0c1115'; g.fill();
@@ -280,7 +284,7 @@ export function minimapModule(): GameModule {
       minimap: () => ({
         on: root.classList.contains('on'), size, radius: Math.round(radius * 10) / 10, yaw, speed: Math.round(speedAvg * 10) / 10,
         district: dEl.textContent, street: sEl.textContent, places: mapBridge.places.length, vehicles: mapBridge.vehicles.length,
-        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null,
+        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null, job: jobOf(mapBridge.guide),
         north: northAngle(yaw), enabled: mapBridge.enabled, hubOk: ctx.world() === mapBridge.hub,
       }),
       minimapPlaces: () => mapBridge.places,
