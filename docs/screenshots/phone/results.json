@@ -7,7 +7,7 @@
   {
     "name": "desktop: the home shows the city time, the FCFA balance and the five destinations",
     "ok": true,
-    "detail": "Pikine · Mer. 22:12 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
+    "detail": "Pikine · Jeu. 19:01 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
   },
   {
     "name": "desktop: hook apps shown only with their module",
@@ -116,13 +116,13 @@
   },
   {
     "name": "desktop: save now (said in the phone)",
-    "ok": false,
+    "ok": true,
     "detail": ""
   },
   {
     "name": "desktop: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.19"
+    "detail": "moved 1.16"
   },
   {
     "name": "desktop: M reopens on the last app",
@@ -137,7 +137,7 @@
   {
     "name": "desktop: exit still leads to the street after the change",
     "ok": true,
-    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.491592653589793}"
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
   },
   {
     "name": "desktop: Messages tile closes the phone and calls its hook",
@@ -177,7 +177,7 @@
   {
     "name": "phone: the home shows the city time, the FCFA balance and the five destinations",
     "ok": true,
-    "detail": "Pikine · Mer. 23:41 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
+    "detail": "Pikine · Jeu. 20:33 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
   },
   {
     "name": "phone: hook apps shown only with their module",
@@ -286,13 +286,13 @@
   },
   {
     "name": "phone: save now (said in the phone)",
-    "ok": false,
+    "ok": true,
     "detail": ""
   },
   {
     "name": "phone: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.06"
+    "detail": "moved 1.30"
   },
   {
     "name": "phone: M reopens on the last app",
@@ -307,7 +307,7 @@
   {
     "name": "phone: exit still leads to the street after the change",
     "ok": true,
-    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.491592653589793}"
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
   },
   {
     "name": "phone: Messages tile closes the phone and calls its hook",
