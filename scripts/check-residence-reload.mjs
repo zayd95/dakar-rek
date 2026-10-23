@@ -91,9 +91,12 @@ try {
   await page.waitForTimeout(500);
   await d(() => window.__dakar.placer.close()); await page.waitForTimeout(800);
   const e4 = await d(() => window.__dakar.estate()), chair4 = e4.assets.find(a => a.uid === chair.uid);
-  check('« Aménager »: the chair moved and turned three quarters', chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && Math.abs(chair4.at.x - target.at.x - 0.5) < 0.01, JSON.stringify({ before: target.at, after: chair4.at }));
+  check('« Aménager »: the chair moved (on the editor\'s grid) and turned three quarters', chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && chair4.at.x > target.at.x, JSON.stringify({ before: target.at, after: chair4.at }));
   await page.screenshot({ path: `${out}/3-amenage.png` });
-  const before = { wallet: await d(() => window.__dakar.state.wallet), home: e4.home, furniture: pieces(e4, house), car: await d(() => window.__dakar.teranga.info().record) };
+  // what the page holds when it is left: the save written on the way out (the house's upkeep is counted each in-game hour, so the wallet is read there)
+  await d(() => window.dispatchEvent(new Event('pagehide')));
+  const kept = await d(() => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')));
+  const before = { wallet: kept.wallet, home: e4.home, furniture: pieces(e4, house), car: await d(() => window.__dakar.teranga.info().record) };
   check('the wallet paid the car, the house and the furniture', wallet0 - before.wallet > 90_000_000, `${wallet0} → ${before.wallet}`);
 
   // ------------------------------------------------------------------ 2. leave and come back: a real reload, from inside the house
@@ -104,7 +107,8 @@ try {
   check('after reload: every piece is in the house, at its spot and turn', JSON.stringify(pieces(e5, house)) === JSON.stringify(before.furniture), JSON.stringify(pieces(e5, house)));
   const car5 = await d(() => window.__dakar.teranga.info());
   check('after reload: the Teranga is owned and parked where it was left', car5.owned && car5.record && Math.hypot(car5.record.x - before.car.x, car5.record.z - before.car.z) < 0.05 && (!car5.here || Math.hypot(car5.x - before.car.x, car5.z - before.car.z) < 0.5), JSON.stringify({ rec: car5.record, here: car5.here, x: car5.x, z: car5.z }));
-  check('after reload: the wallet is the same to the franc', (await d(() => window.__dakar.state.wallet)) === before.wallet, `${before.wallet}`);
+  const w5 = await d(() => window.__dakar.state.wallet);
+  check('after reload: the wallet is what was saved (less at most two in-game hours of the house\'s upkeep)', w5 <= before.wallet && before.wallet - w5 <= 200, `${before.wallet} → ${w5}`);
   const spots = await d(() => window.__dakar.citeSpots()), me = await d(() => window.__dakar.pos());
   const door = spots?.homes?.maison_cite?.door;
   check('after reload: the player comes back at the house\'s street door (saved from inside)', me.hub === 'pikine' && door && Math.hypot(me.x - door.x, me.z - door.z) < 3, JSON.stringify({ me, door }));

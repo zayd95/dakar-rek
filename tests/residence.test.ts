@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameState } from '../src/core/state';
-import { EXTRAS_KEY, SAVE_KEY, STARTER_HOME, loadSave, migrate, newSave, restoredExtras, writeSave, type KV } from '../src/core/save';
+import { EXTRAS_KEY, EXTRAS_V2_KEY, SAVE_KEY, STARTER_HOME, loadSave, migrate, newSave, restoredExtras, writeSave, type KV } from '../src/core/save';
 import {
   ROOM_RETURNED, buyAsset, cannotMoveIn, cannotReturnRoom, currentHome, furnitureIn, holding, moveIn, reclaimRoom, returnRoom, roomReturned, sellAsset, setPlacement, takeNotices,
 } from '../src/economy/assets';
@@ -65,6 +65,20 @@ describe('principal residence: buy, move in, furnish, park, reload', () => {
     expect(furnitureIn(t, house.uid).map(f => f.spec)).toContain('chaises');
     expect(t.data.appearance).toEqual({ skin: 1, hair: 'natural', outfit: 2, color: 0 });
     expect(restoredExtras).toContain('appearance');
+  });
+
+  it('the polish-pass client rewrites the first backup without the look too: the second one, which it never touches, brings it back', () => {
+    const s = rich(), store = mem();
+    s.data.appearance = { skin: 3, hair: 'kufi', outfit: 0, color: 5 };
+    writeSave(store, s.data);
+    const raw = JSON.parse(store.getItem(SAVE_KEY)!); delete raw.appearance;
+    store.setItem(SAVE_KEY, JSON.stringify({ ...raw, wallet: 77 }));                // PR #64's save…
+    const ex = JSON.parse(store.getItem(EXTRAS_KEY)!); delete ex.appearance;
+    store.setItem(EXTRAS_KEY, JSON.stringify({ ...ex, savedAt: ex.savedAt + 5000 })); // …and its newer first backup, without the look
+    const t = reload(store);
+    expect(t.data.appearance).toEqual({ skin: 3, hair: 'kufi', outfit: 0, color: 5 });
+    expect(t.wallet).toBe(77);
+    expect(JSON.parse(store.getItem(EXTRAS_V2_KEY)!).guestId).toBe(s.data.guestId);
   });
 
   it('a save with no look chosen keeps no look: the backup never adds one', () => {

@@ -30,6 +30,11 @@ export const AVATAR_SUGGESTION_KEY = 'dakarrek.guest.save.v6.avatar-suggestion';
  * writes such a save: this one always writes them all) takes it back from here, for the same guest only. Older clients never read or write this key.
  */
 export const EXTRAS_KEY = 'dakarrek.guest.save.v6.extras';
+/**
+ * The same backup a second time, under a key only clients from the beta on know. A client that knows the first backup but fewer fields (the polish
+ * pass, PR #64: no `appearance`) rewrites `EXTRAS_KEY` at its saves without the fields it does not know; this one it never touches.
+ */
+export const EXTRAS_V2_KEY = 'dakarrek.guest.save.v6.extras.2';
 /** The fields an older v6 client drops, and that the extras backup keeps. */
 export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as const;
 export const SCHEMA_VERSION = 6;
@@ -398,7 +403,8 @@ function carryOver(store: KV, data: SaveData | null): SaveData | null {
 export function writeSave(store: KV | null, data: SaveData): boolean {
   let ok = false;
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); ok = !!store; } catch { return false; }
-  try { store?.setItem(EXTRAS_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) })); } catch { /* full storage: the save itself was written */ }
+  const extras = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) });
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store?.setItem(key, extras); } catch { /* full storage: the save itself was written */ } }
   return ok;
 }
 /**
@@ -411,16 +417,24 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
   const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
   const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
   if (!missing.length && !lostShare) return [];
-  let b: Record<string, unknown> | null = null;
-  try { b = JSON.parse(store.getItem(EXTRAS_KEY) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
-  if (!b || b.guestId !== data.guestId) return [];
-  const back = migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }), out: string[] = [];
-  if (!back) return [];
+  // both backups of this guest, newest first; each field is taken from the newest one that has it (an older client may have rewritten the first without it)
+  const backups: { raw: Record<string, unknown>; back: SaveData }[] = [];
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) {
+    let b: Record<string, unknown> | null = null;
+    try { b = JSON.parse(store.getItem(key) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
+    const back = b && b.guestId === data.guestId ? migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }) : null;
+    if (b && back) backups.push({ raw: b, back });
+  }
+  backups.sort((x, y) => num(y.raw.savedAt, 0) - num(x.raw.savedAt, 0));
+  const pick = (k: string) => backups.find(x => x.raw[k] !== undefined);
+  const out: string[] = [];
   // a client that knew the debts but not the share of the fares (PR #63) kept each loan without it: the same loan in the backup says whether it was on
   // (its due dates are left as that client left them: a loan without its player-day clock is moved onto it by src/economy/credit.ts onPlayClock)
-  if (lostShare) for (const l of data.loans.list) { const was = back.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
+  const withLoans = pick('loans')?.back;
+  if (lostShare && withLoans) for (const l of data.loans.list) { const was = withLoans.loans.list.find(x => x.id === l.id); if (l.share === undefined && was?.share !== undefined) l.share = was.share; }
   for (const k of missing) {
-    if (b[k] === undefined) continue;
+    const found = pick(k); if (!found) continue;
+    const { raw: b, back } = found;
     if (k === 'loans') { if (!back.loans.list.length) continue; data.loans = back.loans; }
     else if (k === 'vtc') data.vtc = { ...back.vtc, active: null };
     else if (k === 'play') data.play = back.play;
@@ -444,6 +458,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
-  try { store.removeItem(EXTRAS_KEY); } catch { /* ignore: a new game has a new guest id, never matched */ }
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }
