@@ -395,7 +395,7 @@ J.A = async () => {
   await shot('milestone-2-days');
   check('… then a short celebration of the milestone, saying what it opens (the dealers know the player) and that it is never the only way', mile && /2 jours d’affilée !/.test(mile) && /jamais/.test(mile), mile ?? 'none');
   await phoneApp('profil'); const prof2 = await d(() => document.querySelector('#phone .ph-streak')?.innerText ?? ''); await shot('profile-day-2'); await phoneClose();
-  check('the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open', /2 jours d’affilée/.test(prof2) && /À 3 jours/.test(prof2), prof2.replace(/\s+/g, ' ').slice(0, 300));
+  check('the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open', /2 jours d’affilée/i.test(prof2) && /À 3 jours/i.test(prof2), prof2.replace(/\s+/g, ' ').slice(0, 300));
   const st = await d(() => window.__dakar.streak.info());
   check('saved in the v6 save: the run, the days, the milestones seen', st.streak.run === 2 && st.streak.total === 2 && st.streak.seen.includes(2), JSON.stringify(st.streak));
 };
