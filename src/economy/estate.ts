@@ -517,7 +517,7 @@ class Estate {
         this.ctx.toast(`${sp.name.split(' · ')[0]} est à toi ✓  −${fcfa(sp.price!)}`); this.ctx.save();
         // The decision that follows a home's purchase: make it the principal residence (the player lives there, furniture is delivered there) or not yet.
         if (homeSpec(sp.id) && !cannotMoveIn(s, a.uid)) {
-          const from = currentHome(s), n = furnitureIn(s, from.uid).filter(f => !furnitureSpec(f.spec)?.fixed).length, fromName = specOfAsset(from).name.split(' · ')[0];
+          const from = currentHome(s), n = furnitureIn(s, from.uid).filter(f => !furnitureSpec(f.spec)?.fixed).length, fromName = from.spec === STARTER_HOME ? 'ta chambre' : specOfAsset(from).name.split(' · ')[0];
           this.confirm('Définir comme domicile principal ?', [['Logement', sp.name.split(' · ')[0]], ['Tes meubles', n ? `les ${n} pièces te suivent` : 'Keur Meubles livrera ici'],
             ['Plus tard', `tu restes à ${fromName} : les meubles achetés y seront livrés`], ...(from.spec === STARTER_HOME ? [['Ta chambre', 'la famille te la garde ; tu pourras la rendre depuis sa fiche'] as [string, string]] : [])],
           'Définir comme domicile principal', '', null, () => this.setPrincipal(a, back), back, 'Plus tard', 'Tu y vis : la carte, le téléphone et les livraisons le suivent');
