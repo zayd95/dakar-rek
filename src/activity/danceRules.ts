@@ -3,7 +3,7 @@ import { say } from '../i18n/wolof';
 /**
  * The rules of dancing at La Vague (pure: src/venues/dancePlay.ts plays them in the world on the music's own clock,
  * src/venues/vagueMusic.ts). A performance is a few two-bar phrases, each one move:
- *  - « Le pas de base »: a step left, a step right, on every beat;
+ *  - « Le pas de côté »: a step left, a step right, on every beat;
  *  - « Jeu de jambes sabar »: the sabar's quick knee lifts, two on each side (on the beat and the « and »);
  *  - « Les bras au ciel »: a swipe up throws the arms up, then steps;
  *  - « Le tour »: a swipe sideways spins round, then steps.
@@ -19,7 +19,7 @@ export interface TrackShape { bars: number; beatsPerBar: number; sections: reado
 
 export const PHRASE_BEATS = 8;
 export const MOVES: Record<MoveId, { label: string; hint: string; cues: readonly (readonly [number, CueKind])[] }> = {
-  pas: { label: 'Le pas de base', hint: 'Gauche · droite, sur chaque temps', cues: [[0, 'L'], [1, 'R'], [2, 'L'], [3, 'R'], [4, 'L'], [5, 'R'], [6, 'L'], [7, 'R']] },
+  pas: { label: 'Le pas de côté', hint: 'Gauche · droite, sur chaque temps', cues: [[0, 'L'], [1, 'R'], [2, 'L'], [3, 'R'], [4, 'L'], [5, 'R'], [6, 'L'], [7, 'R']] },
   sabar: { label: 'Jeu de jambes sabar', hint: 'Deux à gauche, deux à droite, vite', cues: [[0, 'L'], [0.5, 'L'], [2, 'R'], [2.5, 'R'], [4, 'L'], [4.5, 'L'], [6, 'R'], [6.5, 'R']] },
   bras: { label: 'Les bras au ciel', hint: 'Glisse vers le haut, puis gauche · droite', cues: [[0, 'up'], [2, 'L'], [3, 'R'], [4, 'up'], [6, 'L'], [7, 'R']] },
   tour: { label: 'Le tour', hint: 'Glisse sur le côté pour tourner', cues: [[0, 'spin'], [2, 'L'], [3, 'R'], [4, 'L'], [5, 'R'], [6, 'L'], [7, 'R']] },

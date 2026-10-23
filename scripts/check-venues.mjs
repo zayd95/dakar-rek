@@ -117,18 +117,18 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await shot('dibi-pathe');
   await closeModal();
 
-  // the grill: a work shift beside the cook, facing the fire (a timed step; the integration makes it the shared timing gesture)
+  // the grill: a work shift beside the cook, facing the fire, played at the grill itself (src/venues/grillPlay.ts)
   const grillAt = anchor(v, 'grill');
   check(`${label}: the grill is a place to work`, await standAt(grillAt, v.yaw, /:grill$/, 0.2), JSON.stringify(await d(() => window.__dakar.focus())));
   const g0 = await d(() => ({ f: window.__dakar.focus(), wallet: window.__dakar.state.wallet }));
   check(`${label}: « Aider au grill » is offered with its pay and the next rung`, g0.f?.primary === 'Aider au grill', g0.f?.all.join(' | '));
   await d(() => window.__dakar.act());
   await until(() => (window.__dakar.activity()?.id ?? '').startsWith('grill_'), null, 20000);
-  await until(p => window.__dakar.clip() === 'Talk' && Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) < 0.3, W(v, -8.0 + 1.15, 8.6 - 0.85), 30000);
-  const gw = await d(([p]) => ({ a: window.__dakar.activity(), clip: window.__dakar.clip(), pos: window.__dakar.pos(), cook: p }), [W(v, -8.0 + 1.15, 8.6 - 0.85)]);
-  check(`${label}: the player steps beside the cook and works the skewers`, gw.a?.id === 'grill_aide' && gw.clip === 'Talk' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3, JSON.stringify({ clip: gw.clip, step: gw.a?.step }));
+  await until(p => window.__dakar.clip() === 'Talk' && Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) < 0.3, W(v, -8.0 + 0.78, 8.6 - 0.82), 30000);
+  const gw = await d(([p]) => ({ a: window.__dakar.activity(), clip: window.__dakar.clip(), pos: window.__dakar.pos(), cook: p, g: window.__dakar.gesture() }), [W(v, -8.0 + 0.78, 8.6 - 0.82)]);
+  check(`${label}: the player steps beside the cook and works the brochettes on the grill itself`, gw.a?.id === 'grill_aide' && gw.clip === 'Talk' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3 && gw.g?.kind === 'grill' && gw.g?.inWorld, JSON.stringify({ clip: gw.clip, step: gw.a?.step, g: gw.g?.kind }));
   await cam(v, [-3.5, 2.6, 4.5], [-7.5, 1.0, 8.6]); await shot('dibi-grill'); await d(() => window.__dakar.cam(null));
-  // the grill is a timing gesture (scripts/check-gestures.mjs plays gestures for real): here, a perfect shift
+  // the grill is played for real by scripts/film-activities.mjs (touches on the brochettes): here, a perfect shift
   await until(() => { if (window.__dakar.gesture?.()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 120000);
   const g1 = await d(() => ({ wallet: window.__dakar.state.wallet, grill: window.__dakar.venues().find(x => x.type === 'dibi').counters.grill, ledger: window.__dakar.state.data.ledger.at(-1) }));
   check(`${label}: the shift pays, goes to the wallet history and counts toward the next rung`, g1.wallet - g0.wallet === 1080 && g1.grill === 1 && /Aider au grill/.test(g1.ledger?.label ?? ''), `+${g1.wallet - g0.wallet} F « ${g1.ledger?.label} »`);
@@ -395,12 +395,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: paid once (2 000 F): the rope is lifted for the night`, c.admitted && !c.rope && w1 === w0 - 2000 && c.counters.nights === 1, `wallet ${w0} → ${w1}, rope ${c.rope}`);
   const walkedIn = await walk(p => window.__dakar.pos().z < p.z, W(c, 0, 6), 30000);
   check(`${label}: through the gate onto the terrace, its own space (chat and presence)`, walkedIn && (await venue('club')).space === 'almadies:venue:club', JSON.stringify(await d(() => window.__dakar.pos())));
-  // the dance floor: the shared timing gesture on the drum's beat, the body dances
+  // the dance floor: played on the floor itself, on the club's music (src/venues/dancePlay.ts), the body dances
   check(`${label}: on the floor « Danser » is offered, in the terrace's space`, await standAt(anchor(c, 'floor'), Math.PI, /venue:club:floor$/, 1.2) && (await d(() => window.__dakar.focus()?.space)) === 'almadies:venue:club', JSON.stringify(await d(() => window.__dakar.focus())));
   await d(() => window.__dakar.act());
   const played = await until(() => !!window.__dakar.gesture() && /^Dance_/.test(window.__dakar.clip() ?? ''), null, 20000);
-  const gi = await d(() => ({ g: window.__dakar.gesture(), clip: window.__dakar.clip(), title: document.querySelector('#gesture .gst-title')?.textContent ?? '' }));
-  check(`${label}: dancing is a timing gesture on the drum while the body dances`, played && gi.g?.kind === 'timing' && /tambour/.test(gi.title) && /^Dance_/.test(gi.clip ?? ''), JSON.stringify(gi));
+  const gi = await d(() => ({ g: window.__dakar.gesture(), clip: window.__dakar.clip(), pads: document.querySelectorAll('.iw-dance .iw-pad').length }));
+  check(`${label}: dancing is played on the floor, on the music, while the body dances`, played && gi.g?.kind === 'dance' && gi.g?.inWorld && gi.pads === 2 && /^Dance_/.test(gi.clip ?? ''), JSON.stringify(gi).slice(0, 300));
   await shot('club-dance-gesture');
   await until(() => { if (window.__dakar.gesture()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 90000);
   const cheered = await until(() => window.__dakar.venues().find(x => x.type === 'club').dancers.some(x => x?.clip === 'Celebrate') || /Rafet na/.test(document.getElementById('toast')?.textContent ?? ''), null, 30000);
