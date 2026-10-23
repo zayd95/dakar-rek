@@ -2,6 +2,7 @@ import type { Anchor, PlaceSpec } from './places';
 import * as P from './primitives';
 import type { ActivitySpec, SeatPick, Step } from './types';
 import type { Needs } from '../core/types';
+import type { Seat } from '../interact/seats';
 import { apprentiLine, comeLine, haggler, hostSays, price, tasteLine, waitLine } from '../i18n/lines';
 import { G } from './gestures';
 
@@ -43,6 +44,10 @@ export interface PlaceHooks {
   prayReady?(): string | null;
   /** One of the place's activities finished (the module reacts: ablutions done, a prop, a counter…). */
   done?(activity: string): void;
+  /** Mosque: the order the congregation fills its rows in (lowest first): where « Prier avec l’assemblée » takes the player. */
+  rowRank?(seat: Seat): number;
+  /** Mosque: the prayer the player is in is over (its last salutation): the prayer lasts as long as its postures. */
+  prayed?(): boolean;
 }
 
 type At = (id: string) => Anchor;
@@ -166,13 +171,15 @@ export function mosque(b: Base & { peaks?: [number, number][] }, h: PlaceHooks =
   const has = (id: string) => b.anchors.some(a => a.id === id);
   const taps = at('ablutions'), hall = at('hall');
   const rows: SeatPick = { near: { x: hall.x, z: hall.z }, r: 12, kind: 'prayer' };
+  const congregation: SeatPick = { ...rows, rank: h.rowRank };          // the next place in the front rows, not the nearest one
+  const until = h.prayed && (() => h.prayed!());
   const ready = () => h.prayReady?.() ?? null;
   const gathering = () => h.congregation?.() ?? null;
   const offers: Record<string, ActivitySpec[]> = {
     ablutions: [P.wash({ id: 'ablutions', label: 'Faire ses ablutions', seconds: 4, seat: { near: { x: taps.x, z: taps.z }, r: 3, kind: 'stool' }, then: () => h.done?.('ablutions') })],
     hall: [
-      P.pray({ id: 'priere', label: 'Prier', seconds: 8, seat: rows, requires: ready, visible: () => !gathering() }),
-      live(P.pray({ id: 'priere_groupe', label: 'Prier avec l’assemblée', seconds: 10, seat: rows, requires: ready, visible: () => !!gathering() }), () => gathering() ?? undefined),
+      P.pray({ id: 'priere', label: 'Prier', seconds: 8, seat: rows, requires: ready, visible: () => !gathering(), until }),
+      live(P.pray({ id: 'priere_groupe', label: 'Prier avec l’assemblée', seconds: 10, seat: congregation, requires: ready, visible: () => !!gathering(), until }), () => gathering() ?? undefined),
       P.use({ id: 'calme', label: 'S’asseoir au calme', primitive: 'sit', seconds: 6, seat: rows }),
     ],
     imam: [...opt(h.converse, P.talk({ id: 'imam', label: 'Parler à l’imam', line: hostSays('imam'), then: () => h.converse!('imam') }))],

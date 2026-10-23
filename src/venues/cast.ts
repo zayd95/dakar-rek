@@ -139,6 +139,10 @@ export class Cast {
   setClip(id: string, clip: Clip) { const e = this.list.find(x => x.r.id === id); if (e && !e.r.seat) e.h.hold = clip; }
   /** A standing role plays `clip` for `seconds`, then goes back to its own (the crowd cheers a good dancer). */
   burst(id: string, clip: Clip, seconds: number) { const e = this.list.find(x => x.r.id === id); if (!e || e.r.seat) return; e.h.hold = clip; this.cheer.set(id, seconds); }
+  /** A role's body (a congregation's prayer sets its posture: src/venues/salat.ts), or null. */
+  humanoid(id: string): Humanoid | null { return this.list.find(x => x.r.id === id)?.h ?? null; }
+  /** Whether a role is shown in this moment (its seat was free). */
+  shown(id: string) { return !!this.list.find(x => x.r.id === id)?.shown; }
   /** Where a role stands now (tests and debug). */
   where(id: string) { const e = this.list.find(x => x.r.id === id); return e ? { x: e.h.group.position.x, z: e.h.group.position.z, shown: e.shown, drawn: e.h.group.visible, clip: e.h.hold } : null; }
 

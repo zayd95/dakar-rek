@@ -6,7 +6,7 @@
  */
 import type { Needs } from '../core/types';
 import type { Clip } from '../actors/humanoid';
-import type { SeatKind } from '../interact/seats';
+import type { Seat, SeatKind } from '../interact/seats';
 
 export type Primitive =
   | 'enter' | 'exit' | 'sit' | 'stand' | 'greet' | 'talk' | 'invite'
@@ -39,7 +39,10 @@ export interface Effects {
 export type Line = string | (() => string);
 
 /** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind (around a point). */
-export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind };
+export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind;
+  /** Order of preference among the free seats, lowest first (a congregation fills its rows from the front, behind the
+   *  imam), instead of the nearest to the player; the seat the player is on counts like the free ones. */
+  rank?: (s: Seat) => number };
 
 /** An option of a « choose » gesture: a tool, an item on the stall, an ingredient. */
 export interface GestureOption { id: string; label: string; icon: string; /** What the person asks for it: « Passe-moi la clé de 13 ! » */ ask?: string }
@@ -75,6 +78,10 @@ export interface Step {
   gesture?: Gesture;
   /** Called when the step ends (after its effects): open a conversation, change the hairstyle, board… */
   then?: () => void;
+  /** The step lasts until this says so (a congregation's prayer ends with the imam's salutation), not `seconds`. */
+  until?: () => boolean;
+  /** No progress pill while it runs (no bar, no percentage): a prayer is not a task to complete. */
+  calm?: boolean;
 }
 
 export interface ActivityCtx {

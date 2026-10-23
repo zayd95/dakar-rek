@@ -97,8 +97,8 @@ export class ActivityRunner {
     if (c.abort) return;                                      // a gesture is being played: it ends the step itself
     const dur = this.duration(step);
     c.t += dt;
-    if (dur > 0) this.s.progress(true, Math.min(1, c.t / dur), step.label);
-    if (c.t >= dur) this.finishStep();
+    if (dur > 0 && !step.calm) this.s.progress(true, Math.min(1, c.t / dur), step.label);
+    if (step.until ? step.until() : c.t >= dur) this.finishStep();
   }
 
   /** Stop now (button « Arrêter », a door, a trip…). */
@@ -118,7 +118,7 @@ export class ActivityRunner {
     if (step.seat) {
       const now = this.s.seated();
       for (const seat of this.seatChoices(step.seat)) if (now?.id === seat.id || this.s.sit(seat)) break;   // unreachable: try the next one
-      if (this.s.walking?.()) { c.walk = true; this.s.busy(true); this.s.progress(true, 0, step.label); return; }
+      if (this.s.walking?.()) { c.walk = true; this.s.busy(true); if (!step.calm) this.s.progress(true, 0, step.label); return; }
     }
     this.begin();
   }
@@ -139,7 +139,7 @@ export class ActivityRunner {
       if (!ended) c.abort = () => { ended = true; abort(); };
       return;
     }
-    if (this.duration(step) > 0) { this.s.busy(true); this.s.progress(true, 0, step.label); }
+    if (this.duration(step) > 0 || step.until) { this.s.busy(true); if (!step.calm) this.s.progress(true, 0, step.label); }
     else this.finishStep();
   }
 
@@ -186,8 +186,9 @@ export class ActivityRunner {
     const o = p === 'near' ? {} : p, me = this.s.player(), now = this.s.seated(), space = this.s.space();
     const at = o.near ?? me, r = o.r ?? (o.near ? 6 : 8);
     const fits = (s: Seat) => (!o.kind || s.kind === o.kind) && Math.hypot(s.x - at.x, s.z - at.z) <= r;
-    if (now && now.space === space && fits(now)) return [now];
-    return this.s.seats.inSpace(space).filter(s => !s.occupant && fits(s))
-      .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z)).slice(0, 6);
+    if (now && now.space === space && fits(now) && !o.rank) return [now];
+    const near = (a: Seat, b: Seat) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z);
+    return this.s.seats.inSpace(space).filter(s => (!s.occupant || s === now) && fits(s))
+      .sort(o.rank ? (a, b) => o.rank!(a) - o.rank!(b) || near(a, b) : near).slice(0, 6);
   }
 }

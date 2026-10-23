@@ -96,12 +96,16 @@ export function wash(b: Base & { seconds?: number; seat?: SeatPick; then?: () =>
   return spec('wash', b, [{ label: 'Ablutions', primitive: 'wash', seconds: b.seconds ?? 3, seat: b.seat, then: b.then }]);
 }
 
-/** Pray: optional ablutions first, then a moment on a prayer row. No effects; no recitation text is ever shown. */
-export function pray(b: Base & { wash?: boolean; seat?: SeatPick; seconds?: number }): ActivitySpec {
+/**
+ * Pray: optional ablutions first, then the prayer on a row. No effects; no recitation text is ever shown. Calm: no
+ * progress bar or percentage, no « ✓ » at the end. `until`: the place says when the prayer is over (the postures of
+ * src/venues/salat.ts), else it lasts `seconds`.
+ */
+export function pray(b: Base & { wash?: boolean; seat?: SeatPick; seconds?: number; until?: () => boolean }): ActivitySpec {
   const steps: Step[] = [];
   if (b.wash) steps.push({ label: 'Ablutions', primitive: 'wash', seconds: 3 });
-  steps.push({ label: 'Prière', primitive: 'pray', seconds: b.seconds ?? 6, seat: b.seat ?? 'near' });
-  return spec('pray', b, steps);
+  steps.push({ label: 'Prière', primitive: 'pray', seconds: b.seconds ?? 6, seat: b.seat ?? 'near', calm: true, until: b.until });
+  return { ...spec('pray', b, steps), quiet: true };
 }
 
 /** Dance: a clip, mood and company. */
