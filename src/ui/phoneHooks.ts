@@ -76,4 +76,8 @@ export const phoneHooks: {
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */
   openPlaces?: () => void;
+  /** Réglages › « Jouer en ligne »: the online profile and the invitation (src/multiplayer/ui.ts, wired by main.ts). */
+  openPresence?: () => void;
+  /** Whether and where the game was last saved (save module). Undefined: the phone says nothing about saving. */
+  saveStatus?: () => { ok: boolean; at: number; where: string } | undefined;
 } = {};

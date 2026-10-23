@@ -39,7 +39,7 @@ async function diff(a, b) {
 const shot = async (p, name) => { await p.waitForTimeout(350); await p.screenshot({ path: `${out}/${name}.png` }); };
 const openProfile = async p => {
   await tap(p, '#menuBtn'); await p.waitForFunction(() => window.__dakar.phoneInfo().open);
-  if (await p.evaluate(() => window.__dakar.phoneInfo().screen) !== 'profil') { await tap(p, '#phone [data-nav="home"]'); await tap(p, '#phone [data-app="profil"]'); }
+  if (await p.evaluate(() => window.__dakar.phoneInfo().screen) !== 'profil') await p.evaluate(() => window.__dakar.phone('profil'));
   await p.waitForFunction(() => window.__dakar.phoneInfo().screen === 'profil');
 };
 const lookReady = p => p.waitForFunction(() => window.__studio?.state().drawn && window.__studio.state().view.settled, null, { timeout: 120000 });

@@ -249,8 +249,7 @@ J.G = async () => {
 // ---- shared: the phone, a Tiak run on a vehicle, the card
 const phoneApp = async id => {
   if (!(await d(() => window.__dakar.phoneInfo().open))) { await t.tap('#menuBtn'); await wait(() => window.__dakar.phoneInfo().open, null, 30000); }
-  await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
-  await t.tap(`#phone [data-app="${id}"]`); await page.waitForTimeout(500);
+  await d(i => window.__dakar.phone(i), id); await page.waitForTimeout(500);   // (every app is one tap away in « Toutes les apps »; the journeys go straight to it)
 };
 const phoneClose = async () => { if (await d(() => window.__dakar.phoneInfo().open)) { await t.tap('#phone [data-nav="close"]'); await wait(() => !window.__dakar.phoneInfo().open, null, 20000); } };
 /** A job offer of the « Travail » app, tapped by its text (the cards use short names: « 🥬 Maïga → 🔧 Garage »). */

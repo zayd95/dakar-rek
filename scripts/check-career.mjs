@@ -142,8 +142,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
 
   // 5. The phone: the profile card and the arena record.
   await d(() => window.__dakar.phone('profil'));
-  await page.waitForFunction(() => document.querySelector('#phone.on .ph-dims'), null, T).catch(() => {});
-  const dims = await d(() => [...document.querySelectorAll('#phone .ph-dims > div')].map(e => e.textContent));
+  await page.waitForFunction(() => document.querySelector('#phone.on .pf-dims, #phone.on .ph-dims'), null, T).catch(() => {});
+  const dims = await d(() => [...document.querySelectorAll('#phone .pf-dims > .pf-dim, #phone .ph-dims > div')].map(e => e.textContent));
   check(`${label}: the phone's profile shows the four gauges`, dims.length === 4 && /Forme/.test(dims[0]) && /Influence/.test(dims[3]), dims.join(' | '));
   await page.waitForTimeout(300); await page.screenshot({ path: `${out}/${label}-profile.png`, timeout: 120000 });
   await d(() => window.__dakar.phone('arene'));
