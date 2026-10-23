@@ -151,6 +151,14 @@ try {
     await shot('hud-drive');
     o = await d(hudOverlaps);
     check(`${vp}: at the wheel, no HUD controls overlap`, drove && !o.pairs.length && !o.off.length, (drove ? '' : 'not boarded · ') + ([...o.pairs, ...o.off].join(' ; ') || o.shown.join(' ')));
+    // a car's pedals are bigger than the bike's: the same layout with the car's sizes (the pad's own classes, src/transport/ridePad.ts show({ car: true }))
+    if (drove) {
+      await d(() => document.body.classList.add('ridepad-car')); await page.waitForTimeout(500);
+      await shot('hud-drive-car');
+      o = await d(hudOverlaps);
+      check(`${vp}: at the wheel of a car, no HUD controls overlap`, !o.pairs.length && !o.off.length, [...o.pairs, ...o.off].join(' ; ') || o.shown.join(' '));
+      await d(() => document.body.classList.remove('ridepad-car'));
+    }
     // focus modes other lanes signal (an activity, the prayer): only the essentials stay
     if (label !== 'before') {
       for (const f of ['activity', 'prayer']) {

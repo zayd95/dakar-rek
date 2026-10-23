@@ -543,7 +543,9 @@ body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(e
 #streakChip.milestone { animation:scMile 1.4s ease-out; }
 @keyframes scMile { 0% { box-shadow:0 0 0 0 rgba(245,158,11,.75), var(--shadow); transform:scale(1); } 25% { transform:scale(1.18); } 100% { box-shadow:0 0 0 18px rgba(245,158,11,0), var(--shadow); transform:scale(1); } }
 body.theme-night #streakChip.on .sc-n { color:#ffc56b; }
-/* the minimap goes under the streak chip in the right column (portrait); its caption repeats what the place chip and the action say */
+/* the online pill sits left of the streak chip (large screens: the right column is the phone button, then the streak) */
+#ui #presenceBtn { right:calc(62px + var(--sa-r)); }
+/* the minimap goes under the streak chip in the right column (portrait) */
 @media (max-width:640px) and (orientation:portrait) {
   body #ui { --mm-top: 114px; }
   #ui #chatBtn { top:calc(var(--mm-top) + var(--mm) + 30px + var(--sa-t)); }
@@ -627,11 +629,19 @@ body.ridepad #ridepad .rp-gas::before, body.ridepad #ridepad .rp-brake::before {
   box-shadow:0 3px 10px rgba(0,0,0,.32), inset 0 0 0 2px rgba(255,255,255,.35); }
 body.ridepad #ridepad .rp-brake::before { background:#dc2626; inset:12px; }
 body.ridepad #ridepad .rp-gas { width:94px; height:94px; } body.ridepad #ridepad .rp-brake { width:80px; height:80px; }
-body.ridepad-car #ridepad .rp-gas { width:104px; height:104px; font-size:13.5px; } body.ridepad-car #ridepad .rp-brake { width:88px; height:88px; font-size:13px; }
+body.ridepad-car #ridepad .rp-gas { width:112px; height:112px; font-size:13.5px; } body.ridepad-car #ridepad .rp-brake { width:92px; height:92px; font-size:13px; }   /* a car: the same big targets as before */
+body.ridepad-car #ridepad .rp-gas::before { inset:19px; } body.ridepad-car #ridepad .rp-brake::before { inset:16px; }
 body.ridepad #ridepad button.down { box-shadow:none; }
 body.ridepad #ridepad button.down::before { box-shadow:0 1px 4px rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.7); }
 body.ridepad #ridepad .rp-off, body.ridepad #ridepad .rp-view { min-height:44px; height:44px; font-size:14px; }
+/* a phone under 400 px: the car's pedals a little smaller, so they never reach the joystick's corner */
+@media (max-width:399px) and (orientation:portrait) {
+  body.ridepad-car #ridepad .rp-gas { width:104px; height:104px; } body.ridepad-car #ridepad .rp-brake { width:88px; height:88px; }
+  body.ridepad-car #ridepad .rp-gas::before { inset:16px; } body.ridepad-car #ridepad .rp-brake::before { inset:14px; }
+  body.ridepad #ridepad .rp-pedals { gap:8px; }
+}
 @media (max-width:360px) and (orientation:portrait) {
+  body.ridepad-car #ridepad .rp-gas::before, body.ridepad-car #ridepad .rp-brake::before { inset:12px; }
   body.ridepad #ridepad .rp-gas, body.ridepad-car #ridepad .rp-gas { width:86px; height:86px; font-size:12px; }
   body.ridepad #ridepad .rp-brake, body.ridepad-car #ridepad .rp-brake { width:74px; height:74px; font-size:12px; }
   body.ridepad #ridepad .rp-pedals { gap:6px; }
