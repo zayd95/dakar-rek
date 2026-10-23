@@ -1363,7 +1363,7 @@ let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
-  if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
+  if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return jobAt(it) ?? it; }
   { const m = destination ? null : missionTarget(); if (m && m.hub === world.id) return m; }
   { const n = destination?.hub === world.id ? null : navigation.localGoal(); if (n) return n; }   // driving directions: the way out toward the goal's district, or the place chosen on the map
   if (eveningTarget) return eveningTarget;
@@ -1378,6 +1378,8 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   return w?.here && w.x !== undefined && w.z !== undefined ? { name: castById(guideNpc!)?.name ?? '', x: w.x, z: w.z } : null;
 }
 
+/** The task in hand whose target is this place (a delivery sets the walking marker on its pick-up and drop-off): marked as its job (src/ui/jobMarks.ts). */
+function jobAt(p: { x: number; z: number }) { const m = missionTarget(); return m?.job && m.hub === world?.id && Math.hypot(m.x - p.x, m.z - p.z) < 2 ? m : null; }
 /** « ↗ text · 72 m » toward a target (the same arrow as the walking marker), or the text alone. */
 function withBearing(text: string, t: { x: number; z: number } | null): string {
   if (!t || inside) return text;
@@ -1407,7 +1409,7 @@ function walkingHint(): string | null {
   if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
   const angle = Math.atan2(dx, dz) - follow.yaw;
   const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
-  return `${arrow} ${target.name} · ${Math.round(distance)} m`;
+  return `${arrow} ${jobAt(target)?.job === 'delivery' ? '📦 ' : ''}${target.name} · ${Math.round(distance)} m`;
 }
 
 /** Quality change (phone › Réglages): rebuilds the hub and keeps the player in the room they were in. */
