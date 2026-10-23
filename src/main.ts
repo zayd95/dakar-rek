@@ -636,7 +636,7 @@ interactions.add(new LegacySource({
 interactions.add(seats);
 interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever » (not on a locked seat)
   if (!seated || seated.locked) return;
-  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() },
+  out.push({ id: 'self', name: seatClip(seated) === 'Lie' ? 'Au lit' : 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() },
     ...(seated?.kind === 'stand' ? [{ id: 'cheer', verb: 'dance' as const, label: 'Encourager', icon: '🙌', detail: 'Debout un instant, les bras en l’air', run: () => { cheer(); } }] : [])] });
 } });
 seats.onSit = s => { if (mode === 'play' && !seated && goSit(s)) { mode = 'busy'; input.enabled = false; } };

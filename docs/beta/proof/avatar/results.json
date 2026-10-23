@@ -1,0 +1,63 @@
+[
+  {
+    "name": "1. Pikine: the studio's body and look are the ones drawn",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Idle\",\"seated\":null,\"act\":null}"
+  },
+  {
+    "name": "2. seated on a bench: her body, her look, the Sit pose",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Sit\",\"seated\":\"pikine:jamm:bench:0\",\"act\":null}"
+  },
+  {
+    "name": "3. lying on the bed of « Ma chambre »: her body, her look",
+    "ok": true,
+    "detail": "{\"bed\":\"pikine:home:lit\",\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Idle\",\"seated\":\"pikine:home:lit\",\"act\":null}"
+  },
+  {
+    "name": "4. driving the Teranga: her body in the driver's seat, her look",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Sit\",\"seated\":\"pikine:car:teranga:driver\",\"act\":null,\"inSeat\":0.36}"
+  },
+  {
+    "name": "4b. out of the car: on foot again, the same body",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Idle\",\"seated\":null,\"act\":null}"
+  },
+  {
+    "name": "5. at the Dibi's grill: her body, her look, the grill gesture under way",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Talk\",\"seated\":null,\"act\":\"grill_aide\"}"
+  },
+  {
+    "name": "6. dancing at La Vague: her body, her look, a dance clip",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Dance_A\",\"seated\":null,\"act\":\"danser\"}"
+  },
+  {
+    "name": "7a. ablutions at the taps: her body, her look, seated on the stool",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Sit\",\"seated\":\"plateau:venue:mosque:11:robinet:3\",\"act\":\"ablutions\"}"
+  },
+  {
+    "name": "7b. praying on a row, barefoot: her body, her look, the prayer's postures",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"PrayDown\",\"seated\":\"plateau:venue:mosque:11:rang:3:7\",\"act\":\"priere\"}"
+  },
+  {
+    "name": "8. « Mbakkou » (the wrestlers' dance) shows the v4 wrestler in ngemb in place of her body, as designed for the attire and the emotes",
+    "ok": true,
+    "info": true,
+    "detail": "{\"stand\":\"v4\",\"shown\":false}"
+  },
+  {
+    "name": "8. after « Mbakkou » her own body and look are back",
+    "ok": true,
+    "detail": "{\"body\":\"meshy_f\",\"drawn\":{\"skin\":4,\"hair\":\"puff\",\"outfit\":0,\"color\":1},\"stand\":null,\"shown\":true,\"clip\":\"Idle\",\"seated\":null,\"act\":null}"
+  },
+  {
+    "name": "no JavaScript errors",
+    "ok": true,
+    "detail": ""
+  }
+]
