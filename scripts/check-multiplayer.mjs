@@ -7,6 +7,16 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/** The presence sheet: the HUD's button where it is shown, else the phone's Réglages › « Jouer en ligne » (a touch phone keeps that button off the HUD). */
+async function openPresence(p, tap = false) {
+  if (await p.locator('#presenceBtn').isVisible()) { await (tap ? p.locator('#presenceBtn').tap() : p.click('#presenceBtn')); return; }
+  await p.evaluate(() => window.__dakar.phone('reglages'));
+  await p.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+  await p.waitForTimeout(600);                                   // the phone drops a tap in its first 320 ms on a new screen (a double tap's second half)
+  const row = p.locator('#phone [data-act="presence"]');
+  await (tap ? row.tap() : row.click());
+  await p.waitForSelector('#presenceName', { state: 'visible' });
+}
 const checks = [];
 function check(name, ok, detail = '') { checks.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, detail); assert.ok(ok, name); }
 let base = process.argv[2], worker, logs = '';
@@ -73,7 +83,7 @@ try {
     const seen = await b.evaluate(id => { const p = window.__dakar.presence(); return { fan: p.peers.find(x => x.id === id)?.fan ?? null, keys: Object.keys(p.peers.find(x => x.id === id) ?? {}), gear: p.gear }; }, idA);
     check('écurie colours: B sees the Baobab scarf A wears (presence fan, on the avatar), and no price or inventory with it', fanSeen && !seen.keys.some(k => /price|wallet|owned|inventory|assets/.test(k)), JSON.stringify(seen));
   }
-  await a.click('#presenceBtn'); await a.fill('#presenceName', 'Mame Moussa');
+  await openPresence(a); await a.fill('#presenceName', 'Mame Moussa');
   check('typing a name keeps the menu open', await a.locator('#modal.on').count() === 1);
   await a.getByRole('button', { name: 'Enregistrer mon profil', exact: true }).click();
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Mame Moussa'));

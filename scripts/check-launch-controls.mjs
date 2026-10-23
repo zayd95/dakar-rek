@@ -4,6 +4,29 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+/** Réglages in the phone, by touch: the phone opens where it was left; from its home, « Toutes les apps » › Réglages. Each tap waits out the
+ *  phone's 320 ms settle on a new screen (it drops a tap that lands sooner: a double tap's second half). */
+async function phoneSettings(page) {
+  const settle = () => page.waitForTimeout(600);
+  await settle();
+  if (await page.locator('#phone button[data-q]').count()) return;
+  if (!(await page.locator('#phone [data-app="reglages"]').count())) {
+    if (await page.locator('#phone [data-nav="home"]').isVisible()) { await page.locator('#phone [data-nav="home"]').tap(); await settle(); }
+    await page.locator('#phone [data-go="apps"]').tap(); await settle();
+  }
+  await page.locator('#phone [data-app="reglages"]').tap();
+  await page.locator('#phone button[data-q]').first().waitFor();
+}
+/** The presence sheet: the HUD's button where it is shown, else the phone's Réglages › « Jouer en ligne » (a touch phone keeps that button off the HUD). */
+async function openPresence(p, tap = false) {
+  if (await p.locator('#presenceBtn').isVisible()) { await (tap ? p.locator('#presenceBtn').tap() : p.click('#presenceBtn')); return; }
+  await p.evaluate(() => window.__dakar.phone('reglages'));
+  await p.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+  await p.waitForTimeout(600);                                   // the phone drops a tap in its first 320 ms on a new screen (a double tap's second half)
+  const row = p.locator('#phone [data-act="presence"]');
+  await (tap ? row.tap() : row.click());
+  await p.waitForSelector('#presenceName', { state: 'visible' });
+}
 
 const checks = [], contexts = [];
 const check = (name, ok, detail = '') => { checks.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, detail); assert.ok(ok, name); };
@@ -36,8 +59,9 @@ try {
     await page.waitForFunction(() => window.__dakar.pos().x > 900);
     // Quality lives in the phone (Réglages); the phone remembers the last app between openings.
     await page.locator('#menuBtn').tap();
-    if (!(await page.locator(`#phone button[data-q="${quality}"]`).count())) await page.locator('#phone [data-app="reglages"]').tap();
+    await phoneSettings(page);
     await page.locator(`#phone button[data-q="${quality}"]`).tap();
+    await page.waitForTimeout(600);
     await page.locator('#phone [data-nav="close"]').tap();
     await page.waitForFunction(() => !document.querySelector('#modal').classList.contains('on') && !document.querySelector('#phone').classList.contains('on'));
     // The door's fade is a 350 ms timer (src/main.ts exitInterior): right after a quality rebuild the main thread can be
@@ -76,16 +100,17 @@ try {
   const resumed = await walk(900);
   check('a new touch works after returning', resumed.d > 0.5, resumed.detail);
   await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch', pointerId: 43 })));
-  await page.locator('#presenceBtn').tap();
+  await openPresence(page, true);
   await page.locator('#presenceName').fill('Mame Awa');
   await page.getByRole('button', { name: 'Enregistrer mon profil', exact: true }).tap();
   await page.waitForFunction(() => window.__dakar.presence().status === 'online');
-  await page.locator('#presenceBtn').tap();
+  await openPresence(page, true);
   check('profile survives a reconnect without changing invite group', await page.locator('#presenceName').inputValue() === 'Mame Awa' && (await page.evaluate(() => window.__dakar.presence().room)) === 120);
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.waitForFunction(() => document.querySelector('#place').getBoundingClientRect().bottom <= document.querySelector('#presenceBtn').getBoundingClientRect().top);
+  // a touch phone keeps the online status off the HUD (it is in the phone's Réglages); where the button shows, it stays clear of the header
+  await page.waitForFunction(() => { const b = document.querySelector('#presenceBtn'), r = b?.getBoundingClientRect(); return !r || r.width === 0 || document.querySelector('#place').getBoundingClientRect().bottom <= r.top; });
   const place = await page.locator('#place').boundingBox(), presence = await page.locator('#presenceBtn').boundingBox();
-  check('small-phone presence button does not cover the neighbourhood header', place.y + place.height <= presence.y);
+  check('small-phone presence button does not cover the neighbourhood header', !presence || place.y + place.height <= presence.y, presence ? '' : 'not on the HUD of a touch phone (Réglages › Jouer en ligne)');
   await page.setViewportSize({ width: 844, height: 390 }); await sleep(400);
   // The light side sheet (src/ui/sheet.ts) shows almost the whole profile at 390 px — it overflows by a few pixels only —
   // so its content is made taller than the screen here: what is tested is the touch scroll of the sheet itself.
