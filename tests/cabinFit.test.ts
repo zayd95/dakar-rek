@@ -3,6 +3,7 @@ import type * as THREE from 'three';
 import { CAR_MODELS, vehicleSpec, type CarModelId } from '../src/actors/vehicleKit';
 import { CABINS, CUSHION, FLOOR_GAP, KIT_SIDE, MIN_SCALE, ROOF_GAP, SITTERS, lookSitter, placeSitter, rowOf, scaleAt, type CabinRow, type SitterSize } from '../src/transport/cabinFit';
 import { SIT_HIPS } from '../src/interact/seats';
+import { VTC_LOOKS } from '../src/transport/vtcRules';
 import { terangaSpec, rafetSpec, lamaneSpec, gaindeSpec } from '../src/transport/modelCars';
 import { berlineSpec } from '../src/transport/premiumCars';
 import { carSpec } from '../src/transport/car';
@@ -40,7 +41,7 @@ describe('cabin fit: the seat data are the bodies\' own (src/transport/cabinFit.
 
 const BODY_KINDS: [string, SitterSize][] = [
   ['v4 (passers-by, VTC passengers)', SITTERS.v4], ['homme', SITTERS.meshy_m], ['femme', SITTERS.meshy_f],
-  ['v4 in a headwrap', lookSitter({ hat: 'headwrap' })], ['v4 woman in a headwrap', lookSitter({ hat: 'headwrap', female: true })], ['v4 in a kufi', lookSitter({ hat: 'kufi' })],
+  ...VTC_LOOKS.map((l, i): [string, SitterSize] => [`VTC passenger look ${i} (${l.style}${l.hat ? ', ' + l.hat : ''})`, lookSitter(l)]),
 ];
 const fits = (row: CabinRow, p: { head: number; soles: number }) => p.head <= row.roof - ROOF_GAP + 1e-6 && p.soles >= row.floor + FLOOR_GAP - 0.012;
 
@@ -67,6 +68,11 @@ describe('cabin fit: nobody\'s head through the roof, nobody\'s shoes under the 
         expect(p.scale, `${b.id} ${name}`).toBeGreaterThanOrEqual(MIN_SCALE);
       }
     }
+  });
+  it('the looks\' sizes are the ones measured on the bodies in the Teranga\'s back (headwear over the hair, a robe\'s hem under the shoes)', () => {
+    // vtc.fit() in the game, looks 0 to 5 (src/transport/vtcRules.ts VTC_LOOKS): the head over the hips, the lowest point under them
+    const measured = [[0.836, 0.277], [0.892, 0.291], [0.833, 0.432], [0.854, 0.263], [0.836, 0.277], [0.892, 0.291]];
+    VTC_LOOKS.forEach((l, i) => { const s = lookSitter(l); expect(Math.abs(s.up - measured[i][0]), `look ${i} up ${s.up}`).toBeLessThan(0.012); expect(Math.abs(s.down - measured[i][1]), `look ${i} down ${s.down}`).toBeLessThan(0.012); });
   });
   it('a body that fits as it is keeps its size and sits on the cushion; only a low roof makes it smaller, by as little as it takes', () => {
     const tall: CabinRow = { roof: 2.2, floor: 0.2, legroom: 1 };

@@ -12,7 +12,7 @@ import { addMissionGuide } from '../game/missionGuide';
 import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
 import { CARS } from './fleet';
-import { atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { VTC_LOOKS, atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
 import { CABINS, lookSitter, placeSitter, type SitterPlace } from './cabinFit';
 import { cabinInfo, cabinView, holdCabin, rearDoorBox, seeThroughOk, setRearDoor, sitterOrder } from './carCabin';
 import type { VehicleSpec } from './spec';
@@ -35,14 +35,6 @@ import { fareShare, openLoans } from '../economy/credit';
  * The ride in hand is saved (`vtc.active`): a reload or a crossing into the next district finds the passenger where they were — waiting on the pavement, or
  * sitting in the car (one person, rebuilt with the car, never a copy left behind). The rules: src/transport/vtcRules.ts.
  */
-const LOOKS: PersonLook[] = [
-  { skin: 0x5b3420, style: 'tee', top: 0x2f6fa8, bottom: 0x22252b, hat: null, shoes: 0x1a1a1a },
-  { skin: 0x6b3f25, style: 'dress', top: 0xd66532, bottom: 0xd66532, female: true, pattern: 'wax', accent: 0xf2d16b, hat: 'headwrap', hatColor: 0xe8b734 },
-  { skin: 0x4e2e1c, style: 'boubou', top: 0xeee8da, bottom: 0xeee8da, hat: 'kufi', hatColor: 0xf2f2ec },
-  { skin: 0x7a4a2c, style: 'tee', top: 0xc2417f, bottom: 0x2b3a55, female: true, hair: 'puff' },
-  { skin: 0x5b3420, style: 'tee', top: 0xf1f1ee, bottom: 0x3a4a5c, hat: null, beard: 0x1a1410 },
-  { skin: 0x633a24, style: 'dress', top: 0x2e8b57, bottom: 0x2e8b57, female: true, pattern: 'bazin', hat: 'headwrap', hatColor: 0x2e8b57 },
-];
 /**
  * wait: on the pavement · walk: to the rear door · open: the door opens · in: getting in · seated: riding · unseat: the door opens at the drop-off ·
  * out: getting out, onto the pavement · gone: nobody. Once out, the person walks off as a « leaver » (below) and the next ride can begin.
@@ -156,7 +148,7 @@ class Vtc implements GameModule {
   private ensurePerson() {
     if (this.h || !humanoidReady()) return this.h;
     const t = this.trip; if (!t) return null;
-    this.look = LOOKS[t.passenger.seed % LOOKS.length];
+    this.look = VTC_LOOKS[t.passenger.seed % VTC_LOOKS.length];
     this.h = new Humanoid(this.look); this.h.hold = 'Idle';
     this.ctx.extra.add(this.h.group); return this.h;
   }
@@ -260,7 +252,7 @@ class Vtc implements GameModule {
     const spec = c.c.spec, id = side < 0 ? 'rearR' : 'rearL';
     const s = spec.seats.find(x => x.id === id) ?? spec.seats.find(x => x.id === 'front') ?? spec.seats[0];
     const row = (CABINS[spec.id] ?? CABINS.teranga)[s.id === 'front' ? 'front' : 'rear'];
-    return { id: s.id, x: s.x, z: s.z, place: placeSitter(row, s.y, lookSitter(this.look ?? {})) };
+    return { id: s.id, x: s.x, z: s.z, place: placeSitter(row, s.y, lookSitter(this.look ?? VTC_LOOKS[0])) };
   }
   /** Standing height in the car's frame (the pavement under the person, less the car's ground and its bounce). */
   private standY(c: Car, l: { x: number; z: number }) { const w = this.toWorld(c, l); return this.ground(w.x, w.z) - (c.c.v.pose.y + c.c.v.body.position.y); }

@@ -57,12 +57,18 @@ export const SITTERS: Record<BodyId, SitterSize> = {
   meshy_m: { hips: 0.53, up: 0.929, down: 0.297, knee: 0.5 },
   meshy_f: { hips: 0.465, up: 0.897, down: 0.272, knee: 0.47 },
 };
-/** What headwear adds over the hair (v4's looks): a kufi sits on the crown, a headwrap is tied high. */
-export const HAT_UP: Record<'kufi' | 'headwrap', number> = { kufi: 0.03, headwrap: 0.07 };
-/** The size of a v4 body in a look (a woman's look is drawn 0.95 high: src/actors/humanoid.ts setLook). */
-export function lookSitter(l: Pick<PersonLook, 'female' | 'hat'>): SitterSize {
-  const v = SITTERS.v4, k = l.female ? 0.95 : 1, hat = l.hat ? HAT_UP[l.hat] : 0;
-  return { hips: v.hips * k, up: v.up * k + hat, down: v.down * k, knee: v.knee * k };
+/**
+ * The size of a v4 body dressed in a look, sitting in SitCar (measured on each VTC passenger's look, in the Teranga's back: scripts/check-vtc-ride.mjs
+ * reads the same with `vtc.fit()`): a woman's look is drawn 0.95 high (src/actors/humanoid.ts setLook); her puffed hair adds 6 cm, a headwrap tied high
+ * 10 cm, a kufi nothing that shows; a dress's hem hangs 3 cm under the shoes, a boubou's 16 cm (the robe drapes from the knees to the floor of the car).
+ */
+export const LOOK_SIZE = { puff: 0.06, headwrap: 0.1, kufi: 0.005, dress: 0.293, boubou: 0.435 } as const;
+export function lookSitter(l: Pick<PersonLook, 'female' | 'hat' | 'hair' | 'style'>): SitterSize {
+  const v = SITTERS.v4, k = l.female ? 0.95 : 1;
+  const hair = l.hat ? 0 : (l.hair ?? (l.female ? 'puff' : 'short')) === 'puff' ? LOOK_SIZE.puff : 0;
+  const hat = l.hat === 'headwrap' ? LOOK_SIZE.headwrap : l.hat === 'kufi' ? LOOK_SIZE.kufi : 0;
+  const down = l.style === 'boubou' ? LOOK_SIZE.boubou : l.style === 'dress' ? LOOK_SIZE.dress : v.down;
+  return { hips: v.hips * k, up: v.up * k + hair + hat, down: l.style === 'boubou' || l.style === 'dress' ? down : down * k, knee: v.knee * k };   // (the robes' hems as measured, drawn size included)
 }
 
 /** Clear room kept under the roof (the body rolls and pitches on its springs, a seated player is placed on the seat, not rolled with it) and over the floor. */
