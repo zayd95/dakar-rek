@@ -140,7 +140,7 @@ function build(model: THREE.Object3D): Rig {
   if (id) {
     // the glass: of the shell and of the driver's door (it swings with it)
     for (const node of ['body', 'door']) for (const src of partsOf(near, node)) {
-      const map = (src.material as THREE.MeshLambertMaterial).map; if (!map) continue;
+      const mat = src.material as THREE.MeshLambertMaterial, map = mat.map; if (!map || mat.name !== 'trim') continue;   // the authored atlas only (a scanned body's texture has no glass cell)
       const g = facesOf(src.geometry, 'glass', (_c, _n, uv, ids) => inGlass(uv, ids)); if (!g) continue;
       const parts = [overlay(g, M.mark, ORDER.mark, 'glass_mark'), overlay(g, M.clear, ORDER.clear, 'glass_clear'), overlay(g, tintOf(map), ORDER.tint, 'glass_tint')];
       src.add(...parts); rig.glass.push(...parts);
