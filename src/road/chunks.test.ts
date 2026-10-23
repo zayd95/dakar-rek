@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { CHUNK, ChunkMats, buildChunk } from './chunks';
+import { CHUNK, ChunkMats, buildChunk, onDistrict } from './chunks';
 import { CorridorView } from './corridor';
-import { ROADS, ROAD_HALF } from './routes';
+import { HALF_GROUND, ROADS, ROAD_HALF } from './routes';
 import type { HubWorld } from '../world/types';
 
 const mats = new ChunkMats(true);
@@ -54,8 +54,64 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
       const x = (c.x0 + c.x1) / 2, z = (c.z0 + c.z1) / 2, p = road.spine.project(x, z);
       const half = Math.max(c.x1 - c.x0, c.z1 - c.z0) / 2;
       if (road.junctionS.some(j => Math.abs(j.s - p.s) < 50)) continue;
+      if (road.checkpointS !== null && Math.abs(p.s - road.checkpointS) < 1.2) continue;          // the checkpoint's island: below
       expect(Math.abs(p.d) + half).toBeGreaterThan(ROAD_HALF - 0.01);
     }
+  });
+
+  it('build nothing on the districts\' own ground at either end (the last houses into the Plateau stood across its perimeter street)', () => {
+    const p = all.flatMap(c => [...c.colliders.map(k => [(k.x0 + k.x1) / 2, (k.z0 + k.z1) / 2]), ...c.people.map(q => [q.x, q.z])]);
+    for (const [x, z] of p) expect(onDistrict(road, x, z), `${x}, ${z}`).toBe(false);
+    // and no tall thing at all: every vertex above 3 m (houses, walls' caps, lamps, palms) is off both districts' ground
+    for (const c of all) c.group.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh || m.geometry.type === 'PlaneGeometry') return;
+      const a = m.geometry.attributes.position;
+      for (let i = 0; i < a.count; i++) if (a.getY(i) > 3) expect(onDistrict(road, a.getX(i), a.getZ(i)), `${road.id} chunk ${c.index}`).toBe(false);
+    });
+  });
+
+  it('have flower and plant sellers on the verge, never on the carriageway, varied, a few to a road', () => {
+    const sellers = all.flatMap(c => c.sellers);
+    expect(sellers.length).toBeGreaterThanOrEqual(4); expect(sellers.length).toBeLessThan(all.length * 2);
+    expect(new Set(sellers.map(x => x.side)).size).toBe(2); expect(sellers.some(x => x.big) && sellers.some(x => !x.big)).toBe(true);
+    for (const x of sellers) {
+      expect(road.junctionS.every(j => Math.abs(j.s - x.s) > 20)).toBe(true);
+      // their solid box: the verge between the kerb and the wall line, the whole length of the pots
+      const f = road.spine.at(x.s), solidHere = all.flatMap(c => c.colliders).filter(k => { const q = road.spine.project((k.x0 + k.x1) / 2, (k.z0 + k.z1) / 2); return Math.abs(q.s - x.s) < x.len / 2 && Math.sign(q.d) === x.side && Math.abs(q.d) > ROAD_HALF + 1.5 && Math.abs(q.d) < HALF_GROUND; });
+      expect(solidHere.length, `${x.s} ${JSON.stringify(f)}`).toBeGreaterThan(0);
+    }
+    // their people: at the kerb's edge at the nearest, never in the carriageway
+    for (const c of all) for (const q of c.people) expect(Math.abs(road.spine.project(q.x, q.z).d)).toBeGreaterThan(ROAD_HALF + 0.4 - (road.checkpointS !== null && Math.abs(road.spine.project(q.x, q.z).s - road.checkpointS) < 1 ? 99 : 0));
+  });
+});
+
+describe('the police checkpoint on the way into the Plateau', () => {
+  const road = ROADS.find(r => r.id === 'pikine-plateau')!, s = road.checkpointS!;
+  const chunk = buildChunk({ road, mats, lite: false }, Math.floor(s / CHUNK));
+  it('stands a short way before the Plateau, on a straight stretch, out of the district', () => {
+    expect(road.length - s).toBeGreaterThan(30); expect(road.length - s).toBeLessThan(80);
+    const a = road.spine.at(s - 25), b = road.spine.at(s + 25), m = road.spine.at(s);
+    expect(Math.abs(Math.atan2(b.x - m.x, b.z - m.z) - Math.atan2(m.x - a.x, m.z - a.z))).toBeLessThan(0.02);
+    expect(onDistrict(road, m.x, m.z, 2.5)).toBe(false);
+  });
+  it('is a small island on the centre line that both lanes pass at their full width, a car in each with a metre to spare', () => {
+    const island = chunk.colliders.filter(k => { const q = road.spine.project((k.x0 + k.x1) / 2, (k.z0 + k.z1) / 2); return Math.abs(q.s - s) < 1 && Math.abs(q.d) < 1; });
+    expect(island.length).toBe(1);
+    const k = island[0]; expect(k.x1 - k.x0).toBeLessThanOrEqual(2.05); expect(k.z1 - k.z0).toBeLessThanOrEqual(2.05);
+    // a car (half width 0.9) in either lane (2.8 m from the centre line) clears it by 0.8 m; nothing else solid within the carriageway there
+    for (const lat of [-2.8, 2.8]) for (let d = -20; d <= 20; d += 0.5) {
+      const f = road.spine.at(s + d), y = Math.atan2(road.spine.at(s + d + 2).x - road.spine.at(s + d - 2).x, road.spine.at(s + d + 2).z - road.spine.at(s + d - 2).z);
+      const x = f.x + Math.cos(y) * lat, z = f.z - Math.sin(y) * lat;
+      expect(chunk.colliders.some(c => x > c.x0 - 1.7 && x < c.x1 + 1.7 && z > c.z0 - 1.7 && z < c.z1 + 1.7)).toBe(false);
+    }
+  });
+  it('has its officers, its post and its pick-up off the carriageway', () => {
+    const near = chunk.people.filter(q => Math.abs(road.spine.project(q.x, q.z).s - s) < 15);
+    expect(near.length).toBeGreaterThanOrEqual(3);
+    for (const q of near) { const d = Math.abs(road.spine.project(q.x, q.z).d); expect(d < 1 || d > ROAD_HALF + 1).toBe(true); }   // on the island, or past the pavement's edge
+    const off = chunk.colliders.filter(k => { const q = road.spine.project((k.x0 + k.x1) / 2, (k.z0 + k.z1) / 2); return Math.abs(q.s - s) < 15 && Math.abs(q.d) > 1; });
+    expect(off.length).toBeGreaterThanOrEqual(2);
+    for (const k of off) expect(Math.min(...[[k.x0, k.z0], [k.x0, k.z1], [k.x1, k.z0], [k.x1, k.z1]].map(([x, z]) => Math.abs(road.spine.project(x, z).d)))).toBeGreaterThan(ROAD_HALF + 1.5);   // past the pavement
   });
 });
 
