@@ -62,10 +62,13 @@ describe('Dibi recipe: why return tomorrow', () => {
     expect(place.offers.grill[0].detail).toMatch(/3\/5 services avant « Tenir le grill »/);   // live text
     counters[keys.grill] = 0;
   });
-  it('each rung is a shift played with the timing gesture: pay, fatigue, the counter of this grill, the service category', () => {
+  it('each rung is a shift played at the grill itself: pay, fatigue, the counter of this grill, the service category', () => {
     const g = place.offers.grill[0];
     expect(g.primitive).toBe('work');
-    expect(g.steps.at(-1)).toMatchObject({ clip: 'Talk', gesture: { kind: 'timing', rounds: 3 }, effects: { money: 900, counters: { [keys.grill]: 1, shifts: 1 }, category: 'service' } });
+    expect(g.steps.at(-1)).toMatchObject({ clip: 'Talk', gesture: { kind: 'grill', skewers: 3 }, effects: { money: 900, counters: { [keys.grill]: 1, shifts: 1 }, category: 'service' } });
+    // higher rungs: a bigger order on a hotter grill
+    const orders = T.GRILL_LADDER.map((_, i) => place.offers.grill[i].steps.at(-1)!.gesture as { skewers: number; heat: number });
+    expect(orders.map(o => o.skewers)).toEqual([3, 4, 5, 6]); expect(orders.map(o => o.heat)).toEqual([...orders.map(o => o.heat)].sort((a, b) => a - b));
     expect(g.steps.at(-1)!.effects!.needs!.energie).toBeLessThan(0);
     const r = rig(); r.state.data.needs.energie = 100;
     expect(r.runner.blocked(g)).toBeNull();
@@ -270,14 +273,14 @@ describe('club (La Vague): a night out with a reason to come back', () => {
     expect(doormanGreeting({ night: 10, hour: 23, nights: 3, regularAt: 3, entry: 2000 })).toContain('Sama xarit');
     expect(doormanRegulars({ night: 10, hour: 23, nights: 1, regularAt: 3, entry: 2000 })).toContain('Encore 2 soirées');
   });
-  it('dancing is two timing gestures on the drum, the second faster, with the dance clips', () => {
+  it('dancing is two dances on the music, the second harder, with the dance clips', () => {
     reset(); counters[keys.paid] = 11;
     const d = offer('floor', 'danser');
     expect(d.steps.map(s => s.clip)).toEqual(['Dance_A', 'Dance_B']);
     const g = d.steps.map(s => s.gesture!);
-    expect(g.every(x => x.kind === 'timing')).toBe(true);
+    expect(g.every(x => x.kind === 'dance')).toBe(true);
     expect((g[1] as { speed: number }).speed).toBeGreaterThan((g[0] as { speed: number }).speed);
-    expect(G.dance()).toMatchObject({ kind: 'timing', verb: 'Pas' });
+    expect(G.dance()).toMatchObject({ kind: 'dance', rounds: 6 });
     expect(d.steps[1].effects).toMatchObject({ needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' });
     expect(d.detail).toContain(T.clubTheme(10).label);
     const r = rig(); r.runner.start(d); run(r.runner, 10);
@@ -365,5 +368,5 @@ describe('a venue far from the camera', () => {
     expect(total + owed).toBeCloseTo(2, 9);                                    // no time lost
     const [run, after] = venueStep(owed, 1 / 30, false);                       // near again: at once, with what it was owed
     expect(run).toBeCloseTo(owed + 1 / 30, 9); expect(after).toBe(0);
-  });
+  }, 30000);                                                                   // (the first import of every venue module is slow on a loaded machine)
 });

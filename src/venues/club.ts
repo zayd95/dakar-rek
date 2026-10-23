@@ -15,6 +15,9 @@ import { Cast, type Role } from './cast';
 import { VagueCrowd } from '../crowd/clubCrowd';
 import { taxiDrop, taxiRank } from '../transport/taxi';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
+import { VagueMusic, BEAT as MUSIC_BEAT } from './vagueMusic';
+import { DancePlay } from './dancePlay';
+import { registerInWorld } from '../activity/inWorld';
 import { CLUBBER_NAMES, CLUB_BYE, barmanGreeting, barmanMenu, clubberBye, clubberDance, clubberHello, clubberRegulars, clubberTonight, djContest, djDrop, djTalk, doormanAsk, doormanBye, doormanGreeting, doormanRegulars, doormanWelcome, programme, type ClubCtx, type ClubMoment } from './talk';
 
 /**
@@ -23,7 +26,9 @@ import { CLUBBER_NAMES, CLUB_BYE, barmanGreeting, barmanMenu, clubberBye, clubbe
  * Inside: a lit dance floor (tiles that change colour on the beat), the DJ booth under a truss of coloured beams, a
  * thatched bar with stools (juices of Dakar, no alcohol), low benches by the fence, string lights and the sea behind.
  * Each night has a theme (a week of seven, the same for everyone); the « Nuit du sabar » holds a dance contest after
- * 23 h. Dancing is the shared timing gesture on the drum's beat; the crowd (src/crowd/clubCrowd.ts: a dense floor on
+ * 23 h. The music is the club's own track (src/venues/vagueMusic.ts: heard on the terrace, through the fence and down
+ * the street in front, fading and muffled with the distance); dancing is played on the floor itself, on that music's beat
+ * (src/venues/dancePlay.ts); the crowd (src/crowd/clubCrowd.ts: a dense floor on
  * instanced figures, 20 / 40 / 60 by quality) follows the hour (almost empty at 21 h, building before midnight, the peak
  * after it with a short queue at the gate, thinning at dawn), dances on the DJ's beat, answers his drops and the songs
  * you ask for, makes a ring round the contest and cheers a good dancer. « Entrer » shows the fee before anything is paid. Inside, the terrace is its own presence space
@@ -55,6 +60,10 @@ const WAITER: PersonLook = { skin: 0x45291a, style: 'tee', top: 0x1c1c1f, bottom
 const WAITER_HOME = { x: -7.6, z: 6.4 };
 /** The player is on the terrace (its space while true): module-wide, a hub has one club. */
 let inClub = false;
+/** The club's music (module-wide like `inClub`), for the debug hook below. */
+let musicNow: VagueMusic | null = null;
+/** Debug only: drive the music's clock by the game's frames from `t` seconds (null: the audio context's again). */
+export const setVagueVirtual = (t: number | null) => { if (musicNow) musicNow.virtual = t; return !!musicNow; };
 const DJ: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xe8742c, bottom: 0x222428, shoes: 0xf2f2ec, beard: 0x1a1414 };
 
 /** The week's programme on the board by the gate (redrawn each night). */
@@ -330,6 +339,13 @@ export function buildClub(env: VenueEnv): Venue {
   // the crowd: the dance floor, people standing at the bar, the lounge's edge and the high table, the queue at the peak.
   // Instanced figures (the nearest few full humanoids), the same night the same for everyone; they never stand on a player.
   const vague = new VagueCrowd({ w: at, local: (x, z) => k.local(x, z), yaw: site.yaw }, q, ctx.extra);
+  // the music, and dancing on it (in the world, on the floor's clear spot, facing the gate: the camera between them)
+  const music = musicNow = new VagueMusic(); music.prefetch();
+  const dance = new DancePlay({
+    ctx, music, crowd: vague, here: () => inClub,
+    spot: () => { const p = at(FX, FZ); return { x: p.x, z: p.z, yaw: site.yaw }; },
+  });
+  const unregister = registerInWorld(dance);
   const dropW = taxiDrop(taxiRank(world).spot), fromTaxi = k.local(dropW.x, dropW.z);      // they get out of a taxi at the Ngor rank
   /** Near the club (terrace, gate, the street in front): the crowd steps aside for anyone here. */
   const nearClub = (x: number, z: number) => { const l = k.local(x, z); return Math.abs(l.x) < W + 4 && l.z > -D - 2 && l.z < D + 14; };
@@ -396,8 +412,23 @@ export function buildClub(env: VenueEnv): Venue {
     }
     gateMesh.visible = closedSign.visible = !open && !insideNow;                // the leaves swing open for someone leaving
     ropeMesh.visible = open && !admitted();
-    // lights: on the beat when open (≈ 124 bpm), dark by day
-    const b = Math.floor(t / 0.485);
+    // the music: full on the terrace, through the bamboo at the gate, fading and muffled down the street; by the hour
+    {
+      const dx = Math.max(Math.abs(me.x) - W, 0), dz = Math.max(Math.abs(me.z) - D, 0), out = Math.hypot(dx, dz);
+      const busy = m === 'early' ? 0.75 : m === 'dawn' ? 0.6 : 1;
+      let level = 0, muffle = 0, pan = 0;
+      if (open && !ctx.inside() && out < 75) {
+        if (out <= 0 && insideNow) { level = busy; muffle = 0; }
+        else { level = busy * 0.8 / (1 + out / 9); muffle = Math.min(1, 0.3 + out / 70); }
+        const cp = ctx.camera.position, cx = site.x - cp.x, cz = site.z - cp.z, cl = Math.hypot(cx, cz) || 1;
+        const yawC = Math.atan2(ctx.camera.matrixWorld.elements[8] * -1, ctx.camera.matrixWorld.elements[10] * -1);   // the camera's forward, flat
+        pan = ((cx / cl) * -Math.cos(yawC) + (cz / cl) * Math.sin(yawC)) * Math.min(1, out / 6) * 0.6;
+      }
+      music.update(dt, level, muffle, pan);
+    }
+    dance.update(dt);
+    // lights: on the music's beat when it plays, else on the same tempo; dark by day
+    const b = Math.floor(music.beat() ?? t / MUSIC_BEAT);
     const key = open ? b : -1;
     if (key !== beat) { beat = key; paint(theme, b, open); }
     tileMat.color.setScalar(open ? 0.55 + 0.45 * n : 0.8);
@@ -439,7 +470,8 @@ export function buildClub(env: VenueEnv): Venue {
   return {
     id, type: 'club', name: place.name, places: [place], update,
     space: () => (inClub ? SPACE : null),
-    dispose() { ctx.interactions.remove('club-people'); cast.dispose(); vague.dispose(); k.dispose(); later.length = 0; inClub = false; },
+    camera: dt => dance.camera(dt),
+    dispose() { unregister(); dance.dispose(); music.dispose(); if (musicNow === music) musicNow = null; ctx.interactions.remove('club-people'); cast.dispose(); vague.dispose(); k.dispose(); later.length = 0; inClub = false; },
     debug: () => {
       const crowd = vague.info(ctx.player.pos);
       return {
@@ -451,6 +483,7 @@ export function buildClub(env: VenueEnv): Venue {
         entrance: at(0, D + 2.2), inside: at(0, D - 2.5), floor: at(FX, FZ),
         counters: { paid: counter(ctx, keys.paid), nights: counter(ctx, keys.nights), dances: counter(ctx, keys.dances), contests: counter(ctx, keys.contests), contestNight: counter(ctx, keys.contestNight) },
         tile: Array.from(tiles.slice(0, 4)),
+        music: music.info(), dance: dance.info(),
       };
     },
   };

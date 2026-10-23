@@ -49,12 +49,17 @@ export interface GestureOption { id: string; label: string; icon: string; /** Wh
  * money the step pays; needs and counters apply whatever the score.
  * - timing: press when the moving cursor is in the zone (tighten a bolt, turn the skewers, pull the net);
  * - choose: hand over what the person asks for, before they lose patience (serve a customer, pass the right tool);
- * - sequence: do the steps in the right order (change a wheel, cook a dish).
+ * - sequence: do the steps in the right order (change a wheel, cook a dish);
+ * - grill / dance: played in the world itself when the place can (src/activity/inWorld.ts), else as a timing gesture.
  */
 export type Gesture =
   | { kind: 'timing'; prompt: string; rounds: number; verb?: string; icon?: string; speed?: number; zone?: number }
   | { kind: 'choose'; prompt: string; rounds: number; who?: string; options: GestureOption[]; patience?: number }
-  | { kind: 'sequence'; prompt: string; steps: GestureOption[] };
+  | { kind: 'sequence'; prompt: string; steps: GestureOption[] }
+  /** At a Dibi's grill, in the world (src/venues/grillPlay.ts): `skewers` brochettes to brown on both sides and serve; `heat` > 1 cooks faster. */
+  | { kind: 'grill'; prompt: string; skewers: number; heat?: number }
+  /** On La Vague's floor, in the world (src/venues/dancePlay.ts): `rounds` two-bar phrases on the music's beat; `speed` picks harder moves. */
+  | { kind: 'dance'; prompt: string; rounds: number; speed?: number };
 
 export interface Step {
   /** Shown in the progress bar: « Cuisson », « Tu manges », « Ablutions ». */
