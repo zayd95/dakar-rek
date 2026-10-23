@@ -79,7 +79,7 @@ body.touch kbd { display:none; }
 #place b { display:block; font-size:13.5px; font-weight:750; letter-spacing:-.1px; line-height:1.2; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 #place small { display:block; font-size:11.5px; font-weight:600; color:var(--ink-2); margin-top:1px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 /* the evening's tag (« Gala ce soir »): a small red chip after the time; on a phone it takes its own line */
-#place em { display:none; margin-left:6px; padding:1px 7px; border-radius:999px; background:#d9322b; color:#fff; font-style:normal; font-size:10.5px; font-weight:800; letter-spacing:.1px; vertical-align:1px; }
+#place em { display:none; margin-left:6px; padding:1px 7px; border-radius:999px; background:#d9322b; color:#fff; font-style:normal; font-size:11px; font-weight:800; letter-spacing:.1px; vertical-align:1px; }
 #place em.on { display:inline-block; }
 /* the event of the moment (src/ui/placeEvent.ts: the gala, a ride, tonight's call) under the place and the time: its
    tag and one short line; a tap opens the details under the chip (docs/UI_V2_PLAN.md §0 C 3). It says more than the
@@ -88,7 +88,7 @@ body.touch kbd { display:none; }
 #place.ev { pointer-events:auto; cursor:pointer; }
 #place.ev #placeEv { display:flex; }
 #place.ev em.on { display:none; }
-#placeEv .pev-tag { flex:none; padding:4px 6px; border-radius:7px; background:#d9322b; color:#fff; font:900 10.5px/1 var(--font); font-style:normal; letter-spacing:.3px; }
+#placeEv .pev-tag { flex:none; padding:4px 6px; border-radius:7px; background:#d9322b; color:#fff; font:900 11px/1 var(--font); font-style:normal; letter-spacing:.3px; }
 #placeEv .pev-tag[data-tone="ride"] { background:#f4c20d; color:#1b2a7a; }
 #placeEv .pev-tag[data-tone="evening"] { background:#7e22ce; }
 #placeEv .pev-tx { min-width:0; display:flex; flex-direction:column; }
@@ -534,7 +534,7 @@ body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(e
 /* the streak chip (src/ui/hud.ts setStreak): under the phone button, its width, a 44 px target; « Série 0 j » without a run, « 🔥 N j » with one */
 #streakChip { position:absolute; right:calc(10px + var(--sa-r)); top:calc(62px + var(--sa-t)); z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
   width:var(--tap); min-height:var(--tap); padding:3px 2px; border:0; border-radius:13px; color:var(--ink-3); font:inherit; cursor:pointer; }
-#streakChip .sc-ic { font-style:normal; font-size:10.5px; font-weight:750; line-height:1.1; letter-spacing:-.1px; }
+#streakChip .sc-ic { font-style:normal; font-size:11px; font-weight:750; line-height:1.1; letter-spacing:-.1px; }
 #streakChip .sc-n { font-size:13.5px; font-weight:850; line-height:1.1; color:var(--ink-2); font-variant-numeric:tabular-nums; white-space:nowrap; }
 #streakChip.on .sc-ic { font-size:15px; } #streakChip.on .sc-n { color:#b45309; }
 #streakChip.on:not(.today) .sc-ic { filter:grayscale(.85); opacity:.7; }           /* a run that today has not fed yet */
