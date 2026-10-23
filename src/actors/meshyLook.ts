@@ -26,11 +26,13 @@ export interface MeshyUniforms {
   uTone: { value: number }; uBrowTop: { value: number }; uSkin: { value: THREE.Vector3 }; uSkinRef: { value: THREE.Vector3 }; uTop: { value: THREE.Color }; uTop2: { value: THREE.Color }; uTop3: { value: THREE.Color };
   uBot: { value: THREE.Color }; uInner: { value: THREE.Color }; uSkullC: { value: THREE.Vector3 }; uSkullR: { value: THREE.Vector3 }; uComb: { value: THREE.Vector3 };
   uHairline: { value: THREE.Vector3 }; uNeckTop: { value: number };
+  /** Barefoot (inside the mosque): the baked shoes are painted as bare feet in the body's skin. */
+  uBare: { value: number };
 }
 
 const FRAG_FUNCS = /* glsl */`
 uniform float uOn, uFemale, uScalp, uBotOn, uInnerOn, uPrint, uBotY, uHeadY, uTopRef, uBotRef;
-uniform float uTone, uBrowTop;
+uniform float uTone, uBrowTop, uBare;
 uniform vec3 uSkin, uSkinRef, uTop, uTop2, uTop3, uBot, uInner, uSkullC, uSkullR, uComb, uHairline; uniform float uNeckTop;
 varying float vHair; varying vec3 vMp; varying vec3 vMn;
 ${GLSL_NOISE}
@@ -140,6 +142,13 @@ if (uOn > .5) {
   }
   diffuseColor.rgb = col;
 }
+// barefoot (the mosque's hall): the shoes baked under the trousers' hem become feet in the skin's tone (the chosen one, else the texture's own)
+if (uBare > .5) {
+  float foot = 1. - smoothstep(.135, .15, vMp.y);
+  vec3 tone = pow(clamp(uOn > .5 ? uSkin : uSkinRef, 0., 1.), vec3(2.2));
+  float shade = .82 + .18 * smoothstep(.0, .25, dot(diffuseColor.rgb, vec3(.2126,.7152,.0722)));
+  diffuseColor.rgb = mix(diffuseColor.rgb, tone * shade, foot);
+}
 #endif
 `;
 
@@ -163,6 +172,7 @@ export function makeMeshyMaterial(map: THREE.Texture, female: boolean): { mat: T
     uBotY: { value: B.botY }, uHeadY: { value: B.headY }, uTopRef: { value: B.top }, uBotRef: { value: B.bot },
     uTone: { value: 0.3 }, uBrowTop: { value: female ? 1.768 : 1.84 }, uSkin: { value: new THREE.Vector3(0.5, 0.3, 0.2) }, uSkinRef: { value: B.skin.clone() }, uTop: { value: new THREE.Color() }, uTop2: { value: new THREE.Color() }, uTop3: { value: new THREE.Color() },
     uBot: { value: new THREE.Color() }, uInner: { value: new THREE.Color() }, uSkullC: { value: new THREE.Vector3(...F.skull.c) }, uSkullR: { value: new THREE.Vector3(...F.skull.r) }, uHairline: { value: new THREE.Vector3(...HAIRLINE_GLSL[female ? 'femme' : 'homme']) }, uNeckTop: { value: F.neckTop }, uComb: { value: new THREE.Vector3(0, 0.6, -0.8).normalize() },
+    uBare: { value: 0 },
   };
   const mat = new THREE.MeshLambertMaterial({ map, side: THREE.DoubleSide });
   mat.onBeforeCompile = sh => {
@@ -173,7 +183,7 @@ export function makeMeshyMaterial(map: THREE.Texture, female: boolean): { mat: T
       .replace('#include <morphtarget_vertex>', '#include <morphtarget_vertex>\nvHair = _hair; vMp = transformed;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${FRAG_FUNCS}`).replace('#include <map_fragment>', FRAG_BODY).replace('#include <opaque_fragment>', SHEEN);
   };
-  mat.customProgramCacheKey = () => 'meshy-look-v29';
+  mat.customProgramCacheKey = () => 'meshy-look-v30';
   return { mat, u };
 }
 
@@ -226,5 +236,7 @@ export class MeshyLook {
     this.head.add(rig.group); this.hair = rig;
   }
 
+  /** Barefoot or not (the shoes are part of the baked shell: painted as feet, src/venues/cast.ts hideShoes). */
+  setBare(on: boolean) { this.u.uBare.value = on ? 1 : 0; }
   dispose() { this.hair?.dispose(); this.hair = null; this.hairKey = ''; }
 }

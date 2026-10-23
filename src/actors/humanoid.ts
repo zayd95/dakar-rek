@@ -11,6 +11,7 @@ import { reshapeCharacter } from './proportions';
 import { fitEyes } from './eyes';
 import type { Appearance } from './appearance';
 import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
+import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './prayerPoses';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -18,7 +19,7 @@ import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -94,7 +95,11 @@ function finishTemplate(gltf: GLTF, sitLift = 0, body?: { scale: number }): Temp
   widenWalk(gltf.animations);
   deriveKneel(gltf.animations);
   const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations, body)];
-  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel') for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
+  // ---- prayer postures (src/actors/prayerPoses.ts: their own module, so the other lanes' poses never collide with them)
+  clips.push(...buildPoseClips(gltf.scene, gltf.animations, body, PRAYER_POSES));
+  deriveSalam(clips);
+  // ----
+  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel' || PRAY_SEATED.includes(c.name as PrayerClip)) for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
   if (body) rollPalmsInClips(gltf.scene, clips, ['Sit', 'Kneel']);
   stripStaticTracks(gltf.scene, clips);
   return { scene: gltf.scene, clips };
@@ -206,7 +211,7 @@ export function widenWalk(clips: THREE.AnimationClip[]) {
  * Ride keeps the chair convention (origin SIT_HIPS under the saddle, like Sit): astride a motorbike, hands on the
  * grips and feet on the pegs of the vehicle kit's 125 cc (spec.controls.grips / pegs).
  */
-interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]>;
+export interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]>;
   /** Where the palm faces (character space), for a body whose hand has a palm (buildPoseClips `palm`): the hand is rolled about its own axis to it. v4's mitten has none. */
   palm?: Record<string, [number, number, number]>;
   /** Where the hands hold on (character space, for a body of scale 1): for a body whose hand has a palm, the arms are solved (two bones, elbow towards `pole`)
@@ -322,11 +327,12 @@ function palmAngle(w: THREE.Quaternion, palmLocal: THREE.Vector3, want: THREE.Ve
 const rolled = (w: THREE.Quaternion, angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0).applyQuaternion(w).normalize(), angle).multiply(w);
 
 /**
- * One-frame clips for POSES, solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
+ * One-frame clips for POSES (or another set of pose definitions: `defs`, e.g. the prayer postures of
+ * src/actors/prayerPoses.ts), solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
  * `like` (an existing clip, so cross-fades cover every bone) gets a value: the posed rotation where the pose aims the
  * bone, the rest value otherwise; the hips also get their position.
  */
-export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], body?: { scale: number }): THREE.AnimationClip[] {
+export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], body?: { scale: number }, defs: Readonly<Record<string, PoseDef>> = POSES): THREE.AnimationClip[] {
   const palm = !!body;
   const like = clips.find(c => c.name === 'Idle') ?? clips[0];
   const rootBone = scene.getObjectByName('root'), hipsBone = scene.getObjectByName('hips');
@@ -339,8 +345,8 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
   const restPos = (o: THREE.Object3D) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld));
   const restLen = (a: string, b: string) => { const A = scene.getObjectByName(a), B = scene.getObjectByName(b); return A && B ? restPos(A).distanceTo(restPos(B)) : 0.27; };
   const L1 = restLen('upper_armL', 'forearmL'), L2 = restLen('forearmL', 'handL');
-  return (Object.keys(POSES) as PoseClip[]).map(name => {
-    const def = POSES[name];
+  return Object.keys(defs).map(name => {
+    const def = defs[name];
     const pos = new Map<THREE.Object3D, THREE.Vector3>([[hipsBone, new THREE.Vector3(0, def.hipsY, def.hipsZ ?? 0)]]);
     const ikAim = new Map<string, THREE.Vector3>();
     const world = new Map<THREE.Object3D, THREE.Quaternion>(), local = new Map<THREE.Object3D, THREE.Quaternion>();
@@ -591,6 +597,11 @@ export class Humanoid {
   private meshy: MeshyLook | null = null;
   /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
   setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
+  /** Barefoot (the mosque's hall): v4 hides its shoe meshes; a Meshy body, whose shoes are baked into its shell, paints them as feet. */
+  setBarefoot(on: boolean) {
+    for (const [k, m] of this.parts) if (k === 'Cloth_Shoes') m.visible = !on;
+    this.meshy?.setBare(on);
+  }
   get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
   /** The body drawn: the one asked for when it is loaded, else v4. */
   readonly body: BodyId;

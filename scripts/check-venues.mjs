@@ -212,7 +212,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const hall = await d(() => ({ pos: window.__dakar.pos(), v: window.__dakar.venues().find(x => x.type === 'mosque') }));
   check(`${label}: inside the prayer hall, barefoot, the shoes wait on the rack`, hall.pos.x > 1500 && hall.v.barefoot && hall.v.shoesOnRack, JSON.stringify({ x: hall.pos.x, barefoot: hall.v.barefoot }));
   await shot('mosque-hall');
-  // pray on a row, kneeling; nothing changes in the save
+  // pray on a row (the postures of the prayer, src/venues/salat.ts); nothing changes in the save
   await d(() => window.__dakar.place(1600.4, 1.6, Math.PI));
   await until(() => /:hall$/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
   const fh = await d(() => window.__dakar.focus());
@@ -220,12 +220,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const b2 = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'priere', null, 20000);
-  await until(() => !!window.__dakar.seated() && window.__dakar.clip() === 'Kneel', null, 30000);
+  await until(() => !!window.__dakar.seated() && /^Pray/.test(window.__dakar.clip() ?? ''), null, 30000);
   const pr = await d(() => ({ seat: window.__dakar.seated(), clip: window.__dakar.clip(), y: window.__dakar.pos().y, seats: window.__dakar.seatsHere() }));
   const row = pr.seats.find(s => s.id === pr.seat);
-  check(`${label}: prayer on a free place of a row, kneeling on the floor`, row?.kind === 'prayer' && row.occupant === 'player' && pr.clip === 'Kneel' && Math.abs(pr.y - 0.1) < 0.05, JSON.stringify({ seat: pr.seat, clip: pr.clip, y: pr.y }));
+  check(`${label}: prayer on a free place of a row, on the floor, in the prayer's postures`, row?.kind === 'prayer' && row.occupant === 'player' && /^Pray/.test(pr.clip ?? '') && Math.abs(pr.y - 0.1) < 0.05, JSON.stringify({ seat: pr.seat, clip: pr.clip, y: pr.y }));
   await d(() => window.__dakar.cam([1600 + 3, 2.2, 3.5], [1600 - 0.5, 0.6, -2])); await shot('mosque-prayer'); await d(() => window.__dakar.cam(null));
-  await until(() => !window.__dakar.activity(), null, 60000);
+  await until(() => !window.__dakar.activity(), null, 300000);                     // the whole prayer: two rak‘as of postures
   const a2 = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   const sameNeeds = Object.entries(JSON.parse(a2).n).every(([k, x]) => Math.abs(x - JSON.parse(b2).n[k]) < 1);
   check(`${label}: prayer brings no reward (needs, money, counters unchanged)`, sameNeeds && JSON.parse(a2).w === JSON.parse(b2).w && JSON.stringify(JSON.parse(a2).c) === JSON.stringify(JSON.parse(b2).c), '');

@@ -5,7 +5,8 @@ import type { Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import { rng } from '../core/rng';
 import type { PersonLook } from '../actors/humanoid';
-import { floorSeatTop } from '../interact/seats';
+import { floorSeatTop, seatClip } from '../interact/seats';
+import { groundGuard } from '../actors/prayerPoses';
 import { mosque as mosqueRecipe } from '../activity/templates';
 import { VenueKit, archBand, archPiece, crescent, glowQuad } from './kit';
 import { Cast, hideShoes, type Role } from './cast';
@@ -14,6 +15,7 @@ import { prayerAt, prayerPeaks } from './prayer';
 import { IMAM_BYE, imamGreeting, imamHelp, imamNews, imamTimes, type ImamCtx } from './talk';
 import { calligraphy, passage, type PassageId } from './quran';
 import { openQuranReader } from './quranReader';
+import { AT_REST, CongregationClock, SOLO_RAKAAT, follow, followerLag, holdPose, salatOf, stepAt, type SalatStep } from './salat';
 
 /**
  * The Grande Mosquée of the Médina (a block of the Plateau hub, src/world/sites.ts), calm and distinct: a walled
@@ -23,9 +25,11 @@ import { openQuranReader } from './quranReader';
  * fans, a shelf of closed books, chairs for the elders, the imam.
  *
  * Wash at the taps → leave the shoes at the door (they wait on the rack; the player is barefoot inside) → pray on a row
- * (kneeling, calm: no recitation is ever shown) or sit quietly → talk with the imam (everyday French and Wolof, no
- * religious text) → sweep the courtyard as a volunteer. No commerce. The rows fill up around the prayer times
- * (src/venues/prayer.ts, also the place's `peaks` for the NPC system). Quranic text comes only from Tanzil's verified
+ * (the postures of the prayer, src/venues/salat.ts: calm, no recitation is ever shown or played, no bar, no score) or sit
+ * quietly → talk with the imam (everyday French and Wolof, no religious text) → sweep the courtyard as a volunteer. No
+ * commerce. The rows fill up around the prayer times (src/venues/prayer.ts, also the place's `peaks` for the NPC system):
+ * at the time of the prayer the imam, in front of the mihrab, leads it and the congregation follows him row by row; the
+ * player joins the next place of the front rows (« Prier avec l’assemblée ») or prays alone at other times (« Prier »). Quranic text comes only from Tanzil's verified
  * text, verbatim (src/venues/quran.ts): calligraphy panels on the hall's walls and a mushaf on its stand to read.
  *
  * Local frame (VenueKit): the 46 × 46 m block, front street toward +z.
@@ -298,7 +302,9 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   // ---------------------------------------------------------------- the place (taps and door in the courtyard, rows and imam in the hall)
   let washed = false;
   const imamCtx = (): ImamCtx => ({ imam: 'Imam Seck', visits: counter(ctx, `talks:${id}`), hour: ctx.hour(), helped: counter(ctx, 'mosquee_aide') });
+  const cong = new CongregationClock();
   const talkImam = () => {
+    if (cong.running) { ctx.toast('Imam Seck dirige la prière. Attends la fin pour lui parler.'); return; }
     const c = imamCtx();
     ctx.state.count(`talks:${id}`); relate(ctx, 'imam_seck', 1); ctx.state.adjust({ social: 4 });
     conversation(ctx, 'Imam Seck', imamGreeting(c), [
@@ -322,8 +328,10 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   }, {
     converse: () => talkImam(),
     enter: () => ctx.enter(doorId),
-    congregation: () => prayerAt(ctx.hour())?.name ?? null,
+    congregation: () => (cong.open ? cong.prayer!.name : null),
     prayReady: () => (washed ? null : 'Fais d’abord tes ablutions aux robinets de la cour'),
+    rowRank: s => hall.rank.get(s.id) ?? Infinity,
+    prayed: () => mine?.done ?? false,
     done: a => { if (a === 'ablutions') washed = true; },
     read: () => openQuranReader(ctx),
   });
@@ -343,27 +351,68 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   env.addPeople(() => streetCast.bodies());
   const rows = hall.rows;
   const pick = (row: number, col: number) => rows[row * 15 + col];
+  // the front row fills from the middle (behind the imam) outward without a gap, in every quality: f1 and f2, there all
+  // day, sit at its left end; the imam talks from his place beside the rows, and leads the prayer in front of the mihrab
   const inside: Role[] = [
-    { id: 'imam', look: IMAM, seat: hall.imamSeat, when: () => true, barefoot: true },
-    { id: 'f1', look: look(1), seat: pick(1, 4), when: m => m !== 'night', barefoot: true },
-    { id: 'f2', look: look(2), seat: pick(3, 11), when: m => m !== 'night' && !lite, barefoot: true },
+    { id: 'imam', look: IMAM, seat: hall.imamSeat, when: m => !prayer(m), barefoot: true, keep: true },
+    { id: 'imam_salat', look: IMAM, seat: hall.imamPrayer, when: prayer, barefoot: true, keep: true },
+    { id: 'f1', look: look(1), seat: pick(0, 5), when: m => m !== 'night', barefoot: true },
+    { id: 'f2', look: look(2), seat: pick(0, 3), when: m => m !== 'night' && !lite, barefoot: true },
     { id: 'chaise', look: { ...look(9), heavy: 0.5, beard: 0xd8d4cc }, seat: hall.chairs[1], when: m => m !== 'night', barefoot: true },
-    ...[7, 6, 8, 5, 9, 4, 10].map((col, i): Role => ({ id: `r${i}`, look: look(10 + i), seat: pick(0, col), when: m => prayer(m) && (!lite || i < 3), barefoot: true })),
+    ...[7, 6, 8, 11, 9, 4, 10].map((col, i): Role => ({ id: `r${i}`, look: look(10 + i), seat: pick(0, col), when: m => prayer(m) && (!lite || i < 3), barefoot: true })),
     ...[7, 6, 8].map((col, i): Role => ({ id: `s${i}`, look: look(20 + i), seat: pick(1, col), when: m => prayer(m) && !lite, barefoot: true })),
   ];
   const hallCast = new Cast(inside, ctx.seats, ctx.scene, id);            // not under the hub group: the hub disposes it on unload
+  // the congregation: the imam leads (no lag), each worshipper follows a fraction of a second behind, at their own pace
+  const worshippers = ['imam_salat', 'f1', 'f2', 'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 's0', 's1', 's2'].flatMap((who, i) => {
+    const h = hallCast.humanoid(who); if (!h) return [];
+    h.overlay = groundGuard;                                               // nothing under the carpet while blending postures
+    return [{ who, h, ...(i === 0 ? { delay: 0, fadeK: 1 } : followerLag(i)) }];
+  });
 
   // ---------------------------------------------------------------- the player's shoes and the moments of the day
-  let barefoot = false, moment = '';
+  let barefoot = false, moment = '', shod: object | null = null;
   const setBarefoot = (on: boolean) => {
     barefoot = on; myShoesMesh.visible = on;
     const body = ctx.player.body(); if (body) hideShoes(body, on);
+    shod = body;
   };
   const centre = at(0, 6);
+  // the player's own prayer on a row: alone (its own clock) or with the congregation (the imam's, a little behind him)
+  let mine: { solo: boolean; seat: string; t: number; done: boolean; step: SalatStep | null } | null = null;
+  const SOLO = salatOf(SOLO_RAKAAT), PLAYER_LAG = 0.25;
+  const prayingNow = () => {
+    if (!ctx.activities.running) return null;
+    const c = ctx.activities.current;
+    return c && (c.spec.id === 'priere' || c.spec.id === 'priere_groupe') ? c : null;
+  };
+  const prayerStep = (dt: number) => {
+    const run = prayingNow(), seat = ctx.player.seated(), body = ctx.player.body();
+    const onRow = !!seat && hall.rank.has(seat.id);
+    if (body && onRow && !body.overlay) body.overlay = groundGuard;
+    else if (body && !onRow && body.overlay === groundGuard) body.overlay = null;
+    // the HUD's quiet focus while the player prays (src/ui: only a small « Quitter »)
+    const focus = document.body.dataset;
+    if (run && focus.focus !== 'prayer') focus.focus = 'prayer';
+    else if (!run && focus.focus === 'prayer') delete focus.focus;
+    if (run && !run.walking && run.step.primitive === 'pray' && seat && onRow) {
+      if (!mine || mine.seat !== seat.id) mine = { solo: run.spec.id === 'priere', seat: seat.id, t: 0, done: false, step: null };
+      if (mine.solo) { mine.t += dt; mine.done = mine.t >= SOLO.total; mine.step = stepAt(SOLO, mine.t); }
+      else { mine.t = cong.t - PLAYER_LAG; mine.done = !cong.salat || mine.t >= cong.salat.total; mine.step = cong.salat ? stepAt(cong.salat, mine.t) : null; }
+      if (body) holdPose(body, mine.step ? mine.step.pose : AT_REST, mine.step ? mine.step.fade : 0.9);
+    } else if (mine) {
+      // over or left: back to sitting on the row, blended (a body already up and walking is left alone)
+      mine = null;
+      if (body && seat && onRow) holdPose(body, seatClip(seat), 0.9);
+    }
+  };
   const update = (dt: number) => {
     const h = ctx.hour(), night = nightOf(h);
-    const m = prayerAt(h) ? 'prayer' : h >= 22 || h < 5.5 ? 'night' : 'calm';
+    cong.update(dt, h);
+    const m = prayerAt(h) || cong.present ? 'prayer' : h >= 22 || h < 5.5 ? 'night' : 'calm';
     if (m !== moment) { moment = m; streetCast.setMoment(m); hallCast.setMoment(m); }
+    for (const w of worshippers) follow(w.h, cong.present ? cong.salat : null, cong.t - w.delay, w.fadeK);
+    prayerStep(dt);
     const space = ctx.space();
     streetCast.update(dt, ctx.camera.position, lite ? 45 : 70, space === 'street');
     hallCast.update(dt, ctx.camera.position, 40, space === doorId);
@@ -373,19 +422,26 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.5;
     hall.update(h);
     if (space === 'street' && washed && Math.hypot(ctx.player.pos.x - centre.x, ctx.player.pos.z - centre.z) > 40) washed = false;   // ablutions last the visit
-    if ((space === doorId) !== barefoot) setBarefoot(space === doorId);
+    if ((space === doorId) !== barefoot || (barefoot && ctx.player.body() !== shod)) setBarefoot(space === doorId);   // (a body rebuilt inside: barefoot too)
   };
 
   return {
     id, type: 'mosque', name: site.name, places: [place], update,
     spaceChanged: space => setBarefoot(space === doorId),
-    dispose() { if (barefoot) setBarefoot(false); streetCast.dispose(); hallCast.dispose(); hall.dispose(); k.dispose(); },
+    dispose() { if (barefoot) setBarefoot(false); if (document.body.dataset.focus === 'prayer') delete document.body.dataset.focus; streetCast.dispose(); hallCast.dispose(); hall.dispose(); k.dispose(); },
     debug: () => ({
       origin: { x: cx, z: cz }, id, type: 'mosque', name: site.name, door: doorId, moment, washed, barefoot, shoesOnRack: myShoesMesh.visible,
       congregation: prayerAt(ctx.hour())?.name ?? null,
       anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })),
       prayerSeats: rows.length, stools: stools.map(s => s.id), npcsStreet: streetCast.presentCount, npcsHall: hallCast.presentCount,
       gate: at(0, 25.5), courtyard: at(0, 14), yaw, quran: hall.quran,
+      salat: {
+        prayer: cong.prayer?.name ?? null, rakaat: cong.salat?.rakaat ?? 0, t: +cong.t.toFixed(2), total: cong.salat?.total ?? 0,
+        running: cong.running, open: cong.open, phase: cong.step?.phase ?? null, pose: cong.step?.pose ?? null, rakaa: cong.step?.rakaa ?? 0,
+        imam: hallCast.where('imam_salat'), worshippers: worshippers.filter(w => hallCast.shown(w.who)).map(w => ({ who: w.who, clip: w.h.clipName, seat: inside.find(r => r.id === w.who)?.seat?.id ?? null })),
+        player: mine ? { solo: mine.solo, t: +mine.t.toFixed(2), done: mine.done, phase: mine.step?.phase ?? null, pose: mine.step?.pose ?? null, seat: mine.seat } : null,
+        focus: document.body.dataset.focus ?? null,
+      },
     }),
   };
 }
@@ -500,8 +556,15 @@ function buildHall(env: VenueEnv, id: string, doorId: string, ox: number, oz: nu
   // prayer rows: kneeling places facing the mihrab (the carpet's niches), and the imam's place facing the rows
   const top = floorSeatTop(F);
   const rows: ReturnType<VenueKit['seat']>[] = [];
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 15; c++) rows.push(k.seat(`${id}:rang:${r}:${c}`, -6.3 + c * 0.9, -4.4 + r * 1.4, Math.PI, top, 'prayer', 'Kneel'));
-  const imamSeat = k.seat(`${id}:imam`, -2.2, -6.2, 0, top, 'prayer', 'Kneel');
+  // the places sit on the carpet's niches (0.9 × 1.4 m): standing at the back of one, the prostration inside it
+  // (src/actors/prayerPoses.ts); whoever sits on a row sits as in the prayer (PraySit)
+  const rank = new Map<string, number>();
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 15; c++) {
+    const s = k.seat(`${id}:rang:${r}:${c}`, -6.3 + c * 0.9, -4.4 + r * 1.4, Math.PI, top, 'prayer', 'PraySit');
+    rows.push(s); rank.set(s.id, r * 100 + Math.abs(c - 7) * 2 + (c < 7 ? 1 : 0));      // front row first, from behind the imam outward, the right side first
+  }
+  const imamSeat = k.seat(`${id}:imam`, -2.2, -6.2, 0, top, 'prayer', 'PraySit');         // where he sits and talks, facing the rows
+  const imamPrayer = k.seat(`${id}:imam:mihrab`, 0, -5.85, Math.PI, top, 'prayer', 'PraySit');   // where he leads the prayer, alone in front, facing the qibla
   // Quranic calligraphy (verified Tanzil text, verbatim): high on the walls only, never at foot level
   const quran: { id: PassageId; refs: string; lines: number; drawn: boolean }[] = [];
   const writing = (pid: PassageId, w: number, h: number, x: number, y: number, z: number, rotY: number, numbered = false) => {
@@ -546,7 +609,7 @@ function buildHall(env: VenueEnv, id: string, doorId: string, ox: number, oz: nu
   };
   const day = new THREE.Color(0xdcecf6), dusk = new THREE.Color(0x1d2a44);
   return {
-    int, rows, imamSeat, chairs, at, quran,
+    int, rows, rank, imamSeat, imamPrayer, chairs, at, quran,
     update(h: number) { skyMat.color.copy(dusk).lerp(day, 1 - nightOf(h)); },
     dispose() { k.dispose(); root.removeFromParent(); },
   };

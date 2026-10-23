@@ -103,6 +103,7 @@ import { Stride, type RunLevel } from './game/stride';
 import { StrideUi } from './ui/stride';
 import { noteWork } from './economy/streakModule';
 import { STREAK, runOf } from './economy/streak';
+import { prayerPresence } from './actors/prayerPoses';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -1676,7 +1677,8 @@ function frameStep(now: number, dt: number, draw = true) {
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing, eating at a table): a narrow list, anything else is Idle
   // (a Meshy body dances through its v4 stand-in, src/actors/playerBody.ts: what others see is the stand-in's pose)
   const shown = proxy && ngembBody ? ngembBody : playerBody;
-  const clip = mode !== 'scene' && shown?.clipName && PRESENCE_CLIPS.includes(shown.clipName as PresenceClip) ? shown.clipName as PresenceClip : 'Idle';
+  const seen = shown?.clipName ? prayerPresence(shown.clipName) ?? shown.clipName : null;     // a prayer posture: standing or kneeling
+  const clip = mode !== 'scene' && seen && PRESENCE_CLIPS.includes(seen as PresenceClip) ? seen as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
   // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
