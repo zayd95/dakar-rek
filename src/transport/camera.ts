@@ -48,18 +48,44 @@ export class PassengerCamera {
   private live = false;
   private baseFov = 0;
   private speedK = 0;
+  /** At the wheel (`seat`): where the head is turned (rad: + to the left, + up) on top of looking down the road. */
+  private head = { yaw: 0, pitch: 0 };
+  private readonly q = new THREE.Quaternion(); private readonly qh = new THREE.Quaternion(); private readonly eu = new THREE.Euler(0, 0, 0, 'YXZ'); private readonly fwd = new THREE.Vector3();
 
   /** Start from where the camera is now (smooth hand-over from the follow camera). */
   begin(camera: THREE.Camera, v: WorldPose) {
     this.rel.set(camera.position.x - v.x, camera.position.y - v.y, camera.position.z - v.z);
     camera.getWorldDirection(this.relLook); this.relLook.multiplyScalar(10).add(this.rel);
-    this.yaw = v.yaw; this.orbit = 0; this.lift = 0; this.idle = 0; this.live = true;
+    this.yaw = v.yaw; this.orbit = 0; this.lift = 0; this.idle = 0; this.live = true; this.head.yaw = 0; this.head.pitch = 0;
     const pc = camera as THREE.PerspectiveCamera; this.baseFov = pc.fov; this.speedK = 0;
   }
   /** Gives the camera's field of view back (the follow camera takes over). */
   end(camera?: THREE.PerspectiveCamera) { this.live = false; if (camera && this.baseFov) { camera.fov = this.baseFov; camera.updateProjectionMatrix(); } this.speedK = 0; }
   get active() { return this.live; }
-  next(count: number) { this.view = (this.view + 1) % count; this.orbit = 0; this.lift = 0; }
+  next(count: number) { this.view = (this.view + 1) % count; this.orbit = 0; this.lift = 0; this.head.yaw = 0; this.head.pitch = 0; }
+
+  /**
+   * At the wheel: the eye is fixed in the car's own frame (`frame`: the body that sways, so its pitch, roll and bounce carry the view and the
+   * dashboard holds still on the screen), looking down the road `pitch0` (rad, negative: down). A drag turns the head, up to about 110° either way
+   * and a little up and down, and it comes back to the road a few seconds after. The follow state is kept up to date so leaving this view is smooth.
+   */
+  seat(dt: number, camera: THREE.PerspectiveCamera, frame: THREE.Object3D, eye: THREE.Vector3, pitch0: number, drag: { yaw: number; pitch: number }, v: WorldPose) {
+    const h = this.head;
+    if (drag.yaw || drag.pitch) { h.yaw = Math.max(-1.9, Math.min(1.9, h.yaw + drag.yaw)); h.pitch = Math.max(-0.5, Math.min(0.6, h.pitch - drag.pitch)); this.idle = 0; }
+    else { this.idle += dt; if (this.idle > 3) { const k = Math.min(1, dt * 1.2); h.yaw -= h.yaw * k; h.pitch -= h.pitch * k; } }
+    frame.updateWorldMatrix(true, false);
+    camera.position.copy(eye).applyMatrix4(frame.matrixWorld);
+    this.q.setFromRotationMatrix(frame.matrixWorld);
+    this.eu.set(pitch0 + h.pitch, Math.PI + h.yaw, 0);                     // the camera looks down its −z: turned round to look down the car's +z
+    camera.quaternion.copy(this.q).multiply(this.qh.setFromEuler(this.eu));
+    this.yaw = v.yaw; this.orbit = 0; this.lift = 0;
+    this.rel.set(camera.position.x - v.x, camera.position.y - v.y, camera.position.z - v.z);
+    this.fwd.set(0, 0, -1).applyQuaternion(camera.quaternion); this.relLook.copy(this.rel).addScaledVector(this.fwd, 10);
+  }
+  /** Where the head is turned at the wheel (checks). */
+  get look() { return { yaw: this.head.yaw, pitch: this.head.pitch }; }
+  /** Checks: turn the head at the wheel and hold it there `s` seconds before it comes back to the road. */
+  holdLook(yaw: number, pitch: number, s = 30) { this.head.yaw = yaw; this.head.pitch = pitch; this.idle = 3 - s; }
 
   update(dt: number, camera: THREE.PerspectiveCamera, v: WorldPose, bounce: number, anchor: CameraAnchor, drag: { yaw: number; pitch: number }, colliders: readonly Collider[], speedShare = 0) {
     if (drag.yaw || drag.pitch) { this.orbit += drag.yaw; this.lift = Math.max(-1.5, Math.min(6, this.lift + drag.pitch * 6)); this.idle = 0; }
