@@ -18,7 +18,11 @@ export async function realTouch(page) {
     /** Every finger leaves. */
     async upAll() { for (const id of [...fingers.keys()]) await this.up(id); },
     /** The centre of an element, in page pixels. */
-    async centre(selector) { return page.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, selector); },
+    async centre(selector) {
+      const c = await page.evaluate(sel => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, selector);
+      if (!c) throw new Error(`realTouch: nothing matches « ${selector} » on the page`);
+      return c;
+    },
     /** Tap an element with one finger. */
     async tap(selector, id = 9) { const c = await this.centre(selector); await this.down(id, c.x, c.y); await new Promise(r => setTimeout(r, 60)); await this.up(id); },
   };
