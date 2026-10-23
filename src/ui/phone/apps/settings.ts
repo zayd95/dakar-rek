@@ -62,7 +62,7 @@ export const settingsScreen: Screen = {
   title: 'Réglages',
   mount(page, api) {
     page.innerHTML = html(api);
-    bindSaveCard(page, () => api.rerender());
+    bindSaveCard(page, () => api.rerender(), (m, kind) => api.notify(m, kind));
     page.addEventListener('click', e => {
       const t = (e.target as HTMLElement).closest<HTMLElement>('button'); if (!t) return;
       const d = t.dataset;

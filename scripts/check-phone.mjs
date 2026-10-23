@@ -23,7 +23,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(String(e)));
-  const press = sel => (touch ? page.locator(sel).tap() : page.locator(sel).click());
+  // the phone drops a tap that lands within 320 ms of a screen change (a double tap's second half, src/ui/phone.ts SETTLE_MS): a finger is never that quick
+  const press = async sel => { await page.waitForTimeout(400); return touch ? page.locator(sel).tap() : page.locator(sel).click(); };
   const info = () => page.evaluate(() => window.__dakar.phoneInfo());
   const pos = () => page.evaluate(() => window.__dakar.pos());
   const waitPhone = open => page.waitForFunction(o => window.__dakar.phoneInfo().open === o, open, { timeout: 10000 });
@@ -106,7 +107,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#phone [data-act="cancel"]');
   check(`${label}: new game asks for confirmation`, confirmText.includes('définitive') && (await info()).screen === 'reglages');
   // Save now.
-  await press('#phone [data-act="save"]');
+  await press('#phone [data-sv="now"]');                        // the save card's « Sauvegarder maintenant » (src/ui/saveCard.ts)
   await page.waitForTimeout(200);
   check(`${label}: save now (said in the phone)`, (await page.locator('#phone .ph-toast').innerText()).includes('sauvegardée'));
 
@@ -200,7 +201,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     // Nouvelle partie really wipes the device save (desktop only).
     await page.evaluate(() => { window.__dakar.state.data.wallet = 4321; });
     await page.evaluate(() => window.__dakar.phone('reglages'));
-    await press('#phone [data-act="save"]');
+    await press('#phone [data-sv="now"]');                        // the save card's « Sauvegarder maintenant » (src/ui/saveCard.ts)
     await press('#phone [data-act="new"]');
     await Promise.all([page.waitForEvent('load'), press('#phone [data-act="wipe"]')]);
     await page.waitForFunction(() => window.__dakar?.pos().hub, null, { timeout: 60000 });

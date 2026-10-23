@@ -64,19 +64,21 @@ export function saveCardHtml(): string {
   </div>`;
 }
 
-export function bindSaveCard(root: HTMLElement, rerender: () => void) {
+/** `notify`: the phone's own toast (what the player sees while the phone covers the HUD); the hook's toast (the HUD's) when there is none. */
+export function bindSaveCard(root: HTMLElement, rerender: () => void, notify?: (m: string, kind?: 'ok' | 'warn') => void) {
   const h = phoneHooks.saveCard; if (!h) return;
+  const say = (m: string, kind?: 'ok' | 'warn') => (notify ? notify(m, kind) : h.toast(m));
   const on = (k: string, fn: () => void) => root.querySelector(`[data-sv="${k}"]`)?.addEventListener('click', fn);
   const check = (text: string) => {
     const r = readCode(text);
     if ('error' in r) { lastError = r.error; pending = null; } else { lastError = ''; pending = r; }
     rerender();
   };
-  on('now', () => { h.toast(h.save() ? 'Partie sauvegardée sur cet appareil' : 'Sauvegarde impossible sur ce navigateur : copie ta sauvegarde'); rerender(); });
+  on('now', () => { const ok = h.save(); say(ok ? 'Partie sauvegardée sur cet appareil' : 'Sauvegarde impossible sur ce navigateur : copie ta sauvegarde', ok ? 'ok' : 'warn'); rerender(); });
   on('copy', () => {
     const code = copied = h.code();
     panel = 'copy'; pending = null; lastError = '';
-    const done = (ok: boolean) => { h.toast(ok ? 'Code copié · garde-le dans tes notes' : 'Copie refusée ici : sélectionne le code affiché'); rerender(); };
+    const done = (ok: boolean) => { say(ok ? 'Code copié · garde-le dans tes notes' : 'Copie refusée ici : sélectionne le code affiché', ok ? 'ok' : undefined); rerender(); };
     try { navigator.clipboard.writeText(code).then(() => done(true), () => done(false)); } catch { done(false); }   // must start inside the tap
   });
   on('file', () => {
@@ -98,7 +100,7 @@ export function bindSaveCard(root: HTMLElement, rerender: () => void) {
     const p = pending; pending = null; panel = 'none';
     if (!h.replace(p.data, p.profile)) { lastError = 'Ce navigateur refuse d’enregistrer : rien n’a été remplacé.'; panel = 'import'; rerender(); }
   });
-  on('undo', () => { if (!h.undo()) h.toast('Impossible de revenir en arrière ici'); });
+  on('undo', () => { if (!h.undo()) say('Impossible de revenir en arrière ici', 'warn'); });
   // the code box selects itself on a tap (copying by hand where the clipboard is refused)
   root.querySelector<HTMLTextAreaElement>('.ph-code[readonly]')?.addEventListener('focus', e => (e.target as HTMLTextAreaElement).select());
 }

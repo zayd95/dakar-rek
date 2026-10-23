@@ -95,10 +95,12 @@ await edit(A, 30000); await save(A);
 check('a v6 tab saves into the v6 key', parse((await peek()).v6)?.wallet === 30000);
 const D = await open('p');   // an older client opens in another tab while the v6 tabs are still alive
 check('an older-client tab opens its own v3 save beside the v6 tabs', (await live(D)).v === 3 && (await live(D)).wallet === 777);
-const v6BeforeD = (await peek()).v6;
+// the v6 tabs keep autosaving (the clock, the needs): what the older client must leave alone is the progress, not the bytes of a save two live tabs still write
+const progress = raw => { const o = parse(raw) ?? {}; return JSON.stringify({ wallet: o.wallet, flags: o.flags, counters: o.counters, guestId: o.guestId, assets: o.assets, rel: o.rel }); };
+const v6BeforeD = progress((await peek()).v6);
 await edit(D, 888); await save(D); await D.waitForTimeout(500);
 const s5 = await peek();
-check('the older-client tab left the v6 save alone', s5.v6 === v6BeforeD && parse(s5.legacy).wallet === 888, `v6 wallet ${parse(s5.v6)?.wallet}`);
+check('the older-client tab left the v6 save alone', progress(s5.v6) === v6BeforeD && parse(s5.legacy).wallet === 888, `v6 wallet ${parse(s5.v6)?.wallet}`);
 const legacy5 = s5.legacy;
 await edit(B, 41000); await save(B); await save(A);   // both v6 tabs save again (the last one wins)
 const s5b = await peek();
@@ -113,7 +115,11 @@ await Cc.close();
 
 // 6 — New Game on v6: the v6 save goes, the older save is not brought back, and stays for an older client
 p = await open('c'); const legacyBeforeNew = (await peek()).legacy;
-await p.keyboard.press('Escape'); await p.locator('[data-app="reglages"]').first().click(); await p.locator('[data-act="new"]').click(); await p.locator('[data-act="wipe"]').click();
+// the phone's home, « Toutes les apps » › Réglages › Nouvelle partie (each tap after the phone's 320 ms settle on a new screen)
+await p.keyboard.press('Escape'); await p.waitForTimeout(700);
+if (!(await p.locator('#phone [data-app="reglages"]').count())) { await p.locator('#phone [data-go="apps"]').click(); await p.waitForTimeout(700); }
+await p.locator('#phone [data-app="reglages"]').first().click(); await p.waitForTimeout(700);
+await p.locator('[data-act="new"]').click(); await p.waitForTimeout(700); await p.locator('[data-act="wipe"]').click();
 await p.waitForFunction(() => window.__dakar?.pos?.().hub, null, { timeout: 120000 }); await p.waitForTimeout(1500);
 st = await live(p);
 check('New Game: a fresh game (3000 F), not the older save', st.wallet === 3000 && st.v === 6 && !st.flags.includes('v5_progress') && st.guestId !== parse(L0).guestId, JSON.stringify(st).slice(0, 140));
