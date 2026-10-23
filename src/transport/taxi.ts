@@ -16,6 +16,8 @@ import { clearKerb } from './passengers';
 import { footprint } from './ownedModule';
 import { entrySide, exitSide, kerbSpot, routeIn, routeOut, taxiFare, type Spot } from './taxiRules';
 import type { SeatSpec, VehicleSpec } from './spec';
+import { CABINS, SITTERS, playerSeatTop, scaleAt } from './cabinFit';
+import { SIT_HIPS } from '../interact/seats';
 
 /**
  * Taxis between neighbourhoods — a trip to another hub shown as a ride, not a menu and a fade. Each hub has a taxi rank
@@ -39,18 +41,18 @@ const COUNTER_TO = 'taxi:to', COUNTER_FARE = 'taxi:fare';
 
 let cached: VehicleSpec | null = null;
 const SEED = 4;
-/** The kit taxi (yellow, black roof, driver at the wheel); the passenger sits in front, lower than the kit's bust. */
+/** The kit taxi (yellow, black roof, driver at the wheel); the passenger sits in front, in a car seat that fits its roof (src/transport/cabinFit.ts). */
 export function taxiSpec(): VehicleSpec {
   if (cached) return cached;
   const k = vehicleSpec('taxi', { seed: SEED, driver: true, passengers: false });
-  const toSeat = (s: VehicleSeat, drop = 0): SeatSpec => ({ id: s.id, x: s.x, y: s.top - drop, z: s.z, yaw: s.yaw, npcOnly: s.id !== 'front' });
+  const toSeat = (s: VehicleSeat, mine = false): SeatSpec => ({ id: s.id, x: s.x, y: mine ? playerSeatTop(CABINS.taxi.front, s.top) : s.top, z: s.z, yaw: s.yaw, npcOnly: s.id !== 'front', ...(mine ? { clip: 'SitCar' as const } : {}) });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const front = k.seats.find(s => s.id === 'front') ?? k.seats[1];
   const chase = k.cameras.chase, eye = front.top + 0.76;
   const v3 = (p: readonly number[]): [number, number, number] => [p[0], p[1], p[2]];
   const spec: VehicleSpec = {
     id: 'taxi', name: 'Taxi', kind: 'taxi', length: k.length, width: k.width,
-    seats: k.seats.filter(s => s.kind !== 'driver').map(s => toSeat(s, s.id === 'front' ? 0.12 : 0)),
+    seats: k.seats.filter(s => s.kind !== 'driver').map(s => toSeat(s, s.id === 'front')),
     driver: toSeat(driver),
     doors: k.doors.map(d => ({ id: d.id, x: d.board[0], z: d.board[2], outX: d.board[0] + Math.sign(d.board[0]) * 0.4, outZ: d.board[2] })),
     cameras: [
@@ -295,6 +297,11 @@ export class TaxiModule implements GameModule {
     this.cam.begin(this.ctx.camera, v.pose);
   }
 
+  /** The player's body in the front seat: drawn at the size that fits under the taxi's roof (src/transport/cabinFit.ts), its own size again out of it. */
+  private fit(on: boolean, r: Ride) {
+    const b = this.ctx.player.body(), s = r.v.spec.seats.find(x => x.id === 'front'); if (!b) return;
+    b.seatScale = on && s ? scaleAt(CABINS.taxi.front, s.y - SIT_HIPS, SITTERS[b.body]).scale : 1;
+  }
   private seatPlayer(r: Ride) {
     const ctx = this.ctx;
     this.place(r, 0);
@@ -302,6 +309,7 @@ export class TaxiModule implements GameModule {
     const seat = this.seatOf(r);
     ctx.seats.add(seat);
     ctx.player.sit(seat);
+    this.fit(true, r);
     if (r.phase === 'depart') { this.cam.begin(ctx.camera, r.v.pose); this.camMs = 0; }
     this.refreshCard();
   }
@@ -331,6 +339,7 @@ export class TaxiModule implements GameModule {
   private getOut(r: Ride) {
     const ctx = this.ctx;
     if (ctx.player.seated()?.id === this.seatOf(r).id) ctx.player.standUp(true);
+    this.fit(false, r);
     const p = this.pavement({ x: r.v.pose.x, z: r.v.pose.z, yaw: r.v.pose.yaw }, 0.3);
     ctx.player.place(p.x, p.z, p.yaw);
     this.cam.end();
@@ -356,6 +365,7 @@ export class TaxiModule implements GameModule {
     const r = this.ride; if (!r) return;
     const ctx = this.ctx;
     if (ctx.player.seated()?.id === this.seatOf(r).id) ctx.player.standUp(true);
+    this.fit(false, r);
     this.cam.end(); this.card?.show(null);
     if (!normal && this.rank && r.v.group.parent && this.hub) { const p = this.pavement(this.rank.spot, 0); if (!ctx.inside()) ctx.player.place(p.x, p.z, p.yaw); }
     if (r.v !== this.rank?.taxi) r.v.dispose();

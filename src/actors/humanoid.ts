@@ -21,7 +21,14 @@ import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './praye
  */
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
-export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle';
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
+/**
+ * In a car (src/transport/cabinFit.ts): 'SitCar' a passenger, the back against a reclined seat and the legs out in front, hands on the thighs (far lower
+ * than the chair Sit, whose upright back and hanging shins put the head through a hatch's roof and the shoes under its sills); 'Drive' the same body
+ * with the hands up at the wheel; 'Ingress' half-way in or out of a door, crouched, the head ducked under the roof line; 'Reach' standing at a car door,
+ * a hand out to its handle.
+ */
+export type CarClip = 'SitCar' | 'Drive' | 'Ingress' | 'Reach';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -99,7 +106,7 @@ function finishTemplate(gltf: GLTF, sitLift = 0, body?: { scale: number }): Temp
   clips.push(...buildPoseClips(gltf.scene, gltf.animations, body, PRAYER_POSES));
   deriveSalam(clips);
   // ----
-  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel' || PRAY_SEATED.includes(c.name as PrayerClip)) for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
+  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel' || c.name === 'SitCar' || c.name === 'Drive' || PRAY_SEATED.includes(c.name as PrayerClip)) for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
   if (body) rollPalmsInClips(gltf.scene, clips, ['Sit', 'Kneel']);
   stripStaticTracks(gltf.scene, clips);
   return { scene: gltf.scene, clips };
@@ -255,6 +262,53 @@ export const POSES: Record<PoseClip, PoseDef> = {
     },
     palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
     reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
+  },
+  // in a car seat (chair convention: the origin SIT_HIPS under the cushion): the back reclined about 25°, the thighs nearly level, the shins down and
+  // forward under the seat ahead, so the shoes are a hand lower than the hips, not a shin; the head upright, looking ahead; hands on the thighs
+  SitCar: {
+    hipsY: 0.5, hips: [-0.32, 0, 0],
+    aim: {
+      spine: [0, 1, -0.5], chest: [0, 1, -0.46], neck: [0, 1, -0.1], head: [0, 1, 0.2],
+      thighL: [0.12, 0.2, 1], shinL: [0.02, -0.66, 0.75], footL: [0.04, -0.12, 1],
+      thighR: [-0.12, 0.2, 1], shinR: [-0.02, -0.66, 0.75], footR: [-0.04, -0.12, 1],
+      upper_armL: [0.2, -0.93, 0.12], forearmL: [0.06, -0.3, 1], handL: [0.02, -0.45, 1],
+      upper_armR: [-0.2, -0.93, 0.12], forearmR: [-0.06, -0.3, 1], handR: [-0.02, -0.45, 1],
+    },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // on the thighs
+  },
+  // at the wheel: SitCar's body, the hands up and forward on the rim (about 0.45 m ahead of the chest, at shoulder height less a hand)
+  Drive: {
+    hipsY: 0.5, hips: [-0.32, 0, 0],
+    aim: {
+      spine: [0, 1, -0.5], chest: [0, 1, -0.44], neck: [0, 1, -0.08], head: [0, 1, 0.2],
+      thighL: [0.13, 0.2, 1], shinL: [0.02, -0.66, 0.75], footL: [0.04, -0.12, 1],
+      thighR: [-0.13, 0.2, 1], shinR: [-0.02, -0.66, 0.75], footR: [-0.04, -0.12, 1],
+      upper_armL: [0.16, -0.5, 0.85], forearmL: [-0.22, 0.12, 1], handL: [-0.25, 0.25, 1],
+      upper_armR: [-0.16, -0.5, 0.85], forearmR: [0.22, 0.12, 1], handR: [0.25, 0.25, 1],
+    },
+    palm: { handL: [-1, 0, 0.2], handR: [1, 0, 0.2] },   // round the rim
+  },
+  // half in, half out of a car door: crouched, the trunk bent forward and the head ducked under the roof line, a hand out to the door frame
+  Ingress: {
+    hipsY: 0.66, hips: [0.35, 0, 0],
+    aim: {
+      spine: [0, 1, 0.55], chest: [0, 1, 0.62], neck: [0, 1, 0.55], head: [0, 0.75, 0.66],
+      thighL: [0.14, -0.45, 0.88], shinL: [0.02, -0.97, -0.22], footL: [0.03, -0.2, 1],
+      thighR: [-0.14, -0.45, 0.88], shinR: [-0.02, -0.97, -0.22], footR: [-0.03, -0.2, 1],
+      upper_armL: [0.35, -0.55, 0.75], forearmL: [0.3, -0.2, 0.93], handL: [0.25, -0.2, 0.95],
+      upper_armR: [-0.25, -0.85, 0.45], forearmR: [-0.1, -0.6, 0.8], handR: [-0.05, -0.6, 0.8],
+    },
+  },
+  // standing at a car door, leaning to it a little, the right hand out to the handle at hip height, the left at the side
+  Reach: {
+    hipsY: 0.94, hips: [0.06, 0, 0],
+    aim: {
+      spine: [0, 1, 0.12], chest: [0, 1, 0.16], neck: [0, 1, 0.12], head: [0, 0.9, 0.3],
+      thighL: [0.06, -1, 0.02], shinL: [0.02, -1, -0.02], footL: [0.05, -0.1, 1],
+      thighR: [-0.08, -1, 0.06], shinR: [-0.02, -1, -0.04], footR: [-0.05, -0.1, 1],
+      upper_armL: [0.2, -0.97, 0.05], forearmL: [0.08, -0.97, 0.15], handL: [0.04, -1, 0.1],
+      upper_armR: [-0.16, -0.62, 0.77], forearmR: [-0.05, -0.32, 0.95], handR: [0, -0.35, 0.94],
+    },
   },
   // astride, pushing the bike backwards with the feet (the Jakarta's foot-paddle reverse): upright, hands on the grips, both legs down to the ground either side
   RidePaddle: {
@@ -639,6 +693,14 @@ export class Humanoid {
     if (this.body !== 'v4') this.group.scale.setScalar(this.fit.scale);
   }
 
+  private seatK = 1;
+  /**
+   * A sitter drawn a little smaller to fit a low car (src/transport/cabinFit.ts): the body's own scale (its look's, its body's) times this, about its
+   * origin. 1 everywhere else; whoever sets it sets it back.
+   */
+  get seatScale() { return this.seatK; }
+  set seatScale(k: number) { if (k === this.seatK || !(k > 0)) return; this.group.scale.multiplyScalar(k / this.seatK); this.seatK = k; }
+
   /** A rig bone (`hand.R`, `forearm.R`, `upper_arm.R`, `head`, `chest`…) for props and gestures. */
   bone(name: string): THREE.Object3D | null { return this.root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name)) ?? null; }   // the loader drops the dots
 
@@ -662,7 +724,7 @@ export class Humanoid {
     if (l.hat === 'headwrap') set('Cloth_Headwrap', clothMat(l.hatColor ?? l.top, l.pattern === 'wax' ? 'wax' : 'uni', l.accent ?? 0xf6e7c1));
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
-    if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
+    if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1).multiplyScalar(this.seatK);
   }
 
   /** Body shape via morph targets shared by the body and every fitted garment. */

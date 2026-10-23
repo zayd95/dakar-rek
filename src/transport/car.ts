@@ -1,6 +1,7 @@
 import { buildVehicle, vehicleSpec, type CarModelId, type VehicleKind, type VehicleSeat } from '../actors/vehicleKit';
 import { glbVehicle, tintBody } from '../actors/glbVehicle';
 import type { DriveSpec, SeatSpec, VehicleSpec } from './spec';
+import { CABINS, playerSeatTop, rowOf } from './cabinFit';
 
 /**
  * The player's first car: the modern compact sedan « Berline moderne » (`compacte`, Stage A of docs/assets/VEHICLE_LINEUP.md), as a transport
@@ -28,9 +29,6 @@ export function kitSeedFor(kind: VehicleKind, color: number): number {
 }
 /** First kit seed giving a saloon of that body colour. */
 export const sedanSeed = (color = COMPACTE_GREY): number => kitSeedFor('sedan', color);
-
-/** How much lower than the kit's seat top the player sits at the wheel (m). */
-export const DRIVER_DROP = 0.12;
 
 /**
  * The prepared GLB body of the modern sedan (public/assets/vehicles/compacte.glb) when the test link asks for it and the file loaded;
@@ -62,7 +60,9 @@ export interface KitCarOpts {
 /** A kit car as a transport VehicleSpec with a driver seat (left-hand drive), no lean and car handling. Built empty: the player drives it. */
 export function kitCarSpec(o: KitCarOpts): VehicleSpec {
   const seed = o.seed, k = vehicleSpec(o.kind, { seed, driver: false, passengers: false, ...(o.model ? { model: o.model } : {}) });
-  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver' });
+  // the seats' height for a body sitting in them (src/transport/cabinFit.ts: the car's own roof and floor at that row), held in the car poses
+  const fit = CABINS[o.id], top = (s: VehicleSeat) => (fit ? playerSeatTop(rowOf(fit, s.id), s.top) : s.top);
+  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: top(s), z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver', clip: s.kind === 'driver' ? 'Drive' : 'SitCar' });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const door = k.doors.find(d => d.seats.includes(driver.id)) ?? k.doors[0];
   const chase = k.cameras.chase, wheel = k.cameras.driver;
@@ -71,8 +71,7 @@ export function kitCarSpec(o: KitCarOpts): VehicleSpec {
     id: o.id, name: o.name, kind: 'car',
     length: k.length, width: k.width,
     seats: k.seats.filter(s => s.kind !== 'driver').map(toSeat),
-    // the player's humanoid sits taller than the kit's seated busts: 12 cm lower, the head stays under the roof
-    driver: { ...toSeat(driver), y: driver.top - DRIVER_DROP },
+    driver: toSeat(driver),
     doors: [{ id: door.id, x: door.board[0], z: door.board[2], outX: door.board[0] + 0.3, outZ: door.board[2] }],
     cameras: [
       // behind the car, lower and closer than the kit's anchor, looking well down the road: the car sits in the lower third and the street ahead stays readable

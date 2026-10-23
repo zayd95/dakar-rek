@@ -1,4 +1,5 @@
 import { mapBridge } from './minimap';
+import { JOB, drawJobBadge, jobOf } from './jobMarks';
 import { pinHtml, remoteCardHtml, tabsHtml, type Focus } from './carteState';
 import { drawArrow, drawIcon, PALETTE } from './minimapDraw';
 import { KIND_COLOR, KIND_LABEL, KIND_ORDER, distText, nightness, routePath, walkTime, whereLabel, type MapPlace, type PlaceKind, type Pt } from './minimapMath';
@@ -77,7 +78,8 @@ export function mountFullMap(host: HTMLElement): () => void {
       g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([0.5, w * 2.2]); g.lineWidth = w + 3; g.strokeStyle = 'rgba(10,14,18,.7)'; g.stroke();
       g.lineWidth = w; g.strokeStyle = col; g.stroke(); g.setLineDash([]);
     };
-    if (mapBridge.route && mapBridge.guide) dotted(mapBridge.route.points, '#ffd23f', 3.4);
+    const job = jobOf(mapBridge.guide);
+    if (mapBridge.route && mapBridge.guide) dotted(mapBridge.route.points, job ? JOB[job].color : '#ffd23f', 3.4);
     if (selRoute && selected) dotted(selRoute.points, '#f4f6f8', 3);
     // places
     const z = Math.min(1.5, Math.max(0.8, view.scale / (fit * 2.2)));
@@ -95,7 +97,8 @@ export function mountFullMap(host: HTMLElement): () => void {
     // friends, the objective, the player
     for (const f of mapBridge.friends) { const m = S(f.x, f.z); g.beginPath(); g.arc(m.x, m.y, 4.5, 0, TAU); g.fillStyle = '#7CFFB2'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#0c1115'; g.stroke(); }
     const gd = mapBridge.guide;
-    if (gd && !dest) { const m = S(gd.x, gd.z); g.beginPath(); g.arc(m.x, m.y, 7 + 2 * Math.sin(t * 5), 0, TAU); g.fillStyle = '#ffd23f'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#0c1115'; g.stroke(); }
+    if (gd && !dest && job) { const m = S(gd.x, gd.z); drawJobBadge(g, job, m.x, m.y, 11, 0.5 + 0.5 * Math.sin(t * 5)); }
+    else if (gd && !dest) { const m = S(gd.x, gd.z); g.beginPath(); g.arc(m.x, m.y, 7 + 2 * Math.sin(t * 5), 0, TAU); g.fillStyle = '#ffd23f'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#0c1115'; g.stroke(); }
     const pl = mapBridge.player, pm = S(pl.x, pl.z);
     g.beginPath(); g.arc(pm.x, pm.y, 13, 0, TAU); g.fillStyle = 'rgba(255,255,255,.22)'; g.fill();
     drawArrow(g, pm.x, pm.y, Math.PI - pl.facing, 10);

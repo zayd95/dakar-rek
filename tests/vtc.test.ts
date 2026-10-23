@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { HUB_IDS, type HubId } from '../src/core/types';
-import { GRID, roadCentre } from '../src/transport/lines';
+import { GRID, LINES, roadCentre, stopOnLeg } from '../src/transport/lines';
+import { busyEdges } from '../src/city/roadEvents';
+import { taxiRank } from '../src/transport/taxi';
+import { gatePlaza, inPlaza } from '../src/arena/exteriorRules';
 import { STOP_RADIUS, VTC_POINTS, atStop, stopOf, tripOf, vtcFare, vtcRequests } from '../src/transport/vtcRules';
 
 const roads = Array.from({ length: GRID.nb + 1 }, (_, k) => roadCentre(k));
@@ -71,5 +74,48 @@ describe('VTC: the requests and the fare', () => {
     const r = vtcRequests('pikine', 1, 12)[0], t = tripOf(r, 'V7', 1234);
     expect(t).toMatchObject({ id: 'V7', from: r.from, to: r.to, fare: r.fare, stage: 'pickup', acceptedMs: 1234 });
     expect(t.pickup.name).toBe(r.pickup.name); expect(t.dropoff.name).toBe(r.dropoff.name);
+  });
+});
+
+describe('VTC: the spots are safe places to stop (src/transport/vtcRules.ts VTC_POINTS)', () => {
+  // the district's spawn as the builder puts it (src/world/builder.ts: beside the station's car rapide; Pikine's taxi rank is fixed)
+  const SPAWN: Record<HubId, { x: number; z: number; yaw: number }> = { pikine: { x: -60, z: -60, yaw: 0 }, plateau: { x: 27, z: 37, yaw: 0 }, corniche: { x: 27, z: 37, yaw: 0 }, almadies: { x: -33, z: 37, yaw: 0 } };
+  const R = roads, near = (v: number) => R.reduce((b, c) => (Math.abs(c - v) < Math.abs(b - v) ? c : b));
+  /** The grid edge (node to node) of a kerb spot, as src/city/roadEvents.ts keys them, and how far the spot is from the junctions at its ends. */
+  const edgeOf = (s: { x: number; z: number; yaw: number }) => {
+    const alongZ = Math.abs(Math.sin(s.yaw)) < 0.5, at = alongZ ? s.z : s.x, lo = R.filter(r => r <= at).pop() ?? -999, hi = R.find(r => r > at) ?? 999;
+    const a = alongZ ? `${near(s.x)},${lo}` : `${lo},${near(s.z)}`, b = alongZ ? `${near(s.x)},${hi}` : `${hi},${near(s.z)}`;
+    return { key: a < b ? `${a}|${b}` : `${b}|${a}`, junction: Math.min(at - lo, hi - at) };
+  };
+  /** Spots of the first VTC release kept where the players know them; they stand on quiet streets a road event may shut for a few hours. */
+  const QUIET = new Set(['pikine:boutique', 'pikine:place', 'pikine:maiga', 'pikine:gargote', 'plateau:medina', 'plateau:cafe', 'corniche:cafe', 'corniche:sport', 'almadies:ngor', 'almadies:cafe']);
+  it('every district offers rides from at least nine places', () => {
+    for (const h of HUB_IDS) expect(VTC_POINTS[h].length, h).toBeGreaterThanOrEqual(9);
+    for (const h of HUB_IDS) expect(new Set(VTC_POINTS[h].map(p => p.id)).size).toBe(VTC_POINTS[h].length);
+  });
+  it('the car stops mid-block (never in a junction\'s mouth), off the car rapides\' stops and the taxi ranks, outside the arena\'s pedestrian zone', () => {
+    const plaza = gatePlaza({ cx: (roadCentre(2) + roadCentre(3)) / 2, cz: (roadCentre(1) + roadCentre(2)) / 2 });
+    for (const h of HUB_IDS) {
+      const bays = LINES.filter(l => l.hub === h).flatMap(l => l.stops.map(st => { const p = stopOnLeg(l, st); return { x: p.x - p.dz * 4.3, z: p.z + p.dx * 4.3 }; }));
+      const rank = taxiRank({ id: h, spawn: SPAWN[h] }).spot;
+      for (const p of VTC_POINTS[h]) {
+        const s = stopOf(p).car, e = edgeOf(s);
+        expect(e.junction, `${h} ${p.id}: ${e.junction} m from a junction`).toBeGreaterThanOrEqual(16);
+        for (const b of [...bays, rank]) expect(Math.hypot(b.x - s.x, b.z - s.z), `${h} ${p.id} at a stop`).toBeGreaterThan(13.9);
+        expect(inPlaza(plaza, s.x, s.z, 6) && h === 'pikine', `${h} ${p.id} in the arena's zone`).toBe(false);
+      }
+    }
+  });
+  it('the new spots stand on streets nobody\'s trip can lose (the car rapides\', the taxis\': a road event never shuts them)', () => {
+    for (const h of HUB_IDS) {
+      const busy = busyEdges({ id: h, spawn: SPAWN[h] });
+      const off = VTC_POINTS[h].filter(p => !QUIET.has(`${h}:${p.id}`) && !busy.has(edgeOf(stopOf(p).car).key)).map(p => `${p.id} on ${edgeOf(stopOf(p).car).key}`);
+      expect(off, h).toEqual([]);
+    }
+  });
+  it('the new spots take part in the rides offered, at the same fares (bands and caps above), each paid once', () => {
+    const seen = new Set<string>();
+    for (const h of HUB_IDS) for (let d = 0; d < 6; d++) for (let hr = 6; hr < 23; hr++) for (const r of vtcRequests(h, d, hr)) { seen.add(`${r.from}:${r.pickup.id}`); seen.add(`${r.to}:${r.dropoff.id}`); expect(r.fare).toBeLessThanOrEqual(5000); }
+    for (const h of HUB_IDS) for (const p of VTC_POINTS[h]) expect(seen.has(`${h}:${p.id}`), `${h} ${p.id} never asked for`).toBe(true);
   });
 });

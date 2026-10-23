@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { CABINS, SITTERS, scaleAt } from '../src/transport/cabinFit';
+import { SIT_HIPS } from '../src/interact/seats';
 import { driveStep, hits, newDriveState, type Blocked } from '../src/transport/drive';
 import { carSpec, sedanSeed, CAR_ASSET, COMPACTE_GREY } from '../src/transport/car';
 import { motoSpec, jakartaSeed } from '../src/transport/moto';
@@ -26,8 +28,9 @@ describe('the modern sedan', () => {
     expect(k.colors.body).toBe(COMPACTE_GREY);
     expect(spec.kind).toBe('car'); expect(spec.cabin).toBe('closed');
     expect(spec.driver.id).toBe('driver'); expect(spec.driver.x).toBeGreaterThan(0);        // +x = the car's left
-    // a seated humanoid (about 0.95 m from the seat to the top of the head) stays under the roof
-    expect(spec.driver.y + 0.95).toBeLessThan(k.height - 0.05);
+    // at the wheel in the car pose, every body the player can have keeps its head under the roof and its shoes over the floor (src/transport/cabinFit.ts)
+    expect(spec.driver.clip).toBe('Drive');
+    for (const b of Object.values(SITTERS)) { const p = scaleAt(CABINS.car.front, spec.driver.y - SIT_HIPS, b); expect(p.head).toBeLessThan(CABINS.car.front.roof); expect(p.soles).toBeGreaterThan(CABINS.car.front.floor); }
     expect(spec.seats.length).toBe(4); expect(spec.seats.every(s => s.npcOnly)).toBe(true);
     expect(spec.doors[0].id).toBe('fl');
   });
@@ -130,7 +133,7 @@ describe('the motorbike side stand', () => {
 
   it('the rider sits astride (the kit seat\'s Ride pose), the car\'s driver sits; the model animates', async () => {
     const { Vehicle } = await import('../src/transport/vehicle');
-    expect(motoSpec().driver.clip).toBe('Ride'); expect(carSpec().driver.clip).toBeUndefined();
+    expect(motoSpec().driver.clip).toBe('Ride'); expect(carSpec().driver.clip).toBe('Drive');
     const v = new Vehicle(motoSpec(), 'pikine:moto:jakarta', 1, jakartaSeed());
     expect(v.driverSeat.clip).toBe('Ride');
     let lean = 0;

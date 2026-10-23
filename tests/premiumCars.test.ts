@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { CABINS, SITTERS, scaleAt } from '../src/transport/cabinFit';
+import { SIT_HIPS } from '../src/interact/seats';
 import { paintSeedOf } from '../src/transport/modelCars';
 import { carSpec, kitSeedFor } from '../src/transport/car';
 import { BERLINE_ASSET, BERLINE_GRAPHITE, BERLINE_NAVY, BERLINE_WHITE, SUV_ASSET, SUV_BLACK, SUV_GREEN, SUV_WHITE, berlineSeed, berlineSpec, suvSeed, suvSpec } from '../src/transport/premiumCars';
@@ -30,7 +32,8 @@ describe('the premium saloon and the SUV on the owned-vehicle system', () => {
     for (const [spec, kind, seed, model] of [[berline, 'luxury', berlineSeed(), undefined], [suv, 'suv', paintSeedOf(0), 'lamane']] as const) {
       const k = vehicleSpec(kind, { seed, driver: false, passengers: false, ...(model ? { model } : {}) });
       expect(spec.kind).toBe('car'); expect(spec.cabin).toBe('closed'); expect(spec.driver.id).toBe('driver'); expect(spec.driver.x).toBeGreaterThan(0);
-      expect(spec.driver.y + 0.95).toBeLessThan(k.height - 0.05);
+      expect(spec.driver.clip).toBe('Drive');                                          // the car pose, its head under this body's roof whoever drives (src/transport/cabinFit.ts)
+      for (const b of Object.values(SITTERS)) expect(scaleAt(CABINS[spec.id].front, spec.driver.y - SIT_HIPS, b).head).toBeLessThan(CABINS[spec.id].front.roof);
       expect(spec.length).toBe(k.length); expect(spec.width).toBe(k.width);
       expect(spec.cameras.map(c => c.id)).toEqual(['chase', 'volant', 'haut']); expect(spec.cameras.every(c => c.portrait)).toBe(true);
       expect(spec.cameras[1].inside).toBe(true); expect(spec.cameras[1].pos).toEqual([...k.cameras.driver.pos]);

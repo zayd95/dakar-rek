@@ -3,6 +3,7 @@ import { HUB_IDS } from '../core/types';
 import { ECONOMY } from '../economy/config';
 import { planTrip } from '../road/graph';
 import { kerbSpot } from './taxiRules';
+import type { PersonLook } from '../actors/humanoid';
 
 /**
  * VTC rides (pure rules, unit-tested; src/transport/vtc.ts plays them): where passengers wait and get out, the requests the phone shows, the fare.
@@ -17,18 +18,27 @@ export const VTC_POINTS: Record<HubId, VtcPoint[]> = {
     { id: 'gare', name: 'Gare de Pikine', x: -33, z: 33 }, { id: 'banque', name: 'Banque Teranga', x: -90, z: -38 }, { id: 'boutique', name: 'Boutique Diallo', x: -105, z: 82 },
     { id: 'place', name: 'Grand-place de Pikine', x: -19, z: 93 }, { id: 'maiga', name: 'Maïga du marché', x: 78, z: -5 }, { id: 'gargote', name: 'Gargote Mame Diarra', x: 78, z: 55 },
     { id: 'cafe', name: 'Café Touba · Parcelles', x: -78, z: 6 },
+    // on the car rapides' streets (never shut by a road event), mid-block, clear of their stops and of the arena's gate
+    { id: 'jamm', name: 'Cité Jàmm · Keur Meubles', x: -30, z: -75 }, { id: 'pathe', name: 'Dibiterie Chez Pathé', x: -50, z: -40 },
+    { id: 'mosquee', name: 'Rue de la Mosquée', x: 44, z: 75 }, { id: 'ecurie', name: 'Écurie de lutte', x: 45, z: -90 },
   ],
   plateau: [
-    { id: 'medina', name: 'Place de la Médina', x: -19, z: 93 }, { id: 'fatou', name: 'Gargote Chez Fatou', x: -18, z: 55 }, { id: 'sandaga', name: 'Marché Sandaga', x: 28, z: -41 },
-    { id: 'banque', name: 'Banque Teranga · Plateau', x: 90, z: -38 }, { id: 'cafe', name: 'Café Touba · Sandaga', x: 78, z: 6 }, { id: 'reparation', name: 'Dakar Réparation', x: 97, z: 82 },
+    { id: 'medina', name: 'Place de la Médina', x: -19, z: 93 }, { id: 'fatou', name: 'Gargote Chez Fatou', x: -40, z: 55 }, { id: 'sandaga', name: 'Marché Sandaga', x: 44, z: -50 },
+    { id: 'banque', name: 'Banque Teranga · Plateau', x: 75, z: -30 }, { id: 'cafe', name: 'Café Touba · Sandaga', x: 78, z: 6 }, { id: 'reparation', name: 'Dakar Réparation', x: 97, z: 82 },
+    { id: 'mosquee', name: 'Grande Mosquée · Plateau', x: -30, z: -45 }, { id: 'gare', name: 'Gare routière du Plateau', x: 15, z: 30 },
+    { id: 'dibiterie', name: 'Dibiterie de la Médina', x: -45, z: 30 },
   ],
   corniche: [
     { id: 'fann', name: 'Place des étudiants · Fann', x: 41, z: 93 }, { id: 'cafe', name: 'Café Touba · Fann', x: -42, z: 6 }, { id: 'gargote', name: 'Gargote des étudiants', x: 18, z: -5 },
     { id: 'artisans', name: 'Ateliers de Soumbédioune', x: -94, z: 76 }, { id: 'sport', name: 'Salle de sport · Corniche', x: -90, z: -28 },
+    { id: 'monument', name: 'Esplanade du Monument', x: -42, z: -75 }, { id: 'campus', name: 'Campus de l’université', x: 75, z: -40 },
+    { id: 'foot', name: 'Terrain de foot de Fann', x: -75, z: 40 }, { id: 'gareFann', name: 'Gare de Fann', x: 15, z: 30 },
   ],
   almadies: [
     { id: 'pointe', name: 'Restaurant Le Pointe', x: -102, z: -54 }, { id: 'mall', name: 'Dakar Life Mall', x: 30, z: 47 }, { id: 'ngor', name: 'Place des voisins · Ngor', x: 101, z: 33 },
     { id: 'cafe', name: 'Café Touba · Ngor', x: 102, z: -54 }, { id: 'port', name: 'Port de pêche', x: 30, z: -109 },
+    { id: 'gare', name: 'Gare des Almadies', x: -45, z: 30 }, { id: 'prestige', name: 'Prestige Auto', x: -75, z: 40 },
+    { id: 'embarcadere', name: 'Embarcadère de Ngor', x: 16, z: -75 }, { id: 'villas', name: 'Résidence des Almadies', x: 15, z: -30 },
   ],
 };
 /** Where the car stops for a point (the kerb), and where the passenger waits (the pavement beside it, away from the road's centre line). */
@@ -58,6 +68,16 @@ export function rideLimitMs(t: Pick<VtcTrip, 'from' | 'to' | 'pickup' | 'dropoff
   const V = ECONOMY.vtc, m = vtcFare(t.from, t.pickup, t.to, t.dropoff).metres;
   return (V.pickupS + (m / V.speed) * V.slack) * 1000;
 }
+
+/** The passengers' looks (a ride's passenger seed picks one): the person standing at the kerb, sitting in the back, walking off. */
+export const VTC_LOOKS: PersonLook[] = [
+  { skin: 0x5b3420, style: 'tee', top: 0x2f6fa8, bottom: 0x22252b, hat: null, shoes: 0x1a1a1a },
+  { skin: 0x6b3f25, style: 'dress', top: 0xd66532, bottom: 0xd66532, female: true, pattern: 'wax', accent: 0xf2d16b, hat: 'headwrap', hatColor: 0xe8b734 },
+  { skin: 0x4e2e1c, style: 'boubou', top: 0xeee8da, bottom: 0xeee8da, hat: 'kufi', hatColor: 0xf2f2ec },
+  { skin: 0x7a4a2c, style: 'tee', top: 0xc2417f, bottom: 0x2b3a55, female: true, hair: 'puff' },
+  { skin: 0x5b3420, style: 'tee', top: 0xf1f1ee, bottom: 0x3a4a5c, hat: null, beard: 0x1a1410 },
+  { skin: 0x633a24, style: 'dress', top: 0x2e8b57, bottom: 0x2e8b57, female: true, pattern: 'bazin', hat: 'headwrap', hatColor: 0x2e8b57 },
+];
 
 const NAMES = ['Awa', 'Fatou', 'Ibrahima', 'Aminata', 'Cheikh', 'Mariama', 'Ousmane', 'Khady', 'Moussa', 'Ndeye', 'Abdou', 'Coumba', 'Babacar', 'Sokhna', 'Pape', 'Astou'];
 /** Trips the phone shows in this district this hour: one to each neighbouring district along the roads, one inside the district. Same list on every reload. */
