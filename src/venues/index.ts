@@ -5,7 +5,7 @@ import { buildDibi } from './dibi';
 import { buildMosque } from './mosque';
 import { buildBeach } from './beach';
 import { buildSalon } from './salon';
-import { buildClub, CLUB_SITE, shiftClubDay } from './club';
+import { buildClub, CLUB_SITE, setVagueVirtual, shiftClubDay } from './club';
 import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
@@ -101,6 +101,8 @@ export const VenuesModule: GameModule = {
   debug: () => ({
     venues: () => venues.map(v => v.debug()),
     clubShift: (n: number) => shiftClubDay(n),
+    /** Frame-by-frame films: La Vague's music clock follows the game's frames from `t` s (null: the audio context's). */
+    vagueVirtual: (t: number | null) => setVagueVirtual(t),
     prayer: (h: number) => ({ now: prayerAt(h)?.name ?? null, next: nextPrayer(h).name, times: PRAYER_TIMES.map(p => [p.name, p.hour]) }),
   }),
 };

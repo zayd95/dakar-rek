@@ -65,6 +65,7 @@ export class DancePlay implements InWorldPlayer {
   private targets: Record<'L' | 'R' | 'C', THREE.Mesh> | null = null;
   private approach: THREE.Mesh[] = [];
   private linger = 0;
+  private padHit = 0;
   /** The game's one spot light (src/city/night.ts: the arena's, idle in a hub without an arena), borrowed as the floor's stage light. */
   private stageLight: { light: THREE.SpotLight; was: { x: number; y: number; z: number; angle: number; color: number } } | null = null;
   private spotNow = { x: 0, z: 0, yaw: 0 };
@@ -231,7 +232,7 @@ export class DancePlay implements InWorldPlayer {
     // the body does what was touched, cue or not (dancing between the cues is never punished)
     this.body.hit(kind, move === 'tour' && (kind === 'L' || kind === 'R') ? 'pas' : move, b, gr ? Math.max(0.35, GRADE_SCORE[gr]) : 0.5);
     const pad = kind === 'L' ? this.els?.padL : kind === 'R' ? this.els?.padR : null;
-    if (pad) { pad.classList.add('hit'); setTimeout(() => pad.classList.remove('hit'), 120); }
+    if (pad) { pad.classList.add('hit'); this.padHit = 0.15; }
     this.log.push({ kind, grade: gr, dtMs: m ? Math.round(m.dt * 1000) : null, beat: +b.toFixed(3) }); if (this.log.length > 40) this.log.shift();
   }
 
@@ -247,6 +248,7 @@ export class DancePlay implements InWorldPlayer {
     const r = this.run, { ctx } = this.env;
     this.body.settle(dt);
     this.layer?.tick(dt);
+    if (this.padHit > 0 && (this.padHit -= dt) <= 0) { this.els?.padL.classList.remove('hit'); this.els?.padR.classList.remove('hit'); }
     if (!r) {
       if (this.linger > 0) {
         this.linger -= dt;

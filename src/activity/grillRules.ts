@@ -17,8 +17,8 @@ export interface Skewer {
 }
 
 export const GRILL_RULES = {
-  /** Doneness per second of the side on the coals at heat 1 (golden after about seven seconds). */
-  rate: 1 / 7,
+  /** Doneness per second of the side on the coals at heat 1 (golden after about seven seconds and a half). */
+  rate: 1 / 9,
   /** The side facing up keeps a little warmth. */
   upRate: 0.012,
   /** A side is golden from `golden` to `over`; burnt from `burnt`. */

@@ -60,6 +60,10 @@ const WAITER: PersonLook = { skin: 0x45291a, style: 'tee', top: 0x1c1c1f, bottom
 const WAITER_HOME = { x: -7.6, z: 6.4 };
 /** The player is on the terrace (its space while true): module-wide, a hub has one club. */
 let inClub = false;
+/** The club's music (module-wide like `inClub`), for the debug hook below. */
+let musicNow: VagueMusic | null = null;
+/** Debug only: drive the music's clock by the game's frames from `t` seconds (null: the audio context's again). */
+export const setVagueVirtual = (t: number | null) => { if (musicNow) musicNow.virtual = t; return !!musicNow; };
 const DJ: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xe8742c, bottom: 0x222428, shoes: 0xf2f2ec, beard: 0x1a1414 };
 
 /** The week's programme on the board by the gate (redrawn each night). */
@@ -336,7 +340,7 @@ export function buildClub(env: VenueEnv): Venue {
   // Instanced figures (the nearest few full humanoids), the same night the same for everyone; they never stand on a player.
   const vague = new VagueCrowd({ w: at, local: (x, z) => k.local(x, z), yaw: site.yaw }, q, ctx.extra);
   // the music, and dancing on it (in the world, on the floor's clear spot, facing the gate: the camera between them)
-  const music = new VagueMusic(); music.prefetch();
+  const music = musicNow = new VagueMusic(); music.prefetch();
   const dance = new DancePlay({
     ctx, music, crowd: vague, here: () => inClub,
     spot: () => { const p = at(FX, FZ); return { x: p.x, z: p.z, yaw: site.yaw }; },
@@ -467,7 +471,7 @@ export function buildClub(env: VenueEnv): Venue {
     id, type: 'club', name: place.name, places: [place], update,
     space: () => (inClub ? SPACE : null),
     camera: dt => dance.camera(dt),
-    dispose() { unregister(); dance.dispose(); music.dispose(); ctx.interactions.remove('club-people'); cast.dispose(); vague.dispose(); k.dispose(); later.length = 0; inClub = false; },
+    dispose() { unregister(); dance.dispose(); music.dispose(); if (musicNow === music) musicNow = null; ctx.interactions.remove('club-people'); cast.dispose(); vague.dispose(); k.dispose(); later.length = 0; inClub = false; },
     debug: () => {
       const crowd = vague.info(ctx.player.pos);
       return {

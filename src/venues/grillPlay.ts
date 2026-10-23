@@ -459,18 +459,20 @@ export class GrillPlay implements InWorldPlayer {
     // high over the street side of the grill, looking down across it: the brochettes long and big on a phone held upright,
     // the helper behind them, the plate and the customer at the side table on the right
     const { stand, grill } = this.env;
-    const pos = this.w(stand.x + 0.42, grill.top + 2.2, grill.z + 1.1, A).clone(), look = this.w(stand.x + 0.27, grill.top - 0.04, grill.z - 0.42, B).clone();
+    const pos = this.w(stand.x + 0.66, grill.top + 2.2, grill.z + 1.1, A).clone(), look = this.w(stand.x + 0.56, grill.top - 0.04, grill.z - 0.42, B).clone();
     this.cam.frame(this.env.ctx.camera, pos, look, dt);
     // chips over the brochettes, the order's bubble over the customer, « Servir » over the plate
     const cam = this.env.ctx.camera, r = this.run;
     if (r && this.layer) for (const st of r.sticks) {
       if (!st.laid || st.served || r.phase === 'serve' || r.phase === 'hand') { st.chip.style.visibility = 'hidden'; continue; }
       const q = cue(st.s), cls = q === 'turn' ? 'turn' : q === 'done' ? 'done' : q === 'burning' ? 'burn' : 'wait';
-      if (st.chip.dataset.q !== q) { st.chip.dataset.q = q; st.chip.className = `iw-chip ${cls}`; st.chip.textContent = q === 'turn' ? '↻' : q === 'done' ? '✓' : q === 'burning' ? '🔥' : '·'; }
+      if (st.chip.dataset.q !== q) { st.chip.dataset.q = q; st.chip.className = `iw-chip ${cls}`; st.chip.textContent = q === 'turn' ? '↻' : q === 'done' ? '✓' : q === 'burning' ? '🔥' : ''; }
+      // while it browns: a small ring filling up with the underside's doneness (the side you cannot see from above)
+      if (q === 'wait') st.chip.style.setProperty('--p', String(Math.round(Math.min(1, st.s.down / GRILL_RULES.golden) * 100)));
       this.layer.pin(st.chip, cam, this.w(st.mesh.position.x, st.mesh.position.y + 0.1, st.mesh.position.z + LEN * 0.42, A));
     }
     if (this.els && this.plate) { if (this.els.serve.dataset.on) this.layer.pin(this.els.serve, cam, this.w(this.plate.position.x, this.plate.position.y + 0.22, this.plate.position.z, A)); else this.els.serve.style.visibility = 'hidden'; }
-    if (this.els && this.customer && this.els.say.style.visibility !== 'hidden') this.layer.pin(this.els.say, cam, A.copy(this.customer.group.position).setY(this.customer.group.position.y + 2.05));
+    if (this.els && this.customer && this.sayT > 0) this.layer.pin(this.els.say, cam, A.copy(this.customer.group.position).setY(this.customer.group.position.y + 2.05), 0, true);
     return true;
   }
 

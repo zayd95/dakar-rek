@@ -24,6 +24,11 @@ export class VagueMusic {
   private quietFor = 0;
   /** Fetch or decode failed: the club stays silent (its lights keep their own beat), nothing else is touched. */
   failed = false;
+  /**
+   * Debug only (?debug: `__dakar.vagueVirtual(t)`): the music heard is this clock (s, advanced by the game's own frames)
+   * instead of the audio context's — for frame-by-frame films on a machine too slow to play live. Null: the real clock.
+   */
+  virtual: number | null = null;
   /** What the venue asked for last (0…1 loudness, 0…1 muffled, −1…1 pan). */
   want = { level: 0, muffle: 0, pan: 0 };
   /** Debug: the decoder's delay found from the tick (s), and when the loop started on the context's clock. */
@@ -40,6 +45,7 @@ export class VagueMusic {
   /** Every frame: how loud (0…1), how muffled (0 clear … 1 far behind the fence), from which side. 0 fades out, then stops. */
   update(dt: number, level: number, muffle = 0, pan = 0) {
     this.want = { level, muffle, pan };
+    if (this.virtual !== null) this.virtual += dt;
     if (level <= 0.001) {
       if (!this.chain) return;
       this.ramp(0, 0.4);
@@ -113,7 +119,7 @@ export class VagueMusic {
     c.src.disconnect(); c.bus.disconnect();
   }
 
-  get playing() { return !!this.chain && this.chain.ctx.state === 'running'; }
+  get playing() { return this.virtual !== null || (!!this.chain && this.chain.ctx.state === 'running'); }
 
   /**
    * Seconds of music the player has heard since beat 0 of the loop (unwrapped: it keeps counting over the loops), at the
@@ -121,6 +127,7 @@ export class VagueMusic {
    * leaving for the speaker at that moment. Null when the music is not playing.
    */
   heard(perfNow = performance.now()): number | null {
+    if (this.virtual !== null) return this.virtual;
     const c = this.chain; if (!c || c.ctx.state !== 'running') return null;
     const ctx = c.ctx;
     let t: number;
@@ -142,7 +149,7 @@ export class VagueMusic {
       gain: c ? +c.bus.gain.value.toFixed(3) : 0, cutoff: c ? Math.round(c.lp.frequency.value) : null,
       decoderDelay: c ? +c.delay.toFixed(4) : null, loopStart: c ? +c.loopStart.toFixed(4) : null, sampleRate: this.buf?.sampleRate ?? null,
       heard: h === null ? null : +h.toFixed(3), beat: h === null ? null : +(h / BEAT).toFixed(3),
-      latency: c ? { base: c.ctx.baseLatency ?? null, output: c.ctx.outputLatency ?? null } : null,
+      latency: c ? { base: c.ctx.baseLatency ?? null, output: c.ctx.outputLatency ?? null } : null, virtual: this.virtual,
     };
   }
 
