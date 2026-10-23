@@ -115,4 +115,4 @@ and the CI) were re-run on the final code.
   unverified (docs/audio/ARENA_AND_RADIO.md). Zik FM is left out because its relay page has no broadcaster link.
 - **The scanned Berline moderne** hides its passenger while riding: its glass is painted into the texture.
 - **The wrestlers' « Mbakkou »** replaces a femme or homme body by the v4 wrestler in ngemb, as designed for the attire and emotes.
-- **No public beta link:** see `docs/beta/BETA.md`.
+- **The beta link is unverified:** the project's Cloudflare Workers Builds produced a preview for every commit of this branch, but this session's sandbox cannot reach `*.workers.dev`, so the link was not opened or tested here. See `docs/beta/BETA.md`.

@@ -1,8 +1,15 @@
 # External beta (not tied to a Claude account)
 
-**Status: bundle and instructions ready; no public link published.** No authorised non-production host was available to
-this session, and publishing an unapproved public URL is out of bounds. Below: what the beta is, how to build the bundle,
-the exact blocker on the intended host, and the options for the owner.
+**Status: a Cloudflare preview exists, built by the project's own Workers Builds; the bundle and instructions are ready too.**
+- **Stable link (latest commit of the branch):** https://integration-unified-beta-20261022-dakar-rek.habibjallow95.workers.dev
+- **Per-commit links:** posted by the Cloudflare bot on zayd95/dakar-rek#65 (the last one at the time of writing, commit `4b6b1f4`:
+  https://af460b29-dakar-rek.habibjallow95.workers.dev).
+- **Not verified by this session.** The sandbox cannot reach `*.workers.dev`, so nobody here has opened the link, run
+  `check:online` against it, or checked whether it is public or behind Cloudflare Access. The only evidence is the « Workers Builds:
+  dakar-rek » check on the PR, which reports success for every commit, and the bot's « Build: Success, Deployment: Success ».
+- It is the owner's Cloudflare account and the owner's Workers Builds configuration; this session created and deployed nothing.
+
+Below: what the beta is, how to build the bundle, how the preview came about, and the options if the link is not usable.
 
 ## What testers get
 - The unified beta branch `integration/unified-beta-20261022`: the life-sim beta (phone hub, HUD, persistence, cockpit,
@@ -24,27 +31,28 @@ environment to name the build (otherwise `<commit>-<date>`). The solo bundle nev
 needs the Worker and its two Durable Objects (`wrangler.jsonc`).
 
 ## Hosts inspected (read-only, nothing created)
-- **Cloudflare Workers** (the project's host, `wrangler.jsonc`): blocked, see below.
+- **Cloudflare Workers** (the project's host, `wrangler.jsonc`): a preview is built for this branch, see below.
 - **Vercel**: an account is connected to this session, but it holds no Dakar Rek project and no team. Creating a
   project would publish a new public URL that nobody approved, so it was not done.
 - **GitHub Pages**: not configured for the repository (no Pages workflow), and enabling it would publish the repository's
   build publicly: not done.
 - **The Claude artifact preview**: available to the owner only (a Claude account), so it is not the external beta.
 
-## The intended host and its exact blocker
-The project's beta path is a **Cloudflare Worker Preview** of the branch (`npx wrangler preview`, Workers Builds on a
-non-production branch). `wrangler.jsonc` gives every preview its own two Durable Object namespaces (`ROOMS`, `LOBBIES`),
-so test players never join production rooms.
+## The intended host: the Cloudflare preview
+The project's beta path is a **Cloudflare Worker Preview** of the branch (Workers Builds on a non-production branch).
+`wrangler.jsonc` gives every preview its own two Durable Object namespaces (`ROOMS`, `LOBBIES`), so test players never join
+production rooms.
 
-**Blocker:** the Cloudflare account has reached its Durable Object namespace limit, so a new preview cannot create its
-namespaces and the « Workers Builds » preview check fails (it fails on this branch's base too:
-zayd95/dakar-rek#63, zayd95/dakar-rek#64). This session did **not** delete namespaces, upgrade the plan, change
-production settings or deploy anything: those are the owner's decisions.
+**History, so nobody is misled:** the previews of zayd95/dakar-rek#63 and zayd95/dakar-rek#64 had failed on the account's Durable
+Object namespace limit when this session looked at them. The preview of this branch (zayd95/dakar-rek#65) built and deployed
+on every commit, from the first one. This session did not check why that changed, and did **not** delete namespaces, upgrade
+the plan, change production settings or deploy anything. An earlier version of this file called the limit a blocker for this
+branch; that was wrong for this PR.
 
 Production safety: **`wip/visual-pass` is Workers Builds' production branch** (docs/LAUNCH.md): any push there redeploys the
 public recette. The beta lives on its own branch and must not be merged there for a beta.
 
-## Options for the owner (any one unblocks a link)
+## Options if the preview link is not usable
 1. **Free capacity in Cloudflare** (owner, in the dashboard): remove obsolete preview Durable Object namespaces of old preview
    Workers (an earlier read-only audit in this project listed candidates; nothing was deleted), then re-run the preview build
    of this branch: multiplayer beta, isolated from production.
@@ -66,5 +74,5 @@ public recette. The beta lives on its own branch and must not be merged there fo
     - OpenFreeMap's tiles, only while the phone's « Ville » map is open;
     - nothing else is fetched from outside the bundle, apart from the plain links shown in the game.
 
-After a link exists: `npm run check:online -- https://<link>/` (online bundle only), then share the link with
+Before sharing the link: open it on a phone, run `npm run check:online -- https://<link>/` (the online bundle only), then share it with
 `docs/beta/FEEDBACK_TEMPLATE.md`.
