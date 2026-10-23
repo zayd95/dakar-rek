@@ -23,7 +23,7 @@ export const VTC_POINTS: Record<HubId, VtcPoint[]> = {
     { id: 'mosquee', name: 'Rue de la Mosquée', x: 44, z: 75 }, { id: 'ecurie', name: 'Écurie de lutte', x: 45, z: -90 },
   ],
   plateau: [
-    { id: 'medina', name: 'Place de la Médina', x: -19, z: 93 }, { id: 'fatou', name: 'Gargote Chez Fatou', x: -40, z: 55 }, { id: 'sandaga', name: 'Marché Sandaga', x: 15, z: -30 },
+    { id: 'medina', name: 'Place de la Médina', x: -19, z: 93 }, { id: 'fatou', name: 'Gargote Chez Fatou', x: -40, z: 55 }, { id: 'sandaga', name: 'Marché Sandaga', x: 44, z: -50 },
     { id: 'banque', name: 'Banque Teranga · Plateau', x: 75, z: -30 }, { id: 'cafe', name: 'Café Touba · Sandaga', x: 78, z: 6 }, { id: 'reparation', name: 'Dakar Réparation', x: 97, z: 82 },
     { id: 'mosquee', name: 'Grande Mosquée · Plateau', x: -30, z: -45 }, { id: 'gare', name: 'Gare routière du Plateau', x: 15, z: 30 },
     { id: 'dibiterie', name: 'Dibiterie de la Médina', x: -45, z: 30 },

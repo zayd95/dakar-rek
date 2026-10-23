@@ -12,7 +12,8 @@ import { addMissionGuide } from '../game/missionGuide';
 import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
 import { CARS } from './fleet';
-import { VTC_LOOKS, atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { VTC_LOOKS, VTC_POINTS, atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { clearKerb } from './passengers';
 import { CABINS, lookSitter, placeSitter, type SitterPlace } from './cabinFit';
 import { cabinInfo, cabinView, holdCabin, rearDoorBox, seeThroughOk, setRearDoor, sitterOrder } from './carCabin';
 import type { VehicleSpec } from './spec';
@@ -81,7 +82,11 @@ class Vtc implements GameModule {
   }
   private get trip(): VtcTrip | null { return this.ctx.state.data.vtc.active; }
 
-  hubLoaded(ctx: GameCtx, _hub: HubWorld) { this.ctx = ctx; this.clear(); }
+  hubLoaded(ctx: GameCtx, hub: HubWorld) {
+    this.ctx = ctx; this.clear();
+    // no parking at a VTC spot: the kerb where a car stops for a passenger is kept clear of parked vehicles, 9 m either way (as at a car rapide's stop)
+    clearKerb(ctx.extra, hub.colliders, VTC_POINTS[hub.id].map(p => { const k = stopOf(p).car, f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) }; return { x: k.x, z: k.z, dx: f.x, dz: f.z, rx: -f.z, rz: f.x, offset: 4.3, from: -9, to: 9 }; }));
+  }
   private clear() {
     this.clearPerson();
     this.dropLeaver();
