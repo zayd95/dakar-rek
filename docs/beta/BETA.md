@@ -23,6 +23,14 @@ npm run build:online     # online bundle: dist/ + the Worker (server/worker.ts) 
 environment to name the build (otherwise `<commit>-<date>`). The solo bundle never contacts a game server; the online one
 needs the Worker and its two Durable Objects (`wrangler.jsonc`).
 
+## Hosts inspected (read-only, nothing created)
+- **Cloudflare Workers** (the project's host, `wrangler.jsonc`): blocked, see below.
+- **Vercel**: an account is connected to this session, but it holds no Dakar Rek project and no team. Creating a
+  project would publish a new public URL that nobody approved, so it was not done.
+- **GitHub Pages**: not configured for the repository (no Pages workflow), and enabling it would publish the repository's
+  build publicly: not done.
+- **The Claude artifact preview**: available to the owner only (a Claude account), so it is not the external beta.
+
 ## The intended host and its exact blocker
 The project's beta path is a **Cloudflare Worker Preview** of the branch (`npx wrangler preview`, Workers Builds on a
 non-production branch). `wrangler.jsonc` gives every preview its own two Durable Object namespaces (`ROOMS`, `LOBBIES`),
@@ -44,6 +52,19 @@ public recette. The beta lives on its own branch and must not be merged there fo
    `dist/` from `npm run build`. No game server, no Durable Object, no production impact; testers play solo.
 3. **The Claude artifact preview** stays available for the owner (needs a Claude account; keeps a copy of the save on
    that account, docs/SAVES.md).
+
+## Before sharing any link (the owner's checks)
+- **Distribution rights of the assets:**
+  - `docs/ASSET_REGISTER.md` lists the models: most are own code or own work, and the Berline moderne and the avatars are Meshy generations. Their use follows the Meshy plan of the account that made them.
+  - The sounds and their sources are in `docs/audio/`.
+  - The in-car radio plays the stations' own public streams (RFM, Sud FM, Rewmi FM) and stores nothing. A public beta that plays them is worth a word with the stations.
+- **Tester access:**
+  - Prefer a host whose link can be kept unlisted or behind a password (Cloudflare Access, Netlify or Vercel protection).
+  - Give it only to the testers.
+  - The bundle has no analytics and no game server in the solo build. It still reaches three outside services:
+    - the radio stations' streams on `stream.zeno.fm`, only while the in-car radio is on;
+    - OpenFreeMap's tiles, only while the phone's « Ville » map is open;
+    - nothing else is fetched from outside the bundle, apart from the plain links shown in the game.
 
 After a link exists: `npm run check:online -- https://<link>/` (online bundle only), then share the link with
 `docs/beta/FEEDBACK_TEMPLATE.md`.
