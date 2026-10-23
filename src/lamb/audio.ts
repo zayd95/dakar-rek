@@ -1,8 +1,11 @@
 /**
- * Synthesised percussion and crowd — TEMPORARY. The rhythm below is a generic placeholder pattern, not a
- * transcription of any sabar rhythm. Real recordings or validated rhythms replace it after review.
+ * The làmb's sound: the page's audio context and master gain (the sound setting), the strikes of a bout, the
+ * announcer's chime — and the drums and the crowd's cheers, which are the authored loops and one-shots of the arena
+ * (src/arena/soundscape.ts registers them here with `useLambSounds`; files in public/assets/audio/arena/, made by
+ * scripts/audio/render-arena.mjs). Before they are loaded a cheer is silent and the drums wait: no synthetic noise.
  */
 import { isMuted, onMuteChange } from '../core/audioSettings';
+import { standsGain } from '../arena/hearing';
 
 let ctx: AudioContext | null = null;
 /** Master gain: the sound setting (phone › Réglages) mutes everything at once. */
@@ -43,73 +46,63 @@ function hit(c: AudioContext, when: number, freq: number, decay: number, gain: n
   }
 }
 
-// Placeholder 16-step patterns: 1 = low tone, 2 = open, 3 = slap. Neither transcribes a real sabar rhythm.
-const PATTERN = [1, 0, 3, 0, 2, 0, 3, 3, 1, 0, 3, 0, 2, 3, 0, 3];
-/** A denser, faster placeholder for a wrestler's bàkk (the drums change rhythm while he dances). */
-const BAKK_PATTERN = [3, 3, 1, 3, 2, 3, 3, 1, 3, 3, 1, 3, 2, 1, 3, 3];
 export type Rhythm = 'gala' | 'bakk';
-const RHYTHMS: Record<Rhythm, { pattern: number[]; tempo: number }> = { gala: { pattern: PATTERN, tempo: 1 }, bakk: { pattern: BAKK_PATTERN, tempo: 1.18 } };
+/** A bout's or a scene's own drums, as the arena's sound plays them. */
+export interface LambDrums { setRhythm(r: Rhythm): void; stop(): void }
+/** What src/arena/soundscape.ts provides: the stands' cheers and the drummers (null until it is loaded). */
+export interface LambSounds { cheer(seconds: number, level: number): boolean; drums(bpm: number): LambDrums }
+let sounds: LambSounds | null = null;
+export function useLambSounds(s: LambSounds) { sounds = s; }
 
+/**
+ * The drummers of a bout or of a cinematic scene (src/lamb/duel.ts, src/lamb/scenes.ts): the arena's authored sabar loops
+ * (the tempo picks one: the fête's fastest, the bout's, the entrance's), never two ensembles at once — while the arena's
+ * own drummers are heard (a fight evening) these wait. `dest` is no longer used (kept for the callers).
+ */
 export class Percussion {
-  private timer = 0; private step = 0; private next = 0;
+  private h: LambDrums | null = null;
   private rhythmNow: Rhythm = 'gala';
   playing = false;
-  /** The rhythm being played (changed on the next step, without stopping). */
+  /** The rhythm being played (a bàkk's or the evening's). */
   get rhythm() { return this.rhythmNow; }
-  setRhythm(r: Rhythm) { this.rhythmNow = r; }
-  /** `dest`: where the hits go (a bus of `audioBus()`), the master gain by default. */
-  constructor(private dest?: AudioNode) {}
+  setRhythm(r: Rhythm) { this.rhythmNow = r; this.h?.setRhythm(r); }
+  constructor(_dest?: AudioNode) {}
   start(bpm = 118) {
-    const c = ac(); if (!c || this.playing) return;
-    this.playing = true; this.step = 0; this.next = c.currentTime + 0.05;
-    const dur = 60 / bpm / 4;
-    this.timer = window.setInterval(() => {
-      while (this.next < c.currentTime + 0.12) {
-        const r = RHYTHMS[this.rhythmNow], v = r.pattern[this.step % r.pattern.length];
-        const to = this.dest ?? out();
-        if (v === 1) hit(c, this.next, 95, 0.25, 0.5, false, to);
-        if (v === 2) hit(c, this.next, 180, 0.18, 0.35, false, to);
-        if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true, to);
-        this.next += dur / r.tempo; this.step++;
-      }
-    }, 40);
+    if (this.playing) return;
+    ac(); this.playing = true; this.h = sounds?.drums(bpm) ?? null; this.h?.setRhythm(this.rhythmNow);
   }
-  stop() { clearInterval(this.timer); this.playing = false; }
+  stop() { this.h?.stop(); this.h = null; this.playing = false; }
 }
 
 /** Làmb 2.0: the sound of a strike landing — a dull thud on a hit, a slap on a guard, a short swish on a miss. */
 export function strikeSound(kind: 'quick' | 'big', result: 'hit' | 'stagger' | 'guarded' | 'miss') {
   const c = ac(); if (!c) return;
+  const k = standsGain(); if (k <= 0.005) return;                         // a watched bout behind the walls is not heard across the city
   const t = c.currentTime + 0.01, big = kind === 'big';
-  if (result === 'hit' || result === 'stagger') hit(c, t, big ? 62 : 85, big ? 0.22 : 0.12, big ? 0.7 : 0.45, true);
-  else if (result === 'guarded') hit(c, t, big ? 160 : 240, 0.07, big ? 0.4 : 0.25, true);
+  if (result === 'hit' || result === 'stagger') hit(c, t, big ? 62 : 85, big ? 0.22 : 0.12, (big ? 0.7 : 0.45) * k, true);
+  else if (result === 'guarded') hit(c, t, big ? 160 : 240, 0.07, (big ? 0.4 : 0.25) * k, true);
   else {
     const len = Math.floor(c.sampleRate * 0.12), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / len);
     const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-    f.type = 'bandpass'; f.frequency.value = big ? 700 : 1100; n.buffer = buf; g.gain.value = big ? 0.18 : 0.1;
+    f.type = 'bandpass'; f.frequency.value = big ? 700 : 1100; n.buffer = buf; g.gain.value = (big ? 0.18 : 0.1) * k;
     n.connect(f).connect(g).connect(out()); n.start(t);
   }
 }
 
-/** Crowd swell: filtered noise with a short envelope. */
+/** The stands cheer (`seconds` long, `level` 0..~0.3): the arena's authored one-shots, by the moment that called it (src/arena/soundscape.ts). */
 export function crowdCheer(seconds = 2.5, level = 0.18) {
-  const c = ac(); if (!c) return;
-  const len = Math.floor(c.sampleRate * seconds), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-  f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.7; n.buffer = buf;
-  const t = c.currentTime;
-  g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(level, t + 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + seconds);
-  n.connect(f).connect(g).connect(out()); n.start(t);
+  if (!ac()) return;
+  sounds?.cheer(seconds, level);
 }
 
 /**
  * The arena's public address before a line on the microphone (the announcer, a griot): two soft tones and a short
- * hum. Synthesised placeholder; silent with the sound off.
+ * hum, as loud as the stands are heard where the player is; silent with the sound off.
  */
 export function paChime(level = 0.05) {
   const c = ac(); if (!c) return;
+  level *= standsGain(); if (level <= 0.001) return;                      // the arena's microphone is heard there, not across the city
   const t = c.currentTime;
   for (const [f, at] of [[660, 0], [880, 0.22]] as const) {
     const o = c.createOscillator(), g = c.createGain();
