@@ -115,7 +115,7 @@ try { store = window.localStorage; store.getItem('x'); } catch { store = null; }
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 let renderer: THREE.WebGLRenderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: DEBUG });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance', preserveDrawingBuffer: DEBUG });   // stencil: a car's cabin seen through its painted glass (src/transport/carCabin.ts)
 } catch {
   document.getElementById('ui')!.innerHTML = '<div style="margin:30vh 20px;font:16px system-ui;color:#fff">WebGL indisponible sur cet appareil.</div>';
   throw new Error('WebGL unavailable');

@@ -33,7 +33,9 @@ import { trafficPositions } from '../actors/npc';
 import { radio, STATIONS } from './radio';
 import { CockpitKit } from './cockpitKit';
 import { navigation } from '../game/navigation';
-import { seatClip, sitOriginY } from '../interact/seats';
+import { SIT_HIPS, seatClip, sitOriginY } from '../interact/seats';
+import { CABINS, SITTERS, rowOf, scaleAt } from './cabinFit';
+import { cabinView, holdCabin, sitterOrder } from './carCabin';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
@@ -271,6 +273,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private exit: { t: number; from: THREE.Vector3; to: { x: number; z: number }; stood: boolean; trial: boolean } | null = null;
   /** The driver's door of the vehicle in hand, 0 shut … 1 open, and where it is heading; the shut sound plays when it lands. */
   private doorK = 0; private doorGoal = 0; private doorSound = false;
+  /** The player's body at the wheel (src/transport/cabinFit.ts): the scale this module has drawn it at (1: none), and whether it holds the car's glass see-through. */
+  private fitK = 1; private seen = false;
   private readonly frustum = new THREE.Frustum(); private readonly pm = new THREE.Matrix4(); private readonly sph = new THREE.Sphere(); private readonly v3 = new THREE.Vector3();
   /** Feel (camera only): the settle at the engine start, the dip under a hard brake, the shake of a contact; and when the brake last squealed. */
   private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0, kickX: 0, kickZ: 0 };
@@ -397,6 +401,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     this.simT += dt;
     this.stepDoor(dt, m);
+    this.cabin(ctx, m);
     if (this.box) this.box.parcel.visible = ctx.state.data.jobs.active?.stage === 'deliver';   // the run's parcel is in the box
     if (this.solidCheck) { this.solidCheck = false; this.setSolid(!this.driving); }
     if (this.entry) { this.stepEntry(ctx, dt, m); return; }
@@ -473,6 +478,25 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return !!this.spec.cameras[this.cam.view % this.spec.cameras.length]?.inside;
   }
 
+  /**
+   * The player in this car (at the wheel, or getting in or out of it): their body drawn at the size that fits under its roof (src/transport/cabinFit.ts),
+   * and seen through its glass from the street (src/transport/carCabin.ts). Each frame.
+   */
+  private cabin(ctx: GameCtx, m: Vehicle) {
+    const inside = this.def.kit !== 'moto' && (this.driving || !!this.entry || (!!this.exit && !this.exit.stood));
+    if (this.driving && this.fitK !== this.fitScale()) this.applyFit(this.fitScale());
+    const b = ctx.player.body();
+    if (inside !== this.seen) { this.seen = inside; holdCabin(m.body, 'driver', inside); if (b && !inside) sitterOrder(b.group, false); }
+    if (inside && b) sitterOrder(b.group, true);                                 // (every frame: a body made again while driving)
+    cabinView(m.body, this.spec ?? null);
+  }
+  /** The scale of the player's body on this car's driver's seat (1 where it fits as drawn, and on a motorbike). */
+  private fitScale(): number {
+    const spec = this.spec, b = this.ctx.player.body(), fit = spec && CABINS[spec.id];
+    return spec && b && fit ? scaleAt(rowOf(fit, 'driver'), spec.driver.y - SIT_HIPS, SITTERS[b.body]).scale : 1;
+  }
+  private applyFit(k: number) { const b = this.ctx.player.body(); if (b) b.seatScale = k; this.fitK = k; }
+
   private stepDoor(dt: number, m: Vehicle) {
     if (!m.hasDoor) return;
     const was = this.doorK;
@@ -511,6 +535,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       ctx.player.place(x, z, face);
       const sy = sitOriginY(seat), gy = a.y, low = ease(Math.max(0, (k - 0.38) / 0.62));
       ctx.player.pos.y = gy + (sy - gy) * low;
+      this.applyFit(1 + (this.fitScale() - 1) * low);
       if (body && k > 0.5) body.hold = seatClip(seat);
     } else if (e.t >= OPEN + GLIDE && !e.seated) {
       e.seated = true; ctx.player.sit(seat);
@@ -531,8 +556,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       const gy = 0.1 + (ctx.world()?.heightAt(x.to.x, x.to.z) ?? 0);
       ctx.player.place(p0.x + (p1.x - p0.x) * u, p0.z + (p1.z - p0.z) * u, this.st.yaw);
       ctx.player.pos.y = x.from.y + (gy - x.from.y) * ease(Math.min(1, k * 1.6));
+      this.applyFit(1 + (this.fitScale() - 1) * (1 - ease(Math.min(1, k * 1.6))));
       if (k >= 1) {
-        const trial = x.trial; this.exit = null; ctx.setMode('play'); this.shutDoor();
+        const trial = x.trial; this.exit = null; ctx.setMode('play'); this.shutDoor(); this.applyFit(1);
         ctx.player.place(x.to.x, x.to.z, this.st.yaw);
         if (trial && this.errand) this.errandParked();
         else if (trial) { this.parkedT = 0; ctx.toast(`Voiture garée. ${this.sales().cfg.person === 'le vendeur' ? 'Le vendeur' : this.sales().cfg.person} vient te voir.`); this.sales().trialEnded(this, x.to.x, x.to.z); }
@@ -1182,6 +1208,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!door && this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
     this.fx.dip = 0; this.fx.hard = 0;
     if (!door && ctx.player.seated()?.id === m.driverSeat.id) ctx.player.standUp(true);
+    if (!door) this.applyFit(1);
     this.st.speed = 0;
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
     m.setRidden(false);                                         // also a fresh model: upright, wheels straight
