@@ -36,8 +36,7 @@ async function session({ film = false, block = null } = {}) {
   };
   const openTest = async () => {
     await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
-    await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(200);
-    await t.tap('#phone [data-app="reglages"]'); await page.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages', null, T);
+    await page.evaluate(() => window.__dakar.phone('reglages')); await page.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages', null, T);
     await page.evaluate(() => document.querySelector('#phone [data-act="soundtest"]').scrollIntoView({ block: 'center' })); await page.waitForTimeout(200);
     await t.tap('#phone [data-act="soundtest"]'); await page.waitForFunction(() => window.__dakar.phoneInfo().screen === 'sontest', null, T);
   };

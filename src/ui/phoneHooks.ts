@@ -80,4 +80,6 @@ export const phoneHooks: {
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */
   openPlaces?: () => void;
+  /** Réglages › « Jouer en ligne »: the online profile and the invitation (src/multiplayer/ui.ts, wired by main.ts). */
+  openPresence?: () => void;
 } = {};

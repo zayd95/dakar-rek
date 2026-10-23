@@ -102,6 +102,7 @@ import { GesturePlayer } from './ui/gesture';
 import { Stride, type RunLevel } from './game/stride';
 import { StrideUi } from './ui/stride';
 import { noteWork } from './economy/streakModule';
+import { STREAK, runOf } from './economy/streak';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -1493,6 +1494,8 @@ hud.onAction = () => {
 hud.onMore = () => openMore();
 hud.onSceneStop = () => stopScene();
 hud.onMenu = () => { if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); };
+hud.onStreak = () => { if (mode === 'play' && !phone.isOpen) phone.open('progression'); };   // the HUD's streak chip: Profil › Progression
+phoneHooks.openPresence = () => presenceUi.button.click();                                       // phone › Réglages › « Jouer en ligne »
 new MutationObserver(() => { if (!hud.modalOpen && !phone.isOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
 addEventListener('pagehide', () => { if (world) saveNow(); });
@@ -1697,7 +1700,7 @@ function frameStep(now: number, dt: number, draw = true) {
   updateLighting(hour);
   theme.follow(hour);
   const hk = hudSpace(world.id, !!inside, hourOverride);
-  if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
+  if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); { const run = runOf(state.data); hud.setStreak(run, run > 0 && state.data.streak.last === state.data.play.day, STREAK.milestones.includes(run)); } hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }

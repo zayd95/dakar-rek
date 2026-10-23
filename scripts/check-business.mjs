@@ -36,9 +36,9 @@ let savedJson = null;
   await page.waitForTimeout(600);
 
   // the phone shows the Affaires app; on a fresh save no tier is locked by anything but the price
-  await page.locator('#menuBtn').click(); await page.locator('#phone [data-app="affaires"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await page.waitForTimeout(900);
+  await page.locator('#menuBtn').click(); await D(page, () => window.__dakar.phone('apps')); await page.locator('#phone [data-app="affaires"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await page.waitForTimeout(900);
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
-  check('phone home shows the « Affaires » app', tiles.includes('affaires'), tiles.join(','));
+  check('phone › Toutes les apps shows the « Affaires » app', tiles.includes('affaires'), tiles.join(','));
   await page.screenshot({ path: `${out}/desktop-phone-home.png` });
   await page.locator('#phone [data-app="affaires"]').click(); await page.waitForTimeout(400);
   let m = await modal(page);
@@ -146,13 +146,13 @@ let savedJson = null;
   let mo = await money(page);
   check('phone HUD: compact amount inside the 138 px card', /\u00a0(M|Md)\u00a0F$/.test(mo.text) && mo.fits, mo.text);
   await page.screenshot({ path: `${out}/phone-hud.png` });
-  await page.locator('#menuBtn').tap(); await page.locator('#phone [data-app="affaires"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await page.waitForTimeout(900);
+  await page.locator('#menuBtn').tap(); await page.locator('#phone .hm-dest [data-go="portefeuille"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await page.waitForTimeout(900);
   await page.screenshot({ path: `${out}/phone-home.png` });
-  await page.locator('#phone [data-app="portefeuille"]').tap(); await page.waitForTimeout(300);
+  await page.locator('#phone .hm-dest [data-go="portefeuille"]').tap(); await page.waitForTimeout(300);
   const bal = await D(page, () => { const e = document.querySelector('#phone .ph-balance b'); return { text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, wallet: window.__dakar.state.wallet }; });
   check('phone wallet: full amount on one line at 390 px', bal.text === full(bal.wallet) && bal.fits, bal.text);
   await page.screenshot({ path: `${out}/phone-wallet.png` });
-  await page.locator('#phone .ph-btn[data-app="affaires"]').tap(); await page.waitForTimeout(400);
+  await page.locator('#phone .ph-screen [data-app="affaires"]').tap(); await page.waitForTimeout(400);
   let m = await modal(page);
   check('wallet → Affaires button opens the menu', m.title === 'Affaires' && m.items.length === 7, m.title);
   await page.screenshot({ path: `${out}/phone-affaires.png` });

@@ -39,26 +39,28 @@ export function saveCardHtml(): string {
   const line = saveLine();
   const sum = pending ? summarize(pending.data, h.nameOf) : null;
   const when = sum ? new Date(sum.savedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  const b = (sv: string, label: string, sub = '', kind = 'secondary') => `<button type="button" class="pk-btn ${kind}" data-sv="${sv}"><span>${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+  const plays = sum ? `${Math.floor(sum.playedMin / 60)} h ${String(sum.playedMin % 60).padStart(2, '0')} de jeu · ${sum.vehicles} véhicule${sum.vehicles > 1 ? 's' : ''} · ${sum.furniture} meuble${sum.furniture > 1 ? 's' : ''}` : '';
   return `<div class="ph-save">
     <p class="ph-save-line ${line.tone}" role="status">${esc(line.text)}</p>
-    <button type="button" class="ph-btn" data-sv="now">Sauvegarder maintenant</button>
-    <button type="button" class="ph-btn" data-sv="copy">Copier ma sauvegarde<small>Un code à garder dans tes notes ou à t’envoyer : il contient toute ta partie</small></button>
+    ${b('now', 'Sauvegarder maintenant')}
+    ${b('copy', 'Copier ma sauvegarde', 'Un code qui contient toute ta partie')}
     ${panel === 'copy' ? `<div class="ph-save-io"><textarea class="ph-code" readonly rows="3" aria-label="Code de ta sauvegarde">${esc(copied)}</textarea>
-      <p class="ph-note">Si la copie n’a pas marché : touche le code, sélectionne tout, puis copie.</p>
-      ${h.framed ? '' : '<button type="button" class="ph-btn" data-sv="file">Enregistrer un fichier<small>dakar-rek-sauvegarde.txt</small></button>'}</div>` : ''}
-    <button type="button" class="ph-btn" data-sv="import">Importer une sauvegarde<small>Colle un code copié depuis le jeu, ou choisis le fichier</small></button>
+      <p class="pk-note">Copie refusée ? Touche le code, sélectionne tout, puis copie.</p>
+      ${h.framed ? '' : b('file', 'Enregistrer un fichier', 'dakar-rek-sauvegarde.txt')}</div>` : ''}
+    ${b('import', 'Importer une sauvegarde', 'Un code copié depuis le jeu, ou son fichier')}
     ${panel === 'import' ? `<div class="ph-save-io">
-      ${sum ? `<div class="ph-rows"><div><span>Partie du ${esc(when)}<small>${Math.floor(sum.playedMin / 60)} h ${String(sum.playedMin % 60).padStart(2, '0')} de jeu · ${sum.vehicles} véhicule${sum.vehicles > 1 ? 's' : ''} · ${sum.furniture} meuble${sum.furniture > 1 ? 's' : ''}</small></span><em>${fcfa(sum.wallet)}</em></div>
-          <div><span>Domicile principal</span><em>${esc(sum.home)}</em></div></div>
-        <p class="ph-note warn">Elle remplace la partie de cet appareil. Ta partie actuelle est gardée de côté : tu pourras y revenir.</p>
-        <button type="button" class="ph-btn danger" data-sv="apply">Remplacer ma partie</button>`
+      ${sum ? `<div class="pk-rows"><div class="pk-row"><span class="pk-tx"><b>Partie du ${esc(when)}</b><small>${esc(plays)}</small></span><em class="pk-val">${esc(fcfa(sum.wallet))}</em></div>
+          <div class="pk-row"><span class="pk-tx"><b>Domicile principal</b></span><em class="pk-val">${esc(sum.home)}</em></div></div>
+        <p class="pk-note warn">Elle remplace la partie de cet appareil. Ta partie actuelle est gardée de côté : tu pourras y revenir.</p>
+        ${b('apply', 'Remplacer ma partie', '', 'danger')}`
       : `<textarea class="ph-code" rows="3" placeholder="Colle ici le code DAKARREK6:…" aria-label="Code à importer"></textarea>
-        <label class="ph-btn ph-file">Choisir un fichier<input type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
-        ${lastError ? `<p class="ph-note warn" role="alert">${esc(lastError)}</p>` : ''}
-        <button type="button" class="ph-btn" data-sv="check">Vérifier le code</button>`}
-      <button type="button" class="ph-btn" data-sv="cancel">Annuler</button></div>` : ''}
-    ${h.canUndo() ? '<button type="button" class="ph-btn" data-sv="undo">Revenir à la partie d’avant l’import<small>Celle qu’un import a remplacée sur cet appareil</small></button>' : ''}
-    <p class="ph-note">Ta partie reste sur cet appareil : elle ne passe pas toute seule sur un autre téléphone. Pour changer d’appareil, copie le code ici et importe-le là-bas.</p>
+        <label class="pk-btn secondary ph-file"><span>Choisir un fichier</span><input type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+        ${lastError ? `<p class="pk-note warn" role="alert">${esc(lastError)}</p>` : ''}
+        ${b('check', 'Vérifier le code', '', 'primary')}`}
+      ${b('cancel', 'Annuler', '', 'quiet')}</div>` : ''}
+    ${h.canUndo() ? b('undo', 'Revenir à la partie d’avant l’import', 'Celle qu’un import a remplacée ici') : ''}
+    <p class="pk-note">Ta partie reste sur cet appareil. Pour changer de téléphone : copie le code ici, importe-le là-bas.</p>
   </div>`;
 }
 
