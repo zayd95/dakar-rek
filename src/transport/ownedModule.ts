@@ -1168,7 +1168,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const st = radio.info().station, name = st ? STATIONS.find(x => x.id === st)?.name ?? null : null;
     k.update({ kmh: Math.abs(this.st.speed) * 3.6, rpm: vehicleAudio.rpm, steer: this.st.steer, nav: navigation.current(), radio: name, clock: `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}` }, dt);
   }
-  /** « 📻 »: the next station (off → RFM → Sud FM → Zik FM → Rewmi FM → off: live streams, src/transport/radio.ts), said in one line. */
+  /** « 📻 »: the next station (off → RFM → Sud FM → Rewmi FM → off: live streams, src/transport/radio.ts), said in one line. */
   private radioNext() {
     radio.notify = msg => this.ctx.toast(msg);
     const st = radio.next(vehicleAudio.radioBus());

@@ -5,7 +5,7 @@ Both are replaced. The approved vehicle sounds and their mix are unchanged.
 
 ## 1. The car radio: real Senegalese stations
 
-`src/transport/radio.ts`. The 📻 button by « Vue » goes off → **RFM 94.0** → **Sud FM 98.5** → **Zik FM 89.7** → **Rewmi FM 97.5** → off; the toast and the dashboard screen name the station. The three synthesised stations are gone; there is no synthetic fallback anywhere.
+`src/transport/radio.ts`. The 📻 button by « Vue » goes off → **RFM 94.0** → **Sud FM 98.5** → **Rewmi FM 97.5** → off; the toast and the dashboard screen name the station. The three synthesised stations are gone; there is no synthetic fallback anywhere.
 
 | Station | Zeno.FM page | Stream | Checked from the sandbox (2026-10-23) |
 |---|---|---|---|
@@ -76,6 +76,6 @@ node scripts/capture-radio-av.mjs http://127.0.0.1:4671/ <out> <stand-in.mp3> st
 ## Limits
 
 * The real streams' audio could not be fetched from the sandbox (the broadcaster's host is blocked): loudness, codec and whether that host sends CORS headers are unverified. If it does not, the radio falls back to the plain element (and on an iPhone loses its volume control, keeping on/off and the mute under the horn/phone).
-* Zik FM's relay page has no link to the broadcaster.
+* Zik FM's relay page has no link to the broadcaster: at integration it was left out of the station list (only streams shown to be the station's own are played). The capture above was made before that, with four stations.
 * The arena audio is synthesised; it was checked by measurement (spectra, levels, onset structure, the loops' seams) and recorded from the game, not judged by ear on a phone.
 * No offline « Cassette » station and no Corniche plaza ambience were added.

@@ -1,7 +1,7 @@
 /**
  * The car's radio: real Senegalese stations, live (docs/audio/ARENA_AND_RADIO.md). Each is the station's own public stream on Zeno.FM
  * (`stream.zeno.fm/<mount>`, which redirects to the broadcaster's tokenised Icecast URL); the 📻 button by « Vue » goes off → RFM → Sud FM →
- * Zik FM → Rewmi FM → off, and the station's name shows on the toast and the dashboard screen. Nothing is synthesised any more.
+ * Rewmi FM → off, and the station's name shows on the toast and the dashboard screen. Nothing is synthesised any more.
  *
  * How it plays: an <audio> element streams the URL with `crossOrigin = 'anonymous'` into the page's Web Audio graph (MediaElementSource → a
  * gain → the vehicles' bus of src/transport/vehicleAudio.ts `radioBus`): so the game's sound setting mutes it, it starts only after the first
@@ -16,12 +16,15 @@
  * reconnects to the live broadcast when the sound comes back. A private Claude preview blocks external media (its CSP): the radio then says
  * the station is unavailable, as for any failure.
  */
-export interface Station { id: 'rfm' | 'sudfm' | 'zik' | 'rewmi'; name: string; freq: string; full: string; url: string; page: string }
-/** Verified on 2026-10-23: each Zeno.FM page lists the station (Senegal), and its stream URL answers 302 to the broadcaster's Icecast server (an unknown mount answers 404). */
+export interface Station { id: 'rfm' | 'sudfm' | 'rewmi'; name: string; freq: string; full: string; url: string; page: string }
+/**
+ * Verified on 2026-10-23: each Zeno.FM page lists the station (Senegal) and links to the broadcaster's own site or accounts, and its stream URL answers 302
+ * to the broadcaster's Icecast server (an unknown mount answers 404). A relay whose page does not link to the broadcaster (Zik FM's) is left out: only
+ * streams that can be shown to be the station's own are played.
+ */
 export const STATIONS: readonly Station[] = [
   { id: 'rfm', name: 'RFM', freq: '94.0', full: 'Radio Futurs Médias', url: 'https://stream.zeno.fm/2h77qvxhq9duv', page: 'https://zeno.fm/radio/radiofuturmedia-rfm/' },
   { id: 'sudfm', name: 'Sud FM', freq: '98.5', full: 'Sud FM Sénégal', url: 'https://stream.zeno.fm/y763bdfn3reuv', page: 'https://zeno.fm/radio/sudfmsenegal/' },
-  { id: 'zik', name: 'Zik FM', freq: '89.7', full: 'Zik FM Dakar', url: 'https://stream.zeno.fm/suhh98yy1xmtv', page: 'https://zeno.fm/radio/zikfmdakar/' },
   { id: 'rewmi', name: 'Rewmi FM', freq: '97.5', full: 'Radio Rewmi FM Dakar', url: 'https://stream.zeno.fm/smw7kg16t8quv', page: 'https://zeno.fm/radio/radiorewmi/' },
 ];
 /**

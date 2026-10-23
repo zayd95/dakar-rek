@@ -4,13 +4,13 @@ import { CONNECT_TIMEOUT, ELEMENT_GAIN, RADIO_LEVEL, Radio, SILENT_PROBE, STALL_
 /** The car radio (src/transport/radio.ts): live Senegalese stations, ducked under the horn, the phone, a knock and the job's card; released whenever it is not heard. */
 describe('the car radio: stations and level', () => {
   const base = { volume: 1, throttle: 0, ducks: [], now: 10, phone: false, horn: false };
-  it('four real Senegalese stations, each its own live stream on Zeno.FM (no synthesised station left)', () => {
-    expect(STATIONS.map(s => `${s.name} ${s.freq}`)).toEqual(['RFM 94.0', 'Sud FM 98.5', 'Zik FM 89.7', 'Rewmi FM 97.5']);
+  it('three real Senegalese stations, each its own live stream on Zeno.FM (no synthesised station left, no relay that cannot be shown to be the station\'s)', () => {
+    expect(STATIONS.map(s => `${s.name} ${s.freq}`)).toEqual(['RFM 94.0', 'Sud FM 98.5', 'Rewmi FM 97.5']);
     for (const s of STATIONS) { expect(s.url).toMatch(/^https:\/\/stream\.zeno\.fm\/[a-z0-9]{10,}$/); expect(s.page).toMatch(/^https:\/\/zeno\.fm\/radio\//); }
     expect(new Set(STATIONS.map(s => s.url)).size).toBe(STATIONS.length);
     expect(VOLUMES.map(v => v.v)).toEqual([0.45, 0.7, 1]);
     expect(unavailable(STATIONS[0])).toBe('📻 RFM indisponible');
-    expect(radioSettings().stations.map(s => s.id)).toEqual(['rfm', 'sudfm', 'zik', 'rewmi']);
+    expect(radioSettings().stations.map(s => s.id)).toEqual(['rfm', 'sudfm', 'rewmi']);
   });
   it('a little under the engine when accelerating; the horn, the phone, a knock and the card lower it; a duck ends', () => {
     expect(radioGain(base)).toBe(RADIO_LEVEL);
@@ -69,10 +69,10 @@ describe('the car radio: streaming', () => {
     expect(el.crossOrigin).toBe('anonymous'); expect(el.src).toBe(STATIONS[0].url); expect(el.plays).toBe(1);
     expect(k.r.status).toBe('connecting'); expect(k.r.mode).toBe('graph'); expect(k.ctx.graphSources).toBe(1);
     el.fire('playing'); expect(k.r.status).toBe('playing');
-    k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus);                                   // Sud FM, Zik FM, Rewmi FM: the same element, a new stream each time
+    k.r.next(k.bus); k.r.next(k.bus);                                                    // Sud FM, Rewmi FM: the same element, a new stream each time
     expect(el.srcs).toEqual(STATIONS.map(s => s.url)); expect(k.ctx.graphSources).toBe(1);
     expect(k.r.next(k.bus)).toBeNull();                                                  // off
-    expect(k.r.status).toBe('off'); expect(k.streaming()).toEqual([]); expect(el.paused).toBe(true); expect(el.loads).toBeGreaterThanOrEqual(4);
+    expect(k.r.status).toBe('off'); expect(k.streaming()).toEqual([]); expect(el.paused).toBe(true); expect(el.loads).toBeGreaterThanOrEqual(3);
     expect(k.r.info().streaming).toBe(false);
   });
   it('a stream refused through the graph (no CORS headers) plays on a plain element, its volume set and ducked', () => {
@@ -86,7 +86,7 @@ describe('the car radio: streaming', () => {
     expect(plain.volume).toBeLessThan(RADIO_LEVEL * k.r.volume * ELEMENT_GAIN * 0.4);
     expect(k.notices).toEqual([]);
     k.r.next(k.bus); expect(k.r.mode).toBe('graph'); expect(k.els[0].src).toBe(STATIONS[1].url);   // another station tries the graph first
-    k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus);                        // …and back to RFM: straight to a plain element (its graph load is known to fail)
+    k.r.next(k.bus); k.r.next(k.bus); k.r.next(k.bus);                                     // …and back to RFM: straight to a plain element (its graph load is known to fail)
     expect(k.r.mode).toBe('element'); expect(plain.src).toBe(STATIONS[0].url); expect(k.r.info().noCors).toEqual(['rfm']);
   });
   it('on an iPhone a plain element\'s volume cannot be set: the horn and the phone mute it instead', () => {
