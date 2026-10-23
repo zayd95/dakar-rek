@@ -86,6 +86,14 @@ export interface HubWorld {
   canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
   roofs?: Collider[];
+  /**
+   * Ground kept open whatever the street dressing would put there: a shop's frontage and the walk to its door, a loading bay at the kerb. The builder's
+   * street trees and stalls, the street furniture (src/game/streetDress.ts), the painted walls (src/game/pikineDna.ts) and the parked cars
+   * (src/game/parkedVehicles.ts) keep off it. `why` names it (the checks).
+   */
+  keepClear?: KeepClear[];
   dispose(): void;
 }
+/** A rectangle of the ground kept open (HubWorld.keepClear). */
+export interface KeepClear { x0: number; z0: number; x1: number; z1: number; why: string }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }

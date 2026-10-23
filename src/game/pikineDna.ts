@@ -417,6 +417,8 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
   /** Ground the slice keeps open whatever stands nearby: the arena gate's queue and apron, the stalls' customers, the fans' corners (src/arena/exteriorRules.ts). */
   const keepOpen: { x0: number; z0: number; x1: number; z1: number }[] = [];
   const G = 0.12;
+  // the ground the hub keeps open (Keur Meubles' frontage and the Résidence Jàmm's door, down to the kerb: src/world/builder.ts citeFronts) is kept open here too
+  for (const r of hub.keepClear ?? []) keepOpen.push({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 });
   const free = (r: { x0: number; z0: number; x1: number; z1: number }, pad = 0.05) =>
     !hub.colliders.some(c => r.x0 < c.x1 + pad && r.x1 > c.x0 - pad && r.z0 < c.z1 + pad && r.z1 > c.z0 - pad) && !taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0)
     && !keepOpen.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
@@ -577,6 +579,9 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
   }
   // the room's flanks: a narrower painted wall on each side of the home on the first road
   for (const a of [-50.3, -33.4]) unit(LINES[1], 1, a, 3.6, 'mural', 0.66);
+  // the wrestler of « LÀMB · Pikine · Parcelles » on the avenue, against Keur Meubles' blind west wall (its showroom opens on the first road, kept clear):
+  // the first walk passes it, the shop's front is never hidden by it (its own random stream: nothing placed above or below moves)
+  { const R0 = R; R = rng(0x1a3b5); for (const a of [-79.6, -80.6, -78.6]) if (unit(LINES[0], 1, a, 5.4, 'mural', 1, { mural: 'lutteur' })) break; R = R0; }
 
   // ---- the ARENA STREET: the road z = −60 east of the junction at x = 0, up to the gate's parvis and past it. The gate's own world (the queue, the
   // stalls, the guarded moto lot, the fans' corners) belongs to src/arena: the slice keeps clear of it and dresses what the street was missing
