@@ -94,6 +94,8 @@ export const VenuesModule: GameModule = {
     }
   },
   spaceChanged(_ctx, space) { for (const v of venues) v.spaceChanged?.(space); },
+  /** An in-world activity (the grill of a Dibi, La Vague's floor) frames the view while it runs. */
+  camera(_ctx, dt) { for (const v of venues) if (v.camera?.(dt)) return true; return false; },
   /** A venue the player is in that has its own space (La Vague's terrace): targets, seats, presence and chat. */
   space() { for (const v of venues) { const s = v.space?.(); if (s) return s; } return null; },
   debug: () => ({

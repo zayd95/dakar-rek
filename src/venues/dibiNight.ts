@@ -311,6 +311,9 @@ export class DibiNight {
     this.board = new THREE.Mesh(bg, this.boardMat); this.board.name = 'dibi_board'; k.group.add(this.board); k.keep(bg);
   }
 
+  /** While the player grills (src/venues/grillPlay.ts) the dibi master keeps the left half of the grate: his brochettes there only. */
+  reserve(on: boolean) { this.skewers.count = on ? 3 : 6; }
+
   /** The menu's rows (from the place's offers, once it exists). */
   setMenu(offers: Record<string, readonly ActivitySpec[]>) { this.rows = menuRows(offers); this.boardKey = ''; this.boardT = 0; }
 

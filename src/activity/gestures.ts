@@ -32,6 +32,14 @@ export function someOf(list: GestureOption[], n: number, seed = Date.now()): Ges
   return a.slice(0, n);
 }
 
+/** A grill or dance gesture played without its place (no grill, no floor at hand): the timing bar it used to be. */
+export type CardGesture = Exclude<Gesture, { kind: 'grill' } | { kind: 'dance' }>;
+export function asTiming(g: Gesture): CardGesture {
+  if (g.kind === 'grill') return { kind: 'timing', prompt: 'Retourne les brochettes au bon moment', verb: 'Retourner', icon: '🍢', rounds: g.skewers, speed: 1.1, zone: 0.2 };
+  if (g.kind === 'dance') return { kind: 'timing', prompt: 'Danse sur le temps du tambour', verb: 'Pas', icon: '💃', rounds: g.rounds, speed: g.speed ?? 1.2, zone: 0.22 };
+  return g;
+}
+
 export const G = {
   /** Mechanic's helper: hand the tool Modou asks for. */
   tools: (rounds = 4): Gesture => ({ kind: 'choose', prompt: 'Le mécanicien a besoin d’un outil', who: 'Modou', rounds, options: TOOLS, patience: 6 }),
@@ -41,10 +49,10 @@ export const G = {
   stall: (rounds = 5): Gesture => ({ kind: 'choose', prompt: 'Sers les clients', who: 'Cliente', rounds, options: STALL, patience: 6 }),
   /** Pull the net / lift the crates in rhythm with the waves. */
   haul: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Tire au rythme des vagues', verb: 'Tirer', icon: '🪢', rounds, speed: 0.9, zone: 0.22 }),
-  /** Turn the skewers before they burn. */
-  grill: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Retourne les brochettes au bon moment', verb: 'Retourner', icon: '🍢', rounds, speed: 1.1, zone: 0.2 }),
-  /** Dance on the beat: press when the cursor crosses the drum's beat (faster in a contest). */
-  dance: (rounds = 6, speed = 1.2): Gesture => ({ kind: 'timing', prompt: 'Danse sur le temps du tambour', verb: 'Pas', icon: '💃', rounds, speed, zone: 0.22 }),
+  /** At the grill: lay `n` brochettes on the coals, turn each one once it is browned underneath, serve the order (src/venues/grillPlay.ts). */
+  grill: (n = 4): Gesture => ({ kind: 'grill', prompt: 'Grille la commande et sers-la', skewers: n, heat: 1 + (n - 3) * 0.1 }),
+  /** On the floor: `rounds` two-bar phrases on the music (left / right steps, arms up, a turn), harder moves when `speed` is higher (src/venues/dancePlay.ts). */
+  dance: (rounds = 6, speed = 1.2): Gesture => ({ kind: 'dance', prompt: 'Danse sur la musique', rounds, speed }),
   /** Change a wheel in the right order. */
   wheel: (): Gesture => ({ kind: 'sequence', prompt: 'Change la roue dans l’ordre', steps: [
     { id: 'cric', label: 'Lever avec le cric', icon: '🛞' }, { id: 'devisser', label: 'Dévisser les écrous', icon: '🔧' },

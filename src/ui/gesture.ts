@@ -1,11 +1,13 @@
 import './gesture.css';
 import type { Gesture, GestureOption } from '../activity/types';
+import { playInWorld, type InWorldPlayer } from '../activity/inWorld';
+import { asTiming, type CardGesture } from '../activity/gestures';
 
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const PAUSE = 0.55;                          // seconds of feedback between rounds
 
 interface Live {
-  g: Gesture; done: (score: number) => void; label: string;
+  g: CardGesture; done: (score: number) => void; label: string;
   round: number; results: boolean[]; t: number; pause: number;
   /** timing */ zone: [number, number]; cursor: number;
   /** choose */ ask: GestureOption | null; shown: GestureOption[];
@@ -16,10 +18,14 @@ interface Live {
  * Plays the gestures of the trades (src/activity/gestures.ts) in a compact card above the action area: a moving cursor
  * to stop in the green, the right item for the person asking, steps in the right order. Keys: Space/E/Enter to press,
  * 1–4 to pick; Escape still stops the whole activity (main.ts).
+ * The grill and the dance are played in the world when their place can (src/activity/inWorld.ts: a Dibi's grill, La Vague's
+ * floor); elsewhere they fall back to the timing bar. Either way the runner gets one score through `done`.
  */
 export class GesturePlayer {
   private el: HTMLElement;
   private live: Live | null = null;
+  /** A gesture played in the world (no card). */
+  private ext: { p: InWorldPlayer; g: Gesture; label: string; abort: () => void } | null = null;
   private raf = 0;
   private last = 0;
 
@@ -42,21 +48,33 @@ export class GesturePlayer {
     }, true);                                                  // capture: the game's own action key never sees it
   }
 
-  get active() { return this.live !== null; }
+  get active() { return this.live !== null || this.ext !== null; }
 
   /** State for the checks (?debug). */
   info() {
+    const X = this.ext;
+    if (X) return { kind: X.g.kind, label: X.label, inWorld: true, ...(X.p.info() ?? {}) };
     const L = this.live; if (!L) return null;
     return { kind: L.g.kind, label: L.label, round: L.round, rounds: this.rounds(L), results: [...L.results], cursor: L.cursor, zone: L.zone,
       ask: L.ask?.id ?? null, shown: L.shown.map(o => o.id), next: L.g.kind === 'sequence' ? L.g.steps[L.next]?.id ?? null : null, pause: L.pause > 0 };
   }
 
   /** Checks only (?debug): end the current gesture now with this score, as if played. */
-  finishNow(score: number) { const L = this.live; if (!L) return false; this.stop(); L.done(score); return true; }
+  finishNow(score: number) {
+    if (this.ext) return this.ext.p.finishNow(score);
+    const L = this.live; if (!L) return false; this.stop(); L.done(score); return true;
+  }
 
   play(g: Gesture, label: string, done: (score: number) => void): () => void {
     this.stop();
-    const L: Live = { g, done, label, round: 0, results: [], t: 0, pause: 0, zone: [0.4, 0.6], cursor: 0, ask: null, shown: [], next: 0, errors: 0 };
+    let X: { p: InWorldPlayer; g: Gesture; label: string; abort: () => void } | null = null;
+    const world = playInWorld(g, label, score => { if (this.ext === X) this.ext = null; done(score); });
+    if (world) {
+      // (a player may end at once, inside play: then nothing is left to hold)
+      if (!world.ended()) { X = { p: world.player, g, label, abort: world.abort }; this.ext = X; }
+      return () => { if (X && this.ext === X) this.ext = null; world.abort(); };
+    }
+    const L: Live = { g: asTiming(g), done, label, round: 0, results: [], t: 0, pause: 0, zone: [0.4, 0.6], cursor: 0, ask: null, shown: [], next: 0, errors: 0 };
     this.live = L;
     this.startRound();
     this.el.classList.add('on');
@@ -67,6 +85,7 @@ export class GesturePlayer {
   }
 
   private stop() {
+    if (this.ext) { const X = this.ext; this.ext = null; X.abort(); }
     cancelAnimationFrame(this.raf); this.live = null;
     this.el.classList.remove('on'); this.el.innerHTML = '';
   }

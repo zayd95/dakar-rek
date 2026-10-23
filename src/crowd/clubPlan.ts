@@ -2,6 +2,7 @@ import { rng } from '../core/rng';
 import { hashId } from './looks';
 import type { CrowdQuality } from './crowd';
 import type { ClubCrowd } from '../activity/templates';
+import { VAGUE_TRACK } from '../venues/vagueTrack';
 
 /**
  * La Vague's crowd (src/venues/club.ts, docs/CROWD.md): where the club's people are, pure and deterministic per hub
@@ -20,8 +21,8 @@ export const VAGUE = {
   gate: { x: 0, z: 9 }, inside: { x: 0, z: 6.5 },
   deck: 0.12,
 } as const;
-/** The club's beat (src/venues/club.ts: one beat every 0.485 s, ≈ 124 bpm). */
-export const VAGUE_BPM = 60 / 0.485;
+/** The club's beat: the tempo of its music (src/venues/vagueTrack.ts, scripts/audio/render-vague.mjs). */
+export const VAGUE_BPM = VAGUE_TRACK.bpm;
 /** The club's moments by the hour (src/activity/templates.ts clubCrowd). */
 export type ClubMoment = ClubCrowd;
 
