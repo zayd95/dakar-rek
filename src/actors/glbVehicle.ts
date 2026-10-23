@@ -3,7 +3,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { isTestHost } from '../core/testParams';
 import type { VehicleSpec } from './vehicleKit';
-import { buildCockpit } from './cockpit';
 
 /**
  * Hand-made / generated replacement bodies for the player's vehicles (public/assets/vehicles/<id>.glb, prepared and checked by
@@ -18,7 +17,7 @@ import { buildCockpit } from './cockpit';
  * the file is missing or fails to load the procedural model is used as before.
  */
 export interface GlbWheel { spin: THREE.Object3D; steer: THREE.Object3D | null; r: number }
-export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number; /** The cockpit's steering wheel (a solid-shell body only). */ cockpitWheel?: THREE.Object3D }
+export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number }
 
 interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null; far2: THREE.Object3D | null }
 /** Beyond this distance an authored body is drawn as its far model: the same shell and details merged into two meshes, wheels fixed (8 draw calls → 2). */
@@ -190,15 +189,16 @@ export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
   } else g.add(body);
   g.userData.vehicleSpec = kit;
   const rig = rigOf(g, kit.drive.steerMax);
-  if (!p.interior) {                                              // a solid shell has no cabin: the shared cockpit, shown in the « Au volant » view only
-    const ck = buildCockpit(kit);
-    g.add(ck.group); g.userData.glbCockpit = ck.group; rig.cockpitWheel = ck.wheel;
-    const shell = body.getObjectByName('body'); if (shell) g.userData.glbHide = [shell];     // seen from inside, the shell's own interior would be a mess: it is not drawn, the cockpit is
-  }
   g.userData.glbRig = rig;
   // a body with its own driver's door (scripts/vehicles/author): the kit's door code swings it about its hinge, and the cabin behind it is drawn only while it is open
   const door = body.getObjectByName('door'), cabin = body.getObjectByName('cabin');
   if (door) { g.userData.kitDoor = door; if (cabin) { cabin.visible = false; g.userData.kitCabin = cabin; } }
+  // At the wheel (« Au volant ») the car's interior is drawn in the car's frame (src/transport/carInterior.ts). An authored body (its own cabin) or one
+  // whose sidecar says its cabin is hollow stays drawn from inside: its faces turn away and its bonnet and mirrors show through the glass; only the
+  // driver's door is put away (its inner panel runs up to the roof: from the seat it would close the side window). A generated solid shell would be
+  // a mess seen from inside: it is not drawn in that view (Vehicle.setCockpit).
+  g.userData.seenInside = p.interior || !!cabin;
+  if (cabin && door) g.userData.glbHide = [door];
   return g;
 }
 
@@ -232,7 +232,6 @@ export function animateGlbRig(rig: GlbRig, speed: number, steer: number, dt: num
     if (w.steer) w.steer.rotation.y = s;
   }
   rig.angle = s;
-  if (rig.cockpitWheel) rig.cockpitWheel.rotation.z = -s * 3;       // 0.6 rad of road wheel is about a third of a turn at the wheel
 }
 
 /** Stats of a prepared model (checks, reports). */

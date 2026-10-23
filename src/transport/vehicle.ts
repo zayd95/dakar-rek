@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import type { Seat } from '../interact/seats';
 import { Apprentice } from '../actors/apprenti';
 import { humanoidReady } from '../actors/humanoid';
-import { animateVehicle, hasKitDoor, setKitDoor } from '../actors/vehicleKit';
+import { animateVehicle, hasKitDoor, setKitDoor, type VehicleSpec as KitSpec } from '../actors/vehicleKit';
 import { newMotion, pullIn, type Motion, type Path, type Pose, type Timetable } from './route';
 import { seatToWorld, toWorld, type LocalPose, type VehicleSpec, type WorldPose } from './spec';
 
@@ -101,12 +101,20 @@ export class Vehicle {
   setDoor(k: number) { this.door = k; setKitDoor(this.model, k); }
   get doorOpen() { return this.door; }
 
-  /** A solid-shell body's shared cockpit (src/actors/cockpit.ts) is drawn only in an inside view (« Au volant »). */
+  /**
+   * The inside view (« Au volant ») is on or off. A body made to be seen from inside (an authored one, src/actors/glbVehicle.ts `seenInside`) stays
+   * but for the parts it lists (`glbHide`: its door's inner panel): its faces turn away from the eye and its bonnet and mirrors show through the glass. Any other body (a generated shell, the kit's procedural car)
+   * is not drawn while the camera is in it: the car's interior (src/transport/carInterior.ts) stands in for it.
+   */
   setCockpit(on: boolean) {
-    const u = this.model.userData, c = u.glbCockpit as THREE.Object3D | undefined, hide = u.glbHide as THREE.Object3D[] | undefined;
-    if (c) c.visible = on;
-    if (hide) for (const o of hide) o.visible = !on;                                 // the shell's own inside is not drawn from inside
+    const u = this.model.userData;
+    if (!u.seenInside) { this.model.visible = !on; return; }
+    const hide = u.glbHide as THREE.Object3D[] | undefined; if (hide) for (const o of hide) o.visible = !on;
   }
+  /** The body is drawn from inside (an authored body): the interior needs no bonnet of its own. */
+  get shellInside() { return !!this.model.userData.seenInside; }
+  /** The kit spec the body was built from (its seats, doors, steering, size, colours), when it has one. */
+  get kitSpec(): KitSpec | undefined { return this.model.userData.vehicleSpec as KitSpec | undefined; }
 
   /** The player takes / leaves the controls: the model is rebuilt only when that changes the look (a motorbike's stand). */
   setRidden(on: boolean) {

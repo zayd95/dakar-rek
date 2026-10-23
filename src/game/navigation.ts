@@ -55,7 +55,7 @@ class Navigation implements GameModule {
     return this.manual;
   }
 
-  /** What the goal line says now (the next turn, the distance left), for the car's centre screen (src/transport/cockpitKit.ts). */
+  /** What the goal line says now (the next turn, the distance left), for the car's screens at the wheel (src/transport/carInterior.ts). */
   current(): { glyph: string; text: string; dist: string } | null { return this.now ? { glyph: this.now.glyph, text: this.now.text, dist: this.now.dist } : null; }
   /** The point to steer for in this district (the goal, or the way out toward it), for the minimap and the marker: null when the goal is here and has its own. */
   localGoal(): { name: string; x: number; z: number } | null { return this.now?.local ?? null; }
