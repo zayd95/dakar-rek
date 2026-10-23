@@ -475,12 +475,12 @@ class Vtc implements GameModule {
     this.bubbleT = 5;
   }
 
-  /** The way-finding pin: the passenger, then the destination (in any district: the goal line says which). Marked as a VTC job (src/ui/jobMarks.ts). */
+  /** The way-finding pin: the passenger, then the destination (in any district: the goal line says which). Marked as a VTC job: green, the car, the kerb bay (src/ui/jobMarks.ts). */
   private guide() {
     const t = this.trip; if (!t) return null;
-    if (t.stage === 'pickup') { const s = stopOf(t.pickup).car; return { name: `${t.passenger.name} · ${t.pickup.name}`, hub: t.from, x: s.x, z: s.z, job: 'vtc' as const, hint: this.ctx.world()?.id === t.from ? undefined : `🚘 ${t.passenger.name} t’attend à ${t.pickup.name} (${hubShort(t.from)})` }; }
+    if (t.stage === 'pickup') { const s = stopOf(t.pickup).car; return { name: `${t.passenger.name} · ${t.pickup.name}`, hub: t.from, x: s.x, z: s.z, yaw: s.yaw, job: 'vtc' as const, hint: this.ctx.world()?.id === t.from ? undefined : `🚘 ${t.passenger.name} t’attend à ${t.pickup.name} (${hubShort(t.from)})` }; }
     const s = stopOf(t.dropoff).car;
-    return { name: `${t.dropoff.name} · dépose`, hub: t.to, x: s.x, z: s.z, job: 'vtc' as const, hint: this.ctx.world()?.id === t.to ? undefined : `🚘 ${t.passenger.name} à bord · ${t.dropoff.name}, ${hubShort(t.to)} : prends la route` };
+    return { name: `${t.dropoff.name} · dépose`, hub: t.to, x: s.x, z: s.z, yaw: s.yaw, job: 'vtc' as const, hint: this.ctx.world()?.id === t.to ? undefined : `🚘 ${t.passenger.name} à bord · ${t.dropoff.name}, ${hubShort(t.to)} : prends la route` };
   }
 
   debug(): Record<string, unknown> {

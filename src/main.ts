@@ -1395,7 +1395,8 @@ function guidePlace(id: string): { name: string; x: number; z: number } | null {
 function walkingHint(): string | null {
   // a task in hand (an errand, a VTC passenger) leads the goal line, wherever its target is
   const m = destination ? null : missionTarget();
-  if (m) return m.hint ?? (m.hub === world?.id ? withBearing(`📍 ${m.name}`, m) : `📍 ${m.name} · ${HUB_NAMES[m.hub].split(' · ')[0]}`);
+  const pin = m?.job === 'vtc' ? '🚘' : m?.job === 'delivery' ? '📦' : '📍';                // a job's own pictogram (src/ui/jobMarks.ts)
+  if (m) return m.hint ?? (m.hub === world?.id ? withBearing(`${pin} ${m.name}`, m) : `${pin} ${m.name} · ${HUB_NAMES[m.hub].split(' · ')[0]}`);
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;

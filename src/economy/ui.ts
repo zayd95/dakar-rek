@@ -22,6 +22,7 @@ import { fcfaShort } from './format';
 import './economy.css';
 import { streak } from './streakModule';
 import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
+import { JOB, jobBadge } from '../ui/jobMarks';
 
 /**
  * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
@@ -63,9 +64,10 @@ export class Economy {
   /** The shop the furniture catalogue was last opened from (its title). */
   private shopAt: string | undefined;
   private marker = new THREE.Group();
-  private ringMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  private beamMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  private ringMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  private beamMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
   private arrow: THREE.Mesh;
+  private badge: THREE.Sprite;
   private line: HTMLElement;
   private t = 0;
   private lineT = 0;
@@ -86,7 +88,9 @@ export class Economy {
     const disc = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), this.beamMat); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.05;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 14, 10, 1, true), this.beamMat); beam.position.y = 7;
     this.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), this.ringMat); this.arrow.rotation.x = Math.PI; this.arrow.position.y = 3.2;
-    this.marker.add(ring, disc, beam, this.arrow); this.marker.visible = false; this.marker.renderOrder = 2;
+    // a Tiak Tiak delivery (src/ui/jobMarks.ts): orange, a round ring and the parcel's badge over the arrow, never taken for a VTC ride's green bay
+    this.badge = jobBadge('delivery'); this.badge.position.y = 4.3;
+    this.marker.add(ring, disc, beam, this.arrow, this.badge); this.marker.visible = false; this.marker.renderOrder = 2;
     d.scene.add(this.marker);
     this.line = document.createElement('div'); this.line.id = 'delivery'; this.line.className = 'card';
     (document.getElementById('ui') ?? document.body).appendChild(this.line);
@@ -105,7 +109,7 @@ export class Economy {
     const place = tc ? tc.stop.place : r ? (a.stage === 'pickup' ? r.from : r.to) : null; if (!place) return null;
     const hub = (r && a.stage === 'deliver' ? deliveryHub(r) : a.hub) as HubId, w = this.world;
     const it = w && w.id === hub ? this.placeOf(place.frag) : undefined;
-    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0 };
+    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0, job: 'delivery' };
   }
 
   private get s() { return this.d.state; }
@@ -348,10 +352,10 @@ export class Economy {
       if (!from || Math.hypot(this.here.x - from.x, this.here.z - from.z) > ECONOMY.tiak.tour.departRadius) { depart(s); this.d.save(); }
     }
     if (tgt && w) {
-      const col = a!.stage === 'pickup' ? 0x4fd1ff : 0xffc83d;
-      this.ringMat.color.setHex(col); this.beamMat.color.setHex(col);
+      // the delivery's colour at both stages (the parcel's badge says what it is; the HUD line says « 📦 » until it is picked up)
+      this.ringMat.color.setHex(JOB.delivery.hex); this.beamMat.color.setHex(JOB.delivery.hex);
       this.marker.position.set(tgt.x, w.heightAt(tgt.x, tgt.z) + 0.12, tgt.z);
-      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5;
+      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5; this.badge.position.y = this.arrow.position.y + 1.1;
       const d = Math.hypot(pos.x - tgt.x, pos.z - tgt.z);
       if (playing && !inside && d < ECONOMY.tiak.arriveRadius) {
         if (tc) { if (tc.run.departed) this.finishStop(a!.runId); }

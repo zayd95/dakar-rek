@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { TargetKind } from '../interact/types';
+import { JOB, jobBadge, jobOf, markGoal, type JobKind } from './jobMarks';
 
 /**
  * World-space UI (docs/UI.md, « the world is the interface »):
@@ -29,12 +30,22 @@ export function worldMarkers(): GameModule {
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.8, 4), pinMat); head.rotation.x = Math.PI;
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10, 8, 1, true), beamMat); beam.position.y = 5;
   pin.add(beam, head); pin.renderOrder = 2; pin.visible = false;
+  // a job's target (src/ui/jobMarks.ts): the pin in its colour with its badge over it; a VTC ride's kerb bay outlined on the road, where the car stops
+  const badges: Record<JobKind, THREE.Sprite> = { vtc: jobBadge('vtc'), delivery: jobBadge('delivery') };
+  for (const b of Object.values(badges)) { b.visible = false; pin.add(b); }
+  const bayMat = new THREE.MeshBasicMaterial({ color: JOB.vtc.hex, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const bayShape = new THREE.Shape(), hole = new THREE.Path(), bw = 1.35, bl = 2.9, t2 = 0.22;
+  bayShape.moveTo(-bw, -bl); bayShape.lineTo(bw, -bl); bayShape.lineTo(bw, bl); bayShape.lineTo(-bw, bl); bayShape.closePath();
+  hole.moveTo(-bw + t2, -bl + t2); hole.lineTo(-bw + t2, bl - t2); hole.lineTo(bw - t2, bl - t2); hole.lineTo(bw - t2, -bl + t2); hole.closePath(); bayShape.holes.push(hole);
+  const bay = new THREE.Mesh(new THREE.ShapeGeometry(bayShape), bayMat); bay.rotation.x = -Math.PI / 2; bay.renderOrder = 2;
+  const bayGroup = new THREE.Group(); bayGroup.add(bay); bayGroup.visible = false; bayGroup.name = 'vtc_bay';
+  let pinJob: JobKind | null = null;
   let t = 0, focusId = '', grow = 1, grey = false, greyT = 0;
   const ground = (ctx: GameCtx, x: number, z: number) => (ctx.inside() ? 0.1 : (ctx.world()?.heightAt(x, z) ?? 0) + 0.06);
 
   return {
     name: 'ui-world',
-    init(ctx) { ctx.scene.add(focus, pin); },
+    init(ctx) { ctx.scene.add(focus, pin, bayGroup); },
     update(ctx, dt) {
       t += dt;
       const free = ctx.mode() === 'play' && !ctx.activities.running && !document.body.classList.contains('inscene');
@@ -57,6 +68,14 @@ export function worldMarkers(): GameModule {
       // next-step place
       const g = ctx.guide();
       const p = ctx.player.pos;
+      const job = jobOf(g); markGoal(job);
+      if (job !== pinJob) {
+        pinJob = job; const col = job ? JOB[job].hex : SUN;
+        pinMat.color.setHex(col); beamMat.color.setHex(col);
+        for (const [k, b] of Object.entries(badges)) b.visible = k === job;
+      }
+      bayGroup.visible = !!g && job === 'vtc' && !ctx.inside() && free;
+      if (bayGroup.visible && g) { bayGroup.position.set(g.x, ground(ctx, g.x, g.z) + 0.01, g.z); bayGroup.rotation.y = (g as { yaw?: number }).yaw ?? 0; bayMat.opacity = 0.75 + Math.sin(t * 4) * 0.2; }
       if (!g || ctx.inside()) { pin.visible = false; ctx.hud.setGuide(null); return; }
       const dx = g.x - p.x, dz = g.z - p.z, dist = Math.hypot(dx, dz);
       let a = Math.atan2(dx, dz) - ctx.follow.yaw;
@@ -68,13 +87,14 @@ export function worldMarkers(): GameModule {
       if (pin.visible) {
         pin.position.set(g.x, ground(ctx, g.x, g.z), g.z);
         head.position.y = 3.1 + Math.sin(t * 3) * 0.22; head.rotation.y = t * 1.4;
+        if (pinJob) badges[pinJob].position.y = head.position.y + 0.95;
       }
     },
     debug: ctx => ({
       uiToast: (m: string, kind: 'info' | 'warn' = 'info') => ctx.hud.toast(m, kind),
       /** A moment card (the checks: one at a time, at the side). */
       uiMoment: (title: string, lines: string[] = []) => { ctx.hud.moment({ icon: '⭐', title, lines }); },
-      uiMarkers: () => ({ focus: focus.visible, focusAt: focus.visible ? { x: focus.position.x, z: focus.position.z } : null, grey: focus.visible && grey, pin: pin.visible, pinAt: pin.visible ? { x: pin.position.x, z: pin.position.z } : null }),
+      uiMarkers: () => ({ job: pinJob, bay: bayGroup.visible ? { x: bayGroup.position.x, z: bayGroup.position.z, yaw: bayGroup.rotation.y } : null, pinColor: '#' + pinMat.color.getHexString(), focus: focus.visible, focusAt: focus.visible ? { x: focus.position.x, z: focus.position.z } : null, grey: focus.visible && grey, pin: pin.visible, pinAt: pin.visible ? { x: pin.position.x, z: pin.position.z } : null }),
     }),
   };
 }
