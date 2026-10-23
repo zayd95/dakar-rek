@@ -162,12 +162,13 @@ try {
     // focus modes other lanes signal (an activity, the prayer): only the essentials stay
     if (label !== 'before') {
       for (const f of ['activity', 'prayer']) {
-        await d(m => { document.body.dataset.focus = m; }, f); await page.waitForTimeout(600);
+        // the game paused while it is measured: a running module owns its focus (the mosque clears « prayer » each frame no one prays)
+        await d(m => { window.__dakar.pause(true); document.body.dataset.focus = m; }, f); await page.waitForTimeout(600);
         await shot(`hud-focus-${f}`);
         const shown = (await d(hudOverlaps)).shown;
         check(`${vp}: focus « ${f} »: the HUD steps back`, f === 'prayer' ? !shown.some(s => /#stats|#goal|#minimap|#streakChip|#place/.test(s)) : !shown.some(s => /#goal|#minimap|#streakChip/.test(s)), shown.join(' '));
       }
-      await d(() => { delete document.body.dataset.focus; });
+      await d(() => { delete document.body.dataset.focus; window.__dakar.pause(false); });
     }
     check(`${vp}: no page errors`, !errors.length, errors.slice(0, 3).join(' | '));
     await ctx.close();

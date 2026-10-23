@@ -82,7 +82,10 @@ const shot = async (p, name) => { await p.waitForTimeout(500); try { await p.scr
   a = await who(p); s = await save(p);
   check('another link on the same device: still the femme, same game', a.body === 'meshy_f' && s.guestId === guest, JSON.stringify({ a, same: s.guestId === guest }));
   // 3 — New Game from the phone: the save goes, the choice returns, the other identity can be taken
-  await p.keyboard.press('Escape'); await p.locator('[data-app="reglages"]').first().click(); await p.locator('[data-act="new"]').click();
+  // the phone's home, « Toutes les apps » › Réglages › Nouvelle partie (each tap after the phone's 320 ms settle on a new screen)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(600);
+  if (!(await p.locator('#phone [data-app="reglages"]').count())) { await p.locator('#phone [data-go="apps"]').click(); await p.waitForTimeout(600); }
+  await p.locator('#phone [data-app="reglages"]').first().click(); await p.waitForTimeout(600); await p.locator('[data-act="new"]').click(); await p.waitForTimeout(600);
   await Promise.all([p.waitForEvent('load'), p.locator('[data-act="wipe"]').click()]);
   await p.goto(`${base}?debug&avatar=choisir`, { waitUntil: 'load' });
   await p.waitForSelector('#studio', { timeout: 120000 });

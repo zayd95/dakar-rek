@@ -52,7 +52,10 @@ console.log('ride', JSON.stringify({ hour: pick.h, from: pick.r.pickup.name, to:
 
 // accept it on the phone, by tapping
 await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
-await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
+// the phone opens where it was left: its home, then « Toutes les apps » › VTC; each tap waits out the phone's 320 ms settle on a new screen
+await page.waitForTimeout(600);
+if (await page.locator('#phone [data-nav="home"]').isVisible()) { await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(600); }
+await t.tap('#phone [data-go="apps"]'); await page.waitForTimeout(600);
 await t.tap('#phone [data-app="vtc"]'); await page.waitForSelector('#modal.on', T);
 await shot('phone-requests');
 const label = `${pick.r.pickup.name} → ${pick.r.dropoff.name}`;

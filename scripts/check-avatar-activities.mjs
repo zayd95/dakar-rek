@@ -79,11 +79,11 @@ try {
   await page.waitForTimeout(1200);
   let drove = true;
   try { await boardVehicle(page, t, 'teranga'); } catch { drove = false; }
-  await until(() => window.__dakar.clip() === 'Sit', null, 30000);
+  await until(() => /^(Sit|Drive|SitCar)$/.test(window.__dakar.clip() ?? ''), null, 30000);   // at the wheel: « Drive » (hands on the rim, src/transport/cabinFit.ts)
   m = await me(); const car = await d(() => window.__dakar.teranga.at());
   const inSeat = await d(() => { const p = window.__dakar.pos(), c = window.__dakar.teranga.at(); return Math.hypot(p.x - c.x, p.z - c.z); });
   await close(2.0, 1.2, 1.2); await shot('4-teranga');
-  check('4. driving the Teranga: her body in the driver\'s seat, her look', drove && car?.driving && same(m) && m.clip === 'Sit' && inSeat < 1.6, JSON.stringify({ ...m, inSeat: +inSeat.toFixed(2) }));
+  check('4. driving the Teranga: her body in the driver\'s seat, her look', drove && car?.driving && same(m) && /^(Sit|Drive|SitCar)$/.test(m.clip ?? '') && inSeat < 1.6, JSON.stringify({ ...m, inSeat: +inSeat.toFixed(2) }));
   await free();
   await t.tap('#ridepad .rp-off').catch(() => {});                                     // « Descendre », as a finger would
   if (!(await until(() => !window.__dakar.teranga.at()?.driving, null, 30000))) { await page.locator('#ridepad .rp-off').click({ force: true }).catch(() => {}); await until(() => !window.__dakar.teranga.at()?.driving, null, 60000); }
@@ -144,6 +144,8 @@ try {
   await page.waitForTimeout(2500);
   m = await me(); await close(2.4, 1.2, 0.9); await shot('7b-prayer');
   check('7b. praying on a row, barefoot: her body, her look, the prayer\'s postures', same(m) && /^Pray/.test(m.clip ?? ''), JSON.stringify(m));
+  const quiet = await d(() => { const shown = id => { const e = document.getElementById(id), r = e?.getBoundingClientRect(); return !!r && r.width > 0 && getComputedStyle(e).display !== 'none'; }; return { focus: document.body.dataset.focus ?? null, stats: shown('stats'), place: shown('place'), streak: shown('streakChip'), minimap: shown('minimap'), act: document.getElementById('act')?.innerText.trim() }; });
+  check('7c. during the prayer the HUD steps back: only a quiet « Quitter » stays', quiet.focus === 'prayer' && !quiet.stats && !quiet.place && !quiet.streak && !quiet.minimap, JSON.stringify(quiet));
   await free(); await until(() => !window.__dakar.activity(), null, 400000);
 
   // 8 — the wrestlers' dance keeps its stand-in (documented, not a regression)
