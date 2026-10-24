@@ -67,6 +67,42 @@ export interface SaveData {
    * change: a save without it (every save made before the studio) is null and draws the body exactly as it was made.
    */
   appearance: Appearance | null;
+  /**
+   * LD2.0-A: the Banque Teranga savings account (src/economy/money.ts): the second of the player's money accounts, beside the wallet. Additive field, no
+   * version change: a save without it has an empty account. Kept in the third extras backup (src/core/save.ts EXTRAS_V3_KEY) so an older client that
+   * drops it at its save never loses the player's savings for good.
+   */
+  bank: BankState;
+}
+
+/**
+ * One movement of a money account other than the wallet (the wallet keeps its own `ledger`). Whole francs; `balance` is the account's balance after it.
+ * `ref`, when given, is the operation's idempotency key: an operation with a ref already applied is refused (never applied twice).
+ */
+export interface BankTx {
+  id: string;
+  /** Real time (ms) and the player's day (SaveData.play.day) when it was applied. */
+  at: number; day: number;
+  kind: BankTxKind;
+  /** Signed amount moved on this account (deposit +, withdrawal −). */
+  amount: number;
+  balance: number;
+  label: string;
+  ref?: string;
+}
+export type BankTxKind = 'deposit' | 'withdraw' | 'interest';
+export interface BankState {
+  /** Opened at the counter or from the phone (the player's day; −1: never opened). */
+  opened: number;
+  savings: number;
+  /** History, oldest first (last BANK_TX_MAX kept), and the sequence of tx ids. */
+  tx: BankTx[]; seq: number;
+  /** The player's savings goal (null: none). */
+  goal: { amount: number; label: string } | null;
+  /** Idempotency keys of the operations already applied (last BANK_REFS_MAX). */
+  refs: string[];
+  /** The player's day interest was last paid on (−1: never), and the milestones (savings levels, F) already celebrated. */
+  interestDay: number; milestones: number[];
 }
 
 export interface PlayDays {
