@@ -1,9 +1,12 @@
 import { DurableObject } from 'cloudflare:workers';
-import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag, appearanceCode, BALL_FEATURE, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
+import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag, appearanceCode, homeHost, BALL_FEATURE, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
 import { parseChatRequest, parseReport, rateLimit, nearRecipients, isPrivateSpace, DedupeMemory, type ChatFailure } from '../src/multiplayer/chatRules';
+import { ECONOMY } from '../src/economy/config';
 import type { HubId } from '../src/core/types';
+import { Social } from './social';
 
-interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; ALLOWED_ORIGINS?: string }
+export { Social };
+interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; SOCIAL: DurableObjectNamespace<Social>; ALLOWED_ORIGINS?: string }
 interface Session {
   id: string; name: string; look: number; tag?: string; rec?: string; app?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
   /** Accepted chat timestamps (sliding window) and players already reported by this connection. */
@@ -17,8 +20,11 @@ const MAX_REPORTS_PER_CONNECTION = 20;
 /** Largest frame accepted: a full chat message (CHAT_MAX_CHARS, any script or emoji) plus its envelope. */
 const MAX_FRAME = 4096;
 const CHAT_DEDUPE_TTL = 15 * 60_000;
-/** Public tag = hash of the private device key. Lets players mute/block across reconnects; the key itself is never broadcast. */
-async function publicTag(key: string | null): Promise<string | undefined> {
+/**
+ * Public tag = hash of the private device key. Lets players mute/block across reconnects; the key itself is never broadcast. LD2.0-B: it is also the
+ * player's account address (`/api/me` → SOCIAL `acct:<tag>`), so a player met in the street can be messaged.
+ */
+export async function publicTag(key: string | null): Promise<string | undefined> {
   if (!key) return undefined;
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`dakar-rek:tag:${key}`)));
   return [...digest.slice(0, 8)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -28,10 +34,21 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/api/health') return Response.json({ ok: true, protocol: PROTOCOL_VERSION, roomCapacity: ROOM_CAPACITY }, { headers: { 'Cache-Control': 'no-store' } });
+    const originRejected = () => { const origin = request.headers.get('Origin'); return !!origin && origin !== url.origin && !env.ALLOWED_ORIGINS?.split(',').map(x => x.trim()).includes(origin); };
+    if (url.pathname === '/api/me') {
+      // LD2.0-B: the player's own account (Messages, Teranga Money, invitations, meetings): one socket handed to SOCIAL `acct:<tag>`
+      if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required', { status: 426 });
+      if (originRejected()) return new Response('Origin rejected', { status: 403 });
+      const key = deviceKey(url.searchParams.get('key'));
+      if (!key) return new Response('Device key required', { status: 400 });
+      const tag = (await publicTag(key))!;
+      const forwarded = new URL(request.url); forwarded.searchParams.delete('key');   // the key never goes further than here
+      const headers = new Headers(request.headers); headers.set('X-Dakar-Tag', tag);
+      return env.SOCIAL.getByName(`acct:${tag}`).fetch(new Request(forwarded, { method: 'GET', headers }));
+    }
     if (url.pathname === '/api/presence') {
       if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required', { status: 426 });
-      const origin = request.headers.get('Origin');
-      if (origin && origin !== url.origin && !env.ALLOWED_ORIGINS?.split(',').map(x => x.trim()).includes(origin)) return new Response('Origin rejected', { status: 403 });
+      if (originRejected()) return new Response('Origin rejected', { status: 403 });
       const hub = url.searchParams.get('hub');
       if (!isHub(hub)) return new Response('Unknown hub', { status: 400 });
       const requestedRoom = url.searchParams.get('room');
@@ -72,6 +89,8 @@ export class HubLobby extends DurableObject<Env> {
 
 export class CityRoom extends DurableObject<Env> {
   private sessions = new Map<WebSocket, Session>();
+  /** LD2.0-B: the host accounts' answers to « may this guest be in my home? » (`home:<tag>` spaces), kept ECONOMY.online.visitCacheMs. */
+  private visits = new Map<string, { ok: boolean; at: number }>();
   /**
    * Delivered chat ids: a bounded memory, backed by small `chat:<id>` storage entries so a resend after a reconnect is
    * still recognised when the room has hibernated in between. Entries older than CHAT_DEDUPE_TTL are pruned.
@@ -94,7 +113,7 @@ export class CityRoom extends DurableObject<Env> {
     const rec = recordTag(url.searchParams.get('rec')), app = appearanceCode(url.searchParams.get('app'));   // (app: the studio's look, strictly shaped; absent from older clients)
     const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, ...(rec ? { rec } : {}), ...(app ? { app } : {}), hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
     this.ctx.acceptWebSocket(server); server.serializeAttachment(session); this.sessions.set(server, session);
-    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [s.peer] : []), features: [BALL_FEATURE] });
+    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [homeHost(s.peer.space) ? masked(s.peer) : s.peer] : []), features: [BALL_FEATURE] });
     this.broadcast({ type: 'count', count: this.sessions.size }, server);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -113,13 +132,43 @@ export class CityRoom extends DurableObject<Env> {
       const raw = (data as { rec?: unknown }).rec, rec = raw === null ? undefined : recordTag(raw);
       if (raw !== null && rec === undefined) { this.reject(ws, 1008); return; }
       if (rec) s.rec = rec; else delete s.rec;
-      if (s.peer) { s.peer = { ...s.peer, updatedAt: now }; if (s.rec) s.peer.rec = s.rec; else delete s.peer.rec; this.broadcast({ type: 'peer', peer: s.peer }, ws); }
+      if (s.peer) { s.peer = { ...s.peer, updatedAt: now }; if (s.rec) s.peer.rec = s.rec; else delete s.peer.rec; if (homeHost(s.peer.space)) this.relayHome(ws, s.peer, s.peer.space); else this.broadcast({ type: 'peer', peer: s.peer }, ws); }
       ws.serializeAttachment(s); return;
     }
     const move = parseMove(data, s.hub); if (!move) { this.reject(ws, 1008); return; }
+    // LD2.0-B: a player's home (`home:<tag>`) is for its owner and the guests their account confirms; any other move there is refused (that move only)
+    const host = homeHost(move.space);
+    if (host && host !== s.tag && !(s.tag && await this.mayVisit(host, s.tag))) return;
+    if (this.sessions.get(ws) !== s) return;                 // left while the host's account answered
+    const before = s.peer?.space;
     s.peer = { ...move, id: s.id, name: s.name, look: s.look, ...(s.tag ? { tag: s.tag } : {}), ...(s.rec ? { rec: s.rec } : {}), ...(s.app ? { app: s.app } : {}), updatedAt: now };
     ws.serializeAttachment(s);
-    this.broadcast({ type: 'peer', peer: s.peer }, ws);
+    if (!host && !homeHost(before ?? '')) { this.broadcast({ type: 'peer', peer: s.peer }, ws); return; }
+    this.relayHome(ws, s.peer, before);
+  }
+  /**
+   * A peer in or around a home space: its positions go only to the sessions in the same space. The others are told once, when it goes in, that it is
+   * « at home » (the old private space, no position), so its avatar leaves their street; whoever goes in is sent the ones already there.
+   */
+  private relayHome(ws: WebSocket, peer: Peer, before: string | undefined) {
+    const inside = JSON.stringify({ type: 'peer', peer } satisfies ServerMessage), hidden = JSON.stringify({ type: 'peer', peer: masked(peer) } satisfies ServerMessage);
+    const space = peer.space, isHome = !!homeHost(space), moved = before !== space;
+    for (const [other, o] of [...this.sessions]) {
+      if (other === ws) continue;
+      const text = !isHome || o.peer?.space === space ? inside : moved ? hidden : null;
+      if (text) { try { other.send(text); } catch { this.reject(other, 1011); } }
+    }
+    if (isHome && moved) for (const [other, o] of this.sessions) if (other !== ws && o.peer && o.peer.space === space) this.send(ws, { type: 'peer', peer: o.peer });
+  }
+  /** Asks the host's account (cached a little: a guest moves five times a second). */
+  private async mayVisit(host: string, guest: string): Promise<boolean> {
+    const key = `${host}:${guest}`, now = Date.now(), hit = this.visits.get(key);
+    if (hit && now - hit.at < ECONOMY.online.visitCacheMs) return hit.ok;
+    let ok = false;
+    try { ok = await this.env.SOCIAL.getByName(`acct:${host}`).mayVisit(guest, host); } catch { ok = false; }
+    this.visits.set(key, { ok, at: now });
+    if (this.visits.size > 256) for (const [k, v] of this.visits) if (now - v.at >= ECONOMY.online.visitCacheMs) this.visits.delete(k);
+    return ok;
   }
   /**
    * The kickabout ball (additive to v1): a sender with a street position relays its ball state to the rest of the room,
@@ -194,4 +243,9 @@ export class CityRoom extends DurableObject<Env> {
     const encoded = JSON.stringify(message);
     for (const ws of [...this.sessions.keys()]) if (ws !== except) { try { ws.send(encoded); } catch { this.reject(ws, 1011); } }
   }
+}
+/** A peer in a home as the sessions outside it see it: « at home » (the old private space), no position, no pose. */
+function masked(peer: Peer): Peer {
+  return { id: peer.id, name: peer.name, look: peer.look, ...(peer.tag ? { tag: peer.tag } : {}), ...(peer.rec ? { rec: peer.rec } : {}), ...(peer.app ? { app: peer.app } : {}),
+    type: 'move', x: 0, y: 0, z: 0, yaw: 0, speed: 0, space: 'home', clip: 'Idle', updatedAt: peer.updatedAt };
 }
