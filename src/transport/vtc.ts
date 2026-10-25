@@ -49,6 +49,15 @@ const ease = (u: number) => { const k = Math.max(0, Math.min(1, u)); return k * 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 const seg = (t: number, a: number, b: number) => ease((t - a) / (b - a));
 
+/**
+ * What a district may add to the VTC service without a second job system (docs/districts/CONTRACT.md): authored requests shown in the phone's list with the city's
+ * own (same fare rules, same acceptance, same single payment), and the news of a ride paid (after the payment, once per ride: its id is in `vtc.done`).
+ */
+export const vtcHooks: {
+  extra: ((hub: HubId, day: number, hour: number) => VtcRequest[])[];
+  paid: ((t: VtcTrip) => void)[];
+} = { extra: [], paid: [] };
+
 class Vtc implements GameModule {
   readonly name = 'vtc';
   private ctx!: GameCtx;
@@ -124,7 +133,7 @@ class Vtc implements GameModule {
     }
     if (!w) return;
     if (!this.ownsCar()) { ctx.menu('Courses VTC', `Il te faut ta propre voiture pour prendre des courses. La Teranga de Sarr Auto (Pikine) est parfaite, même à crédit. · ${head}`, [{ icon: '↩️', label: 'Fermer', onPick: close }]); return; }
-    const reqs = vtcRequests(w.id, ctx.day(), ctx.hour());
+    const reqs = [...vtcHooks.extra.flatMap(f => f(w.id, ctx.day(), ctx.hour())), ...vtcRequests(w.id, ctx.day(), ctx.hour())];
     ctx.menu('Courses VTC', `Demandes à ${hubShort(w.id)} cette heure-ci · ${head}`, [
       ...reqs.map(r => ({ icon: r.to === r.from ? '🚕' : '🛣️', label: `${r.pickup.name} → ${r.dropoff.name}`, detail: `${r.passenger.name} · ${r.hubs.map(hubShort).join(' → ')} · ≈ ${(r.metres / 1000).toFixed(1).replace('.', ',')} km`, right: fcfa(r.fare), disabled: !this.carHere(), reason: this.carHere() ? undefined : 'Ta voiture n’est pas dans ce quartier', onPick: () => { close(); this.accept(r); } })),
       { icon: '↩️', label: 'Fermer', onPick: close },
@@ -360,6 +369,7 @@ class Vtc implements GameModule {
       st.done.push(t.id); if (st.done.length > 60) st.done.splice(0, st.done.length - 60);
       this.ctx.state.addMoney(t.fare, `Course VTC : ${hubShort(t.from)} → ${hubShort(t.to)} (${t.passenger.name})`);
       st.trips += 1; st.earned += t.fare; this.log.paid++; practise(this.ctx.state, 'service');
+      for (const f of vtcHooks.paid) f(t);
     }
     st.active = null; this.log.events.push(`paid:${t.id}:${t.fare}`);
     this.speak(`${say('Jërëjëf')}, bonne route !`);
@@ -499,6 +509,9 @@ class Vtc implements GameModule {
           persons: this.countPersons(), state: { ...this.ctx.state.data.vtc, done: [...this.ctx.state.data.vtc.done] }, log: { ...this.log, events: [...this.log.events], phases: [...this.log.phases] },
         }),
         requests: () => { const w = this.ctx.world(); return w ? vtcRequests(w.id, this.ctx.day(), this.ctx.hour()) : []; },
+        /** The list as the phone shows it (the districts' authored requests first), and taking one of them by its key. */
+        offered: () => { const w = this.ctx.world(); return w ? [...vtcHooks.extra.flatMap(f => f(w.id, this.ctx.day(), this.ctx.hour())), ...vtcRequests(w.id, this.ctx.day(), this.ctx.hour())] : []; },
+        acceptKey: (key: string) => { const w = this.ctx.world(); if (!w) return false; const r = [...vtcHooks.extra.flatMap(f => f(w.id, this.ctx.day(), this.ctx.hour())), ...vtcRequests(w.id, this.ctx.day(), this.ctx.hour())].find(q => q.key === key); return r ? this.accept(r) : false; },
         accept: (i: number) => { const w = this.ctx.world(); if (!w) return false; const r = vtcRequests(w.id, this.ctx.day(), this.ctx.hour())[i]; return r ? this.accept(r) : false; },
         stops: () => { const t = this.trip; return t ? { pickup: stopOf(t.pickup), dropoff: stopOf(t.dropoff) } : null; },
         cancel: () => this.cancel(),
