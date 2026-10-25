@@ -19,7 +19,7 @@ const SAY_DELAY = 2.8;         // after the completion card has come up
 const NOTICE = 7;              // metres: he sees the driver at his gate
 
 let h: Humanoid | null = null;
-let here = false, metThisLoad = false, checked = false;
+let here = false, metThisLoad = false, near = false;
 let pending: { line: string[]; t: number } | null = null;
 const log = { said: [] as string[], recognised: 0, thanked: 0 };
 
@@ -53,12 +53,12 @@ const source = (ctx: GameCtx): TargetSource => ({
   },
 });
 
-/** The first time near his gate on this arrival: does he recognise the driver (a later visit, once a day)? */
+/** Each time the player comes up to his gate (not on the arrival where they met): does he recognise the driver (a later visit, once a day)? */
 function notice(ctx: GameCtx) {
-  if (checked || metThisLoad) return;
-  const p = ctx.player.pos;
-  if (Math.hypot(p.x - PAPE_SPOT.x, p.z - PAPE_SPOT.z) > NOTICE) return;
-  checked = true;
+  const p = ctx.player.pos, at = Math.hypot(p.x - PAPE_SPOT.x, p.z - PAPE_SPOT.z) <= NOTICE;
+  if (at === near) return;
+  near = at;
+  if (!at || metThisLoad) return;
   const d = ctx.state.data, day = ctx.day(), r = recognition(d, day, hourStamp(day, ctx.hour()));
   if (!r) return;
   recognise(d, day, r.reveal);
@@ -87,7 +87,7 @@ export const mermozModule: GameModule = {
   },
   hubLoaded(ctx, hub: HubWorld) {
     if (h) { h.group.removeFromParent(); h.dispose(); h = null; }
-    here = hub.id === 'mermoz'; metThisLoad = false; checked = false; pending = null;
+    here = hub.id === 'mermoz'; metThisLoad = false; near = false; pending = null;
     if (!here || !humanoidReady()) return;
     h = new Humanoid(LOOK); h.hold = 'Idle';
     h.group.position.set(PAPE_SPOT.x, 0.1, PAPE_SPOT.z); h.group.rotation.y = PAPE_SPOT.yaw;
@@ -95,9 +95,9 @@ export const mermozModule: GameModule = {
   },
   update(ctx, dt) {
     if (!h) return;
-    const p = ctx.player.pos, near = Math.hypot(p.x - PAPE_SPOT.x, p.z - PAPE_SPOT.z) < 80;
-    h.group.visible = near;
-    if (near) h.animate(dt, 0);
+    const p = ctx.player.pos, seen = Math.hypot(p.x - PAPE_SPOT.x, p.z - PAPE_SPOT.z) < 80;
+    h.group.visible = seen;
+    if (seen) h.animate(dt, 0);
     notice(ctx);
     if (pending && (pending.t -= dt) <= 0) {
       const [line, ...rest] = pending.line;
