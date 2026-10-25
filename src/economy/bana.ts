@@ -43,7 +43,7 @@ export function sync(s: GameState): BanaState {
   const b = st(s), now = s.data.playedMs, C = BANA.clientele;
   if (b.clientMs > now) b.clientMs = now;                                 // never count time that was not played
   if (ownsTable(s) && b.since < 0) {
-    b.since = now; b.clients = Math.max(b.clients, C.start); b.clientMs = now;
+    b.since = Math.round(now); b.clients = Math.max(b.clients, C.start); b.clientMs = now;
     if (!s.data.flags.includes(BANA_FLAG)) s.data.flags.push(BANA_FLAG);
   }
   if (!ownsTable(s) || b.clients >= C.max) b.clientMs = now;              // no table, or a full clientèle: nothing builds up
