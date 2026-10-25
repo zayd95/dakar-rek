@@ -54,10 +54,17 @@ export const FLOWER_ODDS: Record<Profile, number> = { artery: 0.8, market: 0.55,
 const lerpHex = (a: number, b: number, t: number) => new THREE.Color(a).lerp(new THREE.Color(b), Math.max(0, Math.min(1, t)));
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-/** The road's frame at `s`: point, heading by central difference (smooth through the bends), the left-hand unit vector. */
-function frame(road: Road, s: number) {
-  const a = road.spine.at(s - 2), b = road.spine.at(s + 2), p = road.spine.at(s), yaw = Math.atan2(b.x - a.x, b.z - a.z);
-  return { x: p.x, z: p.z, yaw, lx: Math.cos(yaw), lz: -Math.sin(yaw) };
+/**
+ * The road's frame at `s`: point, heading by central difference (smooth through the bends), the left-hand unit vector. Past either end of the road
+ * (a roadside piece is placed a few metres after the sample it belongs to: a wall at s + len / 2, a palm or a house at s + 4) the heading is the end's
+ * own and the point goes on along it. The spine clamps to its ends, so the two samples used to fall on the same end point there: the heading came out
+ * as 0 and the left-hand vector as +x whatever way the road ran, and on a road that ends heading west (into the Almadies) the last villa wall stood
+ * ACROSS the carriageway at the district's mouth (10 m long, 2.35 m high, nothing solid: tests/ld2Drive.test.ts).
+ */
+export function frame(road: Road, s: number) {
+  const L = road.length, a = road.spine.at(Math.min(s - 2, L - 2)), b = road.spine.at(Math.max(s + 2, 2)), yaw = Math.atan2(b.x - a.x, b.z - a.z);
+  const p = road.spine.at(s), past = s > L ? s - L : s < 0 ? s : 0;                // within the road: exactly as before; past an end: along its heading
+  return { x: p.x + Math.sin(yaw) * past, z: p.z + Math.cos(yaw) * past, yaw, lx: Math.cos(yaw), lz: -Math.sin(yaw) };
 }
 
 /** A strip of the road between two lateral offsets (m, positive left) from s0 to s1 at height y, coloured by `colour(s)`. */
