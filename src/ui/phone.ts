@@ -23,6 +23,7 @@ import { homeScreen, appsScreen, clock } from './phone/apps/home';
 import { pistesScreen } from './phone/apps/pistes';
 import { profileScreen } from './phone/apps/profile';
 import { moneyScreen } from './phone/apps/money';
+import { bankScreen } from './phone/apps/bank';
 import { workScreen } from './phone/apps/work';
 import { houseScreen } from './phone/apps/house';
 import { mapScreen } from './phone/apps/map';
@@ -57,7 +58,7 @@ const SCREENS: Record<string, Screen> = {
   home: homeScreen, apps: appsScreen, profil: profileScreen, portefeuille: moneyScreen, travailler: workScreen, logement: houseScreen, carte: mapScreen,
   reglages: settingsScreen, nouvelle: newGameScreen, sontest: soundTestScreen,
   notifs: notifsScreen, sante: healthScreen, carnet: carnetScreen, arene: arenaScreen, lutteurs: lutteursScreen, cesoir: tonightScreen,
-  actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen,
+  actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen, banque: bankScreen,
 };
 /** Other names a screen is opened by: « progression » is the Profile on its Progression tab (the HUD's streak chip). */
 const ALIASES: Record<string, [string, string?]> = { progression: ['profil', 'progression'], argent: ['portefeuille'], maison_hub: ['logement'], travail_hub: ['travailler'] };

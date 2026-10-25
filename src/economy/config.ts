@@ -150,6 +150,25 @@ export const ECONOMY = {
     /** The partial repair brings the car back to this condition (« remise en route »), or no lower than where it is. */
     partialTo: 70,
   },
+  /**
+   * Banque Teranga (src/economy/bank.ts, docs/MONEY.md): the savings account « Épargne Teranga ». Once per player day (SaveData.play.day: the days the
+   * player plays, never the ones that go by while away, never offline), the bank pays interest on the savings carried into that day: the rate and the
+   * daily cap of the highest level the balance has reached. Each level above the first is celebrated once. Small next to work on purpose (a Tiak
+   * delivery pays 1 000–2 400 F) and next to a venture (a bana-bana table at 50 000 F brings 400 F per city hour): saving keeps money safe and moves
+   * toward a goal, it is not a way to get rich.
+   */
+  bank: {
+    levels: [
+      { from: 0, rate: 0.005, cap: 100 },
+      { from: 25_000, rate: 0.01, cap: 250 },
+      { from: 100_000, rate: 0.01, cap: 500 },
+      { from: 500_000, rate: 0.01, cap: 1_000 },
+    ],
+    /** Quick amounts of a deposit or a withdrawal (« Tout » is offered beside them). */
+    chips: [5_000, 10_000, 25_000, 50_000],
+    /** The savings goals offered: these ventures (ECONOMY.business tiers) at the price the player would pay for the next unit. */
+    goalTiers: ['bana', 'kiosque', 'boutique'],
+  },
   /** Wallet history kept in the save. */
   ledgerMax: 100,
 } as const;

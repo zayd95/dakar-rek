@@ -39,6 +39,7 @@ export const APPS: AppDef[] = [
   { id: 'arene', label: 'Arène', emoji: '🤼', grad: '#d8b4fe,#7e22ce', group: 'travail', order: 4, screen: 'arene' },
 
   { id: 'portefeuille', label: 'Argent', emoji: '💰', grad: '#fcd34d,#f59e0b', group: 'argent', order: 0, screen: 'portefeuille' },
+  { id: 'banque', label: 'Banque', emoji: '🏦', grad: '#5eead4,#0f766e', group: 'argent', order: 0.5, screen: 'banque' },
   { id: 'credits', label: 'Crédits', emoji: '💳', grad: '#93c5fd,#1d4ed8', group: 'argent', order: 1, hook: () => phoneHooks.openCredits },
   { id: 'logement', label: 'Maison', emoji: '🏠', grad: '#fda4af,#e11d48', group: 'argent', order: 2, screen: 'logement' },
   { id: 'maison', label: 'Mes meubles', short: 'Meubles', emoji: '🛋️', grad: '#fecaca,#b91c1c', group: 'argent', order: 3, hook: () => phoneHooks.openHome },
