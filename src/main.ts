@@ -60,6 +60,8 @@ import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
+import { OnlineAccount } from './online/client';
+import { setOnline } from './online/api';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
@@ -187,6 +189,15 @@ if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money 
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the studio's look travels with the connection (servers that relay it)
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+// LD2.0-B: the player's online account (Messages, Teranga Money, visits, meetups: src/online/client.ts) beside the hub's presence. Its saves must be synchronous
+// and say false when nothing was written: a top-up is never sent before the wallet's debit is on disk.
+const onlineAccount = new OnlineAccount({
+  state, saveNow: () => (world ? saveNow() : !savesHeld() && writeSave(store, state.data)),
+  profile: () => ({ name: presence.profile.name, look: presence.profile.look, app: presence.appearance ?? null }),
+  endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/me', import.meta.env.VITE_PRESENCE_URL).href : undefined,
+  enabled: import.meta.env.VITE_MULTIPLAYER === 'true',
+});
+setOnline(onlineAccount);
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
@@ -232,7 +243,7 @@ function setPresenceProfile(name: string | null, color: number) {
   presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the profile change below reconnects with it
   const profile = { name: nickname(name ?? presence.profile.name), look: lookIndex(color) };
   try { store?.setItem('dakarrek.presence.profile', JSON.stringify(profile)); } catch { /* session-only profile */ }
-  presence.setProfile(profile); Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK);
+  presence.setProfile(profile); onlineAccount.profileChanged(); Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK);
 }
 function applyCharacter(r: StudioResult) {
   state.data.avatar = r.avatar; state.data.appearance = r.appearance ? appearanceOf(r.appearance, r.avatar) : null;   // (before the profile: the presence carries the look)
@@ -304,10 +315,10 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); if (state.data.appearance && state.data.appearance.color !== profile.look) { state.data.appearance = { ...state.data.appearance, color: profile.look }; playerBody?.setAppearance(state.data.appearance); presence.setAppearance(encodeAppearance(state.data.avatar, state.data.appearance), false); } }, () => { mode = 'menu'; input.enabled = false; });   // (the look follows the colour before the profile's reconnection, which carries it: one socket)
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); if (state.data.appearance && state.data.appearance.color !== profile.look) { state.data.appearance = { ...state.data.appearance, color: profile.look }; playerBody?.setAppearance(state.data.appearance); presence.setAppearance(encodeAppearance(state.data.avatar, state.data.appearance), false); } onlineAccount.profileChanged(); }, () => { mode = 'menu'; input.enabled = false; });   // (the look follows the colour before the profile's reconnection, which carries it: one socket)
 const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
-presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
+presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); onlineAccount.setWhere(presence.status === 'online' ? world?.id ?? null : null, presence.room); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
@@ -1490,7 +1501,7 @@ const savedProfile = () => { try { return JSON.parse(store?.getItem('dakarrek.pr
 phoneHooks.saveCard = {
   save: () => !!world && saveNow(),
   code: () => { if (world) saveNow(); return exportCode(state.data, savedProfile() ?? presence.profile); },
-  replace: (data, profile) => { if (world) saveNow(); if (!importSave(store, data, profile)) return false; holdSaves(); world = null; location.reload(); return true; },   // saved first: the game it replaces is the one kept aside
+  replace: (data, profile, key) => { if (world) saveNow(); if (!importSave(store, data, profile, Date.now(), key)) return false; holdSaves(); world = null; location.reload(); return true; },   // saved first: the game it replaces is the one kept aside
   canUndo: () => !!backupOf(store),
   undo: () => { if (!undoImport(store)) return false; holdSaves(); world = null; location.reload(); return true; },
   nameOf: spec => { const sp = catalogSpec(spec); return sp ? { name: sp.name, kind: sp.kind } : undefined; },
