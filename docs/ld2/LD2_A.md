@@ -179,3 +179,6 @@ The wider regression run (phone, UI consistency, VTC, journeys, city) and the pe
 
 ## Next: LD2.0-B (not started)
 Messages, real transfers between players on the server's authoritative ledger, home invitations and meetups, on the contract in `docs/MONEY.md`.
+
+Also in the next milestones, from the owner's review of the preview (25 Oct): the Ngor fishing port becomes a crossing to the island
+(« la traversée »), carrying paying customers by pirogue or chaloupe; see `docs/ROADMAP_NEXT.md` §6. The owner sets its order against LD2.0-B.
