@@ -40,7 +40,11 @@ export interface Reaction {
  * What a familiar character says in a few words as the player walks up (src/social/walkup.ts). Ordered: the first
  * matching line that was not just said is spoken. `once` lines are said one time only (a favour acknowledged).
  */
-export interface Walkup { id: string; when: Cond; line: string; once?: boolean }
+export interface Walkup {
+  id: string; when: Cond; line: string; once?: boolean;
+  /** Said even to a player this character has not met yet: news the whole street knows (the player's bana-bana table, next to his garage). */
+  news?: boolean;
+}
 export interface Intro { to: string; when: Cond[]; flag: string; line: string }
 export interface Fact { when: Cond; text: string }
 export interface Perk {
@@ -148,6 +152,8 @@ export const PROFILES: Profile[] = [
       { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Alors, champion ! Tu pousses les voitures comme les adversaires ?' },
       { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Un combat perdu, ça se répare, comme un moteur. Passe boire un thé.' },
       { id: 'trust', once: true, when: { flag: 'modou_trust' }, line: 'Mon bon aide ! J’ai gardé une boîte de vitesses pour toi.' },
+      // the player's bana-bana table, on his block by the Maïga (src/economy/bana.ts sets the flag): said once, met or not
+      { id: 'bana', once: true, news: true, when: { flag: 'bana_table' }, line: 'C’est toi qui as repris la table à côté de la Maïga ? Bonne vente, voisin !' },
       { id: 'keys', when: { flag: 'modou_trust', regular: true }, line: 'Le garage te connaît maintenant. Entre !' },
     ],
     memories: [

@@ -59,6 +59,22 @@ export const ECONOMY = {
     maxCatchUpHours: 24,
   },
   /**
+   * The player's own bana-bana table in Pikine (src/economy/bana.ts), on top of the venture's hourly income (unchanged: « la famille tient la table quand
+   * tu n'es pas là »). Kept by the player: goods bought from the market's wholesaler at `cost`, sold one customer at a time at `price` (`qty`: what a
+   * customer takes, at most what is left). A full table of customers (`clientele.max`) brings ≈ 1 600 F of profit — about one Tiak Tiak delivery — and
+   * the customers come back with PLAYED time only (one every `everyHours` in-game hours, the first `start` come with the table): no farming, nothing offline.
+   */
+  bana: {
+    goods: [
+      { id: 'arachides', name: 'Cornet d’arachides', one: 'un cornet d’arachides', plural: 'cornets d’arachides', icon: '🥜', cost: 50, price: 100, lot: 10, max: 30, qty: [2, 5] },
+      { id: 'recharge', name: 'Carte de recharge 1 000 F', one: 'une carte de recharge', plural: 'cartes de recharge', icon: '📱', cost: 900, price: 1000, lot: 5, max: 10, qty: [1, 2] },
+      { id: 'mouchoirs', name: 'Paquet de mouchoirs', one: 'un paquet de mouchoirs', plural: 'paquets de mouchoirs', icon: '🧻', cost: 60, price: 100, lot: 10, max: 20, qty: [1, 3] },
+    ] as readonly { id: string; name: string; one: string; plural: string; icon: string; cost: number; price: number; lot: number; max: number; qty: readonly [number, number] }[],
+    clientele: { start: 4, max: 12, everyHours: 1 },
+    /** The player is « at the table » within this many metres of it; walking further away closes the session (the till is paid). */
+    reach: 2.6, leave: 6,
+  },
+  /**
    * Variety (« polyvalence »): distinct activity categories practised within the window (played time) raise ACTIVE pay only
    * (shifts, deliveries, services). It is an optional bonus: it never gates a purchase and never touches passive income
    * (ventures, rents).

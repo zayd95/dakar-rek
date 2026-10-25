@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -43,7 +43,7 @@ export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as 
  * backups at its saves without `bank`; it never touches this key, so savings dropped by a rollback come back with the next LD2.0 client.
  */
 export const EXTRAS_V3_KEY = 'dakarrek.guest.save.v6.extras.3';
-export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes'] as const;
+export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes', 'bana'] as const;
 type ExtraField = typeof EXTRA_FIELDS_V3[number];
 /** Savings history kept in the save, and idempotency keys remembered (an operation is never applied twice). */
 export const BANK_TX_MAX = 200;
@@ -75,10 +75,12 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(),
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(), bana: newBana(),
   };
 }
 export const newBank = (): BankState => ({ opened: -1, savings: 0, tx: [], seq: 0, goal: null, refs: [], interestDay: -1, milestones: [] });
+/** The bana-bana table of a player who never owned one (src/economy/bana.ts sets it up with the first unit). */
+export const newBana = (): BanaState => ({ since: -1, stock: {}, clients: 0, clientMs: 0, open: null, last: null, day: -1, today: 0, total: 0, sessions: 0, seq: 0, ack: false });
 
 /** The avatar the player had chosen before their last New Game, to offer again as a pre-selected suggestion (null: none, or unreadable). */
 export function suggestedAvatar(store: KV | null): Avatar | null {
@@ -176,6 +178,38 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     bank: bankOf(r.bank),
     // « Mes pistes » (additive): leads dismissed or followed stay so
     pistes: pistesOf(r.pistes, playedMs),
+    // the player's bana-bana table (additive, no version change: a save without it gets an empty table, set up by src/economy/bana.ts if a unit is owned)
+    bana: banaOf(r.bana, playedMs),
+  };
+}
+
+/** Goods of the table: known shape only (ids like the catalogue's, whole non-negative counts, at most a few hundred); src/economy/bana.ts ignores ids it does not sell. */
+function goodsOf(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v && typeof v === 'object') for (const [k, x] of Object.entries(v as Record<string, unknown>).slice(0, 16)) if (ID.test(k) && typeof x === 'number' && Number.isFinite(x) && x >= 1) out[k] = Math.min(999, Math.floor(x));
+  return out;
+}
+/**
+ * The bana-bana table: whole non-negative amounts, clocks never ahead of the played time, a session in progress kept with its till (paid once, at closing),
+ * the last session's profit always its sales minus its cost.
+ */
+function banaOf(v: unknown, playedMs: number): BanaState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, n = (x: unknown, d = 0, hi = 1e9) => clamp(Math.round(num(x, d)), 0, hi);
+  const since = Math.round(num(o.since, -1));
+  const s = (o.open && typeof o.open === 'object' ? o.open : null) as Record<string, unknown> | null;
+  const open: BanaSession | null = s && typeof s.id === 'number' && Number.isFinite(s.id)
+    ? { id: n(s.id), startedMs: clamp(num(s.startedMs, playedMs), 0, playedMs), sales: money(num(s.sales, 0)), cost: money(num(s.cost, 0)), served: n(s.served, 0, 999), sold: goodsOf(s.sold) } : null;
+  const l = (o.last && typeof o.last === 'object' ? o.last : null) as Record<string, unknown> | null;
+  let last: BanaResult | null = null;
+  if (l && typeof l.id === 'number' && Number.isFinite(l.id)) {
+    const sales = money(num(l.sales, 0)), cost = money(num(l.cost, 0));
+    last = { id: n(l.id), day: n(l.day, 0, 1e7), at: num(l.at, 0), sales, cost, profit: sales - cost, served: n(l.served, 0, 999), sold: goodsOf(l.sold) };
+  }
+  const seq = Math.max(n(o.seq), open?.id ?? 0, last?.id ?? 0);
+  return {
+    since: since < 0 ? -1 : clamp(since, 0, playedMs), stock: goodsOf(o.stock), clients: n(o.clients, 0, 999), clientMs: clamp(num(o.clientMs, playedMs), 0, playedMs),
+    open, last, day: clamp(Math.round(num(o.day, -1)), -1, 1e7), today: Math.round(clamp(num(o.today, 0), -MONEY_MAX, MONEY_MAX)), total: Math.round(clamp(num(o.total, 0), -MONEY_MAX, MONEY_MAX)),
+    sessions: n(o.sessions), seq, ack: o.ack === true,
   };
 }
 
@@ -483,6 +517,7 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     else if (k === 'appearance') { const look = appearanceOf(b.appearance, data.avatar); if (!look) continue; data.appearance = look; }   // for this save's own body
     else if (k === 'bank') { if (back.bank.opened < 0 && !back.bank.savings) continue; data.bank = back.bank; }   // the savings, exactly as the last LD2.0 save left them
     else if (k === 'pistes') data.pistes = back.pistes;
+    else if (k === 'bana') { if (back.bana.since < 0) continue; data.bana = back.bana; }   // the table as the last LD2.0 save left it (its till included: paid at the next closing)
     else data.streak = back.streak;
     out.push(k);
   }

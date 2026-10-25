@@ -1,4 +1,6 @@
 // « Affaires » headless check: first venture (open to whoever can pay) → hourly income → variety bonus (active pay only) → a billion in the HUD (compact) and the phone (full).
+// The app's main screen is the short one (LD2.0-A: what is owned and earned, the bana-bana table, the next venture, then « Voir toutes les affaires » and
+// « Comment ça marche »); the full ladder is `businessAll()`, the details `businessHelp()`.
 // Usage: npm run build && npx vite preview --port 4206 --strictPort, then node scripts/check-business.mjs [baseUrl] [outDir]
 // Chromium + SwiftShader (CPU rendering): this is not a phone measurement. Played time is advanced with the debug hook.
 import { chromium } from 'playwright';
@@ -42,7 +44,9 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-phone-home.png` });
   await page.locator('#phone [data-app="affaires"]').click(); await page.waitForTimeout(400);
   let m = await modal(page);
-  check('the tile opens the Affaires menu (fresh save: nothing is locked, only the money is missing)', m.title === 'Affaires' && m.items.length === 7 && m.items.every(t => !/Bloqué|À débloquer/.test(t)) && /il manque/.test(m.items[0]), m.items[0]);
+  check('the tile opens the Affaires menu (fresh save: the first venture and what is missing, the ladder one tap away)', m.title === 'Affaires' && /Table de bana-bana/.test(m.items[0]) && /Il manque/.test(m.items[0]) && m.items.some(t => /Voir toutes les affaires \(7\)/.test(t)) && m.items.every(t => !/Bloqué|À débloquer/.test(t)), m.items.join(' | '));
+  const all0 = await D(page, () => window.__dakar.businessAll());
+  check('« Voir toutes les affaires »: seven ventures, nothing locked, only the money is missing', all0.filter(t => /\/h/.test(t)).length === 7 && all0.every(t => !/Bloqué|À débloquer/.test(t)) && /il manque/.test(all0[0]), all0[0]);
   await closeModal(page);
 
   // one delivery (an activity), money for the first venture, then buy it through the menu with confirmation
@@ -60,7 +64,8 @@ let savedJson = null;
   const w1 = await D(page, () => window.__dakar.state.wallet);
   check('bought the first venture: charged once, owned, ledger line', b.owned.bana === 1 && w0 - w1 === 50000 && (await D(page, () => window.__dakar.ledger()[0].label)) === 'Achat : Table de bana-bana', `${w0} → ${w1} · ${JSON.stringify(b.owned)}`);
   m = await modal(page);
-  check('back on the Affaires menu after buying: next unit ×1.15', m.title === 'Affaires' && /Table de bana-bana ×1/.test(m.items[0]) && /57\s500\sF/.test(m.items[0]), m.items[0]);
+  const own1 = m.items.find(t => /Table de bana-bana ×1/.test(t)) ?? '';
+  check('back on the Affaires menu after buying: the venture owned with its income, the next unit ×1.15', m.title === 'Affaires' && /\+400\sF\/h/.test(own1) && /57\s500\sF/.test(own1) && /Y aller · ta table/.test(m.items[0]), m.items.join(' | '));
   await closeModal(page);
 
   // income: the frame loop pays on the hour of played time (nudged to just before the hour, then the game runs)
@@ -99,7 +104,7 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-hud-billion.png` });
   await D(page, () => window.__dakar.phone('portefeuille')); await page.waitForTimeout(400);
   const bal = await D(page, () => { const e = document.querySelector('#phone .ph-balance b'); return { text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, screen: document.querySelector('#phone .ph-screen').textContent }; });
-  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur des biens/.test(bal.screen) && /Variété : 4 activités/.test(bal.screen), bal.text);
+  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur (des|de tes) biens/.test(bal.screen) && /Variété : 4 activités/.test(bal.screen), bal.text);
   await page.screenshot({ path: `${out}/desktop-phone-wallet-billion.png` });
   await D(page, () => window.__dakar.phoneClose());
 
@@ -112,7 +117,9 @@ let savedJson = null;
   check('big ventures pay millions per in-game hour', big >= 6000000 && big === (await D(page, () => window.__dakar.ledger()[0].amount)), big);
   await D(page, () => window.__dakar.businessApp()); await page.waitForTimeout(300);
   m = await modal(page);
-  check('Affaires lists all seven with income, total earned and wealth', m.items.length === 7 && m.items.every(t => /\/h/.test(t)) && /Total gagné/.test(m.text) && /Fortune totale/.test(m.text), m.items[6]);
+  const all7 = await D(page, () => window.__dakar.businessAll()), help = await D(page, () => window.__dakar.businessHelp());
+  check('Affaires lists all seven owned with their income and the total earned; the ladder has the seven, the details the wealth', m.items.filter(t => /\/h/.test(t)).length === 7 && /Total gagné/.test(m.text) && all7.filter(t => /\/h/.test(t)).length === 7 && /Fortune totale/.test(help), m.items.join(' | '));
+  await D(page, () => window.__dakar.businessApp()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/desktop-affaires-ladder.png` });
   await closeModal(page);
   await page.waitForFunction(w => document.querySelector('#money').getAttribute('aria-label') === w, (await D(page, () => window.__dakar.state.wallet)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NN) + NB + 'F', { timeout: 15000 }).catch(() => {});
@@ -126,7 +133,7 @@ let savedJson = null;
   // reload: everything persisted in schema v6
   await D(page, () => window.__dakar.state.data.jobs.active = null);
   const before = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet }));
-  await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
+  await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"], #phone [data-sv="now"]').first().click();   // the settings' « Partie » card (src/ui/saveCard.ts) or the plain button await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1200);
   const after = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion }));
   check('reload: ventures, earnings, activities and wallet persisted (schema v6)', after.ver === 6 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
@@ -154,7 +161,7 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/phone-wallet.png` });
   await page.locator('#phone .ph-screen [data-app="affaires"]').tap(); await page.waitForTimeout(400);
   let m = await modal(page);
-  check('wallet → Affaires button opens the menu', m.title === 'Affaires' && m.items.length === 7, m.title);
+  check('wallet → Affaires button opens the menu', m.title === 'Affaires' && m.items.filter(t => /\/h/.test(t)).length === 7, m.title);
   await page.screenshot({ path: `${out}/phone-affaires.png` });
   const owned0 = await D(page, () => window.__dakar.business().owned.kiosque);
   await pick(page, 'Kiosque', true);
