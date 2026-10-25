@@ -23,7 +23,7 @@ import type { HubWorld } from '../src/world/types';
 
 stubCanvas();
 const hubs = new Map<string, HubWorld>();
-async function hub(id: 'pikine' | 'plateau' | 'corniche' | 'almadies') {
+async function hub(id: 'pikine' | 'plateau' | 'corniche' | 'almadies' | 'mermoz') {
   if (!hubs.has(id)) { const { buildHub } = await import('../src/world/builder'); hubs.set(id, buildHub(id, true)); }
   return hubs.get(id)!;
 }
@@ -78,10 +78,17 @@ describe('street plan', () => {
     expect(edgeWeight({ ax: 0, az: 0, bx: 60, bz: 0 }, HUB_STREETS.plateau.busy)).toBe(6);
   });
 
+  it('every busy street lies on its hub\'s streets (a segment off the centre lines weighs nothing: Rue de Sacré-Cœur was drawn 7 m off)', async () => {
+    for (const id of ['pikine', 'plateau', 'corniche', 'almadies', 'mermoz'] as const) for (const b of HUB_STREETS[id].busy) {
+      const h = await hub(id), on = h.edges.filter(e => edgeWeight(e, [b]) > 1);
+      expect(on.length, `${id}: ${b.name}`).toBeGreaterThanOrEqual(b.segs.length);
+    }
+  });
+
   it('pavement lanes, stop places and chat rings stay clear of walls and stalls in every hub', async () => {
     const { linesOf } = await import('../src/transport/lines');
     const { placeStops } = await import('../src/transport/stops');
-    for (const id of ['pikine', 'plateau', 'corniche', 'almadies'] as const) {
+    for (const id of ['pikine', 'plateau', 'corniche', 'almadies', 'mermoz'] as const) {
       const h = await hub(id), lanes = pavementLanes(h.edges, h.colliders, HUB_STREETS[id].busy);
       expect(lanes.length).toBeGreaterThan(h.edges.length);
       for (const l of lanes) {

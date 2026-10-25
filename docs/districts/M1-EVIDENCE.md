@@ -32,11 +32,20 @@ How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the desig
 - **Café Touba · Sacré-Cœur** exists (the existing kiosk and its actions) but the journey check does not exercise it.
 - **The phone's full map** listing Mermoz as playable was not checked separately. The minimap and the goal line work in Mermoz; they appear in every screenshot.
 - **The "later visit"** in the check is a labelled debug shortcut (`__dakar.nextDay`). In real play it needs 2 city hours, which is 2 real minutes, and a new arrival in Mermoz.
-- **Sacré-Cœur's street life** is not done. Pedestrians and parked vehicles come from the existing systems; there are no extra parked motorbikes.
+- **Sacré-Cœur's street life now works** (after the owner's « more M1 polish »). Rue de Sacré-Cœur's « busy street » had been drawn 7 m off the street's centre line, so it weighed nothing, and the street got no more life than a villa street.
+  - **The fix:** it is on the centre line now (`src/crowd/streetPlan.ts`), and a test checks every district's busy streets (`tests/street.test.ts`).
+  - **What the existing systems now bring to it:**
+    - the street crowd;
+    - the street dress: parasol stalls, painted cantines, a fruit barrow;
+    - parked vehicles: lines of Jakarta motorbikes nose to the kerb, and taxis (`src/game/parkedVehicles.ts`, a busy-street mix for Mermoz).
+  - **Kept for the villa streets:** 40 % of the parked cars still park there (`tests/streetDress.test.ts`).
+  - **Cost:** draw calls are within 5 of before on the same cameras (43–70 at medium).
+  - **Proof:** [`proof/m1/before-after-sacrecoeur-street-life.jpg`](proof/m1/before-after-sacrecoeur-street-life.jpg) and [`proof/m1/before-after-sacrecoeur-motos.jpg`](proof/m1/before-after-sacrecoeur-motos.jpg).
 
 ## The recorded golden path
 
 - **Script:** `scripts/check-mermoz-journey.mjs`, driven by real touch with a 390 × 844 phone viewport, in one uninterrupted session.
+- **Run 8 (with Sacré-Cœur's street life): 22/22 PASS, no JavaScript error, « Fais demi-tour » 0 times.** The log is [`proof/m1/golden-path-run8.log`](proof/m1/golden-path-run8.log).
 - **Run 7 (with the navigation fix): 22/22 PASS, no JavaScript error, « Fais demi-tour » shown 0 times on the way to the drop-off** (35 in run 5). The log is [`proof/m1/golden-path-run7.log`](proof/m1/golden-path-run7.log).
 - **Run 5 (after the polish): 22/22 PASS, no JavaScript error.**
   - The road now has the rond-point and the autopont: the car goes round the island at the BRT signals and under the autopont, both ways.
@@ -53,10 +62,10 @@ How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the desig
 
 | Suite | Result |
 |---|---|
-| `npm test` (vitest) | **2203 passed, 2 skipped, 0 failed**: 180 files, with the navigation fix's tests in `tests/navRules.test.ts`. This includes `tests/mermoz.test.ts` and the chunk suites « the VDN: a divided artery », « the BRT crossing at Sacré-Cœur », « the rond-point of Sacré-Cœur, the BRT through it » and « the autopont at the way into Mermoz ». |
+| `npm test` (vitest) | **2206 passed, 2 skipped, 0 failed**: 180 files, with the navigation fix's tests in `tests/navRules.test.ts` and the street-life tests in `tests/street.test.ts` and `tests/streetDress.test.ts`. This includes `tests/mermoz.test.ts` and the chunk suites « the VDN: a divided artery », « the BRT crossing at Sacré-Cœur », « the rond-point of Sacré-Cœur, the BRT through it » and « the autopont at the way into Mermoz ». |
 | `npx tsc --noEmit -p .` · `npm run typecheck:server` · `npm run build` | pass |
-| `npm run check:city` · `check:online` · `check:launch` (the CI browser suites, local runs on the built `cf87253`, on the polish and on the navigation fix) | **37/37 · 46/46 · 70/70 PASS** each time |
-| `scripts/check-mermoz-journey.mjs` | 22/22 (run 4; run 5 after the polish; run 7 with the navigation fix) |
+| `npm run check:city` · `check:online` · `check:launch` (the CI browser suites, local runs on the built `cf87253`, on the polish, on the navigation fix and on the street life) | **37/37 · 46/46 · 70/70 PASS** each time |
+| `scripts/check-mermoz-journey.mjs` | 22/22 (run 4; run 5 after the polish; run 7 with the navigation fix; run 8 with Sacré-Cœur's street life) |
 | `scripts/check-nav-flicker.mjs` (new) | 0 « Fais demi-tour » in 10 runs across the five districts; 9 of the 10 showed it before the fix ([`proof/m1/nav-flicker-before-after.log`](proof/m1/nav-flicker-before-after.log)) |
 
 ## Save, payment and memory

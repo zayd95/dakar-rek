@@ -10,7 +10,7 @@ import type { HubId } from '../src/core/types';
 stubCanvas();
 
 describe('street dress: stalls, cantines, billboards and plates on the main roads', () => {
-  for (const id of ['plateau', 'pikine'] as HubId[]) {
+  for (const id of ['plateau', 'pikine', 'mermoz'] as HubId[]) {
     it(`${id}: placed from the seed, off the stops and the crossings, solid pieces leave the pavement lanes of the busy streets`, () => {
       const hub = buildHub(id, true);
       const lanesBefore = pavementLanes(hub.edges, hub.colliders, HUB_STREETS[id].busy);
@@ -37,6 +37,14 @@ describe('street dress: stalls, cantines, billboards and plates on the main road
       expect(again).toEqual(r.items.map(i => `${i.kind}${Math.round(i.x)},${Math.round(i.z)}`));
     });
   }
+
+  it('Mermoz: Rue de Sacré-Cœur lined with Jakarta motorbikes and taxis, the villa streets keep cars along their walls', () => {
+    const hub = buildHub('mermoz', true), g = placeParked(hub, PARKED_COUNT.medium);
+    const onSC = g.children.filter(o => Math.abs(o.position.x + 60) < 8), elsewhere = g.children.length - onSC.length;
+    expect(onSC.length).toBeGreaterThanOrEqual(g.children.length * 0.5);                 // the shopping street first
+    expect(onSC.filter(o => o.name === 'kit_moto').length).toBeGreaterThanOrEqual(6);   // rows of motorbikes nose to the kerb
+    expect(elsewhere).toBeGreaterThanOrEqual(g.children.length * 0.25);                  // and the quiet streets are not emptied
+  });
 
   it('the parked cars of a busy street: most along the busy streets, the pavement lanes stay', () => {
     const hub = buildHub('plateau', true);

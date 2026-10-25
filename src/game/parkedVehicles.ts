@@ -20,6 +20,12 @@ const PARKED_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   pikine: [['moto', 26], ['sedan', 20], ['taxi', 18], ['pickup', 18], ['suv', 8], ['carRapide', 10]],
   mermoz: [['sedan', 30], ['suv', 22], ['taxi', 12], ['luxury', 10], ['pickup', 12], ['moto', 14]],
 };
+/** A hub's busy streets park differently from its side streets: Rue de Sacré-Cœur's kerbs are lined with Jakarta motorbikes and taxis (M1-MERMOZ.md). */
+const PARKED_MIX_BUSY: Partial<Record<HubWorld['id'], [VehicleKind, number][]>> = {
+  mermoz: [['moto', 44], ['taxi', 20], ['sedan', 20], ['pickup', 10], ['suv', 6]],
+};
+/** Hubs whose side streets keep their own share: past this share of the count, the rest park on the side streets (Mermoz's villa streets have cars along their walls). */
+const BUSY_SHARE: Partial<Record<HubWorld['id'], number>> = { mermoz: 0.6 };
 /** Distance from the road centre line to the parked vehicle's centre (sidewalks start at 5 m). */
 export const PARK_OFFSET = 4.3;
 /** Weight of a busy street's places against a side street's when the cars are drawn. */
@@ -39,8 +45,8 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
   const g = new THREE.Group(); g.name = 'kit_parked';
   if (count <= 0 || !world.edges.length) return g;
   const R = rng(0x5eed + seedSalt + world.id.length * 977 + Math.round(world.spawn.x * 13 + world.spawn.z * 7));
-  const mix = PARKED_MIX[world.id] ?? PARKED_MIX.plateau, total = mix.reduce((a, [, w]) => a + w, 0);
-  const pickKind = () => { let x = R() * total; for (const [k, w] of mix) { x -= w; if (x <= 0) return k; } return mix[0][0]; };
+  const mixes = [PARKED_MIX[world.id] ?? PARKED_MIX.plateau, PARKED_MIX_BUSY[world.id] ?? PARKED_MIX[world.id] ?? PARKED_MIX.plateau];
+  const pickKind = (main: boolean) => { const mix = mixes[main ? 1 : 0]; let x = R() * mix.reduce((a, [, w]) => a + w, 0); for (const [k, w] of mix) { x -= w; if (x <= 0) return k; } return mix[0][0]; };
   const taken: { x0: number; z0: number; x1: number; z1: number }[] = [...(world.keepClear ?? [])];   // ground kept open (a loading bay, a shop's frontage): no car parks there
   const hits = (r: { x0: number; z0: number; x1: number; z1: number }) =>
     world.colliders.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0) || taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
@@ -63,7 +69,8 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
   let tries = 0;
   while (g.children.length < count && slots.length && tries++ < count * 40) {
     // the first 70 % go to the busy streets (a run of cars down the kerb), the rest anywhere
-    const wOf = (s: { w: number; main: boolean }) => g.children.length < count * 0.7 && !s.main ? s.w * 0.02 : s.w;
+    const share = BUSY_SHARE[world.id];
+    const wOf = (s: { w: number; main: boolean }) => g.children.length < count * (share ?? 0.7) ? (!s.main ? s.w * 0.02 : s.w) : share !== undefined && s.main ? s.w * 0.02 : s.w;
     let sum = 0; for (const s of slots) sum += wOf(s);
     let u = R() * sum, k = 0; for (; k < slots.length - 1; k++) { u -= wOf(slots[k]); if (u <= 0) break; }
     const slot = slots.splice(k, 1)[0], e = world.edges[slot.e], side = slot.side;
@@ -72,7 +79,7 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
     const off = R() < ON_PAVEMENT.share ? ON_PAVEMENT.off : PARK_OFFSET + (R() - 0.5) * 0.2;
     const x = e.ax + (e.bx - e.ax) * t - dz * side * off, z = e.az + (e.bz - e.az) * t + dx * side * off;
     if (x < world.bounds.x0 + 4 || x > world.bounds.x1 - 4 || z < world.bounds.z0 + 4 || z > world.bounds.z1 - 4 || busy(x, z)) continue;
-    const kind = pickKind(), seed = Math.floor(R() * 1e6);
+    const kind = pickKind(slot.main), seed = Math.floor(R() * 1e6);
     if (kind === 'moto') {
       // two or three motorbikes side by side, nose to the kerb
       const n = 2 + Math.floor(R() * 2), span = n * 0.85;
