@@ -8,6 +8,7 @@ import { HYST, type Road } from './routes';
 import { CHUNK, buildChunk, type Chunk, type ChunkMats } from './chunks';
 import { CorridorTraffic, type Footprint } from './traffic';
 import { BrtLine } from './brt';
+import { AutopontTraffic, autopontLayout } from './autopont';
 
 /** Chunks within this many metres of the player are built; those farther than `KEEP` are freed (the fog ends at 300 m: nothing past WINDOW is ever seen). */
 export const WINDOW = 340, KEEP = 470;
@@ -31,6 +32,8 @@ export class CorridorView implements RoadGround {
   private traffic: CorridorTraffic | null = null;
   /** The road's BRT crossings (buses and signals), made when the player comes near one. */
   private brt: BrtLine[] = [];
+  /** The cars crossing on the autopont (made once the player is within 300 m, like the BRT). */
+  private apTraffic: AutopontTraffic | null = null;
   private lastS = 0;
   /** Chunks built, freed, and the slowest build (ms): the checks and the debug hook read them. */
   readonly stats = { built: 0, freed: 0, slowest: 0, last: 0 };
@@ -129,6 +132,12 @@ export class CorridorView implements RoadGround {
       if (!line && d < 360) { line = new BrtLine(lay, this.o.lite, this.o.rand); this.brt.push(line); this.root.add(line.group); }
       line?.update(dt, { player: me, trafficAt: (x, z, r) => this.trafficAt(x, z, r) }, d < 360);
     }
+    const apl = this.road.autopontS ? autopontLayout(this.road) : null;
+    if (apl) {
+      const d = Math.hypot(apl.x - px, apl.z - pz);
+      if (!this.apTraffic && d < 300) { this.apTraffic = new AutopontTraffic(apl, this.o.lite, this.o.rand); this.root.add(this.apTraffic.group); }
+      this.apTraffic?.update(dt, d < 300);
+    }
     this.traffic?.update(dt, {
       solid: (a, b, r) => this.solidRoad(a, b, r) || this.brt.some(l => l.busAt(a, b, r)), player: me,
       signals: this.brt.length ? dir => this.brt.map(l => l.signal(dir)) : undefined,
@@ -153,6 +162,8 @@ export class CorridorView implements RoadGround {
   }
   /** Checks and the debug hook: the BRT crossings' state (road frame). */
   brtInfo() { return this.brt.map(b => b.info()); }
+  /** Checks: the cars on the autopont (road frame). */
+  autopontInfo() { return this.apTraffic?.info() ?? null; }
 
   /** Which way the player must swap district, if the point (hub frame) is past the middle of the road on the far side of it. */
   swap(x: number, z: number): { to: HubId; at: number } | null {
@@ -171,7 +182,7 @@ export class CorridorView implements RoadGround {
 
   dispose() {
     for (const i of [...this.chunks.keys()]) this.free(i);
-    this.traffic?.dispose(); this.traffic = null; for (const b of this.brt) b.dispose(); this.brt = []; this.root.removeFromParent();
+    this.traffic?.dispose(); this.traffic = null; for (const b of this.brt) b.dispose(); this.brt = []; this.apTraffic?.dispose(); this.apTraffic = null; this.root.removeFromParent();
     if (this.world) this.world.corridors = (this.world.corridors ?? []).filter(c => c !== this);
     this.world = null;
   }

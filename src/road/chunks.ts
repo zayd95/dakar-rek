@@ -8,7 +8,9 @@ import { rng } from '../core/rng';
 import type { Collider, HubWorld } from '../world/types';
 import type { PersonLook } from '../actors/humanoid';
 import { DIVIDED, MEDIAN_HALF, ROAD_HALF, SHOULDER, type Profile, type Road } from './routes';
-import { MAIN_STOP, buildBrtStatic } from './brt';
+import { brtDims, buildBrtStatic } from './brt';
+import { LANE_BASE as RB_BASE, buildRoundStatic } from './roundabout';
+import { autopontLayout, buildAutopontStatic } from './autopont';
 
 /**
  * One stretch of a road between districts, built from its centre line: ground, carriageway, kerbs, markings and the roadside (lamps, poles, walls, houses, stalls, parked vehicles…).
@@ -153,14 +155,27 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   // junction arms and their zebra crossings
   for (const j of road.junctionS) {
     if (j.s < s0 - 60 || j.s > s1 + 60) continue;
+    const here = j.s >= s0 && j.s < s0 + CHUNK;
+    if (j.round && here) buildRoundStatic(j.round, { plain, asphalt, fac }, colliders, people, o.lite, R, s => frame(road, s));     // (src/road/roundabout.ts)
     if (j.brt) {
-      // the BRT avenue (src/road/brt.ts), built once by the chunk that holds the crossing; the main road's stop lines and zebras before it, both ways
-      if (j.s >= s0 && j.s < s0 + CHUNK) buildBrtStatic(j.brt, { plain, asphalt }, colliders, people, o.lite, R);
+      // the BRT avenue (src/road/brt.ts), built once by the chunk that holds the crossing; the main road's stop lines (and on a plain crossing its zebras) before it, both ways
+      if (here) buildBrtStatic(j.brt, { plain, asphalt }, colliders, people, o.lite, R);
+      const stop = brtDims(j.brt).mainStop;
       for (const dir of [1, -1]) {
-        const f = frame(road, j.s - dir * MAIN_STOP);
-        for (let k = 0; k < 5; k++) plain.flat(0.45, 1.0, f.x - f.lx * dir * (0.7 + k * 1.0), MARK_Y, f.z - f.lz * dir * (0.7 + k * 1.0), 0xeeeae0, f.yaw + Math.PI / 2);   // the stop line across the approach lane
-        const z = frame(road, j.s - dir * (MAIN_STOP + 3));
+        const f = frame(road, j.s - dir * stop), lane = RB_BASE + road.laneShift(j.s - dir * stop);                 // on a rond-point: across the ring's lane, before the busway
+        for (let k = 0; k < 5; k++) { const l = lane - 2 + k * 1.0; plain.flat(0.45, 1.0, f.x - f.lx * dir * l, MARK_Y, f.z - f.lz * dir * l, 0xeeeae0, f.yaw + Math.PI / 2); }
+        if (j.round) continue;
+        const z = frame(road, j.s - dir * (stop + 3));
         for (let k = -4; k <= 4; k++) plain.flat(2.6, 0.5, z.x + z.lx * k * 1.15, MARK_Y, z.z + z.lz * k * 1.15, 0xe8e4d8, z.yaw);
+      }
+      continue;
+    }
+    if (j.round) {
+      // a rond-point without a busway: its side streets from the ring outward, a zebra on each
+      for (const m of j.arms) {
+        const dx = m.b.x - m.a.x, dz = m.b.z - m.a.z, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l, yaw = Math.atan2(ux, uz), a0 = { x: m.a.x + ux * (j.round.ring - 1), z: m.a.z + uz * (j.round.ring - 1) };
+        asphalt.coloured(strip(a0.x, a0.z, m.b.x, m.b.z, m.half, ROAD_Y + 0.003, ASPHALT3));
+        for (let k = -4; k <= 4; k++) plain.flat(0.5, 3, m.a.x + ux * (j.round.ring + 4) - uz * k * 1.1, MARK_Y, m.a.z + uz * (j.round.ring + 4) + ux * k * 1.1, 0xe8e4d8, yaw + Math.PI / 2);
       }
       continue;
     }
@@ -175,19 +190,25 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
       for (let k = -4; k <= 4; k++) plain.flat(2.6, 0.5, f.x + f.lx * k * 1.15, MARK_Y, f.z + f.lz * k * 1.15, 0xe8e4d8, f.yaw);
     }
   }
-  const nearJunction = (s: number, pad = 46) => road.junctionS.some(j => Math.abs(j.s - s) < pad);
+  // (the autopont counts as a junction for the roadside, at half the distance: its ramps run out across the road, nothing else stands there)
+  // (a rond-point keeps its own corners: the roadside comes back past its corner blocks)
+  const nearJunction = (s: number, pad = 46) => road.junctionS.some(j => Math.abs(j.s - s) < (j.round && pad > 30 ? j.round.ring + 14 : pad)) || (road.autopontS !== null && Math.abs(road.autopontS.s - s) < Math.max(pad * 0.5, 12));
 
   // markings: centre dashes and the edges of the carriageway (none on a dirt road)
   for (let s = Math.ceil(s0 / 9) * 9; s < Math.min(s1 - 4, L); s += 9) {
     const prof = road.profileAt(s);
     const dirt = smooth(40, 220, s) < 0.6 && s < L / 2;
     if (dirt || prof === 'banlieue' || DIVIDED.has(prof)) continue;
-    if (nearJunction(s, 8)) continue;
+    if (nearJunction(s, 8) || road.nearRound(s, 4)) continue;
     const f = frame(road, s + 1.5);
     plain.flat(0.2, 3.2, f.x, MARK_Y, f.z, 0xe8e4d8, f.yaw);
   }
   if (s0 > 220 && s1 < L - 40) {
-    for (const l of [-ROAD_HALF + 0.35, ROAD_HALF - 0.35]) plain.coloured(ribbon(road, s0, s1, l - 0.09, l + 0.09, MARK_Y, () => new THREE.Color(0xe8e4d8), 12));
+    const cuts = road.rounds.map(r => [r.s - r.flare - 4, r.s + r.flare + 4] as const).filter(([a, b]) => b > s0 && a < s1);
+    const spans: [number, number][] = []; let from = s0;
+    for (const [a, b] of cuts) { if (a > from) spans.push([from, a]); from = Math.max(from, b); }
+    if (from < s1) spans.push([from, s1]);
+    for (const [a, b] of spans) for (const l of [-ROAD_HALF + 0.35, ROAD_HALF - 0.35]) plain.coloured(ribbon(road, a, b, l - 0.09, l + 0.09, MARK_Y, () => new THREE.Color(0xe8e4d8), 12));
   }
 
   // wear of an old city road (the owner's road references: patched asphalt, oil stains in the wheel tracks, the odd pothole) on the VDN and at Sacré-Cœur; flat on the
@@ -346,7 +367,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     let made = 0;
     for (let tries = 0; made < want && tries < 10; tries++) {
       const big = RF() < 0.45, len = big ? 9 + RF() * 5 : 4 + RF() * 2.5, s = s0 + 8 + len / 2 + RF() * (CHUNK - 16 - len), side = RF() < 0.5 ? -1 : 1;
-      if (s + len / 2 > L - 2 || nearJunction(s, 22 + len / 2) || nearCheckpoint(s, 40 + len / 2) || road.stops.some(t => Math.abs(t.s - s) < 15 + len / 2)) continue;   // clear of the junction's arms and zebras, of the stops' waiting people
+      if (s + len / 2 > L - 2 || nearJunction(s, 22 + len / 2) || road.nearRound(s, 8 + len / 2) || nearCheckpoint(s, 40 + len / 2) || road.stops.some(t => Math.abs(t.s - s) < 15 + len / 2)) continue;   // clear of the junction's arms and zebras, of the stops' waiting people
       const lat0 = KERB + 0.55, lat1 = VERGE - 0.15, mid = place(s, side * (lat0 + lat1) / 2);
       if (!clear(mid.x, mid.z, len / 2 + 1)) continue;
       // nothing of the chunk stands there already (a lamp, a pole, a stall, a parked vehicle)
@@ -542,6 +563,9 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     });
   }
 
+  // the autopont at the way into Mermoz (RouteDef.autopont, src/road/autopont.ts)
+  const apl = autopontLayout(road);
+  if (apl && apl.s >= s0 && apl.s < s0 + CHUNK) buildAutopontStatic(apl, { plain, asphalt }, colliders, o.lite);
   // the police checkpoint at the way into the Plateau (RouteDef.checkpoint)
   const cps = road.checkpointS;
   if (cps !== null && cps >= s0 && cps < s0 + CHUNK) checkpoint(cps);

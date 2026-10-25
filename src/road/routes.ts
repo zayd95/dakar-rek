@@ -1,6 +1,7 @@
 import type { HubId } from '../core/types';
 import { Ground, Spine, fillet, type Arm, type Pt, type Pose } from './network';
 import { brtGroundArms, brtLayout, type BrtLayout } from './brt';
+import { BRT_ROUND, roundGround, roundLayout, swing, type RoundLayout } from './roundabout';
 
 /**
  * The roads that really join two districts: a hand-simplified alignment of an actual Dakar road, in the game's metres, in the frame of its first district (`a`).
@@ -28,6 +29,8 @@ export interface JunctionDef {
    * crossing has a signal that holds the main road while a bus crosses.
    */
   brt?: boolean;
+  /** A rond-point (src/road/roundabout.ts): an island in the middle of the road, both lanes swinging round it, the side roads on its other two arms. */
+  round?: boolean;
 }
 
 export interface RouteDef {
@@ -48,6 +51,8 @@ export interface RouteDef {
   swap: number;
   /** A police checkpoint on a small rond-point this many metres before b's mouth (src/road/chunks.ts): seen, slowed for, driven round; nothing enforced. */
   checkpoint?: number;
+  /** An autopont (flyover) carrying a cross road over this one at a node (src/road/autopont.ts): driven under, nothing to turn into. */
+  autopont?: { node: number; name: string };
 }
 
 /** The look of the roadside: Pikine's dust and breeze block, the market junction, the wide urban road, the white walls and palms of Almadies, the coast road, the old downtown. */
@@ -134,7 +139,8 @@ export const ROUTES: readonly RouteDef[] = [
     // Compressed geography (docs/districts/M1-MERMOZ.md): the real VDN runs between Mermoz (west) and Sacré-Cœur (east); here the road comes off it into the district's
     // Sacré-Cœur side first, then its quieter Mermoz villa streets.
     id: 'corniche-mermoz', a: 'corniche', b: 'mermoz', condensed: 3,
-    nodes: [{ x: H, z: -60 }, { x: 240, z: -60 }, { x: 430, z: -180 }, { x: 520, z: -520 }, { x: 560, z: -800 }, { x: 780, z: -860 }, { x: 900, z: -860 }],
+    // (the last stretch is straight from (700, −860): the rond-point of the BRT at 780 and the autopont at 940 stand on a straight road, as their ring and deck need)
+    nodes: [{ x: H, z: -60 }, { x: 240, z: -60 }, { x: 430, z: -180 }, { x: 520, z: -520 }, { x: 560, z: -800 }, { x: 700, z: -860 }, { x: 780, z: -860 }, { x: 860, z: -860 }, { x: 940, z: -860 }, { x: 985, z: -860 }],
     radius: 150,
     aMouth: { x: H, z: -60, yaw: Math.PI / 2 }, bMouth: { x: -H, z: 0, yaw: Math.PI / 2 },
     anchors: [
@@ -142,16 +148,19 @@ export const ROUTES: readonly RouteDef[] = [
       { name: 'Fann · Point E', node: 2, lngLat: [-17.4600, 14.6950] },
       { name: 'VDN · Mermoz', node: 3, lngLat: [-17.4650, 14.7040] },
       { name: 'Sacré-Cœur', node: 4, lngLat: [-17.4630, 14.7130] },
-      { name: 'BRT · Sacré-Cœur', node: 5, lngLat: [-17.4600, 14.7150] },
-      { name: 'Mermoz · Sacré-Cœur', node: 6, lngLat: [-17.4685, 14.7108] },
+      { name: 'BRT · Sacré-Cœur', node: 6, lngLat: [-17.4600, 14.7150] },
+      { name: 'Mermoz · Sacré-Cœur', node: 9, lngLat: [-17.4685, 14.7108] },
     ],
     junctions: [
       { name: 'Fann · Point E', node: 2, arms: [{ side: 1, len: 45 }, { side: -1, len: 45 }] },
       { name: 'Échangeur de Sacré-Cœur', node: 4, arms: [{ side: -1, len: 50 }] },
-      { name: 'Sacré-Cœur · BRT', node: 5, arms: [{ side: 1, len: 130 }, { side: -1, len: 130 }], brt: true },
+      // the BRT corridor runs straight through Sacré-Cœur's rond-point (the owner's reference): the busway splits its island, the ring goes round
+      { name: 'Rond-point de Sacré-Cœur', node: 6, arms: [{ side: 1, len: 130 }, { side: -1, len: 130 }], brt: true, round: true },
     ],
-    profile: [[0, 'coast'], [0.14, 'artery'], [0.33, 'vdn'], [0.74, 'sacrecoeur']],
-    swap: 0.5,
+    autopont: { node: 8, name: 'Autopont de Mermoz' },
+    // (fractions of the length: the stretches stand where they did before the rond-point and the autopont added 85 m at the Mermoz end)
+    profile: [[0, 'coast'], [0.1313, 'artery'], [0.3095, 'vdn'], [0.694, 'sacrecoeur']],
+    swap: 0.4689,
   },
 ];
 
@@ -170,7 +179,11 @@ export class Road {
   readonly dx: number; readonly dz: number;
   /** Arc lengths of the anchors and junctions. */
   readonly anchorS: { name: string; s: number; lngLat: LngLat }[];
-  readonly junctionS: { name: string; s: number; x: number; z: number; yaw: number; arms: Arm[]; brt?: BrtLayout }[];
+  readonly junctionS: { name: string; s: number; x: number; z: number; yaw: number; arms: Arm[]; brt?: BrtLayout; round?: RoundLayout }[];
+  /** The road's rond-points (src/road/roundabout.ts): both lanes swing round their islands (`laneShift`). */
+  readonly rounds: RoundLayout[] = [];
+  /** The autopont over the road (RouteDef.autopont): its arc length, centre and heading there, or null. */
+  readonly autopontS: { name: string; s: number; x: number; z: number; yaw: number } | null = null;
   /** The BRT crossings of the road (src/road/brt.ts): their side roads are an avenue with a busway, not plain arms. */
   readonly brt: BrtLayout[] = [];
   /** The district swap happens here (arc length), well out of sight of both districts; `HYST` metres of play each way so a car that stops on the line does not swap back and forth. */
@@ -187,12 +200,20 @@ export class Road {
     this.junctionS = def.junctions.map(j => {
       const s = sOf(j.node), at = this.spine.at(s), lx = Math.cos(at.yaw), lz = -Math.sin(at.yaw);
       if (j.brt) {
-        const lay = brtLayout({ s, x: at.x, z: at.z, yaw: at.yaw }, Math.max(...j.arms.map(m => m.len)));
+        const lay = brtLayout({ s, x: at.x, z: at.z, yaw: at.yaw }, Math.max(...j.arms.map(m => m.len)), j.round ? BRT_ROUND : null);
         this.arms.push(...brtGroundArms(lay)); this.brt.push(lay);
-        return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms: [], brt: lay };
+        if (!j.round) return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms: [], brt: lay };
+        const rl = roundLayout(j.name, { s, x: at.x, z: at.z, yaw: at.yaw }, BRT_ROUND);
+        this.arms.push(...roundGround(rl)); this.rounds.push(rl);
+        return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms: [], brt: lay, round: rl };
       }
       const arms = j.arms.map(m => ({ a: { x: at.x, z: at.z }, b: { x: at.x + lx * m.side * m.len, z: at.z + lz * m.side * m.len }, half: ROAD_HALF * 0.8 + 1 }));
       this.arms.push(...arms);
+      if (j.round) {
+        const lay = roundLayout(j.name, { s, x: at.x, z: at.z, yaw: at.yaw }, { island: 5.2, lane: 8.1, ring: 11.4, flare: 17, split: 0 });
+        this.arms.push(...roundGround(lay)); this.rounds.push(lay);
+        return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms, round: lay };
+      }
       return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms };
     });
     this.ground = new Ground(this.spine, HALF_GROUND, this.arms);
@@ -200,9 +221,10 @@ export class Road {
     this.dx = def.bMouth.x - last.x; this.dz = def.bMouth.z - last.z;
     this.swapS = this.spine.length * def.swap;
     this.checkpointS = def.checkpoint !== undefined ? this.spine.length - def.checkpoint : null;
+    if (def.autopont) { const s = sOf(def.autopont.node), at = this.spine.at(s); this.autopontS = { name: def.autopont.name, s, x: at.x, z: at.z, yaw: at.yaw }; }
     // stops: a pair before each junction (one for each direction), and one every ~250 m along the busy stretches, none near the ends (the districts' own stops are there)
     const stops: RoadStop[] = [], L = this.spine.length, hash = (n: number) => { const x = Math.sin(n * 12.9898 + L * 0.37) * 43758.5453; return x - Math.floor(x); };
-    for (const j of this.junctionS) { stops.push({ s: j.s - 40, dir: 1 }); stops.push({ s: j.s + 40, dir: -1 }); }
+    for (const j of this.junctionS) if (!j.round) { stops.push({ s: j.s - 40, dir: 1 }); stops.push({ s: j.s + 40, dir: -1 }); }      // (never on a rond-point's swing)
     for (let k = 1; k * 250 < L - 200; k++) {
       const s = k * 250 + (hash(k) - 0.5) * 60, prof = this.profileAt(s);
       if (s < 200 || s > L - 200 || this.junctionS.some(j => Math.abs(j.s - s) < 120)) continue;
@@ -216,6 +238,10 @@ export class Road {
   offset(hub: HubId): Pt { return hub === this.def.b ? { x: this.dx, z: this.dz } : { x: 0, z: 0 }; }
   other(hub: HubId): HubId { return hub === this.def.a ? this.def.b : this.def.a; }
   touches(hub: HubId) { return hub === this.def.a || hub === this.def.b; }
+  /** How far the lanes swing out from their usual offset at arc length s (a rond-point's island, src/road/roundabout.ts); 0 almost everywhere. */
+  laneShift(s: number): number { let d = 0; for (const r of this.rounds) d += swing(r, s - r.s); return d; }
+  /** Within a rond-point's swing (its flare), `pad` metres more, along the road? */
+  nearRound(s: number, pad = 0): boolean { return this.rounds.some(r => Math.abs(s - r.s) < r.flare + pad); }
   /** The roadside look at arc length s. */
   profileAt(s: number): Profile {
     const f = s / this.length; let p = this.def.profile[0][1];
