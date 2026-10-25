@@ -208,7 +208,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   const sug = await page.evaluate(() => window.__dakar.suggestion());
   check(`${label}: first suggested beat is Ibou`, sug === 'ibou_welcome', String(sug));
   if (label === 'desktop') await page.screenshot({ path: `${out}/desktop-pikine-goal.png` });
-  await page.evaluate(() => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
+  // the teleport rebuilds the hub and Ibou's menu opens only once he is in it: on a slow runner that takes longer than the pause above
+  await page.waitForFunction(() => { if (!document.querySelector('#modal.on')) window.__dakar.openNpc('ibou'); return !!document.querySelector('#modal.on'); }, null, { timeout: 60000, polling: 500 });
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-npc-menu.png` });
   await page.click('.item >> nth=0'); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-beat.png` });
