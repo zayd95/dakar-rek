@@ -1,5 +1,16 @@
 import type { Placement } from '../core/types';
-import type { FurnitureSpec, HomeLevel, HomeSpec } from './catalog';
+import { HOMES, type FurnitureSpec, type HomeLevel, type HomeSpec } from './catalog';
+
+/**
+ * Where each home's interior stands, off the street grid (src/economy/estate.ts builds it there): one slot per catalogue
+ * entry, in the catalogue's order. It depends on nothing else, so every client draws a home at the same place — a guest
+ * drawing a host's home from its snapshot (src/online/visit.ts) sees each piece exactly where the host does.
+ */
+export const ROOM_X = 1600, ROOM_STEP = 60;
+export function homeOrigin(specId: string): { x: number; z: number } | null {
+  const i = HOMES.findIndex(h => h.id === specId);
+  return i < 0 ? null : { x: ROOM_X + i * ROOM_STEP, z: 0 };
+}
 
 /**
  * Where furniture can stand in a home: the room's walls, its built-in pieces (bed, wardrobe, kitchen…), the passages
