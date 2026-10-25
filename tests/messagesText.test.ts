@@ -40,6 +40,8 @@ describe('times and days', () => {
     expect(seenText(at(2026, 10, 2, 20), NOW)).toBe('vu le 02/10');
     expect(seenText(null, NOW)).toBe('');
     expect(knownText(NOW - 5000, true, NOW)).toBe('à l’instant');
+    expect(knownText(NOW - 10 * 60_000, true, NOW)).toBe('à l’instant');                    // connected: the server's balance now
+    expect(knownText(NOW - 5000, false, NOW)).toBe('à l’instant · hors ligne');
     expect(knownText(NOW - 3 * 60_000, false, NOW)).toBe('il y a 3 min · hors ligne');
     expect(ago(NOW - 59_000, NOW)).toBe('à l’instant');
     expect(clockOf(at(2026, 10, 25, 7, 4))).toBe('07:04');

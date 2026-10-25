@@ -9,7 +9,7 @@ import { parseAmount } from '../../../economy/bank';
 import { HUB_NAMES } from '../../../world/content';
 import {
   F, NOTE_MAX, QUICK_AMOUNTS, cardOf, cashoutCheck, clockOf, codeOf, fundCheck, formatCode, groupByDay, initials, isCode, limitLines, listTime, lookColor, meetChoices,
-  plusActions, previewOf, realIn, reasonText, retryable, seenText, statusText, type CardAct, type PlusId,
+  plusActions, plusClosed, previewOf, realIn, reasonText, retryable, seenText, statusText, type CardAct, type PlusId,
 } from './messagesText';
 import './messages.css';
 
@@ -37,26 +37,39 @@ const isTag = (s?: string): s is Tag => !!s && /^[0-9a-f]{16}$/.test(s);
 const fake = (o: OnlineApi) => !!(o as { fake?: boolean }).fake;
 const short = (hub: string) => (HUB_NAMES as Record<string, string>)[hub]?.split(' · ')[0] ?? '';
 
+/** A player's name: their conversation's, else one met this session (a forgotten conversation, a code looked up, a player nearby), else « Joueur ». */
 export function nameOf(tag: Tag): string {
-  return online?.convs().find(c => c.with === tag)?.name ?? contacts.get(tag)?.name ?? messagesDeps.nearby?.().find(n => n.tag === tag)?.name ?? 'Joueur';
+  const c = online?.convs().find(x => x.with === tag);
+  if (c) { contacts.set(tag, { name: c.name, look: c.look }); return c.name; }
+  return contacts.get(tag)?.name ?? messagesDeps.nearby?.().find(n => n.tag === tag)?.name ?? 'Joueur';
 }
 function lookOf(tag: Tag): number { return online?.convs().find(c => c.with === tag)?.look ?? contacts.get(tag)?.look ?? 0; }
+/**
+ * Draws `html` into `el` only when it differs from what was drawn there last: the views redraw on every change and every second, and an element
+ * replaced between a finger's down and up would lose its tap.
+ */
+const drawn = new WeakMap<Element, string>();
+function setHtml(el: Element, html: string) { if (drawn.get(el) !== html) { drawn.set(el, html); el.innerHTML = html; } }
 const avatar = (name: string, look: number, on = false, cls = '') =>
   `<i class="mg-av${cls ? ' ' + cls : ''}" style="--c:${lookColor(look)}" aria-hidden="true">${esc(initials(name))}${on ? '<b class="mg-dot"></b>' : ''}</i>`;
 
 // ------------------------------------------------------------------ sheets (over the whole phone: the conversation's « + » actions, Argent's money)
 
 export interface Sheet { root: HTMLElement; body: HTMLElement; close(): void; open(): boolean; settle(): void }
+/** The sheets showing (one at a time): closed with their screen (its cleanup), or by the next one. */
+const live = new Set<() => void>();
+export function closeSheets() { for (const close of [...live]) close(); }
 /** Opens a sheet over the phone's glass (above its header) with a title and « Fermer »; taps within the tap guard of its appearance are dropped. */
 export function openSheet(from: HTMLElement, title: string, onClose?: () => void): Sheet {
+  closeSheets();
   const glass = from.closest('.ph-glass') ?? document.body;
-  glass.querySelectorAll('.mg-sheet-wrap').forEach(e => e.remove());
   const root = document.createElement('div');
   root.className = 'mg-sheet-wrap'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', title);
   root.innerHTML = `<div class="mg-dim" data-sh="x"></div><section class="mg-sheet"><header class="mg-sh-head"><h3>${esc(title)}</h3><button type="button" class="mg-sh-x" data-sh="x">Fermer</button></header><div class="mg-sh-body"></div></section>`;
   glass.appendChild(root);
   let shownAt = performance.now(), closed = false;
-  const close = () => { if (closed) return; closed = true; root.remove(); removeEventListener('keydown', esc_, true); onClose?.(); };
+  const close = () => { if (closed) return; closed = true; live.delete(close); root.remove(); removeEventListener('keydown', esc_, true); onClose?.(); };
+  live.add(close);
   // the second half of the tap that opened it, or of the tap that changed its step, never lands on it (src/ui/tapGuard.ts)
   root.addEventListener('click', e => {
     if (!tapSettled(shownAt)) { e.stopPropagation(); e.preventDefault(); return; }
@@ -66,7 +79,6 @@ export function openSheet(from: HTMLElement, title: string, onClose?: () => void
   addEventListener('keydown', esc_, true);                                     // before the game's menu key
   return { root, body: root.querySelector('.mg-sh-body')!, close, open: () => !closed, settle: () => { shownAt = performance.now(); } };
 }
-const closeSheets = (from: HTMLElement | null) => from?.closest('.ph-glass')?.querySelectorAll('.mg-sheet-wrap').forEach(e => e.remove());
 
 /** The amounts quick-picked in a money sheet, and « Tout » when the source has a known ceiling. */
 function chipsFor(kind: MoneyKind, o: OnlineApi, wallet: number): { list: Francs[]; all: Francs } {
@@ -124,11 +136,11 @@ export function moneySheet(api: PhoneApi, from: HTMLElement, m: { kind: MoneyKin
         : m.kind === 'cashout' ? cashoutCheck(amount, bal(), o.limits, o.status)
           : o.status !== 'online' ? 'Hors ligne : la demande partira une fois reconnecté.' : '';
     const ask = `${VERB[m.kind]} ${F(amount)}${m.kind === 'pay' ? ` à ${who}` : m.kind === 'ask' ? ` à ${who}` : m.kind === 'fund' ? ' sur Teranga Money' : ' vers ton portefeuille'} ?`;
+    const after = (tm: number, w: number): [string, string][] => [['Teranga Money après', F(Math.max(0, tm))], ['Portefeuille après', F(Math.max(0, w))]];
     const lines: [string, string][] = m.kind === 'pay' && q ? [
       ['Depuis Teranga Money', F(q.fromOnline)], ...(q.fromWallet > 0 ? [['Depuis ton portefeuille', F(q.fromWallet)] as [string, string]] : []),
-      ['Après', `Teranga Money ${F(bal() - q.fromOnline)} · portefeuille ${F(wallet() - q.fromWallet)}`],
-    ] : m.kind === 'fund' ? [['Après', `Teranga Money ${F(bal() + amount)} · portefeuille ${F(Math.max(0, wallet() - amount))}`]]
-      : m.kind === 'cashout' ? [['Après', `Teranga Money ${F(Math.max(0, bal() - amount))} · portefeuille ${F(wallet() + amount)}`]] : [];
+      ...after(bal() - q.fromOnline, wallet() - q.fromWallet),
+    ] : m.kind === 'fund' ? after(bal() + amount, wallet() - amount) : m.kind === 'cashout' ? after(bal() - amount, wallet() + amount) : [];
     const limits = limitLines(o.limits, o.today);
     sh.body.innerHTML = `<div class="pk-confirm mg-conf"><i aria-hidden="true">${ICON[m.kind]}</i><p><b>${esc(ask)}</b>${note ? `<br><span class="mg-cnote">« ${esc(note)} »</span>` : ''}</p></div>
       ${lines.length ? `<div class="mg-lines">${lines.map(([k, v]) => `<p><span>${esc(k)}</span><b>${esc(v)}</b></p>`).join('')}</div>` : ''}
@@ -178,13 +190,13 @@ function listView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   const list = page.querySelector<HTMLElement>('.mg-list')!, st = page.querySelector<HTMLElement>('.mg-st')!;
   const draw = () => {
     const now = api.ctx.now(), me = o.me?.tag ?? null, cs = o.convs();
-    st.innerHTML = statusHtml(o);
-    list.innerHTML = cs.length ? cs.map(c => `<button type="button" class="mg-conv${c.blocked ? ' blocked' : ''}${c.unread ? ' unread' : ''}" role="listitem" data-tag="${esc(c.with)}" aria-label="${esc(`${c.name}${c.unread ? `, ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`)}">
+    setHtml(st, statusHtml(o));
+    setHtml(list, cs.length ? cs.map(c => `<button type="button" class="mg-conv${c.blocked ? ' blocked' : ''}${c.unread ? ' unread' : ''}" role="listitem" data-tag="${esc(c.with)}" aria-label="${esc(`${c.name}${c.unread ? `, ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`)}">
         ${avatar(c.name, c.look, c.seen === 'online' && !c.blocked)}
         <span class="mg-conv-tx"><span class="mg-conv-top"><b>${esc(c.name)}</b>${c.last ? `<time>${esc(listTime(c.last.at, now))}</time>` : ''}</span>
           <span class="mg-conv-bot"><small>${esc(c.blocked ? 'Bloqué · ses messages ne te parviennent plus' : previewOf(c.last, me))}</small>${c.unread ? `<em class="mg-unread">${c.unread > 99 ? '99+' : c.unread}</em>` : ''}</span></span>
       </button>`).join('')
-      : empty('💬', 'Pas encore de conversation. Écris à un joueur croisé en ville, ou ajoute un ami avec son code.');
+      : empty('💬', 'Pas encore de conversation. Écris à un joueur croisé en ville, ou ajoute un ami avec son code.'));
   };
   page.addEventListener('click', e => {
     const t = e.target as HTMLElement, c = t.closest<HTMLElement>('[data-tag]');
@@ -206,19 +218,19 @@ function newView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
       <form class="mg-code" novalidate><input class="mg-in" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="19" placeholder="7F3A-91C2-0B4E-55D1" aria-label="Code ami, 16 caractères"><button type="submit" class="pk-btn primary inline">Chercher</button></form>
       <p class="mg-err" role="alert" hidden></p><div class="mg-found"></div></section>
     <section class="pk-sec mg-recent-sec"><h3>Récents</h3><div class="mg-recent"></div></section>
-    ${code ? `<section class="pk-sec"><h3>Ton code</h3><div class="pk-card mg-mycode"><b class="mg-codetx">${esc(code)}</b>${btn('Copier', { act: 'copy', inline: true, icon: '📋' })}
-      <p class="pk-note">Donne-le à un ami : il pourra t’écrire depuis n’importe quel quartier.</p></div></section>` : ''}`;
+    ${code ? `<section class="pk-sec"><h3>Ton code</h3><div class="pk-card mg-mycode"><b class="mg-codetx">${esc(code)}</b>
+      <p class="pk-note">Donne-le à un ami : il pourra t’écrire depuis n’importe quel quartier.</p>${btn('Copier', { act: 'copy', inline: true, icon: '📋' })}</div></section>` : ''}`;
   const person = (tag: Tag, name: string, look: number, sub: string, on: boolean) => `<button type="button" class="pk-row tap mg-person" data-tag="${esc(tag)}" data-name="${esc(name)}" data-look="${look}">${avatar(name, look, on)}<span class="pk-tx"><b>${esc(name)}</b><small>${esc(sub)}</small></span><span class="pk-chev" aria-hidden="true">›</span></button>`;
   const draw = () => {
     const now = api.ctx.now();
     const nearEl = page.querySelector('.mg-near');
     if (nearEl) {
       const n = (messagesDeps.nearby?.() ?? []).sort((a, b) => a.dist - b.dist).slice(0, 8);
-      nearEl.innerHTML = n.length ? `<div class="pk-rows">${n.map(p => person(p.tag, p.name, p.look, `à ${Math.round(p.dist)} m${o.isBlocked(p.tag) ? ' · bloqué' : ''}`, true)).join('')}</div>` : empty('🚶🏾', 'Personne d’autre autour de toi pour l’instant.');
+      setHtml(nearEl, n.length ? `<div class="pk-rows">${n.map(p => person(p.tag, p.name, p.look, `${p.dist < 150 ? `à ${Math.round(p.dist)} m` : 'dans le quartier'}${o.isBlocked(p.tag) ? ' · bloqué' : ''}`, true)).join('')}</div>` : empty('🚶🏾', 'Personne d’autre autour de toi pour l’instant.'));
     }
     const rec = o.convs().slice(0, 6);
     page.querySelector('.mg-recent-sec')!.toggleAttribute('hidden', !rec.length);
-    page.querySelector('.mg-recent')!.innerHTML = rec.length ? `<div class="pk-rows">${rec.map(c => person(c.with, c.name, c.look, seenText(c.seen, now) || ' ', c.seen === 'online')).join('')}</div>` : '';
+    setHtml(page.querySelector('.mg-recent')!, rec.length ? `<div class="pk-rows">${rec.map(c => person(c.with, c.name, c.look, seenText(c.seen, now) || ' ', c.seen === 'online')).join('')}</div>` : '');
   };
   const form = page.querySelector<HTMLFormElement>('.mg-code')!, input = form.querySelector('input')!, err = page.querySelector<HTMLElement>('.mg-err')!, found = page.querySelector<HTMLElement>('.mg-found')!;
   input.addEventListener('input', () => { const v = formatCode(input.value); if (v !== input.value) input.value = v; err.hidden = true; });
@@ -291,14 +303,14 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   /** Why nothing can be written now, or ''. */
   const closedWhy = () => blocked() ? `Tu as bloqué ${name()} : débloque-le dans « ⋯ » pour lui écrire.` : seenNow() === 'never' ? `${name()} n’a pas encore ouvert Messages : rien ne peut lui parvenir pour l’instant.` : '';
 
-  const itemHtml = (it: ItemView, last: boolean, now: number): string => {
+  const itemHtml = (it: ItemView, last: boolean, now: number, newest: boolean, who: string): string => {
     const me = o.me?.tag ?? null, mine = !!me && it.from === me, side = mine ? 'me' : 'them';
-    const st = it.status === 'sending' ? ' · envoi…' : it.status === 'failed' ? '' : mine && last ? ' · envoyé' : '';
+    const st = it.status === 'sending' ? ' · envoi…' : it.status === 'failed' ? '' : mine && newest ? ' · envoyé' : '';
     const failed = it.status === 'failed'
       ? `<span class="mg-fail">Pas envoyé · ${esc(reasonText(it.reason))}</span>${retryable(it.reason) ? `<button type="button" class="mg-retry" data-act="retry" data-ref="${esc(it.id)}">Réessayer</button>` : ''}` : '';
     const meta = last || it.status ? `<small class="mg-meta">${esc(clockOf(it.at))}${st}${failed}</small>` : '';
     if (it.k === 'text') return `<li class="mg-b ${side}${last ? ' last' : ''}${it.status ? ' ' + it.status : ''}" data-key="${esc(it.id)}"><p>${esc(it.text)}</p>${meta}</li>`;
-    const v = cardOf(it, me, name(), now, hooks()), [icon, kind] = KIND[it.k];
+    const v = cardOf(it, me, who, now, hooks()), [icon, kind] = KIND[it.k];
     const sub = it.k === 'invite' ? `<p class="mg-csub">${esc(it.home.name)}<br>${it.perms.use ? 'Peut s’asseoir et utiliser la télé' : 'Visite seulement'}</p>`
       : it.k === 'meet' ? `<p class="mg-csub">${it.place.icon ? esc(it.place.icon) + ' ' : ''}${esc(short(it.place.hub))}${it.when && (it.state === 'open' || it.state === 'accepted') ? ` · ${esc(realIn(it.when, now))}` : ''}${it.counter ? ' · autre heure proposée' : ''}</p>`
         : it.k === 'loc' ? `<p class="mg-csub">${esc(short(it.hub))}</p>` : '';
@@ -314,20 +326,21 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     const bottom = atBottom(), prevH = log.scrollHeight, prevTop = log.scrollTop, firstKey = (log.firstElementChild as HTMLElement | null)?.dataset.key;
     const lastCount = log.querySelectorAll('[data-key]:not(.mg-day)').length;
     const rows = groupByDay(items, now), keep = new Set<string>();
+    const who = name(), meTag = o.me?.tag, newestMine = [...items].reverse().find(i => i.from === meTag && !i.status)?.id;   // « envoyé » under the player's last sent item only
     let prev: Element | null = null;
     const place = (el: HTMLElement) => { const want: Element | null = prev ? prev.nextElementSibling : log.firstElementChild; if (want !== el) log.insertBefore(el, want); prev = el; };
     if (!items.length) {
       const hello = `<li class="mg-hello" data-key="hello">${closedWhy() ? esc(closedWhy()) : `Écris à ${esc(name())}, ou touche « + » pour envoyer de l’argent, l’inviter chez toi, proposer un rendez-vous ou partager ta position.`}</li>`;
-      log.innerHTML = hello; els.clear(); return;
+      setHtml(log, hello); els.clear(); return;
     }
-    log.querySelector('.mg-hello')?.remove();
+    if (log.querySelector('.mg-hello')) { log.querySelector('.mg-hello')!.remove(); drawn.delete(log); }
     rows.forEach((r, i) => {
       let html: string, sig: string;
       if (r.k === 'day') { html = `<li class="mg-day" data-key="${r.key}"><span>${esc(r.label)}</span></li>`; sig = r.label; }
       else {
         const it = r.item, nx = rows[i + 1], next = nx && nx.k === 'item' ? nx.item : null;
         const last = !next || next.from !== it.from || next.at - it.at > 5 * 60_000 || it.k !== 'text' || next.k !== 'text';
-        html = itemHtml(it, last, now);
+        html = itemHtml(it, last, now, it.id === newestMine, who);
         sig = html;
       }
       let e = els.get(r.key);
@@ -348,7 +361,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
 
   const drawBar = () => {
     const s = seenNow(), now = api.ctx.now(), b = blocked();
-    $('.mg-bar-av').innerHTML = avatar(name(), lookOf(tag), s === 'online' && !b);
+    setHtml($('.mg-bar-av'), avatar(name(), lookOf(tag), s === 'online' && !b));
     const seen = $('.mg-seen'); seen.textContent = b ? 'bloqué' : seenText(s, now) || '…'; seen.className = `mg-seen${s === 'online' && !b ? ' on' : ''}`;
     const st = statusText(o.status);
     banner.hidden = o.status === 'online'; banner.textContent = st.text; banner.className = `mg-banner ${st.tone}`;
@@ -369,13 +382,14 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   const drawPlus = () => {
     const acts = plusActions({ status: o.status, seen: seenNow(), blocked: blocked(), name: name(), hooks: { invite: !!onlineHooks.homeToInvite, meet: !!onlineHooks.meetupPlaces, loc: !!onlineHooks.hereNow },
       home: !!onlineHooks.homeToInvite?.(), here: !!onlineHooks.hereNow?.() });
-    plusPop.innerHTML = acts.map(a => `<button type="button" role="menuitem" class="mg-pi${a.ok ? '' : ' off'}" data-act="plus-do" data-do="${a.id}"${a.ok ? '' : ' aria-disabled="true"'}><i aria-hidden="true">${a.icon}</i><span><b>${esc(a.label)}</b>${a.why ? `<small>${esc(a.why)}</small>` : ''}</span></button>`).join('');
+    const all = plusClosed({ status: o.status, seen: seenNow(), blocked: blocked(), name: name() });   // one reason for all: said once, above them
+    setHtml(plusPop, (all ? `<p class="mg-pop-why">${esc(all)}</p>` : '') + acts.map(a => `<button type="button" role="menuitem" class="mg-pi${a.ok ? '' : ' off'}" data-act="plus-do" data-do="${a.id}"${a.ok ? '' : ` aria-disabled="true" title="${esc(a.why)}"`}><i aria-hidden="true">${a.icon}</i><span><b>${esc(a.label)}</b>${a.why && !all ? `<small>${esc(a.why)}</small>` : ''}</span></button>`).join(''));
   };
   const drawMenu = () => {
     const b = blocked();
-    menuPop.innerHTML = `<button type="button" role="menuitem" class="mg-pi" data-act="m-block"><i aria-hidden="true">${b ? '✅' : '🚫'}</i><span><b>${b ? 'Débloquer' : 'Bloquer'}</b><small>${b ? 'Ses messages te parviendront de nouveau' : 'Le cacher, refuser son argent et ses invitations'}</small></span></button>
+    setHtml(menuPop, `<button type="button" role="menuitem" class="mg-pi" data-act="m-block"><i aria-hidden="true">${b ? '✅' : '🚫'}</i><span><b>${b ? 'Débloquer' : 'Bloquer'}</b><small>${b ? 'Ses messages te parviendront de nouveau' : 'Le cacher, refuser son argent et ses invitations'}</small></span></button>
       <button type="button" role="menuitem" class="mg-pi" data-act="m-report"><i aria-hidden="true">⚑</i><span><b>Signaler</b><small>Insultes, harcèlement, arnaque…</small></span></button>
-      <button type="button" role="menuitem" class="mg-pi danger" data-act="m-forget"><i aria-hidden="true">🗑️</i><span><b>Supprimer la conversation</b><small>De ton téléphone et de ton compte</small></span></button>`;
+      <button type="button" role="menuitem" class="mg-pi danger" data-act="m-forget"><i aria-hidden="true">🗑️</i><span><b>Supprimer la conversation</b><small>De ton téléphone et de ton compte</small></span></button>`);
   };
   const pop = (which: 'plus' | 'menu' | null) => {
     plusPop.hidden = which !== 'plus'; menuPop.hidden = which !== 'menu';
@@ -491,7 +505,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
       if (viewing === tag) viewing = null;
       vv?.removeEventListener('resize', onViewport); vv?.removeEventListener('scroll', onViewport); phoneEl?.style.removeProperty('--kb');
       removeEventListener('keydown', onKey, true);
-      closeSheets(page);
+      closeSheets();
     },
   };
 }
@@ -609,6 +623,7 @@ export const messagesScreen: Screen = {
       page.innerHTML = empty('💬', 'Messages a besoin de la connexion en ligne. Cette version du jeu tourne en solo : ta partie continue normalement.');
       return;
     }
+    for (const c of o.convs()) contacts.set(c.with, { name: c.name, look: c.look });   // names stay known after a conversation is forgotten (histories)
     let draw: () => void, cleanup: (() => void) | undefined;
     if (arg === 'new') draw = newView(page, api, o);
     else if (isTag(arg)) ({ draw, cleanup } = convView(page, api, o, arg));

@@ -6,7 +6,7 @@ import { fcfa } from '../../hud';
 import { online, type OnlineApi } from '../../../online/api';
 import type { LedgerOp } from '../../../online/protocol';
 import { ensureFakeOnline } from '../../../online/fake';
-import { moneySheet, nameOf } from './messages';
+import { closeSheets, moneySheet, nameOf } from './messages';
 import { knownText, limitLines, statusText } from './messagesText';
 import './money.css';
 
@@ -32,21 +32,28 @@ function tmLabel(op: LedgerOp, me: string | undefined): { label: string; sub: st
 }
 function tmHtml(o: OnlineApi, now: number): string {
   const b = o.balance, on = o.status === 'online', st = statusText(o.status);
-  return `<div class="tm-card"><div class="tm-top"><span class="tm-tx"><small>Teranga Money · ton argent en ligne${(o as { fake?: boolean }).fake ? ' · simulé (debug)' : ''}</small>
+  return `<div class="tm-card"><div class="tm-top"><span class="tm-tx"><small>Ton argent en ligne, sur ton téléphone${(o as { fake?: boolean }).fake ? ' · simulé (debug)' : ''}</small>
       <b class="tm-bal">${b ? esc(fcfa(b.amount)) : '—'}</b><span class="tm-when">${b ? esc(knownText(b.at, b.fresh && on, now)) : esc(st.text)}</span></span><i aria-hidden="true">📱</i></div></div>
-    <div class="pk-acts">${btn('Recharger', { act: 'tm-fund', kind: 'primary', icon: '⬇️', cls: 'tm-go', sub: 'depuis le portefeuille' })}${btn('Retirer', { act: 'tm-cashout', icon: '⬆️', cls: 'tm-go', sub: 'vers le portefeuille' })}</div>
+    <div class="pk-acts">${btn('Recharger', { act: 'tm-fund', kind: 'primary', icon: '⬇️', cls: 'tm-go', sub: 'du portefeuille' })}${btn('Retirer', { act: 'tm-cashout', icon: '⬆️', cls: 'tm-go', sub: 'au portefeuille' })}</div>
     ${on ? '' : `<p class="pk-note warn tm-off">${esc('Hors ligne : Recharger et Retirer reviennent avec la connexion. Le solde affiché est le dernier connu.')}</p>`}`;
 }
 /** Teranga Money's block: its balance and when it was known, « Recharger » / « Retirer » (the money sheet's one confirmation), its history and today's limits. */
 function teranga(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   const sec = page.querySelector<HTMLElement>('[data-slot="tm"]'); if (!sec) return () => {};
   let lastBal = o.balance?.amount ?? NaN, asked = 0;
+  // redrawn on every change of the account, but only what changed: a button replaced under a finger would lose its tap, an open « Limites » would close
+  let box = '', lims = '';
   const draw = () => {
-    sec.querySelector('.tm-box')!.innerHTML = tmHtml(o, api.ctx.now());
+    const html = tmHtml(o, api.ctx.now());
+    if (html !== box) { box = html; sec.querySelector('.tm-box')!.innerHTML = html; }
     const on = o.status === 'online';
     sec.querySelectorAll<HTMLButtonElement>('.tm-go').forEach(b => { b.disabled = !on; });
-    const lim = limitLines(o.limits, o.today);
-    sec.querySelector('.tm-lim')!.innerHTML = lim.length ? more('Limites du jour', lim.map(l => `<p>${esc(l)}</p>`).join(''), 'tm-limits') : '';
+    const lim = limitLines(o.limits, o.today), l = lim.map(x => `<p>${esc(x)}</p>`).join('');
+    if (l !== lims) {
+      const open = !!sec.querySelector<HTMLDetailsElement>('.tm-limits')?.open; lims = l;
+      sec.querySelector('.tm-lim')!.innerHTML = lim.length ? more('Limites du jour', l, 'tm-limits') : '';
+      if (open) sec.querySelector<HTMLDetailsElement>('.tm-limits')!.open = true;
+    }
   };
   const history = async () => {
     const n = ++asked, box = sec.querySelector('.tm-hist')!;
@@ -69,7 +76,7 @@ function teranga(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
     if ((o.balance?.amount ?? NaN) !== lastBal) { lastBal = o.balance?.amount ?? NaN; void history(); }
   });
   (page as HTMLElement & { _tm?: () => void })._tm = () => { const w = sec.querySelector('.tm-when'), b = o.balance; if (w && b) { const t = knownText(b.at, b.fresh && o.status === 'online', api.ctx.now()); if (w.textContent !== t) w.textContent = t; } };
-  return off;
+  return () => { off(); closeSheets(); };                                   // a sheet open when the phone closes goes with it
 }
 
 function balance(api: PhoneApi): string {

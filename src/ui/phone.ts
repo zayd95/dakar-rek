@@ -161,7 +161,7 @@ export class Phone {
 
   /**
    * Opens the phone where it was left, or on the given app (an app id, a screen id, an alias, or 'home'; `app:arg` opens a screen on its argument, e.g.
-   * `messages:<tag>`, a conversation). Returns false for an unknown app.
+   * `messages:<tag>`, a conversation, above the screen's first page). Returns false for an unknown app.
    */
   open(app?: string): boolean {
     if (app) {
@@ -170,7 +170,8 @@ export class Phone {
       if (a?.hook) { const fn = a.hook(); if (!fn) return false; this.launch(fn); return true; }
       const [id, arg] = ALIASES[name] ?? [a?.screen ?? name];
       if (!SCREENS[id]) return false;
-      this.stack = id === 'home' ? [] : [{ id, arg: extra ?? arg }];
+      // on an argument (a conversation): the screen's own first page sits under it, so « back » leads to the list
+      this.stack = id === 'home' ? [] : extra !== undefined ? [{ id, arg }, { id, arg: extra }] : [{ id, arg }];
     }
     this.remember();
     if (!this.isOpen) {

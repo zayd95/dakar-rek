@@ -55,10 +55,9 @@ export function seenText(seen: 'online' | number | 'never' | null, now: number):
   const a = ago(seen, now);
   return a === 'à l’instant' ? 'vu à l’instant' : `vu ${a}`;
 }
-/** When the Teranga Money balance was known: « à l’instant », « il y a 3 min · hors ligne ». */
+/** When the Teranga Money balance was known: connected, it is the server's now (« à l’instant »); else when it was last said (« il y a 3 min · hors ligne »). */
 export function knownText(at: number, fresh: boolean, now: number): string {
-  const a = ago(at, now);
-  return fresh ? a : `${a} · hors ligne`;
+  return fresh ? 'à l’instant' : `${ago(at, now)} · hors ligne`;
 }
 /** The account's state, said in words (never a coloured dot alone). */
 export function statusText(s: OnlineStatus | null): { text: string; tone: 'on' | 'wait' | 'off' } {
@@ -132,7 +131,7 @@ export function cardOf(item: Item, me: Tag | null, name: string, now: number, ho
   const mine = !!me && item.from === me;
   switch (item.k) {
     case 'pay':
-      return { title: `${F(item.amount)} ${mine ? 'envoyés' : 'reçus'}`, state: item.req ? (mine ? 'Demande payée' : 'Pour ta demande') : 'Teranga Money', tone: 'gain', actions: [] };
+      return { title: `${F(item.amount)} ${mine ? 'envoyés' : 'reçus'}`, state: item.req ? (mine ? 'Demande payée' : 'Pour ta demande') : '', tone: 'gain', actions: [] };
     case 'ask': return askCard(item, mine, name);
     case 'invite': return inviteCard(item, mine, name, now, hooks);
     case 'meet': return meetCard(item, mine, name, now, hooks, me);
@@ -191,11 +190,15 @@ export interface PlusCtx {
   /** A home to invite into now, and a position to share now. */
   home: boolean; here: boolean;
 }
-/** The « + » menu: exactly these five, each open, or closed with the sentence that says why; an action whose world hook is missing is hidden. */
-export function plusActions(c: PlusCtx): { id: PlusId; label: string; icon: string; ok: boolean; why: string }[] {
-  const common = c.status !== 'online' ? 'Hors ligne : possible dès que tu es reconnecté.'
+/** Why every « + » action is closed now (offline, blocked, not on Messages), or '': said once, above them. */
+export function plusClosed(c: Pick<PlusCtx, 'status' | 'blocked' | 'seen' | 'name'>): string {
+  return c.status !== 'online' ? 'Hors ligne : possible dès que tu es reconnecté.'
     : c.blocked ? `Tu as bloqué ${c.name}.`
       : c.seen === 'never' ? `${c.name} n’a pas encore ouvert Messages.` : '';
+}
+/** The « + » menu: exactly these five, each open, or closed with the sentence that says why; an action whose world hook is missing is hidden. */
+export function plusActions(c: PlusCtx): { id: PlusId; label: string; icon: string; ok: boolean; why: string }[] {
+  const common = plusClosed(c);
   return PLUS.filter(([id]) => (id === 'invite' ? c.hooks.invite : id === 'meet' ? c.hooks.meet : id === 'loc' ? c.hooks.loc : true)).map(([id, label, icon]) => {
     const why = common || (id === 'invite' && !c.home ? 'Tu n’as pas encore de logement où recevoir.' : id === 'loc' && !c.here ? 'Ta position n’est pas disponible ici.' : '');
     return { id, label, icon, ok: !why, why };

@@ -1,7 +1,8 @@
 /* Messages (src/ui/phone/apps/messages.ts): the list, « Nouveau message », a conversation that fills the screen above the keyboard, the « + » and « ⋯ »
    popovers, the sheets that slide over the phone (also Argent's Teranga Money). The phone's design language (src/ui/phone.css): my bubbles in the
-   Messages green, theirs grey; Teranga Money's cards in amber; the sun yellow stays THE action of a sheet; every target ≥ 44 px; nothing scrolls sideways. */
-#phone { --mg-me:#128c4a; --mg-them:#e9e9ee; --mg-tm1:#f59e0b; --mg-tm2:#b45309; }
+   Messages green, theirs grey; Teranga Money in indigo (its cards here, its block in Argent); the sun yellow stays THE action of a sheet; every target
+   ≥ 44 px; nothing scrolls sideways. */
+#phone { --mg-me:#128c4a; --mg-them:#e9e9ee; --mg-tm1:#4f46e5; --mg-tm2:#1e3a8a; }
 
 /* ---------------------------------------------------------------- the list */
 #phone .mg-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
@@ -34,18 +35,21 @@
 #phone .mg-av.sm { width:32px; height:32px; font-size:13px; }
 #phone .mg-dot { position:absolute; right:0; bottom:0; width:13px; height:13px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 2.5px var(--ios-card); }
 
+/* two screens deep (a conversation, « Nouveau message »), the header also shows ⌂: « Fermer » keeps its icon only, so the title is never covered */
+#phone[data-screen="messages"] .ph-head-end:has(.ph-homebtn:not([hidden])) .ph-close-tx { display:none; }
+
 /* ---------------------------------------------------------------- « Nouveau message » */
 #phone .pg-messages .pk-sec > h3 small, #phone .mg-sheet .pk-sec > h3 small { text-transform:none; letter-spacing:0; font-weight:500; }
 #phone .mg-person .mg-av { width:40px; height:40px; font-size:15px; }
 #phone .mg-person.pk-row:has(.mg-av) + .pk-row::before { left:66px; }
 #phone .mg-code { display:flex; gap:8px; }
-#phone .mg-code .mg-in { flex:1; min-width:0; letter-spacing:1px; font-variant-numeric:tabular-nums; text-transform:uppercase; }
+#phone .mg-code .mg-in { flex:1; min-width:0; padding:0 10px; letter-spacing:.3px; font-variant-numeric:tabular-nums; text-transform:uppercase; }
 #phone .mg-code .pk-btn { flex:none; margin:0; min-height:48px; }
 #phone .mg-found .pk-rows { margin-top:10px; }
-#phone .mg-mycode { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; }
-#phone .mg-codetx { flex:1 1 190px; min-width:0; font-size:21px; font-weight:750; letter-spacing:1.2px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; user-select:text; -webkit-user-select:text; }
+#phone .mg-mycode { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 12px; }
+#phone .mg-codetx { flex:1 1 100%; min-width:0; font-size:21px; font-weight:750; letter-spacing:1.2px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; user-select:text; -webkit-user-select:text; }
 #phone .mg-mycode .pk-btn { margin:0; min-height:44px; }
-#phone .mg-mycode .pk-note { flex-basis:100%; margin:0; }
+#phone .mg-mycode .pk-note { flex:1 1 160px; margin:0; }
 
 /* ---------------------------------------------------------------- a conversation: the whole screen, its field above the keyboard */
 #phone .mg-chat { position:absolute; z-index:1; inset:0 0 var(--kb, 0px) 0; display:flex; flex-direction:column; background:var(--ios-bg);
@@ -99,9 +103,9 @@
 #phone .mg-act.quiet { flex:0 1 auto; background:none; color:var(--pk-warn); padding:6px 8px; }
 #phone .mg-act:active { transform:translateY(1px); filter:brightness(.95); }
 #phone .mg-act:disabled { opacity:.55; }
-#phone .k-ask { --mg-k:#b45309; } #phone .k-invite { --mg-k:#e11d48; } #phone .k-meet { --mg-k:#6d28d9; } #phone .k-loc { --mg-k:#2563eb; }
-#phone .k-pay .mg-card { background:linear-gradient(140deg, var(--mg-tm1), var(--mg-tm2)); color:#fff; box-shadow:0 6px 16px rgba(180,83,9,.22); }
-#phone .k-pay .mg-kind { color:#fff7e6; }
+#phone .k-ask { --mg-k:#4338ca; } #phone .k-invite { --mg-k:#e11d48; } #phone .k-meet { --mg-k:#6d28d9; } #phone .k-loc { --mg-k:#2563eb; }
+#phone .k-pay .mg-card { background:linear-gradient(140deg, var(--mg-tm1), var(--mg-tm2)); color:#fff; box-shadow:0 6px 16px rgba(30,58,138,.25); }
+#phone .k-pay .mg-kind { color:#e0e7ff; }
 #phone .k-pay .mg-title { font-size:24px; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
 #phone .k-pay .mg-state { background:rgba(255,255,255,.22); color:#fff; }
 
@@ -139,6 +143,7 @@
 #phone .mg-pi.off { cursor:default; } #phone .mg-pi.off b { color:var(--ios-sub); } #phone .mg-pi.off i { filter:grayscale(1); opacity:.6; }
 #phone .mg-pi.off:active { background:none; }
 #phone .mg-pi.danger b { color:var(--pk-warn); }
+#phone .mg-pop-why { margin:4px 8px 6px; font-size:13.5px; font-weight:600; line-height:1.35; color:var(--pk-warn); }
 
 /* ---------------------------------------------------------------- sheets over the phone */
 #phone .mg-sheet-wrap { position:absolute; z-index:4; inset:0 0 var(--kb, 0px) 0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }

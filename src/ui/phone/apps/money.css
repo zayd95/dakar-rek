@@ -1,5 +1,5 @@
-/* Argent › Teranga Money (src/ui/phone/apps/money.ts): the online account beside the wallet and the savings, in the Messages' amber. */
-#phone .tm-card { padding:16px 18px; border-radius:20px; color:#fff; background:linear-gradient(135deg, #f59e0b, #b45309); box-shadow:0 8px 20px rgba(180,83,9,.22); }
+/* Argent › Teranga Money (src/ui/phone/apps/money.ts): the online account beside the wallet (amber) and the savings (teal), in its own indigo (as its cards in Messages). */
+#phone .tm-card { padding:16px 18px; border-radius:20px; color:#fff; background:linear-gradient(135deg, var(--mg-tm1), var(--mg-tm2)); box-shadow:0 8px 20px rgba(30,58,138,.25); }
 #phone .tm-top { display:flex; align-items:flex-start; gap:12px; }
 #phone .tm-top > i { flex:none; font-style:normal; font-size:28px; }
 #phone .tm-tx { flex:1; min-width:0; display:flex; flex-direction:column; }
