@@ -42,7 +42,7 @@ export function citeFronts(): KeepClear[] {
 type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
 type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
-type Style = 'dense' | 'villa' | 'student' | 'banlieue';
+type Style = 'dense' | 'villa' | 'student' | 'banlieue' | 'mermoz';
 interface HubSpec {
   id: HubId; seed: number; style: Style; ground: number; road: number; walk: number; blockGround: number;
   palette: number[]; floors: [number, number]; sea?: 'west' | 'north'; palms: number;
@@ -84,6 +84,17 @@ const SPECS: Record<HubId, HubSpec> = {
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
     ],
     spawnBlock: [1, 1],
+  },
+  mermoz: {
+    // Mermoz · Sacré-Cœur (docs/districts/M1-MERMOZ.md, after the owner's reference photos): the road from the VDN enters on the middle street (z = 0) from the west.
+    // Column 0 is Sacré-Cœur's shopping street (x = −60): three to five floors, shops under balconies, the car rapide terminus. Beyond it, Mermoz: gated family villas behind
+    // painted compound walls, upscale apartment blocks with balconies and coloured bands, a few modern offices, planted setbacks, and quiet streets under mature shade trees.
+    id: 'mermoz', seed: 71, style: 'mermoz', ground: 0xd8c49a, road: 0x4f5258, walk: 0xd6cdb6, blockGround: 0xc9b98f,
+    palette: [0xf3e7d1, 0xe8d3b0, 0xdba57c, 0xd7e0e4, 0xf6f1e8, 0xe9c99a, 0x9db3cf, 0xc86b4f, 0xe7d9c3, 0x6f8fc0],
+    floors: [2, 4], palms: 6,
+    specials: { '0,3': 'station' },
+    kiosks: [{ i: 0, j: 1, lot: 3, kind: 'cafe', name: 'Café Touba · Sacré-Cœur' }],
+    spawnBlock: [0, 3],
   },
 };
 
@@ -165,6 +176,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2, 0.015);           // #26, rusty sheet
   const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1, 0.006);              // #49, palm bark
   const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2);           // #11, arena tiers
+  if (sp.style === 'mermoz') {   // the M1 visual pass: baked depth (the contact shade at the foot of walls, trunks and posts; the darker undersides of crowns, balconies and eaves)
+    for (const bt of [plain, fac, blocks, trunks, concrete, lampPosts]) bt.shade = { ground: { h: 2.6, min: 0.66 }, under: 0.72 };
+    leaves.shade = { under: 0.56 };
+  }
   const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5, 0.04);   // #31, arena floor
   const terrazzo = new Batch(), terrazzoMat = addGrain(lam(), 0.2, 1, false, generatedTexture('terrazzo'), 1.5);         // #28, bank and mall floors
   // arena roof sheets: #25 mapped on each panel's own UVs so the corrugations run down the slope (about 11 cm pitch);
@@ -455,9 +470,121 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     for (const s of [-1.45, 1.45]) plain.box(0.45, h + 0.4, 0.5, x + (nz ? s : 0), G - 0.02, z + (nx ? s : 0), 0xe9e1cf, rot);
   };
 
+  /**
+   * Mermoz · Sacré-Cœur, one lot. Column 0: Sacré-Cœur's shopping street (shops under balconies, boards, AC units). Elsewhere, Mermoz: a gated family villa (painted compound
+   * wall at 2.3 m, a metal gate, a two or three floor house set back with a balcony, bougainvillea over the wall, a tree in the yard), an apartment block (six to nine floors,
+   * balconies on the street sides, a coloured band, a low wall and hedge in front), or a modern office (glass bands, a white frame). Résidence Les Filaos (block 3,1, the
+   * two west lots) is authored: the job address of the M1 journey (src/districts/mermoz.ts).
+   */
+  const mermozLot = (i: number, j: number, a: number, b: number, L: ReturnType<typeof lotRect>, faces: [number, number][]) => {
+    const [fx, fz] = faces[0], [, gz] = faces[1];
+    if (i === 3 && j === 1 && a === 0) { if (b === 0) filaos(L); return; }
+    if (i === 0) {
+      // Sacré-Cœur: the building fills the lot to its street edges; shops at the ground floor on both street faces, balconies above, a parapet, roof clutter
+      const fl = 3 + Math.floor(R() * 3), w = LS - 1, d = LS - 1, h = fl * 3.2, col = pick(sp.palette, R), cx = L.cx, cz = L.cz;
+      fac.facade(w, h, d, cx, G - 0.02, cz, col);
+      plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
+      for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));    // the floor slabs show on the face: a line of shade under each
+      parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.8);
+      roofClutter(cx, cz, w, d, G + h + 0.28);
+      dressBuilding(cx, cz, w, d, h, col, faces, true);
+      for (const [nx, nz] of faces) for (let f = 1; f < fl; f++) {                                  // balconies on both street faces, every floor
+        const along = nx ? d : w, bw = along * 0.6, y = G + f * 3.2, ox = cx + nx * (w / 2 + 0.6), oz = cz + nz * (d / 2 + 0.6);
+        plain.box(nx ? 1.2 : bw, 0.18, nx ? bw : 1.2, ox, y - 0.1, oz, 0xd8d2c6);
+        plain.box(nx ? 0.05 : bw, 0.9, nx ? bw : 0.05, ox + nx * 0.58, y, oz + nz * 0.58, 0x2d3748);
+      }
+      solidC(cx, cz, w + 0.4, d + 0.4, h);
+      return;
+    }
+    const roll = R(), corner = ((a === 1 && i === 3) || (b === 1 && j === 3)) && R() < 0.4;
+    if (roll < 0.64 && !corner) {
+      // a gated family villa
+      const wc = pick([0xe8d3b0, 0xf3e7d1, 0xc86b4f, 0x9db3cf, 0xe9c99a, 0xd7e0e4, 0xb5563f], R), hc = pick(sp.palette, R);
+      wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, wc, 2.3);
+      const gx = L.cx + (R() - 0.5) * 6, gzz = gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3;
+      gate(gx, gzz, 0, gz, 2.4);
+      const w = 12 + R() * 4, d = 10 + R() * 3, fl = 2 + (R() < 0.35 ? 1 : 0), h = fl * 3.2, cz = L.cz - gz * 2;
+      fac.facade(w, h, d, L.cx, G - 0.02, cz, hc);
+      plain.box(w + 0.4, 0.28, d + 0.4, L.cx, G + h - 0.02, cz, 0xe2ddd2);
+      parapet(L.cx, cz, w + 0.4, d + 0.4, G + h + 0.24, shade(hc, 0.92), 0.6);
+      const by = G + 3.2, bz = cz + gz * (d / 2 + 0.7);
+      plain.box(w * 0.55, 0.22, 1.4, L.cx - w * 0.15, by - 0.1, bz, 0xe8e4dc);                         // the balcony over the yard
+      plain.box(w * 0.55, 0.85, 0.06, L.cx - w * 0.15, by + 0.1, bz + gz * 0.68, pick([0x2d3748, 0xf2efe8, 0x6b4a2e], R));
+      if (R() < 0.5) plain.cyl(0.7, 0.85, 1.1, L.cx + w * 0.3, G + h + 0.25, cz, 0xe9e6de, 8);              // a water tank
+      for (let k = 0; k < (lite ? 1 : 3); k++) leaves.blob(0.8 + R() * 0.6, L.x0 + 1 + R() * (LS - 2), G + 2.3, gzz, pick([0xc2307a, 0xd94a8c, 0xe2588f, 0x3f7a35], R), 0.75, 0);   // bougainvillea over the wall
+      if (R() < 0.6) tree(L.cx + (R() < 0.5 ? -1 : 1) * (LS / 2 - 3), L.cz + gz * (LS / 2 - 3.5), 0.9, R() < 0.25);
+      solidC(L.cx, cz, w, d, h);
+      return;
+    }
+    if (roll < 0.88 || corner) {
+      // an apartment block, four to seven floors (Mermoz is low: villas, and a few blocks on the corners): balconies on the street sides, a vertical band of colour, a low wall and a hedge on the setback
+      const fl = 4 + Math.floor(R() * 4), w = LS - 4, d = LS - 5, h = fl * 3.2, col = pick([0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4], R), band = pick([0xc86b4f, 0x6f8fc0, 0x3f8a5a, 0xd98b1a, 0x9b3d3d], R);
+      const cx = L.cx - fx * 0.5, cz = L.cz - fz * 0.5 + gz * 0.3;
+      fac.facade(w, h, d, cx, G - 0.02, cz, col);
+      plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
+      for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));
+      parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.9);
+      plain.box(3.2, 3.6, 3.2, cx, G + h + 0.28, cz, 0xcfc9bd);                                           // the stair and lift head
+      plain.box(2.2, h, 0.12, cx + (R() - 0.5) * (w - 4), G, cz + gz * (d / 2 + 0.06), band);                // the coloured band up the street face
+      for (const [nx, nz] of faces) for (let f = 1; f < fl; f++) {
+        const along = nx ? d : w, bw = along * 0.4, y = G + f * 3.2, off = (f % 2 ? -1 : 1) * along * 0.22;
+        const ox = cx + nx * (w / 2 + 0.6) + (nz ? off : 0), oz = cz + nz * (d / 2 + 0.6) + (nx ? off : 0);
+        plain.box(nx ? 1.2 : bw, 0.18, nx ? bw : 1.2, ox, y - 0.1, oz, 0xd8d2c6);
+        plain.box(nx ? 0.05 : bw, 0.95, nx ? bw : 0.05, ox + nx * 0.58, y, oz + nz * 0.58, 0x2d3748);
+        if (!lite && R() < 0.4) acUnit(ox - nz * bw * 0.3, y + 1.6, oz - nx * bw * 0.3, nx, nz);
+      }
+      wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xece6da, 1.2);
+      gate(L.cx, gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, gz, 2.2);
+      if (!lite) for (let t = 2; t < LS - 2; t += 1.6) leaves.blob(0.55, L.x0 + t, G + 1.35, gz < 0 ? L.z0 + 0.9 : L.z1 - 0.9, 0x3f7a35, 0.8, 0);   // the hedge
+      solidC(cx, cz, w, d, h);
+      return;
+    }
+    // a modern office: glass bands between white floors, a sign board, a planted setback
+    const fl = 4 + Math.floor(R() * 3), w = LS - 4, d = LS - 6, h = fl * 3.4, cx = L.cx, cz = L.cz - gz * 0.5;
+    plain.box(w, h, d, cx, G - 0.02, cz, 0xf2f2ef);
+    for (let f = 0; f < fl; f++) glass.box(w + 0.06, 2.1, d + 0.06, cx, G + f * 3.4 + 0.9, cz, pick([0x35607e, 0x2f5f86, 0x3c6e84], R));
+    plain.box(w + 0.5, 0.4, d + 0.5, cx, G + h - 0.02, cz, 0xdedcd6);
+    plain.box(w * 0.6, 1.0, 0.12, cx, G + h - 1.4, cz + gz * (d / 2 + 0.1), pick([0x1e6fd9, 0xd9482b, 0x2f8f4e, 0x6b3fa0], R));
+    if (!lite) for (let t = 2; t < LS - 2; t += 2.2) leaves.blob(0.6, L.x0 + t, G + 0.6, gz < 0 ? L.z0 + 1.2 : L.z1 - 1.2, 0x4c7d36, 0.8, 0);
+    solidC(cx, cz, w, d, h);
+  };
+  /** Résidence Les Filaos (Mermoz): seven floors, white with a terracotta band and balconies, its gate and the gardien's booth on the street (x = 60). */
+  const filaos = (L: ReturnType<typeof lotRect>) => {
+    const x0 = L.x0, z0 = L.z0, z1 = L.z1 + LS + 2, cz = (z0 + z1) / 2, w = 18, d = z1 - z0 - 6, cx = x0 + 3 + w / 2, h = 7 * 3.2;
+    fac.facade(w, h, d, cx, G - 0.02, cz, 0xf6f1e8);
+    plain.box(w + 0.4, 0.35, d + 0.4, cx, G + h - 0.02, cz, 0xd9d3c8);
+    parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.3, 0xe6e0d6, 1.0);
+    plain.box(0.14, h, 4, cx - w / 2 - 0.07, G, cz, 0xc86b4f);                                                // the terracotta band on the street face
+    for (let f = 1; f < 7; f++) for (const oz of [-d / 2 + 5, d / 2 - 5]) {
+      const y = G + f * 3.2;
+      plain.box(1.3, 0.2, 6, cx - w / 2 - 0.65, y - 0.1, cz + oz, 0xe2ddd2);
+      plain.box(0.05, 1.0, 6, cx - w / 2 - 1.28, y, cz + oz, 0x2d3748);
+      if (!lite && f % 2) plain.box(0.04, 0.6, 1.0, cx - w / 2 - 1.3, y + 0.35, cz + oz + 1.5, pick([0xd9482b, 0x2f6fb3, 0xf4c20d, 0xf2f2ec], R));
+    }
+    plain.box(4, 3.6, 4, cx, G + h + 0.3, cz, 0xcfc9bd);
+    // the front: a low white wall with railings, the gate at the middle, the gardien's booth beside it, hedges and two filaos trees (the name)
+    for (const [za, zb] of [[z0 + 0.3, cz - 3], [cz + 3, z1 - 0.3]]) {
+      plain.box(0.3, 1.1, zb - za, x0 + 0.3, G - 0.02, (za + zb) / 2, 0xf1ece2);
+      plain.box(0.06, 0.8, zb - za, x0 + 0.3, G + 1.08, (za + zb) / 2, 0x2d3748);
+      solid(x0 + 0.1, za, x0 + 0.5, zb, 1.9);
+    }
+    gate(x0 + 0.3, cz, -1, 0, 2.4);
+    plain.box(2.0, 2.5, 2.0, x0 + 2, G, cz + 4.5, 0xf1ece2); plain.slab(2.6, 0.12, 2.6, x0 + 2, G + 2.5, cz + 4.5, 0x2f6f5a, 0, 0.1);   // the booth
+    glass.box(0.08, 0.9, 1.2, x0 + 0.98, G + 1.2, cz + 4.5, 0x9fb3c2);
+    solidC(x0 + 2, cz + 4.5, 2.2, 2.2, 2.6);
+    addSign('RÉSIDENCE LES FILAOS', '#2f6f5a', '#fdf6e4', x0 + 0.1, G + 3.0, cz, -Math.PI / 2, 4.6, 0.8);
+    for (const tz of [z0 + 4, z1 - 4]) {                                                                     // filaos (casuarinas): tall, thin, feathery
+      plain.cyl(0.14, 0.22, 7.5, x0 + 2.2, G, tz, 0x7a6450, 6);
+      for (let k = 0; k < 5; k++) leaves.blob(0.9 - k * 0.12, x0 + 2.2, G + 4 + k * 1.1, tz, 0x4e6e3a, 1.6, 0);
+      solidC(x0 + 2.2, tz, 0.5, 0.5, 7);
+    }
+    solidC(cx, cz, w, d, h);
+  };
+
   const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
+    if (sp.style === 'mermoz') { mermozLot(i, j, a, b, L, faces); return; }
     if (sp.style === 'banlieue') {
       // Cramped self-built houses: one to three per yard, set askew, roofs bristling with rebar for the next floor,
       // behind a low, uneven compound wall; the yard shows its clutter (breeze blocks, sand, a tin lean-to, washing).
@@ -1293,8 +1420,103 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     }
   }
   const treeOff = ROAD / 2 + 0.9;
+  /**
+   * Mermoz's streets under their trees (the owner's reference: mature neems and caïlcédrats whose crowns meet over the road, sandy verges, dappled shade). Trunks at the kerb every
+   * 8–10 m on both sides of the residential streets, each leaning a little over the road with a wide crown at 4.5–8 m (above every vehicle and the follow camera's usual height),
+   * and the shade they cast painted on the asphalt and the verges as darker blotches (no real-time shadow: cheap on a phone). Sacré-Cœur's shopping street (x = −60) keeps its
+   * shopfronts in view: a few trees on its east side only. The way in (z = 0, x < −100) stays open. Own random stream: nothing else of the district moves.
+   */
+  function* mermozShade(): Generator<void, void, void> {
+    const RT = rng(sp.seed * 131 + 7), crownCols = [0x5b8a3a, 0x6c9a44, 0x4f7f33, 0x7aa64e, 0x638f3c], roadDark = shade(sp.road, 0.74), roadDeep = shade(sp.road, 0.62), walkDark = shade(sp.walk, 0.8), walkDeep = shade(sp.walk, 0.68);
+    const blot = (x: number, z: number, r: number, col: number, y: number) => {
+      const g = new THREE.CircleGeometry(r, 9); g.rotateX(-Math.PI / 2); g.scale(1, 1, 0.5 + RT() * 0.5);
+      plain.geometry(g, col, x, y, z, RT() * Math.PI);
+    };
+    for (let k = 0; k <= NB; k++) {
+      yield;
+      for (const along of [true, false]) for (const s of [-1, 1]) {
+        const line = roadC(k);
+        if ((k === 0 || k === NB) && s === (k === 0 ? -1 : 1)) continue;                         // the district's outer edge: its inner side only
+        const commercial = along && k === 1;                                                       // Sacré-Cœur's shopping street
+        if (commercial && s < 0) continue;
+        for (let t = -HALF + 10 + RT() * 4; t < HALF - 6; t += commercial ? 19 : 8 + RT() * 2.5) {
+          const jn = roadC(Math.round((t + HALF - ROAD / 2) / PITCH));
+          if (Math.abs(t - jn) < ROAD / 2 + 3) continue;                                            // clear of the crossings and their zebras
+          if (!along && k === 2 && t < -HALF + 22) continue;                                        // the way in from the VDN stays open
+          const off = treeOff + 0.2, x = along ? line + s * off : t, z = along ? t : line + s * off;
+          if (Math.abs(x) > HALF + 2 || Math.abs(z) > HALF + 2 || blocked(x, z, 0.9)) continue;
+          dress(x, z, () => {
+            const sc = 0.95 + RT() * 0.35, lean = 2.0 + RT() * 1.3;                                   // toward the road's middle
+            const lx = along ? -s * lean : 0, lz = along ? 0 : -s * lean;
+            const h = 3.8 * sc;
+            limb(trunks, [x, 0.05, z], [x + lx * 0.45, h, z + lz * 0.45], 0.3 * sc, 0.22 * sc, 0x6e5a44, 6);
+            limb(trunks, [x + lx * 0.45, h, z + lz * 0.45], [x + lx, h + 1.4 * sc, z + lz], 0.2 * sc, 0.13 * sc, 0x6e5a44, 5);
+            limb(trunks, [x + lx * 0.45, h - 0.4, z + lz * 0.45], [x - lx * 0.3 + (along ? 0 : 1.2), h + 1.1, z - lz * 0.3 + (along ? 1.2 : 0)], 0.14 * sc, 0.09 * sc, 0x6e5a44, 5);
+            const top = { x: x + lx, z: z + lz, r: 0, y0: Infinity, y1: 0 };
+            for (let n = 0; n < (lite ? 4 : 8); n++) {
+              const a = n * 0.8 + RT() * 0.7, rr = n === 0 ? 0 : (1.6 + RT() * 1.5) * sc, br = (1.8 + RT() * 0.8) * sc, by = 6.2 + RT() * 1.4 + (sc - 1) * 2;
+              const bx = top.x + Math.sin(a) * rr, bz = top.z + Math.cos(a) * rr;
+              leaves.blob(br, bx, by, bz, crownCols[n % crownCols.length], 0.62, 0);
+              top.r = Math.max(top.r, rr + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.62 * 0.8); top.y1 = Math.max(top.y1, by + br * 0.6);
+            }
+            canopies.push(top);
+            solidC(x, z, 0.7, 0.7, 3);
+            // the shade on the ground under the crown: darker blotches on the asphalt and on the verge
+            for (let n = 0; n < (lite ? 3 : 11); n++) {
+              const big = n < 2, px = top.x + (RT() - 0.5) * top.r * (big ? 0.8 : 1.9), pz = top.z + (RT() - 0.5) * top.r * (big ? 0.8 : 1.9), onRoad = along ? Math.abs(px - line) < ROAD / 2 - 0.3 : Math.abs(pz - line) < ROAD / 2 - 0.3;
+              blot(px, pz, big ? 1.6 + RT() * 0.8 : 0.35 + RT() * 0.6, onRoad ? (big ? roadDark : roadDeep) : (big ? walkDark : walkDeep), onRoad ? (big ? 0.084 : 0.088) : G + (big ? 0.006 : 0.01));
+            }
+          });
+        }
+      }
+    }
+    // sandy verges: drifts of sand along the kerbs of the villa streets (the pavements are half sand, as on the reference photos)
+    for (let n = 0; n < (lite ? 20 : 60); n++) {
+      const k = 1 + Math.floor(RT() * (NB - 1)), along = RT() < 0.5, s = RT() < 0.5 ? -1 : 1, t = -HALF + 10 + RT() * (size - 20);
+      if (along && k === 1) continue;
+      const x = along ? roadC(k) + s * (ROAD / 2 - 0.2) : t, z = along ? t : roadC(k) + s * (ROAD / 2 - 0.2);
+      plain.blob(0.9 + RT() * 1.4, x, G - 0.1, z, RT() < 0.5 ? 0xd9c49a : 0xcdb68a, 0.06, 1);
+    }
+    yield;
+    // the asphalt's age: patches, oil stains in the wheel tracks, sand blown onto the edges, a pothole here and there (paint only, clear of the crossings)
+    for (let k = 0; k <= NB; k++) for (const along of [true, false]) for (let t = -HALF + 8; t < HALF - 8; t += 5 + RT() * 6) {
+      const line = roadC(k), jn = roadC(Math.round((t + HALF - ROAD / 2) / PITCH));
+      if (Math.abs(t - jn) < ROAD / 2 + 4) continue;
+      const r = RT(), lat = (RT() < 0.5 ? -1 : 1) * (0.9 + RT() * 3.6), x = along ? line + lat : t, z = along ? t : line + lat, yaw = along ? 0 : Math.PI / 2;
+      if (Math.abs(x) > HALF - 2 || Math.abs(z) > HALF - 2) continue;
+      if (r < 0.2) plain.flat(1.4 + RT() * 1.2, 1.8 + RT() * 3, x, 0.083, z, RT() < 0.5 ? shade(sp.road, 0.86) : shade(sp.road, 1.16), yaw + (RT() - 0.5) * 0.1);
+      else if (r < 0.36) blot(x, z, 0.4 + RT() * 0.5, shade(sp.road, 0.7), 0.085);
+      else if (r < 0.39 && !lite) { blot(x, z, 0.55, 0x6b6558, 0.085); blot(x, z, 0.38, 0x252628, 0.087); }
+      else if (r < 0.55 && Math.abs(lat) > 3.2) blot(x + (along ? Math.sign(lat) * 1 : 0), z + (along ? 0 : Math.sign(lat) * 1), 0.8 + RT() * 0.8, 0xc9b48a, 0.086);   // sand drifted onto the edge
+    }
+    if (lite) return;
+    yield;
+    // Sacré-Cœur's shopping street (x = roadC(1)): concrete poles at the kerbs and the cables slung between them and across the street, above every vehicle
+    const sx = roadC(1), poles: [number, number][] = [];
+    for (const side of [-1, 1]) for (let t = -HALF + 14; t < HALF - 10; t += 21 + RT() * 5) {
+      const x = sx + side * (ROAD / 2 + 0.5), jn = roadC(Math.round((t + HALF - ROAD / 2) / PITCH));
+      if (Math.abs(t - jn) < ROAD / 2 + 2 || blocked(x, t, 0.4)) continue;
+      plain.box(0.22, 8.2, 0.22, x, G, t, 0x9c968a); plain.box(1.4, 0.12, 0.12, x, G + 7.6, t, 0x8a8478);
+      solidC(x, t, 0.3, 0.3, 8); poles.push([x, t]);
+    }
+    const cable = (ax: number, az: number, bx: number, bz: number, y: number, sag: number) => {
+      const n = 4;
+      for (let i = 0; i < n; i++) {
+        const f0 = i / n, f1 = (i + 1) / n, y0 = y - sag * 4 * f0 * (1 - f0), y1 = y - sag * 4 * f1 * (1 - f1);
+        const x0 = ax + (bx - ax) * f0, z0 = az + (bz - az) * f0, x1 = ax + (bx - ax) * f1, z1 = az + (bz - az) * f1, len = Math.hypot(x1 - x0, z1 - z0, y1 - y0);
+        const g = new THREE.BoxGeometry(0.07, 0.07, len); g.lookAt(new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0)); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+        plain.geometry(g, 0x1d1d1f, 0, 0, 0);
+      }
+    };
+    const bySide = (sd: number) => poles.filter(p => Math.sign(p[0] - sx) === sd).sort((p, q) => p[1] - q[1]);
+    for (const sd of [-1, 1]) { const l = bySide(sd); for (let i = 1; i < l.length; i++) for (const dy of [0, 0.35]) cable(l[i - 1][0], l[i - 1][1], l[i][0], l[i][1], G + 7.5 - dy, 0.5 + RT() * 0.3); }
+    const east = bySide(1);
+    for (const w of bySide(-1)) { const e = east.reduce((b, c) => Math.abs(c[1] - w[1]) < Math.abs(b[1] - w[1]) ? c : b, east[0]); if (e && Math.abs(e[1] - w[1]) < 12) cable(w[0], w[1], e[0], e[1] + (RT() - 0.5) * 4, G + 7.3, 0.7); }
+  }
   yield;
+  if (sp.style === 'mermoz') yield* mermozShade();
   for (let k = 0; k <= NB; k++) for (let t = -HALF + 22; t < HALF - 8; t += 30) for (const s of [-1, 1]) for (const along of [true, false]) {
+    if (sp.style === 'mermoz') break;
     if (R() < (banlieue ? 0.45 : sp.style === 'villa' ? 0.5 : 0.35)) continue;
     const tt = t + (s > 0 ? 15 : 0) + (R() - 0.5) * 4;
     const x = along ? roadC(k) + s * treeOff : tt, z = along ? tt : roadC(k) + s * treeOff;

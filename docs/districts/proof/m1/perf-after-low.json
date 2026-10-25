@@ -1,0 +1,72 @@
+{
+ "quality": "low",
+ "results": {
+  "ref-plateau-walk": {
+   "frameMedian": 83.3,
+   "frameP95": 116.7,
+   "callsMax": 70,
+   "trisMax": 75920
+  },
+  "vdn-drive": {
+   "frameMedian": 66.7,
+   "frameP95": 149.9,
+   "callsMax": 59,
+   "trisMax": 36322
+  },
+  "pointe-drive": {
+   "frameMedian": 100,
+   "frameP95": 116.7,
+   "callsMax": 81,
+   "trisMax": 51224
+  },
+  "brt-drive": {
+   "frameMedian": 133.4,
+   "frameP95": 266.7,
+   "callsMax": 139,
+   "trisMax": 147557
+  },
+  "sacrecoeur-approach-drive": {
+   "frameMedian": 133.3,
+   "frameP95": 150,
+   "callsMax": 131,
+   "trisMax": 136555
+  },
+  "sacrecoeur-walk": {
+   "frameMedian": 133.2,
+   "frameP95": 150,
+   "callsMax": 54,
+   "trisMax": 99191
+  },
+  "sacrecoeur-drive": {
+   "frameMedian": 116.7,
+   "frameP95": 166.8,
+   "callsMax": 52,
+   "trisMax": 101001
+  },
+  "mermoz-walk": {
+   "frameMedian": 116.7,
+   "frameP95": 133.4,
+   "callsMax": 52,
+   "trisMax": 97211
+  },
+  "mermoz-drive": {
+   "frameMedian": 100,
+   "frameP95": 200,
+   "callsMax": 46,
+   "trisMax": 92791
+  },
+  "mermoz-filaos": {
+   "frameMedian": 100,
+   "frameP95": 166.6,
+   "callsMax": 59,
+   "trisMax": 100315
+  },
+  "mermoz-high": {
+   "frameMedian": 116.7,
+   "frameP95": 183.3,
+   "callsMax": 46,
+   "trisMax": 92371
+  }
+ },
+ "errors": []
+}

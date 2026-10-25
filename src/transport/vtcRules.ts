@@ -40,6 +40,11 @@ export const VTC_POINTS: Record<HubId, VtcPoint[]> = {
     { id: 'gare', name: 'Gare des Almadies', x: -45, z: 30 }, { id: 'prestige', name: 'Prestige Auto', x: -75, z: 40 },
     { id: 'embarcadere', name: 'Embarcadère de Ngor', x: 16, z: -75 }, { id: 'villas', name: 'Résidence des Almadies', x: 15, z: -30 },
   ],
+  // Mermoz · Sacré-Cœur (M1, docs/districts/M1-MERMOZ.md): two addresses only, both authored. The residence's gate on a quiet villa street under the trees (x = 60), and
+  // the bakery on Sacré-Cœur's shopping street (x = −60).
+  mermoz: [
+    { id: 'filaos', name: 'Résidence Les Filaos', x: 69, z: -30 }, { id: 'boulangerie', name: 'Boulangerie de Sacré-Cœur', x: -70, z: 30 },
+  ],
 };
 /** Where the car stops for a point (the kerb), and where the passenger waits (the pavement beside it, away from the road's centre line). */
 export function stopOf(p: { x: number; z: number }) {
@@ -83,12 +88,14 @@ const NAMES = ['Awa', 'Fatou', 'Ibrahima', 'Aminata', 'Cheikh', 'Mariama', 'Ousm
 /** Trips the phone shows in this district this hour: one to each neighbouring district along the roads, one inside the district. Same list on every reload. */
 export interface VtcRequest { key: string; from: HubId; to: HubId; pickup: VtcPoint; dropoff: VtcPoint; fare: number; metres: number; hubs: HubId[]; passenger: { name: string; seed: number } }
 /** The rides the city asks for: the long ones named in the design (Plateau → Almadies, Pikine → Plateau, Corniche → Pikine, Almadies → Plateau by the Corniche) first. */
-const LONG: Record<HubId, HubId> = { plateau: 'almadies', pikine: 'plateau', corniche: 'pikine', almadies: 'plateau' };
+const LONG: Record<HubId, HubId> = { plateau: 'almadies', pikine: 'plateau', corniche: 'pikine', almadies: 'plateau', mermoz: 'plateau' };
+/** The second ride of the list: by default the first other district; from the Corniche, Mermoz (its new neighbour by the VDN); from Mermoz, back to the Corniche. */
+const NEXT: Partial<Record<HubId, HubId>> = { corniche: 'mermoz', mermoz: 'corniche' };
 export function vtcRequests(hub: HubId, day: number, hour: number): VtcRequest[] {
   const seed = (day * 24 + hour) * 7919 + HUB_IDS.indexOf(hub) * 104729;
   const rnd = (k: number) => { const x = Math.sin(seed * 0.0001 + k * 12.9898) * 43758.5453; return x - Math.floor(x); };
   const pts = VTC_POINTS[hub], pick = <T>(l: T[], k: number) => l[Math.floor(rnd(k) * l.length) % l.length];
-  const dests: HubId[] = [LONG[hub], ...HUB_IDS.filter(h => h !== hub && h !== LONG[hub]).slice(0, 1), hub];
+  const dests: HubId[] = [LONG[hub], NEXT[hub] ?? HUB_IDS.filter(h => h !== hub && h !== LONG[hub])[0], hub];
   return dests.map((to, i) => {
     const pickup = pick(pts, i * 3 + 1);
     let dropoff = pick(VTC_POINTS[to], i * 3 + 2);

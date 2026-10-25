@@ -13,7 +13,7 @@ import { ROADS, type LngLat, type Road } from './routes';
  * it roads (a `RouteDef` in routes.ts, or a link in hubLink.ts). The edges below are derived from those, the corridors, traffic, swap, vehicle carry, staging and the map follow by themselves.
  * See docs/map/NETWORK.md.
  */
-export type CityHubId = HubId | 'ouakam' | 'yoff' | 'parcelles' | 'mermoz';
+export type CityHubId = HubId | 'ouakam' | 'yoff' | 'parcelles';
 
 export interface CityHub {
   id: CityHubId; name: string;
@@ -30,7 +30,6 @@ export const CITY_HUBS: readonly CityHub[] = [
   { id: 'ouakam', name: 'Ouakam', status: 'planned', lngLat: [-17.4893, 14.7186], intends: ['almadies', 'corniche'] },
   { id: 'yoff', name: 'Yoff', status: 'planned', lngLat: [-17.4742, 14.7553], intends: ['almadies', 'parcelles'] },
   { id: 'parcelles', name: 'Parcelles Assainies', status: 'planned', lngLat: [-17.4420, 14.7595], intends: ['yoff', 'pikine'] },
-  { id: 'mermoz', name: 'Mermoz · Sacré-Cœur', status: 'planned', lngLat: [-17.4685, 14.7108], intends: ['corniche', 'pikine'] },
 ];
 export const hubInfo = (id: string): CityHub | undefined => CITY_HUBS.find(h => h.id === id);
 export const isPlayable = (id: string): id is HubId => hubInfo(id)?.status === 'playable';

@@ -87,7 +87,8 @@ describe('the roads of the game', () => {
   it('a district knows its roads: no district is the only hub, Plateau has two (north and west), the Corniche one (east)', () => {
     expect(roadsOf('pikine').map(r => r.id).sort()).toEqual(['pikine-almadies', 'pikine-plateau']);
     expect(roadsOf('almadies').map(r => r.id)).toEqual(['pikine-almadies']);                       // and its border street to the Corniche (src/transport/hubLink.ts)
-    expect(roadsOf('corniche').map(r => r.id)).toEqual(['corniche-plateau']);
+    expect(roadsOf('corniche').map(r => r.id)).toEqual(['corniche-plateau', 'corniche-mermoz']);   // east: to the Plateau by the coast, to Mermoz by the VDN
+    expect(roadsOf('mermoz').map(r => r.id)).toEqual(['corniche-mermoz']);
     expect(roadsOf('plateau').map(r => r.id).sort()).toEqual(['corniche-plateau', 'pikine-plateau']);
   });
 });

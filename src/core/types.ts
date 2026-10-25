@@ -1,7 +1,7 @@
 import type { CareerSave } from '../career/career';
 import type { Appearance } from '../actors/appearance';
-export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
-export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
+export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine' | 'mermoz';
+export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine', 'mermoz'];
 /**
  * Activity categories that count for polyvalence (src/economy/polyvalence.ts): the working and social ones among the
  * activity framework's categories (src/activity/types.ts ActivityCategory; leisure, prayer and travel do not count).

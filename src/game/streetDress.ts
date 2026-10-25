@@ -46,6 +46,7 @@ const PLATES: Record<HubId, string[]> = {
   pikine: ['GRAND-RUE DE PIKINE', 'RUE 22 · PIKINE', 'AV. DES PARCELLES', 'RUE DE L’ARÈNE'],
   corniche: ['CORNICHE OUEST', 'RUE DU PHARE', 'ROUTE DE LA CORNICHE', 'RUE DES PÊCHEURS'],
   almadies: ['ROUTE DES ALMADIES', 'RUE DES NGOR', 'AV. DU LITTORAL', 'RUE DES VILLAS'],
+  mermoz: ['RUE MZ-62 · MERMOZ', 'SACRÉ-CŒUR 3', 'RUE DES FILAOS', 'AV. CHEIKH A. DIOP'],
 };
 type Rect = [number, number, number, number];                       // u0, v0, u1, v1
 let atlas: { tex: THREE.CanvasTexture; glow: THREE.CanvasTexture; board: Rect[]; wall: Rect[]; plate: Record<string, Rect[]>; white: Rect } | null = null;

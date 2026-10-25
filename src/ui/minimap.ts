@@ -9,7 +9,7 @@ import {
   approach, dedupePlaces, northAngle, nightness, onRing, placeKind, project, routePath, whereLabel, zoomRadius,
   type MapPlace, type Pt,
 } from './minimapMath';
-import { openEdges } from '../game/navRules';
+import { driverWay, openEdges } from '../game/navRules';
 import { closuresNow } from '../actors/npc';
 import { JOB, drawJobBadge, jobOf } from './jobMarks';
 
@@ -70,7 +70,7 @@ export function minimapModule(): GameModule {
   let root!: HTMLElement, canvas!: HTMLCanvasElement, dEl!: HTMLElement, sEl!: HTMLElement, g!: CanvasRenderingContext2D;
   let size = 0, dpr = 1;
   let radius = 52, speedAvg = 0, tick = 0, labelT = 0, scanT = 0, routeT = 0, placesT = 0, shown = false, t = 0;
-  let last = { x: NaN, z: NaN }, routeKey = '';
+  let last = { x: NaN, z: NaN }, routeKey = '', wasBack: boolean | null = null;
   const tracked = new Map<THREE.Object3D, { x: number; z: number; moving: boolean }>();
   const dir = new THREE.Vector3();
   let yaw = 0;
@@ -266,8 +266,14 @@ export function minimapModule(): GameModule {
       if (!gd) { mapBridge.route = null; routeKey = ''; }
       else if ((routeT -= step) <= 0) {
         const shut = p.driving ? closuresNow() : [];   // at the wheel, as the goal line: off the streets closed to cars
-        const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
-        if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+        if (p.driving) {                                                     // at the wheel: the driver's way, as the goal line reads it (src/game/navRules.ts driverWay)
+          const way = driverWay(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, p.facing, { x: gd.x, z: gd.z }, wasBack);
+          wasBack = way.back; mapBridge.route = way; routeKey = '';
+        } else {
+          wasBack = null;
+          const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
+          if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+        }
         routeT = 0.5;
       }
       if (!free) return;

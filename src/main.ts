@@ -1765,6 +1765,9 @@ if (DEBUG) {
       /** The road a point (this district's frame) is on: its id, arc length, side (+ left of the travel direction a → b), the road's heading there, and its length. */
       project: (x: number, z: number) => { let best: { road: string; s: number; d: number; yaw: number; length: number; swapS: number; hub: HubId; a: HubId; b: HubId; on: boolean } | null = null; for (const id of corridors.info().map(i => i.road)) { const v = corridors.view(id)!, p = v.project(x, z), on = v.contains(x, z, 0); if (Math.abs(p.d) > 80 && !on) continue; if (!best || (on && !best.on) || (on === best.on && Math.abs(p.d) < Math.abs(best.d))) best = { road: id, s: p.s, d: p.d, yaw: p.yaw, length: v.road.length, swapS: v.road.swapS, hub: v.hub, a: v.road.def.a, b: v.road.def.b, on }; } return best; },
       /** A point of the road, in the loaded district's frame: `s` metres from a, `lat` metres to the left of the a → b direction. */
+      /** Checks: how far the lanes swing out at arc length s (a rond-point's island, src/road/roundabout.ts), and whether s is on a rond-point's swing. */
+      laneShift: (id: string, s: number) => corridors.view(id)?.road.laneShift(s) ?? 0,
+      nearRound: (id: string, s: number, pad = 0) => !!corridors.view(id)?.road.nearRound(s, pad),
       at: (id: string, s: number, lat = 0) => { const v = corridors.view(id); if (!v) return null; const a = v.road.spine.at(s), y = Math.atan2(v.road.spine.at(s + 2).x - v.road.spine.at(s - 2).x, v.road.spine.at(s + 2).z - v.road.spine.at(s - 2).z); return { x: a.x + Math.cos(y) * lat + v.offset.x, z: a.z - Math.sin(y) * lat + v.offset.z, yaw: y }; },
       lastSwapMs: () => lastCrossMs,
       /** What is solid within `r` metres of (x, z): the district's colliders (stalls, poles, parked vehicles…) and whether the road's ground holds the point. */

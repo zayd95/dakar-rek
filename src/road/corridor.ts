@@ -7,6 +7,8 @@ import type { Pt, Projection } from './network';
 import { HYST, type Road } from './routes';
 import { CHUNK, buildChunk, type Chunk, type ChunkMats } from './chunks';
 import { CorridorTraffic, type Footprint } from './traffic';
+import { BrtLine } from './brt';
+import { AutopontTraffic, autopontLayout } from './autopont';
 
 /** Chunks within this many metres of the player are built; those farther than `KEEP` are freed (the fog ends at 300 m: nothing past WINDOW is ever seen). */
 export const WINDOW = 340, KEEP = 470;
@@ -28,6 +30,10 @@ export class CorridorView implements RoadGround {
   private readonly chunks = new Map<number, Live>();
   private world: HubWorld | null = null;
   private traffic: CorridorTraffic | null = null;
+  /** The road's BRT crossings (buses and signals), made when the player comes near one. */
+  private brt: BrtLine[] = [];
+  /** The cars crossing on the autopont (made once the player is within 300 m, like the BRT). */
+  private apTraffic: AutopontTraffic | null = null;
   private lastS = 0;
   /** Chunks built, freed, and the slowest build (ms): the checks and the debug hook read them. */
   readonly stats = { built: 0, freed: 0, slowest: 0, last: 0 };
@@ -118,7 +124,24 @@ export class CorridorView implements RoadGround {
     for (const l of this.chunks.values()) l.people?.update(dt, { x: px, z: pz }, 70);
     const near = this.chunks.size > 0 && Math.min(...[...this.chunks.keys()].map(i => { const m = this.road.spine.at(i * CHUNK + CHUNK / 2); return Math.hypot(m.x - px, m.z - pz); })) < WINDOW;
     if (!this.traffic && density > 0 && near) { this.traffic = new CorridorTraffic(this.road, this.o.rand, density, this.o.lite, { waiters: this.o.waiters, onHorn: this.o.onHorn }); this.root.add(this.traffic.group); }
-    this.traffic?.update(dt, { solid: (a, b, r) => this.solidRoad(a, b, r), player: player ? { x: player.x - this.offset.x, z: player.z - this.offset.z } : null }, near ? { x: px, z: pz } : null);
+    const me = player ? { x: player.x - this.offset.x, z: player.z - this.offset.z } : null;
+    // the BRT crossings: made once the player is within 360 m (they are seen from the road), run while within that
+    for (const lay of this.road.brt) {
+      const d = Math.hypot(lay.x - px, lay.z - pz);
+      let line = this.brt.find(b => b.lay === lay);
+      if (!line && d < 360) { line = new BrtLine(lay, this.o.lite, this.o.rand); this.brt.push(line); this.root.add(line.group); }
+      line?.update(dt, { player: me, trafficAt: (x, z, r) => this.trafficAt(x, z, r) }, d < 360);
+    }
+    const apl = this.road.autopontS ? autopontLayout(this.road) : null;
+    if (apl) {
+      const d = Math.hypot(apl.x - px, apl.z - pz);
+      if (!this.apTraffic && d < 300) { this.apTraffic = new AutopontTraffic(apl, this.o.lite, this.o.rand); this.root.add(this.apTraffic.group); }
+      this.apTraffic?.update(dt, d < 300);
+    }
+    this.traffic?.update(dt, {
+      solid: (a, b, r) => this.solidRoad(a, b, r) || this.brt.some(l => l.busAt(a, b, r)), player: me,
+      signals: this.brt.length ? dir => this.brt.map(l => l.signal(dir)) : undefined,
+    }, near ? { x: px, z: pz } : null);
   }
 
   /** Checks: put traffic car `i` on the road (see CorridorTraffic.put). Makes the traffic first if the road has none yet. */
@@ -127,10 +150,20 @@ export class CorridorView implements RoadGround {
     return this.traffic.put(i, s, dir);
   }
 
-  /** Footprints of the traffic near (x, z) for the vehicle the player drives (hub frame). */
+  /** Footprints of the traffic (and of the BRT buses) near (x, z) for the vehicle the player drives (hub frame). */
   footprints(out: Footprint[], x: number, z: number, range = 60) {
     this.traffic?.footprints(out, x - this.offset.x, z - this.offset.z, range, this.offset.x, this.offset.z);
+    for (const b of this.brt) b.footprints(out, x - this.offset.x, z - this.offset.z, range, this.offset.x, this.offset.z);
   }
+  /** Is a road traffic vehicle standing in this road-frame circle? (The BRT's crossing must be clear before a bus goes.) */
+  private trafficAt(x: number, z: number, r: number): boolean {
+    const fp: Footprint[] = []; this.traffic?.footprints(fp, x, z, 30, 0, 0);
+    return fp.some(f => Math.hypot(f.x - x, f.z - z) < r + Math.max(f.hl, f.hw));
+  }
+  /** Checks and the debug hook: the BRT crossings' state (road frame). */
+  brtInfo() { return this.brt.map(b => b.info()); }
+  /** Checks: the cars on the autopont (road frame). */
+  autopontInfo() { return this.apTraffic?.info() ?? null; }
 
   /** Which way the player must swap district, if the point (hub frame) is past the middle of the road on the far side of it. */
   swap(x: number, z: number): { to: HubId; at: number } | null {
@@ -144,12 +177,12 @@ export class CorridorView implements RoadGround {
 
   /** What the checks and the debug hook read. */
   info() {
-    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: (this.traffic?.positions() ?? []).map(c => ({ ...c, x: c.x + this.offset.x, z: c.z + this.offset.z })) };       // in the loaded district's frame, like everything the debug API gives
+    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: (this.traffic?.positions() ?? []).map(c => ({ ...c, x: c.x + this.offset.x, z: c.z + this.offset.z })), brt: this.brtInfo().map(b => ({ ...b, buses: b.buses.map(x => ({ ...x, x: x.x + this.offset.x, z: x.z + this.offset.z })) })) };       // in the loaded district's frame, like everything the debug API gives
   }
 
   dispose() {
     for (const i of [...this.chunks.keys()]) this.free(i);
-    this.traffic?.dispose(); this.traffic = null; this.root.removeFromParent();
+    this.traffic?.dispose(); this.traffic = null; for (const b of this.brt) b.dispose(); this.brt = []; this.apTraffic?.dispose(); this.apTraffic = null; this.root.removeFromParent();
     if (this.world) this.world.corridors = (this.world.corridors ?? []).filter(c => c !== this);
     this.world = null;
   }

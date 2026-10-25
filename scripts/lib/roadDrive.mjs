@@ -60,7 +60,12 @@ export async function driveRoad(page, t, key, road, toS, { cruise = 8, lane = 2.
       if (mode === 'pass' && !movingPass) vCap = Math.min(vCap, own < 14 ? 3 : 7);
     }
     const lanePass = mode === 'pass';
-    const lookS = look || Math.max(14, Math.min(48, 10 + 1.3 * Math.abs(at.speed))), sT = Math.max(0, Math.min(pr.length, pr.s + dir * lookS)), lat = (dir > 0 ? -lane : lane) * (lanePass ? -1 : 1);           // right of the direction of travel, in the road's a → b left-hand frame
+    // round a rond-point's island (src/road/roundabout.ts): the lane swings out; a short look and town speed through it, so the aim never cuts across the island
+    const round = await page.evaluate(([id, s]) => window.__dakar.road.nearRound?.(id, s, 12) ?? false, [road, pr.s]);
+    const lookS = round ? 9 : look || Math.max(14, Math.min(48, 10 + 1.3 * Math.abs(at.speed))), sT = Math.max(0, Math.min(pr.length, pr.s + dir * lookS));
+    const shift = await page.evaluate(([id, s]) => window.__dakar.road.laneShift?.(id, s) ?? 0, [road, sT]);
+    const lat0 = (dir > 0 ? -lane : lane) * (lanePass ? -1 : 1), lat = lat0 + Math.sign(lat0) * shift;           // right of the direction of travel, in the road's a → b left-hand frame
+    if (round) vCap = Math.min(vCap, 6);
     const aim = await page.evaluate(([id, s, l]) => window.__dakar.road.at(id, s, l), [road, sT, lat]);
     const err = wrap(Math.atan2(aim.x - at.x, aim.z - at.z) - at.yaw);
     last = { t: at.t, yaw: at.yaw };

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { animateVehicle, buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { makeCarRapide } from '../actors/vehicles';
 import { wrapAngle, type Pt } from './network';
-import type { Profile, Road } from './routes';
+import { DIVIDED, type Profile, type Road } from './routes';
 
 /**
  * Traffic on a road between districts: everyday Dakar, not a demolition derby. Kit vehicles and motorbikes in both directions, right-hand, each in its lane, a different mix on every
@@ -27,9 +27,12 @@ const MIXES: Record<Profile, Mix> = {
   villa: [['sedan', 24], ['suv', 20], ['luxury', 14], ['taxi', 14], ['moto', 8], ['pickup', 8], ['bus', 6], ['truck', 6]],
   coast: [['sedan', 20], ['taxi', 18], ['suv', 16], ['bus', 12], ['moto', 12], ['luxury', 8], ['pickup', 6], ['truck', 4], ['carRapide', 4]],
   downtown: [['taxi', 28], ['bus', 18], ['moto', 14], ['carRapide', 14], ['sedan', 12], ['suv', 6], ['truck', 4], ['pickup', 4]],
+  // the VDN: a fast divided artery (taxis, family saloons, 4×4s, Dem Dikk buses, lorries); Sacré-Cœur: the neighbourhood's shopping street (taxis, motorbikes, pick-ups delivering)
+  vdn: [['taxi', 20], ['sedan', 20], ['suv', 16], ['bus', 10], ['luxury', 8], ['truck', 8], ['moto', 10], ['pickup', 6], ['carRapide', 2]],
+  sacrecoeur: [['taxi', 26], ['sedan', 18], ['moto', 18], ['suv', 10], ['pickup', 10], ['carRapide', 8], ['luxury', 6], ['bus', 4]],
 };
 /** How fast the traffic moves on each stretch, against the vehicles' own pace (a busy market crawls, an artery flows). */
-const PACE: Record<Profile, number> = { banlieue: 0.9, market: 0.8, artery: 1.35, villa: 1.1, coast: 1.25, downtown: 0.85 };
+const PACE: Record<Profile, number> = { banlieue: 0.9, market: 0.8, artery: 1.35, villa: 1.1, coast: 1.25, downtown: 0.85, vdn: 1.4, sacrecoeur: 0.9 };
 /** Lateral offset of a lane's centre from the road's centre line (the carriageway is 11 m: lane centres at 2.8 m, motorbikes near the edge). */
 const LANE: Partial<Record<VehicleKind, number>> = { moto: 4.2, bus: 3.0, truck: 3.0 };
 const KERB_LANE = 4.4;
@@ -61,7 +64,11 @@ interface Car {
 export interface Footprint { x: number; z: number; yaw: number; hl: number; hw: number }
 
 /** What the traffic looks at ahead of a car. `solid`: road-frame position of a collider (stall, parked car…). `player`: road-frame position of the player's vehicle or body. */
-export interface TrafficWorld { solid(x: number, z: number, r: number): boolean; player: Pt | null }
+export interface TrafficWorld {
+  solid(x: number, z: number, r: number): boolean; player: Pt | null;
+  /** The signals of the road (the BRT crossing, src/road/brt.ts): for traffic going `dir`, the stop lines it must hold at now (arc lengths). */
+  signals?: (dir: 1 | -1) => { stopS: number; stop: boolean; amber: boolean }[];
+}
 
 export interface TrafficOpts {
   /** A driver sounds a horn: 0 (far) … 1 (close). The game answers with a very quiet recorded horn; checks leave it out. */
@@ -96,7 +103,7 @@ export class CorridorTraffic {
       if (made >= nWait) break;
       const dx = arm.b.x - arm.a.x, dz = arm.b.z - arm.a.z, len = Math.hypot(dx, dz) || 1, ux = dx / len, uz = dz / len;
       const kind: VehicleKind = (['sedan', 'taxi', 'moto', 'pickup'] as const)[Math.floor(rand() * 4)], c = this.make(kind, lite);
-      const yaw = Math.atan2(-ux, -uz), d = 12 + rand() * 8, side = kind === 'moto' ? 2.2 : 2.7;
+      const yaw = Math.atan2(-ux, -uz), d = (j.round ? j.round.ring + 3 : 12) + rand() * 8, side = kind === 'moto' ? 2.2 : 2.7;     // (at a rond-point: back from its ring, at the give-way line)
       const x = arm.a.x + ux * d + (-Math.cos(yaw)) * side, z = arm.a.z + uz * d + Math.sin(yaw) * side;     // facing the main road, on its right-hand side of the arm
       c.g.position.set(x, 0.08, z); c.g.rotation.y = yaw; c.g.visible = false;
       this.waiters.push({ g: c.g, x, z, yaw, hl: c.hl, hw: c.hw }); this.group.add(c.g);
@@ -122,9 +129,10 @@ export class CorridorTraffic {
   get liveCount() { return this.live; }
 
   /** Lateral position of a car's centre from the road's centre line, in the road's left-hand frame (positive: on the left of a → b). */
-  private latOf(c: Car) {
+  private latOf(c: Car, s = c.s) {
     let lane = c.lane * (1 - 2 * c.across);                                               // across: the lane of the other direction
     lane += (KERB_LANE - lane) * c.kerb;                                                 // kerb: its own right-hand edge
+    lane += Math.sign(lane || 1) * this.road.laneShift(s);                              // round a rond-point's island (src/road/roundabout.ts)
     return -c.dir * lane;
   }
 
@@ -210,6 +218,11 @@ export class CorridorTraffic {
     return true;
   }
 
+  /** Is the car held by a red signal (nobody overtakes a queue at a red light)? */
+  private atSignal(c: Car, w: TrafficWorld) {
+    return !!w.signals?.(c.dir).some(sg => sg.stop && (sg.stopS - c.s) * c.dir > -1 && (sg.stopS - c.s) * c.dir < 80);
+  }
+
   update(dt: number, w: TrafficWorld, focus: Pt | null) {
     const L = this.road.length;
     for (const c of this.cars) {
@@ -230,18 +243,27 @@ export class CorridorTraffic {
           if (o === c || !o.live || o.ghost > 0) continue;
           if (c.ov && o === c.ov.car) continue;
           const ds = (o.s - c.s) * c.dir - o.hl - c.hl;
-          if (ds < -1 || ds > 70 || Math.abs(this.latOf(o) - myLat) > 1.7) continue;
+          if (ds < -1 || ds > 70 || Math.abs(this.latOf(o) - this.latOf(c, o.s)) > 1.7) continue;    // (compared where the other car is: a rond-point's swing differs along the way)
           const eff = o.dir === c.dir ? ds : ds - o.v * 1.4;                           // coming towards us in our lane: it closes the gap twice as fast
           if (eff < gap) { gap = eff; blockerV = o.dir === c.dir ? o.v : 0; blocker = o; }
         }
       }
       const look = Math.max(10, c.v * 1.6 + 6);
       for (let d = 4; d <= look && gap > d; d += 3) {
-        const a = this.road.spine.at(c.s + c.dir * (d + c.hl)), lx = Math.cos(a.yaw), lz = -Math.sin(a.yaw), x = a.x + lx * myLat, z = a.z + lz * myLat;
+        const sd = c.s + c.dir * (d + c.hl), a = this.road.spine.at(sd), lx = Math.cos(a.yaw), lz = -Math.sin(a.yaw), pl = this.latOf(c, sd), x = a.x + lx * pl, z = a.z + lz * pl;   // where the car will be there (a rond-point's swing)
         const nearBase = c.ov && Math.abs(myLat - -c.dir * c.lane) < 3.4 && (c.s - c.ov.blockerS) * c.dir < 8;      // while passing, the thing being passed is not in the way
         if (!ghost && !nearBase && w.solid(x, z, c.hw + 0.3)) { gap = Math.min(gap, d); blockerV = 0; solidAhead = true; blocker = null; }
         if (!ghost && w.player && Math.hypot(x - w.player.x, z - w.player.z) < c.hw + 1.7) { gap = Math.min(gap, d); blockerV = 0; byPlayer = true; blocker = null; }
         if (ghost && w.solid(x, z, c.hw)) gap = Math.min(gap, d);                       // a ghost still stops for walls
+      }
+
+      // ---- a signal ahead (the BRT crossing): red, stop at the line; amber, stop if there is room to, go on if already on it
+      if (w.signals && !ghost) for (const sg of w.signals(c.dir)) {
+        if (!sg.stop) continue;
+        const toLine = (sg.stopS - c.s) * c.dir - c.hl;
+        if (toLine < -0.5 || toLine > look + 30) continue;                              // already past it, or far
+        if (sg.amber && toLine < Math.max(3, c.v * c.v / (2 * 6))) continue;             // too close to stop for an amber: clear the crossing
+        if (toLine + 6 < gap) { gap = toLine + 6; blockerV = 0; blocker = null; }       // + 6: `want` brings a car to rest 6 m short of a gap
       }
 
       // ---- a few cars hesitate for a moment (a pedestrian, a doubt): everyday irregularity
@@ -270,7 +292,7 @@ export class CorridorTraffic {
       // ---- stuck behind something that does not move: pass it by the other lane when that lane is clear (never when it is not)
       const stationary = blockerV < 1 && gap < 45;
       if (stationary && c.v < 4 && !c.pull && !ghost) c.blockT += dt; else if (!stationary) c.blockT = Math.max(0, c.blockT - dt * 2);
-      if (!c.ov && !c.pull && c.blockT > 1.6 && c.across < 0.05 && gap < 40 && !(byPlayer && !solidAhead && !blocker)) {
+      if (!c.ov && !c.pull && c.blockT > 1.6 && c.across < 0.05 && gap < 40 && !(byPlayer && !solidAhead && !blocker) && !DIVIDED.has(prof) && !this.atSignal(c, w) && !this.road.nearRound(c.s, 5)) {
         if (this.oppositeClear(c, w, gap + c.hl * 2 + 70)) {
           c.ov = { until: c.s + c.dir * (gap + (blocker ? blocker.hl * 2 : 6) + c.hl + 12), blockerS: c.s + c.dir * (gap + c.hl) };
           c.ov.car = blocker;
@@ -293,7 +315,7 @@ export class CorridorTraffic {
       // ---- nose to nose with the player's vehicle (it is in this lane and cannot get round: a moto cannot reverse): the driver backs off a few metres to let it through, when nothing is behind
       if (c.back > 0) {
         c.back -= dt; want = 0;
-        const rearClear = !this.cars.some(o => o !== c && o.live && o.ghost <= 0 && o.dir === c.dir && Math.abs(this.latOf(o) - myLat) < 1.7 && (c.s - o.s) * c.dir > 0 && (c.s - o.s) * c.dir < c.hl + o.hl + 3);
+        const rearClear = !this.cars.some(o => o !== c && o.live && o.ghost <= 0 && o.dir === c.dir && Math.abs(this.latOf(o) - this.latOf(c, o.s)) < 1.7 && (c.s - o.s) * c.dir > 0 && (c.s - o.s) * c.dir < c.hl + o.hl + 3);
         if (rearClear) c.s -= c.dir * 1.5 * dt;
       } else if (byPlayer && gap < 5 && c.v < 0.3 && c.waitPlayer > 2.4 && !c.pull && !ghost) c.back = 3.2;
 

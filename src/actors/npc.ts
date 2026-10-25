@@ -108,6 +108,8 @@ const TRAFFIC_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   corniche: [['taxi', 25], ['carRapide', 15], ['bus', 10], ['sedan', 20], ['suv', 10], ['luxury', 8], ['moto', 10], ['pickup', 2]],
   almadies: [['taxi', 20], ['sedan', 20], ['suv', 22], ['luxury', 18], ['moto', 8], ['carRapide', 6], ['bus', 4], ['pickup', 2]],
   pikine: [['carRapide', 28], ['taxi', 20], ['moto', 20], ['sedan', 10], ['pickup', 8], ['truck', 6], ['bus', 5], ['suv', 3]],
+  // Mermoz · Sacré-Cœur: family cars and taxis, a few 4×4s on the quiet villa streets, delivery motorbikes and pick-ups at the shops
+  mermoz: [['taxi', 24], ['sedan', 24], ['suv', 16], ['moto', 14], ['pickup', 8], ['luxury', 6], ['carRapide', 5], ['bus', 3]],
 };
 /** Lateral offset from the road centre (right-hand traffic); parked vehicles stand at 4.3 m (src/game/parkedVehicles.ts). */
 const LANE: Partial<Record<VehicleKind, number>> = { moto: 3.0, bus: 2.6, truck: 2.6 };

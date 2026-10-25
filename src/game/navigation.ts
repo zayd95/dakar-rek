@@ -1,12 +1,11 @@
 import type { GameCtx, GameModule } from './modules';
 import type { HubId } from '../core/types';
 import { planTrip, type TripPlan } from '../road/graph';
-import { routePath } from '../ui/minimapMath';
 import { phoneHooks } from '../ui/phoneHooks';
 import { HUB_NAMES } from '../world/content';
 import { GRID, roadCentre } from '../transport/lines';
 import { missionTarget } from './missionGuide';
-import { HUB_SHORT, TURN_GLYPH, gridMetres, legEnds, navDistance, nextTurn, openEdges, turnText, type Pt } from './navRules';
+import { HUB_SHORT, TURN_GLYPH, driverWay, gridMetres, legEnds, navDistance, nextTurn, openEdges, turnText, type Pt } from './navRules';
 import { closuresNow } from '../actors/npc';
 
 /**
@@ -25,7 +24,9 @@ class Navigation implements GameModule {
   /** A district (and place) chosen on the map to drive to. */
   private manual: NavGoal | null = null;
   private t = 0;
-  private route: { points: Pt[]; length: number } | null = null; private routeKey = '';
+  private route: { points: Pt[]; length: number } | null = null;
+  /** The last call at the wheel was a U-turn (held against a near tie: src/game/navRules.ts driverWay); null when not driving the streets. */
+  private wasBack: boolean | null = null;
   /** What the goal line says now (null: nothing to steer by), and the point steered for in this district. */
   private now: { glyph: string; text: string; dist: string; remaining: number; goal: string; local: Pt & { name: string }; road: boolean; driving: boolean } | null = null;
   private log = { arrivals: 0, set: 0, lines: [] as string[] };
@@ -63,7 +64,7 @@ class Navigation implements GameModule {
   update(ctx: GameCtx, dt: number) {
     this.t -= dt; if (this.t > 0) return; this.t = 0.2;
     const w = ctx.world(), g = this.goal();
-    if (!w || !g || ctx.inside()) { if (this.now) { this.now = null; ctx.hud.setNav(null); } return; }
+    if (!w || !g || ctx.inside()) { this.wasBack = null; if (this.now) { this.now = null; ctx.hud.setNav(null); } return; }
     const p = ctx.player.pos, here = w.id, driving = this.driving(ctx);
     let local: Pt & { name: string }, beyond = 0, through: string | undefined, plan: TripPlan | null = null;
     if (g.hub === here) {
@@ -92,14 +93,14 @@ class Navigation implements GameModule {
       const d = cv.road.def, toward = g.hub === here || !plan ? here : plan.hubs[1], s = cv.project(p.x, p.z).s;
       const left = d.b === toward ? cv.road.length - s : s, mouth = d.b === here ? d.bMouth : d.aMouth;
       remaining = Math.max(0, left) + (g.hub === here ? gridMetres(mouth, local) : Math.max(0, beyond - cv.road.length));
-      glyph = TURN_GLYPH.straight; text = `Tout droit sur la route · ${g.name}`;
+      glyph = TURN_GLYPH.straight; text = `Tout droit sur la route · ${g.name}`; this.wasBack = null;
     } else {
       // at the wheel the way keeps off the streets closed to cars (the arena's pedestrian zone, a road event)
-      const shut = driving ? closuresNow() : [];
-      const key = `${here}|${local.x | 0},${local.z | 0}|${Math.round(p.x / 6)},${Math.round(p.z / 6)}|${shut.length}`;
-      if (key !== this.routeKey) { this.routeKey = key; this.route = routePath(openEdges(w.edges, shut), { x: p.x, z: p.z }, local); }
-      const pts = [{ x: p.x, z: p.z }, ...(this.route?.points ?? [local])];
-      const turn = nextTurn(pts, ctx.player.facing());
+      // recomputed every update from where the car is and how it heads: a way kept from a few metres back made the next turn read « Fais demi-tour »
+      const shut = driving ? closuresNow() : [], yaw = ctx.player.facing();
+      const way = driverWay(openEdges(w.edges, shut), { x: p.x, z: p.z }, yaw, local, this.wasBack);
+      this.route = way; this.wasBack = way.back;
+      const turn = nextTurn(way.points, yaw);
       remaining = (this.route?.length ?? Math.hypot(local.x - p.x, local.z - p.z)) + beyond;
       glyph = TURN_GLYPH[turn.dir];
       text = turnText(turn, g.name, g.hub === here ? undefined : through);

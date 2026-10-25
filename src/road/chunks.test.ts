@@ -2,12 +2,23 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { CHUNK, ChunkMats, buildChunk, onDistrict } from './chunks';
 import { CorridorView } from './corridor';
-import { HALF_GROUND, ROADS, ROAD_HALF } from './routes';
+import { DIVIDED, HALF_GROUND, MEDIAN_HALF, ROADS, ROAD_HALF } from './routes';
+import { AVENUE_HALF, BUS_LANE, BUSWAY_HALF, brtDims, inBusway } from './brt';
+import { LANE_BASE, onIsland, swing } from './roundabout';
+import { AP, AutopontTraffic, autopontLayout, deckHeight, onAutopont } from './autopont';
 import type { HubWorld } from '../world/types';
 
 const mats = new ChunkMats(true);
 const tris = (g: THREE.Group) => { let n = 0; g.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) n += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; }); return n; };
 const meshes = (g: THREE.Group) => { let n = 0; g.traverse(o => { if ((o as THREE.Mesh).isMesh) n++; }); return n; };
+
+/** Is a road-frame point on a BRT avenue (src/road/brt.ts: it runs across the road, up to 160 m away; its own tests are below)? */
+const onAvenue = (road: (typeof ROADS)[number], x: number, z: number) => road.brt.some(l => {
+  const dx = x - l.x, dz = z - l.z, t = dx * l.ux + dz * l.uz, lat = dx * l.fx + dz * l.fz;
+  return Math.abs(t) < l.len + 45 && Math.abs(lat) < AVENUE_HALF + 30 && Math.abs(t) > 6;
+});
+/** The VDN's central median (a divided stretch): solid by design, between the two carriageways. */
+const onMedian = (road: (typeof ROADS)[number], x: number, z: number) => { const p = road.spine.project(x, z); return DIVIDED.has(road.profileAt(p.s)) && Math.abs(p.d) < MEDIAN_HALF + 0.3; };
 
 for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
   const n = Math.ceil(road.length / CHUNK);
@@ -26,7 +37,8 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
     const solids = all.flatMap(c => c.colliders);
     for (let s = 2; s < road.length - 2; s += 2) {
       const f = road.spine.at(s), y = Math.atan2(road.spine.at(s + 2).x - road.spine.at(s - 2).x, road.spine.at(s + 2).z - road.spine.at(s - 2).z);
-      for (const lat of [-4.2, -2.8, 2.8, 4.2]) {
+      for (const lane of [-4.2, -2.8, 2.8, 4.2]) {
+        const lat = lane + Math.sign(lane) * road.laneShift(s);                                     // round a rond-point's island, as the traffic goes (src/road/roundabout.ts)
         const x = f.x + Math.cos(y) * lat, z = f.z - Math.sin(y) * lat;
         const hit = solids.find(c => x > c.x0 - 1.3 && x < c.x1 + 1.3 && z > c.z0 - 1.3 && z < c.z1 + 1.3);
         expect(hit, `s=${s} lat=${lat} ${JSON.stringify(hit)}`).toBeUndefined();
@@ -37,12 +49,13 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
   it('keep every solid thing close to the road (a collider far from it would be a wall in the middle of nowhere)', () => {
     for (const c of all.flatMap(k => k.colliders)) {
       const x = (c.x0 + c.x1) / 2, z = (c.z0 + c.z1) / 2, p = road.spine.project(x, z);
-      expect(Math.abs(p.d)).toBeLessThan(26); expect(c.h).toBeGreaterThan(0); expect(c.x1).toBeGreaterThan(c.x0); expect(c.z1).toBeGreaterThan(c.z0);
+      if (!onAvenue(road, x, z) && !onAutopont(autopontLayout(road), x, z)) expect(Math.abs(p.d)).toBeLessThan(26);    // (the BRT avenue and the autopont's ramps run out across the road)
+      expect(c.h).toBeGreaterThan(0); expect(c.x1).toBeGreaterThan(c.x0); expect(c.z1).toBeGreaterThan(c.z0);
     }
   });
 
   it('are light: a handful of meshes and a few thousand triangles each', () => {
-    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(5); expect(tris(c.group)).toBeLessThan(14000); }
+    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(6); expect(tris(c.group)).toBeLessThan(14000); }   // (6: the VDN's and Sacré-Cœur's blocks carry the window texture, one more mesh)
   });
 
   it('have finite geometry', () => {
@@ -55,6 +68,7 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
       const half = Math.max(c.x1 - c.x0, c.z1 - c.z0) / 2;
       if (road.junctionS.some(j => Math.abs(j.s - p.s) < 50)) continue;
       if (road.checkpointS !== null && Math.abs(p.s - road.checkpointS) < 1.2) continue;          // the checkpoint's island: below
+      if (onMedian(road, x, z)) continue;                                                           // the VDN's median: below
       expect(Math.abs(p.d) + half).toBeGreaterThan(ROAD_HALF - 0.01);
     }
   });
@@ -82,6 +96,137 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
     }
     // their people: at the kerb's edge at the nearest, never in the carriageway
     for (const c of all) for (const q of c.people) expect(Math.abs(road.spine.project(q.x, q.z).d)).toBeGreaterThan(ROAD_HALF + 0.4 - (road.checkpointS !== null && Math.abs(road.spine.project(q.x, q.z).s - road.checkpointS) < 1 ? 99 : 0));
+  });
+});
+
+describe('the VDN (corniche-mermoz): a divided artery', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, n = Math.ceil(road.length / CHUNK), all = Array.from({ length: n }, (_, i) => buildChunk({ road, mats, lite: true }, i));
+  it('has a solid median along its divided stretch (nobody crosses it), open at its junctions', () => {
+    const solids = all.flatMap(c => c.colliders);
+    let divided = 0, held = 0;
+    for (let s = 10; s < road.length - 10; s += 5) {
+      if (!DIVIDED.has(road.profileAt(s)) || road.junctionS.some(j => Math.abs(j.s - s) < 30)) continue;
+      divided++; const f = road.spine.at(s);
+      if (solids.some(c => f.x > c.x0 - 0.2 && f.x < c.x1 + 0.2 && f.z > c.z0 - 0.2 && f.z < c.z1 + 0.2)) held++;
+    }
+    expect(divided).toBeGreaterThan(40); expect(held / divided).toBeGreaterThan(0.95);
+    for (const j of road.junctionS) { if (j.round) continue; const f = road.spine.at(j.s); expect(solids.some(c => f.x > c.x0 && f.x < c.x1 && f.z > c.z0 && f.z < c.z1), j.name).toBe(false); }   // (a rond-point's centre is its island)
+  });
+});
+
+describe('the rond-point of Sacré-Cœur, the BRT through it (src/road/roundabout.ts)', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, r = road.rounds[0], lay = road.brt[0];
+  const chunks = [-1, 0, 1].map(k => buildChunk({ road, mats, lite: false }, Math.floor(r.s / CHUNK) + k));
+  const solid = (x: number, z: number, pad = 0) => chunks.some(ch => ch.colliders.some(c => x > c.x0 - pad && x < c.x1 + pad && z > c.z0 - pad && z < c.z1 + pad));
+  it('is the BRT crossing itself (one junction), before the autopont, on a straight stretch', () => {
+    expect(ROADS.filter(x => x.rounds.length).map(x => x.id)).toEqual(['corniche-mermoz']);
+    expect(road.rounds.length).toBe(1); expect(Math.abs(r.s - lay.s)).toBeLessThan(1e-6); expect(lay.round).not.toBeNull();
+    expect(r.s).toBeLessThan(road.autopontS!.s - r.flare - 20);
+    const a = road.spine.at(r.s - r.flare), b = road.spine.at(r.s + r.flare); expect(Math.abs(a.yaw - b.yaw)).toBeLessThan(0.01);
+  });
+  it('keeps the merge\'s carriageway exemption (CONTRACT.md row 7) to its island and splitters: the swung lanes are never inside it', () => {
+    // the exact condition LD2's « nothing stands on the carriageway » test gains in the merge; a later change to `flare` or `island` must not widen it over a lane
+    const exempt = (x: number, z: number) => road.rounds.some(q => { const dx = x - q.x, dz = z - q.z; return Math.abs(dx * q.fx + dz * q.fz) < q.flare && (Math.hypot(dx, dz) < q.island + 0.3 || Math.abs(dx * q.lx + dz * q.lz) < 1.9); });
+    for (const side of [-1, 1]) for (let ds = -r.flare + 0.5; ds < r.flare; ds += 1.5) for (const off of [-0.85, 0, 0.85]) {                                  // (a car's width about each lane's line)
+      const p = r.at(ds, side * (LANE_BASE + swing(r, ds) + off));
+      expect(exempt(p.x, p.z), `lane ${side} at ${ds.toFixed(1)} (${off})`).toBe(false);
+    }
+    expect(exempt(r.at(10, 0).x, r.at(10, 0).z)).toBe(true);                                       // (and it does cover what it is for: the island, a splitter)
+    expect(exempt(r.at(r.flare - 8, 0).x, r.at(r.flare - 8, 0).z)).toBe(true);
+  });
+  it('has its island in two solid halves, the busway between them', () => {
+    for (const h of [1, -1]) for (const lat of [-8, 0, 8]) { const p = r.at(h * 10, lat); expect(onIsland(r, p.x, p.z), `half ${h} ${lat}`).toBe(true); expect(solid(p.x, p.z), `half ${h} ${lat}`).toBe(true); }
+    for (const t of [-12, 0, 12]) { const p = lay.at(t, 0); expect(inBusway(lay, p.x, p.z), `gap ${t}`).toBe(true); expect(solid(p.x, p.z), `gap ${t}`).toBe(false); }
+  });
+  it('swings both lanes round the island smoothly, and back to their usual place beyond its flare', () => {
+    expect(road.laneShift(r.s)).toBeCloseTo(r.lane - LANE_BASE, 6);
+    expect(road.laneShift(r.s + r.flare + 1)).toBe(0); expect(road.laneShift(r.s - r.flare - 1)).toBe(0);
+    for (let ds = -r.flare; ds < r.flare; ds += 0.5) expect(Math.abs(swing(r, ds + 0.5) - swing(r, ds)) / 0.5, `slope at ${ds}`).toBeLessThan(0.7);
+  });
+  it('leaves each lane, both ways, a car\'s width clear of the island and of every solid thing all the way round; it is ground all the way', () => {
+    for (let s = r.s - r.flare - 6; s <= r.s + r.flare + 6; s += 0.5) {
+      const f = road.spine.at(s), y = Math.atan2(road.spine.at(s + 1).x - road.spine.at(s - 1).x, road.spine.at(s + 1).z - road.spine.at(s - 1).z);
+      for (const lane of [-2.8, 2.8, -4.2, 4.2]) {
+        const lat = lane + Math.sign(lane) * road.laneShift(s), x = f.x + Math.cos(y) * lat, z = f.z - Math.sin(y) * lat;
+        expect(onIsland(r, x, z, 1.3), `s=${s.toFixed(1)} lane ${lane}`).toBe(false);
+        expect(solid(x, z, 1.1), `s=${s.toFixed(1)} lane ${lane}`).toBe(false);
+        expect(road.ground.contains(x, z, 1), `ground s=${s.toFixed(1)} lane ${lane}`).toBe(true);
+      }
+    }
+  });
+  it('keeps cars out of the busway beyond the ring (not ground) and lets the ring cross it (ground, clear)', () => {
+    for (const side of [1, -1]) {
+      for (let t = r.ring + 2; t < lay.len - 20; t += 4) for (const l of [-BUS_LANE, 0, BUS_LANE]) { const p = lay.at(side * t, l); expect(road.ground.contains(p.x, p.z, 0), `busway t=${side * t}`).toBe(false); }
+      for (let t = r.island + 1.5; t < r.ring - 1; t += 1) for (const l of [-BUS_LANE, BUS_LANE]) { const p = lay.at(side * t, l); expect(road.ground.contains(p.x, p.z, 0), `ring crossing t=${side * t}`).toBe(true); expect(solid(p.x, p.z, 0.5)).toBe(false); }
+    }
+  });
+  it('holds the ring\'s traffic at the BRT signal before the busway, and the buses outside the ring', () => {
+    const D = brtDims(lay);
+    expect(D.mainStop).toBeGreaterThan(BUSWAY_HALF + 1); expect(D.mainStop).toBeLessThan(r.island);
+    expect(D.busStop).toBeGreaterThan(r.ring); expect(D.station.t0).toBeGreaterThan(r.ring + 3);
+  });
+  it('puts no bus stop on its swing, and nobody on its ring', () => {
+    for (const st of road.stops) expect(Math.abs(st.s - r.s), `stop ${st.s}`).toBeGreaterThan(r.flare + 10);
+    for (const ch of chunks) for (const q of ch.people) { const d = Math.hypot(q.x - r.x, q.z - r.z); expect(d < r.island - 0.5 || d > r.ring + 0.5, 'people on the ring').toBe(true); }
+  });
+});
+
+describe('the autopont at the way into Mermoz (src/road/autopont.ts)', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, lay = autopontLayout(road)!;
+  const chunk = buildChunk({ road, mats, lite: false }, Math.floor(lay.s / CHUNK));
+  it('stands on the road to Mermoz, past the rond-point, before the district', () => {
+    expect(ROADS.filter(r => r.autopontS).map(r => r.id)).toEqual(['corniche-mermoz']);
+    expect(lay.s).toBeGreaterThan(road.rounds[0].s + road.rounds[0].flare); expect(lay.s).toBeLessThan(road.length - 30);
+  });
+  it('is driven under: nothing stands between 0.3 m and 4.4 m over the road\'s width under it, and its deck is 5.6 m up', () => {
+    chunk.group.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh) return;
+      const a = m.geometry.attributes.position;
+      for (let i = 0; i < a.count; i++) {
+        const x = a.getX(i), y = a.getY(i), z = a.getZ(i), p = road.spine.project(x, z);
+        if (Math.abs(p.s - lay.s) > 10 || Math.abs(p.d) > ROAD_HALF || y < 0.3) continue;
+        expect(y, `vertex at d=${p.d.toFixed(1)}`).toBeGreaterThan(4.4);
+      }
+    });
+    expect(deckHeight(0)).toBeCloseTo(6.4, 6); expect(deckHeight(AP.FOOT + 1)).toBeLessThan(0.2);
+  });
+  it('stands its piers and ramps off the road\'s drivable ground', () => {
+    const own = chunk.colliders.filter(c => onAutopont(lay, (c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2));
+    expect(own.length).toBeGreaterThan(8);
+    for (const c of own) expect(road.ground.contains((c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2, 0), 'a pier or a ramp on the ground').toBe(false);
+  });
+  it('carries a few cars across on its deck, at the deck\'s height', () => {
+    const tr = new AutopontTraffic(lay, true, (() => { let x = 1; return () => (x = (x * 16807) % 2147483647) / 2147483647; })());
+    let seen = 0;
+    for (let k = 0; k < 120; k++) {
+      tr.update(0.25, true);
+      for (const c of tr.info().filter(c => c.visible)) { seen++; expect(Math.abs(c.y - deckHeight(c.t))).toBeLessThan(0.1); }
+    }
+    expect(seen).toBeGreaterThan(0);
+    tr.dispose();
+  });
+});
+
+describe('the BRT crossing at Sacré-Cœur (src/road/brt.ts)', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, lay = road.brt[0];
+  const chunk = buildChunk({ road, mats, lite: false }, Math.floor(lay.s / CHUNK));
+  const solid = (x: number, z: number) => chunk.colliders.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
+  it('is on the road to Mermoz, once', () => { expect(road.brt.length).toBe(1); expect(ROADS.filter(r => r.brt.length).map(r => r.id)).toEqual(['corniche-mermoz']); });
+  it('reserves the busway: it is not drivable ground anywhere along the avenue; the avenue\'s car carriageways are', () => {
+    for (let t = brtDims(lay).zebra; t < lay.len - 20; t += 4) for (const side of [1, -1]) {
+      for (const lat of [-3.35, 0, 3.35]) { const p = lay.at(side * t, lat); expect(road.ground.contains(p.x, p.z, 0), `busway t=${side * t} lat=${lat}`).toBe(false); expect(inBusway(lay, p.x, p.z)).toBe(true); }
+      for (const lat of [-9.3, 9.3]) { const p = lay.at(side * t, lat); expect(road.ground.contains(p.x, p.z, 1), `car lane t=${side * t} lat=${lat}`).toBe(true); }
+    }
+  });
+  it('never lets a car turn into the busway: on a rond-point it is not ground beyond the ring (see above); on a plain crossing, solid bollards at its mouths', () => {
+    if (lay.round) { const p = lay.at(lay.round.ring + 3, 0); expect(road.ground.contains(p.x, p.z, 0)).toBe(false); return; }
+    for (const side of [1, -1]) for (let lat = -BUSWAY_HALF + 0.6; lat < BUSWAY_HALF - 0.5; lat += 0.8) { const p = lay.at(side * 18.6, lat); expect(solid(p.x, p.z), `mouth ${side} ${lat}`).toBe(true); }
+    for (let t = -9; t <= 9; t += 1) for (const lat of [-3.35, 3.35]) { const p = lay.at(t, lat); expect(solid(p.x, p.z), `crossing ${t}`).toBe(false); expect(road.ground.contains(p.x, p.z, 0)).toBe(true); }
+  });
+  it('has its station island with people waiting, off the carriageways', () => {
+    const st = brtDims(lay).station, p = lay.at((st.t0 + st.t1) / 2, 0); expect(solid(p.x, p.z)).toBe(true);
+    const waiting = chunk.people.filter(q => inBusway(lay, q.x, q.z));
+    expect(waiting.length).toBeGreaterThanOrEqual(2);
   });
 });
 

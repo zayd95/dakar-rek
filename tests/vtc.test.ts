@@ -12,7 +12,7 @@ const onKerb = (x: number, z: number) => roads.some(r => Math.abs(Math.abs(x - r
 describe('VTC: where passengers wait (src/transport/vtcRules.ts)', () => {
   it('every district has named places; the car stops in a kerb lane and the passenger waits on the pavement beside it, further from the road', () => {
     for (const h of HUB_IDS) {
-      expect(VTC_POINTS[h].length).toBeGreaterThanOrEqual(4);
+      expect(VTC_POINTS[h].length).toBeGreaterThanOrEqual(h === 'mermoz' ? 2 : 4);         // (Mermoz: its two authored M1 addresses)
       for (const p of VTC_POINTS[h]) {
         const s = stopOf(p);
         expect(onKerb(s.car.x, s.car.z), `${h} ${p.id}`).toBe(true);
@@ -79,7 +79,7 @@ describe('VTC: the requests and the fare', () => {
 
 describe('VTC: the spots are safe places to stop (src/transport/vtcRules.ts VTC_POINTS)', () => {
   // the district's spawn as the builder puts it (src/world/builder.ts: beside the station's car rapide; Pikine's taxi rank is fixed)
-  const SPAWN: Record<HubId, { x: number; z: number; yaw: number }> = { pikine: { x: -60, z: -60, yaw: 0 }, plateau: { x: 27, z: 37, yaw: 0 }, corniche: { x: 27, z: 37, yaw: 0 }, almadies: { x: -33, z: 37, yaw: 0 } };
+  const SPAWN: Record<HubId, { x: number; z: number; yaw: number }> = { pikine: { x: -60, z: -60, yaw: 0 }, plateau: { x: 27, z: 37, yaw: 0 }, corniche: { x: 27, z: 37, yaw: 0 }, almadies: { x: -33, z: 37, yaw: 0 }, mermoz: { x: -93, z: 97, yaw: 0 } };
   const R = roads, near = (v: number) => R.reduce((b, c) => (Math.abs(c - v) < Math.abs(b - v) ? c : b));
   /** The grid edge (node to node) of a kerb spot, as src/city/roadEvents.ts keys them, and how far the spot is from the junctions at its ends. */
   const edgeOf = (s: { x: number; z: number; yaw: number }) => {
@@ -90,7 +90,8 @@ describe('VTC: the spots are safe places to stop (src/transport/vtcRules.ts VTC_
   /** Spots of the first VTC release kept where the players know them; they stand on quiet streets a road event may shut for a few hours. */
   const QUIET = new Set(['pikine:boutique', 'pikine:place', 'pikine:maiga', 'pikine:gargote', 'plateau:medina', 'plateau:cafe', 'corniche:cafe', 'corniche:sport', 'almadies:ngor', 'almadies:cafe']);
   it('every district offers rides from at least nine places', () => {
-    for (const h of HUB_IDS) expect(VTC_POINTS[h].length, h).toBeGreaterThanOrEqual(9);
+    // (Mermoz · Sacré-Cœur has exactly its two authored M1 addresses: docs/districts/M1-MERMOZ.md)
+    for (const h of HUB_IDS) expect(VTC_POINTS[h].length, h).toBeGreaterThanOrEqual(h === 'mermoz' ? 2 : 9);
     for (const h of HUB_IDS) expect(new Set(VTC_POINTS[h].map(p => p.id)).size).toBe(VTC_POINTS[h].length);
   });
   it('the car stops mid-block (never in a junction\'s mouth), off the car rapides\' stops and the taxi ranks, outside the arena\'s pedestrian zone', () => {

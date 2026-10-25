@@ -16,6 +16,7 @@ export const CITY_BLOCKS: Record<HubId, Record<string, CityBlock>> = {
   plateau: { '3,1': 'bank', '1,3': 'square', '3,3': 'shops' },
   almadies: { '2,2': 'mall', '3,2': 'square', [PRESTIGE_BLOCK]: 'prestige' },
   pikine: { '0,1': 'bank', '0,3': 'shops', '1,3': 'square' },
+  mermoz: {},
 };
 export const BAY = { z0: 64, z1: 116, shoreX: -155, railX: -133.55 };
 /** Ndiaye Auto's showroom in the Plateau (its stocked-shop key): src/transport/carModule.ts sells the car from its desk. */
@@ -292,7 +293,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   }
 
   // Neighbourhood meeting squares: a recognisable address where players can stand together.
-  const names: Record<HubId, string> = { pikine: 'Grand-place de Pikine', plateau: 'Place de la Médina', corniche: 'Place des étudiants · Fann', almadies: 'Place des voisins · Ngor' };
+  const names: Record<HubId, string> = { pikine: 'Grand-place de Pikine', plateau: 'Place de la Médina', corniche: 'Place des étudiants · Fann', almadies: 'Place des voisins · Ngor', mermoz: 'Place de Mermoz' };
   pave.box(42, 0.035, 42, cx, 0.07, cz, c.hub === 'pikine' ? 0xc9b187 : 0xdfd6c3);
   b.cyl(6, 6, 0.04, cx, 0.105, cz, 0xc7784b, 24);
   c.tree(cx, cz, 2.3); c.tree(cx + 16, cz - 15, 1.1); c.tree(cx - 16, cz + 15, 1.1);

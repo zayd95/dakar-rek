@@ -64,6 +64,7 @@ import { arrivalModule } from '../arena/arrival';
 import { meals } from './meals';
 import { perform } from './perform';
 import { football } from './football';
+import { mermozModule } from '../districts/mermoz';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -256,6 +257,7 @@ export const MODULES: GameModule[] = [
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
+  mermozModule,         // Mermoz · Sacré-Cœur (M1): Pape Diouf at the Filaos' gate, his two rides on « Courses VTC », his memory (docs/districts/M1-MERMOZ.md)
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)

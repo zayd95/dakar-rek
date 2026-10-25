@@ -20,7 +20,8 @@ describe('the road network', () => {
   });
   it('is not a star: no district is the hub of every trip', () => {
     const deg = (h: HubId) => EDGES.filter(e => e.a === h || e.b === h).length;
-    for (const h of HUB_IDS) expect(deg(h)).toBeGreaterThanOrEqual(2);              // every district has at least two ways out: a ring, not spokes
+    for (const h of HUB_IDS) if (h !== 'mermoz') expect(deg(h)).toBeGreaterThanOrEqual(2);   // every district of the ring has at least two ways out: a ring, not spokes
+    expect(deg('mermoz')).toBe(1);                                                   // Mermoz · Sacré-Cœur (M1) is a leaf off the Corniche, by the VDN
     expect(EDGES.length).toBeGreaterThanOrEqual(HUB_IDS.length);                    // at least as many edges as districts: a cycle exists
   });
 });
@@ -28,6 +29,8 @@ describe('the road network', () => {
 describe('routing', () => {
   it('goes the short way, through intermediate districts when it must, in both directions', () => {
     expect(ids(planTrip('almadies', 'plateau'))).toBe('almadies>corniche>plateau');
+    expect(ids(planTrip('corniche', 'mermoz'))).toBe('corniche>mermoz');            // M1: the VDN road
+    expect(ids(planTrip('mermoz', 'plateau'))).toBe('mermoz>corniche>plateau');
     expect(ids(planTrip('plateau', 'almadies'))).toBe('plateau>corniche>almadies');
     expect(ids(planTrip('corniche', 'pikine'))).toBe('corniche>almadies>pikine');
     expect(ids(planTrip('pikine', 'corniche'))).toBe('pikine>almadies>corniche');
@@ -56,8 +59,8 @@ describe('routing', () => {
 });
 
 describe('future districts', () => {
-  it('Ouakam, Yoff, Parcelles Assainies and Mermoz are in the registry as planned: on the map, never routed, never drivable', () => {
-    for (const id of ['ouakam', 'yoff', 'parcelles', 'mermoz']) {
+  it('Ouakam, Yoff and Parcelles Assainies are in the registry as planned: on the map, never routed, never drivable', () => {
+    for (const id of ['ouakam', 'yoff', 'parcelles']) {
       const h = hubInfo(id)!; expect(h.status).toBe('planned'); expect(isPlayable(id)).toBe(false); expect(h.lngLat.length).toBe(2);
       expect(planTrip('pikine', id)).toBeNull(); expect(planTrip(id, 'plateau')).toBeNull();
       expect(EDGES.some(e => (e.a as string) === id || (e.b as string) === id)).toBe(false);

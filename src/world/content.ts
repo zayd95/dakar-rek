@@ -117,10 +117,13 @@ const legs: Record<string, TravelLeg> = {
   'plateau-corniche': { cost: 500, minutes: 10 }, 'plateau-almadies': { cost: 1500, minutes: 25 },
   'plateau-pikine': { cost: 700, minutes: 20 }, 'corniche-almadies': { cost: 1000, minutes: 18 },
   'corniche-pikine': { cost: 1200, minutes: 25 }, 'almadies-pikine': { cost: 2000, minutes: 35 },
+  // Mermoz · Sacré-Cœur (M1): by car rapide from Fann up the VDN, from the Plateau by Liberté
+  'corniche-mermoz': { cost: 400, minutes: 12 }, 'plateau-mermoz': { cost: 600, minutes: 18 }, 'almadies-mermoz': { cost: 800, minutes: 15 }, 'mermoz-pikine': { cost: 900, minutes: 22 },
 };
 export function travelLeg(a: HubId, b: HubId): TravelLeg {
   return legs[`${a}-${b}`] ?? legs[`${b}-${a}`] ?? { cost: 1000, minutes: 20 };
 }
 export const HUB_NAMES: Record<HubId, string> = {
   plateau: 'Plateau · Médina', corniche: 'Corniche · Fann · Mamelles', almadies: 'Almadies · Ngor · Yoff', pikine: 'Pikine · Guédiawaye · Parcelles',
+  mermoz: 'Mermoz · Sacré-Cœur',
 };
