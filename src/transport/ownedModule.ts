@@ -31,11 +31,11 @@ import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
 import { trafficPositions } from '../actors/npc';
 import { radio, STATIONS } from './radio';
-import { CarInterior, cabinOf } from './carInterior';
+import { CarInterior, SEAT_VIEW, cabinOf, cockpitSight } from './carInterior';
 import { navigation } from '../game/navigation';
 import { SIT_HIPS, seatClip, sitOriginY } from '../interact/seats';
 import { CABINS, SITTERS, rowOf, scaleAt } from './cabinFit';
-import { cabinView, holdCabin, sitterOrder } from './carCabin';
+import { cabinInfo, cabinView, eyeInside, holdCabin, sitterOrder } from './carCabin';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
@@ -192,10 +192,8 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
   };
 }
 
-/** Vertical field of view at the wheel in portrait (the page's is 66°). */
-const INSIDE_FOV_PORTRAIT = 78;
-/** At the wheel: how far down the eye looks at rest (rad; a phone held upright, on its side), and the camera's near plane (m: the roof lining and the wheel are closer than the street's 0.3). */
-const SEAT_PITCH_PORTRAIT = -0.17, SEAT_PITCH = -0.16, SEAT_NEAR = 0.1;
+/** Vertical field of view at the wheel in portrait (the page's is 66°), how far down the eye looks at rest, the camera's near plane there (src/transport/carInterior.ts SEAT_VIEW). */
+const INSIDE_FOV_PORTRAIT = SEAT_VIEW.fovPortrait, SEAT_PITCH_PORTRAIT = SEAT_VIEW.pitchPortrait, SEAT_PITCH = SEAT_VIEW.pitch, SEAT_NEAR = SEAT_VIEW.near;
 
 interface Dealer {
   group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; card: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[];
@@ -820,8 +818,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   camera(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean {
     const m = this.vehicle;
-    if (m && (this.entry || this.exit)) { const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t; this.hideInterior(); this.nearAt(ctx.camera, false); this.doorCam(ctx, m, Math.max(dt, real)); return true; }
-    if (m && !(this.driving && this.cam.active && this.spec)) { m.setCockpit(false); this.hideInterior(); }    // never leave the body hidden after the inside view
+    if (m && (this.entry || this.exit)) { const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t; this.hideInterior(); this.eyeAt(m, false); this.nearAt(ctx.camera, false); this.doorCam(ctx, m, Math.max(dt, real)); return true; }
+    if (m && !(this.driving && this.cam.active && this.spec)) { m.setCockpit(false); this.hideInterior(); this.eyeAt(m, false); }    // never leave the body hidden after the inside view
     if (!m || !this.driving || !this.cam.active || !this.spec) {
       if (this.fovSet) { this.fovSet = false; ctx.camera.fov = fovFor(ctx.camera.aspect * 1000, 1000); ctx.camera.updateProjectionMatrix(); }
       this.nearAt(ctx.camera, false);
@@ -835,6 +833,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)));
     this.feel(cam, Math.max(dt, real), !!a.inside);
     m.setCockpit(!!a.inside);                                  // a body not made to be seen from inside is not drawn in that view
+    this.eyeAt(m, !!a.inside);                                 // nor its own cabin (seats, lining): the interior stands in for them
     // at the wheel on a phone held upright (narrow field of view): a wider vertical angle so the road shows above the dashboard; the page's own angle comes back outside
     const base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
     if (Math.abs(cam.fov - want) > 0.01) { cam.fov = want; cam.updateProjectionMatrix(); }
@@ -877,7 +876,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         /** Checks: the interior at the wheel (drawn or not, its triangles, the eye in the car's frame, where the head is turned, the camera's near plane). */
         /** Checks: turn the head at the wheel (rad: + left, + up) and hold it there a while. */
         lookAt: (yaw: number, pitch = 0, s = 30) => this.cam.holdLook(yaw, pitch, s),
-        interior: () => this.interior ? { visible: this.interior.group.visible && !!this.interior.group.parent, attached: this.interior.group.parent === this.vehicle?.body, tris: this.interior.tris, eye: this.interior.eye.toArray().map(x => +x.toFixed(3)), cabin: this.interior.cabin, look: this.cam.look, near: ctx.camera.near, shellInside: !!this.vehicle?.shellInside } : null,
+        interior: () => this.interior ? { visible: this.interior.group.visible && !!this.interior.group.parent, attached: this.interior.group.parent === this.vehicle?.body, tris: this.interior.tris, eye: this.interior.eye.toArray().map(x => +x.toFixed(3)), design: this.interior.design.toArray().map(x => +x.toFixed(3)), sight: cockpitSight(this.interior.cabin, this.interior.eye.toArray()), head: this.seatedHead(), cabin: this.interior.cabin, look: this.cam.look, near: ctx.camera.near, shellInside: !!this.vehicle?.shellInside, cabinView: this.vehicle ? cabinInfo(this.vehicle.body) : null } : null,
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
         lab: () => ({ va: vehicleAudio, PROFILES, HORNS }),                                // the audio review's recordings (scripts/audio/render-clips.mjs)
@@ -1202,9 +1201,24 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const k = m.kitSpec; if (!k) return null;
     const ir = this.interior ??= new CarInterior(cabinOf(k), this.def.kit === 'sedan' ? 'city' : 'premium');
     if (ir.group.parent !== m.body) m.body.add(ir.group);
+    ir.fitEye(this.seatedHead());                                // the homme's eye or the femme's, held in the seat's travel (carInterior.ts driverEye)
     return ir;
   }
   private hideInterior() { if (this.interior) this.interior.group.visible = false; }
+  /** The camera is (or is no longer) at the wheel of this car: its own cabin and see-through glass go (src/transport/carCabin.ts), at once, this frame. */
+  private eyeIn = false; private eyeBody: THREE.Object3D | null = null;
+  private eyeAt(m: Vehicle, on: boolean) {
+    if (on === this.eyeIn && m.body === this.eyeBody) return;
+    if (this.eyeBody && this.eyeBody !== m.body) eyeInside(this.eyeBody, false);          // another body (a new model, a district crossed)
+    this.eyeIn = on; this.eyeBody = m.body; eyeInside(m.body, on); cabinView(m.body, this.spec ?? null);
+  }
+  /** The top of the head of the body at the wheel and its drawn scale, car frame (src/transport/cabinFit.ts), for the eye there; null without one. */
+  private seatedHead(): { top: number; scale: number } | null {
+    const spec = this.spec, b = this.ctx?.player.body(), fit = spec && CABINS[spec.id];
+    if (!spec || !b || !fit) return null;
+    const p = scaleAt(rowOf(fit, 'driver'), spec.driver.y - SIT_HIPS, SITTERS[b.body]);
+    return { top: p.head, scale: p.scale };
+  }
   /** At the wheel: the wheel turns with the steering, the bonnet wears the paint (a body not drawn from inside), the screens show the speed, the next turn, the radio, the time. */
   private dashboard(ctx: GameCtx, m: Vehicle, ir: CarInterior, dt: number) {
     ir.group.visible = true;

@@ -125,6 +125,83 @@ class Soup {
   }
 }
 
+// ------------------------------------------------------------------------------------------------ the driver's eye
+/** The eye of a body sitting in a car seat: this far under the top of its head (m, at the body's drawn scale: crown to eyes, hair included). */
+export const EYE_BELOW_CROWN = 0.125;
+/**
+ * How far the eye may sit above or below the car's design eye (m): a driver whose eye would sit lower raises the seat to it, as a seat-height lever
+ * does (below it the cluster's hood would cut into the road over the bonnet); one whose eye sits higher keeps it, up to 4 cm, under the headliner.
+ */
+export const SEAT_RAISE = { down: 0, up: 0.04 } as const;
+/** The least room between the eye and the headliner (m: the camera's near plane at the wheel is 0.1 m, src/transport/ownedModule.ts SEAT_NEAR). */
+export const HEADROOM = 0.15;
+/** The height of the hood over the instrument cluster, above the dash's rear edge (m). */
+const HOOD = 0.04;
+/** The car's design eye: where the wheel, the dash and the pillars are built round (the interior's own numbers). */
+export const designEye = (c: Cabin): V3 => [c.driverX, c.seatTop + 0.72, c.frontZ - 0.17];
+/** The headliner's underside (the interior draws it 4 cm under the roof's outer line). */
+const linerY = (c: Cabin) => c.roof - 0.04;
+/**
+ * Where the camera sits at the wheel for the body in the driver's seat (`head`: the top of its head and its drawn scale in the seat, car frame, from
+ * src/transport/cabinFit.ts; null: the design eye). The eye is the body's own, EYE_BELOW_CROWN under its crown, then held within the seat's travel
+ * round the design eye (SEAT_RAISE: everyone sees the road over the bonnet and the wheel low in the frame, the homme and the femme alike) and under
+ * the headliner by HEADROOM. Pure (tests/ld2Drive.test.ts).
+ */
+export function driverEye(c: Cabin, head: { top: number; scale: number } | null): V3 {
+  const d = designEye(c);
+  let y = head ? head.top - EYE_BELOW_CROWN * head.scale : d[1];
+  y = Math.max(d[1] - SEAT_RAISE.down, Math.min(d[1] + SEAT_RAISE.up, y));
+  y = Math.min(y, linerY(c) - HEADROOM);
+  return [+d[0].toFixed(4), +y.toFixed(4), +d[2].toFixed(4)];
+}
+
+/**
+ * The view at the wheel: how far down the eye looks at rest (rad: a phone held upright, on its side), the vertical field of view on a phone held
+ * upright (deg; on its side the page's own, src/core/view.ts fovFor), the camera's near plane (m: the roof lining and the wheel are nearer than the
+ * street's 0.3).
+ */
+export const SEAT_VIEW = { pitchPortrait: -0.17, pitch: -0.16, fovPortrait: 78, near: 0.1 } as const;
+/**
+ * Where the horizon, the sightline over the bonnet's nose, the top of the wheel's rim and the dash's edge fall on the screen (0 the top … 1 the
+ * bottom) for a camera pitched `pitch` (rad) with a vertical field of view `vfov` (deg). The road is the band from `horizon` to `nose`. Pure.
+ */
+export function screenRows(s: CockpitSight, pitch: number, vfov: number) {
+  const t = Math.tan((vfov * Math.PI) / 360), row = (below: number) => +(0.5 + (0.5 * Math.tan((below * Math.PI) / 180 + pitch)) / t).toFixed(4);
+  return { horizon: row(0), nose: row(s.overNose), wheel: row(s.wheelTop), dash: row(s.dashLip) };
+}
+
+/** What the driver sees from `eye` (car frame), measured on the interior's own geometry: angles below the horizontal (deg), distances (m). Pure. */
+export interface CockpitSight {
+  /** The steepest look ahead that clears the bonnet's nose and the foot of the windscreen: the road is seen from `nearRoad` m ahead of the eye on. */
+  overNose: number; nearRoad: number;
+  /** The rim's top and the dash's rear edge: both below the sightline over the nose (they never hide the road). */
+  wheelTop: number; dashLip: number;
+  /** Room to the headliner over the eye, the nearest A pillar, the windscreen's header, the steering wheel's centre. */
+  headroom: number; pillar: number; header: number; wheel: number;
+}
+const segDist = (p: V3, a: V3, b: V3) => {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], ap = [p[0] - a[0], p[1] - a[1], p[2] - a[2]], l2 = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2 || 1;
+  const t = Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / l2));
+  return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t);
+};
+export function cockpitSight(c: Cabin, eye: V3, groundY = 0): CockpitSight {
+  const geo = interiorGeometry(c), deg = (dy: number, dz: number) => (Math.atan2(dy, dz) * 180) / Math.PI;
+  const below = (p: [number, number]) => deg(eye[1] - p[0], p[1] - eye[2]);          // [y, z] → degrees under the horizontal
+  const overNose = Math.min(below([c.nose, c.L / 2 - 0.3]), below([c.cowl, c.zWs]));
+  const pillar = Math.min(...[1, -1].map(sx => segDist(eye, [sx * (geo.hwG - 0.03), c.cowl - 0.01, c.zWs + 0.01], [sx * (geo.hwR - 0.02), geo.yR, c.zRf + 0.02])));
+  return {
+    overNose: +overNose.toFixed(2), nearRoad: +((eye[1] - groundY) / Math.tan((overNose * Math.PI) / 180)).toFixed(2),
+    wheelTop: +below([geo.wheel[1] + geo.R * Math.cos(geo.column), geo.wheel[2] + geo.R * Math.sin(geo.column)]).toFixed(2), dashLip: +below([geo.yLip + HOOD, geo.zLip + 0.06]).toFixed(2),
+    headroom: +(linerY(c) - eye[1]).toFixed(3), pillar: +pillar.toFixed(3),
+    header: +Math.hypot(eye[1] - geo.yR, c.zRf - eye[2]).toFixed(3), wheel: +Math.hypot(eye[0] - geo.wheel[0], eye[1] - geo.wheel[1], eye[2] - geo.wheel[2]).toFixed(3),
+  };
+}
+/** The interior's fixed numbers, from the cabin and its design eye (what the constructor builds with). */
+function interiorGeometry(c: Cabin) {
+  const E = designEye(c), wheel: V3 = [c.driverX, E[1] - 0.31, E[2] + 0.42];
+  return { hwG: c.W / 2 - c.inG, hwR: c.W / 2 - c.inR, yR: c.roof - 0.055, wheel, zLip: wheel[2] + 0.12, yLip: Math.max(c.cowl + 0.04, E[1] - 0.21), R: c.W > 1.9 ? 0.18 : 0.17, column: 0.42 };
+}
+
 let shared: THREE.MeshLambertMaterial | null = null;
 /** One material for every car's interior (the colours are in the vertices); kept across districts. */
 const material = () => shared ??= Object.assign(new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x1c1d21 }), { name: 'car_interior', userData: { shared: true } });
@@ -137,8 +214,10 @@ export const WHEEL_LOCK = 2.2;
 export class CarInterior {
   /** In the vehicle's frame: add it to the vehicle's body (Vehicle.body) and it moves with the car. */
   readonly group = new THREE.Group();
-  /** The driver's eye, in the same frame. */
+  /** The driver's eye, in the same frame: the design eye until `fitEye` puts it at the eye of the body in the seat. */
   readonly eye: THREE.Vector3;
+  /** The design eye the wheel, the dash and the pillars are built round (the car's; it does not move with the driver). */
+  readonly design: THREE.Vector3;
   /** The centre of the steering wheel and its column's angle above the horizontal. */
   readonly wheelAt: THREE.Vector3;
   readonly column = 0.42;
@@ -155,8 +234,8 @@ export class CarInterior {
   constructor(readonly cabin: Cabin, readonly trim: Trim) {
     const c = cabin, P = PALETTES[trim], g = this.group; g.name = 'car_interior'; g.visible = false;
     const dx = c.driverX, hw = c.W / 2 - 0.075, hwG = c.W / 2 - c.inG, hwR = c.W / 2 - c.inR, floor = c.sill + 0.06;
-    this.eye = new THREE.Vector3(dx, c.seatTop + 0.72, c.frontZ - 0.17);
-    const E = this.eye, C = this.wheelAt = new THREE.Vector3(dx, E.y - 0.31, E.z + 0.42);
+    this.design = new THREE.Vector3(...designEye(c)); this.eye = this.design.clone();
+    const E = this.design, C = this.wheelAt = new THREE.Vector3(dx, E.y - 0.31, E.z + 0.42);
     const zLip = C.z + 0.12, yLip = Math.max(c.cowl + 0.04, E.y - 0.21), zF = c.zWs + 0.04;      // the dash's rear edge, a little above the foot of the glass, at a set height under the eye
     const s = new Soup();
 
@@ -164,7 +243,8 @@ export class CarInterior {
     // sloping away over the knees; a strip of trim along the face; the hood over the cluster in front of the driver
     const faceZ = (y: number) => zLip + 0.015 - ((yLip - 0.01 - y) / 0.14) * 0.025;            // the face's z at height y (its foot is nearer the driver: it looks up at the eye)
     s.prism([[zF, c.cowl - 0.015], [zLip + 0.05, yLip], [faceZ(yLip - 0.01), yLip - 0.01], [faceZ(yLip - 0.2), yLip - 0.2], [zLip + 0.1, c.cowl - 0.36], [zF, c.cowl - 0.36]], -hw, hw, P.dash, { color: P.dashTop, below: c.cowl - 0.05 });
-    s.prism([[zLip + 0.2, yLip - 0.004], [zLip + 0.06, yLip + 0.06], [zLip - 0.03, yLip + 0.05], [zLip - 0.024, yLip + 0.03], [zLip + 0.03, yLip - 0.004]], dx - 0.165, dx + 0.165, P.dash, { color: P.dashTop, below: yLip });
+    // (its top 4 cm over the dash: at 6 cm it stood within a degree of the sightline over the bonnet and cut into the road there, tests/ld2Drive.test.ts)
+    s.prism([[zLip + 0.2, yLip - 0.004], [zLip + 0.06, yLip + HOOD], [zLip - 0.03, yLip + HOOD - 0.008], [zLip - 0.024, yLip + 0.022], [zLip + 0.03, yLip - 0.004]], dx - 0.165, dx + 0.165, P.dash, { color: P.dashTop, below: yLip });
     s.box([dx - 0.24 + hw, 0.012, 0.012], [(-hw + dx - 0.24) / 2, yLip - 0.022, faceZ(yLip - 0.022) - 0.004], P.strip);
     for (const vx of [-hw + 0.12, -0.17, 0.17]) s.box([0.12, 0.035, 0.012], [vx, yLip - 0.05, faceZ(yLip - 0.05) - 0.005], P.vent);   // air vents
     s.box([0.07, 0.11, 0.012], [hw - 0.07, yLip - 0.06, faceZ(yLip - 0.06) - 0.005], P.vent);
@@ -268,6 +348,9 @@ export class CarInterior {
     this.tris = [shell, this.spin, screens].reduce((t, m) => t + m.geometry.getAttribute('position').count / 3, 0);
     this.own.push(shell.geometry, this.spin.geometry, screens.geometry, sm, ...(this.tex ? [this.tex] : []));
   }
+
+  /** The camera's eye for the body in the driver's seat (driverEye): the top of its head and its scale there, or null for the design eye. */
+  fitEye(head: { top: number; scale: number } | null) { const e = driverEye(this.cabin, head); this.eye.set(e[0], e[1], e[2]); }
 
   /** The bonnet in the car's paint (`hex`), or none (null: the car's own shell is drawn from inside and shows its bonnet). */
   setPaint(hex: number | null) {

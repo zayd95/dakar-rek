@@ -6,11 +6,17 @@ import { roadCentre } from '../src/transport/lines';
 import { busyEdges, clearWidth, edgeKey, eventPieces, pieceSolids, roadEvents, waysIn, type RoadEventKind } from '../src/city/roadEvents';
 import { vehicleSpec, type VehicleKind } from '../src/actors/vehicleKit';
 import type { HubId } from '../src/core/types';
+import { CarInterior, HEADROOM, SEAT_VIEW, cabinOf, cockpitSight, designEye, driverEye, screenRows } from '../src/transport/carInterior';
+import { CABINS, SITTERS, playerSeatTop, rowOf, scaleAt } from '../src/transport/cabinFit';
+import { SIT_HIPS } from '../src/interact/seats';
+import { fovFor } from '../src/core/view';
+import { cabinInfo, cabinView, eyeInside, holdCabin } from '../src/transport/carCabin';
 
 /**
  * The driving blockers of the owner's iPhone playtest of 24 Oct 2026 (LD2.0-A, docs/ld2/proof/drive/): the pure parts.
  *  1. the way into the Almadies from Pikine was closed by a villa wall standing across the carriageway (src/road/chunks.ts `frame` past the road's end);
- *     road events stood on the first streets in from a road or a border street, and a travaux barrier's box reached 1.3 m into the lane round its panel.
+ *     road events stood on the first streets in from a road or a border street, and a travaux barrier's box reached 1.3 m into the lane round its panel;
+ *  2. at the wheel the body's own cabin (its driver's seat back) stood in front of the windscreen, and the eye did not follow the body in the seat.
  */
 
 const mats = new ChunkMats(true);
@@ -105,5 +111,82 @@ describe('road events never close the way in, and always leave a lane', () => {
     // squares of the car's half width, centred on its own axis (the old axis-aligned box of the car turned 0.5 rad reached 0.8 m past its body across the lane)
     for (const b of sq) { expect(b.ha).toBeCloseTo(v.width / 2, 6); expect(b.hc).toBeCloseTo(v.width / 2, 6); expect(Math.hypot(b.along - taxi.along, b.lat - taxi.lat)).toBeLessThanOrEqual(v.length / 2 - v.width / 2 + 1e-9); }
     const lats = sq.map(b => b.lat); expect(Math.max(...lats) - Math.min(...lats)).toBeGreaterThan(0.5);   // turned: the squares follow its heading across the lane
+  });
+});
+
+describe('at the wheel: the eye, the road over the bonnet, the wheel and the dash low in the frame', () => {
+  /** The player's cars, by the CABINS row their module uses, with the kit spec their interior is built from. */
+  const CARS: [string, string, ReturnType<typeof vehicleSpec>][] = [
+    ['Teranga', 'teranga', vehicleSpec('sedan', { seed: 1000, driver: false, passengers: false, model: 'teranga' })],
+    ['Rafet', 'rafet', vehicleSpec('sedan', { seed: 1000, driver: false, passengers: false, model: 'rafet' })],
+    ['Lamane Sport', 'suv', vehicleSpec('suv', { seed: 1000, driver: false, passengers: false, model: 'lamane' })],
+    ['Gaïndé', 'gainde', vehicleSpec('suv', { seed: 1000, driver: false, passengers: false, model: 'gainde' })],
+    ['Berline moderne', 'car', vehicleSpec('sedan', { seed: 14, driver: false, passengers: false })],
+    ['berline neuve', 'berline', vehicleSpec('luxury', { seed: 3, driver: false, passengers: false })],
+  ];
+  /** The eye of each player body (the studio's homme and femme, and the v4 body) in the driver's seat, as src/transport/ownedModule.ts seats it. */
+  const eyes = (id: string, k: ReturnType<typeof vehicleSpec>) => {
+    const c = cabinOf(k), drv = k.seats.find(s => s.kind === 'driver')!, row = rowOf(CABINS[id], 'driver'), origin = playerSeatTop(row, drv.top) - SIT_HIPS;
+    return (['meshy_m', 'meshy_f', 'v4'] as const).map(b => { const p = scaleAt(row, origin, SITTERS[b]); return { body: b, head: p, eye: driverEye(c, { top: p.head, scale: p.scale }) }; });
+  };
+
+  it('the eye is the body\'s own, held in the seat\'s travel: inside the cabin, under the headliner, in front of the seat back, behind the wheel; homme and femme alike', () => {
+    for (const [name, id, k] of CARS) {
+      const c = cabinOf(k), d = designEye(c), all = eyes(id, k);
+      for (const { body, head, eye } of all) {
+        const at = `${name} ${body} ${JSON.stringify(eye)}`;
+        expect(Math.abs(eye[0]), at).toBeLessThan(c.W / 2 - 0.25);
+        expect(c.roof - 0.04 - eye[1], at).toBeGreaterThanOrEqual(HEADROOM - 1e-9);                // never into the roof lining (the near plane is 0.1 m)
+        expect(eye[1], at).toBeLessThan(head.head);                                                 // under the top of the body's own head
+        expect(eye[1] - d[1], at).toBeGreaterThanOrEqual(-1e-9); expect(eye[1] - d[1], at).toBeLessThanOrEqual(0.04 + 1e-9);
+        expect(eye[2], at).toBeGreaterThan(c.frontZ - 0.3 + 0.08);                                 // in front of the seat back's face
+        expect(eye[2], at).toBeLessThan(c.zWs - 0.5);
+      }
+      const ys = all.map(a => a.eye[1]); expect(Math.max(...ys) - Math.min(...ys), name).toBeLessThan(0.05);
+    }
+  });
+
+  it('from every eye the road shows over the bonnet a few metres ahead, the rim of the wheel and the dash stay under that sightline, and no pillar, header or roof is within the near plane', () => {
+    for (const [name, id, k] of CARS) {
+      const c = cabinOf(k);
+      for (const { body, eye } of [...eyes(id, k), { body: 'design', eye: designEye(c) }]) {
+        const s = cockpitSight(c, eye), at = `${name} ${body} ${JSON.stringify(s)}`;
+        expect(s.nearRoad, at).toBeGreaterThan(3); expect(s.nearRoad, at).toBeLessThan(9);
+        expect(s.wheelTop - s.overNose, at).toBeGreaterThan(2);                                     // the wheel never hides the road
+        expect(s.dashLip - s.overNose, at).toBeGreaterThan(2);                                      // nor the dash, nor the cluster's hood
+        expect(s.pillar, at).toBeGreaterThan(SEAT_VIEW.near + 0.15); expect(s.header, at).toBeGreaterThan(SEAT_VIEW.near + 0.1); expect(s.headroom, at).toBeGreaterThan(SEAT_VIEW.near + 0.04);
+        expect(s.wheel, at).toBeGreaterThan(0.42); expect(s.wheel, at).toBeLessThan(0.62);
+      }
+    }
+  });
+
+  it('on a phone held upright (390 × 844) and on its side (844 × 390): the horizon in the upper part of the screen, a band of road under it (a tenth of the screen upright, nearly a fifth on its side: the SUVs see the road from 8 m), the wheel and the dash below the road', () => {
+    for (const [w, h, pitch, vfov, band] of [[390, 844, SEAT_VIEW.pitchPortrait, SEAT_VIEW.fovPortrait, 0.1], [844, 390, SEAT_VIEW.pitch, fovFor(844, 390), 0.18]] as const) {
+      for (const [name, id, k] of CARS) for (const { body, eye } of eyes(id, k)) {
+        const r = screenRows(cockpitSight(cabinOf(k), eye), pitch, vfov), at = `${name} ${body} ${w}×${h} ${JSON.stringify(r)}`;
+        expect(r.horizon, at).toBeGreaterThan(0.25); expect(r.horizon, at).toBeLessThan(0.45);
+        expect(r.nose - r.horizon, at).toBeGreaterThan(band);
+        expect(r.wheel, at).toBeGreaterThan(r.nose + 0.03); expect(r.dash, at).toBeGreaterThan(r.nose + 0.02);
+      }
+    }
+  });
+
+  it('fitEye moves the camera\'s eye, never the wheel, the dash or the pillars', () => {
+    const [, id, k] = CARS[2], ir = new CarInterior(cabinOf(k), 'premium'), before = ir.wheelAt.clone(), e = eyes(id, k)[0];
+    ir.fitEye({ top: e.head.head, scale: e.head.scale });
+    expect(ir.eye.toArray().map(v => +v.toFixed(4))).toEqual(e.eye); expect(ir.wheelAt.distanceTo(before)).toBe(0); expect(ir.design.toArray()).toEqual(designEye(cabinOf(k)));
+    ir.fitEye(null); expect(ir.eye.distanceTo(ir.design)).toBeLessThan(1e-4);
+  });
+
+  it('the body\'s own cabin (its seats and lining) is not drawn while the camera is at the wheel, and comes back for the street\'s eyes after', () => {
+    const body = new THREE.Group(), model = new THREE.Group(), cabin = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)), door = new THREE.Group();
+    cabin.name = 'cabin'; model.add(cabin, door); model.name = 'glb_teranga'; model.userData.vehicleSpec = {}; model.userData.kitDoor = door; model.userData.kitCabin = cabin; body.add(model);
+    cabin.visible = false; holdCabin(body, 'driver', true); cabinView(body, null);
+    expect(cabin.visible).toBe(true);                                                                // seen from the street: the driver in his seat
+    eyeInside(body, true); cabinView(body, null);
+    expect(cabin.visible).toBe(false); expect(cabinInfo(body).eyeInside).toBe(true); expect(cabinInfo(body).glassOn).toBe(false);
+    eyeInside(body, false); cabinView(body, null);
+    expect(cabin.visible).toBe(true);
+    holdCabin(body, 'driver', false); cabinView(body, null);
   });
 });
