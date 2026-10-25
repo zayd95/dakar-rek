@@ -1,6 +1,7 @@
 import type { HubId } from '../core/types';
 import { LINKS } from '../transport/hubLink';
 import type { Leg } from '../road/graph';
+import { routePath, snapToRoad, type Edge } from '../ui/minimapMath';
 
 /**
  * Turn-by-turn rules for a driver (pure, unit-tested; src/game/navigation.ts shows them on the goal line and the maps).
@@ -51,6 +52,52 @@ export function nextTurn(points: readonly Pt[], yaw: number): Turn {
   }
   along += Math.hypot(points[points.length - 1].x - points[points.length - 2].x, points[points.length - 1].z - points[points.length - 2].z);
   return { dir: 'straight', at: along };
+}
+
+/** How much longer (m) the way ahead may be than a U-turn's and still be preferred: a driver goes round a block rather than turn back. */
+export const UTURN_COST = 120;
+/** Once a U-turn has been called, the way ahead must win by this much more before the call is taken back (and the other way round). */
+export const UTURN_HYSTERESIS = 30;
+
+/**
+ * A driver's way to `goal` (the goal line's next turn and the minimap's dotted route at the wheel), from where the car is, as it heads (`yaw`):
+ * - it starts on the street the car is driving along, level with the car (the car's kerb lane is a few metres off the centre line the way follows:
+ *   that offset is neither a turn nor, by a junction, a diagonal), and in a junction the cross street (nearer to a car in its lane) does not capture it;
+ * - when the shortest way starts behind the car, the way ahead round the block is taken unless it is longer by more than `UTURN_COST`;
+ * - `wasBack` (the last call) holds a U-turn or a way round until the other is better by `UTURN_HYSTERESIS` more, so a near tie never flickers.
+ * Recompute it as often as wanted: it depends on the car's position and heading only.
+ */
+export function driverWay(edges: readonly Edge[], p: Pt, yaw: number, goal: Pt, wasBack: boolean | null = null): { points: Pt[]; length: number; back: boolean } {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  // the street the car drives along: the nearest edge running with the car (within 30°), within a street's width; a car halfway round a corner
+  // (no street within 30°) takes the better aligned of the two (within 50°), so the turn it is making is not read as a way behind it
+  const street = (minCos: number, byAlign: boolean) => {
+    let on: { p: Pt; e: Edge; d: number; c: number } | null = null;
+    for (const e of edges) {
+      const dx = e.bx - e.ax, dz = e.bz - e.az, l = Math.hypot(dx, dz); if (l < 1) continue;
+      const c = Math.abs((dx * fx + dz * fz) / l); if (c < minCos) continue;
+      const t = Math.max(0, Math.min(1, ((p.x - e.ax) * dx + (p.z - e.az) * dz) / (l * l))), q = { x: e.ax + dx * t, z: e.az + dz * t }, d = Math.hypot(q.x - p.x, q.z - p.z);
+      if (d < 9 && (!on || (byAlign ? c > on.c + 1e-6 || (Math.abs(c - on.c) < 1e-6 && d < on.d) : d < on.d))) on = { p: q, e, d, c };
+    }
+    return on;
+  };
+  const on = street(0.87, false) ?? street(0.64, true);
+  const from = (start: Pt, lead: Pt[], net: readonly Edge[] = edges) => {
+    const r = routePath(net, start, goal), pts = [start, ...lead, ...r.points.slice(1)].filter((q, i, a) => !i || Math.hypot(q.x - a[i - 1].x, q.z - a[i - 1].z) > 0.05);
+    return { points: pts, length: pts.reduce((m, q, i) => (i ? m + Math.hypot(q.x - pts[i - 1].x, q.z - pts[i - 1].z) : 0), 0) };
+  };
+  if (!on) { const r = routePath(edges, p, goal); return { ...r, back: nextTurn(r.points, yaw).dir === 'back' }; }
+  const best = from(on.p, []), back = nextTurn(best.points, yaw).dir === 'back';
+  if (!back) return { ...best, back: false };
+  // the way ahead: on to the end of this street the car is heading for, then the shortest way from there that does not come straight back down it
+  // (that would be the same U-turn a block later); none (a dead end, or the goal only reached back this way): the U-turn stands
+  const e = on.e, ahead = (e.bx - e.ax) * fx + (e.bz - e.az) * fz > 0 ? { x: e.bx, z: e.bz } : { x: e.ax, z: e.az };
+  const rest = edges.filter(k => k !== e);
+  const joins = snapToRoad(rest, ahead.x, ahead.z);                                             // another street must start where this one ends
+  if (!joins || Math.hypot(joins.p.x - ahead.x, joins.p.z - ahead.z) > 1 || routePath(rest, ahead, goal).points.length < 3) return { ...best, back: true };
+  const fwd = from(ahead, [ahead], rest);
+  const margin = UTURN_COST + (wasBack === true ? -UTURN_HYSTERESIS : wasBack === false ? UTURN_HYSTERESIS : 0);
+  return fwd.length <= best.length + margin ? { ...fwd, back: false } : { ...best, back: true };
 }
 
 /** The glyph of a turn on the goal line. */

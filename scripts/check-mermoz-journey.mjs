@@ -140,7 +140,7 @@ if (toDrop) {
   clearInterval(navSample);
   const backs = navLog.filter(n => /demi-tour/.test(n.t ?? '')).length;
   console.log('nav lines on the way to the drop-off', JSON.stringify(navLog));
-  console.log(`NOTE (known issue, docs/districts/M1-EVIDENCE.md): « Fais demi-tour » shown ${backs} times on the way to the drop-off`, `(${navLog.length} changes); route ${JSON.stringify(toDrop.map(q => [Math.round(q.x), Math.round(q.z)]))}`);
+  console.log(`NOTE (the goal line, docs/districts/M1-EVIDENCE.md known issue 1, fixed): « Fais demi-tour » shown ${backs} times on the way to the drop-off`, `(${navLog.length} changes); route ${JSON.stringify(toDrop.map(q => [Math.round(q.x), Math.round(q.z)]))}`);
 }
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 90000 }).catch(() => {});
 await page.waitForTimeout(1200); await shot('dropoff-card');
