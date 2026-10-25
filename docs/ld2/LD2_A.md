@@ -147,6 +147,28 @@ Each finding was reproduced before its fix; before/after evidence is in `docs/ld
 6. **The phone's Affaires:** the table's card (stock, customers, the last session, today and in total) and « Y aller ».
 7. **The neighbour:** Modou says one line about it, once.
 
+## The owner's second playtest (25 Oct, on the iPhone preview)
+### Standing arms (`docs/ld2/proof/arms/`)
+- **What it was:** the Idle clip holds the elbow nearly straight (2.9°), with the hand behind the hip; a Meshy mesh pinches at that elbow. Running looked right because the gait bends the arms.
+- **Fix:** standing, the studio bodies' elbow bends 16° and the upper arm comes 4° forward, on top of the clip (`src/actors/humanoid.ts` `relaxArms`, `BODY_FIT.idleArms`).
+  - It never adds up from frame to frame: three's mixer leaves a bone alone when the clip's value does not change.
+  - It is eased out as the gait's arms take over.
+- **Unchanged:** walking, running, sitting, the wheel and the v4 bodies.
+- **Check:** `scripts/check-standing-arms.mjs`, 10/10 (the build before fails all 6 standing checks).
+
+### The interior at the wheel (`docs/ld2/proof/interior/`)
+- **What was added:**
+  - a sculpted dashboard: a padded top with a rolled lip, the cluster's hood, vents, a glovebox seam;
+  - a centre console: gear lever and gaiter, handbrake, cup holders, armrest;
+  - sport seats: city charcoal fabric with ribbed grey inserts, premium black leather with tan inserts and stitching;
+  - a wheel with spokes and an airbag pad;
+  - door cards with an armrest and a pull.
+- **The pale band under the windscreen** in the owner's screenshot was a slit through to the ground. It is closed by a scuttle under the bonnet, and a second slit is closed by the floor.
+- **Budget:** the same 3 draw calls; 3 304 / 3 328 triangles (it was 1 122).
+
+### The Ngor fishing port
+It becomes « la traversée » in the next milestones (`docs/ROADMAP_NEXT.md` §6). Nothing in the world changes yet.
+
 ## Checks run on the integrated build
 | Check | Result |
 |---|---|
