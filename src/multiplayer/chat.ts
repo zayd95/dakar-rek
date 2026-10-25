@@ -395,10 +395,16 @@ export class ChatUi {
     // a phone in landscape (short screen): « Chat » on the same row as « En ligne », just left of it, rather than a
     // column of pills down the right edge of the view
     const beside = !!p && p.width > 0 && SHORT_LANDSCAPE.matches;
-    const top = !p ? 66 : beside ? p.top : p.bottom + 8, right = beside ? `${Math.round(innerWidth - p.left + 6)}px` : '';
+    // The pill hides in portrait while the connection is fine (src/multiplayer/style.css). « Chat » then goes under the right edge's column (the
+    // phone, the streak, the minimap) rather than over it; its panel still opens high, under the title and the streak.
+    const shown = !!p && p.width > 0;
+    const under = (id: string) => { const r = document.getElementById(id)?.getBoundingClientRect(); return r && r.width > 0 && r.right > innerWidth - 140 ? r.bottom + 8 : 0; };
+    const head = Math.max(66, under('place'), under('streakChip'));
+    const top = beside ? p!.top : shown ? p!.bottom + 8 : SHORT_LANDSCAPE.matches ? head : Math.max(head, under('minimap'));
+    const right = beside ? `${Math.round(innerWidth - p!.left + 6)}px` : '';
     if (this.button.style.top !== `${Math.round(top)}px`) this.button.style.top = `${Math.round(top)}px`;
     if (this.button.style.right !== right) this.button.style.right = right;
-    this.panel.style.setProperty('--chat-top', `${Math.round(this.button.getBoundingClientRect().bottom + 8)}px`);
+    this.panel.style.setProperty('--chat-top', `${Math.round(shown || beside ? this.button.getBoundingClientRect().bottom + 8 : head)}px`);
   }
   private updateBadge() {
     let total = online?.unread() ?? 0;                     // the Messages app's unread items: noticed from the street too
