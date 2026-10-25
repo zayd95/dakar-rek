@@ -14,7 +14,7 @@ export interface Spot { x: number; z: number; yaw: number }
 export type Side = 'x-' | 'x+' | 'z-' | 'z+';
 
 /** Rough places of the neighbourhoods on a map of Dakar (km; x east, z south): which side a taxi leaves by. */
-const MAP: Record<HubId, Pt> = { plateau: { x: 2, z: 4 }, corniche: { x: -1, z: 1 }, almadies: { x: -6, z: -3 }, pikine: { x: 8, z: -1 } };
+const MAP: Record<HubId, Pt> = { plateau: { x: 2, z: 4 }, corniche: { x: -1, z: 1 }, almadies: { x: -6, z: -3 }, pikine: { x: 8, z: -1 }, mermoz: { x: 0, z: -2 } };
 
 /** The side of hub `from` that faces hub `to`. */
 export function exitSide(from: HubId, to: HubId): Side {

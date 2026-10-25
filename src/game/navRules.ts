@@ -67,4 +67,4 @@ export function turnText(t: Turn, goal: string, through?: string): string {
 /** Metres inside a district from where it is entered to a point (along its grid of streets). */
 export const gridMetres = (a: Pt, b: Pt) => Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
 /** A district's name for the driver (« Plateau »). */
-export const HUB_SHORT: Record<HubId, string> = { pikine: 'Pikine', plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies' };
+export const HUB_SHORT: Record<HubId, string> = { pikine: 'Pikine', plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies', mermoz: 'Mermoz' };

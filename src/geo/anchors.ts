@@ -24,6 +24,7 @@ export const HUB_ANCHORS: Record<HubId, HubAnchor> = {
   corniche: { hub: 'corniche', name: 'Corniche · Fann', lngLat: [-17.4600, 14.6880], half: 127 },
   almadies: { hub: 'almadies', name: 'Almadies · Ngor', lngLat: [-17.5130, 14.7450], half: 127 },
   pikine: { hub: 'pikine', name: 'Pikine', lngLat: [-17.3930, 14.7540], half: 127 },
+  mermoz: { hub: 'mermoz', name: 'Mermoz · Sacré-Cœur', lngLat: [-17.4685, 14.7108], half: 127 },
 };
 
 const mPerDegLng = (lat: number) => M_PER_DEG * Math.cos((lat * Math.PI) / 180);

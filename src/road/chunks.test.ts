@@ -2,12 +2,21 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { CHUNK, ChunkMats, buildChunk, onDistrict } from './chunks';
 import { CorridorView } from './corridor';
-import { HALF_GROUND, ROADS, ROAD_HALF } from './routes';
+import { DIVIDED, HALF_GROUND, MEDIAN_HALF, ROADS, ROAD_HALF } from './routes';
+import { AVENUE_HALF, BUSWAY_HALF, inBusway } from './brt';
 import type { HubWorld } from '../world/types';
 
 const mats = new ChunkMats(true);
 const tris = (g: THREE.Group) => { let n = 0; g.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) n += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; }); return n; };
 const meshes = (g: THREE.Group) => { let n = 0; g.traverse(o => { if ((o as THREE.Mesh).isMesh) n++; }); return n; };
+
+/** Is a road-frame point on a BRT avenue (src/road/brt.ts: it runs across the road, up to 160 m away; its own tests are below)? */
+const onAvenue = (road: (typeof ROADS)[number], x: number, z: number) => road.brt.some(l => {
+  const dx = x - l.x, dz = z - l.z, t = dx * l.ux + dz * l.uz, lat = dx * l.fx + dz * l.fz;
+  return Math.abs(t) < l.len + 45 && Math.abs(lat) < AVENUE_HALF + 30 && Math.abs(t) > 6;
+});
+/** The VDN's central median (a divided stretch): solid by design, between the two carriageways. */
+const onMedian = (road: (typeof ROADS)[number], x: number, z: number) => { const p = road.spine.project(x, z); return DIVIDED.has(road.profileAt(p.s)) && Math.abs(p.d) < MEDIAN_HALF + 0.3; };
 
 for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
   const n = Math.ceil(road.length / CHUNK);
@@ -37,7 +46,8 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
   it('keep every solid thing close to the road (a collider far from it would be a wall in the middle of nowhere)', () => {
     for (const c of all.flatMap(k => k.colliders)) {
       const x = (c.x0 + c.x1) / 2, z = (c.z0 + c.z1) / 2, p = road.spine.project(x, z);
-      expect(Math.abs(p.d)).toBeLessThan(26); expect(c.h).toBeGreaterThan(0); expect(c.x1).toBeGreaterThan(c.x0); expect(c.z1).toBeGreaterThan(c.z0);
+      if (!onAvenue(road, x, z)) expect(Math.abs(p.d)).toBeLessThan(26);
+      expect(c.h).toBeGreaterThan(0); expect(c.x1).toBeGreaterThan(c.x0); expect(c.z1).toBeGreaterThan(c.z0);
     }
   });
 
@@ -55,6 +65,7 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
       const half = Math.max(c.x1 - c.x0, c.z1 - c.z0) / 2;
       if (road.junctionS.some(j => Math.abs(j.s - p.s) < 50)) continue;
       if (road.checkpointS !== null && Math.abs(p.s - road.checkpointS) < 1.2) continue;          // the checkpoint's island: below
+      if (onMedian(road, x, z)) continue;                                                           // the VDN's median: below
       expect(Math.abs(p.d) + half).toBeGreaterThan(ROAD_HALF - 0.01);
     }
   });
@@ -82,6 +93,43 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
     }
     // their people: at the kerb's edge at the nearest, never in the carriageway
     for (const c of all) for (const q of c.people) expect(Math.abs(road.spine.project(q.x, q.z).d)).toBeGreaterThan(ROAD_HALF + 0.4 - (road.checkpointS !== null && Math.abs(road.spine.project(q.x, q.z).s - road.checkpointS) < 1 ? 99 : 0));
+  });
+});
+
+describe('the VDN (corniche-mermoz): a divided artery', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, n = Math.ceil(road.length / CHUNK), all = Array.from({ length: n }, (_, i) => buildChunk({ road, mats, lite: true }, i));
+  it('has a solid median along its divided stretch (nobody crosses it), open at its junctions', () => {
+    const solids = all.flatMap(c => c.colliders);
+    let divided = 0, held = 0;
+    for (let s = 10; s < road.length - 10; s += 5) {
+      if (!DIVIDED.has(road.profileAt(s)) || road.junctionS.some(j => Math.abs(j.s - s) < 30)) continue;
+      divided++; const f = road.spine.at(s);
+      if (solids.some(c => f.x > c.x0 - 0.2 && f.x < c.x1 + 0.2 && f.z > c.z0 - 0.2 && f.z < c.z1 + 0.2)) held++;
+    }
+    expect(divided).toBeGreaterThan(40); expect(held / divided).toBeGreaterThan(0.95);
+    for (const j of road.junctionS) { const f = road.spine.at(j.s); expect(solids.some(c => f.x > c.x0 && f.x < c.x1 && f.z > c.z0 && f.z < c.z1), j.name).toBe(false); }
+  });
+});
+
+describe('the BRT crossing at Sacré-Cœur (src/road/brt.ts)', () => {
+  const road = ROADS.find(r => r.id === 'corniche-mermoz')!, lay = road.brt[0];
+  const chunk = buildChunk({ road, mats, lite: false }, Math.floor(lay.s / CHUNK));
+  const solid = (x: number, z: number) => chunk.colliders.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
+  it('is on the road to Mermoz, once', () => { expect(road.brt.length).toBe(1); expect(ROADS.filter(r => r.brt.length).map(r => r.id)).toEqual(['corniche-mermoz']); });
+  it('reserves the busway: it is not drivable ground anywhere along the avenue; the avenue\'s car carriageways are', () => {
+    for (let t = 22; t < lay.len - 20; t += 4) for (const side of [1, -1]) {
+      for (const lat of [-3.35, 0, 3.35]) { const p = lay.at(side * t, lat); expect(road.ground.contains(p.x, p.z, 0), `busway t=${side * t} lat=${lat}`).toBe(false); expect(inBusway(lay, p.x, p.z)).toBe(true); }
+      for (const lat of [-9.3, 9.3]) { const p = lay.at(side * t, lat); expect(road.ground.contains(p.x, p.z, 1), `car lane t=${side * t} lat=${lat}`).toBe(true); }
+    }
+  });
+  it('closes the busway\'s mouths at the crossing with solid bollards (a car never turns into it); the crossing itself and the main road are clear', () => {
+    for (const side of [1, -1]) for (let lat = -BUSWAY_HALF + 0.6; lat < BUSWAY_HALF - 0.5; lat += 0.8) { const p = lay.at(side * 18.6, lat); expect(solid(p.x, p.z), `mouth ${side} ${lat}`).toBe(true); }
+    for (let t = -9; t <= 9; t += 1) for (const lat of [-3.35, 3.35]) { const p = lay.at(t, lat); expect(solid(p.x, p.z), `crossing ${t}`).toBe(false); expect(road.ground.contains(p.x, p.z, 0)).toBe(true); }
+  });
+  it('has its station island with people waiting, off the carriageways', () => {
+    const p = lay.at(33, 0); expect(solid(p.x, p.z)).toBe(true);
+    const waiting = chunk.people.filter(q => inBusway(lay, q.x, q.z));
+    expect(waiting.length).toBeGreaterThanOrEqual(2);
   });
 });
 

@@ -45,6 +45,8 @@ export const HUB_STREETS: Record<HubId, HubStreets> = {
   pikine: { level: 0.9, stops: 1.15, groups: 1.25, busy: [{ name: 'Grand-rue de Pikine', weight: 6, segs: [[-60, -60, 60, -60], [60, -60, 60, 0]] }] },
   corniche: { level: 0.55, stops: 0.75, groups: 1.1, busy: [] },
   almadies: { level: 0.35, stops: 0.5, groups: 0.4, busy: [] },
+  // Sacré-Cœur's shopping street (the first column, by the way in) is busy; Mermoz's villa streets beyond are calm
+  mermoz: { level: 0.55, stops: 0.7, groups: 0.8, busy: [{ name: 'Rue de Sacré-Cœur', weight: 5, segs: [[-67, -127, -67, 127]] }] },
 };
 /** People waiting at a stop on a busy street come on top of the hour's number (the Sandaga and Arène stops). */
 export const BUSY_STOP_EXTRA = 2;

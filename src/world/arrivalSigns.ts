@@ -15,6 +15,7 @@ export const HUB_TITLE: Record<HubId, { name: string; line: string }> = {
   plateau: { name: 'PLATEAU', line: 'Bienvenue · le centre-ville' },
   corniche: { name: 'CORNICHE', line: 'Bienvenue · route de la côte' },
   almadies: { name: 'ALMADIES', line: 'Bienvenue · la pointe de Dakar' },
+  mermoz: { name: 'MERMOZ · SACRÉ-CŒUR', line: 'Bienvenue · le quartier des villas' },
 };
 /** Where the boards of a district stand (hub-local): a few metres in from each way in, on the right of the arriving traffic, and the way they face. */
 export function arrivals(hub: HubId): { x: number; z: number; yaw: number; from: string }[] {

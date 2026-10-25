@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { animateVehicle, buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { makeCarRapide } from '../actors/vehicles';
 import { wrapAngle, type Pt } from './network';
-import type { Profile, Road } from './routes';
+import { DIVIDED, type Profile, type Road } from './routes';
 
 /**
  * Traffic on a road between districts: everyday Dakar, not a demolition derby. Kit vehicles and motorbikes in both directions, right-hand, each in its lane, a different mix on every
@@ -27,9 +27,12 @@ const MIXES: Record<Profile, Mix> = {
   villa: [['sedan', 24], ['suv', 20], ['luxury', 14], ['taxi', 14], ['moto', 8], ['pickup', 8], ['bus', 6], ['truck', 6]],
   coast: [['sedan', 20], ['taxi', 18], ['suv', 16], ['bus', 12], ['moto', 12], ['luxury', 8], ['pickup', 6], ['truck', 4], ['carRapide', 4]],
   downtown: [['taxi', 28], ['bus', 18], ['moto', 14], ['carRapide', 14], ['sedan', 12], ['suv', 6], ['truck', 4], ['pickup', 4]],
+  // the VDN: a fast divided artery (taxis, family saloons, 4×4s, Dem Dikk buses, lorries); Sacré-Cœur: the neighbourhood's shopping street (taxis, motorbikes, pick-ups delivering)
+  vdn: [['taxi', 20], ['sedan', 20], ['suv', 16], ['bus', 10], ['luxury', 8], ['truck', 8], ['moto', 10], ['pickup', 6], ['carRapide', 2]],
+  sacrecoeur: [['taxi', 26], ['sedan', 18], ['moto', 18], ['suv', 10], ['pickup', 10], ['carRapide', 8], ['luxury', 6], ['bus', 4]],
 };
 /** How fast the traffic moves on each stretch, against the vehicles' own pace (a busy market crawls, an artery flows). */
-const PACE: Record<Profile, number> = { banlieue: 0.9, market: 0.8, artery: 1.35, villa: 1.1, coast: 1.25, downtown: 0.85 };
+const PACE: Record<Profile, number> = { banlieue: 0.9, market: 0.8, artery: 1.35, villa: 1.1, coast: 1.25, downtown: 0.85, vdn: 1.4, sacrecoeur: 0.9 };
 /** Lateral offset of a lane's centre from the road's centre line (the carriageway is 11 m: lane centres at 2.8 m, motorbikes near the edge). */
 const LANE: Partial<Record<VehicleKind, number>> = { moto: 4.2, bus: 3.0, truck: 3.0 };
 const KERB_LANE = 4.4;
@@ -61,7 +64,11 @@ interface Car {
 export interface Footprint { x: number; z: number; yaw: number; hl: number; hw: number }
 
 /** What the traffic looks at ahead of a car. `solid`: road-frame position of a collider (stall, parked car…). `player`: road-frame position of the player's vehicle or body. */
-export interface TrafficWorld { solid(x: number, z: number, r: number): boolean; player: Pt | null }
+export interface TrafficWorld {
+  solid(x: number, z: number, r: number): boolean; player: Pt | null;
+  /** The signals of the road (the BRT crossing, src/road/brt.ts): for traffic going `dir`, the stop lines it must hold at now (arc lengths). */
+  signals?: (dir: 1 | -1) => { stopS: number; stop: boolean; amber: boolean }[];
+}
 
 export interface TrafficOpts {
   /** A driver sounds a horn: 0 (far) … 1 (close). The game answers with a very quiet recorded horn; checks leave it out. */
@@ -210,6 +217,11 @@ export class CorridorTraffic {
     return true;
   }
 
+  /** Is the car held by a red signal (nobody overtakes a queue at a red light)? */
+  private atSignal(c: Car, w: TrafficWorld) {
+    return !!w.signals?.(c.dir).some(sg => sg.stop && (sg.stopS - c.s) * c.dir > -1 && (sg.stopS - c.s) * c.dir < 80);
+  }
+
   update(dt: number, w: TrafficWorld, focus: Pt | null) {
     const L = this.road.length;
     for (const c of this.cars) {
@@ -244,6 +256,15 @@ export class CorridorTraffic {
         if (ghost && w.solid(x, z, c.hw)) gap = Math.min(gap, d);                       // a ghost still stops for walls
       }
 
+      // ---- a signal ahead (the BRT crossing): red, stop at the line; amber, stop if there is room to, go on if already on it
+      if (w.signals && !ghost) for (const sg of w.signals(c.dir)) {
+        if (!sg.stop) continue;
+        const toLine = (sg.stopS - c.s) * c.dir - c.hl;
+        if (toLine < -0.5 || toLine > look + 30) continue;                              // already past it, or far
+        if (sg.amber && toLine < Math.max(3, c.v * c.v / (2 * 6))) continue;             // too close to stop for an amber: clear the crossing
+        if (toLine + 6 < gap) { gap = toLine + 6; blockerV = 0; blocker = null; }       // + 6: `want` brings a car to rest 6 m short of a gap
+      }
+
       // ---- a few cars hesitate for a moment (a pedestrian, a doubt): everyday irregularity
       if (!c.pull && !c.ov && c.nextPause <= 0 && dFocus > 25) { c.pause = 1.2 + this.rand() * 2.2; c.nextPause = 45 + this.rand() * 90; this.stats.hesitations++; }
 
@@ -270,7 +291,7 @@ export class CorridorTraffic {
       // ---- stuck behind something that does not move: pass it by the other lane when that lane is clear (never when it is not)
       const stationary = blockerV < 1 && gap < 45;
       if (stationary && c.v < 4 && !c.pull && !ghost) c.blockT += dt; else if (!stationary) c.blockT = Math.max(0, c.blockT - dt * 2);
-      if (!c.ov && !c.pull && c.blockT > 1.6 && c.across < 0.05 && gap < 40 && !(byPlayer && !solidAhead && !blocker)) {
+      if (!c.ov && !c.pull && c.blockT > 1.6 && c.across < 0.05 && gap < 40 && !(byPlayer && !solidAhead && !blocker) && !DIVIDED.has(prof) && !this.atSignal(c, w)) {
         if (this.oppositeClear(c, w, gap + c.hl * 2 + 70)) {
           c.ov = { until: c.s + c.dir * (gap + (blocker ? blocker.hl * 2 : 6) + c.hl + 12), blockerS: c.s + c.dir * (gap + c.hl) };
           c.ov.car = blocker;

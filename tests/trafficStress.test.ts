@@ -201,6 +201,7 @@ describe('traffic on the roads: life, and never a trap', () => {
       for (let i = 0; i < 60 * 70; i++) {
         step(m, 1 / 60, drv);
         const p = m.road.spine.project(m.s.x, m.s.z, cur, 200); cur = p.s;
+        if (back ? p.s < 40 : p.s > road.length - 40) break;                         // arrived: standing at the end of the road is not being stuck (a short road is driven in under 70 s)
         if (Math.abs(p.s - lastS) < 0.02) still += 1 / 60; else { still = 0; lastS = p.s; }
         worstStuck = Math.max(worstStuck, still);
       }

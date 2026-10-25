@@ -18,6 +18,7 @@ const PARKED_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   corniche: [['sedan', 30], ['taxi', 20], ['suv', 18], ['luxury', 12], ['moto', 12], ['pickup', 8]],
   almadies: [['suv', 32], ['luxury', 28], ['sedan', 22], ['taxi', 8], ['moto', 6], ['pickup', 4]],
   pikine: [['moto', 26], ['sedan', 20], ['taxi', 18], ['pickup', 18], ['suv', 8], ['carRapide', 10]],
+  mermoz: [['sedan', 30], ['suv', 22], ['taxi', 12], ['luxury', 10], ['pickup', 12], ['moto', 14]],
 };
 /** Distance from the road centre line to the parked vehicle's centre (sidewalks start at 5 m). */
 export const PARK_OFFSET = 4.3;

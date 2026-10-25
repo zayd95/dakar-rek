@@ -1,5 +1,6 @@
 import type { HubId } from '../core/types';
 import { Ground, Spine, fillet, type Arm, type Pt, type Pose } from './network';
+import { brtGroundArms, brtLayout, type BrtLayout } from './brt';
 
 /**
  * The roads that really join two districts: a hand-simplified alignment of an actual Dakar road, in the game's metres, in the frame of its first district (`a`).
@@ -19,7 +20,15 @@ export type LngLat = [number, number];
 
 export interface RouteAnchor { name: string; /** index of the control node it stands at */ node: number; lngLat: LngLat }
 
-export interface JunctionDef { name: string; node: number; /** the side roads: left and/or right of the travel direction (a → b), their length (m) */ arms: { side: 1 | -1; len: number }[] }
+export interface JunctionDef {
+  name: string; node: number; /** the side roads: left and/or right of the travel direction (a → b), their length (m) */ arms: { side: 1 | -1; len: number }[];
+  /**
+   * The side roads are a BRT corridor (Sacré-Cœur, src/road/brt.ts): a reserved two-way busway in the middle of a wide avenue, a station island beside the crossing,
+   * the avenue's own car lanes either side. Cars and the player never enter the busway (kerbs and bollards are solid; GPS never routes through a side road), the
+   * crossing has a signal that holds the main road while a bus crosses.
+   */
+  brt?: boolean;
+}
 
 export interface RouteDef {
   id: string;
@@ -42,7 +51,11 @@ export interface RouteDef {
 }
 
 /** The look of the roadside: Pikine's dust and breeze block, the market junction, the wide urban road, the white walls and palms of Almadies, the coast road, the old downtown. */
-export type Profile = 'banlieue' | 'market' | 'artery' | 'villa' | 'coast' | 'downtown';
+export type Profile = 'banlieue' | 'market' | 'artery' | 'villa' | 'coast' | 'downtown' | 'vdn' | 'sacrecoeur';
+/** Stretches with a raised central median (the VDN): two separate carriageways, nobody overtakes across it, and a car cannot turn round there. */
+export const DIVIDED: ReadonlySet<Profile> = new Set<Profile>(['vdn']);
+/** Half the width of the central median of a divided stretch (m): the lanes (centres at 2.8 m) keep a metre and a half of clearance from it. */
+export const MEDIAN_HALF = 0.8;
 
 /** Carriageway and shoulders (m). The ground a vehicle or a walker may use is `HALF_GROUND` either side of the centre line; beyond it stand walls, hedges and fences. */
 export const ROAD_HALF = 5.5;
@@ -114,6 +127,32 @@ export const ROUTES: readonly RouteDef[] = [
     profile: [[0, 'coast'], [0.45, 'artery'], [0.78, 'downtown']],
     swap: 0.5,
   },
+  {
+    // Corniche · Fann → Avenue Cheikh Anta Diop (Fann, Point E) → the VDN north, a divided artery with a planted median → the Sacré-Cœur exit, east → the BRT corridor
+    // (Sacré-Cœur, the busway in the middle of its avenue, a station by the crossing) → Mermoz · Sacré-Cœur, entered by its west edge on its middle street.
+    // A leaf of the network (no cycle to close): Mermoz's origin is (1027, −860) in the Corniche's frame, clear of every other district's ground.
+    // Compressed geography (docs/districts/M1-MERMOZ.md): the real VDN runs between Mermoz (west) and Sacré-Cœur (east); here the road comes off it into the district's
+    // Sacré-Cœur side first, then its quieter Mermoz villa streets.
+    id: 'corniche-mermoz', a: 'corniche', b: 'mermoz', condensed: 3,
+    nodes: [{ x: H, z: -60 }, { x: 240, z: -60 }, { x: 430, z: -180 }, { x: 520, z: -520 }, { x: 560, z: -800 }, { x: 780, z: -860 }, { x: 900, z: -860 }],
+    radius: 150,
+    aMouth: { x: H, z: -60, yaw: Math.PI / 2 }, bMouth: { x: -H, z: 0, yaw: Math.PI / 2 },
+    anchors: [
+      { name: 'Corniche · Fann', node: 0, lngLat: [-17.4560, 14.6880] },
+      { name: 'Fann · Point E', node: 2, lngLat: [-17.4600, 14.6950] },
+      { name: 'VDN · Mermoz', node: 3, lngLat: [-17.4650, 14.7040] },
+      { name: 'Sacré-Cœur', node: 4, lngLat: [-17.4630, 14.7130] },
+      { name: 'BRT · Sacré-Cœur', node: 5, lngLat: [-17.4600, 14.7150] },
+      { name: 'Mermoz · Sacré-Cœur', node: 6, lngLat: [-17.4685, 14.7108] },
+    ],
+    junctions: [
+      { name: 'Fann · Point E', node: 2, arms: [{ side: 1, len: 45 }, { side: -1, len: 45 }] },
+      { name: 'Échangeur de Sacré-Cœur', node: 4, arms: [{ side: -1, len: 50 }] },
+      { name: 'Sacré-Cœur · BRT', node: 5, arms: [{ side: 1, len: 130 }, { side: -1, len: 130 }], brt: true },
+    ],
+    profile: [[0, 'coast'], [0.14, 'artery'], [0.33, 'vdn'], [0.74, 'sacrecoeur']],
+    swap: 0.5,
+  },
 ];
 
 /** A route with its derived geometry. */
@@ -131,7 +170,9 @@ export class Road {
   readonly dx: number; readonly dz: number;
   /** Arc lengths of the anchors and junctions. */
   readonly anchorS: { name: string; s: number; lngLat: LngLat }[];
-  readonly junctionS: { name: string; s: number; x: number; z: number; yaw: number; arms: Arm[] }[];
+  readonly junctionS: { name: string; s: number; x: number; z: number; yaw: number; arms: Arm[]; brt?: BrtLayout }[];
+  /** The BRT crossings of the road (src/road/brt.ts): their side roads are an avenue with a busway, not plain arms. */
+  readonly brt: BrtLayout[] = [];
   /** The district swap happens here (arc length), well out of sight of both districts; `HYST` metres of play each way so a car that stops on the line does not swap back and forth. */
   readonly swapS: number;
   /** Arc length of the police checkpoint's rond-point (RouteDef.checkpoint), or null. */
@@ -145,6 +186,11 @@ export class Road {
     this.arms = [];
     this.junctionS = def.junctions.map(j => {
       const s = sOf(j.node), at = this.spine.at(s), lx = Math.cos(at.yaw), lz = -Math.sin(at.yaw);
+      if (j.brt) {
+        const lay = brtLayout({ s, x: at.x, z: at.z, yaw: at.yaw }, Math.max(...j.arms.map(m => m.len)));
+        this.arms.push(...brtGroundArms(lay)); this.brt.push(lay);
+        return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms: [], brt: lay };
+      }
       const arms = j.arms.map(m => ({ a: { x: at.x, z: at.z }, b: { x: at.x + lx * m.side * m.len, z: at.z + lz * m.side * m.len }, half: ROAD_HALF * 0.8 + 1 }));
       this.arms.push(...arms);
       return { name: j.name, s, x: at.x, z: at.z, yaw: at.yaw, arms };

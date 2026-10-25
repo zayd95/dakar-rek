@@ -7,7 +7,8 @@ import { hubSurface, lightPoolTexture } from '../world/builder';
 import { rng } from '../core/rng';
 import type { Collider, HubWorld } from '../world/types';
 import type { PersonLook } from '../actors/humanoid';
-import { ROAD_HALF, SHOULDER, type Profile, type Road } from './routes';
+import { DIVIDED, MEDIAN_HALF, ROAD_HALF, SHOULDER, type Profile, type Road } from './routes';
+import { MAIN_STOP, buildBrtStatic } from './brt';
 
 /**
  * One stretch of a road between districts, built from its centre line: ground, carriageway, kerbs, markings and the roadside (lamps, poles, walls, houses, stalls, parked vehicles…).
@@ -49,7 +50,7 @@ export interface Chunk {
 }
 
 /** The chance a 100 m stretch has a flower and plant seller on its verge (a second one, 40 % of it), by the roadside's look: most on the wide urban road (the VDN). */
-export const FLOWER_ODDS: Record<Profile, number> = { artery: 0.8, market: 0.55, villa: 0.5, coast: 0.35, downtown: 0.25, banlieue: 0.3 };
+export const FLOWER_ODDS: Record<Profile, number> = { artery: 0.8, market: 0.55, villa: 0.5, coast: 0.35, downtown: 0.25, banlieue: 0.3, vdn: 0.85, sacrecoeur: 0.3 };
 
 const lerpHex = (a: number, b: number, t: number) => new THREE.Color(a).lerp(new THREE.Color(b), Math.max(0, Math.min(1, t)));
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -148,6 +149,17 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   // junction arms and their zebra crossings
   for (const j of road.junctionS) {
     if (j.s < s0 - 60 || j.s > s1 + 60) continue;
+    if (j.brt) {
+      // the BRT avenue (src/road/brt.ts), built once by the chunk that holds the crossing; the main road's stop lines and zebras before it, both ways
+      if (j.s >= s0 && j.s < s0 + CHUNK) buildBrtStatic(j.brt, { plain, asphalt }, colliders, people, o.lite, R);
+      for (const dir of [1, -1]) {
+        const f = frame(road, j.s - dir * MAIN_STOP);
+        for (let k = 0; k < 5; k++) plain.flat(0.45, 1.0, f.x - f.lx * dir * (0.7 + k * 1.0), MARK_Y, f.z - f.lz * dir * (0.7 + k * 1.0), 0xeeeae0, f.yaw + Math.PI / 2);   // the stop line across the approach lane
+        const z = frame(road, j.s - dir * (MAIN_STOP + 3));
+        for (let k = -4; k <= 4; k++) plain.flat(2.6, 0.5, z.x + z.lx * k * 1.15, MARK_Y, z.z + z.lz * k * 1.15, 0xe8e4d8, z.yaw);
+      }
+      continue;
+    }
     for (const m of j.arms) {
       asphalt.coloured(strip(m.a.x, m.a.z, m.b.x, m.b.z, m.half, ROAD_Y + 0.003, ASPHALT3));
       const dx = m.b.x - m.a.x, dz = m.b.z - m.a.z, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l, yaw = Math.atan2(ux, uz);
@@ -165,7 +177,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   for (let s = Math.ceil(s0 / 9) * 9; s < Math.min(s1 - 4, L); s += 9) {
     const prof = road.profileAt(s);
     const dirt = smooth(40, 220, s) < 0.6 && s < L / 2;
-    if (dirt || prof === 'banlieue') continue;
+    if (dirt || prof === 'banlieue' || DIVIDED.has(prof)) continue;
     if (nearJunction(s, 8)) continue;
     const f = frame(road, s + 1.5);
     plain.flat(0.2, 3.2, f.x, MARK_Y, f.z, 0xe8e4d8, f.yaw);
@@ -431,6 +443,54 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
       case 'coast':
         if (!near) { if (s % 36 === 0) lamp(s, side); palm(s + 3, side * (VERGE + 1.5), 1); }
         break;
+      case 'vdn':
+        // the VDN: apartment blocks of six to ten floors set back behind the verge (some still being built, a crane over them), palms and hedges on the verge, billboards;
+        // its lamps stand in the median (below)
+        if (!near) {
+          if (R() < 0.18) billboard(s + 2, side);
+          if (R() < 0.45) palm(s + 3, side * (VERGE + 1 + R() * 2), 0.9 + R() * 0.3);
+          for (const sd of [-1, 1]) if (R() < 0.42) {
+            const h = 3.2 * (6 + Math.floor(R() * 5)), lat = sd * (VERGE + 14 + R() * 16), col = [0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4, 0xe9c99a][Math.floor(R() * 5)];
+            house(s + 4, lat, 13 + R() * 6, 12 + R() * 5, h, col, true);
+            if (R() < 0.18) guarded(place(s + 4, lat), 3, 3, () => {                                     // a crane over a block still going up
+              const p = place(s + 4, lat), top = h + 12;
+              plain.box(0.9, top, 0.9, p.x, 0, p.z, 0xd9a12a); plain.box(16, 0.7, 0.8, p.x + p.f.lx * 4, top, p.z + p.f.lz * 4, 0xd9a12a, p.yaw + Math.PI / 2);
+              plain.box(2, 1.6, 1.6, p.x - p.f.lx * 3, top - 1.4, p.z - p.f.lz * 3, 0x8a8f96, p.yaw);
+            });
+          }
+          if (s % 48 === 0) for (const sd of [-1, 1]) wall(s, sd, 11, 0xe9e2d4, 1.4);
+        }
+        break;
+      case 'sacrecoeur':
+        // Sacré-Cœur's commercial approach: three to six floors close to the pavement, shops with their boards, stalls under parasols, motorbikes and cars at the kerb
+        if (!near) {
+          if (s % 36 === 0) lamp(s, side);
+          if (s % 24 === 0) stall(s + 2, side);
+          for (const sd of [-1, 1]) if (R() < 0.85) {
+            const h = 3.2 * (3 + Math.floor(R() * 4)), lat = sd * (VERGE + 6 + R() * 3), col = [0xf1e6d2, 0xe9cfae, 0xdfe6e8, 0xf4efe6, 0xe3c9a6, 0xc7d5df, 0xdba57c][Math.floor(R() * 7)];
+            house(s + 4, lat, 10 + R() * 4, 9 + R() * 3, h, col, true);
+            const b = place(s + 4, sd * (VERGE + 0.9)); guarded(b, 0.3, 4, () => plain.box(0.12, 0.7, 4, b.x, 2.6, b.z, AWNING[Math.floor(R() * AWNING.length)], b.yaw));
+          }
+        }
+        break;
+    }
+  }
+  // the VDN's raised central median: a kerbed island, its bed of bougainvillea and low palms, double-armed lamps every 36 m; open at the junctions (solid everywhere else)
+  for (let s = Math.ceil(s0 / 4) * 4; s < Math.min(L - 2, s0 + CHUNK); s += 4) {
+    if (!DIVIDED.has(road.profileAt(s)) || nearJunction(s, 26)) continue;
+    const p = place(s + 2, 0);
+    plain.box(MEDIAN_HALF * 2, 0.22, 4.05, p.x, ROAD_Y - 0.02, p.z, 0xd8d2c4, p.yaw);
+    plain.box(MEDIAN_HALF * 2 - 0.3, 0.05, 4.05, p.x, ROAD_Y + 0.2, p.z, 0x7a6a4a, p.yaw);
+    if (!o.lite || s % 8 === 0) plain.blob(0.55 + R() * 0.2, p.x, ROAD_Y + 0.62, p.z, R() < 0.55 ? [0xd23a8c, 0xe2588f, 0xc2307a][Math.floor(R() * 3)] : 0x3f7a35, 0.75, 0);
+    for (let k = 0; k < 4; k++) { const q = place(s + 0.5 + k, 0); colliders.push({ x0: q.x - MEDIAN_HALF + 0.05, x1: q.x + MEDIAN_HALF - 0.05, z0: q.z - MEDIAN_HALF + 0.05, z1: q.z + MEDIAN_HALF - 0.05, h: 0.6 }); }   // small squares: never swelling toward the lanes in a bend
+    if (s % 36 === 0) {
+      plain.cyl(0.09, 0.13, 8.5, p.x, ROAD_Y + 0.22, p.z, 0x9aa0a6, 6);
+      for (const sd of [-1, 1]) {
+        const hx = p.x + p.f.lx * sd * 1.6, hz = p.z + p.f.lz * sd * 1.6;
+        plain.box(3.2, 0.1, 0.1, p.x + p.f.lx * sd * 0.8, 8.6, p.z + p.f.lz * sd * 0.8, 0x9aa0a6, p.yaw + Math.PI / 2);
+        bulbs.box(0.55, 0.14, 0.3, hx, 8.5, hz, 0xfff1c0, p.yaw + Math.PI / 2);
+        const g = new THREE.PlaneGeometry(14, 14); g.rotateX(-Math.PI / 2); g.translate(hx, ROAD_Y + 0.06, hz); pools.push(g);
+      }
     }
   }
   // people waiting at the public-transport stops (where taxis, car rapides and buses pull over), and standing in small groups at the junctions: a few, at the kerb, never in the carriageway
@@ -505,7 +565,7 @@ const ASPHALT3 = new THREE.Color(ASPHALT);
 
 /** What a board at a junction says the road ahead leads to. */
 function signTarget(road: Road, dir: 1 | -1 | number): string {
-  const names: Record<string, string> = { pikine: 'PIKINE', almadies: 'ALMADIES', plateau: 'PLATEAU', corniche: 'CORNICHE' };
+  const names: Record<string, string> = { pikine: 'PIKINE', almadies: 'ALMADIES', plateau: 'PLATEAU', corniche: 'CORNICHE', mermoz: 'MERMOZ' };
   return names[dir > 0 ? road.def.b : road.def.a] ?? '';
 }
 

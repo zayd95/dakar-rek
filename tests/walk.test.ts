@@ -26,10 +26,10 @@ describe('on foot between neighbourhoods', () => {
       expect(walkMinutes(b, a)).toBe(m);
     }
     expect(walkCard('pikine', 105)).toBe('🚶 À pied vers Pikine · ≈ 105 min');
-    expect(walkTargets('plateau').map(t => t.hub)).toEqual(['corniche', 'pikine', 'almadies']);   // nearest first
+    expect(walkTargets('plateau').map(t => t.hub)).toEqual(['corniche', 'mermoz', 'pikine', 'almadies']);   // nearest first
   });
   it('every neighbourhood has ways out on foot, none into the sea; each trip leaves by the side facing the other one', () => {
-    const sea: Record<HubId, 'west' | 'north' | null> = { plateau: null, corniche: 'west', almadies: 'north', pikine: null };
+    const sea: Record<HubId, 'west' | 'north' | null> = { plateau: null, corniche: 'west', almadies: 'north', pikine: null, mermoz: null };
     for (const h of HUB_IDS) {
       const ways = waysOut(sea[h], 128);
       expect(ways.length).toBe(sea[h] ? 3 : 4);

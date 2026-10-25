@@ -58,6 +58,12 @@ export function busyEdges(hub: Pick<HubWorld, 'id' | 'spawn'> & { arena?: HubWor
   for (const side of ['x-', 'x+', 'z-', 'z+'] as Side[]) { gridEdges(routeOut(rank, side)).forEach(k => out.add(k)); gridEdges(routeIn(drop, side)).forEach(k => out.add(k)); }
   // Pikine: the fight-evening drop-off and the road in front of the arena gate (its queue)
   if (hub.id === 'pikine') gridEdges([{ x: roadCentre(0), z: roadCentre(1) }, { x: roadCentre(3), z: roadCentre(1) }]).concat(gridEdges([{ x: roadCentre(2), z: roadCentre(1) }, { x: roadCentre(2), z: roadCentre(GRID.nb) }])).forEach(k => out.add(k));
+  // Mermoz · Sacré-Cœur (M1): the way in from the VDN (the middle street), the turn up to Résidence Les Filaos, Sacré-Cœur's shopping street and its bakery: the journey's
+  // streets are never shut (docs/districts/M1-MERMOZ.md)
+  if (hub.id === 'mermoz') {
+    gridEdges([{ x: roadCentre(0), z: roadCentre(2) }, { x: roadCentre(3), z: roadCentre(2) }]).concat(gridEdges([{ x: roadCentre(3), z: roadCentre(2) }, { x: roadCentre(3), z: roadCentre(1) }]))
+      .concat(gridEdges([{ x: roadCentre(1), z: roadCentre(0) }, { x: roadCentre(1), z: roadCentre(GRID.nb) }])).forEach(k => out.add(k));
+  }
   // Pikine: the gala road — the east approach and its jam, the north road (the agent's released cars, the taxis'
   // rank), the road down the arena's east side (src/city/galaRules.ts galaRoads)
   if (hub.id === 'pikine') {

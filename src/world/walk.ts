@@ -26,6 +26,7 @@ export const walkCard = (to: HubId, minutes: number) => `🚶 À pied vers ${HUB
  */
 export const HUB_AT: Record<HubId, { x: number; z: number }> = {
   plateau: { x: 0, z: 0 }, corniche: { x: -3, z: -3 }, almadies: { x: -9, z: -9 }, pikine: { x: 10, z: -6 },
+  mermoz: { x: -3, z: -6 },
 };
 export type Side = 'north' | 'south' | 'east' | 'west';
 const NORMAL: Record<Side, { x: number; z: number }> = { north: { x: 0, z: -1 }, south: { x: 0, z: 1 }, east: { x: 1, z: 0 }, west: { x: -1, z: 0 } };
