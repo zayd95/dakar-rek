@@ -69,6 +69,8 @@ class BanaTable {
   private walkers: Walker[] = [];
   private custKey = '';
   private far = { table: true, goods: true, people: true };
+  /** Who is at the table (whether drawn or not from where the camera is): the seller before it is sold, the cousin after. */
+  here = { seller: false, cousin: false };
 
   constructor(private hub: HubWorld, readonly at: { x: number; z: number }) {
     this.group.name = 'bana_table';
@@ -164,9 +166,10 @@ class BanaTable {
     this.body.visible = this.far.table;
     this.goodsMesh.visible = this.far.goods && this.goodsKey !== '0:0:0';
     this.board.visible = this.far.goods;
-    if (this.seller) this.seller.group.visible = !owned && this.far.people;
+    this.here = { seller: !owned && !!this.seller, cousin: owned && !!this.cousin };
+    if (this.seller) this.seller.group.visible = this.here.seller && this.far.people;
     if (this.cousin) {
-      this.cousin.group.visible = owned && this.far.people;
+      this.cousin.group.visible = this.here.cousin && this.far.people;
       const { x, z } = this.at;
       if (open) { this.cousin.group.position.x = x + 1.35; this.cousin.group.position.z = z - 0.55; this.cousin.group.rotation.y = -Math.PI / 2 + 0.4; }
       else { this.cousin.group.position.x = x - 0.15; this.cousin.group.position.z = z - 0.95; this.cousin.group.rotation.y = 0; }
@@ -427,7 +430,7 @@ class Bana {
         return {
           at: t ? { x: t.at.x, z: t.at.z } : null, front: this.here, owned: ownsTable(s()), units: ownedOf(s(), 'bana'), card: tableCard(s()), why: whyNotOpen(s()),
           customer: c ? { name: c.name, good: c.good.id, qty: c.qty, amount: c.amount, cost: c.cost } : null, nextClientMs: nextClientIn(s()), hourMs: HOUR_MS,
-          board: t?.boardText() ?? null, goods: t?.goodsShown() ?? null, drawn: t?.drawn() ?? 0, seller: !!t?.seller?.group.visible, cousin: !!t?.cousin?.group.visible, walkers: t?.customersShown() ?? [],
+          board: t?.boardText() ?? null, goods: t?.goodsShown() ?? null, drawn: t?.drawn() ?? 0, seller: !!t?.here.seller, cousin: !!t?.here.cousin, walkers: t?.customersShown() ?? [],
           sheet: this.ctx.hud.modalOpen ? this.sheet : null, flag: s().data.flags.includes('bana_table'), ack: s().data.bana.ack,
           lastLine: s().data.bana.last ? resultLine(s().data.bana.last!) : null,
         };

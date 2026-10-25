@@ -99,7 +99,8 @@ try {
   const w2 = await walkTo(page, t, front.x, front.z + 0.2, { tol: 0.5, ms: 90000 });
   await page.waitForTimeout(900);
   let f = await d(() => window.__dakar.focus());
-  check('1d. walked from the Maïga’s pavement to the table: it is the focus, « Voir la table à céder »', w1 < 0.8 && w2 < 0.6 && f?.id === 'pikine:bana' && f.primary === 'Voir la table à céder', JSON.stringify({ w1, w2, f }));
+  const drawn1 = (await bana()).drawn;
+  check('1d. walked from the Maïga’s pavement to the table: it is the focus, « Voir la table à céder », and the table, its board and its seller are drawn', w1 < 0.8 && w2 < 0.6 && f?.id === 'pikine:bana' && f.primary === 'Voir la table à céder' && drawn1 >= 3, JSON.stringify({ w1, w2, f, drawn: drawn1 }));
   await shot('01-a-ceder', true);
 
   // 2 — bought from the table, with 60 000 F
@@ -246,32 +247,43 @@ try {
   await t.tap('#act'); await page.waitForTimeout(900);                          // « Tenir la table »: the one customer back
   c = await serveWith(x => tapRow(`Servir ${x.name}`));
   await closeSheet();
-  const open7 = (await bana()).card.open, w7 = await d(() => window.__dakar.state.wallet);
+  const open7 = (await bana()).card.open;
   await d(() => { window.__dakar.save(); window.dispatchEvent(new Event('pagehide')); });
-  const kept = await d(() => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).bana);
+  const kept = await d(() => { const j = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { ...j.bana, wallet: j.wallet, ledger: j.ledger.length }; });
   await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 }); await ready(); await page.waitForTimeout(2500);
   t = await realTouch(page); await listen();
   b = await bana();
-  const w8 = await d(() => window.__dakar.state.wallet);
-  check('7a. reloaded at the table with the table open: the same session, its till not paid yet, the same stock, customers and history',
-    !!b.card.open && b.card.open.sales === open7.sales && w8 === w7 && b.card.stock.every(g => (kept.stock[g.id] ?? 0) === g.n) && b.card.clients === kept.clients
-    && b.card.last?.profit === sales - cost && b.card.total === kept.total && b.owned && /^owned:/.test(b.board) && b.cousin,
-    JSON.stringify({ open: b.card.open, open7, w7, w8, stock: b.card.stock.map(g => g.n), kept: kept.stock }));
+  const w8a = await d(() => window.__dakar.state.wallet), new8 = await d(n => window.__dakar.state.data.ledger.slice(n), kept.ledger);   // (an hourly payout may fall in the seconds of the reload)
+  const parts7a = {
+    open: !!b.card.open && b.card.open.sales === open7.sales && b.card.open.served === 1, notPaid: w8a - kept.wallet === new8.reduce((t, e) => t + e.amount, 0) && new8.every(e => /^Revenus · /.test(e.label)),
+    stock: b.card.stock.every(g => (kept.stock[g.id] ?? 0) === g.n), clients: b.card.clients - kept.clients >= 0 && b.card.clients - kept.clients <= 1,
+    history: b.card.last?.profit === sales - cost && b.card.total === kept.total, drawn: b.owned && /^owned:/.test(b.board) && b.cousin,
+  };
+  check('7a. reloaded at the table with the table open: the same session, its till not paid yet, the same stock, customers and history', Object.values(parts7a).every(Boolean),
+    JSON.stringify({ parts7a, open: b.card.open, open7, stock: b.card.stock.map(g => g.n), kept: kept.stock, new8 }));
+  const w8b = await d(() => window.__dakar.state.wallet);
   const me7 = await d(() => window.__dakar.pos());
   await walkTo(page, t, me7.x - 8, me7.z + 2.5, { tol: 0.8, ms: 120000 }); await page.waitForTimeout(1200);
   b = await bana();
-  const w9 = await d(() => window.__dakar.state.wallet), led9 = await d(() => window.__dakar.state.data.ledger.slice(-1)[0]);
+  const w9 = await d(() => window.__dakar.state.wallet), led9 = await d(() => window.__dakar.state.data.ledger.filter(e => /^Recette/.test(e.label)).slice(-1)[0]);
+  const w8 = w8b + (await d(n => window.__dakar.state.data.ledger.slice(n).filter(e => /^Revenus · /.test(e.label)).reduce((t, e) => t + e.amount, 0), kept.ledger + new8.length));   // the walk can cross an hourly payout too
   h = (await heard()).filter(x => /^Mor : /.test(x));
   check('7b. walking away closes it: the till paid once (the cousin says so), nothing more', !b.card.open && w9 - w8 === open7.sales && led9.amount === open7.sales && /^Recette · Table de bana-bana \(1 client\)$/.test(led9.label) && h.length === 1, JSON.stringify({ paid: w9 - w8, till: open7.sales, led9, h }));
-  await d(() => { window.__dakar.save(); });
-  const saved = await d(() => ({ bana: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).bana, units: window.__dakar.business().owned.bana, wallet: window.__dakar.state.wallet }));
+  await d(() => { window.__dakar.save(); window.dispatchEvent(new Event('pagehide')); });
+  const saved = await d(() => { const j = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { bana: j.bana, units: window.__dakar.business().owned.bana, wallet: j.wallet, ledger: j.ledger.length }; });
   await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 }); await ready(); await page.waitForTimeout(2500);
   b = await bana();
-  const after = await d(() => ({ bana: window.__dakar.state.data.bana, units: window.__dakar.business().owned.bana, wallet: window.__dakar.state.wallet }));
-  check('7c. reload: the same ownership, stock, clientèle, last session, totals and acknowledgement; the table drawn as the player’s with its goods',
-    after.units === 1 && after.wallet === saved.wallet && JSON.stringify(after.bana.stock) === JSON.stringify(saved.bana.stock) && after.bana.clients === saved.bana.clients && JSON.stringify(after.bana.last) === JSON.stringify(saved.bana.last)
-    && after.bana.total === saved.bana.total && after.bana.ack && b.owned && /^owned:/.test(b.board) && b.cousin && !b.seller && Object.entries(b.goods).every(([id, v]) => v === (after.bana.stock[id] > 0)),
-    JSON.stringify({ saved: saved.bana, after: after.bana, goods: b.goods }));
+  const after = await d(() => ({ bana: window.__dakar.state.data.bana, units: window.__dakar.business().owned.bana, wallet: window.__dakar.state.wallet, ledger: window.__dakar.state.data.ledger }));
+  // played time goes on after the reload: an hourly payout (« Revenus · … ») or the next customer may come in the seconds it takes; nothing else may change
+  const since = after.ledger.slice(saved.ledger), income = since.reduce((t, e) => t + e.amount, 0);
+  const parts7 = {
+    units: after.units === 1, wallet: after.wallet - saved.wallet === income && since.every(e => /^Revenus · /.test(e.label)), stock: JSON.stringify(after.bana.stock) === JSON.stringify(saved.bana.stock),
+    clients: after.bana.clients - saved.bana.clients >= 0 && after.bana.clients - saved.bana.clients <= 1, last: JSON.stringify(after.bana.last) === JSON.stringify(saved.bana.last),
+    totals: after.bana.total === saved.bana.total && after.bana.sessions === saved.bana.sessions && after.bana.since === saved.bana.since, ack: after.bana.ack && !after.bana.open,
+    drawn: b.owned && /^owned:/.test(b.board) && b.cousin && !b.seller && Object.entries(b.goods).every(([id, v]) => v === (after.bana.stock[id] > 0)),
+  };
+  check('7c. reload: the same ownership, stock, clientèle, last session, totals and acknowledgement; the table drawn as the player’s with its goods', Object.values(parts7).every(Boolean),
+    JSON.stringify({ parts7, stock: after.bana.stock, clients: [saved.bana.clients, after.bana.clients], last: after.bana.last?.profit, total: after.bana.total, goods: b.goods }));
   await d(([x, z]) => window.__dakar.cam([x - 3.5, 2.6, z + 5.2], [x, 0.9, z - 0.3]), [at.x, at.z]); await page.waitForTimeout(2400);
   await shot('11-after-reload', true);
   await d(() => window.__dakar.cam(null));
