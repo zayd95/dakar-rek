@@ -160,10 +160,13 @@ export class CityRoom extends DurableObject<Env> {
     }
     if (isHome && moved) for (const [other, o] of this.sessions) if (other !== ws && o.peer && o.peer.space === space) this.send(ws, { type: 'peer', peer: o.peer });
   }
-  /** Asks the host's account (cached a little: a guest moves five times a second). */
+  /**
+   * Asks the host's account, and keeps its answer ECONOMY.online.visitCacheMs (a guest moves five times a second). A « no » is kept 5 s only, so a guest
+   * whose invitation was just accepted is not held at the door by an answer from before.
+   */
   private async mayVisit(host: string, guest: string): Promise<boolean> {
     const key = `${host}:${guest}`, now = Date.now(), hit = this.visits.get(key);
-    if (hit && now - hit.at < ECONOMY.online.visitCacheMs) return hit.ok;
+    if (hit && now - hit.at < (hit.ok ? ECONOMY.online.visitCacheMs : 5_000)) return hit.ok;
     let ok = false;
     try { ok = await this.env.SOCIAL.getByName(`acct:${host}`).mayVisit(guest, host); } catch { ok = false; }
     this.visits.set(key, { ok, at: now });

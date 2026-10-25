@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import { cleanChatText } from '../multiplayer/chatRules';
 import { appearanceCode, lookIndex, nickname } from '../multiplayer/protocol';
 import { noteBalance, onlineKnown, pendingFor, quotePay, reserveOnline, settleOnline } from '../economy/money';
-import { ONLINE_PROTOCOL, NOTE_MAX, friendCode, isItem, isTag, parseServerMessage, shortText, tagOfCode,
+import { ONLINE_PROTOCOL, NOTE_MAX, SNAPSHOT_MAX, friendCode, isItem, isTag, parseServerMessage, parseSnapshot, shortText, tagOfCode,
   type ClientMessage, type ConvSummary, type Francs, type FriendCode, type GuestPerms, type HomeSnapshot, type InviteItem, type Item, type LedgerOp, type MeetItem,
   type MoneyLimits, type PlaceRef, type ServerMessage, type Tag } from './protocol';
 import { onlineHooks, type ItemView, type OnlineApi, type OnlineStatus, type Outcome, type PayQuote } from './api';
@@ -38,6 +38,8 @@ export const CACHE_KEY = 'dakarrek.online.v1';
 const CHAT_KEY = 'dakarrek.chat.v1';
 const DEVICE_KEY = 'dakarrek.chat.key';
 const CONVS_MAX = 60, ITEMS_PER_CONV = 120, REQUEST_MS = 15_000, MONEY_WAIT_MS = 15_000, RESEND_GAP_MS = 1_100;
+/** Frames sent per second at most: the account closes a socket past 20 (server/social.ts), so a burst (a list asking who is online) waits its turn. */
+const SEND_RATE = 15;
 type Today = { funded: Francs; sent: Francs; received: Francs };
 type Seen = 'online' | number | 'never';
 type OutMsg = Extract<ClientMessage, { type: 'say' | 'loc' }>;
@@ -74,6 +76,7 @@ export class OnlineAccount implements OnlineApi {
   private listeners = new Set<() => void>();
   private visitListeners = new Set<(host: Tag, invite: string) => void>();
   private saveT = 0; private lastHome = '';
+  private sentAt: number[] = []; private backlog: string[] = []; private backlogT = 0;
 
   constructor(private d: OnlineDeps) {
     this.cache = this.load();
@@ -259,8 +262,10 @@ export class OnlineAccount implements OnlineApi {
 
   // ================================================================== OnlineApi: homes and meetings
   invite(o: { id: string; to: Tag; perms: GuestPerms }): Promise<Outcome<{ item: InviteItem }>> {
-    const snapshot = onlineHooks.homeSnapshot?.() ?? null;
-    if (!snapshot) return Promise.resolve(this.no('no-home'));
+    const raw = onlineHooks.homeSnapshot?.() ?? null;
+    if (!raw) return Promise.resolve(this.no('no-home'));
+    const snapshot = parseSnapshot(raw);                         // the server's shape and size, said before anything is sent
+    if (!snapshot) return Promise.resolve(this.no(JSON.stringify(raw).length > SNAPSHOT_MAX ? 'too-large' : 'invalid'));
     this.lastHome = JSON.stringify(snapshot);
     return this.itemRequest({ type: 'invite', id: o.id, to: o.to, snapshot, perms: o.perms }, o.to) as Promise<Outcome<{ item: InviteItem }>>;
   }
@@ -375,7 +380,21 @@ export class OnlineAccount implements OnlineApi {
   }
   private sendRaw(m: ClientMessage): boolean {
     if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
-    try { this.socket.send(JSON.stringify(m)); return true; } catch { return false; }
+    this.backlog.push(JSON.stringify(m));
+    this.drain();
+    return true;
+  }
+  /** Sends what waits, never more than SEND_RATE frames in a second (the rest goes a little later, in order). */
+  private drain() {
+    clearTimeout(this.backlogT); this.backlogT = 0;
+    const now = Date.now();
+    this.sentAt = this.sentAt.filter(t => now - t < 1000);
+    while (this.backlog.length && this.sentAt.length < SEND_RATE) {
+      if (this.socket?.readyState !== WebSocket.OPEN) { this.backlog = []; return; }
+      try { this.socket.send(this.backlog.shift()!); } catch { this.backlog = []; return; }
+      this.sentAt.push(now);
+    }
+    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (now - this.sentAt[0])));
   }
 
   // ================================================================== the socket
@@ -412,7 +431,8 @@ export class OnlineAccount implements OnlineApi {
     this.retry = window.setTimeout(() => this.open(), delay);
   }
   private stopSocket() {
-    this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); clearInterval(this.homeTimer);
+    this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); clearInterval(this.homeTimer); clearTimeout(this.backlogT);
+    this.backlog = []; this.sentAt = [];                         // what was waiting is sent again from the outboxes at the next welcome
     this.retry = this.handshake = this.heartbeat = this.homeTimer = 0; this.live = false;
     if (this.socket) { this.socket.onclose = null; try { this.socket.close(); } catch { /* closed */ } this.socket = null; }
     for (const [, w] of this.waiters) { clearTimeout(w.timer); w.resolve(null); }
@@ -477,8 +497,9 @@ export class OnlineAccount implements OnlineApi {
     this.migrateChatBlocks();
     for (const b of this.cache.blockSync) void this.request({ type: 'block', id: b.id, tag: b.tag, on: b.on }).then(r => { if (r?.type === 'ack' && r.ok) { this.cache.blockSync = this.cache.blockSync.filter(x => x.id !== b.id); this.persist(); } });
     // money the server has not answered, then text, paced (never more than the socket's rate)
-    const gen = this.generation, sends = [...pendingFor(this.d.state, m.tag).map(p => () => this.sendMoney(p)), ...this.cache.outbox.map(x => () => this.sendRaw(x))];
-    sends.forEach((send, i) => setTimeout(() => { if (gen === this.generation) send(); }, i * RESEND_GAP_MS / (i < pendingFor(this.d.state, m.tag).length ? 10 : 1)));
+    const gen = this.generation, money = pendingFor(this.d.state, m.tag), later = (ms: number, send: () => void) => window.setTimeout(() => { if (gen === this.generation) send(); }, ms);
+    money.forEach((p, i) => later(i * 120, () => this.sendMoney(p)));
+    [...this.cache.outbox].forEach((x, i) => later(money.length * 120 + i * RESEND_GAP_MS, () => this.sendRaw(x)));
     this.homeWatch();
     this.changed();
   }
@@ -515,7 +536,7 @@ export class OnlineAccount implements OnlineApi {
     if (!open()) return;
     this.homeTimer = window.setInterval(() => {
       if (!open()) { clearInterval(this.homeTimer); this.homeTimer = 0; return; }
-      const snap = onlineHooks.homeSnapshot?.(); if (!snap) return;
+      const raw = onlineHooks.homeSnapshot?.(), snap = raw ? parseSnapshot(raw) : null; if (!snap) return;
       const s = JSON.stringify({ ...snap, at: 0 });
       if (this.lastHome && s === JSON.stringify({ ...JSON.parse(this.lastHome) as HomeSnapshot, at: 0 })) return;
       this.lastHome = JSON.stringify(snap);
@@ -539,7 +560,11 @@ export class OnlineAccount implements OnlineApi {
     }
     const n = this.cache.names[peer]; if (n) { c.name = n.name; c.look = n.look; if (n.app) c.app = n.app; }
     if (!item.status && (!c.last || item.at >= c.last.at || c.last.id === item.id)) c.last = stripView(item);
-    if (this.cache.convs.length > CONVS_MAX) for (const old of this.cache.convs.splice(CONVS_MAX)) { delete this.cache.items[old.with]; delete this.cache.more[old.with]; }
+    if (this.cache.convs.length > CONVS_MAX) {
+      const at = (x: ConvSummary) => Math.max(x.last?.at ?? 0, ...(this.cache.items[x.with] ?? []).map(i => i.at));
+      this.cache.convs.sort((a, b) => at(b) - at(a));
+      for (const old of this.cache.convs.splice(CONVS_MAX)) { delete this.cache.items[old.with]; delete this.cache.more[old.with]; }
+    }
   }
   private changed() { this.persist(); this.emit(); }
   private emit() { for (const fn of [...this.listeners]) { try { fn(); } catch { /* a listener's error is its own */ } } }
@@ -563,7 +588,7 @@ export class OnlineAccount implements OnlineApi {
       c.limits = raw.limits && typeof raw.limits === 'object' ? raw.limits : null;
       c.today = raw.today && typeof raw.today === 'object' ? raw.today : null;
       c.convs = (Array.isArray(raw.convs) ? raw.convs : []).filter(x => x && isTag(x.with) && typeof x.name === 'string' && (x.last === null || isItem(x.last))).slice(0, CONVS_MAX)
-        .map(x => ({ with: x.with, name: nickname(x.name), look: lookIndex(x.look), ...(appearanceCode(x.app) ? { app: x.app } : {}), last: x.last, unread: Math.max(0, Math.floor(Number(x.unread) || 0)), seen: x.seen === 'online' ? 'never' : x.seen ?? 'never', blocked: !!x.blocked }));
+        .map(x => ({ with: x.with, name: nickname(x.name), look: lookIndex(x.look), ...(appearanceCode(x.app) ? { app: x.app } : {}), last: x.last, unread: Math.max(0, Math.floor(Number(x.unread) || 0)), seen: x.seen === 'online' ? x.last?.at ?? 'never' : x.seen ?? 'never', blocked: !!x.blocked }));   // « online » was then: now it is « last seen »
       for (const [peer, list] of Object.entries(raw.items ?? {})) {
         if (!isTag(peer) || !Array.isArray(list)) continue;
         c.items[peer] = list.flatMap(v => {

@@ -109,6 +109,8 @@ try {
     && JSON.stringify(A.welcome.limits) === JSON.stringify({ opMax: 250000, fundDayMax: 500000, sendDayMax: 500000, receiveDayMax: 1000000, balanceMax: 5000000 })
     && JSON.stringify(A.welcome.today) === JSON.stringify({ funded: 0, sent: 0, received: 0 }) && Array.isArray(A.welcome.convs) && A.welcome.v === 1, A.welcome);
 
+  // a meeting nobody answers, checked at the end: the proposer's account turns it « missed » by itself (its alarm), past its window
+  const lonelyAt = Date.now(), lonely = await A.req({ type: 'meet', to: C.tag, place: { id: 'pikine:marche', hub: 'pikine', name: 'Marché' }, when: lonelyAt + 1000 });
   const ghost = tagOf(newKey());
   const unknown = await A.req({ type: 'say', to: ghost, text: 'Tu es là ?' });
   const unknownPay = await A.req({ type: 'pay', to: ghost, amount: 100, fund: 100 });
@@ -307,6 +309,23 @@ try {
   PB.move(`home:${A.tag}`, -2, -2);
   await sleep(1500);
   check('after a revocation the guest’s moves in the home are refused (CityRoom asks the host’s account again after 30 s)', !PA.inbox.slice(before).some(m => m.type === 'peer' && m.peer.id === PB.id && m.peer.x === -2), PA.inbox.slice(before).filter(m => m.type === 'peer').map(m => m.peer.space));
+
+  // ---------------------------------------------------------------- the alarm: the unanswered meeting is missed on both sides
+  await sleep(Math.max(0, lonelyAt + 1000 + 60000 + 2500 - Date.now()));
+  A.send({ type: 'conv', with: C.tag }); C.send({ type: 'conv', with: A.tag });
+  const convAC = await A.wait(m => m.type === 'conv' && m.with === C.tag), convCA = await C.wait(m => m.type === 'conv' && m.with === A.tag);
+  const missA = convAC?.items.find(i => i.id === lonely?.item?.id), missC = convCA?.items.find(i => i.id === lonely?.item?.id);
+  check('an unanswered meeting past its window becomes « missed » by the proposer’s alarm, on both sides', lonely?.ok && missA?.state === 'missed' && missC?.state === 'missed', { missA, missC });
+
+  // ---------------------------------------------------------------- the account client (src/online/client.ts, the OnlineApi) on this same server
+  if (!process.env.ONLINE_NO_CLIENT) {
+    const live = await new Promise(resolve => {
+      const p = spawn(process.execPath, [path.join(ROOT, 'node_modules/vitest/vitest.mjs'), 'run', 'tests/onlineClient.live.test.ts'], { cwd: ROOT, env: { ...process.env, ONLINE_URL: base }, stdio: ['ignore', 'pipe', 'pipe'] });
+      let out = ''; for (const st of [p.stdout, p.stderr]) st.on('data', b => { out += b; });
+      p.on('exit', code => resolve({ code, out }));
+    });
+    check('two account clients (OnlineApi) on this server: messages, 5 000 F requested and paid once, an invitation and a visit, a meeting, a block', live.code === 0 && /1 passed/.test(live.out), live.out.slice(-2000));
+  }
 } catch (error) {
   console.error(error); if (logs) console.error(logs.slice(-6000));
   check('the run finished without an exception', false, String(error));
