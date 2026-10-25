@@ -13,7 +13,7 @@ const [base = 'http://localhost:4601/', out = '/tmp/claude-0/beta/ui'] = process
 fs.mkdirSync(out, { recursive: true });
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail: String(detail).slice(0, 400) }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${String(detail).slice(0, 400)}`); };
-const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide'];
+const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque'];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 try {
