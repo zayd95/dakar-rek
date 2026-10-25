@@ -98,6 +98,8 @@ class Visits implements GameModule {
   private tick = 0;
   private visit: Visit | null = null;
   private knocking = false;
+  /** Invitations the host's account has ended (`onVisitEnd`): no door for them any more, even before their new state arrives. */
+  private over = new Set<string>();
   /** The host's own home as last sent (to tell the account when it changes), and the assets revision it was read at. */
   private lastSnap = ''; private snapRev = -1;
   /** A player to join in their presence room once this player is in their district (« Y aller » from another district). */
@@ -148,7 +150,10 @@ class Visits implements GameModule {
     if (online === this.bound) return;
     for (const u of this.unsub) u();
     this.unsub = []; this.bound = online; this.tick = 0;
-    if (online) this.unsub.push(online.onChange(() => { this.tick = 0; }), online.onVisitEnd(host => { if (this.visit?.host === host) this.takeOut(`${this.visit.name} a mis fin à la visite.`); }));
+    if (online) this.unsub.push(online.onChange(() => { this.tick = 0; }), online.onVisitEnd((host, invite) => {
+      this.over.add(invite); this.invites = this.invites.filter(i => i.item.id !== invite);
+      if (this.visit?.host === host) this.takeOut(`${this.visit.name} a mis fin à la visite.`);
+    }));
   }
   private readInvites(ctx: GameCtx) {
     const api = online; this.invites = [];
@@ -156,7 +161,7 @@ class Visits implements GameModule {
     const me = api.me?.tag ?? null, now = ctx.now();
     for (const c of api.convs()) {
       if (c.blocked || c.with === me) continue;
-      for (const item of openInvites(api.items(c.with), c.with, now)) this.invites.push({ host: c.with, name: c.name, item });
+      for (const item of openInvites(api.items(c.with), c.with, now)) if (!this.over.has(item.id)) this.invites.push({ host: c.with, name: c.name, item });
     }
   }
   /** A visit in progress: the invitation still holds, the player did get in. */
@@ -238,21 +243,21 @@ class Visits implements GameModule {
     let r: Awaited<ReturnType<OnlineApi['visit']>>;
     try { r = await api.visit(inv.host); } catch { r = { ok: false, reason: 'offline', text: 'Pas de réponse : réessaie dans un instant.' }; }
     this.knocking = false;
-    if (!r.ok) { this.log.refused = r.text; ctx.toast(r.text); return; }
+    if (!r.ok) { this.log.refused = r.text; ctx.hud.toast(r.text, 'warn'); return; }          // the answer may come after the tap's moment: said now, not only in the log
     const snap = validSnapshot(r.snapshot, CATALOGUE_CHECK);
-    if (!snap || snap.home.door !== inv.item.home.door) { this.log.refused = 'snapshot'; ctx.toast(`Impossible d’entrer chez ${inv.name} : son logement a changé.`); return; }
+    if (!snap || snap.home.door !== inv.item.home.door) { this.log.refused = 'snapshot'; ctx.hud.toast(`Impossible d’entrer chez ${inv.name} : son logement a changé.`, 'warn'); return; }
     const w = ctx.world(), door = w?.interactables.find(i => i.id === snap.home.door);
-    if (!w || !door || w.id !== snap.home.hub || ctx.inside() || Math.hypot(door.x - ctx.player.pos.x, door.z - ctx.player.pos.z) > 8) { this.log.refused = 'away'; ctx.toast(`${inv.name} t’ouvre : reviens devant sa porte.`); return; }
+    if (!w || !door || w.id !== snap.home.hub || ctx.inside() || Math.hypot(door.x - ctx.player.pos.x, door.z - ctx.player.pos.z) > 8) { this.log.refused = 'away'; ctx.hud.toast(`${inv.name} t’ouvre : reviens devant sa porte.`, 'warn'); return; }
     this.visit = { host: inv.host, name: inv.name, invite: r.invite, perms: r.perms, door: snap.home.door, hub: snap.home.hub, spec: snap.home.spec, since: performance.now(), inside: false, leaving: false };
     estateVisit.set({ host: inv.host, hostName: inv.name, spec: snap.home.spec, upgrades: snap.upgrades, furniture: snap.furniture.map(f => ({ spec: f.spec, at: f.at as Placement })), use: r.perms.use });
     ctx.enter(snap.home.door);
     void this.sameRoom(inv.host);
   }
 
-  /** The visit ends against the guest's will: one sentence, back in the street. */
+  /** The visit ends against the guest's will: one sentence (said now, whenever it comes), back in the street. */
   private takeOut(msg: string) {
     const ctx = this.ctx, v = this.visit; if (!ctx || !v || v.leaving) return;
-    v.leaving = true; ctx.toast(msg);
+    v.leaving = true; ctx.hud.toast(msg, 'warn');
     if (estateVisit.inside()?.visit) { ctx.hud.closeModal(); ctx.exit(); } else this.end();
   }
   /** Back to the player's own world: their own homes drawn from their save again. */
