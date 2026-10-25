@@ -250,7 +250,11 @@ export class Social extends DurableObject<SocialEnv> {
   // ------------------------------------------------------------------ requests with an id: answered once
   private async request(ws: WebSocket, me: Tag, m: Extract<ClientMessage, { id: string }>) {
     const stored = this.sql.exec<{ json: string }>('SELECT json FROM acks WHERE id = ?', m.id).toArray()[0];
-    if (stored) { this.send(ws, { ...JSON.parse(stored.json) as Ack, duplicate: true } as Ack); return; }
+    if (stored) {                                                  // answered before: the same answer, with the item as it stands now (not as it was)
+      const ack = JSON.parse(stored.json) as Ack;
+      if (ack.ok && ack.item) { const cur = this.findItem(ack.item.id); if (cur) ack.item = cur.item; }
+      this.send(ws, { ...ack, duplicate: true } as Ack); return;
+    }
     let running = this.inflight.get(m.id), first = false;
     if (!running) {
       first = true;

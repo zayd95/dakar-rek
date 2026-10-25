@@ -229,6 +229,16 @@ describe('the account client', () => {
     for (let i = 0; i < t.length; i++) expect(t.filter(x => x >= t[i] && x < t[i] + 1000).length).toBeLessThanOrEqual(15);
   });
 
+  it('a confirmation tapped twice: one request, the same answer for both taps', async () => {
+    FakeWS.server = new FakeServer();
+    const { client } = setup();
+    await online(client);
+    const o = { id: client.newId(), ref: '0e7c1b9a-3f42-4d1e-9a51-1f2e3d4c5b6a', accept: true };
+    const [a, b] = await Promise.all([client.answerInvite(o), client.answerInvite(o)]);
+    expect(a).toEqual({ ok: true }); expect(b).toEqual({ ok: true });
+    expect(FakeWS.server.received.filter(m => m.id === o.id)).toHaveLength(1);
+  });
+
   it('refusals before anything is sent: offline, limits, the wallet', async () => {
     FakeWS.server = new FakeServer();
     const { client, state } = setup({ wallet: 1_000 });

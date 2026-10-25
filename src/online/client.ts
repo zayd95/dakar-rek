@@ -68,7 +68,7 @@ export class OnlineAccount implements OnlineApi {
   private where: { hub: HubId | null; room: number } = { hub: null, room: 0 };
   private seenMap = new Map<Tag, Seen>();
   private asked = new Set<Tag>();
-  private waiters = new Map<string, { resolve: (m: ServerMessage | null) => void; timer: number }>();
+  private waiters = new Map<string, { list: ((m: ServerMessage | null) => void)[]; timer: number }>();
   private moneyWaiters = new Map<string, ((o: Outcome<{ op: LedgerOp }>) => void)[]>();
   private moneyDone = new Map<string, Outcome<{ op: LedgerOp }>>();
   private convWaiters = new Map<Tag, ((more: boolean) => void)[]>();
@@ -100,7 +100,8 @@ export class OnlineAccount implements OnlineApi {
   convs(): ConvSummary[] {
     const at = (c: ConvSummary) => Math.max(c.last?.at ?? 0, ...(this.cache.items[c.with] ?? []).map(i => i.at));
     return this.cache.convs.map(c => {
-      const own = (this.cache.items[c.with] ?? []).at(-1), last = own && (!c.last || own.at >= c.last.at) ? stripView(own) : c.last;
+      const own = (this.cache.items[c.with] ?? []).reduce<ItemView | null>((n, i) => (!n || i.at >= n.at ? i : n), null);
+      const last = own && (!c.last || own.at >= c.last.at) ? stripView(own) : c.last;
       return { ...c, last, blocked: this.isBlocked(c.with), seen: this.seenMap.get(c.with) ?? c.seen };
     }).sort((a, b) => at(b) - at(a));
   }
@@ -350,13 +351,17 @@ export class OnlineAccount implements OnlineApi {
     return { ok: false, reason, text: refusalText(reason, this.cache.limits ?? { opMax: 250_000, fundDayMax: 500_000, sendDayMax: 500_000, receiveDayMax: 1_000_000, balanceMax: 5_000_000 }) };
   }
   private ready(): { ok: false; reason: string; text: string } | null { return !this.d.enabled ? this.no('solo') : this.status !== 'online' ? this.no('offline') : null; }
-  /** Sends a request with an id and resolves with its answer (null: no answer in time, or not sent). */
+  /**
+   * Sends a request with an id and resolves with its answer (null: no answer in time, or not sent). The same id asked again while it is on its way (a
+   * double tap) is not sent twice: both get the one answer.
+   */
   private request(m: Extract<ClientMessage, { id: string }>): Promise<ServerMessage | null> {
+    const on = this.waiters.get(m.id);
+    if (on) return new Promise(resolve => on.list.push(resolve));
     return new Promise(resolve => {
       if (!this.sendRaw(m)) { resolve(null); return; }
-      const prev = this.waiters.get(m.id); if (prev) { clearTimeout(prev.timer); prev.resolve(null); }
-      const timer = window.setTimeout(() => { if (this.waiters.get(m.id)?.timer === timer) { this.waiters.delete(m.id); resolve(null); } }, REQUEST_MS);
-      this.waiters.set(m.id, { resolve, timer });
+      const timer = window.setTimeout(() => { const w = this.waiters.get(m.id); if (w?.timer === timer) { this.waiters.delete(m.id); for (const fn of w.list) fn(null); } }, REQUEST_MS);
+      this.waiters.set(m.id, { list: [resolve], timer });
     });
   }
   /** A request answered by an `ack` (maybe with the item's new state, kept in its conversation). */
@@ -435,7 +440,7 @@ export class OnlineAccount implements OnlineApi {
     this.backlog = []; this.sentAt = [];                         // what was waiting is sent again from the outboxes at the next welcome
     this.retry = this.handshake = this.heartbeat = this.homeTimer = 0; this.live = false;
     if (this.socket) { this.socket.onclose = null; try { this.socket.close(); } catch { /* closed */ } this.socket = null; }
-    for (const [, w] of this.waiters) { clearTimeout(w.timer); w.resolve(null); }
+    for (const [, w] of this.waiters) { clearTimeout(w.timer); for (const fn of w.list) fn(null); }
     this.waiters.clear();
     this.asked.clear();
   }
@@ -448,7 +453,7 @@ export class OnlineAccount implements OnlineApi {
       if (this.outboxAnswer(m)) return;
     }
     if ((m.type === 'ack' || m.type === 'visit' || m.type === 'lookup' || m.type === 'find') && this.waiters.has(m.id)) {
-      const w = this.waiters.get(m.id)!; this.waiters.delete(m.id); clearTimeout(w.timer); w.resolve(m); return;
+      const w = this.waiters.get(m.id)!; this.waiters.delete(m.id); clearTimeout(w.timer); for (const fn of w.list) fn(m); return;
     }
     switch (m.type) {
       case 'item': {
