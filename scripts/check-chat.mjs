@@ -128,8 +128,10 @@ try {
   await a.evaluate(() => window.__dakar.enter('home')); await a.waitForFunction(() => window.__dakar.pos().x > 900);
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.space === 'home'));
   await openChat(a, 'near'); await say(a, 'Allô ?');
-  const home = await settled(a, 'near');
-  check('personal room: proximity message refused with a readable status', home.status === 'failed' && home.reason === 'private-space' && (await domStatus(a, home.id)).includes('personne ne t’entend ici'), JSON.stringify(home));
+  const home = await settled(a, 'near'); await sleep(800);
+  // LD2.0-B: inside their home a player of this build is in `home:<tag>` (the street sees them « at home », no position): what they say there is heard
+  // only by the people in that same home (a host and the guests they invited), here nobody; never by the street (src/multiplayer/chatRules.ts nearRecipients)
+  check('personal room: a proximity message reaches nobody outside the home', home.status === 'sent' && home.delivered === 0 && !conv(await state(b), 'near').some(e => e.text === 'Allô ?') && (await domStatus(a, home.id)) === 'reçu · personne à portée', JSON.stringify(home));
   await a.evaluate(() => window.__dakar.exit()); await a.waitForFunction(() => window.__dakar.pos().x < 900);
   await a.evaluate(() => window.__dakar.place(-6, -30, 0)); await b.evaluate(() => window.__dakar.place(-7, -25, Math.PI));
   await a.keyboard.press('Escape');
@@ -155,32 +157,44 @@ try {
   check('phone: joystick works again once the chat is closed', Math.hypot(q2.x - q1.x, q2.z - q1.z) > 0.3, JSON.stringify([q1, q2]));
   await a.evaluate(() => window.__dakar.place(-6, -30, 0));
 
-  // ---- private message, draft kept
-  await b.click('.chat-tabs button[data-tab="dm"]');
-  await b.locator('.chat-person-open', { hasText: 'Moussa' }).click();
+  // ---- the proximity draft is kept; private messages are the phone's Messages (LD2.0-B: persistent conversations on the player's account)
+  await b.click('.chat-tabs button[data-tab="near"]');
   await b.fill('#chatInput', 'Brouillon pas fini');
   await b.click('.chat-close'); await b.click('#chatBtn');
   check('draft kept after closing and reopening the panel', (await b.inputValue('#chatInput')) === 'Brouillon pas fini');
-  await say(b, 'Rendez-vous au Maïga ce soir ?');
-  const dm = await settled(b, `dm:${(await state(b)).peer}`);
-  check('private message acknowledged', dm.status === 'sent' && dm.delivered === 1, JSON.stringify(dm));
-  await a.waitForFunction(() => Object.entries(window.__dakarChat.state().history).some(([k, v]) => k.startsWith('dm:') && v.some(e => e.text === 'Rendez-vous au Maïga ce soir ?')));
+  await b.fill('#chatInput', '');
+  const tagOf = page => page.waitForFunction(() => window.__dakar.account()?.me?.tag).then(h => h.jsonValue());
+  const [tagA, tagB] = [await tagOf(a), await tagOf(b)];
+  await b.click('.chat-tabs button[data-tab="dm"]');
+  await b.waitForFunction(() => window.__dakar.phoneInfo().open && window.__dakar.phoneInfo().screen === 'messages');
+  check('« Messages privés » closes the panel and opens the phone’s Messages', !(await state(b)).open);
+  await b.waitForTimeout(500); await b.click('#phone .mg-new');
+  await b.locator(`#phone .mg-near .mg-person[data-tag="${tagA}"]`).click();
+  await b.waitForFunction(t => window.__dakar.phoneInfo().arg === t, tagA);
+  await b.fill('#phone .mg-field', 'Rendez-vous au Maïga ce soir ?'); await b.click('#phone .mg-send');
+  await b.waitForFunction(() => [...document.querySelectorAll('#phone .mg-b.me')].pop()?.innerText.includes('envoyé'), null, { timeout: 30000 });
+  const dmId = await b.evaluate(t => window.__dakar.account().items(t).filter(i => i.k === 'text' && i.from !== t).pop()?.id, tagA);
+  check('private message sent and acknowledged by the account (« envoyé »)', !!dmId);
+  await a.waitForFunction(id => window.__dakar.account().convs().some(c => c.last?.id === id), dmId, { timeout: 30000 });
   check('private message delivered to the recipient only, with an unread badge', (await a.waitForFunction(() => document.querySelector('#chatBtn .chat-badge')?.textContent !== '', null, { timeout: 10000 }).then(() => true, () => false)) && !conv(await state(a), 'near').some(e => e.text.startsWith('Rendez-vous')));
-  await a.click('#chatBtn'); await a.click('.chat-tabs button[data-tab="dm"]'); await a.locator('.chat-person-open', { hasText: 'Awa' }).click();
+  await b.evaluate(() => window.__dakar.phoneClose());
+  await a.click('#chatBtn'); await a.click('.chat-tabs button[data-tab="dm"]');
+  await a.waitForFunction(() => window.__dakar.phoneInfo().screen === 'messages');
+  await a.waitForTimeout(600); await a.locator(`#phone .mg-conv[data-tag="${tagB}"]`).click();
+  await a.waitForFunction(() => document.querySelector('#phone .mg-log')?.innerText.includes('Rendez-vous au Maïga'));
   await sleep(300); await a.screenshot({ path: `${SHOTS}/phone-private.png` });
+  await a.evaluate(() => window.__dakar.phoneClose());
 
-  // ---- duplicate after a forced reconnect is not shown twice
-  const dmKeyA = Object.keys((await state(a)).history).find(k => k.startsWith('dm:'));
+  // ---- a forced reconnect: the same public tag, the conversation kept once on both accounts
   await contexts[1].setOffline(true);
   await b.waitForFunction(() => window.__dakar.presence().status === 'offline');
   await contexts[1].setOffline(false);
-  await b.waitForFunction(() => window.__dakar.presence().status === 'online', null, { timeout: 90000 });
+  await b.waitForFunction(() => window.__dakar.presence().status === 'online' && window.__dakar.account().status === 'online', null, { timeout: 90000 });
   await a.waitForFunction(old => window.__dakar.presence().peers.length === 1 && !window.__dakar.presence().peers.some(p => p.id === old), bId, { timeout: 90000 });
   const bId2 = await idOf(b);
-  check('reconnected player keeps the same public tag (mute/block survive reconnects)', (await a.evaluate(() => window.__dakar.presence().peers[0].tag))?.length === 16 && Object.keys((await state(a)).history).includes(dmKeyA));
-  await b.evaluate(id => window.__dakarChat.resend(id), dm.id);
-  const again = await settled(b, `dm:${(await state(b)).peer}`, dm.text); await sleep(1000);
-  check('resending the same message id after a reconnect does not duplicate it', again.status === 'sent' && conv(await state(a), dmKeyA).filter(e => e.id === dm.id).length === 1);
+  const copies = async (page, t) => page.evaluate(([t, id]) => window.__dakar.account().items(t).filter(i => i.id === id).length, [t, dmId]);
+  check('reconnected player keeps the same public tag (mute/block survive reconnects) and the private message is kept once on both sides',
+    (await a.evaluate(() => window.__dakar.presence().peers[0].tag)) === tagB && await copies(a, tagB) === 1 && await copies(b, tagA) === 1);
 
   // ---- over-long and rate-limited messages: rejected with a visible status
   await b.click('.chat-tabs button[data-tab="near"]');
@@ -197,6 +211,9 @@ try {
   await sleep(300); await b.screenshot({ path: `${SHOTS}/desktop-statuses.png` });
 
   // ---- mute hides bubbles and messages; block hides the avatar; report confirmed
+  // the panel's profile of a player: their name in the proximity log (mute, block, report; « message privé » is the phone's)
+  await a.click('#chatBtn'); await a.click('.chat-tabs button[data-tab="near"]');
+  await a.locator('.chat-log .chat-author', { hasText: 'Awa' }).last().click();
   await a.click('.chat-mute');
   await b.waitForTimeout(10500);                             // let the rate-limit window pass
   await say(b, 'Tu ne devrais pas voir ceci');
