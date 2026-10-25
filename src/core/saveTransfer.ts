@@ -14,6 +14,21 @@ export const BACKUP_KEY = 'dakarrek.guest.save.v6.before-import';
 /** The player's name and colour online live beside the save (src/multiplayer/client.ts): the code carries them too, so a restored game keeps its name. */
 export const PROFILE_KEY = 'dakarrek.presence.profile';
 export interface CodeProfile { name: string; look: number }
+/**
+ * LD2.0-B: the device key of the online account (src/multiplayer/client.ts, src/online/client.ts: `dakarrek.chat.key`). The code carries it (an additive
+ * field, `deviceKey`) so a player who changes phone keeps their Messages and their Teranga Money: the code is then also the key to that account, and
+ * the settings say it must not be shared. Older codes have none and still import (the device keeps its own key). Importing a code with a key installs
+ * it only once the player has confirmed the import (`importSave`); the key it replaces is kept beside the game kept aside, so « Revenir à la partie
+ * d’avant » gives both back.
+ */
+export const DEVICE_KEY = 'dakarrek.chat.key';
+export const KEY_BACKUP = 'dakarrek.chat.key.before-import';
+const KEY_RE = /^[a-f0-9]{32}$/;
+const isKey = (v: unknown): v is string => typeof v === 'string' && KEY_RE.test(v);
+/** This browser's device key, if it has one (null in a test or where the storage is blocked). */
+function currentKey(): string | null {
+  try { const k = (globalThis as { localStorage?: Storage }).localStorage?.getItem(DEVICE_KEY); return isKey(k) ? k : null; } catch { return null; }
+}
 
 /** FNV-1a, 32 bits, as 8 hex digits: enough to catch a code cut or altered by a paste. */
 export function checksum(text: string): string {
@@ -33,12 +48,13 @@ function fromBase64(b64: string): string {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
-export function exportCode(data: SaveData, profile?: CodeProfile | null): string {
-  const json = JSON.stringify(profile ? { ...data, presenceProfile: profile } : data);
+/** The game as a code: the save, the name online, and this device's key of the online account (read from the storage when not given). */
+export function exportCode(data: SaveData, profile?: CodeProfile | null, key: string | null = currentKey()): string {
+  const json = JSON.stringify({ ...data, ...(profile ? { presenceProfile: profile } : {}), ...(isKey(key) ? { deviceKey: key } : {}) });
   return `${EXPORT_PREFIX}${toBase64(json)}.${checksum(json)}`;
 }
 
-export type ReadResult = { data: SaveData; profile: CodeProfile | null } | { error: string };
+export type ReadResult = { data: SaveData; profile: CodeProfile | null; key: string | null } | { error: string };
 /** A pasted code (or JSON) → a current save, or why not. Spaces and line breaks a messenger may add are ignored. */
 export function readCode(text: string, now = Date.now()): ReadResult {
   const t = text.trim();
@@ -62,14 +78,15 @@ export function readCode(text: string, now = Date.now()): ReadResult {
   if (!data) return { error: 'Ce code ne contient pas de partie.' };
   const p = (raw as { presenceProfile?: { name?: unknown; look?: unknown } }).presenceProfile;
   const profile = p && typeof p.name === 'string' && p.name.trim() ? { name: p.name.slice(0, 24), look: typeof p.look === 'number' && Number.isInteger(p.look) ? p.look : 0 } : null;
-  return { data, profile };
+  const key = (raw as { deviceKey?: unknown }).deviceKey;
+  return { data, profile, key: isKey(key) ? key : null };
 }
 
 /**
  * Replace the stored game by `data`, keeping the one it replaces under BACKUP_KEY (one slot: the game right before the last import). The caller
  * reloads the page with saves held (src/core/saveHealth.ts), so the running game does not write itself back. False when the storage refuses.
  */
-export function importSave(store: KV | null, data: SaveData, profile: CodeProfile | null = null, now = Date.now()): boolean {
+export function importSave(store: KV | null, data: SaveData, profile: CodeProfile | null = null, now = Date.now(), key: string | null = null): boolean {
   if (!store) return false;
   try {
     const cur = store.getItem(SAVE_KEY);
@@ -77,6 +94,12 @@ export function importSave(store: KV | null, data: SaveData, profile: CodeProfil
     store.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: now }));
   } catch { return false; }
   if (profile) { try { store.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch { /* the game keeps its name for this visit */ } }
+  // the online account: the key of the game kept aside goes with it; the code's key (if any) is this device's from now on
+  try {
+    const was = store.getItem(DEVICE_KEY);
+    if (isKey(was)) store.setItem(KEY_BACKUP, was); else store.removeItem(KEY_BACKUP);
+    if (isKey(key)) store.setItem(DEVICE_KEY, key);
+  } catch { /* blocked storage: the device keeps its key */ }
   return true;
 }
 /** The game kept by the last import, if any (to offer going back to it). */
@@ -91,6 +114,8 @@ export function undoImport(store: KV | null): boolean {
     const cur = store.getItem(SAVE_KEY);
     store.setItem(SAVE_KEY, b);
     if (cur) store.setItem(BACKUP_KEY, cur); else store.removeItem(BACKUP_KEY);
+    const key = store.getItem(KEY_BACKUP), was = store.getItem(DEVICE_KEY);   // the keys swap with the games (an import made before LD2.0-B kept none)
+    if (isKey(key)) { store.setItem(DEVICE_KEY, key); if (isKey(was)) store.setItem(KEY_BACKUP, was); else store.removeItem(KEY_BACKUP); }
     return true;
   } catch { return false; }
 }

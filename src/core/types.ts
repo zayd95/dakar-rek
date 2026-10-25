@@ -82,6 +82,33 @@ export interface SaveData {
    * the third extras backup (src/core/save.ts EXTRAS_V3_KEY) so a rollback to an older client never loses it.
    */
   bana: BanaState;
+  /**
+   * LD2.0-B: this device's side of Teranga Money, the server-held account (src/economy/money.ts, docs/ld2/LD2_B_CONTRACT.md « The device's side of
+   * money »): the operations the server has not answered yet (their wallet part already reserved), the ops already applied here (never twice), and
+   * the last balance the server gave. The balance itself is the server's: this is only what to show offline. Additive field, no version change: a save
+   * without it has nothing pending. Kept in the extras backups (src/core/save.ts) so a rollback never loses a reserved top-up.
+   */
+  online: OnlineSave;
+}
+
+/** A Teranga Money operation sent (or about to be) and not answered yet. `fund`: the wallet part already taken from the wallet for it. */
+export interface OnlinePending {
+  id: string;
+  kind: 'fund' | 'cashout' | 'pay';
+  amount: number; fund: number;
+  /** A send: to whom, its note, the request it pays. */
+  to?: string; note?: string; req?: string;
+  /** When it was reserved (ms), and the account it belongs to (the public tag): only that account's connection resends it. */
+  at: number; tag: string;
+}
+export interface OnlineSave {
+  /** The account (public tag) this game last connected as; null: never. */
+  tag: string | null;
+  pending: OnlinePending[];
+  /** Op ids already settled on this device (refunded, or credited for a withdrawal): last ONLINE_REFS_MAX. */
+  refs: string[];
+  /** The last Teranga Money balance the server gave and when (ms); null: never known. */
+  balance: number | null; at: number;
 }
 
 /** A finished session at the table: what was sold, at what price, what the goods sold had cost, the profit (sales − cost). Whole francs. */

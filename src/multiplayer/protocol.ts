@@ -168,6 +168,14 @@ export function recordTag(value: unknown): string | undefined {
 export function lookIndex(value: unknown): number {
   const n = Number(value); return Number.isInteger(n) && n >= 0 && n < 6 ? n : 0;
 }
+/**
+ * LD2.0-B: the presence space of a player's home, `home:<tag>` (docs/ld2/LD2_B_CONTRACT.md « Presence »). A client inside a home uses it in place of the
+ * old `home` (which older clients keep sending: nothing changes for them, nobody sees them there). Only the player whose tag it is and the guests their
+ * account confirms may be in it (server/worker.ts CityRoom), and a peer in it is relayed only to the sessions in the same space.
+ */
+export const HOME_SPACE = /^home:[0-9a-f]{16}$/;
+/** The host's tag of a `home:<tag>` space, or null for any other space. */
+export const homeHost = (space: string): string | null => (HOME_SPACE.test(space) ? space.slice(5) : null);
 /** Presence accepts positions and poses only. Money, inventory and saves never cross this protocol. */
 export function parseMove(value: unknown, hub: HubId): Move | null {
   if (!value || typeof value !== 'object') return null;
@@ -176,8 +184,9 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
   // spaces: the street, the own room, a scene, a public interior of this hub, a vehicle of one of its lines
-  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts) or a club's terrace (src/venues/club.ts)
-  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene'
+  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts), a club's terrace (src/venues/club.ts), or a player's home
+  // (`home:<tag>`, LD2.0-B: its owner and their accepted guests only; the server checks who may be there: HOME_SPACE)
+  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene' || HOME_SPACE.test(v.space)
     || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space)
     || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space)
     || v.space === `${hub}:venue:club`)) return null;
