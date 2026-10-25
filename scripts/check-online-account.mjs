@@ -266,8 +266,11 @@ try {
   const bFind = await B.req({ type: 'find', tag: A.tag });
   check('find: with an accepted invitation or meeting, where the other is (district and room); never for a stranger', meet?.ok && meetAtB && mAcc?.ok && mAcc.item.state === 'accepted'
     && bFind?.type === 'find' && bFind.hub === 'plateau' && bFind.room === 7 && cFind?.reason === 'unavailable', { bFind, cFind });
-  const early = await B.req({ type: 'meet-here', ref: meetId });
-  await sleep(Math.max(0, when - 10000 - Date.now()) + 400);
+  // too early: a second meeting, set beyond the window's opening (ECONOMY.online.meetEarlyMs, 5 real minutes before its time)
+  const farId = id();
+  await A.req({ type: 'meet', id: farId, to: B.tag, place, when: Date.now() + EARLY + 60_000 });
+  await B.req({ type: 'meet-answer', ref: farId, accept: true });
+  const early = await B.req({ type: 'meet-here', ref: farId });
   const hereB = await B.req({ type: 'meet-here', ref: meetId });
   const hereA = await A.req({ type: 'meet-here', ref: meetId });
   const metAtB = await B.wait(m => m.type === 'item' && m.item.id === meetId && m.item.state === 'met');
