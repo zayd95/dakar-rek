@@ -142,7 +142,7 @@ const done = await V(), wallet1 = await d(() => window.__dakar.state.wallet), le
 const lines = ledger.filter(l => /Course VTC/.test(l.label));
 check('stopped at the kerb bay by the gate: the fare is paid ONCE through the existing payment (one wallet line)', !done.trip && done.state.done.includes(v0.trip.id) && wallet1 - wallet0 === v0.trip.fare && lines.length === 1 && ledger.length - ledger0 >= 1, JSON.stringify({ paid: wallet1 - wallet0, fare: v0.trip.fare, lines: lines.length }));
 const cards = await d(() => window.__dakar.streak.info().log.cards);
-check('the completion card comes up for this ride', cards.some(c => String(c).includes(v0.trip.id)), JSON.stringify(cards));
+check('the completion card comes up for this ride', cards.some(c => c.title === `Course terminée · ${v0.trip.passenger.name}` && c.rows.some(r => r.includes('3 500') || r.includes(String(v0.trip.fare)))), JSON.stringify(cards));
 await page.waitForFunction(() => window.__dakar.mermoz.info().said.length > 0, null, { timeout: 30000 }).catch(() => {});
 await page.waitForTimeout(400); await shot('pape-thanks');
 const m1 = await MZ();
@@ -190,7 +190,7 @@ const toEnd = route({ x: a3.x, z: a3.z, yaw: a3.yaw }, { x: -140, z: 0 }, { crui
 check('from the Filaos back to the road on Mermoz’s streets', !!toEnd);
 if (toEnd) await pilot(page, t, 'teranga', toEnd, { cruise: 7, stall: 60000, ms: 1500000 });
 const frames = [];
-const fs1 = setInterval(async () => { try { frames.push(await d(() => { const A = window.__dakar, a = A.teranga.at(), c = A.camera().at; return { hub: A.pos().hub, x: a.x, z: a.z, cx: c.x, cz: c.z, w: performance.now() }; })); } catch { /* swap */ } }, 250);
+const fs1 = setInterval(async () => { try { frames.push(await d(() => { const A = window.__dakar, a = A.teranga.at(), c = A.camera().at; return { hub: A.pos().hub, x: a.x, z: a.z, cx: c[0], cz: c[2], w: performance.now() }; })); } catch { /* swap */ } }, 250);
 await driveRoad(page, t, 'teranga', 'corniche-mermoz', 40, { cruise: 11, brakeAtEnd: true, stall: 240000, boost: true, ms: 2400000 });
 await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 240000 }).catch(() => {});
 clearInterval(fs1);
