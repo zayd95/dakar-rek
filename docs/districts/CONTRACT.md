@@ -1,6 +1,6 @@
 # Living Districts ↔ Living Dakar 2.0: coordination contract
 
-**Version 1 · 2026-10-25** (M1). Bump the version whenever a row changes. Keep this file short.
+**Version 2 · 2026-10-25** (M1; v2: LD2.0-A's answer and a tested trial merge with `8496b1f`). Bump the version whenever a row changes. Keep this file short.
 
 **Who owns what.** Living Districts (this lane) owns the districts' places, roads, local people and authored activities. Living Dakar 2.0 (LD2) owns:
 
@@ -16,18 +16,19 @@ This lane changes none of LD2's modules without an agreed row below and integrat
 
 **Branches.**
 - District work: `feature/ld-m1-mermoz-20261025`, based on `integration/unified-beta-20261022` @ `a1cf012`.
-- LD2: `integration/ld2-a-20261024`. It was @ `dc68549` at M1 start and is @ `da866e5` on 2026-10-25.
+- LD2: `integration/ld2-a-20261024`. It was @ `dc68549` at M1 start and is @ `8496b1f` (draft PR #68) at v2.
+- M1's proposed integration SHA: the head of PR #67.
 
 ## Dependencies
 
 | # | Dependency | Owner · existing implementation | Interface consumed (inputs → outputs) | Save / persistence | Integration SHA | Status |
 |---|---|---|---|---|---|---|
 | 1 | Paying a ride | Vehicles economy · `src/transport/vtc.ts` `alight()` → `GameState.addMoney` (one wallet ledger line, guarded by `vtc.done`) | M1 adds no payment. `vtcHooks.extra(hub, day, hour) → VtcRequest[]` adds authored requests to the phone list; these use the same `vtcFare` / `tripOf` / `accept`. `vtcHooks.paid(trip)` fires once per ride, after the payment and inside the done-check. | Nothing new. The active ride and `vtc.done` are the existing `SaveData.vtc`. | `df48f78` (this branch) | **ready**: additive hook, no behaviour change when no hook is registered |
-| 2 | Money accounts (LD2.0-A, `docs/MONEY.md`) | LD2 · `src/economy/money.ts` | None today. Fares reach the wallet through `addMoney`, as before. When LD2.0-A lands, the fare is whatever `addMoney` becomes there; M1 does not call `money.move` itself. | None | LD2 `da866e5` | **pending**: must be re-checked after the merge (row 6) |
-| 3 | A new hub id `mermoz` | LD2 (global save) · `src/core/types.ts` `HUB_IDS`, validated by `src/core/save.ts` | `HUB_IDS` gains `'mermoz'`, **appended** (index 4), so the stored hub indices of existing saves (e.g. a parked vehicle's `vehicle:<id>:hub`) keep their meaning. | No schema change, no migration, `SCHEMA_VERSION` stays 6. A save in Mermoz loaded by an older client falls back to that client's base hub (save.ts). | `570a3b2` | **pending LD2 approval**: owner's sign-off needed on the HUB_IDS row |
+| 2 | Money accounts (LD2.0-A, `docs/MONEY.md`) | LD2 · `src/economy/money.ts` | None today. Fares reach the wallet through `addMoney`, as before. When LD2.0-A lands, the fare is whatever `addMoney` becomes there; M1 does not call `money.move` itself. | None | LD2 `8496b1f` | **ready**: LD2.0-A confirms a fare through `addMoney` is the wallet side of its money contract; only `move()` touches savings |
+| 3 | A new hub id `mermoz` | LD2 (global save) · `src/core/types.ts` `HUB_IDS`, validated by `src/core/save.ts` | `HUB_IDS` gains `'mermoz'`, **appended** (index 4), so the stored hub indices of existing saves (e.g. a parked vehicle's `vehicle:<id>:hub`) keep their meaning. | No schema change, no migration, `SCHEMA_VERSION` stays 6. A save in Mermoz loaded by an older client falls back to that client's base hub (save.ts). | `570a3b2` | **ready on LD2.0-A's side**: no objection, and its hub-keyed code (`src/economy/pistesModule.ts`) doesn't assume four hubs. The owner's sign-off is still pending. |
 | 4 | Multiplayer room for Mermoz | Multiplayer · `server/` `isHub()` reads the same `HUB_IDS` | A client in Mermoz asks for room `mermoz`. A server built from this branch accepts it; the production worker does not until it is redeployed. | None | `570a3b2` | **pending**: the preview worker only; no production deployment without the owner |
 | 5 | NPC memory for Pape Diouf | LD2 (shared NPC memory) · `src/social/memory.ts` `recordVisit`, `src/social/relations.ts` `Relations.change` | Consumed as-is (no change to either file): `visit_pape_filaos` / `seen_pape_filaos` counters and `rel` `pape_filaos\|player`. | M1's own keys sit in the existing `flags` / `counters`, all prefixed `mz_` (`docs/districts/M1-MERMOZ.md` § Memory). Additive, so an older client keeps them unread. | `df48f78` | **ready** (consumer only). If LD2 moves NPC memory to its own store, these keys are the migration's input. |
-| 6 | Merging with LD2-A | Integration owner | `git merge-tree` of this branch with `da866e5` gives one textual conflict in `src/core/types.ts` (LD2's `import type { PistesState }` next to M1's `HubId` line). Keep both lines; `src/game/modules.ts` merges cleanly. | — | to be fixed at the merge | **blocked on integration approval** (no unapproved merges) |
+| 6 | Merging with LD2-A | Integration owner | Trial merge of M1 (`efbd04c`) with `8496b1f`, done locally and thrown away. **One text conflict** in `src/core/types.ts`: keep LD2's `PistesState` import and M1's `HubId`/`HUB_IDS` lines. `modules.ts`, `chunks.ts`, `builder.ts`, `roadEvents.ts` merge cleanly; `tsc` passes. **Tests: 2262 passed, 1 failed**: LD2's `tests/ld2Drive.test.ts` « nothing stands on the carriageway » flags M1's VDN median. That median is a raised island on the centre line by design, like the Plateau checkpoint the same test already exempts. Exempting it (`DIVIDED.has(profile) && |d| < MEDIAN_HALF + 0.05`) makes the file pass 18/18, BRT junction included. The two-line patch is on the PR; the test is LD2's, so the change belongs to LD2 or the integration owner. | — | resolution known | **blocked on integration approval** (no unapproved merges) |
 
 ## Rules for this lane
 
