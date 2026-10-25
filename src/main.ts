@@ -1394,9 +1394,14 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
 
 /** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
 function guidePlace(id: string): { name: string; x: number; z: number } | null {
-  const it = world?.interactables.find(i => i.id === id); if (it) return { name: it.name, x: it.x, z: it.z };
-  const pl = ctxReady ? ctx.places.all().find(p => p.id === id) : undefined, a = pl?.anchors[0];
-  return pl && a ? { name: pl.name, x: a.x, z: a.z } : null;
+  // the dealers' directory names a dealer with its district (`teranga:dealer:pikine`, src/transport/ownedModule.ts directoryRows); its place in that district is `teranga:dealer`
+  const local = world && id.endsWith(`:${world.id}`) ? id.slice(0, -(world.id.length + 1)) : null;
+  for (const k of local ? [id, local] : [id]) {
+    const it = world?.interactables.find(i => i.id === k); if (it) return { name: it.name, x: it.x, z: it.z };
+    const pl = ctxReady ? ctx.places.all().find(p => p.id === k) : undefined, a = pl?.anchors[0];
+    if (pl && a) return { name: pl.name, x: a.x, z: a.z };
+  }
+  return null;
 }
 
 function walkingHint(): string | null {
