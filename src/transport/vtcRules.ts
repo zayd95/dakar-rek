@@ -43,7 +43,7 @@ export const VTC_POINTS: Record<HubId, VtcPoint[]> = {
   // Mermoz · Sacré-Cœur (M1, docs/districts/M1-MERMOZ.md): two addresses only, both authored. The residence's gate on a quiet villa street under the trees (x = 60), and
   // the bakery on Sacré-Cœur's shopping street (x = −60).
   mermoz: [
-    { id: 'filaos', name: 'Résidence Les Filaos · Mermoz', x: 69, z: -30 }, { id: 'boulangerie', name: 'Boulangerie de Sacré-Cœur', x: -70, z: 30 },
+    { id: 'filaos', name: 'Résidence Les Filaos', x: 69, z: -30 }, { id: 'boulangerie', name: 'Boulangerie de Sacré-Cœur', x: -70, z: 30 },
   ],
 };
 /** Where the car stops for a point (the kerb), and where the passenger waits (the pavement beside it, away from the road's centre line). */

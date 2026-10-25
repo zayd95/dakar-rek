@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { Batch } from '../world/batch';
+import { Batch, facadeTextures } from '../world/batch';
 import { addGrain } from '../world/grain';
 import { generatedTexture } from '../world/textures';
 import { hubSurface, lightPoolTexture } from '../world/builder';
@@ -23,6 +23,8 @@ const ASPHALT = 0x4d5057;
 /** The materials every chunk shares (made once for the road, freed with it). `lite`: no procedural grain or detail texture (the Low quality preset). */
 export class ChunkMats {
   readonly ground: THREE.MeshLambertMaterial; readonly asphalt: THREE.MeshLambertMaterial; readonly plain: THREE.MeshLambertMaterial;
+  /** The districts' window texture (world/batch.ts facadeTextures) on the VDN's and Sacré-Cœur's blocks; lit windows at night. Plain walls under the unit tests (no canvas). */
+  readonly facade: THREE.MeshLambertMaterial;
   /** Lamp heads (dimmer by day, full at night) and the pools of light on the road under them (night only), like the districts' own (world/builder.ts). */
   readonly bulb = new THREE.MeshBasicMaterial({ vertexColors: true });
   readonly glow = new THREE.MeshBasicMaterial({ map: typeof document !== 'undefined' ? lightPoolTexture() : null, color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, visible: false });
@@ -30,10 +32,12 @@ export class ChunkMats {
     this.ground = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 1.2, 0.5, false, lite ? undefined : generatedTexture('sand'), 3) as THREE.MeshLambertMaterial;
     this.asphalt = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, lite ? undefined : generatedTexture('asphalt'), 3) as THREE.MeshLambertMaterial;
     this.plain = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1) as THREE.MeshLambertMaterial;
+    const tex = typeof document !== 'undefined' ? facadeTextures() : null;
+    this.facade = addGrain(new THREE.MeshLambertMaterial({ map: tex?.map ?? null, vertexColors: true, emissive: 0xffc070, emissiveMap: tex?.glow ?? null, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
   }
   /** `night`: 0 (day) … 1. */
-  setNight(night: number) { this.bulb.color.setScalar(0.45 + 0.55 * night); this.glow.visible = night > 0.3; }
-  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); this.bulb.dispose(); this.glow.dispose(); }
+  setNight(night: number) { this.bulb.color.setScalar(0.45 + 0.55 * night); this.glow.visible = night > 0.3; this.facade.emissiveIntensity = this.facade.emissiveMap ? 0.9 * night : 0; }
+  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); this.facade.map?.dispose(); this.facade.emissiveMap?.dispose(); this.facade.dispose(); this.bulb.dispose(); this.glow.dispose(); }
 }
 
 export interface Chunk {
@@ -108,7 +112,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   const s0 = index * CHUNK, s1 = Math.min(L, s0 + CHUNK + 4);        // a few metres of overlap: no seam between two chunks
   const R = rng(0x5f3a + index * 7919 + road.id.length * 131 + road.id.charCodeAt(0) * 17);
   const sa = hubSurface(road.def.a), sb = hubSurface(road.def.b);
-  const plain = new Batch(), asphalt = new Batch(), ground = new Batch(), bulbs = new Batch(), pools: THREE.BufferGeometry[] = [];
+  const plain = new Batch(), asphalt = new Batch(), ground = new Batch(), bulbs = new Batch(), fac = new Batch(), pools: THREE.BufferGeometry[] = [];
   const colliders: Collider[] = [], people: HubWorld['people'] = [];
   const disposables: { dispose(): void }[] = [];
   const group = new THREE.Group(); group.name = `road:${road.id}:${index}`;
@@ -186,6 +190,20 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     for (const l of [-ROAD_HALF + 0.35, ROAD_HALF - 0.35]) plain.coloured(ribbon(road, s0, s1, l - 0.09, l + 0.09, MARK_Y, () => new THREE.Color(0xe8e4d8), 12));
   }
 
+  // wear of an old city road (the owner's road references: patched asphalt, oil stains in the wheel tracks, the odd pothole) on the VDN and at Sacré-Cœur; flat on the
+  // asphalt, between the edge lines and clear of the centre (its dashes, the median) and of the junctions' stop lines and zebras. Paint only: nothing to hit
+  const WEAR = new Set<Profile>(['vdn', 'sacrecoeur']), RW = rng(0x77a1 + index * 131 + road.id.length);
+  for (let s = Math.ceil(s0 / 6) * 6; s < Math.min(s1 - 3, L - 3); s += 6) {
+    if (!WEAR.has(road.profileAt(s)) || nearJunction(s, 22)) { RW(); RW(); RW(); continue; }
+    const r = RW(), side = RW() < 0.5 ? -1 : 1, lat = side * (1.7 + RW() * 2.2), f = frame(road, s + 3), x = f.x + f.lx * lat, z = f.z + f.lz * lat;
+    if (r < 0.22) plain.flat(1.6 + RW() * 0.6, 2 + RW() * 4, x, MARK_Y - 0.008, z, RW() < 0.5 ? 0x3c3f45 : 0x5d5f62, f.yaw + (RW() - 0.5) * 0.06);   // a patch, newer or older than the road
+    else if (r < 0.42) { const g = new THREE.CircleGeometry(0.5 + RW() * 0.6, 8); g.rotateX(-Math.PI / 2); g.scale(0.6, 1, 1.6); plain.geometry(g, 0x34363a, x, MARK_Y - 0.009, z, f.yaw); }   // an oil stain in the wheel track
+    else if (r < 0.46 && !o.lite) {                                                                                                                            // a pothole, its rim of broken asphalt
+      const g = new THREE.CircleGeometry(0.55, 7); g.rotateX(-Math.PI / 2); plain.geometry(g, 0x6b6558, x, MARK_Y - 0.008, z, RW() * 3);
+      const h = new THREE.CircleGeometry(0.4, 7); h.rotateX(-Math.PI / 2); plain.geometry(h, 0x222327, x, MARK_Y - 0.006, z, RW() * 3);
+    }
+  }
+
   // roadside, every few metres of the chunk, by what the road is like there
   const place = (s: number, lat: number) => { const f = frame(road, s); return { x: f.x + f.lx * lat, z: f.z + f.lz * lat, yaw: f.yaw, f }; };
   /**
@@ -195,11 +213,11 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
    * falls on a district's ground (`onDistrict`).
    */
   const guarded = (p: { x: number; z: number; yaw: number }, w: number, d: number, draw: () => void) => {
-    const mp = plain.mark(), mb = bulbs.mark(), nc = colliders.length, np = people.length, nl = pools.length;
+    const mp = plain.mark(), mf = fac.mark(), mb = bulbs.mark(), nc = colliders.length, np = people.length, nl = pools.length;
     draw();
     const ax = Math.cos(p.yaw), az = -Math.sin(p.yaw), fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     if (![[-1, -1], [-1, 1], [1, -1], [1, 1], [0, 0]].some(([u, v]) => onDistrict(road, p.x + ax * u * w / 2 + fx * v * d / 2, p.z + az * u * w / 2 + fz * v * d / 2, 0.5))) return;
-    plain.rollback(mp); bulbs.rollback(mb); colliders.length = nc; people.length = np; for (const g of pools.splice(nl)) g.dispose();
+    plain.rollback(mp); fac.rollback(mf); bulbs.rollback(mb); colliders.length = nc; people.length = np; for (const g of pools.splice(nl)) g.dispose();
   };
   const lamp = (s: number, side: number) => guarded(place(s, side * (KERB + 0.6)), 4.6, 0.6, () => {
     const p = place(s, side * (KERB + 0.6)), arm = -side;
@@ -229,9 +247,15 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     plain.box(0.4, 0.15, len + 0.1, p.x, h, p.z, 0xd8d0c0, p.f.yaw);
   });
   const houses: { s: number; lat: number; w: number; d: number }[] = [];
-  const house = (s: number, lat: number, w: number, d: number, h: number, col: number, flat = true) => guarded(place(s, lat), w + 0.4, d + 0.4, () => {
+  /** `windows`: the districts' window texture. `shop` (−1 / +1, the side of the house facing the road): a shop at its foot, a dark opening and a half-raised shutter. */
+  const house = (s: number, lat: number, w: number, d: number, h: number, col: number, flat = true, windows = false, shop = 0) => guarded(place(s, lat), w + 0.4, d + 0.4, () => {
     const p = place(s, lat); houses.push({ s, lat, w: w + 0.4, d: d + 0.4 });
-    plain.box(w, h, d, p.x, 0, p.z, col, p.f.yaw);
+    if (windows) fac.facade(w, h, d, p.x, 0, p.z, col, p.f.yaw); else plain.box(w, h, d, p.x, 0, p.z, col, p.f.yaw);
+    if (shop) {
+      const fx = p.x + p.f.lx * shop * (w / 2 + 0.05), fz = p.z + p.f.lz * shop * (w / 2 + 0.05), fw = d * 0.7;
+      plain.box(0.1, 2.5, fw, fx, 0, fz, 0x2a2622, p.f.yaw);
+      plain.box(0.14, 1.0, fw, fx + p.f.lx * shop * 0.03, 1.5, fz + p.f.lz * shop * 0.03, 0x9aa0a6, p.f.yaw);
+    }
     if (flat) plain.box(w + 0.3, 0.2, d + 0.3, p.x, h, p.z, 0xe2dccf, p.f.yaw);
     else plain.box(w + 0.4, 0.15, d + 0.4, p.x, h, p.z, 0x9a9588, p.f.yaw);
     const door = R() < 0.6;
@@ -451,7 +475,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
           if (R() < 0.45) palm(s + 3, side * (VERGE + 1 + R() * 2), 0.9 + R() * 0.3);
           for (const sd of [-1, 1]) if (R() < 0.42) {
             const h = 3.2 * (6 + Math.floor(R() * 5)), lat = sd * (VERGE + 14 + R() * 16), col = [0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4, 0xe9c99a][Math.floor(R() * 5)];
-            house(s + 4, lat, 13 + R() * 6, 12 + R() * 5, h, col, true);
+            house(s + 4, lat, 13 + R() * 6, 12 + R() * 5, h, col, true, true);
             if (R() < 0.18) guarded(place(s + 4, lat), 3, 3, () => {                                     // a crane over a block still going up
               const p = place(s + 4, lat), top = h + 12;
               plain.box(0.9, top, 0.9, p.x, 0, p.z, 0xd9a12a); plain.box(16, 0.7, 0.8, p.x + p.f.lx * 4, top, p.z + p.f.lz * 4, 0xd9a12a, p.yaw + Math.PI / 2);
@@ -468,7 +492,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
           if (s % 24 === 0) stall(s + 2, side);
           for (const sd of [-1, 1]) if (R() < 0.85) {
             const h = 3.2 * (3 + Math.floor(R() * 4)), lat = sd * (VERGE + 6 + R() * 3), col = [0xf1e6d2, 0xe9cfae, 0xdfe6e8, 0xf4efe6, 0xe3c9a6, 0xc7d5df, 0xdba57c][Math.floor(R() * 7)];
-            house(s + 4, lat, 10 + R() * 4, 9 + R() * 3, h, col, true);
+            house(s + 4, lat, 10 + R() * 4, 9 + R() * 3, h, col, true, true, -sd);
             const b = place(s + 4, sd * (VERGE + 0.9)); guarded(b, 0.3, 4, () => plain.box(0.12, 0.7, 4, b.x, 2.6, b.z, AWNING[Math.floor(R() * AWNING.length)], b.yaw));
           }
         }
@@ -481,7 +505,8 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     const p = place(s + 2, 0);
     plain.box(MEDIAN_HALF * 2, 0.22, 4.05, p.x, ROAD_Y - 0.02, p.z, 0xd8d2c4, p.yaw);
     plain.box(MEDIAN_HALF * 2 - 0.3, 0.05, 4.05, p.x, ROAD_Y + 0.2, p.z, 0x7a6a4a, p.yaw);
-    if (!o.lite || s % 8 === 0) plain.blob(0.55 + R() * 0.2, p.x, ROAD_Y + 0.62, p.z, R() < 0.55 ? [0xd23a8c, 0xe2588f, 0xc2307a][Math.floor(R() * 3)] : 0x3f7a35, 0.75, 0);
+    plain.box(MEDIAN_HALF * 2 - 0.5, 0.5, 3.7, p.x, ROAD_Y + 0.24, p.z, R() < 0.5 ? 0x3f6f2f : 0x4a7a36, p.yaw);           // the trimmed hedge along the island
+    if (!o.lite && R() < 0.6) plain.blob(0.32 + R() * 0.12, p.x, ROAD_Y + 0.82, p.z + (R() - 0.5) * 2, [0xd23a8c, 0xe2588f, 0xc2307a, 0xf08a3c][Math.floor(R() * 4)], 0.7, 0);   // bougainvillea over it
     for (let k = 0; k < 4; k++) { const q = place(s + 0.5 + k, 0); colliders.push({ x0: q.x - MEDIAN_HALF + 0.05, x1: q.x + MEDIAN_HALF - 0.05, z0: q.z - MEDIAN_HALF + 0.05, z1: q.z + MEDIAN_HALF - 0.05, h: 0.6 }); }   // small squares: never swelling toward the lanes in a bend
     if (s % 36 === 0) {
       plain.cyl(0.09, 0.13, 8.5, p.x, ROAD_Y + 0.22, p.z, 0x9aa0a6, 6);
@@ -525,7 +550,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
 
   const meshes: THREE.Mesh[] = [];
   const add = (b: Batch, m: THREE.Material, cast: boolean, receive = true) => { const mesh = b.build(m, receive, cast); if (mesh) { mesh.frustumCulled = true; group.add(mesh); meshes.push(mesh); disposables.push(mesh.geometry); } };
-  add(ground, o.mats.ground, false); add(asphalt, o.mats.asphalt, false); add(plain, o.mats.plain, true); add(bulbs, o.mats.bulb, false, false);
+  add(ground, o.mats.ground, false); add(asphalt, o.mats.asphalt, false); add(plain, o.mats.plain, true); add(fac, o.mats.facade, true); add(bulbs, o.mats.bulb, false, false);
   if (pools.length) { const glow = new THREE.Mesh(mergeGeometries(pools, false)!, o.mats.glow); glow.renderOrder = 1; group.add(glow); meshes.push(glow); disposables.push(glow.geometry); for (const g of pools) g.dispose(); }
 
   // the direction boards at the junctions of this chunk: two a driver coming from each end reads in time

@@ -491,8 +491,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       solidC(cx, cz, w + 0.4, d + 0.4, h);
       return;
     }
-    const roll = R(), corner = (a === 1 && i === 3) || (b === 1 && j === 3);
-    if (roll < 0.5) {
+    const roll = R(), corner = ((a === 1 && i === 3) || (b === 1 && j === 3)) && R() < 0.4;
+    if (roll < 0.64 && !corner) {
       // a gated family villa
       const wc = pick([0xe8d3b0, 0xf3e7d1, 0xc86b4f, 0x9db3cf, 0xe9c99a, 0xd7e0e4, 0xb5563f], R), hc = pick(sp.palette, R);
       wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, wc, 2.3);
@@ -511,9 +511,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       solidC(L.cx, cz, w, d, h);
       return;
     }
-    if (roll < 0.82 || corner) {
-      // an apartment block, six to nine floors: balconies on the street sides, a vertical band of colour, a low wall and a hedge on the setback
-      const fl = 6 + Math.floor(R() * 4), w = LS - 4, d = LS - 5, h = fl * 3.2, col = pick([0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4], R), band = pick([0xc86b4f, 0x6f8fc0, 0x3f8a5a, 0xd98b1a, 0x9b3d3d], R);
+    if (roll < 0.88 || corner) {
+      // an apartment block, four to seven floors (Mermoz is low: villas, and a few blocks on the corners): balconies on the street sides, a vertical band of colour, a low wall and a hedge on the setback
+      const fl = 4 + Math.floor(R() * 4), w = LS - 4, d = LS - 5, h = fl * 3.2, col = pick([0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4], R), band = pick([0xc86b4f, 0x6f8fc0, 0x3f8a5a, 0xd98b1a, 0x9b3d3d], R);
       const cx = L.cx - fx * 0.5, cz = L.cz - fz * 0.5 + gz * 0.3;
       fac.facade(w, h, d, cx, G - 0.02, cz, col);
       plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
@@ -1421,7 +1421,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
    * shopfronts in view: a few trees on its east side only. The way in (z = 0, x < −100) stays open. Own random stream: nothing else of the district moves.
    */
   function* mermozShade(): Generator<void, void, void> {
-    const RT = rng(sp.seed * 131 + 7), crownCols = [0x3f6e2e, 0x4c7d36, 0x365f28, 0x557f3a], roadDark = shade(sp.road, 0.72), walkDark = shade(sp.walk, 0.78);
+    const RT = rng(sp.seed * 131 + 7), crownCols = [0x5b8a3a, 0x6c9a44, 0x4f7f33, 0x7aa64e, 0x638f3c], roadDark = shade(sp.road, 0.74), roadDeep = shade(sp.road, 0.62), walkDark = shade(sp.walk, 0.8), walkDeep = shade(sp.walk, 0.68);
     const blot = (x: number, z: number, r: number, col: number, y: number) => {
       const g = new THREE.CircleGeometry(r, 9); g.rotateX(-Math.PI / 2); g.scale(1, 1, 0.5 + RT() * 0.5);
       plain.geometry(g, col, x, y, z, RT() * Math.PI);
@@ -1440,15 +1440,15 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           const off = treeOff + 0.2, x = along ? line + s * off : t, z = along ? t : line + s * off;
           if (Math.abs(x) > HALF + 2 || Math.abs(z) > HALF + 2 || blocked(x, z, 0.9)) continue;
           dress(x, z, () => {
-            const sc = 0.9 + RT() * 0.35, lean = 1.6 + RT() * 1.4;                                   // toward the road's middle
+            const sc = 0.95 + RT() * 0.35, lean = 2.0 + RT() * 1.3;                                   // toward the road's middle
             const lx = along ? -s * lean : 0, lz = along ? 0 : -s * lean;
             const h = 3.8 * sc;
             limb(trunks, [x, 0.05, z], [x + lx * 0.45, h, z + lz * 0.45], 0.3 * sc, 0.22 * sc, 0x6e5a44, 6);
             limb(trunks, [x + lx * 0.45, h, z + lz * 0.45], [x + lx, h + 1.4 * sc, z + lz], 0.2 * sc, 0.13 * sc, 0x6e5a44, 5);
             limb(trunks, [x + lx * 0.45, h - 0.4, z + lz * 0.45], [x - lx * 0.3 + (along ? 0 : 1.2), h + 1.1, z - lz * 0.3 + (along ? 1.2 : 0)], 0.14 * sc, 0.09 * sc, 0x6e5a44, 5);
             const top = { x: x + lx, z: z + lz, r: 0, y0: Infinity, y1: 0 };
-            for (let n = 0; n < (lite ? 3 : 6); n++) {
-              const a = n * 1.1 + RT() * 0.8, rr = n === 0 ? 0 : (1.4 + RT() * 1.2) * sc, br = (1.7 + RT() * 0.7) * sc, by = (5.7 + RT() * 1.3) * sc;
+            for (let n = 0; n < (lite ? 4 : 8); n++) {
+              const a = n * 0.8 + RT() * 0.7, rr = n === 0 ? 0 : (1.6 + RT() * 1.5) * sc, br = (1.8 + RT() * 0.8) * sc, by = 6.2 + RT() * 1.4 + (sc - 1) * 2;
               const bx = top.x + Math.sin(a) * rr, bz = top.z + Math.cos(a) * rr;
               leaves.blob(br, bx, by, bz, crownCols[n % crownCols.length], 0.62, 0);
               top.r = Math.max(top.r, rr + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.62 * 0.8); top.y1 = Math.max(top.y1, by + br * 0.6);
@@ -1456,9 +1456,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
             canopies.push(top);
             solidC(x, z, 0.7, 0.7, 3);
             // the shade on the ground under the crown: darker blotches on the asphalt and on the verge
-            for (let n = 0; n < (lite ? 2 : 5); n++) {
-              const px = top.x + (RT() - 0.5) * top.r * 1.6, pz = top.z + (RT() - 0.5) * top.r * 1.6, onRoad = along ? Math.abs(px - line) < ROAD / 2 - 0.3 : Math.abs(pz - line) < ROAD / 2 - 0.3;
-              blot(px, pz, 0.7 + RT() * 1.4, onRoad ? roadDark : walkDark, onRoad ? 0.086 : G + 0.008);
+            for (let n = 0; n < (lite ? 3 : 11); n++) {
+              const big = n < 2, px = top.x + (RT() - 0.5) * top.r * (big ? 0.8 : 1.9), pz = top.z + (RT() - 0.5) * top.r * (big ? 0.8 : 1.9), onRoad = along ? Math.abs(px - line) < ROAD / 2 - 0.3 : Math.abs(pz - line) < ROAD / 2 - 0.3;
+              blot(px, pz, big ? 1.6 + RT() * 0.8 : 0.35 + RT() * 0.6, onRoad ? (big ? roadDark : roadDeep) : (big ? walkDark : walkDeep), onRoad ? (big ? 0.084 : 0.088) : G + (big ? 0.006 : 0.01));
             }
           });
         }
@@ -1471,6 +1471,41 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       const x = along ? roadC(k) + s * (ROAD / 2 - 0.2) : t, z = along ? t : roadC(k) + s * (ROAD / 2 - 0.2);
       plain.blob(0.9 + RT() * 1.4, x, G - 0.1, z, RT() < 0.5 ? 0xd9c49a : 0xcdb68a, 0.06, 1);
     }
+    yield;
+    // the asphalt's age: patches, oil stains in the wheel tracks, sand blown onto the edges, a pothole here and there (paint only, clear of the crossings)
+    for (let k = 0; k <= NB; k++) for (const along of [true, false]) for (let t = -HALF + 8; t < HALF - 8; t += 5 + RT() * 6) {
+      const line = roadC(k), jn = roadC(Math.round((t + HALF - ROAD / 2) / PITCH));
+      if (Math.abs(t - jn) < ROAD / 2 + 4) continue;
+      const r = RT(), lat = (RT() < 0.5 ? -1 : 1) * (0.9 + RT() * 3.6), x = along ? line + lat : t, z = along ? t : line + lat, yaw = along ? 0 : Math.PI / 2;
+      if (Math.abs(x) > HALF - 2 || Math.abs(z) > HALF - 2) continue;
+      if (r < 0.2) plain.flat(1.4 + RT() * 1.2, 1.8 + RT() * 3, x, 0.083, z, RT() < 0.5 ? shade(sp.road, 0.86) : shade(sp.road, 1.16), yaw + (RT() - 0.5) * 0.1);
+      else if (r < 0.36) blot(x, z, 0.4 + RT() * 0.5, shade(sp.road, 0.7), 0.085);
+      else if (r < 0.39 && !lite) { blot(x, z, 0.55, 0x6b6558, 0.085); blot(x, z, 0.38, 0x252628, 0.087); }
+      else if (r < 0.55 && Math.abs(lat) > 3.2) blot(x + (along ? Math.sign(lat) * 1 : 0), z + (along ? 0 : Math.sign(lat) * 1), 0.8 + RT() * 0.8, 0xc9b48a, 0.086);   // sand drifted onto the edge
+    }
+    if (lite) return;
+    yield;
+    // Sacré-Cœur's shopping street (x = roadC(1)): concrete poles at the kerbs and the cables slung between them and across the street, above every vehicle
+    const sx = roadC(1), poles: [number, number][] = [];
+    for (const side of [-1, 1]) for (let t = -HALF + 14; t < HALF - 10; t += 21 + RT() * 5) {
+      const x = sx + side * (ROAD / 2 + 0.5), jn = roadC(Math.round((t + HALF - ROAD / 2) / PITCH));
+      if (Math.abs(t - jn) < ROAD / 2 + 2 || blocked(x, t, 0.4)) continue;
+      plain.box(0.22, 8.2, 0.22, x, G, t, 0x9c968a); plain.box(1.4, 0.12, 0.12, x, G + 7.6, t, 0x8a8478);
+      solidC(x, t, 0.3, 0.3, 8); poles.push([x, t]);
+    }
+    const cable = (ax: number, az: number, bx: number, bz: number, y: number, sag: number) => {
+      const n = 4;
+      for (let i = 0; i < n; i++) {
+        const f0 = i / n, f1 = (i + 1) / n, y0 = y - sag * 4 * f0 * (1 - f0), y1 = y - sag * 4 * f1 * (1 - f1);
+        const x0 = ax + (bx - ax) * f0, z0 = az + (bz - az) * f0, x1 = ax + (bx - ax) * f1, z1 = az + (bz - az) * f1, len = Math.hypot(x1 - x0, z1 - z0, y1 - y0);
+        const g = new THREE.BoxGeometry(0.035, 0.035, len); g.lookAt(new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0)); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+        plain.geometry(g, 0x1d1d1f, 0, 0, 0);
+      }
+    };
+    const bySide = (sd: number) => poles.filter(p => Math.sign(p[0] - sx) === sd).sort((p, q) => p[1] - q[1]);
+    for (const sd of [-1, 1]) { const l = bySide(sd); for (let i = 1; i < l.length; i++) for (const dy of [0, 0.35]) cable(l[i - 1][0], l[i - 1][1], l[i][0], l[i][1], G + 7.5 - dy, 0.5 + RT() * 0.3); }
+    const east = bySide(1);
+    for (const w of bySide(-1)) { const e = east.reduce((b, c) => Math.abs(c[1] - w[1]) < Math.abs(b[1] - w[1]) ? c : b, east[0]); if (e && Math.abs(e[1] - w[1]) < 12) cable(w[0], w[1], e[0], e[1] + (RT() - 0.5) * 4, G + 7.3, 0.7); }
   }
   yield;
   if (sp.style === 'mermoz') yield* mermozShade();

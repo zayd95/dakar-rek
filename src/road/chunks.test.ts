@@ -52,7 +52,7 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
   });
 
   it('are light: a handful of meshes and a few thousand triangles each', () => {
-    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(5); expect(tris(c.group)).toBeLessThan(14000); }
+    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(6); expect(tris(c.group)).toBeLessThan(14000); }   // (6: the VDN's and Sacré-Cœur's blocks carry the window texture, one more mesh)
   });
 
   it('have finite geometry', () => {
