@@ -25,7 +25,7 @@ export interface Action {
   quiet?: boolean;
   /** One emoji for buttons and sheets when the verb's default does not fit (« 🤼 » for a bout, « 🥊 » for a drill). */
   icon?: string;
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop' | 'business';
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop' | 'business' | 'bank' | 'bankAdvice';
 }
 export interface Interactable {
   id: string;

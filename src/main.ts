@@ -88,6 +88,7 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { bankModule } from './economy/bankModule';
 import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
 import { CorridorHost, type Swap } from './road/host';
 import { approachLink, hasLinks } from './transport/hubLink';
@@ -964,6 +965,8 @@ function runSpecial(a: Action) {
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
     case 'shop': economy.openShop(false, nearest?.name ?? ''); break;
     case 'business': economy.openBusiness(); break;
+    case 'bank': bankModule.counter(nearest?.name); break;                 // Banque Teranga: the savings account (src/economy/bankModule.ts)
+    case 'bankAdvice': bankModule.advise(nearest?.name, a); break;
   }
 }
 
