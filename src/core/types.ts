@@ -1,5 +1,6 @@
 import type { CareerSave } from '../career/career';
 import type { Appearance } from '../actors/appearance';
+import type { PistesState } from '../economy/pistes';
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 /**
@@ -67,6 +68,76 @@ export interface SaveData {
    * change: a save without it (every save made before the studio) is null and draws the body exactly as it was made.
    */
   appearance: Appearance | null;
+  /**
+   * LD2.0-A: the Banque Teranga savings account (src/economy/money.ts): the second of the player's money accounts, beside the wallet. Additive field, no
+   * version change: a save without it has an empty account. Kept in the third extras backup (src/core/save.ts EXTRAS_V3_KEY) so an older client that
+   * drops it at its save never loses the player's savings for good.
+   */
+  bank: BankState;
+  /** LD2.0-A: what the player did with « Mes pistes » (src/economy/pistes.ts): leads dismissed or followed, offered in the street. Additive field. */
+  pistes: PistesState;
+  /**
+   * LD2.0-A: the player's own bana-bana table in Pikine (src/economy/bana.ts): its stock, the clientèle building up over played time, the session in
+   * progress and the last one. Additive field, no version change: a save without it gets an empty table (set up when a first bana unit is owned). Kept in
+   * the third extras backup (src/core/save.ts EXTRAS_V3_KEY) so a rollback to an older client never loses it.
+   */
+  bana: BanaState;
+}
+
+/** A finished session at the table: what was sold, at what price, what the goods sold had cost, the profit (sales − cost). Whole francs. */
+export interface BanaResult {
+  id: number;
+  /** The player's day (SaveData.play.day) and the real time it was closed. */
+  day: number; at: number;
+  sales: number; cost: number; profit: number;
+  /** Customers served, and the units sold per good id. */
+  served: number; sold: Record<string, number>;
+}
+/** The session in progress at the table: the till (paid into the wallet once, when the table is closed). */
+export interface BanaSession { id: number; startedMs: number; sales: number; cost: number; served: number; sold: Record<string, number> }
+export interface BanaState {
+  /** Played ms when the player's table was set up (their first bana unit); −1: never. */
+  since: number;
+  /** Goods on the table: good id (ECONOMY.bana.goods) → units. */
+  stock: Record<string, number>;
+  /** Customers waiting, and the played time (ms) up to which the clientèle was counted (it grows with played time only). */
+  clients: number; clientMs: number;
+  open: BanaSession | null;
+  last: BanaResult | null;
+  /** Profit of the sessions of the player's day `day`, of every session, and how many sessions; the session sequence. */
+  day: number; today: number; total: number; sessions: number; seq: number;
+  /** The neighbour has said his one line about the table (src/social/profiles.ts, Modou's « news » walk-up). */
+  ack: boolean;
+}
+
+/**
+ * One movement of a money account other than the wallet (the wallet keeps its own `ledger`). Whole francs; `balance` is the account's balance after it.
+ * `ref`, when given, is the operation's idempotency key: an operation with a ref already applied is refused (never applied twice).
+ */
+export interface BankTx {
+  id: string;
+  /** Real time (ms) and the player's day (SaveData.play.day) when it was applied. */
+  at: number; day: number;
+  kind: BankTxKind;
+  /** Signed amount moved on this account (deposit +, withdrawal −). */
+  amount: number;
+  balance: number;
+  label: string;
+  ref?: string;
+}
+export type BankTxKind = 'deposit' | 'withdraw' | 'interest';
+export interface BankState {
+  /** Opened at the counter or from the phone (the player's day; −1: never opened). */
+  opened: number;
+  savings: number;
+  /** History, oldest first (last BANK_TX_MAX kept), and the sequence of tx ids. */
+  tx: BankTx[]; seq: number;
+  /** The player's savings goal (null: none). */
+  goal: { amount: number; label: string } | null;
+  /** Idempotency keys of the operations already applied (last BANK_REFS_MAX). */
+  refs: string[];
+  /** The player's day interest was last paid on (−1: never), and the milestones (savings levels, F) already celebrated. */
+  interestDay: number; milestones: number[];
 }
 
 export interface PlayDays {

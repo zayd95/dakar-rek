@@ -19,6 +19,19 @@ import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './praye
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
+/**
+ * How closed a studio body's hands are (0 open … 1 fist; the `grip` morph target of the Meshy bodies, which have no finger bones), by clip. The mesh's own
+ * hands are spread wide open; a hand at rest is gently curled (playtest of 24 Oct 2026: « unnatural hands »), a hand holding the wheel or the handlebars
+ * is closed on it, a hand holding something is mostly closed, and the open hands of the prayer stay open.
+ */
+export const HAND_REST = 0.4;
+export function handClosure(clip: string | null): number {
+  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'Drive') return 1;
+  if (clip === 'Grab') return 0.75;
+  if (clip?.startsWith('Pray')) return 0.12;
+  if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
+  return HAND_REST;
+}
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
@@ -55,12 +68,14 @@ const bodies: Partial<Record<BodyId, Template>> = {};
  * the scale it is drawn at; how much higher the hips sit for seated and lying poses (thicker thighs and back than v4's); how much longer
  * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); where its mouth is from the head bone;
  * and how far below the neck socket a scarf must sit to be at its neck (the Meshy chin is lower than v4's: at the socket it covers the mouth).
+ * `idleArms`: standing (the Idle clip), how much more the elbow bends and the upper arm comes forward (degrees). The clip holds the elbow nearly
+ * straight (3°), which v4's mitten arm carries but a Meshy mesh pinches at the elbow: the arm reads as broken (owner's iPhone playtest, 25 Oct).
  */
-export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number }
+export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number; idleArms: { elbow: number; fwd: number } | null }
 export const BODY_FIT: Record<BodyId, BodyFit> = {
-  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0 },
-  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08 },
-  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115 },
+  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0, idleArms: null },
+  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08, idleArms: { elbow: 16, fwd: 4 } },
+  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115, idleArms: { elbow: 16, fwd: 4 } },
 };
 export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
   try {
@@ -592,6 +607,9 @@ export function animLod(x: number, y: number, z: number, k: number, drawn: boole
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
 const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Beard'];
 
+const RELAX_AXIS = new THREE.Vector3(), RELAX_Q = new THREE.Quaternion(), RELAX_R = new THREE.Quaternion();
+const ARM_BONES = ['shoulderL', 'upper_armL', 'forearmL', 'shoulderR', 'upper_armR', 'forearmR'];
+
 export class Humanoid {
   readonly group = new THREE.Group();
   private mixer: THREE.AnimationMixer;
@@ -608,6 +626,8 @@ export class Humanoid {
   private morphed: THREE.Mesh[] = [];
   /** The mesh that carries the 'grip' morph target (the fist for a handlebar, Meshy bodies) and how far it is closed (0–1). */
   private gripMesh: THREE.Mesh | null = null; private gripW = 0;
+  /** Standing arms (BODY_FIT.idleArms): how far the relaxed elbow is eased in (0–1; −1 until the first frame, which takes it at once); the arm bones, found once, with the clip's rotations and the ones set here last frame. */
+  private relaxW = -1; private relax: { bones: THREE.Object3D[]; clip: THREE.Quaternion[]; set: THREE.Quaternion[] } | null = null;
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
@@ -804,12 +824,40 @@ export class Humanoid {
     this.overlay(this, dt);
   }
 
-  /** The hands close on the grips while the rider has the Ride pose (a morph target: the skeleton has no finger bones), and open again after. */
+  /** How closed the hands are for the clip being played (handClosure: a morph target, the skeleton has no finger bones), eased over 0.3 s. */
   private closeFist(dt: number) {
-    const to = this.clipName === 'Ride' ? 1 : 0;
+    const to = handClosure(this.clipName);
     if (this.gripW === to) return;
     this.gripW = to > this.gripW ? Math.min(to, this.gripW + dt / 0.3) : Math.max(to, this.gripW - dt / 0.3);
     const m = this.gripMesh!; m.morphTargetInfluences![m.morphTargetDictionary!.grip] = this.gripW;
+  }
+
+  /**
+   * Standing (the Idle clip), a Meshy body's elbow relaxes: the forearm bent `idleArms.elbow` more and the upper arm brought `idleArms.fwd` forward, both
+   * about the chest's left-right axis, as the gait turns them once walking (src/actors/gaitRig.ts « arm »), on top of the clip so its breathing
+   * still shows. Eased over 0.25 s, and out as the gait's arms take over (`up`, the gait's weight on the trunk and arms). The mixer writes a bone only
+   * when the clip's value changes (three's PropertyMixer), and Idle's forearm hardly moves: a bone still holding what was set here last frame gets the
+   * clip's value back first, so the turn never adds up. Allocation-free.
+   */
+  private relaxArms(dt: number, up: number) {
+    const want = this.clipName === 'Idle' ? 1 - up : 0;
+    this.relaxW = this.relaxW < 0 ? want : this.relaxW + Math.sign(want - this.relaxW) * Math.min(Math.abs(want - this.relaxW), dt / 0.25);
+    const r = (this.relax ??= ARM_BONES.every(n => this.root.getObjectByName(n))
+      ? { bones: ARM_BONES.map(n => this.root.getObjectByName(n)!), clip: ARM_BONES.map(() => new THREE.Quaternion()), set: ARM_BONES.map(() => new THREE.Quaternion(NaN, NaN, NaN, NaN)) }
+      : { bones: [], clip: [], set: [] });                                      // (a rig without these bones: left as the clip has it)
+    const b = r.bones; if (!b.length) return;
+    for (let i = 0; i < 6; i++) if (b[i].quaternion.equals(r.set[i])) b[i].quaternion.copy(r.clip[i]);   // not posed by the mixer since: the clip's own value
+    if (this.relaxW <= 0) { for (const q of r.set) q.set(NaN, NaN, NaN, NaN); return; }
+    const a = this.fit.idleArms!, k = this.relaxW * (Math.PI / 180);
+    for (let i = 0; i < 6; i += 3) {
+      r.clip[i + 1].copy(b[i + 1].quaternion); r.clip[i + 2].copy(b[i + 2].quaternion);
+      // the chest's x axis in the shoulder's frame (the shoulder hangs off the chest), then in the upper arm's
+      RELAX_AXIS.set(1, 0, 0).applyQuaternion(RELAX_Q.copy(b[i].quaternion).invert());
+      b[i + 1].quaternion.premultiply(RELAX_R.setFromAxisAngle(RELAX_AXIS, -a.fwd * k));
+      RELAX_AXIS.applyQuaternion(RELAX_Q.copy(b[i + 1].quaternion).invert());
+      b[i + 2].quaternion.premultiply(RELAX_R.setFromAxisAngle(RELAX_AXIS, -a.elbow * k));
+      r.set[i + 1].copy(b[i + 1].quaternion); r.set[i + 2].copy(b[i + 2].quaternion);
+    }
   }
 
   private locomote(dt: number, speed: number) {
@@ -857,6 +905,9 @@ export class Humanoid {
       else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
     }
     this.mixer.update(this.lag); this.lag = 0;
+    const gw = this.gait ? this.gaitW * this.gait.stand : 0;
+    if (gw > 0 && this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);   // its rest rotations: the clip's pose, before the standing arms below
+    if (this.fit.idleArms) this.relaxArms(dt, this.gait ? gw * this.gait.m : 0);       // before the pose is kept for the in-between frames
     if (lod === ANIM_LOD.hidden && this.sinceSwitch >= 0.3) this.settled = true;      // (0.3 s: longer than any cross-fade)
     if (lod !== 0) this.savePose();
     const w = this.gait ? this.gaitW * this.gait.stand : 0;
@@ -874,7 +925,7 @@ export class Humanoid {
     this.mixer.stopAllAction();                                              // (the bones go back to their rest values)
     this.current = null; this.clipName = null; this.hold = null;
     this.gait = null; this.gaitRig = undefined; this.gaitW = 1; this.fullRate = false;     // (the gait's rig takes its rest rotations again at its first use, as a new body's does)
-    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
+    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0; this.relaxW = -1;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
     this.faceOn = true; for (const m of this.face) m.visible = true;
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);

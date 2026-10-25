@@ -59,6 +59,22 @@ export const ECONOMY = {
     maxCatchUpHours: 24,
   },
   /**
+   * The player's own bana-bana table in Pikine (src/economy/bana.ts), on top of the venture's hourly income (unchanged: « la famille tient la table quand
+   * tu n'es pas là »). Kept by the player: goods bought from the market's wholesaler at `cost`, sold one customer at a time at `price` (`qty`: what a
+   * customer takes, at most what is left). A full table of customers (`clientele.max`) brings ≈ 1 600 F of profit — about one Tiak Tiak delivery — and
+   * the customers come back with PLAYED time only (one every `everyHours` in-game hours, the first `start` come with the table): no farming, nothing offline.
+   */
+  bana: {
+    goods: [
+      { id: 'arachides', name: 'Cornet d’arachides', one: 'un cornet d’arachides', plural: 'cornets d’arachides', icon: '🥜', cost: 50, price: 100, lot: 10, max: 30, qty: [2, 5] },
+      { id: 'recharge', name: 'Carte de recharge 1 000 F', one: 'une carte de recharge', plural: 'cartes de recharge', icon: '📱', cost: 900, price: 1000, lot: 5, max: 10, qty: [1, 2] },
+      { id: 'mouchoirs', name: 'Paquet de mouchoirs', one: 'un paquet de mouchoirs', plural: 'paquets de mouchoirs', icon: '🧻', cost: 60, price: 100, lot: 10, max: 20, qty: [1, 3] },
+    ] as readonly { id: string; name: string; one: string; plural: string; icon: string; cost: number; price: number; lot: number; max: number; qty: readonly [number, number] }[],
+    clientele: { start: 4, max: 12, everyHours: 1 },
+    /** The player is « at the table » within this many metres of it; walking further away closes the session (the till is paid). */
+    reach: 2.6, leave: 6,
+  },
+  /**
    * Variety (« polyvalence »): distinct activity categories practised within the window (played time) raise ACTIVE pay only
    * (shifts, deliveries, services). It is an optional bonus: it never gates a purchase and never touches passive income
    * (ventures, rents).
@@ -149,6 +165,25 @@ export const ECONOMY = {
     classRef: 6_000_000, classExp: 0.3, classMin: 0.3, classMax: 2.2,
     /** The partial repair brings the car back to this condition (« remise en route »), or no lower than where it is. */
     partialTo: 70,
+  },
+  /**
+   * Banque Teranga (src/economy/bank.ts, docs/MONEY.md): the savings account « Épargne Teranga ». Once per player day (SaveData.play.day: the days the
+   * player plays, never the ones that go by while away, never offline), the bank pays interest on the savings carried into that day: the rate and the
+   * daily cap of the highest level the balance has reached. Each level above the first is celebrated once. Small next to work on purpose (a Tiak
+   * delivery pays 1 000–2 400 F) and next to a venture (a bana-bana table at 50 000 F brings 400 F per city hour): saving keeps money safe and moves
+   * toward a goal, it is not a way to get rich.
+   */
+  bank: {
+    levels: [
+      { from: 0, rate: 0.005, cap: 100 },
+      { from: 25_000, rate: 0.01, cap: 250 },
+      { from: 100_000, rate: 0.01, cap: 500 },
+      { from: 500_000, rate: 0.01, cap: 1_000 },
+    ],
+    /** Quick amounts of a deposit or a withdrawal (« Tout » is offered beside them). */
+    chips: [5_000, 10_000, 25_000, 50_000],
+    /** The savings goals offered: these ventures (ECONOMY.business tiers) at the price the player would pay for the next unit. */
+    goalTiers: ['bana', 'kiosque', 'boutique'],
   },
   /** Wallet history kept in the save. */
   ledgerMax: 100,

@@ -27,7 +27,9 @@ import { berline, suv } from '../transport/premiumCars';
 import { gainde, ndiayeSales, rafet, sarrSales, teranga } from '../transport/modelCars';
 import { sarrAuto } from '../transport/sarrAuto';
 import { creditClock } from '../economy/creditModule';
+import { bankModule } from '../economy/bankModule';
 import { streak } from '../economy/streakModule';
+import { pistesModule } from '../economy/pistesModule';
 import { navigation } from './navigation';
 import { arrivalSignsModule } from '../world/arrivalSigns';
 import { vtc } from '../transport/vtc';
@@ -44,6 +46,7 @@ import { VenuesModule } from '../venues';
 import { RooftopModule } from '../venues/rooftop';
 import { gareModule } from './gare';
 import { ESTATE_MODULE } from '../economy/estate';
+import { banaModule } from '../economy/banaModule';
 import { shopsModule } from './shops';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
@@ -250,7 +253,8 @@ export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
   wolofModule,
   ESTATE_MODULE,        // before the parked cars (assetKit): the homes' gates and directory entries are places they keep clear of
-  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, creditClock, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  banaModule,           // the player's bana-bana table by the Maïga du marché (src/economy/banaModule.ts): before the street dressing, which keeps off its ground
+  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)

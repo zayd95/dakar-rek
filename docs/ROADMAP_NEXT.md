@@ -59,6 +59,35 @@ reopening; streaks count meaningful in-game days; every new place has a door, a 
   and a dance-floor moment synced to the track, a VTC request on the way out.
 - **Risks:** audio licensing (only recordings the project owns or may use); night performance on phones.
 
+## 6. Ngor — la traversée (the owner's request, 25 Oct 2026)
+- **Why:** the Almadies' « Port de pêche · Ngor » (`src/world/builder.ts`, actions `ACTIONS.port` in `src/world/content.ts`)
+  repeats the fishing that Soumbédioune already gives the Corniche.
+- **What it becomes:** a crossing to the island of Ngor that carries paying customers.
+  - Customers wait on the quay, as VTC requests wait at a kerb.
+  - The player chooses how to take them across:
+    - **a pirogue:** the traditional painted boat. More seats, a lower fare, a rougher ride.
+    - **a chaloupe:** the nicer launch. Fewer, better-paying customers, and a smoother crossing.
+  - The customers board and sit, the crossing is played out on the water, and they step off at the island's landing.
+  - The fare is paid once, at arrival.
+- **Built on:**
+  - The VTC passengers (`src/transport/vtc*.ts`): requests, seats, boarding and alighting, fare bands, one payment.
+  - Ownership and credit (`src/economy/assets.ts`, the dealers' credit rules): a pirogue or a chaloupe is bought or
+    rented the way a car is.
+  - The existing sea and coast.
+  - « Mes pistes » (`src/economy/pistes.ts`) may point to it once the facts are real.
+- **What it replaces:** the quay's fishing actions (« Aider les pêcheurs », « Pirogue du matin ») go to, or stay at,
+  Soumbédioune. Ousmane's recommendation must still lead to a real place, so it points to Soumbédioune.
+  - The `peche` counter and the saves are unaffected.
+- **First slice:**
+  - The quay renamed « Embarcadère de Ngor ».
+  - One pirogue crossing with 2–4 customers, there and back, paid once.
+  - The chaloupe as the second boat.
+- **Risks:**
+  - A boat moving on the water with no new rendering engine: simple boat meshes over the existing sea.
+  - People seated in a boat (the seat system).
+  - Draw calls on phones.
+- **Order:** in the next milestones, after the LD2.0-A review. The owner sets its place against LD2.0-B.
+
 ## Order and size
 1. Pikine social (smallest new geometry, biggest daily-return effect).
 2. Plateau/Médina business (deepens the economy the beta already has).

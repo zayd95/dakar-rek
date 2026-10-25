@@ -411,3 +411,11 @@ body.theme-night .ph-go { background:#0f2a4a; color:#9cc8ff; }
   font:12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; word-break:break-all; resize:vertical; user-select:text; -webkit-user-select:text; }
 .ph-save-io > .ph-code:first-child { margin-top:0; }
 .ph-file { cursor:pointer; }
+
+/* « Mes pistes » (src/ui/phone/apps/pistes.ts): one card per lead, its two actions under it */
+.pi .pi-c { display:flex; gap:12px; align-items:flex-start; }
+.pi .pi-ic { flex:none; display:grid; place-items:center; width:40px; height:40px; border-radius:12px; background:var(--ios-bg); font-style:normal; font-size:20px; }
+.pi .pi-tx { min-width:0; }
+.pi .pi-tx b { display:block; font-size:15px; font-weight:800; line-height:1.25; }
+.pi .pi-tx p { margin:3px 0 0; font-size:13px; line-height:1.4; color:var(--ios-sub); }
+.pi .pi-acts { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }

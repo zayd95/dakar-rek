@@ -88,6 +88,7 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { bankModule } from './economy/bankModule';
 import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
 import { CorridorHost, type Swap } from './road/host';
 import { approachLink, hasLinks } from './transport/hubLink';
@@ -321,6 +322,7 @@ function modulePresence(): string | null { if (!ctxReady) return null; for (cons
 function moduleSpace(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 
 const sunDir = new THREE.Vector3();
+const NIGHT_SKY = new THREE.Color(0x6474a6);
 function updateLighting(hour: number) {
   const d = daylight(hour), night = 1 - clamp(d * 3.2, 0, 1);
   const low = 1 - clamp((d - 0.05) / 0.4, 0, 1);              // 1 near sunrise/sunset, 0 at midday
@@ -337,8 +339,10 @@ function updateLighting(hour: number) {
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
   sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.72 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
-  hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
-  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
+  // at night the sky's light on the ground is a little stronger and less blue than it was (0.75, 0x5a6ea8): the road reads grey against the darker
+  // walls, its markings and kerbs out of it (LD2.0-A night roads); the headlights and the lamps' pools do the rest (src/transport/headlightPool.ts)
+  hemi.intensity = isNight ? 0.9 : 0.7 + 0.35 * d;
+  hemi.color.copy(isNight ? NIGHT_SKY : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
   hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {
@@ -964,6 +968,8 @@ function runSpecial(a: Action) {
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
     case 'shop': economy.openShop(false, nearest?.name ?? ''); break;
     case 'business': economy.openBusiness(); break;
+    case 'bank': bankModule.counter(nearest?.name); break;                 // Banque Teranga: the savings account (src/economy/bankModule.ts)
+    case 'bankAdvice': bankModule.advise(nearest?.name, a); break;
   }
 }
 
@@ -1394,9 +1400,14 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
 
 /** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
 function guidePlace(id: string): { name: string; x: number; z: number } | null {
-  const it = world?.interactables.find(i => i.id === id); if (it) return { name: it.name, x: it.x, z: it.z };
-  const pl = ctxReady ? ctx.places.all().find(p => p.id === id) : undefined, a = pl?.anchors[0];
-  return pl && a ? { name: pl.name, x: a.x, z: a.z } : null;
+  // the dealers' directory names a dealer with its district (`teranga:dealer:pikine`, src/transport/ownedModule.ts directoryRows); its place in that district is `teranga:dealer`
+  const local = world && id.endsWith(`:${world.id}`) ? id.slice(0, -(world.id.length + 1)) : null;
+  for (const k of local ? [id, local] : [id]) {
+    const it = world?.interactables.find(i => i.id === k); if (it) return { name: it.name, x: it.x, z: it.z };
+    const pl = ctxReady ? ctx.places.all().find(p => p.id === k) : undefined, a = pl?.anchors[0];
+    if (pl && a) return { name: pl.name, x: a.x, z: a.z };
+  }
+  return null;
 }
 
 function walkingHint(): string | null {
@@ -1460,6 +1471,7 @@ mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 
 });
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
+phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 

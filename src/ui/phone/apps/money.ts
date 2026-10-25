@@ -6,7 +6,7 @@ import { fcfa } from '../../hud';
 
 /**
  * Argent: the balance (one line at any size), what the player owes and when the next repayment falls, income and charges, the last movements (the
- * full history on a tap), and the money apps (Crédits, Biens, Affaires).
+ * full history on a tap), and the money apps (Épargne, Crédits, Biens, Affaires).
  */
 function when(at: number): string {
   const d = new Date(at);
@@ -35,6 +35,7 @@ export const moneyScreen: Screen = {
       row({ icon: '🏷️', label: 'Valeur de tes biens', value: fcfa(w.assets) }),
     ]) + (w.polyvalence ? more('Polyvalence', `<p>${esc(w.polyvalence)}</p>`) : '')) : '';
     const apps = [
+      row({ icon: '🏦', label: 'Épargne', sub: s.data.bank.opened >= 0 ? `${fcfa(s.data.bank.savings)} de côté · Banque Teranga` : 'Ouvrir un compte à la Banque Teranga', go: 'banque' }),
       phoneHooks.openCredits ? row({ icon: '💳', label: 'Crédits', sub: debt ? `${debt.count} en cours` : 'Aucune dette', act: 'credits' }) : '',
       phoneHooks.openAssets ? row({ icon: '🔑', label: 'Biens', sub: 'Logements, terrains, panneau, annonces', app: 'biens' }) : '',
       phoneHooks.openBusiness ? row({ icon: '🏢', label: 'Affaires', sub: 'Acheter et voir les revenus', app: 'affaires' }) : '',

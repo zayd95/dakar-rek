@@ -1,8 +1,9 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 import { appearanceOf } from '../actors/appearance';
+import { newPistes, pistesOf } from '../economy/pistes';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -37,6 +38,16 @@ export const EXTRAS_KEY = 'dakarrek.guest.save.v6.extras';
 export const EXTRAS_V2_KEY = 'dakarrek.guest.save.v6.extras.2';
 /** The fields an older v6 client drops, and that the extras backup keeps. */
 export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as const;
+/**
+ * The third backup (LD2.0 on): the fields above and the ones only LD2.0 clients know (the savings account). The beta client (PR #65) rewrites the first two
+ * backups at its saves without `bank`; it never touches this key, so savings dropped by a rollback come back with the next LD2.0 client.
+ */
+export const EXTRAS_V3_KEY = 'dakarrek.guest.save.v6.extras.3';
+export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes', 'bana'] as const;
+type ExtraField = typeof EXTRA_FIELDS_V3[number];
+/** Savings history kept in the save, and idempotency keys remembered (an operation is never applied twice). */
+export const BANK_TX_MAX = 200;
+export const BANK_REFS_MAX = 200;
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -64,9 +75,12 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null,
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(), bana: newBana(),
   };
 }
+export const newBank = (): BankState => ({ opened: -1, savings: 0, tx: [], seq: 0, goal: null, refs: [], interestDay: -1, milestones: [] });
+/** The bana-bana table of a player who never owned one (src/economy/bana.ts sets it up with the first unit). */
+export const newBana = (): BanaState => ({ since: -1, stock: {}, clients: 0, clientMs: 0, open: null, last: null, day: -1, today: 0, total: 0, sessions: 0, seq: 0, ack: false });
 
 /** The avatar the player had chosen before their last New Game, to offer again as a pre-selected suggestion (null: none, or unreadable). */
 export function suggestedAvatar(store: KV | null): Avatar | null {
@@ -160,6 +174,67 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     streak: streakOf(r.streak, playedMs),
     // the look chosen in the character studio (additive, no version change): missing or unreadable is « no look » (the body as it was made)
     appearance: appearanceOf(r.appearance, avatar),
+    // the Banque Teranga savings account (additive, no version change: a save without it has an empty account)
+    bank: bankOf(r.bank),
+    // « Mes pistes » (additive): leads dismissed or followed stay so
+    pistes: pistesOf(r.pistes, playedMs),
+    // the player's bana-bana table (additive, no version change: a save without it gets an empty table, set up by src/economy/bana.ts if a unit is owned)
+    bana: banaOf(r.bana, playedMs),
+  };
+}
+
+/** Goods of the table: known shape only (ids like the catalogue's, whole non-negative counts, at most a few hundred); src/economy/bana.ts ignores ids it does not sell. */
+function goodsOf(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v && typeof v === 'object') for (const [k, x] of Object.entries(v as Record<string, unknown>).slice(0, 16)) if (ID.test(k) && typeof x === 'number' && Number.isFinite(x) && x >= 1) out[k] = Math.min(999, Math.floor(x));
+  return out;
+}
+/**
+ * The bana-bana table: whole non-negative amounts, clocks never ahead of the played time, a session in progress kept with its till (paid once, at closing),
+ * the last session's profit always its sales minus its cost.
+ */
+function banaOf(v: unknown, playedMs: number): BanaState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, n = (x: unknown, d = 0, hi = 1e9) => clamp(Math.round(num(x, d)), 0, hi);
+  const since = Math.round(num(o.since, -1));
+  const s = (o.open && typeof o.open === 'object' ? o.open : null) as Record<string, unknown> | null;
+  const open: BanaSession | null = s && typeof s.id === 'number' && Number.isFinite(s.id)
+    ? { id: n(s.id), startedMs: clamp(num(s.startedMs, playedMs), 0, playedMs), sales: money(num(s.sales, 0)), cost: money(num(s.cost, 0)), served: n(s.served, 0, 999), sold: goodsOf(s.sold) } : null;
+  const l = (o.last && typeof o.last === 'object' ? o.last : null) as Record<string, unknown> | null;
+  let last: BanaResult | null = null;
+  if (l && typeof l.id === 'number' && Number.isFinite(l.id)) {
+    const sales = money(num(l.sales, 0)), cost = money(num(l.cost, 0));
+    last = { id: n(l.id), day: n(l.day, 0, 1e7), at: num(l.at, 0), sales, cost, profit: sales - cost, served: n(l.served, 0, 999), sold: goodsOf(l.sold) };
+  }
+  const seq = Math.max(n(o.seq), open?.id ?? 0, last?.id ?? 0);
+  return {
+    since: since < 0 ? -1 : clamp(since, 0, playedMs), stock: goodsOf(o.stock), clients: n(o.clients, 0, 999), clientMs: clamp(num(o.clientMs, playedMs), 0, playedMs),
+    open, last, day: clamp(Math.round(num(o.day, -1)), -1, 1e7), today: Math.round(clamp(num(o.today, 0), -MONEY_MAX, MONEY_MAX)), total: Math.round(clamp(num(o.total, 0), -MONEY_MAX, MONEY_MAX)),
+    sessions: n(o.sessions), seq, ack: o.ack === true,
+  };
+}
+
+const TX_ID = /^T\d{1,9}$/;
+const TX_KINDS: BankTxKind[] = ['deposit', 'withdraw', 'interest'];
+/** The savings account: whole non-negative balance, well-formed history entries, a goal only when positive. The balance is authoritative; the history is a record. */
+function bankOf(v: unknown): BankState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, tx: BankTx[] = [], seen = new Set<string>();
+  for (const e of Array.isArray(o.tx) ? (o.tx as unknown[]).slice(-BANK_TX_MAX) : []) {
+    const x = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>;
+    if (typeof x.id !== 'string' || !TX_ID.test(x.id) || seen.has(x.id) || !TX_KINDS.includes(x.kind as BankTxKind)) continue;
+    if (typeof x.amount !== 'number' || !Number.isFinite(x.amount)) continue;
+    seen.add(x.id);
+    const t: BankTx = { id: x.id, at: num(x.at, 0), day: Math.max(0, Math.round(num(x.day, 0))), kind: x.kind as BankTxKind, amount: Math.round(x.amount), balance: money(num(x.balance, 0)), label: typeof x.label === 'string' ? x.label.slice(0, 80) : '' };
+    if (typeof x.ref === 'string' && x.ref.length <= 64) t.ref = x.ref;
+    tx.push(t);
+  }
+  const g = (o.goal && typeof o.goal === 'object' ? o.goal : null) as Record<string, unknown> | null, goalAmount = g ? money(num(g.amount, 0)) : 0;
+  const refs = Array.isArray(o.refs) ? [...new Set((o.refs as unknown[]).filter((r): r is string => typeof r === 'string' && r.length > 0 && r.length <= 64))].slice(-BANK_REFS_MAX) : [];
+  const seqOf = tx.reduce((m, t) => Math.max(m, Number(t.id.slice(1))), 0);
+  return {
+    opened: clamp(Math.round(num(o.opened, -1)), -1, 1e7), savings: money(num(o.savings, 0)), tx, seq: Math.max(Math.round(num(o.seq, 0)), seqOf),
+    goal: goalAmount > 0 ? { amount: goalAmount, label: typeof g!.label === 'string' ? g!.label.slice(0, 40) : '' } : null,
+    refs, interestDay: clamp(Math.round(num(o.interestDay, -1)), -1, 1e7),
+    milestones: Array.isArray(o.milestones) ? [...new Set((o.milestones as unknown[]).filter((m): m is number => typeof m === 'number' && Number.isInteger(m) && m > 0))].slice(0, 32) : [],
   };
 }
 
@@ -405,6 +480,7 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); ok = !!store; } catch { return false; }
   const extras = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) });
   for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store?.setItem(key, extras); } catch { /* full storage: the save itself was written */ } }
+  try { store?.setItem(EXTRAS_V3_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS_V3.map(k => [k, data[k]])) })); } catch { /* full storage */ }
   return ok;
 }
 /**
@@ -413,13 +489,13 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
  * that was in hand is not resumed (the passenger is long gone), but the rides already paid stay paid. Returns the fields restored.
  */
 function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData): string[] {
-  const missing = EXTRA_FIELDS.filter(k => raw[k] === undefined);
+  const missing: ExtraField[] = EXTRA_FIELDS_V3.filter(k => raw[k] === undefined);
   const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
   const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
   if (!missing.length && !lostShare) return [];
   // both backups of this guest, newest first; each field is taken from the newest one that has it (an older client may have rewritten the first without it)
   const backups: { raw: Record<string, unknown>; back: SaveData }[] = [];
-  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) {
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY]) {
     let b: Record<string, unknown> | null = null;
     try { b = JSON.parse(store.getItem(key) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
     const back = b && b.guestId === data.guestId ? migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }) : null;
@@ -439,6 +515,9 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     else if (k === 'vtc') data.vtc = { ...back.vtc, active: null };
     else if (k === 'play') data.play = back.play;
     else if (k === 'appearance') { const look = appearanceOf(b.appearance, data.avatar); if (!look) continue; data.appearance = look; }   // for this save's own body
+    else if (k === 'bank') { if (back.bank.opened < 0 && !back.bank.savings) continue; data.bank = back.bank; }   // the savings, exactly as the last LD2.0 save left them
+    else if (k === 'pistes') data.pistes = back.pistes;
+    else if (k === 'bana') { if (back.bana.since < 0) continue; data.bana = back.bana; }   // the table as the last LD2.0 save left it (its till included: paid at the next closing)
     else data.streak = back.streak;
     out.push(k);
   }
@@ -458,6 +537,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
-  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }

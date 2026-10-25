@@ -80,6 +80,7 @@ class StreakModule implements GameModule {
     radio.duck(0.45, 3.5);                                                          // the car's radio steps back while the card speaks
     this.carding = false;
     this.flushMilestone();
+    for (const f of workDoneListeners) f(w.kind, 7000);
   }
 
   private flushMilestone() {
@@ -114,6 +115,9 @@ class StreakModule implements GameModule {
     };
   }
 }
+const workDoneListeners: ((kind: WorkDone['kind'], cardMs: number) => void)[] = [];
+/** A Tiak or VTC job was finished, paid and its card shown for `cardMs` (« Mes pistes » waits for it: src/economy/pistesModule.ts). */
+export const onWorkDone = (f: (kind: WorkDone['kind'], cardMs: number) => void) => { workDoneListeners.push(f); };
 export const streak = new StreakModule();
 /** Real work was done and paid (see StreakModule.note). */
 export const noteWork = (kind: WorkKind) => streak.note(kind);

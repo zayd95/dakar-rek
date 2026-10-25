@@ -157,6 +157,11 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 #toast .mo-tx ul { margin:3px 0 0; padding:0; list-style:none; }
 #toast .mo-tx li { font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
 #toast .mo-x { position:absolute; top:2px; right:2px; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--ink-3); font-size:14px; cursor:pointer; }
+/* an offer (hud.offer: « Mes pistes »): one line and its buttons, 44 px tall */
+#toast .of .of-line { margin:3px 0 0; font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
+#toast .of-acts { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+#toast .of-b { min-height:44px; padding:0 14px; white-space:nowrap; border:0; border-radius:12px; background:var(--sep); color:var(--ink); font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+#toast .of-b.on { background:var(--sun); }
 /* the fighter's after-bout card (hud.boutCard): the result, one row per thing that changed, « Ensuite » */
 #toast .mo.bc { padding:12px 40px 12px 12px; }
 #toast .bc .mo-tx { flex:1; }
@@ -380,6 +385,8 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
      screen (33 % of the height); taller, it scrolls inside. A tap dismisses it. */
   #toast .mo { left:calc(10px + var(--sa-l)); right:calc(118px + var(--sa-r)); top:calc(128px + var(--sa-t)); width:auto;
     max-height:calc(33vh - 132px - var(--sa-t)); max-height:calc(33dvh - 132px - var(--sa-t)); }
+  /* an offer (« Mes pistes ») keeps its line and its two buttons whole: it may reach a little lower, never past the middle of the screen */
+  #toast .mo.of { max-height:calc(50vh - 132px - var(--sa-t)); max-height:calc(50dvh - 132px - var(--sa-t)); }
   #placeEv { justify-content:flex-end; }
   #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
   /* the after-bout card: a smaller icon leaves its rows the room they need */
@@ -447,6 +454,11 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* the after-bout card on a short screen: no icon, each note on its value's line, the first next step only; it ends
      above the action column */
   #toast .mo.bc { padding:7px 34px 7px 10px; }
+  /* an offer on a short screen: one row — the title and « Y aller » (its sentence is in the phone's « Mes pistes ») */
+  #toast .mo.of { align-items:center; }
+  #toast .mo.of .mo-ic, #toast .of .of-line, #toast .of-b:not(.on) { display:none; }
+  #toast .mo.of .mo-tx { display:flex; align-items:center; gap:8px; }
+  #toast .mo.of .of-acts { margin-top:0; flex-wrap:nowrap; }
   #toast .bc .mo-ic, #toast .bc-next span + span { display:none; }
   #toast .bc-v, #toast .bc-note { display:inline; } #toast .bc-note::before { content:' · '; }
   #toast .bc .mo-tx > b { display:inline; font-size:15px; }
@@ -549,7 +561,7 @@ body.theme-night #streakChip.on .sc-n { color:#ffc56b; }
 @media (max-width:640px) and (orientation:portrait) {
   body #ui { --mm-top: 114px; }
   #ui #chatBtn { top:calc(var(--mm-top) + var(--mm) + 30px + var(--sa-t)); }
-  #ui #presenceBtn:not([data-state="reconnecting"]) { display:none; }               /* online status and invitations: phone › Réglages › Jouer en ligne */
+  #ui #presenceBtn:not([data-lost]) { display:none; }                               /* online status and invitations: phone › Réglages › Jouer en ligne; a lost connection only (src/multiplayer/ui.ts) */
   #ui #presenceBtn { top:calc(var(--mm-top) + var(--mm) + 78px + var(--sa-t)) !important; }
 }
 /* landscape: the streak chip under the phone button, the online pills to its left */
@@ -566,8 +578,9 @@ body.touch #wprompt .wp:not(.why) > span, body.touch #wprompt .wp:not(.why) > em
 body.touch #wprompt .wp:not(.why) { gap:0; padding:3px; }
 /* the build tag: developers only (?debug, or phone › Réglages › Avancé › Mode développeur) */
 body.dev-mode #temp { display:block; }
-/* solo: no pill to say so */
+/* solo: no pill to say so; a connection being made (again) is quiet until it is really lost (src/multiplayer/ui.ts) */
 #ui #presenceBtn[data-state="solo"], #ui #presenceBtn[data-state="offline"] { display:none; }
+#ui #presenceBtn[data-state="connecting"]:not([data-lost]), #ui #presenceBtn[data-state="reconnecting"]:not([data-lost]) { display:none; }
 /* one instruction at a time: with the goal line on screen, the delivery line keeps only what the goal line does not say (the parcel's state, the clock) */
 #ui:has(#goal.on) #delivery.on .dv-main { display:none; }
 #ui:has(#goal.on) #delivery.on { padding:5px 9px; gap:6px; }
