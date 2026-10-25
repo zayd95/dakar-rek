@@ -30,6 +30,13 @@ export function peerLook(peer: Pick<Peer, 'look' | 'app'>): PersonLook {
   const d = decodeAppearance(peer.app);
   return d ? appearanceLook(d.body, d.look) : avatarLook(peer.look);
 }
+/**
+ * Whether a peer in `peerSpace` is drawn for a player in `space`: the same space only, never a private one — the legacy own room ('home', each
+ * player's own) or a scene. Someone's home (`home:<tag>`, LD2.0-B) is shared: its host and the guests the host's account lets in see each other there.
+ */
+export function drawnHere(peerSpace: string, space: string): boolean { return peerSpace === space && space !== 'home' && space !== 'scene'; }
+/** A home of a player that its host and their guests share (presence space `home:<tag>`, the tag 16 hex). */
+export const isSharedHome = (space: string) => /^home:[0-9a-f]{16}$/.test(space);
 interface Glyph { sprite: THREE.Sprite; texture: THREE.CanvasTexture; until: number; clip: PresenceClip; t0: number }
 interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; app: string; label: string; rec: string; h: number; bike?: THREE.Group; glyph?: Glyph; lastEmoteAt: number }
 
@@ -50,7 +57,7 @@ export class RemoteAvatars {
     // Keep names at 28 screen pixels even when an indoor camera is close to another player.
     const labelHeight = 56 / (Math.max(1, viewportHeight) * camera.projectionMatrix.elements[5]);
     const visible = [...this.presence.peers.values()]
-      .filter(p => p.space === space && space !== 'home' && space !== 'scene' && Math.hypot(p.x - local.x, p.z - local.z) < 110 && !this.hidden(p))
+      .filter(p => drawnHere(p.space, space) && Math.hypot(p.x - local.x, p.z - local.z) < 110 && !this.hidden(p))
       .sort((a, b) => Math.hypot(a.x - local.x, a.z - local.z) - Math.hypot(b.x - local.x, b.z - local.z)).slice(0, maxBodies);
     const keep = new Set(visible.map(p => p.id));
     for (const id of this.emoSeen.keys()) if (!this.presence.peers.has(id)) this.emoSeen.delete(id);
