@@ -158,6 +158,28 @@ The phase's other browser checks, on the integrated branch. Each was run alone; 
   - `check-messages` 9d (the keyboard) failed once while another check loaded the machine: the phone's animation ran late and the field was measured mid-way. It now measures the field once it has stopped moving.
 
 ### Performance
+**Builds compared:** `vite build --mode online` of LD2.0-A (`b16f8d5`) and of this branch, served locally, the runs alternating. Same machine and renderer as above: frame rates only compare the two builds.
+
+**Load, and the streets (`scripts/perf.mjs`, two runs each):**
+
+| | LD2.0-A | LD2.0-B |
+|---|---|---|
+| Downloaded at start | 8 641 kB | 8 778 kB (+137 kB) |
+| Time to playable, desktop / phone | 3.6 s / 3.1 s · 3.5 s / 3.0 s | 3.5 s / 3.0 s · 3.4 s / 2.8 s |
+| Draw calls, phone: Plateau 13 h | 100 · 99 | 98 · 99 |
+| Draw calls, phone: Pikine 13 h | 167 · 160 | 178 · 179 |
+| Draw calls, phone: Pikine 21 h | 216 · 221 | 232 · 252 |
+
+**Pikine on the phone looked higher, so it was measured again at fixed places** (the phone's viewport, the player placed and turned the same way; draw calls in three runs, frame rates in two):
+- **Draw calls:** the same or fewer. On the north–south avenue (x 5.8, z −30), 13 h, steady: 77 → 72, 79 → 74 and 82 → 82 in three runs.
+- **No new scene object:** the scene's top-level groups are the same in both builds. What differs is the street's moving life (people, vehicles), which is never the same from one run to the next.
+- **Frame rates, the same at three places of four:**
+  - 3.84 → 4.09 and 3.79 → 3.85 fps on the avenue by day;
+  - 3.55 → 3.56 and 3.41 → 3.44 there at night;
+  - 2.86 → 2.90 and 2.94 → 2.84 at the door of « Ma chambre » (x −42, z −54.5) at night.
+- **The exception:** at that door by day, 2.74 → 2.53 and 2.68 → 2.48, about 8 % lower in both runs, with no more draw calls (66 → 58, 82 → 88). It is not explained yet. A software renderer's frame rate is not a phone's, so the iPhone review is where it would show.
+
+**Other measures:**
 - **In a furnished home, host and guest draw exactly the same:** F2 is 24 draw calls / 10 730 triangles, the family room 23 / 10 110 (`check-visit.mjs`).
 - **The street gains no geometry.** Messages and Teranga Money are phone UI, and a peer at home is not drawn outside.
 - **One more socket per online player** (`/api/me`). The client paces its frames (15 a second at most).
