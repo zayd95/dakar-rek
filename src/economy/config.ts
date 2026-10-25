@@ -206,10 +206,11 @@ export const ECONOMY = {
     /** How long an invitation stays good (ms of real time) unless revoked; its `until`. */
     inviteMs: 24 * 3_600_000,
     /**
-     * A meeting's window around its time (server ms): from 10 city minutes before to 1 city hour after (src/core/clock.ts: 1 city hour = 1 real minute).
-     * A meeting « maintenant » gets its time when it is accepted.
+     * A meeting's window around its time (server ms of real time): from 5 real minutes before to 10 after. In city time that is 5 hours before to 10 after
+     * (src/core/clock.ts: 1 city hour = 1 real minute): the city's clock runs fast, players have to cross the city on foot or by car. A meeting
+     * « maintenant » gets its time when it is accepted.
      */
-    meetEarlyMs: 10_000, meetLateMs: 60_000,
+    meetEarlyMs: 5 * 60_000, meetLateMs: 10 * 60_000,
     /** How long a « maintenant » proposal waits for its answer before it is missed (ms of real time: a quarter of a city day). */
     meetNowOpenMs: 6 * 60_000,
     /** Furthest ahead a meeting may be set (ms of real time). */

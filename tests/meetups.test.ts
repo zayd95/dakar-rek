@@ -15,26 +15,26 @@ const meet = (o: Partial<MeetItem>): MeetItem => ({ id: 'm1', from: A, at: 1_000
 describe('the city time of a meeting', () => {
   it('one city minute is one real second (1 city hour = 1 real minute)', () => {
     expect(CITY_MINUTE_MS).toBe(1000);
-    expect(MEET_EARLY_MS).toBe(10_000);
-    expect(MEET_LATE_MS).toBe(60_000);
+    expect(MEET_EARLY_MS).toBe(5 * 60_000);
+    expect(MEET_LATE_MS).toBe(10 * 60_000);
     const t = Date.UTC(2026, 9, 25, 12, 0, 0);
     expect(cityTimeAt(t + 60 * CITY_MINUTE_MS).hourFloat - cityTimeAt(t).hourFloat).toBeCloseTo(1, 6);
   });
-  it('the window: from 10 city minutes before its time to 1 city hour after', () => {
+  it('the window: from 5 real minutes before its time to 10 after (ECONOMY.online, the account\'s own)', () => {
     const T = 5_000_000, m = meet({ when: T });
     expect(meetTime(m)).toBe(T);
-    expect(meetWindow(m)).toEqual({ from: T - 10_000, to: T + 60_000 });
-    expect(inWindow(m, T - 10_001)).toBe(false);
-    expect(inWindow(m, T - 10_000)).toBe(true);
+    expect(meetWindow(m)).toEqual({ from: T - MEET_EARLY_MS, to: T + MEET_LATE_MS });
+    expect(inWindow(m, T - MEET_EARLY_MS - 1)).toBe(false);
+    expect(inWindow(m, T - MEET_EARLY_MS)).toBe(true);
     expect(inWindow(m, T)).toBe(true);
-    expect(inWindow(m, T + 60_000)).toBe(true);
-    expect(inWindow(m, T + 60_001)).toBe(false);
+    expect(inWindow(m, T + MEET_LATE_MS)).toBe(true);
+    expect(inWindow(m, T + MEET_LATE_MS + 1)).toBe(false);
   });
   it('« maintenant » (when = 0) is the time it was made', () => {
     const m = meet({ when: 0, at: 7_000_000 });
     expect(meetTime(m)).toBe(7_000_000);
     expect(inWindow(m, 7_000_000 + 30_000)).toBe(true);
-    expect(inWindow(m, 7_000_000 + 61_000)).toBe(false);
+    expect(inWindow(m, 7_000_000 + MEET_LATE_MS + 1)).toBe(false);
   });
   it('a meeting set at a city time a city day away is not open today', () => {
     const now = 9_000_000, m = meet({ when: now + CITY_DAY_MS });

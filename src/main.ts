@@ -62,6 +62,7 @@ import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { OnlineAccount } from './online/client';
 import { setOnline } from './online/api';
+import { visitDeps } from './online/visit';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
@@ -198,6 +199,9 @@ const onlineAccount = new OnlineAccount({
   enabled: import.meta.env.VITE_MULTIPLAYER === 'true',
 });
 setOnline(onlineAccount);
+// a visit or a meeting joins the other player's presence room (src/online/visit.ts); the account refreshes the host's snapshot by itself
+visitDeps.room = () => presence.room;
+visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
@@ -1557,7 +1561,8 @@ let npcSeatT = 0;
 /** A real player seated on a bench takes that place for you too (src/multiplayer/social.ts): you sit next to them, not through them. */
 function syncPeerSeats() {
   const sp = interactSpace(), held = new Set<string>();
-  for (const p of seatedPeers(presence.peers.values(), sp)) {
+  // peers carry their presence space (a shared home is `home:<tag>`), the seats the interaction space (`home`)
+  for (const p of seatedPeers(presence.peers.values(), presenceSpace())) {
     if (remoteAvatars.hidden(p)) continue;                       // a blocked player is not drawn: their place is free
     const who = 'peer:' + p.id;
     const s = seats.inSpace(sp).find(x => x.occupant === who) ?? seats.occupyNear(sp, p.x, p.z, who, 0.6);

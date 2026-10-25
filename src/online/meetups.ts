@@ -2,6 +2,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { HubId } from '../core/types';
 import type { HubWorld } from '../world/types';
 import { CITY_DAY_MS } from '../core/clock';
+import { ECONOMY } from '../economy/config';
 import { online, onlineHooks, type OnlineApi } from './api';
 import type { LocationItem, MeetItem, MeetState, PlaceRef, Tag } from './protocol';
 import { currentHome } from '../economy/assets';
@@ -19,13 +20,14 @@ import { doorName, followInto, guideTo, homeRefOf, pinPlace } from './visit';
  *   interactable of the district, or a place of `ctx.places`); the pitch, which had none, gets a directory entry of radius −1 here.
  * - « Y aller »: the marker, directions from another district, and the other player's presence room (the one who did not propose joins the proposer's).
  *   A shared position is a pin (src/online/visit.ts) at its very point.
- * - Being there: every second, each accepted meeting whose window is open (10 city minutes before its time to 1 city hour after; `when` = 0 is the moment
+ * - Being there: every second, each accepted meeting whose window is open (ECONOMY.online: 5 real minutes before its time to 10 after; `when` = 0 is the moment
  *   it was made) sends `here` once when the player is within the place's radius (inside the home, for a meeting « chez moi »). When the meeting turns
  *   'met': one moment card and a small social lift, at most once a city day.
  */
 export const CITY_MINUTE_MS = CITY_DAY_MS / (24 * 60);
-export const MEET_EARLY_MS = 10 * CITY_MINUTE_MS;
-export const MEET_LATE_MS = 60 * CITY_MINUTE_MS;
+/** The window the account keeps too (ECONOMY.online): one source, so a `here` sent is a `here` counted. */
+export const MEET_EARLY_MS = ECONOMY.online.meetEarlyMs;
+export const MEET_LATE_MS = ECONOMY.online.meetLateMs;
 /** The social lift of a meeting kept (the needs' social), at most once a city day. */
 export const MEET_SOCIAL = 12;
 

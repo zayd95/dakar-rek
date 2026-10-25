@@ -8,13 +8,13 @@ const H = '1111111111111111', G = '2222222222222222', X = '3333333333333333';
 const T: MeetTimes = { early: ECONOMY.online.meetEarlyMs, late: ECONOMY.online.meetLateMs, nowOpen: ECONOMY.online.meetNowOpenMs };
 const now = 1_800_000_000_000;
 const invite = (o: Partial<InviteItem> = {}): InviteItem => ({ id: 'inv-00000001', k: 'invite', from: H, at: now, home: { spec: 'appart_plateau', hub: 'plateau', door: 'door:residence', name: 'Résidence Jàmm · appartement' }, perms: { use: true }, state: 'open', until: now + ECONOMY.online.inviteMs, ...o });
-const meet = (o: Partial<MeetItem> = {}): MeetItem => ({ id: 'meet-0000001', k: 'meet', from: H, at: now, place: { id: 'corniche:pitch', hub: 'corniche', name: 'Terrain de la Corniche' }, when: now + 120_000, state: 'open', here: [], ...o });
+const meet = (o: Partial<MeetItem> = {}): MeetItem => ({ id: 'meet-0000001', k: 'meet', from: H, at: now, place: { id: 'corniche:pitch', hub: 'corniche', name: 'Terrain de la Corniche' }, when: now + ECONOMY.online.meetEarlyMs + 120_000, state: 'open', here: [], ...o });
 const text = (from: string): Item => ({ id: 'txt-00000001', k: 'text', from, at: now, text: 'Salut' });
 
 describe('account rules', () => {
   it('the meeting window is 10 city minutes before to 1 city hour after (1 city hour = 1 real minute)', () => {
-    expect(T).toMatchObject({ early: 10_000, late: 60_000 });
-    expect(meetWindow({ when: now }, T)).toEqual({ from: now - 10_000, to: now + 60_000 });
+    expect(T).toMatchObject({ early: 5 * 60_000, late: 10 * 60_000 });   // real minutes: the city's clock runs 60 times faster, players have to get there
+    expect(meetWindow({ when: now }, T)).toEqual({ from: now - T.early, to: now + T.late });
     expect(meetWindow({ when: 0 }, T)).toBeNull();
   });
 
@@ -65,10 +65,10 @@ describe('account rules', () => {
     expect(again).toMatchObject({ ok: true, changed: false });
     const both = meetNext((one as { item: MeetItem }).item, G, 'here', H, acc.when + 30_000, T);
     expect(both).toMatchObject({ ok: true, item: { state: 'met', here: [G, H] } });
-    expect(meetNext((both as { item: MeetItem }).item, G, 'tick', null, acc.when + 61_000, T)).toMatchObject({ changed: false });   // met stays met
-    expect(meetNext((one as { item: MeetItem }).item, G, 'tick', null, acc.when + 60_001, T)).toMatchObject({ changed: true, item: { state: 'missed' } });
-    expect(meetNext(acc, G, 'here', G, acc.when + 60_001, T)).toMatchObject({ ok: false, reason: 'closed' });
-    expect(meetNext(m, G, 'tick', null, m.when + 60_001, T)).toMatchObject({ changed: true, item: { state: 'missed' } });   // never answered
+    expect(meetNext((both as { item: MeetItem }).item, G, 'tick', null, acc.when + T.late + 1_000, T)).toMatchObject({ changed: false });   // met stays met
+    expect(meetNext((one as { item: MeetItem }).item, G, 'tick', null, acc.when + T.late + 1, T)).toMatchObject({ changed: true, item: { state: 'missed' } });
+    expect(meetNext(acc, G, 'here', G, acc.when + T.late + 1, T)).toMatchObject({ ok: false, reason: 'closed' });
+    expect(meetNext(m, G, 'tick', null, m.when + T.late + 1, T)).toMatchObject({ changed: true, item: { state: 'missed' } });   // never answered
     expect(meetNext(meet({ state: 'declined' }), G, 'accept', G, now, T)).toMatchObject({ ok: false, reason: 'closed' });
   });
 
@@ -104,7 +104,7 @@ describe('account rules', () => {
     expect(findAllowed([invite({ state: 'accepted' })], now, T)).toBe(true);
     expect(findAllowed([invite({ state: 'accepted' })], now + ECONOMY.online.inviteMs, T)).toBe(false);
     expect(findAllowed([meet({ state: 'accepted' })], now, T)).toBe(true);
-    expect(findAllowed([meet({ state: 'accepted' })], now + 200_000, T)).toBe(false);
+    expect(findAllowed([meet({ state: 'accepted' })], meet().when + T.late + 1, T)).toBe(false);
     expect(findAllowed([invite({ state: 'revoked' }), meet({ state: 'cancelled' })], now, T)).toBe(false);
   });
 

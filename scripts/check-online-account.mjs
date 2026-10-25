@@ -110,7 +110,9 @@ try {
     && JSON.stringify(A.welcome.today) === JSON.stringify({ funded: 0, sent: 0, received: 0 }) && Array.isArray(A.welcome.convs) && A.welcome.v === 1, A.welcome);
 
   // a meeting nobody answers, checked at the end: the proposer's account turns it « missed » by itself (its alarm), past its window
-  const lonelyAt = Date.now(), lonely = await A.req({ type: 'meet', to: C.tag, place: { id: 'pikine:marche', hub: 'pikine', name: 'Marché' }, when: lonelyAt + 1000 });
+  // set as early as the account allows (its window opened 5 real minutes ago), so its window closes as soon as possible: ECONOMY.online meetEarlyMs / meetLateMs
+  const EARLY = 5 * 60_000, LATE = 10 * 60_000;
+  const lonelyAt = Date.now(), lonely = await A.req({ type: 'meet', to: C.tag, place: { id: 'pikine:marche', hub: 'pikine', name: 'Marché' }, when: lonelyAt - EARLY + 3000 });
   const ghost = tagOf(newKey());
   const unknown = await A.req({ type: 'say', to: ghost, text: 'Tu es là ?' });
   const unknownPay = await A.req({ type: 'pay', to: ghost, amount: 100, fund: 100 });
@@ -311,7 +313,7 @@ try {
   check('after a revocation the guest’s moves in the home are refused (CityRoom asks the host’s account again after 30 s)', !PA.inbox.slice(before).some(m => m.type === 'peer' && m.peer.id === PB.id && m.peer.x === -2), PA.inbox.slice(before).filter(m => m.type === 'peer').map(m => m.peer.space));
 
   // ---------------------------------------------------------------- the alarm: the unanswered meeting is missed on both sides
-  await sleep(Math.max(0, lonelyAt + 1000 + 60000 + 2500 - Date.now()));
+  await sleep(Math.max(0, lonelyAt - EARLY + 3000 + LATE + 2500 - Date.now()));
   A.send({ type: 'conv', with: C.tag }); C.send({ type: 'conv', with: A.tag });
   const convAC = await A.wait(m => m.type === 'conv' && m.with === C.tag), convCA = await C.wait(m => m.type === 'conv' && m.with === A.tag);
   const missA = convAC?.items.find(i => i.id === lonely?.item?.id), missC = convCA?.items.find(i => i.id === lonely?.item?.id);
