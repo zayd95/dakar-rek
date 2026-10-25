@@ -405,6 +405,9 @@ export class ChatUi {
     for (const [conv, n] of this.unread) if (!(this.opened && this.activeConv() === conv)) total += n;
     const badge = this.button.querySelector('.chat-badge') as HTMLElement | null;
     if (badge) { const text = total ? String(Math.min(total, 99)) : ''; if (badge.textContent !== text) badge.textContent = text; }
+    // « Messages privés ↗ » counts the Messages app's unread items, live while the panel is open
+    const dm = this.tabs.dm.querySelector('.chat-badge') as HTMLElement | null, n = online?.unread() ?? 0;
+    if (dm) { const text = n ? String(Math.min(n, 99)) : ''; if (dm.textContent !== text) dm.textContent = text; }
   }
 
   private render() {
@@ -413,9 +416,8 @@ export class ChatUi {
     const conv = this.activeConv();
     if (conv) this.unread.delete(conv);
     const near = this.tabs.near; near.classList.add('on'); near.setAttribute('aria-selected', 'true');
-    const nNear = this.unread.get('near') ?? 0, nDm = online?.unread() ?? 0;
+    const nNear = this.unread.get('near') ?? 0;
     (near.querySelector('.chat-badge') as HTMLElement).textContent = nNear ? String(nNear) : '';
-    (this.tabs.dm.querySelector('.chat-badge') as HTMLElement).textContent = nDm ? String(Math.min(nDm, 99)) : '';
     const live = this.d.presence.status === 'online', space = this.d.space();
     this.banner.textContent = !live ? 'Hors ligne : tes messages partiront à la reconnexion.'
       : space === 'home' || space === 'scene' ? 'Ici, personne ne t’entend : la chambre et les scènes sont privées.' : `Entendu par les joueurs à moins de ${CHAT_NEAR_RADIUS} m, dans le même lieu.`;

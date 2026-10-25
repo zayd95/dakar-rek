@@ -53,6 +53,29 @@ function setHtml(el: Element, html: string) { if (drawn.get(el) !== html) { draw
 const avatar = (name: string, look: number, on = false, cls = '') =>
   `<i class="mg-av${cls ? ' ' + cls : ''}" style="--c:${lookColor(look)}" aria-hidden="true">${esc(initials(name))}${on ? '<b class="mg-dot"></b>' : ''}</i>`;
 
+// ------------------------------------------------------------------ the phone's keyboard (as src/multiplayer/chat.ts): what it hides at the bottom
+
+/**
+ * The on-screen keyboard's height (the visual viewport's lost bottom), as `--kb` on the phone: a conversation and a sheet keep their field above it.
+ * Shared by whoever needs it (a conversation, a sheet), listened to only while someone does.
+ */
+const kbUsers = new Set<(kb: number) => void>();
+function keyboardNow() {
+  const vv = window.visualViewport; if (!vv) return;
+  const raw = Math.max(0, innerHeight - vv.height - vv.offsetTop), kb = raw >= 60 ? Math.round(raw) : 0;
+  document.getElementById('phone')?.style.setProperty('--kb', `${kb}px`);
+  for (const fn of [...kbUsers]) fn(kb);
+}
+function watchKeyboard(fn: (kb: number) => void): () => void {
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null; if (!vv) return () => {};
+  if (!kbUsers.size) { vv.addEventListener('resize', keyboardNow); vv.addEventListener('scroll', keyboardNow); }
+  kbUsers.add(fn); keyboardNow();
+  return () => {
+    kbUsers.delete(fn);
+    if (!kbUsers.size) { vv.removeEventListener('resize', keyboardNow); vv.removeEventListener('scroll', keyboardNow); document.getElementById('phone')?.style.removeProperty('--kb'); }
+  };
+}
+
 // ------------------------------------------------------------------ sheets (over the whole phone: the conversation's « + » actions, Argent's money)
 
 export interface Sheet { root: HTMLElement; body: HTMLElement; close(): void; open(): boolean; settle(): void }
@@ -68,7 +91,9 @@ export function openSheet(from: HTMLElement, title: string, onClose?: () => void
   root.innerHTML = `<div class="mg-dim" data-sh="x"></div><section class="mg-sheet"><header class="mg-sh-head"><h3>${esc(title)}</h3><button type="button" class="mg-sh-x" data-sh="x">Fermer</button></header><div class="mg-sh-body"></div></section>`;
   glass.appendChild(root);
   let shownAt = performance.now(), closed = false;
-  const close = () => { if (closed) return; closed = true; live.delete(close); root.remove(); removeEventListener('keydown', esc_, true); onClose?.(); };
+  // a field of the sheet (an amount, a note) stays in view above the keyboard
+  const unwatch = watchKeyboard(kb => { const f = document.activeElement; if (kb && f instanceof HTMLElement && root.contains(f)) requestAnimationFrame(() => f.scrollIntoView({ block: 'nearest' })); });
+  const close = () => { if (closed) return; closed = true; live.delete(close); unwatch(); root.remove(); removeEventListener('keydown', esc_, true); onClose?.(); };
   live.add(close);
   // the second half of the tap that opened it, or of the tap that changed its step, never lands on it (src/ui/tapGuard.ts)
   root.addEventListener('click', e => {
@@ -492,19 +517,15 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   addEventListener('keydown', onKey, true);
 
   // the phone's keyboard: the conversation rides above it (the field is never hidden); closing it releases the field (as src/multiplayer/chat.ts)
-  const vv = window.visualViewport, phoneEl = page.closest<HTMLElement>('#phone');
-  let kbOpen = false;
-  const onViewport = () => {
-    if (!vv) return;
-    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop), up = kb >= 60;
-    const wasBottom = atBottom();
-    phoneEl?.style.setProperty('--kb', `${up ? Math.round(kb) : 0}px`);
+  let kbOpen = false, wasBottom = true;
+  log.addEventListener('scroll', () => { wasBottom = atBottom(); }, { passive: true });
+  const unwatch = watchKeyboard(kb => {
+    const up = kb > 0;
     chat.classList.toggle('kb', up);
     if (kbOpen && !up && document.activeElement === field) field.blur();
+    if (up && !kbOpen && wasBottom) requestAnimationFrame(toBottom);          // the newest line stays in view as the keyboard rises
     kbOpen = up;
-    if (up && wasBottom) requestAnimationFrame(toBottom);
-  };
-  vv?.addEventListener('resize', onViewport); vv?.addEventListener('scroll', onViewport); onViewport();
+  });
 
   draw(); toBottom();
   requestAnimationFrame(() => { toBottom(); if (log.scrollHeight <= log.clientHeight + 4) older(); });
@@ -512,7 +533,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     draw,
     cleanup: () => {
       if (viewing === tag) viewing = null;
-      vv?.removeEventListener('resize', onViewport); vv?.removeEventListener('scroll', onViewport); phoneEl?.style.removeProperty('--kb');
+      unwatch();
       removeEventListener('keydown', onKey, true);
       closeSheets();
     },

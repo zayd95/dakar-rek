@@ -33,7 +33,8 @@ try {
   const t = await realTouch(page), cdp = await page.context().newCDPSession(page);
   const wait = ms => page.waitForTimeout(ms);
   let shots = 0;
-  const shot = async name => { await wait(250); await page.screenshot({ path: `${out}/${name}.png` }); if (proof) { await page.screenshot({ path: `${proof}/${name}.jpg`, type: 'jpeg', quality: 70 }); shots++; } };
+  /** A screenshot in the run's folder; the proof folder keeps a handful (`keep`). */
+  const shot = async (name, keep = true) => { await wait(250); await page.screenshot({ path: `${out}/${name}.png` }); if (proof && keep) { await page.screenshot({ path: `${proof}/${name}.jpg`, type: 'jpeg', quality: 72 }); shots++; } };
   const settled = () => page.waitForFunction(() => !document.querySelector('#phone.on')?.getAnimations({ subtree: true }).some(a => a.playState === 'running' && a.effect?.getComputedTiming?.().iterations !== Infinity), null, { timeout: 30000 }).catch(() => {});
   /** A real tap on the element a function finds (brought into view first, as a thumb scrolls), after the phone's settle and any slide-in. */
   const tapWhere = async (find, arg, { settle = 450, twice = false } = {}) => {
@@ -120,7 +121,7 @@ try {
   const plus = await d(() => [...document.querySelectorAll('#phone .mg-plus-pop .mg-pi b')].map(b => b.textContent));
   check('2a. « + » offers exactly: Envoyer de l’argent · Demander de l’argent · Inviter chez moi · Proposer un rendez-vous · Partager ma position (nothing else)',
     JSON.stringify(plus) === JSON.stringify(['Envoyer de l’argent', 'Demander de l’argent', 'Inviter chez moi', 'Proposer un rendez-vous', 'Partager ma position']), JSON.stringify(plus));
-  await shot('2-plus');
+  await shot('2-plus', false);
   await tap('#phone .mg-pi[data-do="pay"]');
   await until(() => !!document.querySelector('#phone .mg-sheet .mg-chip'));
   await tap('#phone .mg-chip[data-amt="5000"]');
@@ -141,7 +142,7 @@ try {
   check('2c. a real double tap on « Envoyer 5 000 F » sends it once: one request with the confirmation’s id, one operation, the wallet debited 2 000 F once',
     payCalls.length === 1 && payCalls[0].id === opId && i2.ops === opsBefore + 1 && (await wallet()) === 58000 && i2.balance.amount === 0 && i2.today.sent === 5000, JSON.stringify({ payCalls, ops: i2.ops, wallet: await wallet(), bal: i2.balance.amount }));
   check('2d. the outcome is said in words, with the balances after', /5 000 F envoyés à Awa/.test(outcome) && /Teranga Money : 0 F · portefeuille 58 000 F/.test(outcome), outcome);
-  await shot('4-money-sent');
+  await shot('4-money-sent', false);
   await tapText('#phone .mg-sheet .pk-btn', 'OK');
   await until(() => !document.querySelector('#phone .mg-sheet-wrap'));
   const payCard = await cardOf(opId);
@@ -395,7 +396,7 @@ try {
   const sheetL = await d(() => { const s = document.querySelector('#phone .mg-sheet').getBoundingClientRect(), b = document.querySelector('#phone .mg-sh-body'); return { top: s.top >= 0, bottom: s.bottom <= innerHeight + 1, scrolls: b.scrollHeight > b.clientHeight, x: !!document.querySelector('#phone .mg-sh-x') }; });
   await tap('#phone .mg-next', {});                                          // brought into view inside the sheet's own scroll (disabled: nothing happens)
   check('9b. landscape: the money sheet fits the screen (its own scroll), « Fermer » in reach', sheetL.top && sheetL.bottom && sheetL.x, JSON.stringify(sheetL));
-  await shot('11-landscape-sheet');
+  await shot('11-landscape-sheet', false);
   await tap('#phone .mg-sh-x');
   await page.setViewportSize({ width: 390, height: 844 }); await wait(1200);
   await d(() => window.__dakar.phoneClose()); await wait(800);
@@ -420,8 +421,18 @@ try {
   await d(() => { const vv = window.visualViewport; delete vv.height; vv.dispatchEvent(new Event('resize')); });
   await wait(300);
   const kbOff = await d(() => document.querySelector('#phone .mg-field').getBoundingClientRect().bottom);
-  check('9d. the phone’s keyboard never hides the field: with 336 px of keyboard the field sits above it (the log shrinks), and comes back down after',
-    kb.field <= kb.limit && kb.log > 100 && kbOff > kb.limit + 200, JSON.stringify({ kb, kbOff }));
+  // the same keyboard over a sheet: Argent › Recharger, the typed amount field in focus
+  await d(() => window.__dakar.phone('portefeuille')); await until(() => window.__dakar.phoneInfo().screen === 'portefeuille');
+  await tap('#phone [data-act="tm-fund"]');
+  await until(() => !!document.querySelector('#phone .mg-sheet [data-f="amount"]'));
+  await tap('#phone .mg-sheet [data-f="amount"]');
+  await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
+  await wait(500);
+  const kbSheet = await d(() => { const f = document.querySelector('#phone .mg-sheet [data-f="amount"]').getBoundingClientRect(), sh = document.querySelector('#phone .mg-sheet').getBoundingClientRect(); return { field: f.bottom, fieldTop: f.top, sheet: sh.bottom, limit: innerHeight - 336, focused: document.activeElement?.dataset?.f ?? null }; });
+  await d(() => { const vv = window.visualViewport; delete vv.height; vv.dispatchEvent(new Event('resize')); });
+  await tap('#phone .mg-sh-x');
+  check('9d. the phone’s keyboard never hides the field: with 336 px of keyboard the conversation’s field sits above it (the log shrinks) and comes back down after; a sheet’s amount field too',
+    kb.field <= kb.limit && kb.log > 100 && kbOff > kb.limit + 200 && kbSheet.sheet <= kbSheet.limit + 1 && kbSheet.field <= kbSheet.limit && kbSheet.fieldTop >= 0, JSON.stringify({ kb, kbOff, kbSheet }));
   await d(() => window.__dakar.phoneClose());
 
   // 9e — a long conversation: a finger scrolls it up naturally; near the top the older page loads and the view stays where it was
@@ -456,7 +467,7 @@ try {
   const soloArgent = await screenText();
   check('10. without the account: Messages says it needs the online connection (the game goes on solo); Argent has no Teranga Money; no simulated account',
     /Messages a besoin de la connexion en ligne/.test(solo) && !(await d(() => !!document.querySelector('#phone [data-slot="tm"], #phone .tm-card'))) && !(await d(() => !!window.__dakarOnline)), JSON.stringify({ solo, soloArgent: soloArgent.slice(0, 300), fake: await d(() => !!window.__dakarOnline) }));
-  await shot('12-solo');
+  await shot('12-solo', false);
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   if (proof) console.log(`${shots} screenshots in ${proof}`);
