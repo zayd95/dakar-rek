@@ -1,4 +1,4 @@
-#chatBtn { position:absolute; top:114px; right:calc(10px + env(safe-area-inset-right, 0px)); min-height:40px; padding:9px 12px; color:#e2e8f0; font:600 12px var(--font); cursor:pointer; display:flex; align-items:center; gap:5px; }
+#chatBtn { position:absolute; top:114px; right:calc(10px + env(safe-area-inset-right, 0px)); min-height:44px; padding:11px 12px; color:#e2e8f0; font:600 12px var(--font); cursor:pointer; display:flex; align-items:center; gap:5px; }
 #chatBtn:not([data-state="online"]) { color:#94a3b8; }
 #chatBtn[aria-expanded="true"] { border-color:var(--gold); }
 .chat-badge { font-style:normal; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#ef4444; color:#fff; font:700 11px/18px var(--font); text-align:center; }
