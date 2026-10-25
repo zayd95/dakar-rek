@@ -50,7 +50,7 @@ How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the desig
 |---|---|
 | `npm test` (vitest) | **2182 passed, 2 skipped, 0 failed**: 180 files, including `tests/mermoz.test.ts` and the new chunk suites « the VDN: a divided artery » and « the BRT crossing at Sacré-Cœur » |
 | `npx tsc --noEmit -p .` · `npm run typecheck:server` · `npm run build` | pass |
-| `check:city`, `check:online`, `check:launch` (the CI browser suites) | see the PR's description: run locally before the push |
+| `npm run check:city` · `check:online` · `check:launch` (the CI browser suites, local run on the built `cf87253`) | **37/37 · 46/46 · 70/70 PASS** |
 | `scripts/check-mermoz-journey.mjs` | 22/22 (run 4) |
 
 ## Save, payment and memory
