@@ -108,6 +108,7 @@ export class Vehicle {
    */
   setCockpit(on: boolean) {
     const u = this.model.userData;
+    u.eyeInside = on;                                          // its own lamps' glow is not drawn round the eye either (src/city/night.ts)
     if (!u.seenInside) { this.model.visible = !on; return; }
     const hide = u.glbHide as THREE.Object3D[] | undefined; if (hide) for (const o of hide) o.visible = !on;
   }

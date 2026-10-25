@@ -6,6 +6,7 @@ import { ACTIONS, ENTER } from './content';
 import type { Canopy, Collider, HubWorld, Interactable, KeepClear, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
+import { lightPoolMaterial } from './lightBlend';
 import { generatedTexture } from './textures';
 import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
@@ -1334,7 +1335,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     yield;
   }
   yield;
-  const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+  // the lamps' light on the street (night): what is under it lit, its own colour kept (src/world/lightBlend.ts; an additive glow washed the markings out)
+  const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, lightPoolMaterial({ map: lightPoolTexture(), color: 0xffb860, opacity: 1 }));
   lampGlow.visible = false; lampGlow.renderOrder = 1; group.add(lampGlow);
   for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveMap = (s.material as THREE.MeshLambertMaterial).map;
   // Grill smoke: a few soft sprites per grill rising, spreading and fading (looped, local only).

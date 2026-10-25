@@ -186,6 +186,7 @@ class VehicleLights {
       // moving, or standing with its engine running (`userData.engineOn`: the gala road's jam)
       if ((x - t.x) * (x - t.x) + (z - t.z) * (z - t.z) > 0.0004 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
       t.x = x; t.z = z;
+      if (t.g.userData.eyeInside) continue;                                // the car the camera sits in: its lamps' glow would sit on its bonnet, in the driver's eyes
       if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && (t.x - cam.x) * (t.x - cam.x) + (t.z - cam.z) * (t.z - cam.z) < 19600 && shown(t.g, root)) this.lit.push(t);
     }
     if (!this.lit.length) { this.pts.visible = false; this.pts.geometry.setDrawRange(0, 0); }

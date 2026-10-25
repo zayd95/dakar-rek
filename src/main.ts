@@ -322,6 +322,7 @@ function modulePresence(): string | null { if (!ctxReady) return null; for (cons
 function moduleSpace(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 
 const sunDir = new THREE.Vector3();
+const NIGHT_SKY = new THREE.Color(0x6474a6);
 function updateLighting(hour: number) {
   const d = daylight(hour), night = 1 - clamp(d * 3.2, 0, 1);
   const low = 1 - clamp((d - 0.05) / 0.4, 0, 1);              // 1 near sunrise/sunset, 0 at midday
@@ -338,8 +339,10 @@ function updateLighting(hour: number) {
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
   sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.72 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
-  hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
-  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
+  // at night the sky's light on the ground is a little stronger and less blue than it was (0.75, 0x5a6ea8): the road reads grey against the darker
+  // walls, its markings and kerbs out of it (LD2.0-A night roads); the headlights and the lamps' pools do the rest (src/transport/headlightPool.ts)
+  hemi.intensity = isNight ? 0.9 : 0.7 + 0.35 * d;
+  hemi.color.copy(isNight ? NIGHT_SKY : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
   hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {

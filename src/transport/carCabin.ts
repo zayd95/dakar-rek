@@ -108,9 +108,9 @@ interface Rig {
   cabin: THREE.Object3D | null;
   doors: Door[];
 }
-interface State { holders: Set<string>; doorK: number; doorSide: -1 | 1; rig: Rig | null }
+interface State { holders: Set<string>; doorK: number; doorSide: -1 | 1; rig: Rig | null; eye: boolean }
 const states = new WeakMap<THREE.Object3D, State>();
-const stateOf = (body: THREE.Object3D) => { let s = states.get(body); if (!s) { s = { holders: new Set(), doorK: 0, doorSide: -1, rig: null }; states.set(body, s); } return s; };
+const stateOf = (body: THREE.Object3D) => { let s = states.get(body); if (!s) { s = { holders: new Set(), doorK: 0, doorSide: -1, rig: null, eye: false }; states.set(body, s); } return s; };
 
 /** The car's model under its body group (the kit's or the authored one), and the part of it drawn near the camera. */
 function modelOf(body: THREE.Object3D): THREE.Object3D | null { return body.children.find(c => c.userData.vehicleSpec) ?? null; }
@@ -211,10 +211,13 @@ export function cabinView(body: THREE.Object3D, spec: { width: number; seats: { 
   if (st.rig && (!want || st.rig.model !== model || !model?.parent)) { drop(st.rig); st.rig = null; }
   if (!want || !model) return;
   if (!st.rig) st.rig = build(model);
-  const rig = st.rig, see = st.holders.size > 0;
+  // the camera at the wheel (`eyeInside`): the body's own cabin — its seats, the driver's among them, and its lining — is the street's view of the
+  // inside; seen from the driver's eye its seat back stood in front of the windscreen (a black wall over the road, 24 Oct playtest). The car's
+  // interior (src/transport/carInterior.ts) stands in for it there, and the see-through glass is for eyes outside.
+  const rig = st.rig, see = st.holders.size > 0 && !st.eye;
   for (const m of rig.glass) m.visible = see;
   if (rig.cabin) {
-    const show = see || st.doorK > 0 || ((model.userData.kitDoor as THREE.Object3D | undefined)?.rotation.y ?? 0) !== 0;
+    const show = !st.eye && (see || st.doorK > 0 || ((model.userData.kitDoor as THREE.Object3D | undefined)?.rotation.y ?? 0) !== 0);
     rig.cabin.visible = show;
     if (rig.cabin.renderOrder !== ORDER.inside) rig.cabin.traverse(o => { o.renderOrder = ORDER.inside; });
   }
@@ -225,6 +228,8 @@ export function cabinView(body: THREE.Object3D, spec: { width: number; seats: { 
     d.pivot.rotation.y = -d.side * REAR_OPEN * k;                                   // the leaf's tail swings out on its own side
   }
 }
+/** The camera is at the wheel of this car (« Au volant »): its own cabin and see-through glass are not drawn (cabinView). */
+export function eyeInside(body: THREE.Object3D, on: boolean) { const st = states.get(body); if (on) stateOf(body).eye = true; else if (st) st.eye = false; }
 /** `who` holds the glass of this car see-through (or lets go). */
 export function holdCabin(body: THREE.Object3D, who: string, on: boolean) { const st = stateOf(body); if (on) st.holders.add(who); else st.holders.delete(who); }
 /** A rear door (`side` −1 right, 1 left): 0 shut … 1 open (eased by the caller). One rear door is open at a time. */
@@ -253,5 +258,5 @@ export function sitterOrder(o: THREE.Object3D, inCar: boolean) {
 /** Checks: what is drawn for this car now. */
 export function cabinInfo(body: THREE.Object3D) {
   const st = states.get(body), r = st?.rig;
-  return { holders: st ? [...st.holders] : [], doorK: st?.doorK ?? 0, doorSide: st?.doorSide ?? -1, glass: r ? r.glass.length / 3 : 0, glassOn: !!r?.glass[0]?.visible, cabin: !!r?.cabin?.visible, doors: r?.doors.length ?? 0, doorOpen: !!r?.doors.some(d => d.pivot.visible), leafTris: r?.doors.reduce((n, d) => { let k = 0; d.pivot.traverse(o => { const g = (o as THREE.Mesh).geometry; if (g) k += g.getAttribute('position').count / 3; }); return n + k; }, 0) ?? 0 };
+  return { holders: st ? [...st.holders] : [], eyeInside: !!st?.eye, doorK: st?.doorK ?? 0, doorSide: st?.doorSide ?? -1, glass: r ? r.glass.length / 3 : 0, glassOn: !!r?.glass[0]?.visible, cabin: !!r?.cabin?.visible, doors: r?.doors.length ?? 0, doorOpen: !!r?.doors.some(d => d.pivot.visible), leafTris: r?.doors.reduce((n, d) => { let k = 0; d.pivot.traverse(o => { const g = (o as THREE.Mesh).geometry; if (g) k += g.getAttribute('position').count / 3; }); return n + k; }, 0) ?? 0 };
 }
