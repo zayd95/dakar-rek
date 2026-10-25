@@ -19,6 +19,19 @@ import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './praye
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
+/**
+ * How closed a studio body's hands are (0 open … 1 fist; the `grip` morph target of the Meshy bodies, which have no finger bones), by clip. The mesh's own
+ * hands are spread wide open; a hand at rest is gently curled (playtest of 24 Oct 2026: « unnatural hands »), a hand holding the wheel or the handlebars
+ * is closed on it, a hand holding something is mostly closed, and the open hands of the prayer stay open.
+ */
+export const HAND_REST = 0.4;
+export function handClosure(clip: string | null): number {
+  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'Drive') return 1;
+  if (clip === 'Grab') return 0.75;
+  if (clip?.startsWith('Pray')) return 0.12;
+  if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
+  return HAND_REST;
+}
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
@@ -804,9 +817,9 @@ export class Humanoid {
     this.overlay(this, dt);
   }
 
-  /** The hands close on the grips while the rider has the Ride pose (a morph target: the skeleton has no finger bones), and open again after. */
+  /** How closed the hands are for the clip being played (handClosure: a morph target, the skeleton has no finger bones), eased over 0.3 s. */
   private closeFist(dt: number) {
-    const to = this.clipName === 'Ride' ? 1 : 0;
+    const to = handClosure(this.clipName);
     if (this.gripW === to) return;
     this.gripW = to > this.gripW ? Math.min(to, this.gripW + dt / 0.3) : Math.max(to, this.gripW - dt / 0.3);
     const m = this.gripMesh!; m.morphTargetInfluences![m.morphTargetDictionary!.grip] = this.gripW;
