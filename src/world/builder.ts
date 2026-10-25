@@ -1498,7 +1498,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       for (let i = 0; i < n; i++) {
         const f0 = i / n, f1 = (i + 1) / n, y0 = y - sag * 4 * f0 * (1 - f0), y1 = y - sag * 4 * f1 * (1 - f1);
         const x0 = ax + (bx - ax) * f0, z0 = az + (bz - az) * f0, x1 = ax + (bx - ax) * f1, z1 = az + (bz - az) * f1, len = Math.hypot(x1 - x0, z1 - z0, y1 - y0);
-        const g = new THREE.BoxGeometry(0.035, 0.035, len); g.lookAt(new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0)); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+        const g = new THREE.BoxGeometry(0.07, 0.07, len); g.lookAt(new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0)); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
         plain.geometry(g, 0x1d1d1f, 0, 0, 0);
       }
     };
