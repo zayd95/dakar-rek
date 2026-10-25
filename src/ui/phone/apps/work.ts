@@ -4,6 +4,7 @@ import { missionNow, streakView } from '../selectors';
 import { phoneHooks } from '../../phoneHooks';
 import { fcfa } from '../../hud';
 import { ownsVehicle } from '../../../transport/owned';
+import { tableCard, waitingText } from '../../../economy/bana';
 
 /**
  * Travailler: the job in hand first (a VTC passenger, a Tiak Tiak parcel: what, where, the pay, « Suivre »), then the ways to earn — VTC rides with the
@@ -20,7 +21,7 @@ export const workScreen: Screen = {
     const ways = [
       phoneHooks.openVtc ? row({ icon: '🚖', label: 'Courses VTC', sub: car ? `${d.vtc?.trips ?? 0} course${(d.vtc?.trips ?? 0) > 1 ? 's' : ''} · ${fcfa(d.vtc?.earned ?? 0)} gagnés` : 'Avec ta propre voiture', act: 'vtc' }) : '',
       phoneHooks.openJobs ? row({ icon: '📦', label: 'Tiak Tiak et petits boulots', sub: `${(d.counters.livraisons ?? 0)} livraison${(d.counters.livraisons ?? 0) > 1 ? 's' : ''} · ${(d.counters.shifts ?? 0)} service${(d.counters.shifts ?? 0) > 1 ? 's' : ''}`, act: 'jobs' }) : '',
-      phoneHooks.openBusiness ? row({ icon: '🏢', label: 'Affaires', sub: 'Acheter, voir ce que ça rapporte', act: 'business' }) : '',
+      phoneHooks.openBusiness ? row({ icon: '🏢', label: 'Affaires', sub: (t => (t.owned ? `Ta table : ${waitingText(t.clients)}${t.open ? ' · ouverte' : ''}` : 'Acheter, voir ce que ça rapporte'))(tableCard(s)), act: 'business' }) : '',
       row({ icon: '🤼', label: 'Arène', sub: `${d.counters.combats ?? 0} combat${(d.counters.combats ?? 0) > 1 ? 's' : ''} · classement`, go: 'arene' }),
     ].filter(Boolean);
     page.innerHTML = `${mission}

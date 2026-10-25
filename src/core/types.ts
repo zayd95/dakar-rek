@@ -73,6 +73,38 @@ export interface SaveData {
    * drops it at its save never loses the player's savings for good.
    */
   bank: BankState;
+  /**
+   * LD2.0-A: the player's own bana-bana table in Pikine (src/economy/bana.ts): its stock, the clientèle building up over played time, the session in
+   * progress and the last one. Additive field, no version change: a save without it gets an empty table (set up when a first bana unit is owned). Kept in
+   * the third extras backup (src/core/save.ts EXTRAS_V3_KEY) so a rollback to an older client never loses it.
+   */
+  bana: BanaState;
+}
+
+/** A finished session at the table: what was sold, at what price, what the goods sold had cost, the profit (sales − cost). Whole francs. */
+export interface BanaResult {
+  id: number;
+  /** The player's day (SaveData.play.day) and the real time it was closed. */
+  day: number; at: number;
+  sales: number; cost: number; profit: number;
+  /** Customers served, and the units sold per good id. */
+  served: number; sold: Record<string, number>;
+}
+/** The session in progress at the table: the till (paid into the wallet once, when the table is closed). */
+export interface BanaSession { id: number; startedMs: number; sales: number; cost: number; served: number; sold: Record<string, number> }
+export interface BanaState {
+  /** Played ms when the player's table was set up (their first bana unit); −1: never. */
+  since: number;
+  /** Goods on the table: good id (ECONOMY.bana.goods) → units. */
+  stock: Record<string, number>;
+  /** Customers waiting, and the played time (ms) up to which the clientèle was counted (it grows with played time only). */
+  clients: number; clientMs: number;
+  open: BanaSession | null;
+  last: BanaResult | null;
+  /** Profit of the sessions of the player's day `day`, of every session, and how many sessions; the session sequence. */
+  day: number; today: number; total: number; sessions: number; seq: number;
+  /** The neighbour has said his one line about the table (src/social/profiles.ts, Modou's « news » walk-up). */
+  ack: boolean;
 }
 
 /**
