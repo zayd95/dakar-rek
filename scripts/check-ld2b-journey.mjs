@@ -110,7 +110,7 @@ try {
   const door = (await A.d(() => window.__dakar.interactables())).find(i => i.id === 'pikine:home:jamm');
   const entry = spots.homes.appart_jamm.entry, dl = Math.hypot(entry.x - door.x, entry.z - door.z) || 1;
   const outside = k => ({ x: door.x + ((entry.x - door.x) / dl) * k, z: door.z + ((entry.z - door.z) / dl) * k });
-  await A.d(() => { const d = window.__dakar; d.giveMoney(3_000_000); d.buyAsset('appart_jamm'); d.moveIn('appart_jamm'); for (const id of ['canape_wax', 'table_basse', 'tele_plate', 'lit_bois']) d.buyPiece(id); d.save(); });
+  await A.d(() => { const d = window.__dakar; d.giveMoney(20_000_000); /* the F2 is 15 000 000 F */ d.buyAsset('appart_jamm'); d.moveIn('appart_jamm'); for (const id of ['canape_wax', 'table_basse', 'tele_plate', 'lit_bois']) d.buyPiece(id); d.save(); });
   await B.d(() => { window.__dakar.giveMoney(60_000); window.__dakar.save(); });
   for (const [p, k] of [[A, 4], [B, 7]]) { await p.d(s => window.__dakar.place(s.x, s.z, 0), outside(k)); }
   await A.until(t => window.__dakar.presence().peers.some(p => p.tag === t), B.tag, 60000);
@@ -262,10 +262,11 @@ try {
   await walkTo(A.page, A.t, square.x + 2, square.z, { tol: 1.5, ms: 60000 }); await walkTo(B.page, B.t, square.x - 2, square.z, { tol: 1.5, ms: 60000 });
   const met = await A.until(r => { const o = window.__dakar.account(); return o.convs().some(c => o.items(c.with).some(i => i.id === r && i.state === 'met')); }, meet.id, 120000);
   const metB = await B.until(r => { const o = window.__dakar.account(); return o.convs().some(c => o.items(c.with).some(i => i.id === r && i.state === 'met')); }, meet.id, 30000);
-  const cardA = await A.until(() => /Vous êtes au rendez-vous/.test(document.querySelector('#toast')?.innerText ?? ''), null, 15000);
+  // the card « Vous êtes au rendez-vous ✓ » (src/online/meetups.ts): shown once on each side (its log), whenever the meeting turned met
+  const cardA = await A.until(r => window.__dakar.meet.info().log.cards.includes(r), meet.id, 15000), cardB = await B.until(r => window.__dakar.meet.info().log.cards.includes(r), meet.id, 15000);
   await A.shot('6-awa-met'); await B.shot('6-moussa-met');
   check('6. a meeting « Grand-place de Pikine » at a city time (« À NN h », sent as server ms): Moussa accepts; both there in its window → met on both sides, the card shown',
-    meet?.place?.id === 'pikine:city:square' && meet.when > meet.at && /^\d\d:00$/.test(meetClock) && met && metB && cardA, JSON.stringify({ meet, meetClock, met, metB, cardA }));
+    meet?.place?.id === 'pikine:city:square' && meet.when > meet.at && /^\d\d:00$/.test(meetClock) && met && metB && cardA && cardB, JSON.stringify({ meet, meetClock, met, metB, cardA, cardB }));
 
   check('no page errors in either game', !A.errors.length && !B.errors.length, JSON.stringify({ a: A.errors.slice(0, 3), b: B.errors.slice(0, 3) }));
 } catch (e) {
