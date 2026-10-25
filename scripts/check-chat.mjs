@@ -197,6 +197,7 @@ try {
     (await a.evaluate(() => window.__dakar.presence().peers[0].tag)) === tagB && await copies(a, tagB) === 1 && await copies(b, tagA) === 1);
 
   // ---- over-long and rate-limited messages: rejected with a visible status
+  if (!(await state(b)).open) await b.click('#chatBtn');
   await b.click('.chat-tabs button[data-tab="near"]');
   await b.evaluate(n => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(n + 50); f.dispatchEvent(new Event('input')); }, CHAT_MAX);
   await b.press('#chatInput', 'Enter');

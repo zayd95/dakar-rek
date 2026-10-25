@@ -11,7 +11,7 @@
 //   8. Argent › Teranga Money: the balance and when it was known, Recharger (double tap: once), Retirer, the history, the limits, offline;
 //   9. landscape (844 × 390): the conversation, its field and a sheet fit, nothing sideways; the chat panel's « Messages privés » hands over; the field
 //      above a (simulated) keyboard; a long conversation scrolled up by a finger, its older page loaded without moving the view;
-//  10. a build without the account: Messages says so, Argent has no Teranga Money.
+//  10. without the account: a solo build's Messages says so and Argent has no Teranga Money; an online build without its server says it reconnects.
 // Usage: node scripts/check-messages.mjs [baseUrl] [outDir] [proofDir]   (a `vite build --mode online` served statically)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -258,8 +258,10 @@ try {
   await until(r => !!document.querySelector(`#phone [data-key="${r}"] [data-do="go"]`), theirLoc);
   await tap(`#phone [data-key="${theirLoc}"] [data-do="go"]`);
   await until(() => !window.__dakar.phoneInfo().open);
-  check('5. « Partager ma position » (one confirmation: the nearest place) sends it; Awa’s position has « Y aller »', /Marché de Pikine/.test(locSheet) && myLoc.name === 'Marché de Pikine'
-    && (await d(() => window.__dakarOnline.goes)).some(g => g.to === 'loc' && g.name === 'Terrain de la Corniche'), locSheet);
+  // the nearest place is the world's: « Marché de Pikine » in the stub world, the real one in the game
+  const locGo = await d(() => ({ goes: window.__dakarOnline.goes.slice(), dest: window.__dakar.destination?.() ?? null }));
+  check('5. « Partager ma position » (one confirmation: the nearest place) sends it; Awa’s position has « Y aller »', !!myLoc.name && locSheet.includes(myLoc.name)
+    && (locGo.goes.some(g => g.to === 'loc' && g.name === 'Terrain de la Corniche') || !!locGo.dest), JSON.stringify({ locSheet, name: myLoc.name, ...locGo }));
   await d(t => window.__dakar.phone(`messages:${t}`), AWA); await until(t => window.__dakar.phoneInfo().arg === t, AWA);
 
   // 6 — offline, failed, « Réessayer »
@@ -465,8 +467,12 @@ try {
   const solo = await screenText();
   await d(() => window.__dakar.phone('portefeuille')); await until(() => window.__dakar.phoneInfo().screen === 'portefeuille'); await wait(500);
   const soloArgent = await screenText();
+  // a solo build has no account at all; an online build served without its server has the real one, never connected (it says it reconnects)
+  const real = await d(() => { const a = window.__dakar.account?.(); return a ? { status: a.status, me: !!a.me } : null; });
+  const tm = await d(() => !!document.querySelector('#phone [data-slot="tm"], #phone .tm-card'));
   check('10. without the account: Messages says it needs the online connection (the game goes on solo); Argent has no Teranga Money; no simulated account',
-    /Messages a besoin de la connexion en ligne/.test(solo) && !(await d(() => !!document.querySelector('#phone [data-slot="tm"], #phone .tm-card'))) && !(await d(() => !!window.__dakarOnline)), JSON.stringify({ solo, soloArgent: soloArgent.slice(0, 300), fake: await d(() => !!window.__dakarOnline) }));
+    (real ? /Reconnexion/.test(solo) && real.status !== 'online' : /Messages a besoin de la connexion en ligne/.test(solo) && !tm) && !(await d(() => !!window.__dakarOnline)),
+    JSON.stringify({ real, tm, solo: solo.slice(0, 200), soloArgent: soloArgent.slice(0, 200), fake: await d(() => !!window.__dakarOnline) }));
   await shot('12-solo', false);
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
