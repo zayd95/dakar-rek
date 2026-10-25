@@ -27,7 +27,10 @@ class FakeServer {
     ws.deliver({ type: 'welcome', v: 1, tag, code: tag.toUpperCase().match(/.{4}/g)!.join('-'), time: Date.now(), balance: a.balance, limits: L, today: todayOf(a, Date.now()), convs: [], blocked: [] });
   }
   times: number[] = [];
+  /** Milliseconds each frame takes the server (a busy machine: a burst of frames then spans time), 0 by default. */
+  slowMs = 0;
   handle(ws: FakeWS, m: Msg) {
+    if (this.slowMs) { const until = Date.now() + this.slowMs; while (Date.now() < until) { /* busy */ } }
     this.received.push(m); this.times.push(Date.now());
     const ack = (x: object) => { if (m.id && this.swallow.delete(m.id)) return; ws.deliver({ type: 'ack', id: m.id, ...x }); if (m.id && this.duplicateAnswers.has(m.id)) ws.deliver({ type: 'ack', id: m.id, duplicate: true, ...x }); };
     if (m.id && this.refuse.has(m.id)) { ack({ ok: false, reason: this.refuse.get(m.id) }); return; }
@@ -218,10 +221,11 @@ describe('the account client', () => {
     expect(FakeWS.server.received.filter(m => m.type === 'block')).toHaveLength(1);
   });
 
-  it('a burst (a list asking who is online) is spread: never more than 15 frames in a second', async () => {
+  it('a burst (a list asking who is online) is spread: never more than 15 frames in a second, also when each frame takes time to go', async () => {
     FakeWS.server = new FakeServer();
     const { client } = setup();
     await online(client);
+    FakeWS.server.slowMs = 3;                                   // as on a busy CI runner: 15 frames span ~45 ms
     const tags = Array.from({ length: 30 }, (_, i) => `11111111111111${i.toString(16).padStart(2, '0')}`);
     for (const t of tags) expect(client.seen(t)).toBeNull();
     await vi.waitFor(() => expect(FakeWS.server.received.filter(m => m.type === 'conv')).toHaveLength(30), { timeout: 4000 });

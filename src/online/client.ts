@@ -397,9 +397,9 @@ export class OnlineAccount implements OnlineApi {
     while (this.backlog.length && this.sentAt.length < SEND_RATE) {
       if (this.socket?.readyState !== WebSocket.OPEN) { this.backlog = []; return; }
       try { this.socket.send(this.backlog.shift()!); } catch { this.backlog = []; return; }
-      this.sentAt.push(now);
+      this.sentAt.push(Date.now());                            // each frame's own time: a busy page takes milliseconds over a burst, and the window must count them
     }
-    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (now - this.sentAt[0])));
+    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (Date.now() - this.sentAt[0]) + 1));
   }
 
   // ================================================================== the socket
