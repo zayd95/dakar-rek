@@ -9,7 +9,8 @@ import { ROADSIDE_REACH, ROADSIDE_SECONDS, bandWarning, canMakeshift, healthAler
 import { buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { fcfa } from '../ui/hud';
 import { say } from '../i18n/wolof';
-import { Vehicle } from './vehicle';
+import { ROAD_Y, Vehicle } from './vehicle';
+import { daylight } from '../core/clock';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { fovFor } from '../core/view';
@@ -36,6 +37,8 @@ import { navigation } from '../game/navigation';
 import { SIT_HIPS, seatClip, sitOriginY } from '../interact/seats';
 import { CABINS, SITTERS, rowOf, scaleAt } from './cabinFit';
 import { cabinInfo, cabinView, eyeInside, holdCabin, sitterOrder } from './carCabin';
+import { headlightPool } from './headlightPool';
+import { nightOf } from '../city/nightRules';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
@@ -398,6 +401,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   update(ctx: GameCtx, dt: number) {
     const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     if (this.floor.length) this.watchFloor(ctx, dt);
+    if (!this.driving) headlightPool.release(this);                              // on foot (or nobody at the wheel): no light on the road
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     this.simT += dt;
     this.stepDoor(dt, m);
@@ -451,6 +455,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (cf.scraping) vehicleAudio.scrape(cf.scrape); else vehicleAudio.scrapeOff();
     if (cf.scraping) this.scrapeFrames++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
+    // at night the headlights light the street ahead (src/transport/headlightPool.ts: the street's own materials take the beam; no light source), from the front bumper
+    headlightPool.place(this, this.st.x, m.pose.y - ROAD_Y, this.st.z, this.st.yaw, this.spec.drive.halfLength, nightOf(daylight(ctx.hour())), moto);
     if (!this.trial && !this.leaving && ctx.mode() === 'play' && this.hub) { const c = crossing(this.hub.id, this.st.x, z0, this.st.z, this.st.speed * Math.cos(this.st.yaw)); if (c) { this.cross(c.link.to, c.x, c.z); return; } }
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     if (this.ctl.paddling) this.lean = 0;                                        // pushed backwards with the feet: the rider sits upright
@@ -873,9 +879,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         audio: () => vehicleAudio.info(),
         radio: () => radio.info(),
         radioNext: () => this.radioNext(),
-        /** Checks: the interior at the wheel (drawn or not, its triangles, the eye in the car's frame, where the head is turned, the camera's near plane). */
+        /** Checks: the headlights' light on the road at night (src/transport/headlightPool.ts). */
+        headlights: () => headlightPool.info(),
         /** Checks: turn the head at the wheel (rad: + left, + up) and hold it there a while. */
         lookAt: (yaw: number, pitch = 0, s = 30) => this.cam.holdLook(yaw, pitch, s),
+        /** Checks: the interior at the wheel (drawn or not, its triangles, the eye and the design eye in the car's frame, what is seen from it, where the head is turned, the camera's near plane, the body's own cabin). */
         interior: () => this.interior ? { visible: this.interior.group.visible && !!this.interior.group.parent, attached: this.interior.group.parent === this.vehicle?.body, tris: this.interior.tris, eye: this.interior.eye.toArray().map(x => +x.toFixed(3)), design: this.interior.design.toArray().map(x => +x.toFixed(3)), sight: cockpitSight(this.interior.cabin, this.interior.eye.toArray()), head: this.seatedHead(), cabin: this.interior.cabin, look: this.cam.look, near: ctx.camera.near, shellInside: !!this.vehicle?.shellInside, cabinView: this.vehicle ? cabinInfo(this.vehicle.body) : null } : null,
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },

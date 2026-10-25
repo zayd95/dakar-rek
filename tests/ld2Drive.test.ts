@@ -11,12 +11,16 @@ import { CABINS, SITTERS, playerSeatTop, rowOf, scaleAt } from '../src/transport
 import { SIT_HIPS } from '../src/interact/seats';
 import { fovFor } from '../src/core/view';
 import { cabinInfo, cabinView, eyeInside, holdCabin } from '../src/transport/carCabin';
+import { HEADLIGHT, beamStrength, headlightPool } from '../src/transport/headlightPool';
+import { HEADLIGHT_UNIFORMS, addGrain } from '../src/world/grain';
+import { LIGHT_BLEND } from '../src/world/lightBlend';
 
 /**
  * The driving blockers of the owner's iPhone playtest of 24 Oct 2026 (LD2.0-A, docs/ld2/proof/drive/): the pure parts.
  *  1. the way into the Almadies from Pikine was closed by a villa wall standing across the carriageway (src/road/chunks.ts `frame` past the road's end);
  *     road events stood on the first streets in from a road or a border street, and a travaux barrier's box reached 1.3 m into the lane round its panel;
- *  2. at the wheel the body's own cabin (its driver's seat back) stood in front of the windscreen, and the eye did not follow the body in the seat.
+ *  2. at the wheel the body's own cabin (its driver's seat back) stood in front of the windscreen, and the eye did not follow the body in the seat;
+ *  3. at night the road, its markings and its kerbs were too dark to read: the player's headlights now light the street's own materials.
  */
 
 const mats = new ChunkMats(true);
@@ -188,5 +192,42 @@ describe('at the wheel: the eye, the road over the bonnet, the wheel and the das
     eyeInside(body, false); cabinView(body, null);
     expect(cabin.visible).toBe(true);
     holdCabin(body, 'driver', false); cabinView(body, null);
+  });
+});
+
+describe('at night: the headlights light the street, the lamps\' pools light what is under them', () => {
+  it('the beam is off by day, comes on at dusk, full at night; a motorbike\'s is weaker', () => {
+    expect(beamStrength(0)).toBe(0); expect(beamStrength(0.3)).toBe(0);
+    expect(beamStrength(0.5)).toBeGreaterThan(0); expect(beamStrength(0.5)).toBeLessThan(HEADLIGHT.strength);
+    expect(beamStrength(1)).toBe(HEADLIGHT.strength); expect(beamStrength(1, true)).toBeLessThan(beamStrength(1));
+  });
+
+  it('the vehicle at the wheel sets the shared uniforms (its front bumper, its heading); another vehicle cannot switch them off; by day or on foot they are off', () => {
+    const me = {}, other = {};
+    headlightPool.place(me, 10, 0, -4, Math.PI / 2, 2, 1);
+    expect(HEADLIGHT_UNIFORMS.uHlK.value).toBe(HEADLIGHT.strength);
+    expect(HEADLIGHT_UNIFORMS.uHlPos.value.toArray().map(v => +v.toFixed(3))).toEqual([12, HEADLIGHT.height, -4]);
+    expect(HEADLIGHT_UNIFORMS.uHlDir.value.toArray().map(v => +v.toFixed(3))).toEqual([1, 0]);
+    headlightPool.release(other); expect(HEADLIGHT_UNIFORMS.uHlK.value).toBeGreaterThan(0);
+    headlightPool.place(me, 10, 0, -4, 0, 2, 0.1); expect(HEADLIGHT_UNIFORMS.uHlK.value).toBe(0);             // daylight
+    headlightPool.place(me, 10, 0, -4, 0, 2, 1); headlightPool.release(me); expect(HEADLIGHT_UNIFORMS.uHlK.value).toBe(0);   // on foot
+  });
+
+  it('every grain material (the road, its markings, the kerbs, the walls) takes the beam in its lighting, with the same uniform objects (one update a frame)', () => {
+    const a = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1), b = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false);
+    for (const m of [a, b]) {
+      const shader = { uniforms: {} as Record<string, { value: unknown }>, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
+      m.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms, null as unknown as THREE.WebGLRenderer);
+      expect(shader.fragmentShader).toContain('float hlBeam(');
+      expect(shader.fragmentShader).toMatch(/#include <lights_fragment_end>\s*if \(uHlK > 0\.0\) reflectedLight\.directDiffuse \+= diffuseColor\.rgb/);
+      for (const k of Object.keys(HEADLIGHT_UNIFORMS) as (keyof typeof HEADLIGHT_UNIFORMS)[]) expect(shader.uniforms[k]).toBe(HEADLIGHT_UNIFORMS[k]);
+      expect(m.customProgramCacheKey()).toMatch(/^grain-hl-/);
+    }
+  });
+
+  it('the lamps\' pools multiply what is under them (an additive glow washed the white markings into the asphalt)', () => {
+    expect(LIGHT_BLEND.blending).toBe(THREE.CustomBlending); expect(LIGHT_BLEND.blendSrc).toBe(THREE.DstColorFactor); expect(LIGHT_BLEND.blendDst).toBe(THREE.OneFactor);
+    const mats = new ChunkMats(true);
+    expect(mats.glow.blending).toBe(THREE.CustomBlending); expect(mats.glow.premultipliedAlpha).toBe(true); expect(mats.glow.depthWrite).toBe(false);
   });
 });

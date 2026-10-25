@@ -4,6 +4,7 @@ import { Batch } from '../world/batch';
 import { addGrain } from '../world/grain';
 import { generatedTexture } from '../world/textures';
 import { hubSurface, lightPoolTexture } from '../world/builder';
+import { lightPoolMaterial } from '../world/lightBlend';
 import { rng } from '../core/rng';
 import type { Collider, HubWorld } from '../world/types';
 import type { PersonLook } from '../actors/humanoid';
@@ -24,7 +25,7 @@ export class ChunkMats {
   readonly ground: THREE.MeshLambertMaterial; readonly asphalt: THREE.MeshLambertMaterial; readonly plain: THREE.MeshLambertMaterial;
   /** Lamp heads (dimmer by day, full at night) and the pools of light on the road under them (night only), like the districts' own (world/builder.ts). */
   readonly bulb = new THREE.MeshBasicMaterial({ vertexColors: true });
-  readonly glow = new THREE.MeshBasicMaterial({ map: typeof document !== 'undefined' ? lightPoolTexture() : null, color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, visible: false });
+  readonly glow = lightPoolMaterial({ map: typeof document !== 'undefined' ? lightPoolTexture() : null, color: 0xffb860, opacity: 1, visible: false });   // (src/world/lightBlend.ts)
   constructor(lite: boolean) {
     this.ground = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 1.2, 0.5, false, lite ? undefined : generatedTexture('sand'), 3) as THREE.MeshLambertMaterial;
     this.asphalt = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, lite ? undefined : generatedTexture('asphalt'), 3) as THREE.MeshLambertMaterial;
