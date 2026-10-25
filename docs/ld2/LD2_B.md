@@ -136,7 +136,26 @@ No page errors in either game.
 - two real account clients.
 
 ### Regression
-(Filled in from the integrated build's runs.)
+The phase's other browser checks, on the integrated branch. Each was run alone; a check's own fixes are named under it.
+
+| Check | Build | Result |
+|---|---|---|
+| `scripts/check-messages.mjs` | online build, served without its server (`?fakeonline`'s account) | **43/43** |
+| `scripts/check-chat.mjs` | real local runtime, two players | **30/30** |
+| `scripts/check-visit.mjs` | online build | **55/55** |
+| `scripts/check-phone.mjs` | online build, desktop and phone | **69/69** |
+| `scripts/check-ui-consistency.mjs` | online build | **95/95** |
+
+**What the first runs found, and what changed:**
+- **In the game:**
+  - « Discussion » was 40 px tall. It is now 44 px, the HUD's touch size, and the desktop moment card moved 4 px lower to stay clear of it.
+  - In portrait, the chat button sat over the place's title when the presence pill was hidden. It now goes under the title.
+  - The account client could send 16 frames in one second on a busy page (unit test, CI). Each frame of a burst now counts at its own time.
+- **In the scripts:** they had been written against the stub world or the panel's old private tab.
+  - `check-messages`: the nearest place's real name, « Y aller » marking a destination, and step 10 for an online build with no server.
+  - `check-chat`: private messages through the Messages app.
+  - `check-multiplayer` (CI's `check:online`): the car rapide step waits for B's seat to reach A instead of a fixed 1.5 s. CI failed it once on `e035704`. That runner took 59.5 s to bring the second page online (60.8 s on LD2.0-A's own green run), and A still had B at the stop. Here it is 46/46, A seeing B seated 14 ms after B's trip turned « riding ».
+  - `check-messages` 9d (the keyboard) failed once while another check loaded the machine: the phone's animation ran late and the field was measured mid-way. It now measures the field once it has stopped moving.
 
 ### Performance
 - **In a furnished home, host and guest draw exactly the same:** F2 is 24 draw calls / 10 730 triangles, the family room 23 / 10 110 (`check-visit.mjs`).

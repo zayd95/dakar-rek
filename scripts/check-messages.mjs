@@ -417,11 +417,13 @@ try {
 
   // the phone's keyboard (simulated: the visual viewport loses 336 px at the bottom, as Safari's): the field rides above it
   await d(() => window.__dakar.phone('messages:b0b0000000000b02')); await until(() => window.__dakar.phoneInfo().arg === 'b0b0000000000b02'); await wait(600);
+  // (a loaded machine runs the phone's own animation late: the field is measured once it has stopped moving)
+  const settle = sel => d(s => new Promise(done => { let last = NaN, same = 0, n = 0; const t = setInterval(() => { const b = document.querySelector(s)?.getBoundingClientRect().bottom; same = b === last ? same + 1 : 0; last = b; if (same >= 2 || ++n > 50) { clearInterval(t); done(); } }, 100); }), sel);
   await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
-  await wait(400);
+  await wait(400); await settle('#phone .mg-field');
   const kb = await d(() => { const f = document.querySelector('#phone .mg-field').getBoundingClientRect(), l = document.querySelector('#phone .mg-log').getBoundingClientRect(); return { field: f.bottom, log: l.height, limit: innerHeight - 336 }; });
   await d(() => { const vv = window.visualViewport; delete vv.height; vv.dispatchEvent(new Event('resize')); });
-  await wait(300);
+  await wait(300); await settle('#phone .mg-field');
   const kbOff = await d(() => document.querySelector('#phone .mg-field').getBoundingClientRect().bottom);
   // the same keyboard over a sheet: Argent › Recharger, the typed amount field in focus
   await d(() => window.__dakar.phone('portefeuille')); await until(() => window.__dakar.phoneInfo().screen === 'portefeuille');
@@ -429,7 +431,7 @@ try {
   await until(() => !!document.querySelector('#phone .mg-sheet [data-f="amount"]'));
   await tap('#phone .mg-sheet [data-f="amount"]');
   await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
-  await wait(500);
+  await wait(500); await settle('#phone .mg-sheet [data-f="amount"]');
   const kbSheet = await d(() => { const f = document.querySelector('#phone .mg-sheet [data-f="amount"]').getBoundingClientRect(), sh = document.querySelector('#phone .mg-sheet').getBoundingClientRect(); return { field: f.bottom, fieldTop: f.top, sheet: sh.bottom, limit: innerHeight - 336, focused: document.activeElement?.dataset?.f ?? null }; });
   await d(() => { const vv = window.visualViewport; delete vv.height; vv.dispatchEvent(new Event('resize')); });
   await tap('#phone .mg-sh-x');
