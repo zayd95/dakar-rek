@@ -142,7 +142,7 @@ const done = await V(), wallet1 = await d(() => window.__dakar.state.wallet), le
 const lines = ledger.filter(l => /Course VTC/.test(l.label));
 check('stopped at the kerb bay by the gate: the fare is paid ONCE through the existing payment (one wallet line)', !done.trip && done.state.done.includes(v0.trip.id) && wallet1 - wallet0 === v0.trip.fare && lines.length === 1 && ledger.length - ledger0 >= 1, JSON.stringify({ paid: wallet1 - wallet0, fare: v0.trip.fare, lines: lines.length }));
 const cards = await d(() => window.__dakar.streak.info().log.cards);
-check('the completion card comes up for this ride', cards.some(c => c.title === `Course terminée · ${v0.trip.passenger.name}` && c.rows.some(r => r.includes('3 500') || r.includes(String(v0.trip.fare)))), JSON.stringify(cards));
+check('the completion card comes up for this ride', cards.some(c => c.title === `Course terminée · ${v0.trip.passenger.name}` && c.rows.some(r => r.replace(/\s/g, '').includes(String(v0.trip.fare)))), JSON.stringify(cards));
 await page.waitForFunction(() => window.__dakar.mermoz.info().said.length > 0, null, { timeout: 30000 }).catch(() => {});
 await page.waitForTimeout(400); await shot('pape-thanks');
 const m1 = await MZ();
