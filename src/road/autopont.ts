@@ -129,7 +129,7 @@ export class AutopontTraffic {
   constructor(readonly lay: AutopontLayout, lite: boolean, rand: () => number) {
     this.group.name = 'road:autopont-traffic';
     const kinds: VehicleKind[] = ['sedan', 'taxi', 'pickup', 'moto', 'sedan', 'taxi'];
-    const n = lite ? 2 : 4;
+    const n = lite ? 1 : 2;                                                                               // (a car or two: each is several draw calls, and it is seen from below)
     for (let i = 0; i < n; i++) {
       const b = buildVehicle(kinds[Math.floor(rand() * kinds.length)], { seed: Math.floor(rand() * 1e6), lite });
       const dir: 1 | -1 = i % 2 ? 1 : -1;

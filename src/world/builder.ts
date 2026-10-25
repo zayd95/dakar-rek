@@ -176,6 +176,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2, 0.015);           // #26, rusty sheet
   const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1, 0.006);              // #49, palm bark
   const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2);           // #11, arena tiers
+  if (sp.style === 'mermoz') {   // the M1 visual pass: baked depth (the contact shade at the foot of walls, trunks and posts; the darker undersides of crowns, balconies and eaves)
+    for (const bt of [plain, fac, blocks, trunks, concrete, lampPosts]) bt.shade = { ground: { h: 2.6, min: 0.66 }, under: 0.72 };
+    leaves.shade = { under: 0.56 };
+  }
   const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5, 0.04);   // #31, arena floor
   const terrazzo = new Batch(), terrazzoMat = addGrain(lam(), 0.2, 1, false, generatedTexture('terrazzo'), 1.5);         // #28, bank and mall floors
   // arena roof sheets: #25 mapped on each panel's own UVs so the corrugations run down the slope (about 11 cm pitch);
@@ -480,6 +484,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       const fl = 3 + Math.floor(R() * 3), w = LS - 1, d = LS - 1, h = fl * 3.2, col = pick(sp.palette, R), cx = L.cx, cz = L.cz;
       fac.facade(w, h, d, cx, G - 0.02, cz, col);
       plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
+      for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));    // the floor slabs show on the face: a line of shade under each
       parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.8);
       roofClutter(cx, cz, w, d, G + h + 0.28);
       dressBuilding(cx, cz, w, d, h, col, faces, true);
@@ -517,6 +522,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       const cx = L.cx - fx * 0.5, cz = L.cz - fz * 0.5 + gz * 0.3;
       fac.facade(w, h, d, cx, G - 0.02, cz, col);
       plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
+      for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));
       parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.9);
       plain.box(3.2, 3.6, 3.2, cx, G + h + 0.28, cz, 0xcfc9bd);                                           // the stair and lift head
       plain.box(2.2, h, 0.12, cx + (R() - 0.5) * (w - 4), G, cz + gz * (d / 2 + 0.06), band);                // the coloured band up the street face

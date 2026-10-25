@@ -8,6 +8,12 @@ const FLOOR = 3.2; // storey height (m)
 export class Batch {
   private geos: THREE.BufferGeometry[] = [];
   count = 0;
+  /**
+   * Baked shading, for the places that ask for it (Mermoz and its road, the M1 visual pass): `ground` darkens vertical faces toward the ground (the contact shade at the
+   * foot of a wall, a trunk, a post: `min` at the ground up to full colour at `h` metres); `under` darkens faces that look down (a crown's underside, a balcony's soffit)
+   * to `under` × their colour. Off by default: every other batch is exactly as before.
+   */
+  shade: { ground?: { h: number; min: number }; under?: number } | null = null;
 
   /** Add a custom surface (boat planks, fish…) to the same merged draw call. */
   geometry(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, yaw = 0) {
@@ -29,7 +35,16 @@ export class Batch {
     const c = new THREE.Color(color);
     const n = g.attributes.position.count;
     const arr = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+    const sh = this.shade, pos = g.attributes.position, nor = g.attributes.normal;
+    for (let i = 0; i < n; i++) {
+      let k = 1;
+      if (sh && nor) {
+        const ny = nor.getY(i);
+        if (sh.ground && Math.abs(ny) < 0.6) { const u = Math.max(0, Math.min(1, pos.getY(i) / sh.ground.h)); k *= sh.ground.min + (1 - sh.ground.min) * u * u * (3 - 2 * u); }
+        if (sh.under !== undefined && ny < -0.2) k *= 1 - (1 - sh.under) * Math.min(1, (-ny - 0.2) / 0.6);
+      }
+      arr[i * 3] = c.r * k; arr[i * 3 + 1] = c.g * k; arr[i * 3 + 2] = c.b * k;
+    }
     g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
     if (g.index) g = g.toNonIndexed();
     this.geos.push(g); this.count++;

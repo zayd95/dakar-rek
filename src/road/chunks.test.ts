@@ -187,10 +187,12 @@ describe('the autopont at the way into Mermoz (src/road/autopont.ts)', () => {
   });
   it('carries a few cars across on its deck, at the deck\'s height', () => {
     const tr = new AutopontTraffic(lay, true, (() => { let x = 1; return () => (x = (x * 16807) % 2147483647) / 2147483647; })());
-    for (let k = 0; k < 40; k++) tr.update(0.25, true);
-    const cars = tr.info().filter(c => c.visible);
-    expect(cars.length).toBeGreaterThan(0);
-    for (const c of cars) expect(Math.abs(c.y - deckHeight(c.t))).toBeLessThan(0.1);
+    let seen = 0;
+    for (let k = 0; k < 120; k++) {
+      tr.update(0.25, true);
+      for (const c of tr.info().filter(c => c.visible)) { seen++; expect(Math.abs(c.y - deckHeight(c.t))).toBeLessThan(0.1); }
+    }
+    expect(seen).toBeGreaterThan(0);
     tr.dispose();
   });
 });

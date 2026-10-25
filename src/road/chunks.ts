@@ -115,6 +115,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   const R = rng(0x5f3a + index * 7919 + road.id.length * 131 + road.id.charCodeAt(0) * 17);
   const sa = hubSurface(road.def.a), sb = hubSurface(road.def.b);
   const plain = new Batch(), asphalt = new Batch(), ground = new Batch(), bulbs = new Batch(), fac = new Batch(), pools: THREE.BufferGeometry[] = [];
+  if (road.id === 'corniche-mermoz') { plain.shade = { ground: { h: 2.6, min: 0.66 }, under: 0.72 }; fac.shade = { ground: { h: 2.6, min: 0.66 } }; }   // (the M1 visual pass: baked depth, src/world/batch.ts)
   const colliders: Collider[] = [], people: HubWorld['people'] = [];
   const disposables: { dispose(): void }[] = [];
   const group = new THREE.Group(); group.name = `road:${road.id}:${index}`;
@@ -271,7 +272,8 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   /** `windows`: the districts' window texture. `shop` (−1 / +1, the side of the house facing the road): a shop at its foot, a dark opening and a half-raised shutter. */
   const house = (s: number, lat: number, w: number, d: number, h: number, col: number, flat = true, windows = false, shop = 0) => guarded(place(s, lat), w + 0.4, d + 0.4, () => {
     const p = place(s, lat); houses.push({ s, lat, w: w + 0.4, d: d + 0.4 });
-    if (windows) fac.facade(w, h, d, p.x, 0, p.z, col, p.f.yaw); else plain.box(w, h, d, p.x, 0, p.z, col, p.f.yaw);
+    if (windows) { fac.facade(w, h, d, p.x, 0, p.z, col, p.f.yaw); for (let y = 3.1; y < h - 1; y += 3.2) plain.box(w + 0.24, 0.16, d + 0.24, p.x, y, p.z, new THREE.Color(col).multiplyScalar(0.86).getHex(), p.f.yaw); }   // (floor bands: a line of shade under each)
+    else plain.box(w, h, d, p.x, 0, p.z, col, p.f.yaw);
     if (shop) {
       const fx = p.x + p.f.lx * shop * (w / 2 + 0.05), fz = p.z + p.f.lz * shop * (w / 2 + 0.05), fw = d * 0.7;
       plain.box(0.1, 2.5, fw, fx, 0, fz, 0x2a2622, p.f.yaw);

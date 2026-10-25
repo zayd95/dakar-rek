@@ -189,7 +189,7 @@ export function buildRoundStatic(r: RoundLayout, b: { plain: Batch; asphalt: Bat
     plain.cyl(0.09, 0.12, 9, lp.x, 0, lp.z, 0x3e4349, 6);
     plain.box(1.6, 0.12, 0.12, lp.x - Math.cos(am) * 0.8 * r.fx - Math.sin(am) * 0.8 * r.lx, 8.9, lp.z - Math.cos(am) * 0.8 * r.fz - Math.sin(am) * 0.8 * r.lz, 0x3e4349, yaw + Math.atan2(-Math.cos(am), Math.sin(am)) + Math.PI / 2);
     sq(lp, 0.18, 9);
-    if (!lite) for (let k = 0; k < 2; k++) {
+    if (!lite && q % 2 === 0) for (let k = 0; k < 1; k++) {                                              // (one person on two of the corners: each body is several draw calls)
       const a = from + (k + 1) * (to - from) / 3, p = P(Math.cos(a) * (r.ring + 3.0), Math.sin(a) * (r.ring + 3.0));
       people.push({ x: p.x, z: p.z, yaw: Math.atan2(r.x - p.x, r.z - p.z) + (R() - 0.5), clip: R() < 0.5 ? 'Talk' : 'Idle' });
     }
