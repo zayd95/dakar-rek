@@ -11,7 +11,7 @@ import { fcfaShort } from '../../../economy/format';
 
 /**
  * The home screen: who and where the player is (a compact summary), at most ONE contextual shortcut (resume a ride, follow a parcel, repay what is due,
- * a streak privilege, going home), then five big destinations — Carte, Travailler, Ma vie, Maison, Argent — and « Toutes les apps ».
+ * a streak privilege, going home; else « Mes pistes » when there are leads), then five big destinations — Carte, Travailler, Ma vie, Maison, Argent — and « Toutes les apps ».
  */
 const DAYS = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'];
 export const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -70,6 +70,7 @@ export const homeScreen: Screen = {
   mount(page, api) {
     const s = api.ctx.state, st = streakView(s.data), pic = phoneHooks.profilePortrait?.() ?? null, sc = shortcutNow(api), unread = quietLog.unread;
     const name = phoneHooks.profileName?.() || 'Invité';
+    const pi = sc ? [] : phoneHooks.pistes?.() ?? [];                          // « Mes pistes »: one row, only when no other shortcut takes the place
     const hint = hintSeen() ? '' : `<div class="hm-hint" role="note"><p>Ton téléphone, c’est ta vie à Dakar : la carte, le travail, ta progression, ta maison et ton argent.</p><button type="button" data-act="hint" aria-label="Compris">✕</button></div>`;
     page.innerHTML = `${hint}<header class="hm-sum">
         <div class="hm-who">${pic ? `<img class="hm-pic" src="${pic}" alt="">` : '<i class="hm-pic" aria-hidden="true">🧑🏾</i>'}
@@ -79,7 +80,8 @@ export const homeScreen: Screen = {
           <button type="button" class="hm-chip streak${st.run ? ' on' : ''}${st.today ? ' today' : ''}" data-go="profil" data-arg="progression"><small>Série</small><b class="hm-streak">${esc(st.chip)}</b></button></div>
         ${sc?.id === 'follow-job' || sc?.id === 'resume-vtc' ? '' : `<p class="hm-now">${esc(nowLine(api))}</p>`}
       </header>
-      ${sc ? `<button type="button" class="hm-short" data-act="shortcut" data-id="${sc.id}"><i aria-hidden="true">${esc(sc.icon)}</i><span><b>${esc(sc.label)}</b>${sc.sub ? `<small>${esc(sc.sub)}</small>` : ''}</span><span class="pk-chev" aria-hidden="true">›</span></button>` : ''}
+      ${sc ? `<button type="button" class="hm-short" data-act="shortcut" data-id="${sc.id}"><i aria-hidden="true">${esc(sc.icon)}</i><span><b>${esc(sc.label)}</b>${sc.sub ? `<small>${esc(sc.sub)}</small>` : ''}</span><span class="pk-chev" aria-hidden="true">›</span></button>`
+        : pi.length ? `<button type="button" class="hm-short hm-pistes" data-go="pistes"><i aria-hidden="true">🧭</i><span><b>Mes pistes · ${pi.length}</b><small>${esc(pi[0].title)}${pi.length > 1 ? ` et ${pi.length - 1} autre${pi.length > 2 ? 's' : ''}` : ''}</small></span><span class="pk-chev" aria-hidden="true">›</span></button>` : ''}
       ${destinations(api)}`;
     page.addEventListener('click', e => {
       const t = e.target as HTMLElement;

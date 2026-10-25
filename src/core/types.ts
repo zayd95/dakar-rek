@@ -1,5 +1,6 @@
 import type { CareerSave } from '../career/career';
 import type { Appearance } from '../actors/appearance';
+import type { PistesState } from '../economy/pistes';
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 /**
@@ -73,6 +74,8 @@ export interface SaveData {
    * drops it at its save never loses the player's savings for good.
    */
   bank: BankState;
+  /** LD2.0-A: what the player did with « Mes pistes » (src/economy/pistes.ts): leads dismissed or followed, offered in the street. Additive field. */
+  pistes: PistesState;
 }
 
 /**

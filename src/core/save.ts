@@ -3,6 +3,7 @@ import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 import { appearanceOf } from '../actors/appearance';
+import { newPistes, pistesOf } from '../economy/pistes';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -42,7 +43,7 @@ export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as 
  * backups at its saves without `bank`; it never touches this key, so savings dropped by a rollback come back with the next LD2.0 client.
  */
 export const EXTRAS_V3_KEY = 'dakarrek.guest.save.v6.extras.3';
-export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank'] as const;
+export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes'] as const;
 type ExtraField = typeof EXTRA_FIELDS_V3[number];
 /** Savings history kept in the save, and idempotency keys remembered (an operation is never applied twice). */
 export const BANK_TX_MAX = 200;
@@ -74,7 +75,7 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(),
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(),
   };
 }
 export const newBank = (): BankState => ({ opened: -1, savings: 0, tx: [], seq: 0, goal: null, refs: [], interestDay: -1, milestones: [] });
@@ -173,6 +174,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     appearance: appearanceOf(r.appearance, avatar),
     // the Banque Teranga savings account (additive, no version change: a save without it has an empty account)
     bank: bankOf(r.bank),
+    // « Mes pistes » (additive): leads dismissed or followed stay so
+    pistes: pistesOf(r.pistes, playedMs),
   };
 }
 
@@ -479,6 +482,7 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     else if (k === 'play') data.play = back.play;
     else if (k === 'appearance') { const look = appearanceOf(b.appearance, data.avatar); if (!look) continue; data.appearance = look; }   // for this save's own body
     else if (k === 'bank') { if (back.bank.opened < 0 && !back.bank.savings) continue; data.bank = back.bank; }   // the savings, exactly as the last LD2.0 save left them
+    else if (k === 'pistes') data.pistes = back.pistes;
     else data.streak = back.streak;
     out.push(k);
   }

@@ -1460,6 +1460,7 @@ mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 
 });
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
+phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 

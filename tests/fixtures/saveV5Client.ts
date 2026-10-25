@@ -4,8 +4,8 @@ import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Hub
 import { ACTIVITY_IDS, HUB_IDS } from '../../src/core/types';
 import { clamp } from '../../src/core/rng';
 import { careerOf, newCareer } from '../../src/career/career';
-/** The schema-5 client's save has no `avatar`, `appearance`, `loans`, `vtc`, `play`, `streak` or `bank` (additive fields added after): the frozen client is typed without them. */
-type SaveData = Omit<SaveDataNow, 'avatar' | 'appearance' | 'loans' | 'vtc' | 'play' | 'streak' | 'bank'>;
+/** The schema-5 client's save has no `avatar`, `appearance`, `loans`, `vtc`, `play`, `streak`, `bank` or `pistes` (additive fields added after): the frozen client is typed without them. */
+type SaveData = Omit<SaveDataNow, 'avatar' | 'appearance' | 'loans' | 'vtc' | 'play' | 'streak' | 'bank' | 'pistes'>;
 
 /**
  * Where the game keeps its save. Schema v5 lives under its own key and the key every older client wrote

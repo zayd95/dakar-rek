@@ -32,6 +32,7 @@ export const APPS: AppDef[] = [
   { id: 'habitants', label: 'Habitants', emoji: '👥', grad: '#5eead4,#0e7490', group: 'vie', order: 5, hook: () => phoneHooks.openPeople },
 
   { id: 'travailler', label: 'Travailler', emoji: '💼', grad: '#bef264,#4d7c0f', group: 'travail', order: 0, screen: 'travailler' },
+  { id: 'pistes', label: 'Mes pistes', short: 'Pistes', emoji: '🧭', grad: '#fde68a,#0e7490', group: 'travail', order: 0.5, screen: 'pistes' },
   { id: 'travail', label: 'Tiak Tiak et petits boulots', short: 'Tiak Tiak', emoji: '🛵', grad: '#fde68a,#ca8a04', group: 'travail', order: 1, hook: () => phoneHooks.openJobs },
   { id: 'vtc', label: 'Courses VTC', short: 'VTC', emoji: '🚖', grad: '#fde047,#ca8a04', group: 'travail', order: 2, hook: () => phoneHooks.openVtc },
   { id: 'affaires', label: 'Affaires', emoji: '🏢', grad: '#34d399,#047857', group: 'travail', order: 3, hook: () => phoneHooks.openBusiness },
