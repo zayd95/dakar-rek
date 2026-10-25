@@ -1,4 +1,5 @@
 import type { HubId } from '../core/types';
+import { cleanChatText, chatLength } from '../multiplayer/chatRules';
 
 /**
  * LD2.0-B « Belong Online »: the wire contract between a client and its own account on the server (docs/ld2/LD2_B_CONTRACT.md).
@@ -192,3 +193,214 @@ export type ServerMessage =
   | { type: 'lookup'; id: string; tag: Tag | null; name?: string; look?: number; app?: string }
   | { type: 'find'; id: string; tag: Tag; hub: HubId | null; room: number }
   | Ack;
+
+// ------------------------------------------------------------------ validators (pure: the account on the server, the client, vitest)
+//
+// Strict shapes: an unknown type or field, a wrong type, an over-long string or a list too long is 'invalid'. Amounts are only checked to be whole
+// (safe integers): their range is the ledger's rule (src/online/ledgerRules.ts), so a refusal can say why ('amount', 'limit-op'…).
+
+/** A home snapshot as JSON, at most (characters): ECONOMY.online.snapshotMax, repeated here so the wire has no game dependency (a test keeps them in step). */
+export const SNAPSHOT_MAX = 12_000;
+/** A note on money (« Pour le taxi »), a place's or a shared location's name: short words, cleaned like chat text. */
+export const NOTE_MAX = 80, PLACE_NAME_MAX = 60;
+const TAG_RE = /^[0-9a-f]{16}$/, OP_RE = /^[A-Za-z0-9-]{8,64}$/, SPEC_RE = /^[a-z0-9_]{1,40}$/, REF_RE = /^[A-Za-z0-9:_.-]{1,64}$/;
+const HUBS: readonly string[] = ['plateau', 'corniche', 'almadies', 'pikine'];
+const REPORTS: readonly string[] = ['insulte', 'harcelement', 'arnaque', 'autre'];
+// text cleaning is the chat rules' (src/multiplayer/chatRules.ts cleanChatText): the same characters are refused or removed everywhere
+
+/** A public tag: 16 lower-case hex characters. */
+export const isTag = (v: unknown): v is Tag => typeof v === 'string' && TAG_RE.test(v);
+/** An operation or item id (a uuid made on the device when the player confirmed): the chat's id shape. */
+export const isOpId = (v: unknown): v is string => typeof v === 'string' && OP_RE.test(v);
+export const isHubId = (v: unknown): v is HubId => HUBS.includes(v as string);
+/** The tag as a friend code: `7F3A-91C2-0B4E-55D1`. */
+export function friendCode(tag: Tag): FriendCode { return (tag.toUpperCase().match(/.{4}/g) ?? []).join('-'); }
+/** A typed friend code (any case, dashes or spaces anywhere) → the tag, or null. */
+export function tagOfCode(code: unknown): Tag | null {
+  if (typeof code !== 'string' || code.length > 40) return null;
+  const t = code.replace(/[\s-]/g, '').toLowerCase();
+  return isTag(t) ? t : null;
+}
+/**
+ * Short words a player typed (a note, a place's name): cleaned like chat text (controls become spaces, direction overrides removed, trimmed), at most
+ * `max` code points, never empty. Null otherwise.
+ */
+export function shortText(v: unknown, max: number): string | null {
+  if (typeof v !== 'string' || v.length > max * 4) return null;
+  const c = cleanChatText(v);
+  return c.ok && chatLength(c.text) <= max ? c.text : null;
+}
+const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const keysIn = (o: Record<string, unknown>, allowed: readonly string[]) => Object.keys(o).every(k => allowed.includes(k));
+const whole = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v);
+const time = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1e14;
+const coord = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 4096;
+
+export function parsePlace(v: unknown): PlaceRef | null {
+  if (!plain(v) || !keysIn(v, ['id', 'hub', 'name', 'icon']) || typeof v.id !== 'string' || !REF_RE.test(v.id) || !isHubId(v.hub)) return null;
+  const name = shortText(v.name, PLACE_NAME_MAX); if (!name) return null;
+  if (v.icon !== undefined && (typeof v.icon !== 'string' || v.icon.length > 16 || shortText(v.icon, 8) !== v.icon)) return null;
+  return { id: v.id, hub: v.hub, name, ...(v.icon !== undefined ? { icon: v.icon as string } : {}) };
+}
+export function parsePerms(v: unknown): GuestPerms | null {
+  return plain(v) && keysIn(v, ['use']) && typeof v.use === 'boolean' ? { use: v.use } : null;
+}
+export function parseHomeRef(v: unknown): HomeRef | null {
+  if (!plain(v) || !keysIn(v, ['spec', 'hub', 'door', 'name']) || typeof v.spec !== 'string' || !SPEC_RE.test(v.spec) || !isHubId(v.hub)) return null;
+  if (typeof v.door !== 'string' || !REF_RE.test(v.door)) return null;
+  const name = shortText(v.name, NOTE_MAX); if (!name) return null;
+  return { spec: v.spec, hub: v.hub, door: v.door, name };
+}
+/** A furniture placement as the home lane writes it (src/economy/placement.ts): null (stored), a small flat object of numbers/words/booleans, or up to four numbers. */
+function placementShape(v: unknown): boolean {
+  if (v === null) return true;
+  if (Array.isArray(v)) return v.length <= 4 && v.every(x => typeof x === 'number' && Number.isFinite(x));
+  if (!plain(v)) return false;
+  const e = Object.entries(v);
+  return e.length <= 8 && e.every(([k, x]) => /^[A-Za-z]{1,12}$/.test(k) && ((typeof x === 'number' && Number.isFinite(x)) || typeof x === 'boolean' || (typeof x === 'string' && x.length <= 40)));
+}
+/** A home snapshot (shape and size only: its meaning is the home lane's). At most SNAPSHOT_MAX characters as JSON. */
+export function parseSnapshot(v: unknown): HomeSnapshot | null {
+  if (!plain(v) || !keysIn(v, ['home', 'upgrades', 'furniture', 'at']) || !time(v.at)) return null;
+  const home = parseHomeRef(v.home); if (!home) return null;
+  if (!Array.isArray(v.upgrades) || v.upgrades.length > 32 || !v.upgrades.every(u => typeof u === 'string' && SPEC_RE.test(u))) return null;
+  if (!Array.isArray(v.furniture) || v.furniture.length > 300) return null;
+  const furniture: HomeSnapshot['furniture'] = [];
+  for (const f of v.furniture) {
+    if (!plain(f) || !keysIn(f, ['spec', 'at']) || typeof f.spec !== 'string' || !SPEC_RE.test(f.spec) || !placementShape(f.at ?? null)) return null;
+    furniture.push({ spec: f.spec, at: f.at ?? null });
+  }
+  const out: HomeSnapshot = { home, upgrades: [...v.upgrades as string[]], furniture, at: v.at };
+  return JSON.stringify(out).length <= SNAPSHOT_MAX ? out : null;
+}
+
+type Parsed = { ok: true; msg: ClientMessage } | { ok: false; id?: string; reason: 'invalid' | 'too-large' };
+/** The fields each request may carry (all others make it 'invalid'). */
+const FIELDS: Record<ClientMessage['type'], readonly string[]> = {
+  conv: ['with', 'before'], read: ['with'], say: ['id', 'to', 'text'], loc: ['id', 'to', 'hub', 'x', 'z', 'name'],
+  pay: ['id', 'to', 'amount', 'fund', 'note', 'req'], ask: ['id', 'to', 'amount', 'note'], 'ask-close': ['id', 'ref', 'how'],
+  fund: ['id', 'amount'], cashout: ['id', 'amount'], history: ['before'],
+  invite: ['id', 'to', 'snapshot', 'perms'], 'invite-answer': ['id', 'ref', 'accept'], 'invite-revoke': ['id', 'ref'], home: ['id', 'snapshot'],
+  visit: ['id', 'host'], meet: ['id', 'to', 'place', 'when', 'note', 'counter'], 'meet-answer': ['id', 'ref', 'accept'], 'meet-cancel': ['id', 'ref'],
+  'meet-here': ['id', 'ref'], block: ['id', 'tag', 'on'], report: ['id', 'tag', 'reason'], forget: ['id', 'with'], lookup: ['id', 'code'],
+  where: ['hub', 'room'], find: ['id', 'tag'],
+};
+/**
+ * A client's request, strictly shaped, or why not (with its id when it had a readable one, so the account can answer `ack.ok = false`). Text is cleaned
+ * here (src/multiplayer/chatRules.ts rules): too long is 'too-large', empty is 'invalid'.
+ */
+export function parseClientMessage(v: unknown): Parsed {
+  if (!plain(v) || typeof v.type !== 'string' || !Object.prototype.hasOwnProperty.call(FIELDS, v.type)) return { ok: false, reason: 'invalid' };
+  const type = v.type as ClientMessage['type'], id = isOpId(v.id) ? v.id : undefined;
+  const bad = (reason: 'invalid' | 'too-large' = 'invalid'): Parsed => ({ ok: false, ...(id ? { id } : {}), reason });
+  if (!keysIn(v, ['type', ...FIELDS[type]])) return bad();
+  if (FIELDS[type].includes('id') && !id) return bad();
+  const note = v.note === undefined ? undefined : shortText(v.note, NOTE_MAX);
+  if (note === null) return bad();
+  const ref = (k: string) => isOpId(v[k]);
+  switch (type) {
+    case 'conv': return isTag(v.with) && (v.before === undefined || time(v.before)) ? { ok: true, msg: { type, with: v.with, ...(v.before !== undefined ? { before: v.before as number } : {}) } } : bad();
+    case 'read': return isTag(v.with) ? { ok: true, msg: { type, with: v.with } } : bad();
+    case 'say': {
+      if (!isTag(v.to) || typeof v.text !== 'string') return bad();
+      const t = shortText(v.text, 500);
+      if (t) return { ok: true, msg: { type, id: id!, to: v.to, text: t } };
+      const c = cleanChatText(v.text.slice(0, 20_000));
+      return bad(!c.ok && c.reason === 'too-long' ? 'too-large' : 'invalid');
+    }
+    case 'loc': {
+      const name = shortText(v.name, PLACE_NAME_MAX);
+      return isTag(v.to) && isHubId(v.hub) && coord(v.x) && coord(v.z) && name ? { ok: true, msg: { type, id: id!, to: v.to, hub: v.hub, x: v.x, z: v.z, name } } : bad();
+    }
+    case 'pay':
+      if (!isTag(v.to) || !whole(v.amount) || !whole(v.fund) || (v.req !== undefined && !ref('req'))) return bad();
+      return { ok: true, msg: { type, id: id!, to: v.to, amount: v.amount, fund: v.fund, ...(note ? { note } : {}), ...(v.req !== undefined ? { req: v.req as string } : {}) } };
+    case 'ask': return isTag(v.to) && whole(v.amount) ? { ok: true, msg: { type, id: id!, to: v.to, amount: v.amount, ...(note ? { note } : {}) } } : bad();
+    case 'ask-close': return ref('ref') && (v.how === 'declined' || v.how === 'cancelled') ? { ok: true, msg: { type, id: id!, ref: v.ref as string, how: v.how } } : bad();
+    case 'fund': case 'cashout': return whole(v.amount) ? { ok: true, msg: { type, id: id!, amount: v.amount } } : bad();
+    case 'history': return v.before === undefined || time(v.before) ? { ok: true, msg: { type, ...(v.before !== undefined ? { before: v.before as number } : {}) } } : bad();
+    case 'invite': {
+      if (!isTag(v.to)) return bad();
+      const snapshot = parseSnapshot(v.snapshot), perms = parsePerms(v.perms);
+      if (!perms) return bad();
+      if (!snapshot) return bad(JSON.stringify(v.snapshot ?? null).length > SNAPSHOT_MAX ? 'too-large' : 'invalid');
+      return { ok: true, msg: { type, id: id!, to: v.to, snapshot, perms } };
+    }
+    case 'invite-answer': case 'meet-answer': return ref('ref') && typeof v.accept === 'boolean' ? { ok: true, msg: { type, id: id!, ref: v.ref as string, accept: v.accept } } : bad();
+    case 'invite-revoke': case 'meet-cancel': case 'meet-here': return ref('ref') ? { ok: true, msg: { type, id: id!, ref: v.ref as string } } : bad();
+    case 'home': {
+      const snapshot = parseSnapshot(v.snapshot);
+      return snapshot ? { ok: true, msg: { type, id: id!, snapshot } } : bad(JSON.stringify(v.snapshot ?? null).length > SNAPSHOT_MAX ? 'too-large' : 'invalid');
+    }
+    case 'visit': return isTag(v.host) ? { ok: true, msg: { type, id: id!, host: v.host } } : bad();
+    case 'meet': {
+      const place = parsePlace(v.place);
+      if (!isTag(v.to) || !place || !time(v.when) || !Number.isInteger(v.when) || (v.counter !== undefined && !ref('counter'))) return bad();
+      return { ok: true, msg: { type, id: id!, to: v.to, place, when: v.when as number, ...(note ? { note } : {}), ...(v.counter !== undefined ? { counter: v.counter as string } : {}) } };
+    }
+    case 'block': return isTag(v.tag) && typeof v.on === 'boolean' ? { ok: true, msg: { type, id: id!, tag: v.tag, on: v.on } } : bad();
+    case 'report': return isTag(v.tag) && REPORTS.includes(v.reason as string) ? { ok: true, msg: { type, id: id!, tag: v.tag, reason: v.reason as 'insulte' } } : bad();
+    case 'forget': return isTag(v.with) ? { ok: true, msg: { type, id: id!, with: v.with } } : bad();
+    case 'lookup': return typeof v.code === 'string' && v.code.length <= 40 ? { ok: true, msg: { type, id: id!, code: v.code } } : bad();
+    case 'where': return (v.hub === null || isHubId(v.hub)) && whole(v.room) && v.room >= 0 && v.room <= 128 ? { ok: true, msg: { type, hub: v.hub as HubId | null, room: v.room } } : bad();
+    case 'find': return isTag(v.tag) ? { ok: true, msg: { type, id: id!, tag: v.tag } } : bad();
+  }
+}
+
+const ITEM_KEYS: Record<Item['k'], readonly string[]> = {
+  text: ['text'], loc: ['hub', 'x', 'z', 'name'], pay: ['amount', 'op', 'note', 'req'], ask: ['amount', 'note', 'state', 'paidBy'],
+  invite: ['home', 'perms', 'state', 'until'], meet: ['place', 'when', 'state', 'counter', 'here', 'note'],
+};
+const ASK_STATES: readonly string[] = ['open', 'paid', 'declined', 'cancelled'];
+const INVITE_STATES: readonly string[] = ['open', 'accepted', 'declined', 'revoked', 'expired'];
+const MEET_STATES: readonly string[] = ['open', 'accepted', 'declined', 'countered', 'cancelled', 'met', 'missed'];
+/** A conversation item, strictly shaped (an account's copy from another account, the device's cache, the server's frames). */
+export function isItem(v: unknown): v is Item {
+  if (!plain(v) || !isOpId(v.id) || !isTag(v.from) || !time(v.at) || typeof v.k !== 'string' || !Object.prototype.hasOwnProperty.call(ITEM_KEYS, v.k)) return false;
+  const k = v.k as Item['k'];
+  if (!keysIn(v, ['id', 'from', 'at', 'k', ...ITEM_KEYS[k]])) return false;
+  const noteOk = v.note === undefined || shortText(v.note, NOTE_MAX) === v.note;
+  switch (k) {
+    case 'text': return typeof v.text === 'string' && shortText(v.text, 500) === v.text;
+    case 'loc': return isHubId(v.hub) && coord(v.x) && coord(v.z) && typeof v.name === 'string' && shortText(v.name, PLACE_NAME_MAX) === v.name;
+    case 'pay': return whole(v.amount) && v.amount > 0 && isOpId(v.op) && noteOk && (v.req === undefined || isOpId(v.req));
+    case 'ask': return whole(v.amount) && v.amount > 0 && noteOk && ASK_STATES.includes(v.state as string) && (v.paidBy === undefined || isOpId(v.paidBy));
+    case 'invite': return !!parseHomeRef(v.home) && !!parsePerms(v.perms) && INVITE_STATES.includes(v.state as string) && time(v.until);
+    case 'meet': return !!parsePlace(v.place) && time(v.when) && MEET_STATES.includes(v.state as string) && (v.counter === undefined || isOpId(v.counter)) && noteOk
+      && Array.isArray(v.here) && v.here.length <= 2 && v.here.every(isTag);
+  }
+}
+const SEEN = (v: unknown) => v === 'online' || v === 'never' || time(v);
+const TODAY = (v: unknown) => plain(v) && whole(v.funded) && whole(v.sent) && whole(v.received);
+function isOp(v: unknown): v is LedgerOp {
+  return plain(v) && isOpId(v.id) && (v.kind === 'fund' || v.kind === 'cashout' || v.kind === 'pay') && time(v.at) && whole(v.amount)
+    && (v.from === undefined || isTag(v.from)) && (v.to === undefined || isTag(v.to)) && (v.fund === undefined || whole(v.fund))
+    && (v.req === undefined || isOpId(v.req)) && (v.note === undefined || typeof v.note === 'string');
+}
+function isSummary(v: unknown): v is ConvSummary {
+  return plain(v) && isTag(v.with) && typeof v.name === 'string' && whole(v.look) && (v.app === undefined || typeof v.app === 'string')
+    && (v.last === null || isItem(v.last)) && whole(v.unread) && v.unread >= 0 && SEEN(v.seen) && typeof v.blocked === 'boolean';
+}
+/**
+ * A frame from the account, or null when it is not one this client understands (it is then ignored: a newer server may add messages). Shapes are
+ * checked as far as the client relies on them: items, money and the welcome strictly.
+ */
+export function parseServerMessage(v: unknown): ServerMessage | null {
+  if (!plain(v) || typeof v.type !== 'string') return null;
+  switch (v.type) {
+    case 'welcome':
+      return whole(v.v) && isTag(v.tag) && typeof v.code === 'string' && time(v.time) && whole(v.balance) && plain(v.limits) && TODAY(v.today)
+        && Array.isArray(v.convs) && v.convs.every(isSummary) && Array.isArray(v.blocked) && v.blocked.every(isTag) ? v as unknown as ServerMessage : null;
+    case 'conv': return isTag(v.with) && Array.isArray(v.items) && v.items.every(isItem) && typeof v.more === 'boolean' ? v as unknown as ServerMessage : null;
+    case 'item': return isTag(v.with) && isItem(v.item) ? v as unknown as ServerMessage : null;
+    case 'balance': return whole(v.balance) && TODAY(v.today) ? v as unknown as ServerMessage : null;
+    case 'history': return Array.isArray(v.ops) && v.ops.every(isOp) && typeof v.more === 'boolean' ? v as unknown as ServerMessage : null;
+    case 'seen': return isTag(v.tag) && SEEN(v.seen) ? v as unknown as ServerMessage : null;
+    case 'visit': return isOpId(v.id) && typeof v.ok === 'boolean' && isTag(v.host) && (v.snapshot === undefined || !!parseSnapshot(v.snapshot)) ? v as unknown as ServerMessage : null;
+    case 'visit-end': return isTag(v.host) && isOpId(v.invite) ? v as unknown as ServerMessage : null;
+    case 'lookup': return isOpId(v.id) && (v.tag === null || isTag(v.tag)) ? v as unknown as ServerMessage : null;
+    case 'find': return isOpId(v.id) && isTag(v.tag) && (v.hub === null || isHubId(v.hub)) && whole(v.room) ? v as unknown as ServerMessage : null;
+    case 'ack': return isOpId(v.id) && typeof v.ok === 'boolean' && (v.item === undefined || isItem(v.item)) && (v.op === undefined || isOp(v.op)) ? v as unknown as ServerMessage : null;
+    default: return null;
+  }
+}
