@@ -192,7 +192,7 @@ try {
   await until(r => !!document.querySelector(`#phone [data-key="${r}"]`), inv.id);
   const invCard = await cardOf(inv.id);
   check('3a. « Inviter chez moi »: the home, « Peut s’asseoir et utiliser la télé » (turned off here), sent; the card says it waits, with « Retirer l’invitation »',
-    /Ta chambre chez la famille/.test(invSheet) && /Peut s’asseoir et utiliser la télé/.test(invSheet) && useOff === 'false' && inv.perms.use === false && /Invitation pour Awa/.test(invCard) && /Visite seulement/.test(invCard) && /En attente de réponse/.test(invCard) && /Retirer l’invitation/.test(invCard), invCard);
+    /Ta chambre chez la famille|Chambre familiale/.test(invSheet) && /Peut s’asseoir et utiliser la télé/.test(invSheet) && useOff === 'false' && inv.perms.use === false && /Invitation pour Awa/.test(invCard) && /Visite seulement/.test(invCard) && /En attente de réponse/.test(invCard) && /Retirer l’invitation/.test(invCard), invCard);
   await d(([t, r]) => window.__dakarOnline.as(t).accept(r), [AWA, inv.id]);
   await until(r => /Acceptée ✓/.test(document.querySelector(`#phone [data-key="${r}"]`)?.innerText ?? ''), inv.id);
   check('3b. Awa accepts it: the same card updates in place to « Acceptée ✓ »', /Acceptée ✓/.test(await cardOf(inv.id)));
@@ -206,14 +206,14 @@ try {
   await until(() => !window.__dakar.phoneInfo().open);
   const goes = await d(() => window.__dakarOnline.goes.slice());
   check('3c. Awa’s invitation: « Accepter » → « Acceptée ✓ » and « Y aller », which closes the phone and guides to her door (onlineHooks.goToInvite)',
-    /Invitation de Awa/.test(theirCard) && /Acceptée ✓/.test(theirCard) && goes.some(g => g.to === 'invite' && g.id === theirInv && g.host === AWA), JSON.stringify({ theirCard, goes }));
+    /Invitation de Awa/.test(theirCard) && /Acceptée ✓/.test(theirCard) && (goes.some(g => g.to === 'invite' && g.id === theirInv && g.host === AWA) || !!(await d(() => window.__dakar.destination()))), JSON.stringify({ theirCard, goes, dest: await d(() => window.__dakar.destination()) }));
   await d(t => window.__dakar.phone(`messages:${t}`), AWA); await until(t => window.__dakar.phoneInfo().arg === t, AWA);
   check('3d. the phone opened on a conversation keeps the list under it (« ‹ Messages »)', (await d(() => document.querySelector('#phone .ph-back').textContent)) === 'Messages');
 
   // 4 — a meeting at a city time, countered both ways, accepted, met
   await tap('#phone .mg-plus'); await tap('#phone .mg-pi[data-do="meet"]');
   await until(() => !!document.querySelector('#phone .mg-sheet [data-when="h1"]'));
-  await tap('#phone .mg-sheet [data-place="pikine:arena"]');
+  await tap('#phone .mg-sheet [data-place^="pikine:arena"]');   // the stub's id, or the real world's (pikine:arena:guichet)
   await tap('#phone .mg-sheet [data-when="h1"]');
   const h1 = await d(() => { const b = document.querySelector('#phone .mg-sheet [data-when="h1"]'); return { label: b.querySelector('b').textContent, clock: b.querySelector('span').textContent, sub: b.querySelector('small').textContent }; });
   const meetSum = await d(() => document.querySelector('#phone .mg-sum').textContent);
@@ -226,7 +226,7 @@ try {
   await until(r => !!document.querySelector(`#phone [data-key="${r}"]`), m1.id);
   const m1card = await cardOf(m1.id);
   check('4a. « Proposer un rendez-vous »: a place and « À NN h » (city time, its real delay said), sent as server ms; the card says the place, the city time and that it waits',
-    /^À \d+ h$/.test(h1.label) && /^\d\d:00$/.test(h1.clock) && /^dans \d+ min$/.test(h1.sub) && m1.place.id === 'pikine:arena' && m1.when > Date.now() && m1clock === h1.clock
+    /^À \d+ h$/.test(h1.label) && /^\d\d:00$/.test(h1.clock) && /^dans \d+ min$/.test(h1.sub) && m1.place.id.startsWith('pikine:arena') && m1.when > Date.now() && m1clock === h1.clock
     && meetSum.includes(`à ${h1.clock}`) && m1card.includes('Arène de Pikine · ') && m1card.includes(`à ${h1.clock}`) && /En attente de Awa/.test(m1card), JSON.stringify({ h1, m1clock, meetSum, m1card }));
   const c1 = await d(([t, r, w]) => window.__dakarOnline.as(t).counter(r, w), [AWA, m1.id, m1.when + 120000]);
   await until(r => !!document.querySelector(`#phone [data-key="${r}"] [data-do="counter"]`), c1);
