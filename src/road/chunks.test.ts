@@ -124,6 +124,16 @@ describe('the rond-point of Sacré-Cœur, the BRT through it (src/road/roundabou
     expect(r.s).toBeLessThan(road.autopontS!.s - r.flare - 20);
     const a = road.spine.at(r.s - r.flare), b = road.spine.at(r.s + r.flare); expect(Math.abs(a.yaw - b.yaw)).toBeLessThan(0.01);
   });
+  it('keeps the merge\'s carriageway exemption (CONTRACT.md row 7) to its island and splitters: the swung lanes are never inside it', () => {
+    // the exact condition LD2's « nothing stands on the carriageway » test gains in the merge; a later change to `flare` or `island` must not widen it over a lane
+    const exempt = (x: number, z: number) => road.rounds.some(q => { const dx = x - q.x, dz = z - q.z; return Math.abs(dx * q.fx + dz * q.fz) < q.flare && (Math.hypot(dx, dz) < q.island + 0.3 || Math.abs(dx * q.lx + dz * q.lz) < 1.9); });
+    for (const side of [-1, 1]) for (let ds = -r.flare + 0.5; ds < r.flare; ds += 1.5) for (const off of [-0.85, 0, 0.85]) {                                  // (a car's width about each lane's line)
+      const p = r.at(ds, side * (LANE_BASE + swing(r, ds) + off));
+      expect(exempt(p.x, p.z), `lane ${side} at ${ds.toFixed(1)} (${off})`).toBe(false);
+    }
+    expect(exempt(r.at(10, 0).x, r.at(10, 0).z)).toBe(true);                                       // (and it does cover what it is for: the island, a splitter)
+    expect(exempt(r.at(r.flare - 8, 0).x, r.at(r.flare - 8, 0).z)).toBe(true);
+  });
   it('has its island in two solid halves, the busway between them', () => {
     for (const h of [1, -1]) for (const lat of [-8, 0, 8]) { const p = r.at(h * 10, lat); expect(onIsland(r, p.x, p.z), `half ${h} ${lat}`).toBe(true); expect(solid(p.x, p.z), `half ${h} ${lat}`).toBe(true); }
     for (const t of [-12, 0, 12]) { const p = lay.at(t, 0); expect(inBusway(lay, p.x, p.z), `gap ${t}`).toBe(true); expect(solid(p.x, p.z), `gap ${t}`).toBe(false); }

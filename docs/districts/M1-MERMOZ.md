@@ -5,14 +5,15 @@ How it fits with Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md).
 
 ## The geography (condensed)
 
-The real route runs Corniche Ouest → Fann → Point E → the VDN → the Sacré-Cœur interchange → Sacré-Cœur / Ancienne Piste, with the BRT → Mermoz. The game keeps that order and the character of each stretch, shortened about 3×. The road is `corniche-mermoz` in `src/road/routes.ts`, about 1.3 km.
+The real route runs Corniche Ouest → Fann → Point E → the VDN → the Sacré-Cœur interchange → Sacré-Cœur / Ancienne Piste, with the BRT → Mermoz. The game keeps that order and the character of each stretch, shortened about 3×. The road is `corniche-mermoz` in `src/road/routes.ts`, about 1.4 km.
 
 | Stretch (profile) | What the player sees |
 |---|---|
 | Corniche → Fann (`coast`, `artery`) | The sea road climbing inland, then the junction at Fann · Point E. |
 | The VDN (`vdn`) | A divided artery: one lane each way with a wide shoulder, a planted median with kerbs, bougainvillea and double-arm lamps. Billboards, palms, 6–10-storey blocks set back, the odd crane. No centre dashes, and no overtaking across the median. |
 | Échangeur de Sacré-Cœur | One side arm off the VDN, then the commercial `sacrecoeur` profile: 3–6 storeys close to the road, shop boards and awnings, stalls and lamps. |
-| The BRT crossing (`src/road/brt.ts`) | The Sacré-Cœur BRT corridor crosses the road at right angles, so it is never a lane down the VDN. It has a red busway between separator kerbs and its own island station (canopy, gates, a ticket machine, people waiting). Underpass portals stand at both ends, and signals cover the crossing. Solid bollards across the busway mouths keep cars out, and the busway is not ground, so neither the player nor GPS can use it. |
+| Rond-point de Sacré-Cœur (`src/road/roundabout.ts`, `src/road/brt.ts`) | The BRT corridor crosses the road at right angles **through a roundabout**, as on the owner's reference photo, so it is never a lane down the VDN. The red busway runs straight across the ring and splits the planted island in two. Cars go round the island anticlockwise (the road's lanes swing out around it) and give way at the splitter islands, which have zebras, chevrons and brick pavements. Beyond the ring the busway runs between separator kerbs to its own island station (canopy, gates, a ticket machine, people waiting) and underpass portals at both ends. Signals stop the ring's traffic either side of the busway when a bus asks for its phase. The busway is not ground, so neither the player nor GPS can drive down it. |
+| Autopont de Mermoz (`src/road/autopont.ts`) | Just before Mermoz a flyover crosses above the road, modelled on the owner's reference: ochre leaning blade piers on a cap beam, a grey fascia with V panels, a railing and lamps on the deck, and a green name board. Its deck is 6.4 m up with 4.6 m clear under the board. One or two cars cross on it (scenery: the player cannot drive onto it). |
 | Mermoz (the hub) | Mostly gated villas and mid-rise flats under shade trees whose crowns lean over the road, and sandy verges. The district's west street, Rue de Sacré-Cœur, is commercial: Café Touba · Sacré-Cœur, and the Boulangerie. |
 
 **The BRT's two buses** (SUNUBRT articulated electric livery) run one per direction:
@@ -60,14 +61,14 @@ A bus waits for anything in its path. The road's traffic stops at the main road'
 ## Scope kept
 
 - One connection from the existing road system (the Corniche's east mouth).
-- One divided artery, one BRT segment and station with 2 buses, and one district street loop.
+- One divided artery, one BRT segment and station with 2 buses through one roundabout, one autopont (scenery), and one district street loop.
 - Two job addresses, one counter and one recurring NPC.
 - Traffic per the existing corridor system.
 
 ## Checks
 
 - `tests/mermoz.test.ts`: the rules.
-- `src/road/chunks.test.ts`: « the VDN: a divided artery », « the BRT crossing at Sacré-Cœur ».
+- `src/road/chunks.test.ts`: « the VDN: a divided artery », « the BRT crossing at Sacré-Cœur », « the rond-point of Sacré-Cœur, the BRT through it », « the autopont at the way into Mermoz ».
 - `src/road/graph.test.ts`, `network.test.ts`: the road graph.
 - `scripts/check-mermoz-journey.mjs`: the golden path, driven with real touch in one session (video).
 

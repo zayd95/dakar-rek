@@ -5,7 +5,7 @@
 
 - **Branch:** `feature/ld-m1-mermoz-20261025`.
 - **Base:** `integration/unified-beta-20261022` @ `a1cf012`.
-- **Evidence run on:** `cf87253`. The commits after it add only this doc, the proof files and a log-only probe in the check.
+- **Evidence run on:** `cf87253` for run 4 and the low-quality numbers. **Run 5** and the medium-quality numbers were made after the owner's video, on the polish (the rond-point, the autopont and the baked depth): `852016e`, plus a test and these docs.
 
 How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the design is in [`M1-MERMOZ.md`](M1-MERMOZ.md).
 
@@ -37,8 +37,12 @@ How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the desig
 ## The recorded golden path
 
 - **Script:** `scripts/check-mermoz-journey.mjs`, driven by real touch with a 390 × 844 phone viewport, in one uninterrupted session.
-- **Run 4: 22/22 PASS, no JavaScript error.** The log is [`proof/m1/golden-path-run4.log`](proof/m1/golden-path-run4.log) and the screenshots are [`proof/m1/golden-path-run4.jpg`](proof/m1/golden-path-run4.jpg).
-- **The video** (13 min 45 s, H.264, 390 px wide) was delivered with this report. It is not committed (14 MB).
+- **Run 5 (after the polish): 22/22 PASS, no JavaScript error.**
+  - The road now has the rond-point and the autopont: the car goes round the island at the BRT signals and under the autopont, both ways.
+  - The log is [`proof/m1/golden-path-run5.log`](proof/m1/golden-path-run5.log). The screenshots are [`proof/m1/golden-path-run5.jpg`](proof/m1/golden-path-run5.jpg).
+  - Frames from the recording at the rond-point and the autopont: [`proof/m1/golden-path-run5-rondpoint-autopont.jpg`](proof/m1/golden-path-run5-rondpoint-autopont.jpg). These are low quality, as the check runs.
+  - The video is 14 min 2 s, H.264, 390 px wide. It was delivered with the report and is not committed (13 MB).
+- **Run 4 (before the polish): 22/22 PASS.** The log is [`proof/m1/golden-path-run4.log`](proof/m1/golden-path-run4.log) and the screenshots are [`proof/m1/golden-path-run4.jpg`](proof/m1/golden-path-run4.jpg).
 - **Software rendering.** The run is SwiftShader in headless Chromium, so the car and the clock move slower than on a phone.
 - **Earlier runs:**
   - Run 1 stopped behind a parked car in the kerb lane. The check now pulls into the bay from the traffic lane, as the existing VTC check does.
@@ -48,10 +52,10 @@ How M1 relates to Living Dakar 2.0 is in [`CONTRACT.md`](CONTRACT.md); the desig
 
 | Suite | Result |
 |---|---|
-| `npm test` (vitest) | **2182 passed, 2 skipped, 0 failed**: 180 files, including `tests/mermoz.test.ts` and the new chunk suites « the VDN: a divided artery » and « the BRT crossing at Sacré-Cœur » |
+| `npm test` (vitest) | **2194 passed, 2 skipped, 0 failed**: 180 files. This includes `tests/mermoz.test.ts` and the chunk suites « the VDN: a divided artery », « the BRT crossing at Sacré-Cœur », « the rond-point of Sacré-Cœur, the BRT through it » and « the autopont at the way into Mermoz ». |
 | `npx tsc --noEmit -p .` · `npm run typecheck:server` · `npm run build` | pass |
-| `npm run check:city` · `check:online` · `check:launch` (the CI browser suites, local run on the built `cf87253`) | **37/37 · 46/46 · 70/70 PASS** |
-| `scripts/check-mermoz-journey.mjs` | 22/22 (run 4) |
+| `npm run check:city` · `check:online` · `check:launch` (the CI browser suites, local runs on the built `cf87253` and again on the polish) | **37/37 · 46/46 · 70/70 PASS** both times |
+| `scripts/check-mermoz-journey.mjs` | 22/22 (run 4, and run 5 after the polish) |
 
 ## Save, payment and memory
 
@@ -98,15 +102,57 @@ The baseline is the repo's own draw-call budget (`scripts/check-perf-evening.mjs
 
 Before/after views from matching cameras: [`proof/m1/before-after-corridor.jpg`](proof/m1/before-after-corridor.jpg) and [`proof/m1/before-after-mermoz.jpg`](proof/m1/before-after-mermoz.jpg) (top row before, bottom row after). The raw numbers are `proof/m1/perf-*-low.json`.
 
+## The polish after the owner's video (medium quality)
+
+The owner watched the run-4 video and asked for more depth and shadow, a rond-point after the BRT and an autopont at the way into Mermoz, with two reference photos. What changed:
+
+- **The rond-point de Sacré-Cœur.** The BRT runs straight through it, splitting the planted island, as in the photo (M1-MERMOZ.md § The geography).
+- **The autopont de Mermoz.** Ochre leaning piers, a grey V-panel fascia, a railing and lamps, with cars crossing on the deck. It is scenery: the player drives under it.
+- **Baked depth** (`src/world/batch.ts` `shade`, off by default). It is used only by Mermoz and the Corniche–Mermoz road:
+  - a contact shade at the foot of walls, trunks and posts;
+  - darker undersides on crowns, soffits and balconies;
+  - a floor band at each storey on the blocks.
+- **Real-time shadows** are the existing ones: off on low, a 1024 map on medium (the phone default), 2048 on high. Nothing was added to them.
+
+**Method.**
+- `scripts/m1-views-medium.mjs` at medium quality, 390 × 844, SwiftShader.
+- *Before* is `9aff7f0` (the previous head of PR #67); *after* is `852016e`.
+- The Sacré-Cœur and Mermoz cameras are identical in both runs.
+- The road views are placed relative to the BRT crossing, because the road itself changed: it gained the roundabout and the autopont and grew from 1.30 to 1.39 km.
+
+| View (medium; budget 300 calls) | Draw calls before → after | Triangles before → after |
+|---|---|---|
+| vdn-drive | 63 → 62 | 48,122 → 51,516 |
+| brt-approach (the heaviest place) | **205 → 200** | 246,091 → 245,427 |
+| brt-aerial | 183 → 165 | 230,601 → 228,621 |
+| autopont-approach (new) | — → 169 | — → 238,901 |
+| sacrecoeur-walk | 50 → 51 | 154,763 → 155,605 |
+| sacrecoeur-drive | 52 → 51 | 159,911 → 155,619 |
+| mermoz-walk | 54 → 52 | 153,845 → 154,153 |
+| mermoz-drive | 54 → 53 | 153,763 → 154,077 |
+| mermoz-filaos | 62 → 61 | 161,107 → 161,609 |
+
+**Reading.**
+- The baked depth costs nothing per frame. It is vertex colour inside the existing merged meshes, so it adds no draw calls.
+- The floor bands add about 0.2–7 % triangles.
+- The roundabout first measured 263 calls at the BRT approach. Trimming it to one person on two of its corners, and the autopont to one or two cars, brings it to 200, under the 205 it replaced. That is 67 % of the medium budget.
+- The iPhone frame rate there is still unknown until Gate B.
+
+Before/after sheets (top row before, bottom row after):
+- [`proof/m1/before-after-rondpoint-autopont-medium.jpg`](proof/m1/before-after-rondpoint-autopont-medium.jpg)
+- [`proof/m1/before-after-depth-medium.jpg`](proof/m1/before-after-depth-medium.jpg)
+
+The raw numbers are `proof/m1/perf-*-medium.json`.
+
 ## Known issues (with how to reproduce them)
 
 1. **The directions flicker « Fais demi-tour » on Mermoz's streets.**
    - *Seen:* in the run-3 recording, on the way to the Filaos. The goal line alternates « À gauche dans … m » and « Fais demi-tour » while the car keeps getting closer.
    - *Likely cause:* the street route (`src/ui/minimapMath.ts routePath`) ignores the driver's heading. When the way ahead and the way back are nearly the same length, the recomputation every 6 m flips between them. That is the shared navigation, not Mermoz's.
-   - *Not confirmed in an offline replay* of the same route. `check-mermoz-journey.mjs` now logs every change of the goal line on that leg, to pin it down.
+   - *Not reproduced in an offline replay* of the same route, but **measured in the game**: on that leg in run 5, the goal line changed 72 times and showed « Fais demi-tour » 35 times (`check-mermoz-journey.mjs` logs every change, see `proof/m1/golden-path-run5.log`).
    - *Repro:* take the first ride, drive the corridor and follow Sacré-Cœur's street then the Mermoz streets to the Filaos, watching the goal line.
    - *Proposed fix:* bias the route toward the driver's heading, or add hysteresis before a U-turn is announced. It is not done here because `navigation.ts` is shared.
-2. **The BRT junction's cost.** See the performance section. The iPhone frame rate there is unknown until Gate B.
+2. **The BRT junction's cost.** See the performance sections. The iPhone frame rate there is unknown until Gate B.
 3. **A rollback hazard.** A car parked in Mermoz, loaded by a client older than this branch, would appear at the same coordinates in that client's fallback hub. This only happens on a rollback (CONTRACT.md).
 4. **The VDN has one lane each way.** See « What is missing ».
 5. **The multiplayer room `mermoz`** only exists on a worker built from this branch, such as the preview, not production.
