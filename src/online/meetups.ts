@@ -4,7 +4,7 @@ import type { HubWorld } from '../world/types';
 import { CITY_DAY_MS } from '../core/clock';
 import { ECONOMY } from '../economy/config';
 import { online, onlineHooks, type OnlineApi } from './api';
-import type { LocationItem, MeetItem, MeetState, PlaceRef, Tag } from './protocol';
+import type { InviteItem, LocationItem, MeetItem, MeetState, PlaceRef, Tag } from './protocol';
 import { currentHome } from '../economy/assets';
 import { homeByDoor } from '../economy/catalog';
 import { hubLayout } from '../world/builder';
@@ -170,12 +170,32 @@ class Meetups implements GameModule {
       const it = m.item, prev = this.seen.get(it.id);
       this.seen.set(it.id, it.state);
       if (metNow(prev, it.state, this.sent.has(it.id)) && !this.cards.has(it.id)) { this.cards.add(it.id); this.met(ctx, it, m.name); }
+      if (it.state === 'accepted' && now <= meetWindow(it).to) this.homeMeet(api, it, m.with, me, now);
       if (it.state !== 'accepted' || this.sent.has(it.id) || !inWindow(it, now)) continue;
       if (!hereDue(it, me, now, this.atPlace(ctx, it.place), false)) continue;
       this.sent.add(it.id); this.log.here.push(it.id);
       api.here(it.id);
     }
   }
+  /**
+   * A meeting « chez moi » accepted is also the visit: entering a home needs an accepted invitation (src/online/visit.ts). The host's device invites
+   * the other player (ids made from the meeting's, so a second device or a reload never invites twice) and the guest's device accepts that invitation:
+   * they accepted to meet there. Nothing else is accepted for them.
+   */
+  private homeMeet(api: OnlineApi, it: MeetItem, other: Tag, me: Tag | null, now: number) {
+    const host = homeMeetHost(it); if (!me || !host || this.homeDone.has(it.id)) return;
+    const invites = api.items(other).filter((i): i is InviteItem => i.k === 'invite' && i.from === host && i.until > now && (i.state === 'open' || i.state === 'accepted'));
+    if (host === me) {
+      if (invites.length) { this.homeDone.add(it.id); return; }
+      this.homeDone.add(it.id);
+      void api.invite({ id: `hm-${it.id}`.slice(0, 64), to: other, perms: { use: true } }).then(r => { if (!r.ok) this.homeDone.delete(it.id); });
+    } else if (host === other) {
+      const open = invites.find(i => i.state === 'open'); if (!open) return;
+      this.homeDone.add(it.id);
+      void api.answerInvite({ id: `ha-${open.id}`.slice(0, 64), ref: open.id, accept: true }).then(r => { if (!r.ok) this.homeDone.delete(it.id); });
+    }
+  }
+  private homeDone = new Set<string>();
   /** Both were there: one moment card, and the social lift once a city day. */
   private met(ctx: GameCtx, it: MeetItem, name: string) {
     const c = ctx.state.data.counters, day = ctx.day(), lift = liftDue(c.rdv_social_day, day);
