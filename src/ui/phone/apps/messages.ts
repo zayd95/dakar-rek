@@ -323,8 +323,9 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
 
   const drawLog = () => {
     const now = api.ctx.now(), items = o.items(tag).filter(i => !resent.has(i.id));
-    const bottom = atBottom(), prevH = log.scrollHeight, prevTop = log.scrollTop, firstKey = (log.firstElementChild as HTMLElement | null)?.dataset.key;
-    const lastCount = log.querySelectorAll('[data-key]:not(.mg-day)').length;
+    // what stays put: the bottom when the player is there, else the first item shown (older items loaded above it must not move the view)
+    const bottom = atBottom(), prevTop = log.scrollTop, anchor = log.querySelector<HTMLElement>('li[data-key]:not(.mg-day)'), aKey = anchor?.dataset.key, aTop = anchor?.offsetTop ?? 0;
+    const lastCount = log.querySelectorAll('[data-key]:not(.mg-day)').length, lastKey = (log.lastElementChild as HTMLElement | null)?.dataset.key;
     const rows = groupByDay(items, now), keep = new Set<string>();
     const who = name(), meTag = o.me?.tag, newestMine = [...items].reverse().find(i => i.from === meTag && !i.status)?.id;   // « envoyé » under the player's last sent item only
     let prev: Element | null = null;
@@ -353,10 +354,11 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
       keep.add(r.key); place(e.el);
     });
     for (const [k, e] of els) if (!keep.has(k)) { e.el.remove(); els.delete(k); }
-    const grew = log.querySelectorAll('[data-key]:not(.mg-day)').length > lastCount, mineLast = items[items.length - 1]?.from === o.me?.tag;
-    if (bottom || (grew && mineLast && lastCount > 0)) toBottom();
-    else if (firstKey && firstKey !== (log.firstElementChild as HTMLElement | null)?.dataset.key) log.scrollTop = prevTop + (log.scrollHeight - prevH);   // older items above: the view stays put
-    else if (grew && lastCount > 0) jump.hidden = false;
+    const appended = lastCount > 0 && (log.lastElementChild as HTMLElement | null)?.dataset.key !== lastKey, mineLast = items[items.length - 1]?.from === o.me?.tag;
+    if (bottom || (appended && mineLast)) { toBottom(); return; }
+    const a2 = aKey ? els.get(aKey)?.el : null, delta = a2?.isConnected ? a2.offsetTop - aTop : 0;
+    if (delta) log.scrollTop = prevTop + delta;
+    if (appended) jump.hidden = false;                                         // something new below while reading above: a pill, never a jump
   };
 
   const drawBar = () => {
@@ -368,6 +370,12 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     const why = closedWhy();
     field.disabled = !!why; sendBtn.disabled = !!why;
     field.placeholder = why ? (blocked() ? 'Joueur bloqué' : 'Pas encore sur Messages') : `Message à ${name()}`;
+    // the header's « ‹ Messages » counts what waits in the other conversations (as a messaging app does)
+    const back = document.querySelector<HTMLElement>('#phone .ph-back');
+    if (back && /^Messages( \(\d+\+?\))?$/.test(back.textContent ?? '')) {
+      const n = o.convs().reduce((a, c) => a + (c.with !== tag && !c.blocked ? c.unread : 0), 0), t = n ? `Messages (${n > 99 ? '99+' : n})` : 'Messages';
+      if (back.textContent !== t) back.textContent = t;
+    }
   };
 
   const hint = (text: string) => { note.textContent = text; note.hidden = !text; };
@@ -415,17 +423,18 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   field.addEventListener('focus', () => { pop(null); chat.classList.add('typing'); });
   field.addEventListener('blur', () => chat.classList.remove('typing'));
 
-  // older items: near the top, the next page (the view keeps its place)
+  // older items: near the top, the next page (the view keeps its place); a first page too short to scroll asks for the next at once
+  const older = () => { if (more && !loading && o.items(tag).length) { loading = true; o.more(tag).then(m => { more = m; loading = false; if (m && log.scrollHeight <= log.clientHeight + 4) older(); }, () => { loading = false; }); } };
   log.addEventListener('scroll', () => {
     if (atBottom()) jump.hidden = true;
-    if (log.scrollTop < 60 && more && !loading && o.items(tag).length) { loading = true; o.more(tag).then(m => { more = m; loading = false; }, () => { loading = false; }); }
+    if (log.scrollTop < 60) older();
   }, { passive: true });
 
-  const run = async (ref: string, p: Promise<Outcome>, ok?: string) => {
+  const run = async (ref: string, act: string, p: Promise<Outcome>, ok?: string) => {
     busy.add(ref); drawLog();
     const r = await p;
     busy.delete(ref);
-    if (!r.ok) api.notify(r.text, 'warn'); else if (ok) api.notify(ok);
+    if (!r.ok) { ids.delete(`${ref}:${act}`); api.notify(r.text, 'warn'); } else if (ok) api.notify(ok);   // a refused id is never sent again
     drawLog();
   };
   const cardAct = (act: CardAct, ref: string) => {
@@ -433,15 +442,15 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     const n = name();
     if (it.k === 'ask') {
       if (act === 'pay') moneySheet(api, page, { kind: 'pay', to: tag, name: n, req: { id: it.id, amount: it.amount, note: it.note } });
-      else if (act === 'decline') void run(ref, o.closeAsk({ id: idFor(ref, act), ref, how: 'declined' }), 'Demande refusée');
-      else if (act === 'cancel') void run(ref, o.closeAsk({ id: idFor(ref, act), ref, how: 'cancelled' }), 'Demande annulée');
+      else if (act === 'decline') void run(ref, act, o.closeAsk({ id: idFor(ref, act), ref, how: 'declined' }), 'Demande refusée');
+      else if (act === 'cancel') void run(ref, act, o.closeAsk({ id: idFor(ref, act), ref, how: 'cancelled' }), 'Demande annulée');
     } else if (it.k === 'invite') {
-      if (act === 'accept' || act === 'decline') void run(ref, o.answerInvite({ id: idFor(ref, act), ref, accept: act === 'accept' }), act === 'accept' ? 'Invitation acceptée' : 'Invitation refusée');
-      else if (act === 'revoke') void run(ref, o.revokeInvite({ id: idFor(ref, act), ref }), 'Invitation retirée');
+      if (act === 'accept' || act === 'decline') void run(ref, act, o.answerInvite({ id: idFor(ref, act), ref, accept: act === 'accept' }), act === 'accept' ? 'Invitation acceptée' : 'Invitation refusée');
+      else if (act === 'revoke') void run(ref, act, o.revokeInvite({ id: idFor(ref, act), ref }), 'Invitation retirée');
       else if (act === 'go' && onlineHooks.goToInvite) { const inv = it as InviteItem, go = onlineHooks.goToInvite; api.launch(() => go(tag, inv)); }
     } else if (it.k === 'meet') {
-      if (act === 'accept' || act === 'decline') void run(ref, o.answerMeet({ id: idFor(ref, act), ref, accept: act === 'accept' }), act === 'accept' ? 'Rendez-vous accepté' : 'Rendez-vous refusé');
-      else if (act === 'cancel') void run(ref, o.cancelMeet({ id: idFor(ref, act), ref }), 'Rendez-vous annulé');
+      if (act === 'accept' || act === 'decline') void run(ref, act, o.answerMeet({ id: idFor(ref, act), ref, accept: act === 'accept' }), act === 'accept' ? 'Rendez-vous accepté' : 'Rendez-vous refusé');
+      else if (act === 'cancel') void run(ref, act, o.cancelMeet({ id: idFor(ref, act), ref }), 'Rendez-vous annulé');
       else if (act === 'counter') meetSheet(api, page, o, tag, it as MeetItem);
       else if (act === 'go' && onlineHooks.goToPlace) { const place = (it as MeetItem).place, go = onlineHooks.goToPlace; api.launch(() => go(place)); }
     } else if (it.k === 'loc' && act === 'go' && onlineHooks.goToLocation) { const go = onlineHooks.goToLocation; api.launch(() => go(it)); }
@@ -498,7 +507,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   vv?.addEventListener('resize', onViewport); vv?.addEventListener('scroll', onViewport); onViewport();
 
   draw(); toBottom();
-  requestAnimationFrame(toBottom);
+  requestAnimationFrame(() => { toBottom(); if (log.scrollHeight <= log.clientHeight + 4) older(); });
   return {
     draw,
     cleanup: () => {

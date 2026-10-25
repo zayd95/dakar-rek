@@ -42,6 +42,8 @@ export interface FakeOnlineOpts {
   peers?: FakePeerInit[];
   /** Seed a few conversations and players to look up (default true). */
   demo?: boolean;
+  /** Items a conversation shows before `more` loads older ones (default 40). */
+  page?: number;
 }
 
 /** The contract's limits (docs/ld2/LD2_B_CONTRACT.md, `ECONOMY.online`). */
@@ -56,7 +58,8 @@ const DEMO: FakePeerInit[] = [
 const codeOf = (tag: Tag): FriendCode => tag.toUpperCase().replace(/(.{4})(?=.)/g, '$1-');
 
 interface Peer { tag: Tag; name: string; look: number; app?: string; seen: 'online' | number | 'never'; hub: HubId | null; room: number; home: HomeSnapshot | null; blockedMe: boolean; received: Francs }
-interface Conv { items: ItemView[]; unread: number }
+/** A conversation: every item (oldest first), the unread count, and how many of the newest ones the device has loaded (`more` loads older). */
+interface Conv { items: ItemView[]; unread: number; shown: number }
 type Fail = { reason: string; text?: string };
 
 const REFUSAL: Record<MoneyRefusal, string> = {
@@ -128,8 +131,13 @@ export class FakeOnline implements OnlineApi {
     });
     return out.sort((a, b) => (b.last?.at ?? 0) - (a.last?.at ?? 0));
   }
-  items(withTag: Tag): ItemView[] { return (this.conv.get(withTag)?.items ?? []).map(i => ({ ...i })); }
-  async more(_withTag: Tag) { return false; }
+  items(withTag: Tag): ItemView[] { const c = this.conv.get(withTag); return c ? c.items.slice(-c.shown).map(i => ({ ...i })) : []; }
+  async more(withTag: Tag) {
+    await this.wait();
+    const c = this.conv.get(withTag); if (!c || c.shown >= c.items.length) return false;
+    c.shown = Math.min(c.items.length, c.shown + (this.opts.page ?? 40)); this.changed();
+    return c.shown < c.items.length;
+  }
   read(withTag: Tag) { const c = this.conv.get(withTag); if (c && c.unread) { c.unread = 0; this.changed(); } }
   unread() { let n = 0; for (const [tag, c] of this.conv) if (!this.blocked.has(tag)) n += c.unread; return n; }
   seen(tag: Tag) { return this.peers.get(tag)?.seen ?? 'never'; }
@@ -434,11 +442,11 @@ export class FakeOnline implements OnlineApi {
   }
   /** Adds an item, or replaces the one with the same id (a new state); an incoming new item counts as unread. */
   private push(withTag: Tag, item: ItemView, incoming: boolean) {
-    const c = this.conv.get(withTag) ?? { items: [], unread: 0 };
+    const c = this.conv.get(withTag) ?? { items: [], unread: 0, shown: 0 };
     this.conv.delete(withTag); this.conv.set(withTag, c);
     const i = c.items.findIndex(x => x.id === item.id);
     if (i >= 0) c.items[i] = item;
-    else { c.items.push(item); c.items.sort((a, b) => a.at - b.at); if (incoming && !this.blocked.has(withTag)) c.unread++; }
+    else { c.items.push(item); c.items.sort((a, b) => a.at - b.at); c.shown++; if (incoming && !this.blocked.has(withTag)) c.unread++; }
     if (c.items.length > 500) c.items.splice(0, c.items.length - 500);
     this.changed();
   }
@@ -532,13 +540,20 @@ export class FakeOnline implements OnlineApi {
       seen: (v: 'online' | number | 'never') => { p.seen = v; this.changed(); },
       blockMe: (on: boolean) => { p.blockedMe = on; },
       setHome: (snap: HomeSnapshot | null) => { p.home = snap; },
+      /** `n` older texts before the conversation's first item (read, both sides, 3 min apart): a long history to page through with `more`. */
+      backlog: (n: number) => {
+        const c = this.conv.get(p.tag) ?? { items: [], unread: 0, shown: 0 }; this.conv.set(p.tag, c);
+        const first = c.items[0]?.at ?? at();
+        const old: ItemView[] = Array.from({ length: n }, (_, k) => ({ id: `old-${p.tag.slice(0, 4)}-${String(k).padStart(4, '0')}`, from: k % 3 ? p.tag : this.me!.tag, at: first - (n - k) * 180_000, k: 'text', text: `Message ancien n° ${k + 1}` }));
+        c.items.unshift(...old); this.changed();
+      },
     };
     return s;
   }
   /** The demo's conversations, relative to now: yesterday's chat with Awa (her last line unread) and a payment to Moussa two days ago. */
   private seedDemo(now: number) {
     const me = this.me!.tag, awa = 'a11ce0000000a001', moussa = 'b0b0000000000b02', H = 3600_000;
-    const seed = (tag: Tag, items: Item[], unread: number) => { this.conv.set(tag, { items, unread }); };
+    const seed = (tag: Tag, items: Item[], unread: number) => { this.conv.set(tag, { items, unread, shown: Math.min(items.length, this.opts.page ?? 40) }); };
     seed(moussa, [
       { id: 'seed-m1', from: moussa, at: now - 50 * H, k: 'text', text: 'Grand, tu peux m’avancer le taxi pour Sandaga ?' },
       { id: 'seed-m2', from: me, at: now - 49.9 * H, k: 'pay', amount: 2_000, op: 'seed-m2', note: 'Pour le taxi' },

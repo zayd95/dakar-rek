@@ -9,7 +9,9 @@
 //   6. offline (the state said, the « + » actions closed with a sentence, a text waiting then sent), a failed text and « Réessayer »;
 //   7. Signaler, Bloquer / Débloquer, Supprimer la conversation; « Nouveau message » › Ajouter par code;
 //   8. Argent › Teranga Money: the balance and when it was known, Recharger (double tap: once), Retirer, the history, the limits, offline;
-//   9. landscape (844 × 390): the conversation, its field and a sheet fit, nothing sideways; the chat panel's « Messages privés » hands over.
+//   9. landscape (844 × 390): the conversation, its field and a sheet fit, nothing sideways; the chat panel's « Messages privés » hands over; the field
+//      above a (simulated) keyboard; a long conversation scrolled up by a finger, its older page loaded without moving the view;
+//  10. a build without the account: Messages says so, Argent has no Teranga Money.
 // Usage: node scripts/check-messages.mjs [baseUrl] [outDir] [proofDir]   (a `vite build --mode online` served statically)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -400,7 +402,7 @@ try {
   await d(t => window.__dakarOnline.as(t).say('Bien reçu 👍'), 'b0b0000000000b02');
   const chatBtn = await d(() => !!document.getElementById('chatBtn') && getComputedStyle(document.getElementById('chatBtn')).display !== 'none');
   if (chatBtn) {
-    await wait(600);
+    await until(() => document.querySelector('#chatBtn .chat-badge')?.textContent === '1');   // drawn by the chat's frame update
     const badge = await d(() => document.querySelector('#chatBtn .chat-badge')?.textContent ?? '');
     await tap('#chatBtn');
     await until(() => document.getElementById('chatPanel')?.classList.contains('on'));
@@ -409,6 +411,52 @@ try {
     check('9c. the floating chat: its badge counts the unread message, « Messages privés ↗ » closes the panel and opens the phone’s Messages',
       badge === '1' && !(await d(() => document.getElementById('chatPanel').classList.contains('on'))), JSON.stringify({ badge }));
   } else check('9c. the floating chat exists in this build (vite build --mode online)', false, 'no #chatBtn');
+
+  // the phone's keyboard (simulated: the visual viewport loses 336 px at the bottom, as Safari's): the field rides above it
+  await d(() => window.__dakar.phone('messages:b0b0000000000b02')); await until(() => window.__dakar.phoneInfo().arg === 'b0b0000000000b02'); await wait(600);
+  await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
+  await wait(400);
+  const kb = await d(() => { const f = document.querySelector('#phone .mg-field').getBoundingClientRect(), l = document.querySelector('#phone .mg-log').getBoundingClientRect(); return { field: f.bottom, log: l.height, limit: innerHeight - 336 }; });
+  await d(() => { const vv = window.visualViewport; delete vv.height; vv.dispatchEvent(new Event('resize')); });
+  await wait(300);
+  const kbOff = await d(() => document.querySelector('#phone .mg-field').getBoundingClientRect().bottom);
+  check('9d. the phone’s keyboard never hides the field: with 336 px of keyboard the field sits above it (the log shrinks), and comes back down after',
+    kb.field <= kb.limit && kb.log > 100 && kbOff > kb.limit + 200, JSON.stringify({ kb, kbOff }));
+  await d(() => window.__dakar.phoneClose());
+
+  // 9e — a long conversation: a finger scrolls it up naturally; near the top the older page loads and the view stays where it was
+  await d(() => window.__dakarOnline.as('Moussa').backlog(90));
+  await d(() => window.__dakar.phone('messages:b0b0000000000b02')); await until(() => window.__dakar.phoneInfo().arg === 'b0b0000000000b02');
+  const count = () => d(() => document.querySelectorAll('#phone .mg-log .mg-b, #phone .mg-log .mg-c').length);
+  await until(() => document.querySelectorAll('#phone .mg-log .mg-b, #phone .mg-log .mg-c').length > 20);    // a first page too short to scroll asked for the next at once
+  await wait(600);
+  const n1 = await count(), top0 = await d(() => document.querySelector('#phone .mg-log').scrollTop), bottom0 = await atBottom();
+  const lc = await t.centre('#phone .mg-log');
+  for (let k = 0; k < 2; k++) { await t.down(5, lc.x, lc.y - 140); await t.move(5, lc.x, lc.y + 140, 10); await t.up(5); await wait(500); }
+  const top1 = await d(() => document.querySelector('#phone .mg-log').scrollTop);
+  await wait(1200);
+  const before = await d(() => { const l = document.querySelector('#phone .mg-log'); l.scrollTop = 0; const a = l.querySelector('li[data-key]:not(.mg-day)'); return { key: a.dataset.key, top: a.getBoundingClientRect().top }; });
+  await until(n => document.querySelectorAll('#phone .mg-log .mg-b, #phone .mg-log .mg-c').length > n, await count());
+  await wait(300);
+  const afterLoad = await d(k => { const a = document.querySelector(`#phone .mg-log [data-key="${k}"]`); return a ? a.getBoundingClientRect().top : null; }, before.key);
+  const n2 = await count();
+  check('9e. a long conversation opens at its newest items; a finger scrolls it up; at the top the older page loads and the item in view stays in place',
+    bottom0 && top0 > 0 && top1 < top0 - 100 && n2 > n1 && afterLoad !== null && Math.abs(afterLoad - before.top) < 3, JSON.stringify({ n1, n2, top0, top1, before, afterLoad }));
+  await d(() => window.__dakar.phoneClose());
+
+  // 10 — a build without the account (no `fakeonline`): Messages says it plays solo, Argent shows no Teranga Money
+  await page.goto(`${base}?debug&touch&heure=11&argent=60000`, { timeout: 180000 });
+  await page.waitForFunction(() => window.__dakar?.pos?.().hub && !document.getElementById('studio'), null, { timeout: 300000 });
+  await wait(1200);
+  await d(() => window.__dakar.phone('apps')); await until(() => window.__dakar.phoneInfo().screen === 'apps'); await wait(500);
+  await tap('#phone .ph-app[data-app="messages"]');
+  await until(() => window.__dakar.phoneInfo().screen === 'messages');
+  const solo = await screenText();
+  await d(() => window.__dakar.phone('portefeuille')); await until(() => window.__dakar.phoneInfo().screen === 'portefeuille'); await wait(500);
+  const soloArgent = await screenText();
+  check('10. without the account: Messages says it needs the online connection (the game goes on solo); Argent has no Teranga Money; no simulated account',
+    /Messages a besoin de la connexion en ligne/.test(solo) && !(await d(() => !!document.querySelector('#phone [data-slot="tm"], #phone .tm-card'))) && !(await d(() => !!window.__dakarOnline)), JSON.stringify({ solo, soloArgent: soloArgent.slice(0, 300), fake: await d(() => !!window.__dakarOnline) }));
+  await shot('12-solo');
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   if (proof) console.log(`${shots} screenshots in ${proof}`);

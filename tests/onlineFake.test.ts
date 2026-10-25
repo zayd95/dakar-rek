@@ -188,6 +188,20 @@ describe('invitations, meetings, privacy', () => {
   });
 });
 
+describe('paging', () => {
+  it('a long conversation shows its newest page; `more` loads older ones until there are none; new items join the page', async () => {
+    const f = make({ page: 10 }), mo = 'b0b0000000000b02';
+    f.as('Moussa').backlog(25);
+    expect(f.items(mo)).toHaveLength(3);                                          // the page loaded before the backlog arrived
+    const m1 = f.more(mo); await flush(); expect(await m1).toBe(true); expect(f.items(mo)).toHaveLength(13);
+    const m2 = f.more(mo); await flush(); expect(await m2).toBe(true);
+    const m3 = f.more(mo); await flush(); expect(await m3).toBe(false); expect(f.items(mo)).toHaveLength(28);
+    expect(f.items(mo)[0].id).toBe('old-b0b0-0000');
+    f.as('Moussa').say('Et maintenant ?'); expect(f.items(mo)).toHaveLength(29);
+    const items = f.items(mo); expect(items.every((x, i) => i === 0 || items[i - 1].at <= x.at)).toBe(true);
+  });
+});
+
 describe('the script', () => {
   it('drives presence, balance and limits, and the next failure', async () => {
     const f: FakeOnline = make({ demo: false, peers: [{ tag: AWA, name: 'Awa', seen: 'never' }] });
