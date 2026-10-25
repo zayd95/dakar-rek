@@ -1,0 +1,233 @@
+/* Messages (src/ui/phone/apps/messages.ts): the list, « Nouveau message », a conversation that fills the screen above the keyboard, the « + » and « ⋯ »
+   popovers, the sheets that slide over the phone (also Argent's Teranga Money). The phone's design language (src/ui/phone.css): my bubbles in the
+   Messages green, theirs grey; Teranga Money's cards in amber; the sun yellow stays THE action of a sheet; every target ≥ 44 px; nothing scrolls sideways. */
+#phone { --mg-me:#128c4a; --mg-them:#e9e9ee; --mg-tm1:#f59e0b; --mg-tm2:#b45309; }
+
+/* ---------------------------------------------------------------- the list */
+#phone .mg-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
+#phone .mg-top .pk-btn { margin:0; min-height:44px; padding:6px 16px; }
+#phone .mg-st { flex:1 1 160px; min-width:0; }
+#phone .mg-status { display:flex; align-items:center; gap:8px; margin:0; font-size:13.5px; font-weight:600; line-height:1.35; color:var(--ios-sub); }
+#phone .mg-status i { flex:none; width:9px; height:9px; border-radius:50%; background:#9ca3af; }
+#phone .mg-status.on i { background:#22c55e; } #phone .mg-status.wait i { background:#f59e0b; animation:mgBlink 1.2s ease-in-out infinite; } #phone .mg-status.off i { background:#ef4444; }
+@keyframes mgBlink { 50% { opacity:.35; } }
+#phone .mg-list { margin-top:14px; border-radius:var(--pk-r); background:var(--ios-card); overflow:hidden; }
+#phone .mg-list > .pk-empty { border-radius:0; }
+#phone .mg-conv { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:74px; margin:0; padding:10px 14px; border:0; background:var(--ios-card);
+  color:var(--ios-ink); font:inherit; text-align:left; cursor:pointer; }
+#phone .mg-conv + .mg-conv::before { content:''; position:absolute; top:0; right:0; left:74px; border-top:1px solid var(--ios-sep); }
+#phone .mg-conv:active { background-image:linear-gradient(var(--pk-press), var(--pk-press)); }
+#phone .mg-conv.blocked .mg-av { filter:grayscale(1); opacity:.6; }
+#phone .mg-conv-tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+#phone .mg-conv-top, #phone .mg-conv-bot { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+#phone .mg-conv-top b { min-width:0; font-size:16px; font-weight:650; line-height:1.25; overflow-wrap:anywhere; }
+#phone .mg-conv-top time { flex:none; font-size:13px; color:var(--ios-sub); font-variant-numeric:tabular-nums; }
+#phone .mg-conv-bot small { flex:1; min-width:0; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; font-size:14px; line-height:1.3; color:var(--ios-sub); overflow-wrap:anywhere; }
+#phone .mg-conv.unread .mg-conv-bot small { color:var(--ios-ink); font-weight:550; }
+#phone .mg-conv.unread time { color:var(--mg-me); font-weight:700; }
+#phone .mg-unread { flex:none; align-self:center; min-width:22px; height:22px; padding:0 7px; border-radius:11px; background:var(--mg-me); color:#fff; font:700 12.5px/22px var(--ph-font); font-style:normal; text-align:center; }
+#phone .mg-privacy { margin:14px 4px 0; font-size:12.5px; line-height:1.45; color:var(--ios-sub); }
+
+/* the avatar: initials on the player's shirt colour, a green dot when online */
+#phone .mg-av { position:relative; flex:none; display:grid; place-items:center; width:48px; height:48px; border-radius:50%; background:var(--c, #8a8a8a); color:#fff;
+  font:700 18px/1 var(--ph-font); font-style:normal; letter-spacing:.3px; text-shadow:0 1px 1px rgba(0,0,0,.25); }
+#phone .mg-av.sm { width:32px; height:32px; font-size:13px; }
+#phone .mg-dot { position:absolute; right:0; bottom:0; width:13px; height:13px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 2.5px var(--ios-card); }
+
+/* ---------------------------------------------------------------- « Nouveau message » */
+#phone .pg-messages .pk-sec > h3 small, #phone .mg-sheet .pk-sec > h3 small { text-transform:none; letter-spacing:0; font-weight:500; }
+#phone .mg-person .mg-av { width:40px; height:40px; font-size:15px; }
+#phone .mg-person.pk-row:has(.mg-av) + .pk-row::before { left:66px; }
+#phone .mg-code { display:flex; gap:8px; }
+#phone .mg-code .mg-in { flex:1; min-width:0; letter-spacing:1px; font-variant-numeric:tabular-nums; text-transform:uppercase; }
+#phone .mg-code .pk-btn { flex:none; margin:0; min-height:48px; }
+#phone .mg-found .pk-rows { margin-top:10px; }
+#phone .mg-mycode { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; }
+#phone .mg-codetx { flex:1 1 190px; min-width:0; font-size:21px; font-weight:750; letter-spacing:1.2px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; user-select:text; -webkit-user-select:text; }
+#phone .mg-mycode .pk-btn { margin:0; min-height:44px; }
+#phone .mg-mycode .pk-note { flex-basis:100%; margin:0; }
+
+/* ---------------------------------------------------------------- a conversation: the whole screen, its field above the keyboard */
+#phone .mg-chat { position:absolute; z-index:1; inset:0 0 var(--kb, 0px) 0; display:flex; flex-direction:column; background:var(--ios-bg);
+  padding:0 max(12px, calc(env(safe-area-inset-right, 0px) + 8px)) 0 max(12px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+#phone .mg-bar { flex:none; display:flex; align-items:center; gap:10px; min-height:52px; padding:2px 0 6px; border-bottom:1px solid var(--ios-sep); }
+#phone .mg-bar .mg-av { width:38px; height:38px; font-size:15px; }
+#phone .mg-who { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+#phone .mg-seen { font-size:14.5px; font-weight:600; color:var(--ios-sub); overflow-wrap:anywhere; }
+#phone .mg-seen.on { color:var(--pk-gain); }
+#phone .mg-code-sm { font-size:12px; color:var(--ios-sub); letter-spacing:.4px; font-variant-numeric:tabular-nums; }
+#phone .mg-menu-btn { flex:none; width:44px; height:44px; border:0; border-radius:50%; background:var(--ios-card); color:var(--ios-ink); font:700 20px/1 var(--ph-font); cursor:pointer;
+  box-shadow:0 0 0 1px var(--ios-sep) inset; }
+#phone .mg-menu-btn[aria-expanded="true"] { background:var(--pk-press); }
+#phone .mg-banner { flex:none; margin:8px 0 0; padding:8px 12px; border-radius:12px; font-size:13px; font-weight:600; line-height:1.35; background:#fff1c2; color:#6b4a00; }
+#phone .mg-banner.off { background:#fde4e1; color:#9b1c13; }
+#phone .mg-log { flex:1; min-height:0; display:flex; flex-direction:column; gap:2px; margin:0; padding:10px 2px 10px; list-style:none; overflow-y:auto; overflow-x:hidden;
+  overscroll-behavior:contain; overflow-anchor:none; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+#phone .mg-hello { margin:auto 0; align-self:center; max-width:300px; padding:16px; font-size:14.5px; line-height:1.45; color:var(--ios-sub); text-align:center; }
+#phone .mg-day { align-self:center; margin:12px 0 6px; }
+#phone .mg-day span { display:inline-block; padding:3px 10px; border-radius:999px; background:rgba(120,120,128,.12); font-size:12px; font-weight:650; color:var(--ios-sub); }
+
+/* bubbles: mine right in green, theirs left in grey; a run of one sender keeps one tail and one time */
+#phone .mg-b { align-self:flex-start; max-width:78%; margin:1px 0; }
+#phone .mg-b.me { align-self:flex-end; }
+#phone .mg-b p { margin:0; padding:9px 13px; border-radius:20px; background:var(--mg-them); color:var(--ios-ink); font-size:16px; line-height:1.35; overflow-wrap:anywhere;
+  white-space:pre-wrap; user-select:text; -webkit-user-select:text; }
+#phone .mg-b.me p { background:var(--mg-me); color:#fff; }
+#phone .mg-b.them.last p { border-bottom-left-radius:6px; } #phone .mg-b.me.last p { border-bottom-right-radius:6px; }
+#phone .mg-b.last { margin-bottom:8px; }
+#phone .mg-b.sending p { opacity:.72; }
+#phone .mg-b.failed p { background:#fde4e1; color:#9b1c13; }
+#phone .mg-meta { display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; margin:3px 8px 0; font-size:12px; color:var(--ios-sub); font-variant-numeric:tabular-nums; }
+#phone .me > .mg-meta { justify-content:flex-end; text-align:right; }
+#phone .mg-fail { color:var(--pk-warn); font-weight:650; }
+#phone .mg-retry { min-height:44px; padding:0 14px; border:1px solid var(--pk-warn); border-radius:999px; background:var(--ios-card); color:var(--pk-warn); font:650 14px/1 var(--ph-font); cursor:pointer; }
+
+/* cards: money, a request, an invitation, a meeting, a position */
+#phone .mg-c { align-self:flex-start; width:min(310px, 88%); margin:4px 0 8px; }
+#phone .mg-c.me { align-self:flex-end; }
+#phone .mg-card { display:flex; flex-direction:column; gap:4px; padding:12px 14px; border-radius:18px; background:var(--ios-card); color:var(--ios-ink); box-shadow:0 0 0 1px var(--ios-sep) inset; }
+#phone .mg-kind { display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:750; letter-spacing:.3px; text-transform:uppercase; color:var(--mg-k, var(--ios-sub)); }
+#phone .mg-kind i { font-style:normal; font-size:15px; }
+#phone .mg-title { font-size:17px; font-weight:750; line-height:1.25; overflow-wrap:anywhere; }
+#phone .mg-csub { margin:0; font-size:13.5px; line-height:1.4; color:var(--ios-sub); overflow-wrap:anywhere; }
+#phone .mg-cnote { margin:0; font-size:14.5px; font-style:italic; line-height:1.35; overflow-wrap:anywhere; }
+#phone .mg-state { align-self:flex-start; margin-top:4px; padding:3px 10px; border-radius:999px; background:#ececf1; color:#3a3a40; font-size:12.5px; font-weight:700; line-height:1.3; }
+#phone .mg-state.gain { background:#dcf5e8; color:#065f46; } #phone .mg-state.sun { background:#fff1c2; color:#6b4a00; } #phone .mg-state.warn { background:#fde4e1; color:#9b1c13; }
+#phone .mg-acts { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+#phone .mg-act { flex:1 1 auto; min-height:44px; padding:6px 14px; border:0; border-radius:12px; background:#ececf1; color:var(--ios-ink); font:650 15px/1.2 var(--ph-font); cursor:pointer; }
+#phone .mg-act.primary { background:var(--pk-sun); color:var(--pk-sun-ink); box-shadow:0 2px 0 var(--pk-sun-deep); }
+#phone .mg-act.quiet { flex:0 1 auto; background:none; color:var(--pk-warn); padding:6px 8px; }
+#phone .mg-act:active { transform:translateY(1px); filter:brightness(.95); }
+#phone .mg-act:disabled { opacity:.55; }
+#phone .k-ask { --mg-k:#b45309; } #phone .k-invite { --mg-k:#e11d48; } #phone .k-meet { --mg-k:#6d28d9; } #phone .k-loc { --mg-k:#2563eb; }
+#phone .k-pay .mg-card { background:linear-gradient(140deg, var(--mg-tm1), var(--mg-tm2)); color:#fff; box-shadow:0 6px 16px rgba(180,83,9,.22); }
+#phone .k-pay .mg-kind { color:#fff7e6; }
+#phone .k-pay .mg-title { font-size:24px; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+#phone .k-pay .mg-state { background:rgba(255,255,255,.22); color:#fff; }
+
+/* the composer: « + », the field, « Envoyer » */
+#phone .mg-note { flex:none; margin:6px 4px 0; font-size:13.5px; line-height:1.35; color:var(--pk-warn); }
+#phone .mg-compose { flex:none; display:flex; align-items:center; gap:8px; padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--ios-sep); }
+#phone .mg-chat.kb .mg-compose { padding-bottom:8px; }
+#phone .mg-plus { flex:none; display:grid; place-items:center; width:44px; height:44px; border:0; border-radius:50%; background:#e3e3e8; color:var(--ios-ink); font:400 30px/1 var(--ph-font);
+  cursor:pointer; transition:transform .15s, background .15s; }
+#phone .mg-plus[aria-expanded="true"] { background:var(--pk-sun); color:var(--pk-sun-ink); transform:rotate(45deg); }
+#phone .mg-field { flex:1; min-width:0; min-height:44px; padding:0 15px; border:1px solid var(--ios-sep); border-radius:22px; background:var(--ios-card); color:var(--ios-ink);
+  font:400 16px/1.2 var(--ph-font); user-select:text; -webkit-user-select:text; touch-action:auto; }
+#phone .mg-field:focus { outline:2px solid rgba(18,140,74,.45); outline-offset:0; }
+#phone .mg-send { flex:none; min-height:44px; padding:0 16px; border:0; border-radius:22px; background:var(--mg-me); color:#fff; font:700 15px/1 var(--ph-font); cursor:pointer; }
+#phone .mg-send:active { filter:brightness(.92); }
+#phone .mg-send:disabled, #phone .mg-field:disabled { opacity:.5; }
+#phone .mg-jump { position:absolute; z-index:2; left:50%; bottom:calc(70px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); min-height:44px; padding:0 16px; border:0;
+  border-radius:999px; background:var(--ios-card); color:var(--mg-me); font:650 14px/1 var(--ph-font); box-shadow:0 6px 18px rgba(0,0,0,.18), 0 0 0 1px var(--ios-sep); cursor:pointer; }
+#phone .mg-chat.kb .mg-jump { bottom:70px; }
+
+/* the « + » and « ⋯ » popovers */
+#phone .mg-pop { position:absolute; z-index:3; left:max(8px, calc(env(safe-area-inset-left, 0px) + 4px)); bottom:calc(66px + env(safe-area-inset-bottom, 0px));
+  width:min(330px, calc(100% - 16px)); max-height:calc(100% - 76px); overflow-y:auto; overscroll-behavior:contain; padding:6px; border-radius:18px; background:var(--ios-card);
+  box-shadow:0 14px 34px rgba(0,0,0,.24), 0 0 0 1px var(--ios-sep); transform-origin:bottom left; animation:mgPop .14s ease-out; }
+#phone .mg-chat.kb .mg-pop { bottom:66px; }
+#phone .mg-menu-pop { top:56px; bottom:auto; left:auto; right:max(8px, calc(env(safe-area-inset-right, 0px) + 4px)); max-height:calc(100% - 64px); transform-origin:top right; }
+@keyframes mgPop { from { transform:scale(.94); } }
+#phone .mg-pi { display:flex; align-items:center; gap:12px; width:100%; min-height:54px; margin:0; padding:7px 10px; border:0; border-radius:12px; background:none; color:var(--ios-ink); font:inherit; text-align:left; cursor:pointer; }
+#phone .mg-pi + .mg-pi { margin-top:2px; }
+#phone .mg-pi i { flex:none; display:grid; place-items:center; width:38px; height:38px; border-radius:11px; background:var(--ios-bg); font-style:normal; font-size:20px; }
+#phone .mg-pi span { min-width:0; display:flex; flex-direction:column; gap:1px; }
+#phone .mg-pi b { font-size:15.5px; font-weight:600; line-height:1.25; overflow-wrap:anywhere; }
+#phone .mg-pi small { font-size:12.5px; line-height:1.3; color:var(--ios-sub); overflow-wrap:anywhere; }
+#phone .mg-pi:active { background:var(--pk-press); }
+#phone .mg-pi.off { cursor:default; } #phone .mg-pi.off b { color:var(--ios-sub); } #phone .mg-pi.off i { filter:grayscale(1); opacity:.6; }
+#phone .mg-pi.off:active { background:none; }
+#phone .mg-pi.danger b { color:var(--pk-warn); }
+
+/* ---------------------------------------------------------------- sheets over the phone */
+#phone .mg-sheet-wrap { position:absolute; z-index:4; inset:0 0 var(--kb, 0px) 0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
+#phone .mg-dim { position:absolute; inset:0; background:rgba(0,0,0,.4); }
+#phone .mg-sheet { position:relative; display:flex; flex-direction:column; width:100%; max-width:560px; max-height:calc(100% - 24px - env(safe-area-inset-top, 0px));
+  border-radius:22px 22px 0 0; background:var(--ios-bg); color:var(--ios-ink); box-shadow:0 -10px 30px rgba(0,0,0,.25); animation:mgUp .22s cubic-bezier(.2,.8,.2,1); }
+@keyframes mgUp { from { transform:translateY(35%); } }
+#phone .mg-sh-head { flex:none; display:flex; align-items:center; gap:10px; min-height:58px; padding:6px max(12px, env(safe-area-inset-right, 0px)) 4px max(18px, env(safe-area-inset-left, 0px)); }
+#phone .mg-sh-head h3 { flex:1; min-width:0; margin:0; font-size:17px; font-weight:700; letter-spacing:-.2px; line-height:1.25; color:var(--ios-ink); text-transform:none; overflow-wrap:anywhere; }
+#phone .mg-sh-x { flex:none; min-height:44px; padding:0 14px; border:0; border-radius:999px; background:var(--ios-card); color:var(--ios-ink); font:600 15px/1 var(--ph-font); cursor:pointer; box-shadow:0 0 0 1px var(--ios-sep) inset; }
+#phone .mg-sh-body { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding:4px max(16px, calc(env(safe-area-inset-right, 0px) + 8px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+#phone .mg-sh-body > :first-child, #phone .mg-first { margin-top:0; }
+#phone .mg-sh-body > .pk-btn:last-child, #phone .mg-sh-body > .pk-acts:last-child { margin-top:16px; }
+
+/* the money sheet (Messages and Argent) */
+#phone .mg-to { display:flex; align-items:center; gap:10px; margin:0; font-size:15px; line-height:1.35; overflow-wrap:anywhere; }
+#phone .mg-amt { display:block; margin:8px 0 12px; font-size:40px; font-weight:800; letter-spacing:-1px; line-height:1.15; text-align:center; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+#phone .mg-chips { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+#phone .mg-chip { min-height:48px; padding:4px 6px; border:0; border-radius:var(--pk-r-sm); background:var(--ios-card); color:var(--ios-ink); font:700 15px/1.2 var(--ph-font);
+  font-variant-numeric:tabular-nums; cursor:pointer; box-shadow:0 0 0 1px var(--ios-sep) inset; overflow-wrap:anywhere; }
+#phone .mg-chip.on { background:#fff8e1; box-shadow:0 0 0 2px var(--pk-sun-deep) inset; }
+#phone .mg-chip.all { grid-column:1 / -1; background:var(--pk-sun); color:var(--pk-sun-ink); box-shadow:0 2px 0 var(--pk-sun-deep); }
+#phone .mg-chip:active { transform:translateY(1px); }
+#phone .mg-lbl { display:flex; flex-direction:column; gap:6px; margin-top:14px; font-size:13.5px; font-weight:600; color:var(--ios-sub); }
+#phone .mg-lbl small { font-weight:500; }
+#phone .mg-in { box-sizing:border-box; width:100%; min-height:48px; padding:0 14px; border:1px solid var(--ios-sep); border-radius:var(--pk-r-sm); background:var(--ios-card); color:var(--ios-ink);
+  font:500 16px/1.2 var(--ph-font); user-select:text; -webkit-user-select:text; touch-action:auto; }
+#phone .mg-in:focus { outline:2px solid rgba(240,168,0,.55); outline-offset:0; }
+#phone .mg-have { margin:12px 2px 0; font-size:13.5px; line-height:1.4; color:var(--ios-sub); }
+#phone .mg-have b { color:var(--ios-ink); font-variant-numeric:tabular-nums; }
+#phone .mg-err { margin:8px 2px 0; font-size:13.5px; line-height:1.4; color:var(--pk-warn); }
+#phone .mg-conf { padding-top:6px; }
+#phone .mg-conf .mg-cnote { color:var(--ios-sub); }
+#phone .mg-lines { padding:2px 14px; border-radius:var(--pk-r); background:var(--ios-card); }
+#phone .mg-lines p { display:flex; flex-wrap:wrap; justify-content:space-between; gap:2px 12px; margin:0; padding:10px 0; font-size:14.5px; line-height:1.35; }
+#phone .mg-lines p + p { border-top:1px solid var(--ios-sep); }
+#phone .mg-lines span { color:var(--ios-sub); }
+#phone .mg-lines b { margin-left:auto; text-align:right; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+#phone .mg-refuse { margin:12px 0 0; padding:10px 12px; border-radius:12px; background:#fde4e1; color:#9b1c13; font-size:14px; line-height:1.4; }
+#phone .mg-out p { overflow-wrap:anywhere; }
+#phone .pk-btn:disabled { opacity:.5; cursor:default; filter:none; transform:none; }
+
+/* invitation, meeting, report */
+#phone .mg-home { display:flex; align-items:center; gap:12px; padding:14px; border-radius:var(--pk-r); background:var(--ios-card); }
+#phone .mg-home i { flex:none; font-style:normal; font-size:30px; }
+#phone .mg-home span { min-width:0; display:flex; flex-direction:column; gap:2px; }
+#phone .mg-home b { font-size:16px; line-height:1.3; overflow-wrap:anywhere; } #phone .mg-home small { font-size:13px; line-height:1.35; color:var(--ios-sub); overflow-wrap:anywhere; }
+#phone .mg-perm { margin-top:12px; }
+#phone .mg-opt.on { box-shadow:inset 4px 0 0 var(--pk-sun-deep); }
+#phone .mg-check { flex:none; font-style:normal; font-weight:800; color:var(--pk-gain); visibility:hidden; }
+#phone .mg-opt.on .mg-check { visibility:visible; }
+#phone .mg-whens { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+#phone .mg-when { display:flex; flex-direction:column; align-items:flex-start; gap:1px; min-height:68px; margin:0; padding:8px 12px; border:0; border-radius:var(--pk-r-sm); background:var(--ios-card);
+  color:var(--ios-ink); font:inherit; text-align:left; cursor:pointer; box-shadow:0 0 0 1px var(--ios-sep) inset; }
+#phone .mg-when b { font-size:14.5px; font-weight:650; line-height:1.2; overflow-wrap:anywhere; }
+#phone .mg-when span { font-size:21px; font-weight:750; line-height:1.15; font-variant-numeric:tabular-nums; }
+#phone .mg-when small { font-size:12px; line-height:1.25; color:var(--ios-sub); }
+#phone .mg-when.on { background:#fff8e1; box-shadow:0 0 0 2px var(--pk-sun-deep) inset; }
+#phone .mg-sum { margin:14px 2px 0; font-size:14.5px; font-weight:650; line-height:1.4; overflow-wrap:anywhere; }
+#phone .pk-row.wait { opacity:.6; }
+
+/* ---------------------------------------------------------------- landscape phones: a lower header, the sheets taller, more per row */
+@media (orientation:landscape) and (max-height:560px) {
+  #phone .mg-bar { min-height:46px; padding:0 0 4px; }
+  #phone .mg-bar .mg-av { width:32px; height:32px; font-size:13px; }
+  #phone .mg-chat.typing .mg-bar, #phone .mg-chat.typing .mg-banner { display:none; }
+  #phone .mg-b { max-width:68%; } #phone .mg-c { width:min(360px, 64%); }
+  #phone .mg-compose { padding-top:6px; }
+  #phone .mg-sheet { max-height:calc(100% - 10px); border-radius:18px 18px 0 0; }
+  #phone .mg-sh-head { min-height:50px; }
+  #phone .mg-amt { margin:2px 0 8px; font-size:30px; }
+  #phone .mg-whens { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+  #phone .mg-list .mg-conv { min-height:64px; }
+}
+
+/* ---------------------------------------------------------------- night (body.theme-night) */
+body.theme-night #phone { --mg-them:#2c2c30; }
+body.theme-night #phone .mg-plus, body.theme-night #phone .mg-act { background:#2c2c2e; color:#f5f5f7; }
+body.theme-night #phone .mg-act.primary { background:var(--pk-sun); color:var(--pk-sun-ink); }
+body.theme-night #phone .mg-act.quiet { background:none; color:var(--pk-warn); }
+body.theme-night #phone .mg-state { background:#2c2c2e; color:#d1d1d6; } body.theme-night #phone .mg-state.gain { background:#12372a; color:#7ee2b8; }
+body.theme-night #phone .mg-state.sun { background:#3a2e0b; color:#ffd666; } body.theme-night #phone .mg-state.warn { background:#3d1714; color:#ffb4ab; }
+body.theme-night #phone .k-pay .mg-state { background:rgba(0,0,0,.2); color:#fff; }
+body.theme-night #phone .mg-chip.on, body.theme-night #phone .mg-when.on { background:#3a2e0b; }
+body.theme-night #phone .mg-refuse, body.theme-night #phone .mg-banner.off, body.theme-night #phone .mg-b.failed p { background:#3d1714; color:#ffb4ab; }
+body.theme-night #phone .mg-banner { background:#3a2e0b; color:#ffd666; }
+body.theme-night #phone .mg-day span { background:#1c1c1e; }
+body.theme-night #phone .mg-dot { box-shadow:0 0 0 2.5px #1c1c1e; }
+@media (prefers-reduced-motion:reduce) { #phone .mg-sheet, #phone .mg-pop { animation:none; } #phone .mg-status.wait i { animation:none; } #phone .mg-plus { transition:none; } }
+
+/* the shell's app badges (src/ui/phone.ts `badges`): on « Toutes les apps » of the home screen, the sum of its apps' counts */
+#phone .hm-tile > .ph-badge.app-n { top:10px; right:10px; left:auto; }

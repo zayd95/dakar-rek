@@ -5,15 +5,19 @@ import type { ChatAck, ChatMessage, Peer } from './protocol';
 import { cleanChatText, bubbleText, FAILURE_LABEL, CHAT_MAX_CHARS, CHAT_NEAR_RADIUS, REPORT_REASONS, type ChatChannel, type ChatFailure, type ReportReason } from './chatRules';
 import { phoneHooks } from '../ui/phoneHooks';
 import { chatPlace, cityHour, quickChat } from '../i18n/lines';
+import { online } from '../online/api';
+import { messagesDeps } from '../ui/phone/apps/messages';
 import './chat.css';
 
 /** The phone-in-landscape layout of the HUD (src/ui/style.css, same query). */
 const SHORT_LANDSCAPE = typeof matchMedia === 'function' ? matchMedia('(max-height: 500px) and (orientation: landscape)') : { matches: false };
 
 /**
- * Text chat over the presence connection: proximity (bubbles above characters) and private messages.
- * History, drafts, mute, block and the report log stay on this device. Player text is shown as written
- * (only cleaned of control characters) and is never parsed: a message cannot pay, lend or trigger anything.
+ * Text chat over the presence connection: proximity talk (bubbles above characters). Private messages live in the phone's Messages app on the player's
+ * online account (LD2.0-B, src/ui/phone/apps/messages.ts): the « Messages privés » button and a player's name hand over to it (on that player's
+ * conversation). History, drafts, mute and the report log stay on this device; blocking is the account's (`online.block`), the local block list is kept
+ * and still hides avatars (it is sent to the account at its first connection). Player text is shown as written (only cleaned of control characters) and
+ * is never parsed: a message cannot pay, lend or trigger anything.
  */
 type Status = 'sending' | 'sent' | 'failed';
 type LocalFailure = ChatFailure | 'timeout' | 'network';
@@ -48,7 +52,6 @@ export class ChatUi {
   readonly button = el('button');
   private panel = el('div');
   private log = el('ol', 'chat-log');
-  private people = el('div', 'chat-people');
   private banner = el('div', 'chat-banner');
   private peerBar = el('div', 'chat-peer');
   private form = el('form', 'chat-compose');
@@ -68,8 +71,9 @@ export class ChatUi {
   private drafts: Record<string, string> = {};
   private bubbles = new Map<string, Bubble>();
   private bubbleGroup = new THREE.Group();
-  private tab: 'near' | 'dm' = 'near';
-  private dmPeer: string | null = null;                   // selected private conversation (peer key)
+  private tab: 'near' = 'near';
+  /** The player whose name was tapped in the log: their bar (write, mute, block, report) shows above it. */
+  private dmPeer: string | null = null;
   private reportFor: string | null = null;
   private opened = false; private focused = false;
   private lastStatus = ''; private layoutT = 0; private tickT = 0; private saveT = 0;
@@ -80,13 +84,19 @@ export class ChatUi {
   constructor(private d: ChatDeps) {
     this.bubbleGroup.name = 'chat_bubbles'; d.scene.add(this.bubbleGroup);
     this.load();
-    d.avatars.hidden = peer => this.blocked.has(peerKey(peer));
+    d.avatars.hidden = peer => this.isBlocked(peerKey(peer));
     if (!d.enabled) return;                                 // solo build: no button, no hook, nothing listens
     this.build();
     d.presence.onChat = m => this.receive(m);
     d.presence.onChatAck = a => this.ack(a);
     d.presence.onReportAck = (target, ok) => this.reportAck(target, ok);
-    phoneHooks.openMessages = () => this.open('dm');
+    phoneHooks.openMessages = () => this.toMessages(null);
+    // Messages › « Nouveau message »: the players of this presence room, nearest first (their tag is their account's address)
+    messagesDeps.nearby = () => {
+      const me = d.local(), sp = d.space();
+      return [...d.presence.peers.values()].filter(p => p.tag && p.id !== d.presence.id && !d.avatars.hidden(p) && p.space === sp)
+        .map(p => ({ tag: p.tag!, name: p.name, look: p.look, app: p.app, dist: Math.hypot(p.x - me.x, p.z - me.z) }));
+    };
     if (new URLSearchParams(location.search).has('debug')) (window as unknown as Record<string, unknown>).__dakarChat = this.debugApi();
     this.refresh();
   }
@@ -103,11 +113,23 @@ export class ChatUi {
 
   open(tab: 'near' | 'dm' = this.tab, peer: string | null = null) {
     if (!this.d.enabled) return;
-    this.opened = true; this.tab = tab; if (tab === 'dm') this.dmPeer = peer ?? this.dmPeer; this.reportFor = null;
+    if (tab === 'dm') { this.toMessages(peer); return; }
+    this.opened = true; this.reportFor = null;
     this.panel.classList.add('on'); this.button.setAttribute('aria-expanded', 'true');
     document.body.classList.add('chat-open');            // the floating « Courir » steps aside while the panel is open (src/ui/stride.css)
     this.dirty = true; this.render();
   }
+  /**
+   * The private side is the phone's Messages app: the panel closes and the phone opens on Messages, on this player's conversation when their key is
+   * their public tag (an older server without tags: the list).
+   */
+  private toMessages(key: string | null) {
+    const tag = key && /^[0-9a-f]{16}$/.test(key) ? key : null;
+    this.close();
+    phoneHooks.openPhone?.(tag && online ? `messages:${tag}` : 'messages');
+  }
+  /** Blocked here (the local list, kept from before the account) or on the account. */
+  private isBlocked(key: string) { return this.blocked.has(key) || (!key.startsWith('id:') && !!online?.isBlocked(key)); }
   close() {
     this.opened = false; this.panel.classList.remove('on'); this.button.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('chat-open');
@@ -139,15 +161,13 @@ export class ChatUi {
 
   // ---------------------------------------------------------------- network
   private send(text: string) {
-    const channel: ChatChannel = this.tab === 'dm' ? 'dm' : 'near';
-    if (channel === 'dm' && !this.dmPeer) return;
-    const conv = channel === 'near' ? 'near' : `dm:${this.dmPeer}`;
+    const channel: ChatChannel = 'near', conv = 'near';
     const cleaned = cleanChatText(text);
     if (!cleaned.ok && cleaned.reason === 'empty') return;
     const entry: Entry = { id: uuid(), from: this.d.presence.id, name: 'Toi', text: cleaned.ok ? cleaned.text : text.trim(), at: Date.now(), mine: true, channel, status: 'sending' };
     this.push(conv, entry);
     if (!cleaned.ok) { this.fail(entry, cleaned.reason); return; }
-    const p: Pending = { entry, conv, peerKey: channel === 'dm' ? this.dmPeer! : undefined, createdAt: performance.now(), sentAt: 0 };
+    const p: Pending = { entry, conv, createdAt: performance.now(), sentAt: 0 };
     this.pending.set(entry.id, p); this.transmit(p);
   }
   private transmit(p: Pending) {
@@ -188,8 +208,9 @@ export class ChatUi {
     if (this.seen.has(m.id)) return;                       // a resend after a reconnect is shown once
     this.seen.add(m.id); if (this.seen.size > 1000) this.seen.delete(this.seen.values().next().value as string);
     const key = peerKey({ tag: m.tag, id: m.from });
-    if (this.blocked.has(key) || this.muted.has(key)) return;
-    const conv = m.channel === 'near' ? 'near' : `dm:${key}`;
+    if (this.isBlocked(key) || this.muted.has(key)) return;
+    // a private message over presence (an older client): shown in the log, marked « privé »; replies go through Messages
+    const conv = 'near';
     if (m.channel === 'dm') this.names.set(key, m.name);
     const sender = this.d.presence.peers.get(m.from), me = this.d.local();
     const entry: Entry = { id: m.id, from: m.from, name: m.name, tag: m.tag, text: m.text, at: m.at, mine: false, channel: m.channel,
@@ -200,9 +221,13 @@ export class ChatUi {
   }
   private report(key: string, reason: ReportReason) {
     const peer = this.peerByKey(key), name = peer?.name ?? this.names.get(key) ?? 'Joueur';
-    const sent = peer ? this.d.presence.sendReport({ type: 'report', target: peer.id, reason }) : false;
-    this.reports.push({ at: Date.now(), key, name, reason, server: sent ? 'pending' : 'not-sent' });
+    // the account keeps reports when there is one (with the player's tag); else the presence server counts it as before
+    const account = online && !key.startsWith('id:') ? online : null;
+    const sent = account ? true : peer ? this.d.presence.sendReport({ type: 'report', target: peer.id, reason }) : false;
+    const entry: ChatUi['reports'][number] = { at: Date.now(), key, name, reason, server: sent ? 'pending' : 'not-sent' };
+    this.reports.push(entry);
     this.reports = this.reports.slice(-50);
+    if (account) void account.report(key, reason).then(r => { entry.server = r.ok ? 'counted' : 'not-sent'; this.save(); this.changed(); });
     this.reportFor = null; this.save(); this.changed();
   }
   private reportAck(target: string, ok: boolean) {
@@ -221,12 +246,17 @@ export class ChatUi {
     this.changed();
   }
   private changed() { this.dirty = true; this.save(); }
-  private activeConv() { return this.tab === 'near' ? 'near' : this.dmPeer ? `dm:${this.dmPeer}` : null; }
+  private activeConv() { return 'near'; }
   private peerByKey(key: string): Peer | undefined { return [...this.d.presence.peers.values()].find(p => peerKey(p) === key); }
   private nameOf(key: string) { return this.peerByKey(key)?.name ?? this.names.get(key) ?? this.muted.get(key) ?? this.blocked.get(key) ?? 'Joueur'; }
   private toggle(set: Map<string, string>, key: string) {
-    if (set.has(key)) set.delete(key); else set.set(key, this.nameOf(key));
-    if (this.muted.has(key) || this.blocked.has(key)) { const peer = this.peerByKey(key); if (peer) this.dropBubble(peer.id); }
+    if (set === this.blocked) {
+      // blocking is the account's now: the local list follows it (and keeps hiding avatars before the account answers)
+      const on = !this.isBlocked(key);
+      if (on) set.set(key, this.nameOf(key)); else set.delete(key);
+      if (online && !key.startsWith('id:')) void online.block(key, on).then(() => this.changed());
+    } else if (set.has(key)) set.delete(key); else set.set(key, this.nameOf(key));
+    if (this.muted.has(key) || this.isBlocked(key)) { const peer = this.peerByKey(key); if (peer) this.dropBubble(peer.id); }
     this.changed();
   }
   private load() {
@@ -302,12 +332,15 @@ export class ChatUi {
     for (const type of ['pointerdown', 'touchstart', 'mousedown', 'wheel'] as const) p.addEventListener(type, e => e.stopPropagation(), { passive: true });
     const head = el('div', 'chat-head'), tabs = el('div', 'chat-tabs');
     tabs.setAttribute('role', 'tablist');
-    for (const t of ['near', 'dm'] as const) {
-      const tb = this.tabs[t]; tb.type = 'button'; tb.dataset.tab = t; tb.setAttribute('role', 'tab');
-      tb.innerHTML = t === 'near' ? `À proximité <small>${CHAT_NEAR_RADIUS} m</small><i class="chat-badge"></i>` : 'Messages privés<i class="chat-badge"></i>';
-      tb.addEventListener('click', () => { this.tab = t; if (t === 'dm') this.dmPeer = null; this.reportFor = null; this.dirty = true; this.render(); });
-      tabs.appendChild(tb);
-    }
+    const near = this.tabs.near; near.type = 'button'; near.dataset.tab = 'near'; near.setAttribute('role', 'tab');
+    near.innerHTML = `À proximité <small>${CHAT_NEAR_RADIUS} m</small><i class="chat-badge"></i>`;
+    near.addEventListener('click', () => { this.dmPeer = null; this.reportFor = null; this.dirty = true; this.render(); });
+    // the private side: a button to the phone's Messages app (not a tab of this panel any more)
+    const dm = this.tabs.dm; dm.type = 'button'; dm.dataset.tab = 'dm'; dm.className = 'chat-dm';
+    dm.innerHTML = 'Messages privés <span aria-hidden="true">↗</span><i class="chat-badge"></i>';
+    dm.setAttribute('aria-label', 'Messages privés : ouvre l’app Messages du téléphone');
+    dm.addEventListener('click', () => this.toMessages(null));
+    tabs.append(near, dm);
     const x = el('button', 'chat-close', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Fermer la discussion'); x.addEventListener('click', () => this.close());
     head.append(tabs, x);
 
@@ -324,7 +357,7 @@ export class ChatUi {
     f.addEventListener('input', () => this.saveDraft());
     f.addEventListener('focus', () => { this.focused = true; p.classList.add('typing'); this.d.suspend(true); });
     f.addEventListener('blur', () => { this.focused = false; p.classList.remove('typing'); this.d.suspend(false); });
-    p.append(head, this.banner, this.peerBar, this.log, this.people, this.form);
+    p.append(head, this.banner, this.peerBar, this.log, this.form);
     this.log.setAttribute('aria-live', 'polite');
     const ui = document.getElementById('ui') ?? document.body;
     ui.append(b, p);
@@ -368,7 +401,8 @@ export class ChatUi {
     this.panel.style.setProperty('--chat-top', `${Math.round(this.button.getBoundingClientRect().bottom + 8)}px`);
   }
   private updateBadge() {
-    let total = 0; for (const [conv, n] of this.unread) if (!(this.opened && this.activeConv() === conv)) total += n;
+    let total = online?.unread() ?? 0;                     // the Messages app's unread items: noticed from the street too
+    for (const [conv, n] of this.unread) if (!(this.opened && this.activeConv() === conv)) total += n;
     const badge = this.button.querySelector('.chat-badge') as HTMLElement | null;
     if (badge) { const text = total ? String(Math.min(total, 99)) : ''; if (badge.textContent !== text) badge.textContent = text; }
   }
@@ -378,27 +412,23 @@ export class ChatUi {
     this.dirty = false;
     const conv = this.activeConv();
     if (conv) this.unread.delete(conv);
-    for (const t of ['near', 'dm'] as const) {
-      const tb = this.tabs[t]; tb.classList.toggle('on', this.tab === t); tb.setAttribute('aria-selected', String(this.tab === t));
-      let n = 0; for (const [k, v] of this.unread) if (t === 'near' ? k === 'near' : k.startsWith('dm:')) n += v;
-      (tb.querySelector('.chat-badge') as HTMLElement).textContent = n ? String(n) : '';
-    }
-    const online = this.d.presence.status === 'online', space = this.d.space();
-    this.banner.textContent = !online ? 'Hors ligne : tes messages partiront à la reconnexion.'
-      : this.tab === 'near' ? (space === 'home' || space === 'scene' ? 'Ici, personne ne t’entend : la chambre et les scènes sont privées.' : `Entendu par les joueurs à moins de ${CHAT_NEAR_RADIUS} m, dans le même lieu.`)
-        : this.dmPeer ? '' : 'Joueurs de ton groupe. Un message ne peut jamais payer ni prêter d’argent.';
-    this.banner.dataset.state = online ? 'online' : 'offline';
+    const near = this.tabs.near; near.classList.add('on'); near.setAttribute('aria-selected', 'true');
+    const nNear = this.unread.get('near') ?? 0, nDm = online?.unread() ?? 0;
+    (near.querySelector('.chat-badge') as HTMLElement).textContent = nNear ? String(nNear) : '';
+    (this.tabs.dm.querySelector('.chat-badge') as HTMLElement).textContent = nDm ? String(Math.min(nDm, 99)) : '';
+    const live = this.d.presence.status === 'online', space = this.d.space();
+    this.banner.textContent = !live ? 'Hors ligne : tes messages partiront à la reconnexion.'
+      : space === 'home' || space === 'scene' ? 'Ici, personne ne t’entend : la chambre et les scènes sont privées.' : `Entendu par les joueurs à moins de ${CHAT_NEAR_RADIUS} m, dans le même lieu.`;
+    this.banner.dataset.state = live ? 'online' : 'offline';
     this.banner.hidden = !this.banner.textContent;
 
-    const listView = this.tab === 'dm' && !this.dmPeer;
-    this.log.hidden = listView; this.people.hidden = !listView; this.form.hidden = listView;
-    this.peerBar.hidden = !(this.tab === 'dm' && this.dmPeer);
-    if (this.tab === 'dm' && this.dmPeer) this.renderPeerBar(this.dmPeer);
-    if (listView) this.renderPeople(); else this.renderLog(conv!);
-    const draft = conv ? this.drafts[conv] ?? '' : '';
-    if (!this.focused || this.field.dataset.conv !== conv) { this.field.value = draft; this.field.dataset.conv = conv ?? ''; }
-    this.field.placeholder = this.tab === 'near' ? 'Dire à proximité…' : `Message privé à ${this.dmPeer ? this.nameOf(this.dmPeer) : ''}…`;
-    this.note.textContent = this.tab === 'dm' && this.dmPeer && !this.peerByKey(this.dmPeer) ? 'Hors ligne ou dans un autre groupe : le message ne partira pas.' : '';
+    this.peerBar.hidden = !this.dmPeer;
+    if (this.dmPeer) this.renderPeerBar(this.dmPeer);
+    this.renderLog(conv);
+    const draft = this.drafts[conv] ?? '';
+    if (!this.focused || this.field.dataset.conv !== conv) { this.field.value = draft; this.field.dataset.conv = conv; }
+    this.field.placeholder = 'Dire à proximité…';
+    this.note.textContent = '';
     this.updateCounter();
   }
   /** Quick Wolof phrases for this place and hour (src/i18n/lines.ts: greeting of the hour, « Neex na » at a gargote,
@@ -417,12 +447,12 @@ export class ChatUi {
     const list = this.conversations.get(conv) ?? [];
     const atBottom = this.log.scrollHeight - this.log.scrollTop - this.log.clientHeight < 40;
     this.log.replaceChildren();
-    if (!list.length) this.log.appendChild(el('li', 'chat-empty', this.tab === 'near' ? 'Personne n’a encore parlé ici.' : 'Pas encore de message.'));
+    if (!list.length) this.log.appendChild(el('li', 'chat-empty', 'Personne n’a encore parlé ici.'));
     for (const e of list) {
       const li = el('li', e.mine ? 'mine' : ''); li.dataset.id = e.id; if (e.status) li.dataset.status = e.status;
       const meta = el('div', 'chat-meta');
       const who = el(e.mine ? 'b' : 'button', 'chat-author', e.mine ? 'Toi' : e.name);
-      if (!e.mine && who instanceof HTMLButtonElement) { who.type = 'button'; who.title = 'Profil : message privé, muet, bloquer, signaler'; who.addEventListener('click', () => this.open('dm', peerKey({ tag: e.tag, id: e.from }))); }
+      if (!e.mine && who instanceof HTMLButtonElement) { who.type = 'button'; who.title = 'Profil : message privé, muet, bloquer, signaler'; who.addEventListener('click', () => { this.dmPeer = peerKey({ tag: e.tag, id: e.from }); this.reportFor = null; this.dirty = true; this.render(); }); }
       const where = e.channel === 'near' ? (e.distance !== undefined ? `à proximité · ${e.distance} m` : 'à proximité') : 'privé';
       meta.append(who, el('span', '', ` · ${where} · ${clock(e.at)}`));
       const text = el('p', 'chat-text', e.text);
@@ -441,51 +471,35 @@ export class ChatUi {
   }
   private renderPeerBar(key: string) {
     this.peerBar.replaceChildren();
-    const back = el('button', 'chat-back', '‹'); back.type = 'button'; back.setAttribute('aria-label', 'Retour aux joueurs');
+    const back = el('button', 'chat-back', '‹'); back.type = 'button'; back.setAttribute('aria-label', 'Fermer ce profil');
     back.addEventListener('click', () => { this.dmPeer = null; this.reportFor = null; this.dirty = true; this.render(); });
     const peer = this.peerByKey(key);
-    const title = el('div', 'chat-peer-name'); title.append(el('b', '', this.nameOf(key)), el('small', '', peer ? 'en ligne · privé' : 'hors ligne'));
+    const title = el('div', 'chat-peer-name'); title.append(el('b', '', this.nameOf(key)), el('small', '', peer ? 'à proximité' : 'parti'));
     this.peerBar.append(back, title, this.profileActions(key));
     if (this.reportFor === key) this.peerBar.appendChild(this.reportChoices(key));
   }
   private profileActions(key: string) {
     const box = el('div', 'chat-actions');
     const add = (label: string, on: boolean, act: () => void, cls = '') => { const b = el('button', cls, label); b.type = 'button'; b.setAttribute('aria-pressed', String(on)); b.classList.toggle('on', on); b.addEventListener('click', act); box.appendChild(b); };
+    // « Écrire »: the private conversation, in the phone's Messages app
+    const write = el('button', 'chat-write', 'Écrire ↗'); write.type = 'button'; write.setAttribute('aria-label', `Écrire à ${this.nameOf(key)} dans Messages`);
+    write.addEventListener('click', () => this.toMessages(key)); box.appendChild(write);
     add(this.muted.has(key) ? 'Muet ✓' : 'Muet', this.muted.has(key), () => this.toggle(this.muted, key), 'chat-mute');
-    add(this.blocked.has(key) ? 'Bloqué ✓' : 'Bloquer', this.blocked.has(key), () => this.toggle(this.blocked, key), 'chat-block');
+    add(this.isBlocked(key) ? 'Bloqué ✓' : 'Bloquer', this.isBlocked(key), () => this.toggle(this.blocked, key), 'chat-block');
     const done = this.reports.some(r => r.key === key);
     add(done ? 'Signalé' : 'Signaler', done, () => { if (!done) { this.reportFor = this.reportFor === key ? null : key; this.dirty = true; this.render(); } }, 'chat-report');
     return box;
   }
   private reportChoices(key: string) {
     const box = el('div', 'chat-report-box');
-    box.appendChild(el('p', '', 'Pourquoi ? Le signalement est gardé sur ton téléphone et compté par le serveur. Il n’est pas encore lu par une équipe de modération.'));
+    box.appendChild(el('p', '', 'Pourquoi ? Le signalement est gardé sur ton téléphone et par le serveur du jeu. Il n’est pas encore lu par une équipe de modération.'));
     for (const reason of REPORT_REASONS) { const b = el('button', '', REASON_LABEL[reason]); b.type = 'button'; b.addEventListener('click', () => this.report(key, reason)); box.appendChild(b); }
     return box;
   }
-  private renderPeople() {
-    this.people.replaceChildren();
-    const online = [...this.d.presence.peers.values()].filter(p => p.id !== this.d.presence.id).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-    const keys = new Set(online.map(peerKey));
-    const offline = [...this.conversations.keys()].filter(k => k.startsWith('dm:') && !keys.has(k.slice(3))).map(k => k.slice(3)).reverse();
-    if (!online.length && !offline.length) this.people.appendChild(el('p', 'chat-empty', 'Personne d’autre dans ton groupe pour l’instant.'));
-    const row = (key: string, name: string, isOnline: boolean) => {
-      const r = el('div', 'chat-person'); r.dataset.key = key;
-      const open = el('button', 'chat-person-open'); open.type = 'button';
-      const unread = this.unread.get(`dm:${key}`) ?? 0;
-      open.append(el('b', '', name), el('small', '', `${isOnline ? 'en ligne' : 'hors ligne'}${this.muted.has(key) ? ' · muet' : ''}${this.blocked.has(key) ? ' · bloqué' : ''}`));
-      if (unread) open.appendChild(el('i', 'chat-badge', String(unread)));
-      open.addEventListener('click', () => this.open('dm', key));
-      r.appendChild(open); this.people.appendChild(r);
-    };
-    for (const p of online) row(peerKey(p), p.name, true);
-    for (const k of offline) row(k, this.nameOf(k), false);
-  }
-
   private debugApi() {
     return {
       state: () => ({
-        status: this.d.presence.status, open: this.opened, tab: this.tab, peer: this.dmPeer, focused: this.focused,
+        status: this.d.presence.status, open: this.opened, tab: this.tab, peer: this.dmPeer, focused: this.focused, messagesUnread: online?.unread() ?? 0,
         history: Object.fromEntries([...this.conversations].map(([k, v]) => [k, v.map(e => ({ id: e.id, name: e.name, text: e.text, mine: e.mine, status: e.status, reason: e.reason, delivered: e.delivered }))])),
         bubbles: [...this.bubbles].map(([owner, b]) => ({ owner, visible: b.sprite.visible, opacity: b.sprite.material.opacity, left: b.until - performance.now() / 1000 })),
         muted: [...this.muted.values()], blocked: [...this.blocked.values()], reports: this.reports.map(r => ({ name: r.name, reason: r.reason, server: r.server })),

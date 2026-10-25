@@ -1,10 +1,11 @@
 import { phoneHooks } from '../phoneHooks';
+import { online } from '../../online/api';
 
 /**
  * Every app of the phone, in one registry: its icon (an emoji on a gradient tile), its name, its group in « Toutes les apps », its priority there, and
  * what it opens — a screen of the phone (`screen`), or another module's app (`hook`: the phone closes and the module opens its sheet). A hook app only
  * shows when its module registered the hook (src/ui/phoneHooks.ts). No app was removed by the redesign: the home screen shows five destinations, and
- * every app stays one tap away in « Toutes les apps ».
+ * every app stays one tap away in « Toutes les apps ». An app may carry a `badge` (a count the shell shows on its tile, and their sum on « Toutes les apps »).
  */
 export type AppGroup = 'vie' | 'travail' | 'argent' | 'ville' | 'outils';
 export interface AppDef {
@@ -19,6 +20,8 @@ export interface AppDef {
   order: number;
   screen?: string;
   hook?: () => (() => void) | undefined;
+  /** A count to show on the app's tile (unread messages); 0: none. */
+  badge?: () => number;
 }
 
 export const GROUPS: [AppGroup, string][] = [['vie', 'Ma vie'], ['travail', 'Travail'], ['argent', 'Argent et biens'], ['ville', 'En ville'], ['outils', 'Outils']];
@@ -26,7 +29,8 @@ export const GROUPS: [AppGroup, string][] = [['vie', 'Ma vie'], ['travail', 'Tra
 export const APPS: AppDef[] = [
   { id: 'profil', label: 'Profil', emoji: '🧑🏾', grad: '#c4b5fd,#6d28d9', group: 'vie', order: 0, screen: 'profil' },
   { id: 'notifs', label: 'Notifications', short: 'Notifs', emoji: '🔔', grad: '#fca5a5,#dc2626', group: 'vie', order: 1, screen: 'notifs' },
-  { id: 'messages', label: 'Messages', emoji: '💬', grad: '#5df27e,#1fb84a', group: 'vie', order: 2, hook: () => phoneHooks.openMessages },
+  // LD2.0-B: a screen of the phone (src/ui/phone/apps/messages.ts) on the player's online account, no longer the chat panel's private tab
+  { id: 'messages', label: 'Messages', emoji: '💬', grad: '#5df27e,#1fb84a', group: 'vie', order: 2, screen: 'messages', badge: () => online?.unread() ?? 0 },
   { id: 'carnet', label: 'Carnet', emoji: '📒', grad: '#fde68a,#d97706', group: 'vie', order: 3, screen: 'carnet' },
   { id: 'sante', label: 'Santé', emoji: '❤️', grad: '#fecdd3,#fb7185', group: 'vie', order: 4, screen: 'sante' },
   { id: 'habitants', label: 'Habitants', emoji: '👥', grad: '#5eead4,#0e7490', group: 'vie', order: 5, hook: () => phoneHooks.openPeople },
