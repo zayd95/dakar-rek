@@ -149,15 +149,15 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // Apps from other lanes: tile appears with its hook, closes the phone and hands over.
   await page.evaluate(() => {
     const h = window.__dakar.phoneHooks;
-    window.__realHooks = { openMessages: h.openMessages, ledger: h.ledger, arenaProfile: h.arenaProfile };
-    h.openMessages = () => { window.__msg = (window.__msg ?? 0) + 1; };
+    window.__realHooks = { ledger: h.ledger, arenaProfile: h.arenaProfile };
     h.ledger = () => [{ at: Date.now() - 60000, label: 'Dibi mouton', amount: -2000 }, { at: Date.now(), label: 'Service au garage', amount: 2800 }];
     h.arenaProfile = () => [{ label: 'Catégorie', value: 'Poids léger' }];
   });
   await page.evaluate(() => window.__dakar.phone('apps')); await page.waitForTimeout(400);
   await press('#phone [data-app="messages"]');
-  const handed = await page.evaluate(() => ({ msg: window.__msg, open: window.__dakar.phoneInfo().open, mode: window.__dakar.pos().mode }));
-  check(`${label}: Messages tile closes the phone and calls its hook`, handed.msg === 1 && !handed.open && handed.mode === 'play', JSON.stringify(handed));
+  // LD2.0-B: Messages is a phone screen now (src/ui/phone/apps/messages.ts), no longer a hand-over to the chat panel
+  const handed = await page.evaluate(() => window.__dakar.phoneInfo());
+  check(`${label}: Messages tile opens the Messages screen in the phone`, handed.open && handed.screen === 'messages', JSON.stringify(handed));
   await page.evaluate(() => window.__dakar.phone('portefeuille'));
   const ledger = (await page.locator('#phone .ph-screen').innerText()).replace(/\s/g, ' ');
   await page.evaluate(() => window.__dakar.phone('arene'));

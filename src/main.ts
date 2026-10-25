@@ -61,8 +61,10 @@ import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { OnlineAccount } from './online/client';
-import { setOnline } from './online/api';
+import { online, setOnline } from './online/api';
 import { visitDeps } from './online/visit';
+import { fakeOnlineRequested, installFakeOnline } from './online/fake';
+import { startMessageNotices } from './ui/phone/apps/messages';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
@@ -198,7 +200,11 @@ const onlineAccount = new OnlineAccount({
   endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/me', import.meta.env.VITE_PRESENCE_URL).href : undefined,
   enabled: import.meta.env.VITE_MULTIPLAYER === 'true',
 });
-setOnline(onlineAccount);
+// A build without the server has no account (`online` stays null: Messages and Teranga Money say so and hide). `?debug&fakeonline` swaps in the
+// in-memory account of the checks (src/online/fake.ts), never presented to players as real.
+if (fakeOnlineRequested()) installFakeOnline({ now: () => presence.serverNow(), wallet: { get: () => state.wallet, add: (n, label) => { state.addMoney(n, label); } }, save: () => { if (world) saveNow(); }, me: { name: presence.profile.name } });
+else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
+startMessageNotices(m => hud.toast(m));                                                 // « 💬 Awa : … » for what arrives outside the open conversation
 // a visit or a meeting joins the other player's presence room (src/online/visit.ts); the account refreshes the host's snapshot by itself
 visitDeps.room = () => presence.room;
 visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
@@ -1774,6 +1780,8 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
+    /** LD2.0-B: the player's online account as the UI sees it (src/online/api.ts), for the checks: status, me, balance, conversations, items, history. */
+    account: () => online,
     presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
