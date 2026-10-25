@@ -134,7 +134,13 @@ if (toDrop) {
   const K2 = S2.dropoff.car, f2 = { x: Math.sin(K2.yaw), z: Math.cos(K2.yaw) }, r2 = { x: -f2.z, z: f2.x }, inward = 4.3 - 2.1;   // r2: the kerb side of the heading
   const lanePt = (back) => ({ x: K2.x - f2.x * back - r2.x * inward, z: K2.z - f2.z * back - r2.z * inward });
   toDrop.splice(toDrop.length - 3, 3, { ...lanePt(16), tol: 3, speed: 4 }, { ...lanePt(7), tol: 2.2, speed: 2.4 }, { x: K2.x - f2.x * 1.5, z: K2.z - f2.z * 1.5, tol: 2, speed: 2 }, { x: K2.x + f2.x * 1.5, z: K2.z + f2.z * 1.5, tol: 2, speed: 1.8 });
+  const navLog = []; let lastNav = '';
+  const navSample = setInterval(async () => { try { const n = await d(() => { const A = window.__dakar, a = A.teranga.at(), i = A.nav.info(); return { t: i.now?.text ?? null, x: Math.round(a.x), z: Math.round(a.z), yaw: +a.yaw.toFixed(2), closed: (A.roadEvents?.() ?? []).filter(e => e.closed).length }; }); if (n.t !== lastNav) { lastNav = n.t; navLog.push(n); } } catch { /* */ } }, 400);
   await pilot(page, t, 'teranga', toDrop, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
+  clearInterval(navSample);
+  const backs = navLog.filter(n => /demi-tour/.test(n.t ?? '')).length;
+  console.log('nav lines on the way to the drop-off', JSON.stringify(navLog));
+  console.log(`NOTE (known issue, docs/districts/M1-EVIDENCE.md): « Fais demi-tour » shown ${backs} times on the way to the drop-off`, `(${navLog.length} changes); route ${JSON.stringify(toDrop.map(q => [Math.round(q.x), Math.round(q.z)]))}`);
 }
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 90000 }).catch(() => {});
 await page.waitForTimeout(1200); await shot('dropoff-card');
