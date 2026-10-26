@@ -7,8 +7,9 @@ import { setFurnitureKit } from './furnitureModels';
  * The 3D asset lane's furniture kit (src/world/furnitureKit.ts) standing in for the catalogue's pieces, through the
  * `setFurnitureKit` seam. Each catalogue piece maps to one kit piece (or several side by side: the starter pair of
  * chairs). The model is squeezed on the floor plane to fit the catalogue footprint (never enlarged; heights untouched),
- * and the piece's seat heights follow the kit model so the sitting pose matches it. Pieces without a fitting kit model
- * (radio and speakers, plants, dressing table, small stove, table lamp, the mattress upgrade) keep the built-in one.
+ * and the piece's seat heights follow the kit model so the sitting pose matches it. Since LD2.0-C every piece of the catalogue has its kit model
+ * (one draw call, a second only for glass): the radio and the speakers, the plants, the dressing table, the small stove, the lamps and the dressing
+ * got theirs then (src/world/furnitureKit.ts HOME_TYPES); furnitureModels.ts's built-in models stay as the fallback when no kit is installed.
  */
 export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> = {
   // the starter room (src/economy/furniture.ts ids)
@@ -23,8 +24,32 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   tele_plate: 'tv:better', home_cinema: 'tv:premium',
   tapis_tisse: 'rug:better', tapis_soie: 'rug:premium', miroir_dore: 'mirror:premium',
   cuisiniere: 'kitchen:better', cuisine_equipee: 'kitchen:premium',
-  lampadaire: 'lamp:better', lampadaire_laiton: 'lamp:premium',
-  armoire_metal: 'wardrobe:basic', armoire_bois: 'wardrobe:better', dressing: 'wardrobe:premium',
+  lampadaire_laiton: 'lamp:premium',
+  armoire_metal: 'wardrobe:basic', armoire_bois: 'wardrobe:better',
+  // LD2.0-C: the pieces still drawn with the built-in models, and the premium pieces that were boxes (speakers, carved planter, dressing)
+  radio: 'audio:basic', chaine_hifi: 'audio:better', enceintes: 'audio:premium',
+  plante: 'plant:basic', palmier: 'plant:better', jardiniere: 'plant:premium',
+  coiffeuse: 'dresser:better', rechaud: 'cooker:basic', lampe: 'bedside:basic', lampadaire: 'floorLamp:basic', dressing: 'closet:premium',
+  matelas: 'bed:better',                                                       // never placed (it improves the home's own bed): drawn only if ever shown
+  // LD2.0-C: the new pieces (src/economy/catalog.ts « the furnishing upgrade »)
+  salle_manger_simple: 'dining:basic', salle_manger_bois: 'dining:better', salle_manger_marbre: 'dining:premium',
+  table_cuisine: 'kitchenTable:basic', table_cuisine_bois: 'kitchenTable:better', bar_cuisine: 'kitchenTable:premium', gaziniere: 'cooker:better', piano_cuisson: 'cooker:premium',
+  micro_ondes_desserte: 'microwave:basic', micro_ondes: 'microwave:better', colonne_four: 'microwave:premium',
+  canari: 'waterDispenser:basic', fontaine_eau: 'waterDispenser:better', fontaine_inox: 'waterDispenser:premium',
+  ventilateur: 'fan:basic', ventilo_pied: 'fan:better', ventilo_colonne: 'fan:premium',
+  lavabo_colonne: 'vanity:basic', meuble_vasque: 'vanity:better', vasque_marbre: 'vanity:premium',
+  miroir_sdb: 'bathMirror:basic', armoire_toilette: 'bathMirror:better', miroir_lumineux: 'bathMirror:premium',
+  porte_serviettes: 'towelRail:basic', porte_serviettes_bois: 'towelRail:better', seche_serviettes: 'towelRail:premium',
+  lampadaire_trepied: 'floorLamp:better', lampadaire_arc: 'floorLamp:premium',
+  suspension_osier: 'pendant:basic', suspension_calebasse: 'pendant:better', lustre: 'pendant:premium',
+  chevet_bois: 'bedside:better', chevet_sculpte: 'bedside:premium',
+  commode: 'dresser:basic', penderie: 'closet:basic', armoire_3portes: 'closet:better', coiffeuse_doree: 'dresser:premium',
+  affiche: 'wallArt:basic', sous_verre: 'wallArt:better', toile_artiste: 'wallArt:premium',
+  tele_etagere: 'tvWall:basic', meuble_tv: 'tvWall:better', mur_tv: 'tvWall:premium',
+  etagere: 'shelf:basic', bibliotheque: 'shelf:better', vitrine: 'shelf:premium',
+  transat: 'lounger:basic', bain_soleil: 'lounger:better', bain_soleil_teck: 'lounger:premium',
+  parasol: 'parasol:basic', parasol_bois: 'parasol:better', parasol_deporte: 'parasol:premium',
+  salon_jardin: 'gardenSet:basic', salon_fer_forge: 'gardenSet:better', salon_teck: 'gardenSet:premium',
 };
 
 /** Height of the home floor the catalogue's seat tops are measured with (kit seat tops are above the piece's base). */

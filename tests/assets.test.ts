@@ -70,7 +70,14 @@ describe('catalogue', () => {
 });
 
 describe('placement', () => {
-  const room = layoutOf(homeSpec(STARTER_HOME)!), appart = layoutOf(homeSpec('appart_jamm')!);
+  // a one-room home: the F2's open room from before LD2.0-C (8 × 6.5 m), which the other homes still use; the F2 itself is built from its floor plan
+  // now (src/housing/plan.ts), and its rules are tested in tests/furnishRooms.test.ts
+  const room = layoutOf(homeSpec(STARTER_HOME)!), appart = openPlan('apartment', 8, 6.5);
+  it('the F2 follows its floor plan; the other homes keep their open room', () => {
+    expect(layoutOf(homeSpec('appart_jamm')!).plan?.id).toBe('f2_jamm');
+    expect(layoutOf(homeSpec('maison_cite')!).plan).toBeUndefined();
+    expect(layoutOf(homeSpec(STARTER_HOME)!).plan).toBeUndefined();
+  });
   it('a quarter turn swaps width and depth; points rotate like three.js', () => {
     expect(footprint({ w: 2, d: 0.5 }, { x: 0, z: 0, rot: 1 })).toEqual({ x0: -0.25, z0: -1, x1: 0.25, z1: 1 });
     const [x, z] = toHome({ x: 1, z: 1, rot: 1 }, 0, 0.5);                     // the front of a piece turned a quarter faces +x

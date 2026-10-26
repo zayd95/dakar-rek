@@ -15,6 +15,10 @@ const PX = {
   vitrine: [272, 160, 64, 96], books: [336, 160, 64, 32], fan: [400, 160, 48, 48], laptop: [448, 160, 48, 32],
   tiles: [0, 288, 64, 64], marble: [64, 288, 64, 64], hob: [128, 288, 64, 32], sink: [192, 288, 64, 32], curtain: [256, 288, 64, 64], leather: [320, 288, 64, 64],
   rattan: [384, 288, 64, 64], cloth: [448, 288, 64, 64],
+  // LD2.0-C (the furnishing upgrade): pictures, canvas, towels, speaker cloth, a microwave's door, a calabash, a LED strip
+  art0: [0, 352, 64, 96], art1: [64, 352, 72, 96], art2: [136, 352, 144, 96],
+  stripes0: [280, 352, 64, 64], stripes1: [344, 352, 64, 64], towel: [408, 352, 48, 64], grille: [456, 352, 48, 64],
+  mwave: [280, 416, 64, 32], calabash: [344, 416, 64, 64], led: [408, 416, 16, 16],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type FurnKey = keyof typeof PX;
 export const FUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, FW, FH)])) as Record<FurnKey, Rect>;
@@ -105,4 +109,48 @@ export function drawFurnitureAtlas(c: C2, g: C2) {
   { const [x, y] = P('rattan'); c.fillStyle = '#c9a46a'; c.fillRect(x, y, 64, 64); c.strokeStyle = '#8f6a3a'; c.lineWidth = 1.5;
     for (let k = -64; k < 64; k += 6) { c.beginPath(); c.moveTo(x + k, y); c.lineTo(x + k + 64, y + 64); c.stroke(); c.beginPath(); c.moveTo(x + k + 64, y); c.lineTo(x + k, y + 64); c.stroke(); } }
   wax(c, 'cloth', '#f4f1e8', '#d9322b', '#2f6fb3', '#1a9d54');
+  drawHomeAtlas(c, g);
+}
+
+/**
+ * The LD2.0-C pieces' paint (src/world/furnitureKit.ts « the furnishing upgrade »): three pictures of our own (a baobab at dusk, a sous-verre in the
+ * Senegalese reverse-glass manner, a large canvas of pirogues at sea), striped canvas, a towel, speaker cloth, a microwave's door with its lit display,
+ * a calabash's pyrography and a LED strip. No text, brand or real artwork.
+ */
+function drawHomeAtlas(c: C2, g: C2) {
+  { const [x, y] = P('art0'); const gr = c.createLinearGradient(x, y, x, y + 96); gr.addColorStop(0, '#f6c35b'); gr.addColorStop(0.55, '#e8742c'); gr.addColorStop(1, '#8a2f2a');
+    c.fillStyle = gr; c.fillRect(x, y, 64, 96); c.fillStyle = '#fff1c8'; c.beginPath(); c.arc(x + 42, y + 30, 9, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#2a1a10'; c.fillRect(x, y + 80, 64, 16);
+    c.beginPath(); c.moveTo(x + 22, y + 82); c.lineTo(x + 25, y + 52); c.lineTo(x + 35, y + 52); c.lineTo(x + 38, y + 82); c.fill();   // a baobab's trunk
+    for (const [dx, dy, r] of [[18, 46, 7], [30, 42, 9], [42, 47, 7], [24, 38, 5], [36, 36, 5]]) { c.beginPath(); c.arc(x + dx, y + dy, r, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#2a1a10'; c.lineWidth = 2; for (const [a, b] of [[14, 40], [46, 41], [30, 30]]) { c.beginPath(); c.moveTo(x + 30, y + 52); c.lineTo(x + a, y + b); c.stroke(); }
+    c.strokeStyle = '#fff1c8'; c.lineWidth = 1; c.strokeRect(x + 3.5, y + 3.5, 57, 89); }
+  { const [x, y] = P('art1'); c.fillStyle = '#111111'; c.fillRect(x, y, 72, 96);                       // sous-verre: flat bright colours, black outlines, a dotted border
+    c.fillStyle = '#d9322b'; for (let k = 0; k < 72; k += 6) { c.fillRect(x + k + 1, y + 2, 3, 3); c.fillRect(x + k + 1, y + 91, 3, 3); } for (let k = 6; k < 90; k += 6) { c.fillRect(x + 2, y + k, 3, 3); c.fillRect(x + 67, y + k, 3, 3); }
+    c.fillStyle = '#f4c20d'; c.beginPath(); c.arc(x + 54, y + 20, 7, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1f5aa8'; c.beginPath(); c.moveTo(x + 36, y + 40); c.lineTo(x + 20, y + 84); c.lineTo(x + 52, y + 84); c.fill();       // a woman's boubou
+    c.fillStyle = '#f4c20d'; for (const [dx, dy] of [[34, 56], [30, 66], [40, 66], [26, 76], [36, 76], [46, 76]]) { c.beginPath(); c.arc(x + dx, y + dy, 2.5, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#6b3a1f'; c.beginPath(); c.arc(x + 36, y + 34, 6, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1a9d54'; c.fillRect(x + 28, y + 24, 16, 5);                                                                         // her head tie
+    c.fillStyle = '#e8742c'; c.beginPath(); c.ellipse(x + 36, y + 19, 11, 5, 0, 0, Math.PI * 2); c.fill();                              // the calabash she carries
+    c.strokeStyle = '#000000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 36, y + 40); c.lineTo(x + 20, y + 84); c.lineTo(x + 52, y + 84); c.closePath(); c.stroke();
+    c.fillStyle = '#1a9d54'; for (const sx of [10, 62]) { c.fillRect(x + sx - 1, y + 60, 2, 26); c.beginPath(); c.ellipse(x + sx, y + 58, 5, 9, 0, 0, Math.PI * 2); c.fill(); } }
+  { const [x, y] = P('art2'); const gr = c.createLinearGradient(x, y, x, y + 56); gr.addColorStop(0, '#2a2f6a'); gr.addColorStop(0.6, '#c45a3a'); gr.addColorStop(1, '#f2a03a');
+    c.fillStyle = gr; c.fillRect(x, y, 144, 56); c.fillStyle = '#1f4f7a'; c.fillRect(x, y + 56, 144, 40);
+    c.fillStyle = 'rgba(255,255,255,0.25)'; for (let k = 0; k < 14; k++) c.fillRect(x + ((k * 29) % 140), y + 60 + (k % 5) * 7, 10 + (k % 3) * 4, 1.5);
+    c.fillStyle = '#f6dc8a'; c.beginPath(); c.arc(x + 104, y + 44, 10, Math.PI, 0); c.fill();
+    const boat = (bx: number, by: number, len: number, cols: string[]) => { c.fillStyle = cols[0]; c.beginPath(); c.moveTo(bx, by - 4); c.lineTo(bx + len, by - 6); c.lineTo(bx + len - 6, by + 3); c.lineTo(bx + 5, by + 3); c.fill();
+      c.fillStyle = cols[1]; c.fillRect(bx + 6, by - 3, len - 14, 2); c.fillStyle = cols[2]; for (let k = 0; k < 3; k++) c.fillRect(bx + 10 + k * (len - 20) / 3, by - 9, 2, 6); };
+    boat(x + 12, y + 70, 46, ['#d9322b', '#f4c20d', '#1a1a1a']); boat(x + 70, y + 80, 52, ['#1a9d54', '#f2f2ec', '#1a1a1a']); boat(x + 58, y + 64, 28, ['#f4c20d', '#1f5aa8', '#1a1a1a']); }
+  const stripes = (k: FurnKey, cols: string[]) => { const [x, y, w, h] = PX[k]; for (let i = 0; i < w; i += 8) { c.fillStyle = cols[(i / 8) % cols.length]; c.fillRect(x + i, y, 8, h); } };
+  stripes('stripes0', ['#d9322b', '#f6f1e4']); stripes('stripes1', ['#1f5aa8', '#f6f1e4', '#f4c20d', '#f6f1e4']);
+  { const [x, y] = P('towel'); c.fillStyle = '#f6f4ee'; c.fillRect(x, y, 48, 64); c.fillStyle = '#2f6fb3'; c.fillRect(x, y + 6, 48, 4); c.fillRect(x, y + 54, 48, 4); c.fillStyle = 'rgba(0,0,0,0.06)'; for (let k = 0; k < 48; k += 2) c.fillRect(x + k, y, 1, 64); }
+  { const [x, y] = P('grille'); c.fillStyle = '#2a2a2c'; c.fillRect(x, y, 48, 64); c.fillStyle = '#343438'; for (let j = 0; j < 64; j += 2) for (let i = (j / 2) % 2; i < 48; i += 2) c.fillRect(x + i, y + j, 1, 1); }
+  { const [x, y] = P('mwave'); c.fillStyle = '#1b1e22'; c.fillRect(x, y, 46, 32); c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(x + 6, y + 30); c.lineTo(x + 14, y + 30); c.lineTo(x + 30, y + 2); c.lineTo(x + 22, y + 2); c.fill();
+    c.fillStyle = '#9aa0a6'; c.fillRect(x + 46, y, 18, 32); c.fillStyle = '#5a5e63'; for (let k = 0; k < 6; k++) c.fillRect(x + 49 + (k % 2) * 7, y + 12 + Math.floor(k / 2) * 6, 5, 4);
+    for (const ctx of [c, g]) { ctx.fillStyle = '#7dffb0'; ctx.fillRect(x + 48, y + 3, 14, 6); } }
+  { const [x, y] = P('calabash'); c.fillStyle = '#c99a55'; c.fillRect(x, y, 64, 64); c.strokeStyle = '#5a3416'; c.lineWidth = 1.5;
+    for (let j = 0; j < 4; j++) { const yy = y + 8 + j * 16; c.beginPath(); for (let i = 0; i <= 8; i++) c.lineTo(x + i * 8, yy + (i % 2 ? -5 : 5)); c.stroke(); }
+    c.fillStyle = '#5a3416'; for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const cx = x + 8 + i * 16, cy = y + 16 + j * 16; c.beginPath(); c.moveTo(cx, cy - 3); c.lineTo(cx + 3, cy + 2); c.lineTo(cx - 3, cy + 2); c.fill(); } }
+  { const [x, y] = P('led'); c.fillStyle = '#ffffff'; c.fillRect(x, y, 16, 16); g.fillStyle = '#fff6e0'; g.fillRect(x, y, 16, 16); }
 }
