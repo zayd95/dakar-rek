@@ -66,6 +66,7 @@ import { perform } from './perform';
 import { football } from './football';
 import { mermozModule } from '../districts/mermoz';
 import { tradeModule } from '../districts/trade';
+import { almadiesModule } from '../districts/almadies';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -260,6 +261,7 @@ export const MODULES: GameModule[] = [
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
   mermozModule,         // Mermoz · Sacré-Cœur (M1): Pape Diouf at the Filaos' gate, his two rides on « Courses VTC », his memory (docs/districts/M1-MERMOZ.md)
   tradeModule,          // Plateau · Médina (M2): Oumar Diallo's lots, the Comptoir Sall, the porters' pousse-pousse (docs/districts/M2-PLATEAU-MEDINA.md)
+  almadiesModule,       // Almadies · Ngor (M4): Awa Sy on the Terrasse de Ngor, the hand-off to La Vague, the end-of-evening card (docs/districts/M4-ALMADIES.md)
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)

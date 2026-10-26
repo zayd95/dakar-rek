@@ -122,7 +122,8 @@ function buildTerrace(def: Def, ox: number, oz: number, hub: string, doorX: numb
     plain.cyl(0.5, 0.5, 0.05, x, G + 0.74, z, col, 14); plain.cyl(0.05, 0.05, 0.72, x, G, z, 0x2a2a30, 6); plain.cyl(0.25, 0.25, 0.03, x, G, z, 0x2a2a30, 10);
     glow.sphere(0.05, x, G + 0.84, z, 0xffe8a8); solid(x, z, 1.0, 1.0, 0.8);
   };
-  const spots: [number, number][] = [[-5.2, 1.2], [-3.0, 2.8], [-5.2, 3.4], [-1.5, 0.6], [3.6, 0.8], [5.8, 2.0], [3.2, 3.2]];
+  // the east side stays clear from the bar to the stairs (x +4.1 … +5.9): the guest walks that aisle in and out, tables on either side of it
+  const spots: [number, number][] = [[-5.2, 1.2], [-3.0, 2.8], [-5.2, 3.4], [-1.5, 0.6], [1.3, 1.0], [0.4, 3.4]];
   for (const [dx, dz] of spots) {
     const tx = ox + dx, tz = oz + dz;
     if (def.kind === 'restaurant') {
@@ -203,7 +204,7 @@ export const RooftopModule: GameModule = {
     ctxRef = ctx;
     ctx.interactions.add({ name: 'rooftop', collect: (space, _x, _z, out: Target[]) => {
       const b = built; if (!b || space !== b.door.id) return;
-      out.push({ id: `${b.door.id}:bar`, name: 'Le bar', kind: 'counter', space, x: b.bar.x, z: b.bar.z, radius: 2.2, bias: 1.6,
+      out.push({ id: `${b.door.id}:bar`, name: 'Le bar', kind: 'counter', space, x: b.bar.x, z: b.bar.z, radius: 2.2, bias: 0.1,
         affordances: () => [{ id: 'commander', verb: 'browse', label: 'Commander', icon: b.def.menu[0].icon, detail: b.def.blurb, run: () => openMenu(ctx, b.def, b.bar) }] });
     } });
   },
