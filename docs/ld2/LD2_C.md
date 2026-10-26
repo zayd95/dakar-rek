@@ -141,6 +141,7 @@ Both lanes are merged into `integration/ld2-c-20261026` (draft PR #72), with the
 - the cuisine's and the chambre's doors are hinged toward the wall, so an open leaf no longer sweeps across the way in;
 - the editor's see-through hole follows the framed room;
 - the F2's sheet names its rooms;
+- a window's daylight panel faces only the room: from the camera above the outside of a wall, a window shows its blue louvred shutters instead of a flat pale slab;
 - two older checks are brought up to date with the phone since U2 (`check-ownership`, `check-visit`).
 
 ### The acceptance (`scripts/check-ld2c.mjs`): 28/28, on a phone page, by touches
@@ -191,7 +192,7 @@ The old F2 (one open room, the traversée build) and the walkable F2, each with 
 | Walkable F2, cuisine | 17 | 22 844 | 97 ms |
 | *The street at the Résidence Jàmm (for reference)* | *78–81* | *163 000–165 000* | *272–282 ms for the renderer alone* |
 
-- **The budget holds:** at most 23 draw calls and 24k triangles, furnished, against 60 and 80k. The shell alone is 10 draw calls and 7 480 triangles (`check-apartment-walk`, budget 14).
+- **The budget holds:** at most 23 draw calls and 24k triangles, furnished, against 60 and 80k. The shell alone is 10 draw calls and 7 432 triangles (`check-apartment-walk`, budget 14).
 - **The walkable F2 is slower than the old room in the software renderer**, by about 20–40 % a frame.
   - The renderer alone in the séjour takes about 116 ms.
   - It drops to 71 ms with the shell's walls, faience, fittings, doors, lamps and windows hidden (its floors kept), and to 55 ms with the whole home hidden.
