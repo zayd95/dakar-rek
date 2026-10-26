@@ -1591,8 +1591,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
 
   yield;
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
-  // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
-  const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  // The new city blocks and the Almadies hospitality strip have authored frontage and furniture; random street props must not obstruct them.
+  const hospitalityRects = Object.entries(sp.specials).filter(([, kind]) => kind === 'hospitality').map(([key]) => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  const cityRects = [...Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; }), ...hospitalityRects];
   const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
     || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
