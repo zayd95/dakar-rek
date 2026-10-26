@@ -1358,6 +1358,12 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const v = buildVillaCompound({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool });
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
   }
+  // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
+  // after (src/game/streetDress.ts) leaves that strip open; given only now, the builder's own dressing and its random draws are as they were
+  for (const [key, kind] of Object.entries(CITY_BLOCKS[id])) if (kind === 'mall') {
+    const [i, j] = key.split(',').map(Number), cx = blockMin(i) + BLK / 2, cz = blockMin(j) + BLK / 2;
+    keepClear.push({ x0: cx - 5, x1: cx + 5, z0: cz + 21, z1: cz + 29, why: 'mall_entrance' });
+  }
   for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
