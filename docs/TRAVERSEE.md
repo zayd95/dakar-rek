@@ -120,31 +120,26 @@ What changes with them:
 - **Reload in the middle of a crossing:** the player is put back on the pier at the anchor, and the boats are back at their moorings. Nothing is paid for the unfinished leg, and counters stay as they were.
 - **Debug:** `window.__dakar.traversee()` returns what a check needs: the phase, the boat and its pose, the customers (state, seated or not, where), the legs paid with their amounts, the counters, and why a choice is closed.
 
-### As built (beyond the contract)
-- **The boat not in use** waits on the pontoon's west side, at x = 28 − 0.35 − beam/2 with z and yaw as at the quay mooring. The boats swap during the cut to black that starts a crossing.
-- **Turning room:**
-  - The return turns the boat round east of the island's mooring (x 39…49, z −296…−286) and east of the quay's (sweeping to z −165).
-  - Nothing static stands there: the island's rocks and the beach pirogues keep clear.
-- **The island's ground:** `ngorGroundY(x, z)` (`src/world/ngor.ts`). The customers who land walk up the island's sand on it.
-- **Timings:** a pirogue round trip takes about 91 game-seconds headless.
-  - Boarding ≈ 18 s;
-  - out ≈ 26 s, which includes easing in and out;
-  - landing ≈ 4 s;
-  - boarding back ≈ 6 s;
-  - back ≈ 33 s, which includes both turns;
-  - landing ≈ 3 s.
-  - The chaloupe goes out in about 20 s.
-- **« Arrêter » or a reload in the middle of a crossing:** both put the player on the pier at (31.1, −153) facing the sea, through the venues' `safePlace()`. A player seated out at sea is never saved, so the hub's bounds never clamp them onto the beach.
-- **The VTC points of the Almadies (9, all real places):**
-  - The `port` point is now « Embarcadère de Ngor ».
-  - The duplicate `embarcadere` point became « La Vague · plage de Ngor ».
-  - « Résidence des Almadies », which was no place in the game, became « Villa avec piscine · Almadies ».
-- **The minimap** shows the embarcadère as transport.
-- **Shared framework additions:** all optional, unused by other venues.
-  - `PlaceSpec.closedWhy` (the reason a closed place shows);
-  - `Venue.camera(dt, drag)`, `active()` and `safePlace()`.
-- **The gesture measurement** (`scripts/m1a-sim/measure-gestures.mjs`, `scripts/check-perform.mjs`) moved from the quay's haul to Soumbédioune's net, which pays fish rather than money.
-- **The optional « Garde le cap » gesture is not built.**
+### As built (version 2, beyond the contract)
+- **The boats on the sand:** both rest at their own `beach` pose, run up bow first: the bow lifted 0.045 rad, the hull raised 0.05 m, the rocking cut to about a tenth. The boat not in use never moves.
+- **Pushing off and landing:** each leg goes 14 m straight back, stern first (the first 2 m by hand), turns round in a 3.5 m half circle toward its clear zone's open side, crosses through `route`, and comes in bow first from 10 m out, braking. The chaloupe lands 1 m further up the island's beach than the pirogue (`islandPose(length)`), so both bows reach the sand.
+- **The customers:** they wait on the sand, put on a life jacket where they stand (1.2 s), walk down, wade out alongside the hull and climb in over the gunwale near the bow (the model's `step`), one at a time. Landing, they step down into the shallows, wade ashore and take the jacket off on the first dry sand. The feet follow the world's wet sand (`beachSandY`) and wade to 0.45 m at most.
+- **The life jacket** is no new mesh: `setVest(on)` (`src/actors/humanoid.ts`) swaps the garment on the trunk to a vest version of its own geometry painted orange. It costs no draw call (10 / 10 per body with or without it). Meshy bodies have none; the customers all use the default body.
+- **The cameras:** boarding from up the sand behind the bow, down the boat's length to the island (the owner's photo 1); arriving over the helm and the seated heads toward the beach (photo 3), for the last 36 m and each landing.
+- **« Arrêter » or a reload in the middle of a crossing:** the player is set down on the sand by the anchor, both boats are back on the beach, and an unfinished leg pays nothing.
+- **Timings, headless:** a pirogue round trip about 147 s (boarding 25, out 37, landing 9–12, boarding back 20–23, back 37, last landing 13–14); the chaloupe about 124 s.
+- **The world (lane W2):**
+  - **The mainland beach:** the dry sand stops 3.5 m from the water; a band of wet sand slopes gently into the sea under the beached bows. The old opaque « surf line » is gone; the foam is part of the translucent turquoise shallows along the beach and round the island (one mesh, one draw call, fading at night).
+  - **The bay:** six white launches with consoles and outboards, five at anchor, one at the pontoon; more pirogues drawn up on the beach, all outside the boats' clear zones and away from the waiting spots.
+  - **The island's landing beach:** no jetty; sand sloping about 1 in 12 into the sea; dark rocks in the water either side; parasols in orange, pink, red, blue and teal over plastic tables and chairs, loungers; three beach-restaurant shacks; houses in red, ochre and yellow behind low stone walls; dense palms and leafy trees, and 18 more palms along the mainland beach.
+  - **The rooftop restaurant and lounge bar, « Sunu Toit »:** on a level plinth above the beach, facing the sea, its name on the roof's front edge; the kitchen behind a warm ochre wall, the shaded front on pillars, the outside stair; on the roof a pergola, two shade sails, a balustrade, potted plants, the three tables of four, the lounge's sofas, the bar, the DJ's booth, and strings of warm bulbs whose light pools on the terrace at night.
+  - **Budgets:** the island 7 184 triangles (Low 3 856), the launches 1 272, the shallows 1 560; the island, the restaurant and the trees in the hub's batches.
+- **The rooftop's life (lane R, `src/venues/islandRooftop.ts`, `src/venues/rooftopPlan.ts`):**
+  - Open 11 h to 1 h. Lunch: 5 to 9 diners and the barman. Afternoon: a few at the lounge and the bar. Evening: the tables nearly full, the lounge full, 2 to 4 at the bar, the DJ from 19 h and 2 to 4 dancers from 20 h. Late: the lounge, the bar and the dancers. The same people for every player on the same day and hour.
+  - The people are the reusable crowd's instanced figures: 2 draw calls with 9 or 26 people, never a full humanoid. Drawn within 200 m and when the roof is in view.
+  - The music is La Vague's own track on the game's audio bus: soft and muffled by day, louder with the beat clear once the DJ plays; full within 40 m of the roof and silent beyond 110 m (not heard on the mainland); none while closed, with the sound off or before the first touch.
+  - Debug: `__dakar.islandRooftop()`. The Almadies also keep the older interior rooftop « Terrasse de Ngor » on the mainland; the two are different places.
+- **The VTC points, the minimap, `PlaceSpec.closedWhy`, `Venue.camera/active/safePlace`, and the gesture measurement moved to Soumbédioune** are as in version 1.
 
 ## Lanes (at most two implementation agents; one integration owner)
 | Lane | Owns | Delivers |
@@ -184,25 +179,36 @@ Each lane works in its own worktree on its own branch, from the contract's commi
 ## Results
 **How they were obtained:** headless Chromium with a software renderer (SwiftShader) on a 4-core container, phone pages at 390×844 with real touches. None of it is a measurement from a real iPhone.
 
-### The acceptance: `scripts/check-traversee.mjs` (results filled in below)
+### Version 2, on `a801174` (the integrated lanes) and `c1d2c76` (the restaurant's sign)
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit`, `npm run typecheck:server`, `vite build` | 0 errors |
+| `npx vitest run` (the whole suite) | 200 files passed, 1 skipped; 2 440 tests passed, 3 skipped, 0 failed (on both commits) |
+| `scripts/check-traversee.mjs` (the acceptance, a phone page) | 37/37 passed, no page errors |
+| `scripts/check-phone.mjs` | 69/69 passed |
+| `scripts/check-ui-consistency.mjs` | 95/95 passed |
+
+The acceptance plays a pirogue round trip by taps (the jackets on the sand, the wading, the climb aboard, pushing off stern first, the bow run up the island's beach, each leg paid once on arrival, the jackets off ashore), unlocks and plays the chaloupe, reloads in the middle of a crossing (the player on the sand, both boats on the beach, nothing paid), checks that no crossing runs at night, that the quay offers no fishing and that Soumbédioune still does.
+
+Pictures: `docs/proof/traversee/v2` (the crossing at lunchtime and the island at night), `crossing2` (the acceptance's own), `world2` (the world lane's, staged), `references` (the owner's photos).
 
 ### Performance against LD2.0-B (`21f0337`)
-**Setup:** solo builds served locally; a phone viewport; the player placed and turned the same way; two runs per build, alternating.
+**Setup:** solo builds served locally; a phone viewport; the player placed and turned the same way; two runs per build.
 
-| Place | LD2.0-B: draw calls / triangles / fps | La traversée |
+| Place | LD2.0-B: draw calls / triangles / fps | La traversée v2 |
 |---|---|---|
-| The pier's end, facing the island, 13 h | 33 / 92k / 8.6 · 33 / 91k / 8.0 | 80 / 121k / 6.0 · 79 / 121k / 6.1 |
-| The pier's end, 21 h | 41 / 95k / 8.4 · 41 / 95k / 8.2 | 77 / 118k / 6.9 · 77 / 118k / 7.0 |
-| The quay from the block, 13 h | 57 / 109k / 5.2 · 57 / 109k / 5.8 | 54 / 112k / 5.4 · 59 / 115k / 5.5 |
-| The beach east of the quay, 13 h | 34 / 92k / 8.7 · 34 / 92k / 9.0 | 35 / 97k / 8.5 · 34 / 96k / 8.7 |
-| Pikine's avenue (control) | 77 / 174k / 3.7 · 73 / 167k / 4.1 | 71 / 167k / 4.2 · 81 / 173k / 3.9 |
+| The anchor on the sand, facing the island, 13 h | 34 / 92k / 8.5 · 33 / 92k / 8.3 | 53 / 108k / 6.4 · 43 / 109k / 6.4 |
+| The anchor, 21 h | 41 / 94k / 8.3 · 37 / 93k / 8.3 | 49 / 114k / 6.6 · 47 / 113k / 6.9 |
+| The quay from the block, 13 h | 51 / 106k / 5.7 · 44 / 101k / 6.0 | 61 / 126k / 4.2 · 60 / 136k / 4.7 |
+| The beach east, 13 h | 35 / 92k / 8.9 · 55 / 106k / 7.9 | 38 / 108k / 7.0 · 58 / 119k / 6.3 |
+| Pikine's avenue (control) | 69 / 173k / 4.1 · 64 / 168k / 4.3 | 61 / 164k / 3.8 · 64 / 168k / 4.0 |
 
-**What the cost at the pier's end is:**
-- **The customers:** about 10 draw calls each. Each is the game's usual person (`humanoid_v2`), the body the VTC passengers have, and 3 or 4 wait at the pier's end.
-- **The boats:** 2 draw calls each.
-- **The static quay and the island:** no new draw call (lane W measured the world group at 26 → 25 there). They add about 5k triangles where the island is in view.
-- **Frame rate:** the pier's end was among the Almadies' cheapest views and is now about as heavy as Pikine's avenue. On the software renderer the frame rate there drops by about a quarter.
-- **Elsewhere:** the same as before.
+During a pirogue crossing at lunchtime (one run): boarding with the customers wading 70 / 126k / 3.4; mid-way 62 / 109k / 8.8; arriving at the island with the rooftop open 60 / 117k / 6.4; landing on the island's beach 70 / 121k / 7.6; the island's beach at 21 h, the rooftop busy and lit, 72 / 123k / 6.6.
+
+**What it costs:**
+- At the anchor, the customers waiting on the sand (about 10 draw calls each, the game's usual person), the boats on the beach, the shallows (1) and the island's dressing (about 16k triangles more where the island is in view). It is lighter than version 1 at its pier's end (77–80 draw calls).
+- During a crossing, at most 72 draw calls, well under the phone budget of 180 (`docs/PERF_EVENING.md`). The heaviest moment is the boarding, with four customers in jackets near the camera.
+- On the software renderer the anchor's frame rate drops by about a quarter; Pikine's control is unchanged.
 
 ## Later slices (not in this one)
 - Buying a pirogue or a chaloupe (`src/economy/assets.ts`, credit), with no share then.
