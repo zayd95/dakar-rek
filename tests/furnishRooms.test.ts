@@ -153,15 +153,15 @@ describe('the F2 is furnished by room (its floor plan)', () => {
     for (const p of placed) expect(roomAt(F2_JAMM, p.at.x, p.at.z), p.spec.id).not.toBeNull();
   });
 
-  it('the other homes keep today\'s rules', () => {
-    const open = openPlan('apartment', 8, 6.5), villa = layoutOf(homeSpec('villa_almadies')!);
+  it('the other homes keep today\'s rules (LD2.0-D: the Almadies villa has its plan now, tests/villaFurnish.test.ts; the Ngor residence keeps its room)', () => {
+    const open = openPlan('apartment', 8, 6.5), residence = layoutOf(homeSpec('residence_ngor')!);
     expect(whyNot(open, spec('canape_wax'), at(3.5, 0), [])).toBe('Contre le mur');
     expect(whyNot(open, spec('canape_wax'), at(0, 1), [])).toBeNull();
-    expect(villa.plan).toBeUndefined();
-    expect(autoPlace(villa, spec('canape_wax'), [])).toEqual({ x: 0, z: -4.57, rot: 0 });
+    expect(residence.plan).toBeUndefined();
+    expect(autoPlace(residence, spec('canape_wax'), [])).toEqual({ x: 0, z: -5.57, rot: 0 });
     // a picture hangs on a wall of a one-room home too
-    expect(whyNot(villa, spec('affiche'), at(2, -4.98, 0), [])).toBeNull();
-    expect(whyNot(villa, spec('affiche'), at(2, 0, 0), [])).toBe('À accrocher contre un mur');
+    expect(whyNot(residence, spec('affiche'), at(2, -5.98, 0), [])).toBeNull();
+    expect(whyNot(residence, spec('affiche'), at(2, 0, 0), [])).toBe('À accrocher contre un mur');
   });
 });
 

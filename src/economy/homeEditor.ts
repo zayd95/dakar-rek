@@ -5,7 +5,8 @@ import type { Collider, Interactable } from '../world/types';
 import type { Placement } from '../core/types';
 import { furnitureSpec, type HomeSpec } from './catalog';
 import { assetsRevision, furnitureIn, holding, placedIn, setPlacement, touchAssets } from './assets';
-import { autoPlace, footprint, layoutOf, nudge, onWall, planRooms, roomFrame, roomOf, snap, turn, whyNot, yawOf } from './placement';
+import { autoPlace, footprint, fromHome, homeLevels, inHome, layoutOf, levelFrame, levelOfAt, nudge, onWall, planRooms, roomFrame, roomOf, snap, turn, whyNot, yawOf } from './placement';
+import { inBand } from '../world/types';
 import { furnitureModel, footprintMarker } from './furnitureModels';
 import './homeEditor.css';
 
@@ -18,7 +19,7 @@ export interface HomeView {
   int: Interior;
   /** The shell's own colliders (walls, built-in pieces); furniture colliders are added after them. */
   base: Collider[];
-  spots: { kitchen: { x: number; z: number }; shower: { x: number; z: number } } | null;
+  spots: { kitchen: { x: number; z: number; y?: number }; shower: { x: number; z: number; y?: number } } | null;
   /** Ceiling fixtures hidden while placing (the camera looks from above). */
   ceiling: THREE.Object3D[];
   shellKey: string;
@@ -53,6 +54,8 @@ export class HomeEditor {
   private whyEl: HTMLElement;
   /** The room the camera frames (a plan room's id), or null: the whole home. */
   private room: string | null = null;
+  /** LD2.0-D, a home on several levels: the level in view (its id); the whole home is shown a level at a time. */
+  private level = '';
   /** The list shows only the chosen room's pieces (and the stored ones). */
   private filtered = false;
   /** What the camera frames (the centre and the size it fits), eased from `focusFrom` toward the chosen room since `focusT`. */
@@ -106,8 +109,11 @@ export class HomeEditor {
     for (const c of v.ceiling) c.visible = false;
     v.furniture.add(this.marker);
     this.room = null; this.filtered = false; this.focus = null; this.focusFrom = null; this.whyMemo = null;
-    const first = this.items().find(f => f.at) ?? this.items()[0];
+    const levels = homeLevels(this.layout());
+    this.level = levels.length ? [...levels].reverse().find(l => l.y <= this.ctx.player.pos.y + 0.5)?.id ?? levels[0].id : '';
+    const first = this.items().find(f => f.at && (!this.level || levelOfAt(this.layout(), f.at) === this.level)) ?? this.items().find(f => f.at) ?? this.items()[0];
     this.select(first.uid);
+    if (this.level) this.reframe();
     this.look = { yaw: 0, pitch: HIGH, zoom: 1 }; this.ptrs.clear(); this.gest = null;
     addEventListener('keydown', this.onKey, true);
     const c = document.getElementById('c');
@@ -134,9 +140,10 @@ export class HomeEditor {
     this.el.classList.remove('on'); this.roomsEl.classList.remove('on'); this.whyEl.classList.remove('on');
     this.room = null; this.filtered = false; this.focus = null;
     touchAssets();                                                     // every piece back where it is saved
-    // never leave the player inside a piece of furniture
+    // never leave the player inside a piece of furniture (LD2.0-D: of their own floor)
     const p = this.ctx.player.pos;
-    if (v.int.colliders.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1)) this.ctx.player.place(v.int.spawn.x, v.int.spawn.z, v.int.spawn.yaw);
+    if (v.int.colliders.some(c => inBand(c, p.y) && p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1)) this.ctx.player.place(v.int.spawn.x, v.int.spawn.z, v.int.spawn.yaw);
+    this.level = '';
     this.ctx.setMode('play');
     this.ctx.save();
   }
@@ -146,14 +153,14 @@ export class HomeEditor {
     const v = this.view; if (!v || !this.sel || !this.pending) return;
     const f = this.s.data.assets.list.find(a => a.uid === this.sel), fs = f && furnitureSpec(f.spec);
     if (!f || !fs) { this.close(); return; }
-    const obj = this.ghost ?? v.pieces.get(this.sel)?.obj;
-    if (obj) { obj.position.set(v.ox + this.pending.x, FLOOR, v.oz + this.pending.z); obj.rotation.y = yawOf(this.pending); }
+    const obj = this.ghost ?? v.pieces.get(this.sel)?.obj, w = inHome(this.layout(), this.pending.x, this.pending.z);   // (LD2.0-D: on its level)
+    if (obj) { obj.position.set(v.ox + w.x, FLOOR + w.y, v.oz + w.z); obj.rotation.y = yawOf(this.pending); }
     const why = this.why(), r = footprint(fs, this.pending), ok = !why;
     this.marker.scale.set(r.x1 - r.x0, r.z1 - r.z0, 1);
     (this.marker.material as THREE.MeshBasicMaterial).color.setHex(ok ? 0x34d399 : 0xf87171);
-    this.marker.position.set(v.ox + (r.x0 + r.x1) / 2, FLOOR + 0.015, v.oz + (r.z0 + r.z1) / 2);   // the furniture group is in world coordinates
+    this.marker.position.set(v.ox + (r.x0 + r.x1) / 2 + w.x - this.pending.x, FLOOR + w.y + 0.015, v.oz + (r.z0 + r.z1) / 2);   // the furniture group is in world coordinates
     // the reason a spot is refused, beside the piece (above it on the screen)
-    const at = why ? this.screenAt(v.ox + this.pending.x, (fs.mount === 'ceiling' ? 2.3 : fs.mount === 'wall' ? 1.9 : 1.1), v.oz + this.pending.z) : null;
+    const at = why ? this.screenAt(v.ox + w.x, w.y + (fs.mount === 'ceiling' ? 2.3 : fs.mount === 'wall' ? 1.9 : 1.1), v.oz + w.z) : null;
     this.whyEl.classList.toggle('on', !!at);
     if (at && why) { if (this.whyEl.textContent !== why) this.whyEl.textContent = why; this.whyEl.style.left = `${Math.round(Math.min(innerWidth - 90, Math.max(90, at.x)))}px`; this.whyEl.style.top = `${Math.round(Math.max(60, at.y - 8))}px`; }
   }
@@ -176,15 +183,30 @@ export class HomeEditor {
     const f = this.items().find(x => x.uid === uid); if (!f) return;
     const fs = furnitureSpec(f.spec)!, h = this.homeUid()!;
     this.sel = uid;
-    // a stored piece comes out in the room the camera shows (else the room of its kind, else wherever it fits)
-    this.pending = f.at ? { ...f.at } : autoPlace(this.layout(), fs, placedIn(this.s, h, uid), { room: this.room }) ?? this.fallbackSpot(fs);
+    // a stored piece comes out in the room the camera shows (else the room of its kind on the level in view, else wherever it fits)
+    this.pending = f.at ? { ...f.at } : autoPlace(this.layout(), fs, placedIn(this.s, h, uid), { room: this.room, level: this.level || null }) ?? this.fallbackSpot(fs);
     if (!f.at) { this.ghost = furnitureModel(fs); this.view.furniture.add(this.ghost); }
+    this.follow();
     this.render();
   }
   /** Where a stored piece shows when no spot fits: the middle of the room in view (red, with its reason), never placed there. */
   private fallbackSpot(fs: NonNullable<ReturnType<typeof furnitureSpec>>): Placement {
-    const fr = this.room ? roomFrame(this.layout(), this.room) : null, at = fr ? snap(fr.x, fr.z, 0) : { x: 0, z: 0, rot: 0 };
-    return fs.mount === 'wall' ? onWall(this.layout(), fs, at.x, at.z) : at;
+    const L = this.layout(), fr = this.room ? roomFrame(L, this.room) : this.level ? levelFrame(L, this.level) : null;
+    const c = fr ? fromHome(L, fr.x, fr.z, fr.y) : { x: 0, z: 0 }, at = snap(c.x, c.z, 0);
+    return fs.mount === 'wall' ? onWall(L, fs, at.x, at.z) : at;
+  }
+  /** LD2.0-D: the view follows the piece on show to its level (a stored piece placed upstairs, a piece chosen in the list). */
+  private follow() {
+    if (!this.level || !this.pending) return;
+    const l = levelOfAt(this.layout(), this.pending);
+    if (l && l !== this.level) { this.level = l; this.room = null; this.filtered = false; this.reframe(); }
+  }
+  /** The camera glides to what is chosen now; the see-through hole and the cutaway follow it (a point at chest height in the room or the level). */
+  private reframe() {
+    const v = this.view; if (!v) return;
+    const L = this.layout(), fr = this.room ? roomFrame(L, this.room) : this.level ? levelFrame(L, this.level) : null;
+    v.int.holeFocus = fr && (this.room || this.level) ? new THREE.Vector3(v.ox + fr.x, FLOOR + fr.y + 0.9, v.oz + fr.z) : null;
+    this.look.zoom = 1; this.focusT = performance.now(); this.focusFrom = this.focus ? { ...this.focus } : null;
   }
   /** Leaves the current piece (unsaved moves are undone at the next refresh). */
   private drop() {
@@ -202,7 +224,7 @@ export class HomeEditor {
     if (this.selSpec()?.mount === 'wall') { this.ctx.toast('Accroché au mur : fais-le glisser vers un autre mur'); return; }
     this.pending = turn(this.pending); this.status();
   }
-  /** Moves the selected piece to a point of the room (home coordinates), on the grid. */
+  /** Moves the selected piece to a point of the room (plan coordinates: LD2.0-D, a level's own), on the grid. */
   moveTo(x: number, z: number) { if (this.pending) { this.pending = this.hang(snap(x, z, this.pending.rot)); this.status(); } }
   put(): boolean {
     const why = this.why();
@@ -234,9 +256,12 @@ export class HomeEditor {
     const v = this.view; if (!v) return;
     const L = this.layout(), room = id ? planRooms(L).find(r => r.id === id) ?? L.plan?.rooms.find(r => r.id === id) ?? null : null;
     this.room = room?.id ?? null; this.filtered = !!room;
+    const fr = room ? roomFrame(L, room.id) : null;
+    if (fr && this.level) this.level = fr.level;                          // LD2.0-D: a room of another level brings the view there
     // the shell's see-through hole (src/housing/apartment.ts) opens round the framed room, not round the hidden player
-    v.int.holeFocus = room ? new THREE.Vector3(v.ox + (room.box.x0 + room.box.x1) / 2, 1.0, v.oz + (room.box.z0 + room.box.z1) / 2) : null;
-    this.look.zoom = 1; this.focusT = performance.now(); this.focusFrom = this.focus ? { ...this.focus } : null;
+    if (!this.level) v.int.holeFocus = room ? new THREE.Vector3(v.ox + (room.box.x0 + room.box.x1) / 2, 1.0, v.oz + (room.box.z0 + room.box.z1) / 2) : null;
+    if (this.level) this.reframe();
+    else { this.look.zoom = 1; this.focusT = performance.now(); this.focusFrom = this.focus ? { ...this.focus } : null; }
     if (room && this.look.pitch < ROOM_PITCH) this.look.pitch = ROOM_PITCH;
     const f = this.sel ? this.items().find(x => x.uid === this.sel) : undefined;
     if (f && !f.at && room) {                                              // the piece on show is not placed yet: it follows to the room in view
@@ -245,13 +270,22 @@ export class HomeEditor {
     }
     this.render();
   }
+  /** LD2.0-D, a home on several levels: shows a whole level (its chip); a stored piece on show comes out on it. */
+  chooseLevel(id: string) {
+    const v = this.view, L = this.layout(); if (!v || !homeLevels(L).some(l => l.id === id)) return;
+    this.level = id; this.room = null; this.filtered = false;
+    this.reframe();
+    const f = this.sel ? this.items().find(x => x.uid === this.sel) : undefined;
+    if (f && !f.at) { const fs = furnitureSpec(f.spec)!, h = this.homeUid()!; this.pending = autoPlace(L, fs, placedIn(this.s, h, f.uid), { level: id }) ?? this.fallbackSpot(fs); }
+    this.render();
+  }
 
   info() {
     const L = this.view ? this.layout() : null;
     return {
       open: this.isOpen, selected: this.sel, gesture: this.gest?.kind ?? null, pointers: this.ptrs.size, cam: this.ctx.camera.position.toArray().map(n => +n.toFixed(2)), avatar: this.ctx.player.body()?.group.visible ?? null, pending: this.pending ? { ...this.pending } : null, why: this.isOpen ? this.why() : null,
       items: this.items().map(f => ({ uid: f.uid, spec: f.spec, at: f.at ? { ...f.at } : null, room: this.roomIdOf(f.at) })),
-      room: this.room, rooms: L ? planRooms(L).map(r => r.id) : [], filtered: this.filtered, pendingRoom: this.roomIdOf(this.pending),
+      room: this.room, rooms: L ? planRooms(L).map(r => r.id) : [], filtered: this.filtered, pendingRoom: this.roomIdOf(this.pending), level: this.level || null,
       target: this.focus ? { x: +((this.view?.ox ?? 0) + this.focus.x).toFixed(2), z: +((this.view?.oz ?? 0) + this.focus.z).toFixed(2) } : null,
     };
   }
@@ -263,11 +297,11 @@ export class HomeEditor {
     const cam = this.ctx.camera, L = this.layout(), { yaw, pitch, zoom } = this.look;
     const me = this.ctx.player.body()?.group; if (me) me.visible = false;                // the avatar would hide the room while decorating
     // what the camera frames: the chosen room, or the whole home; it glides there (a third of a second) when a room chip is tapped
-    const fr = this.room ? roomFrame(L, this.room) : null, goal = fr ?? { x: 0, z: 0, w: L.w, d: L.d };
+    const fr = this.room ? roomFrame(L, this.room) : null, lf = !fr && this.level ? levelFrame(L, this.level) : null, goal = fr ?? lf ?? { x: 0, z: 0, w: L.w, d: L.d, y: 0 };
     const t = Math.min(1, (performance.now() - this.focusT) / 350), e = t * t * (3 - 2 * t);
     const f0 = this.focusFrom;
     this.focus = !f0 || t >= 1 ? { ...goal } : { x: f0.x + (goal.x - f0.x) * e, z: f0.z + (goal.z - f0.z) * e, w: f0.w + (goal.w - f0.w) * e, d: f0.d + (goal.d - f0.d) * e };
-    const F = this.focus, tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect;
+    const F = this.focus, tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect, gy = goal.y ?? 0;
     const portrait = cam.aspect < 1;
     let dist: number, tx: number, tz: number;
     if (fr) {
@@ -280,7 +314,7 @@ export class HomeEditor {
       const fit = Math.max((F.w / 2 + 0.5) / tanH, (F.d / 2 + 0.8) / tanV) * (portrait ? 1.12 : 1.2);
       dist = fit * zoom; tx = v.ox + F.x; tz = v.oz + F.z + F.d * (portrait ? 0.07 : 0.14);   // lifts the room clear of the slim toolbar at the bottom edge
     }
-    const ty = FLOOR;
+    const ty = FLOOR + gy;                                                  // LD2.0-D: the level in view
     cam.position.set(tx + dist * Math.sin(yaw) * Math.cos(pitch), ty + dist * Math.sin(pitch), tz + dist * Math.cos(yaw) * Math.cos(pitch) + (pitch > 1.5 ? dist * 0.01 : 0));
     cam.lookAt(tx, ty, tz);
     return true;
@@ -309,7 +343,7 @@ export class HomeEditor {
   screenOf(uid?: string): { x: number; y: number } | null {
     const v = this.view; if (!v) return null;
     const obj = (uid ? v.pieces.get(uid)?.obj : null) ?? (this.sel ? v.pieces.get(this.sel)?.obj : null) ?? this.ghost; if (!obj) return null;
-    const p = new THREE.Vector3(obj.position.x, FLOOR + 0.3, obj.position.z).project(this.ctx.camera), r = document.getElementById('c')!.getBoundingClientRect();
+    const p = new THREE.Vector3(obj.position.x, obj.position.y + 0.3, obj.position.z).project(this.ctx.camera), r = document.getElementById('c')!.getBoundingClientRect();
     return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height };
   }
   toggleView() { this.look.pitch = this.look.pitch > 1.45 ? ANGLED : OVERHEAD; this.look.yaw = 0; this.render(); }
@@ -317,11 +351,16 @@ export class HomeEditor {
   // One finger: on a piece it drags it (the grab keeps its offset, snapped to the grid); anywhere else it orbits the room, and a
   // short tap on the floor moves the piece there. Two fingers pinch to zoom (a drag in progress is dropped, never put).
   private ndc(e: PointerEvent) { const r = (e.target as HTMLElement).getBoundingClientRect(); return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); }
-  private floorAt(e: PointerEvent): THREE.Vector3 | null {
+  /** The floor under the pointer, as a placement point (LD2.0-D: on the level in view, in its plan coordinates), or null. */
+  private floorAt(e: PointerEvent): { x: number; z: number } | null {
+    const v = this.view; if (!v) return null;
     this.ray.setFromCamera(this.ndc(e), this.ctx.camera);
-    const p = new THREE.Vector3();
-    return this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR), p) ? p : null;
+    const p = new THREE.Vector3(), L = this.layout(), y = this.viewY();
+    if (!this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(FLOOR + y)), p)) return null;
+    return fromHome(L, p.x - v.ox, p.z - v.oz, y);
   }
+  /** The height of the floor in view (LD2.0-D: its level's; 0 in a one-level home). */
+  private viewY() { const L = this.layout(); return this.level ? homeLevels(L).find(l => l.id === this.level)?.y ?? 0 : 0; }
   /** The uid of the piece under the pointer (the ghost counts as the selected piece). */
   private pieceAt(e: PointerEvent): string | null {
     const v = this.view; if (!v) return null;
@@ -347,7 +386,7 @@ export class HomeEditor {
     if (hit) {
       if (hit !== this.sel) this.select(hit);
       const f = this.floorAt(e), p = this.pending;
-      this.gest = { kind: 'drag', x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, grab: f && p ? { x: p.x - (f.x - v.ox), z: p.z - (f.z - v.oz) } : { x: 0, z: 0 } };
+      this.gest = { kind: 'drag', x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, grab: f && p ? { x: p.x - f.x, z: p.z - f.z } : { x: 0, z: 0 } };
     } else this.gest = { kind: 'orbit', x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };
   }
   private moved(e: PointerEvent) {
@@ -364,7 +403,7 @@ export class HomeEditor {
       const k = 0.0075, dx = e.clientX - g.x0, dy = e.clientY - g.y0; g.x0 = e.clientX; g.y0 = e.clientY;
       this.look.yaw -= dx * k; this.look.pitch = Math.min(OVERHEAD, Math.max(MIN_PITCH, this.look.pitch + dy * k)); return;
     }
-    const f = this.floorAt(e); if (f && g.grab) this.moveTo(f.x - v.ox + g.grab.x, f.z - v.oz + g.grab.z);
+    const f = this.floorAt(e); if (f && g.grab) this.moveTo(f.x + g.grab.x, f.z + g.grab.z);
   }
   private up(e: PointerEvent) {
     const v = this.view, g = this.gest; this.ptrs.delete(e.pointerId);
@@ -372,7 +411,7 @@ export class HomeEditor {
     if (g.kind === 'pinch') { if (this.ptrs.size < 2) this.gest = null; return; }
     this.gest = null;
     if (g.kind === 'drag') { if (g.moved && !this.why()) this.put(); return; }              // dropped where it fits: placed and saved
-    if (!g.moved && performance.now() - g.t0 < 400) { const f = this.floorAt(e); if (f) this.moveTo(f.x - v.ox, f.z - v.oz); }
+    if (!g.moved && performance.now() - g.t0 < 400) { const f = this.floorAt(e); if (f) this.moveTo(f.x, f.z); }
   }
   private key(e: KeyboardEvent) {
     if (!this.view) return;
@@ -400,15 +439,24 @@ export class HomeEditor {
     this.el.querySelector('[data-a="put"]')?.classList.toggle('blocked', !!why);
   }
   private same(a: Placement | null | undefined, b: Placement | null | undefined) { return !!a && !!b && a.x === b.x && a.z === b.z && a.rot === b.rot; }
-  /** The room chips of a home built from a floor plan (🏠 the whole home). */
+  /**
+   * The room chips of a home built from a floor plan (🏠 the whole home). LD2.0-D, a home on several levels: a row of level chips (Rez-de-chaussée,
+   * Étage, Toit-terrasse: the whole level), then the chips of the rooms of the level in view.
+   */
   private renderRooms() {
-    const v = this.view, rooms = v ? planRooms(this.layout()) : [];
+    const v = this.view, L = v ? this.layout() : null, levels = L ? homeLevels(L) : [];
+    const rooms = v ? planRooms(L!).filter(r => !this.level || (roomFrame(L!, r.id)?.level ?? '') === this.level) : [];
     this.bandCache = null;
-    this.roomsEl.classList.toggle('on', !!rooms.length);
-    if (!rooms.length) { this.roomsEl.innerHTML = ''; return; }
-    this.roomsEl.innerHTML = [`<button type="button" data-room="" aria-label="Tout le logement" aria-pressed="${!this.room}" class="${this.room ? '' : 'on'}">🏠</button>`,
-      ...rooms.map(r => `<button type="button" data-room="${r.id}" aria-pressed="${this.room === r.id}" class="${this.room === r.id ? 'on' : ''}">${r.name}</button>`)].join('');
+    this.roomsEl.classList.toggle('on', !!rooms.length || levels.length > 1);
+    this.roomsEl.classList.toggle('levels', levels.length > 1);
+    if (!rooms.length && levels.length < 2) { this.roomsEl.innerHTML = ''; return; }
+    const SHORT: Record<string, string> = { rdc: 'RDC', etage: 'Étage', toit: 'Toit' };
+    const head = levels.length > 1
+      ? [`<div class="pl-levels">${levels.map(l => `<button type="button" data-level="${l.id}" aria-label="${l.name}" aria-pressed="${this.level === l.id && !this.room}" class="lv ${this.level === l.id ? 'on' : ''}">${SHORT[l.id] ?? l.name}</button>`).join('')}</div>`]
+      : [`<button type="button" data-room="" aria-label="Tout le logement" aria-pressed="${!this.room}" class="${this.room ? '' : 'on'}">🏠</button>`];
+    this.roomsEl.innerHTML = [...head, ...rooms.map(r => `<button type="button" data-room="${r.id}" aria-pressed="${this.room === r.id}" class="${this.room === r.id ? 'on' : ''}">${r.name}</button>`)].join('');
     this.roomsEl.querySelectorAll<HTMLElement>('[data-room]').forEach(b => b.addEventListener('click', () => this.chooseRoom(b.dataset.room || null)));
+    this.roomsEl.querySelectorAll<HTMLElement>('[data-level]').forEach(b => b.addEventListener('click', () => this.chooseLevel(b.dataset.level!)));
   }
   private render() {
     const v = this.view; if (!v) { this.el.classList.remove('on'); this.roomsEl.classList.remove('on'); return; }

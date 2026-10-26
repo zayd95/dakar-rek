@@ -73,9 +73,10 @@ export const HOMES: HomeSpec[] = [
   { id: 'maison_cite', kind: 'home', name: 'Maison familiale · Cité Jàmm', what: 'Une maison avec cour, grand salon et cuisine, au bout de la cité', price: 90_000_000, rent: 30_000, income: letIncome(30_000), upkeep: 100,
     hub: 'pikine', place: 'maison', where: 'Pikine · Cité Jàmm', size: 150, tier: 3, upgrades: [...COMFORT, { id: 'clim', name: 'Climatisation', what: 'Fraîcheur toute l’année : +15 énergie au réveil, loyer +15 %', price: 650_000, comfort: 15, rentMult: 1.15 }],
     home: { level: 'house', w: 11, d: 8, door: 'pikine:home:maison', floor: 'wood' } },
-  { id: 'villa_almadies', kind: 'home', name: 'Villa avec piscine · Almadies', what: 'Grand séjour ouvert sur la piscine, à deux rues de l’océan', price: 400_000_000, rent: 120_000, income: letIncome(120_000), upkeep: 500,
-    hub: 'almadies', place: 'villa', where: 'Almadies', size: 420, tier: 4, upgrades: [{ id: 'clim', name: 'Climatisation', what: '+15 énergie au réveil, loyer +15 %', price: 2_500_000, comfort: 15, rentMult: 1.15 }, { id: 'jardin', name: 'Jardin paysager', what: 'Bougainvilliers et palmiers : loyer +20 %', price: 8_000_000, rentMult: 1.2 }],
-    home: { level: 'villa', w: 14, d: 10, door: 'almadies:home:villa', floor: 'marble' } },
+  // LD2.0-D: the flagship villa, walked on its three levels (src/housing/villaPlan.ts): 288 m² on two storeys, the pool garden, two balconies, the roof terrace
+  { id: 'villa_almadies', kind: 'home', name: 'Villa avec piscine · Almadies', what: 'Deux étages, grand salon ouvert sur la piscine, suite parentale, toit-terrasse avec hélipad', price: 400_000_000, rent: 120_000, income: letIncome(120_000), upkeep: 500,
+    hub: 'almadies', place: 'villa', where: 'Almadies', size: 288, tier: 4, upgrades: [{ id: 'clim', name: 'Climatisation', what: '+15 énergie au réveil, loyer +15 %', price: 2_500_000, comfort: 15, rentMult: 1.15 }, { id: 'jardin', name: 'Jardin paysager', what: 'Bougainvilliers et palmiers : loyer +20 %', price: 8_000_000, rentMult: 1.2 }],
+    home: { level: 'villa', w: 16, d: 9, door: 'almadies:home:villa', floor: 'marble' } },
   { id: 'residence_ngor', kind: 'home', name: 'Résidence de luxe · Pointe de Ngor', what: 'Un étage entier face à l’île de Ngor, terrasse et salon de réception', price: 2_500_000_000, rent: 600_000, income: letIncome(600_000), upkeep: 2_500,
     hub: 'almadies', place: 'residence', where: 'Almadies · Ngor', size: 1_200, tier: 5, upgrades: [{ id: 'domotique', name: 'Maison connectée', what: 'Lumières et clim pilotées : +20 énergie au réveil, loyer +25 %', price: 40_000_000, comfort: 20, rentMult: 1.25 }],
     home: { level: 'residence', w: 18, d: 12, door: 'almadies:home:residence', floor: 'marble' } },

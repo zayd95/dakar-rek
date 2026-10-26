@@ -1,6 +1,9 @@
 import type { Placement } from '../core/types';
 import { HOMES, type FurnitureSpec, type FurnitureType, type HomeLevel, type HomeSpec } from './catalog';
-import { clearZones, fitsRoom, inner, planFor, reachable, roomAt, whyNotPlan, type Fixture, type FloorPlan, type Room, type RoomKind } from '../housing/plan';
+import {
+  clearZones, fitsRoom, homeBox, inner, levelAtX, levelOf, levelOfRoom, levelsOf, planFor, reachable, roomAt, toPlan, toWorld, wallPieces, whyNotPlan,
+  type Fixture, type FloorPlan, type Level, type Room, type RoomKind,
+} from '../housing/plan';
 
 /**
  * Where each home's interior stands, off the street grid (src/economy/estate.ts builds it there): one slot per catalogue
@@ -109,7 +112,8 @@ export function layoutOf(h: HomeSpec): HomeLayout {
   let L = planLayouts.get(h.id);
   if (!L) {
     const front = plan.openings.find(o => o.kind === 'front');
-    L = { level: h.home.level, w: plan.w - plan.outWall, d: plan.d - plan.outWall, doorX: front?.x ?? 0, blocks: plan.fixtures.map(f => R(f.box.x0, f.box.z0, f.box.x1, f.box.z1)), clear: clearZones(plan).map(c => R(c.x0, c.z0, c.x1, c.z1)), defaults: {}, plan };
+    const B = homeBox(plan);
+    L = { level: h.home.level, w: B.x1 - B.x0 - plan.outWall, d: B.z1 - B.z0 - plan.outWall, doorX: front?.x ?? 0, blocks: plan.fixtures.map(f => R(f.box.x0, f.box.z0, f.box.x1, f.box.z1)), clear: clearZones(plan).map(c => R(c.x0, c.z0, c.x1, c.z1)), defaults: {}, plan };
     planLayouts.set(h.id, L);
   }
   return L;
@@ -169,8 +173,8 @@ const steps = (half: number, size: number) => {
  * Rugs go to the middle of the room first. In a home built from a floor plan: the room its kind belongs to first (`room`, the room the
  * placement mode shows, before it), then any room (`autoPlaceInPlan`).
  */
-export function autoPlace(layout: HomeLayout, f: FurnitureSpec, others: readonly Placed[], o: { room?: string | null } = {}): Placement | null {
-  if (layout.plan) return autoPlaceInPlan(layout, f, others, o.room ?? null);
+export function autoPlace(layout: HomeLayout, f: FurnitureSpec, others: readonly Placed[], o: { room?: string | null; level?: string | null } = {}): Placement | null {
+  if (layout.plan) return autoPlaceInPlan(layout, f, others, o.room ?? null, o.level ?? null);
   const ok = (at: Placement) => !whyNot(layout, f, at, others);
   const def = layout.defaults[f.id];
   if (def && ok(def)) return { ...def };
@@ -209,21 +213,30 @@ export const WHY = {
   window: 'Pas devant la fenêtre',
   hidden: 'Caché derrière un grand meuble',
   hides: 'Ça cacherait ce qui est accroché au mur',
+  // LD2.0-D: a home on several levels
+  stair: 'Pas dans l’escalier',
+  helipad: 'Laisse l’hélipad libre',
+  noCeiling: 'Pas de plafond dehors',
 } as const;
 /** On a built-in fitting, and in front of it (where a person stands to use it). */
 const ON_FIXTURE: Record<Fixture['kind'], string> = {
   counter: 'Pas sur le plan de travail', sink: 'Pas sur le plan de travail', stove: 'Pas sur le plan de travail', fridge: 'Pas sur le frigo',
   shower: 'Pas dans la douche', wc: 'Pas sur les toilettes', basin: 'Pas sur le lavabo',
+  bath: 'Pas dans la baignoire', pool: 'Pas dans la piscine', heli: 'Pas sur l’hélicoptère',
 };
 const FRONT_OF: Record<Fixture['kind'], string> = {
   counter: 'Laisse la place devant le plan de travail', sink: 'Laisse la place devant l’évier', stove: 'Laisse la place devant la cuisinière', fridge: 'Laisse la place devant le frigo',
   shower: 'Laisse l’accès à la douche', wc: 'Laisse l’accès aux toilettes', basin: 'Laisse la place devant le lavabo',
+  bath: 'Laisse l’accès à la baignoire', pool: 'Laisse le bord de la piscine libre', heli: 'Laisse le passage autour de l’hélicoptère',
 };
 /** « vers la chambre »: a room named with its article. */
-const ARTICLE: Record<RoomKind, string> = { entree: 'l’', sejour: 'le ', cuisine: 'la ', chambre: 'la ', sdb: 'la ', degagement: 'le ' };
+const ARTICLE: Record<RoomKind, string> = {
+  entree: 'l’', sejour: 'le ', cuisine: 'la ', chambre: 'la ', sdb: 'la ', degagement: 'le ',
+  manger: 'la ', bureau: 'le ', dressing: 'le ', palier: 'le ', terrasse: 'la ', balcon: 'le ',
+};
 export const towardRoom = (r: Room) => `${ARTICLE[r.kind]}${r.name.charAt(0).toLowerCase()}${r.name.slice(1)}`;
 /** The room named first when a piece would cut several off (the deepest of the home first). */
-const CUT_ORDER: RoomKind[] = ['chambre', 'sdb', 'cuisine', 'sejour', 'degagement', 'entree'];
+const CUT_ORDER: RoomKind[] = ['chambre', 'dressing', 'sdb', 'bureau', 'cuisine', 'manger', 'sejour', 'balcon', 'terrasse', 'degagement', 'palier', 'entree'];
 /** How far a hung piece's back may stand from its wall (m). */
 const BACK = 0.02;
 const quarter = (at: Placement) => ((Math.round(at.rot) % 4) + 4) % 4;
@@ -270,7 +283,7 @@ function hiding(f: FurnitureSpec, at: Placement, others: readonly Placed[]): str
  */
 function whyNotInPlan(p: FloorPlan, f: FurnitureSpec, at: Placement, others: readonly Placed[]): string | null {
   const r = footprint(f, at);
-  if (f.mount === 'ceiling') return !fitsRoom(p, r) ? WHY.room : hung(f, r, others) ? WHY.other : null;
+  if (f.mount === 'ceiling') { const room = fitsRoom(p, r); return !room ? WHY.room : room.outdoor ? WHY.noCeiling : hung(f, r, others) ? WHY.other : null; }
   if (f.mount === 'wall') return whyNotOnWall(p, f, at, r, others);
   const why = whyNotPlan(p, r, { rug: !!f.flat });
   if (why) return reasonOf(p, why, r);
@@ -282,6 +295,8 @@ function reasonOf(p: FloorPlan, why: NonNullable<ReturnType<typeof whyNotPlan>>,
     case 'outside': case 'wall': return WHY.room;
     case 'door': return WHY.door;
     case 'passage': case 'entry': return WHY.passage;
+    case 'stair': return WHY.stair;
+    case 'helipad': return WHY.helipad;
     case 'fitting': {
       const on = p.fixtures.find(x => overlaps(x.box, r));
       if (on) return ON_FIXTURE[on.kind];
@@ -314,6 +329,9 @@ function whyNotOnWall(p: FloorPlan, f: FurnitureSpec, at: Placement, r: Rect, ot
     const c = alongX ? o.x : o.z; if (a0 < c + o.width / 2 && a1 > c - o.width / 2) return o.kind === 'arch' ? 'Pas devant le passage' : 'Pas devant la porte';
   }
   for (const w of p.windows) if (w.room === room.id && w.side === side && a0 < w.at + w.width / 2 && a1 > w.at - w.width / 2) return WHY.window;
+  // LD2.0-D: outdoors, only against a wall or a garden wall (never a railing, a parapet or nothing)
+  if (room.outdoor && !wallPieces(p).some(w => (w.kind === 'wall' || w.kind === 'garden') && w.axis === (alongX ? 'x' : 'z') && Math.abs(w.at - line) < EPS
+    && (alongX ? w.x0 <= a0 + EPS && w.x1 >= a1 - EPS : w.z0 <= a0 + EPS && w.z1 >= a1 - EPS))) return WHY.onWall;
   const tall = p.fixtures.find(x => x.h > 1.2 && overlaps(x.box, r)); if (tall) return ON_FIXTURE[tall.kind];
   if (clearZones(p).some(c => c.why === 'door' && overlaps(c, r))) return WHY.door;
   return hung(f, r, others) ? WHY.other : hiding(f, at, others);
@@ -321,21 +339,27 @@ function whyNotOnWall(p: FloorPlan, f: FurnitureSpec, at: Placement, r: Rect, ot
 
 /** The room each type of furniture goes to first in a home built from a floor plan; 'any': the séjour first, else wherever it fits. */
 export const TYPE_ROOM: Record<FurnitureType, RoomKind | 'any'> = {
-  chair: 'sejour', sofa: 'sejour', table: 'sejour', tv: 'sejour', radio: 'sejour', desk: 'sejour', dining: 'sejour', shelf: 'sejour', outdoor: 'sejour',
+  // LD2.0-D: a desk goes to the study, a dining set to the dining room, outdoor furniture to the terrace, where the home has one (else the séjour)
+  chair: 'sejour', sofa: 'sejour', table: 'sejour', tv: 'sejour', radio: 'sejour', desk: 'bureau', dining: 'manger', shelf: 'sejour', outdoor: 'terrasse',
   bed: 'chambre', mattress: 'chambre', wardrobe: 'chambre', mirror: 'chambre',
   kitchen: 'cuisine', appliance: 'cuisine', bath: 'sdb',
   rug: 'any', plant: 'any', lamp: 'any', decor: 'any',
 };
 export const roomKindOf = (f: FurnitureSpec): RoomKind | 'any' => f.room ?? TYPE_ROOM[f.type] ?? 'any';
-const FALLBACK: RoomKind[] = ['sejour', 'chambre', 'cuisine', 'entree', 'degagement', 'sdb'];
+const FALLBACK: RoomKind[] = ['sejour', 'chambre', 'cuisine', 'entree', 'degagement', 'sdb', 'manger', 'bureau', 'dressing', 'terrasse', 'balcon', 'palier'];
 /** The rooms tried in turn for a piece: the one asked for, the rooms of its kind, then every other (the séjour first). */
-export function roomsFor(p: FloorPlan, f: FurnitureSpec, prefer: string | null = null): Room[] {
+export function roomsFor(p: FloorPlan, f: FurnitureSpec, prefer: string | null = null, level: string | null = null): Room[] {
   const kind = roomKindOf(f), out: Room[] = [];
   const add = (r: Room | undefined) => { if (r && !out.includes(r)) out.push(r); };
   if (prefer) add(p.rooms.find(r => r.id === prefer));
-  if (kind !== 'any') for (const r of p.rooms) if (r.kind === kind) add(r);
-  for (const k of FALLBACK) for (const r of p.rooms) if (r.kind === k) add(r);
-  for (const r of p.rooms) add(r);
+  // LD2.0-D: the level in view first (the editor), by the same order
+  const on = (r: Room) => !level || levelOfRoom(p, r).id === level;
+  for (const pass of level ? [true, false] : [false]) {
+    const ok = (r: Room) => !pass || on(r);
+    if (kind !== 'any') for (const r of p.rooms) if (r.kind === kind && ok(r)) add(r);
+    for (const k of FALLBACK) for (const r of p.rooms) if (r.kind === k && ok(r)) add(r);
+    for (const r of p.rooms) if (ok(r)) add(r);
+  }
   return out;
 }
 /**
@@ -343,9 +367,12 @@ export function roomsFor(p: FloorPlan, f: FurnitureSpec, prefer: string | null =
  * outwards: north, west, east, south; the walls with a window first for outdoor furniture, by the window), else anywhere in it; rugs and hanging
  * lamps from the middle out. Never a spot `whyNot` refuses; null: the home is full for it (it stays stored, « rangé »).
  */
-function autoPlaceInPlan(L: HomeLayout, f: FurnitureSpec, others: readonly Placed[], prefer: string | null): Placement | null {
+function autoPlaceInPlan(L: HomeLayout, f: FurnitureSpec, others: readonly Placed[], prefer: string | null, level: string | null): Placement | null {
   const p = L.plan!, ok = (at: Placement) => !whyNot(L, f, at, others);
-  for (const room of roomsFor(p, f, prefer)) { const at = spotIn(p, room, f, ok); if (at) return at; }
+  for (const room of roomsFor(p, f, prefer, level)) {
+    if (f.mount === 'ceiling' && room.outdoor) continue;
+    const at = spotIn(p, room, f, ok); if (at) return at;
+  }
   return null;
 }
 function spotIn(p: FloorPlan, room: Room, f: FurnitureSpec, ok: (at: Placement) => boolean): Placement | null {
@@ -375,17 +402,48 @@ function spotIn(p: FloorPlan, room: Room, f: FurnitureSpec, ok: (at: Placement) 
   return f.mount ? null : grid([0, 1]);
 }
 
-/** The rooms the placement mode offers to frame (its room chips), in the plan's order; the short hall (dégagement) is left out. */
-export const planRooms = (layout: HomeLayout): Room[] => layout.plan ? layout.plan.rooms.filter(r => r.kind !== 'degagement') : [];
+/** The rooms the placement mode offers to frame (its room chips), in the plan's order; the short hall (dégagement) and the stair halls are left out. */
+export const planRooms = (layout: HomeLayout): Room[] => layout.plan ? layout.plan.rooms.filter(r => r.kind !== 'degagement' && r.kind !== 'palier') : [];
 /** The room a placed piece stands in (from where it stands: nothing of it is saved), or null (a one-room home, a piece astride a doorway). */
 export function roomOf(layout: HomeLayout, at: Placement): Room | null {
   return layout.plan ? roomAt(layout.plan, at.x, at.z) : null;
 }
-/** The centre of a room's floor (where the placement mode looks when its chip is chosen), and its inner size. */
-export function roomFrame(layout: HomeLayout, id: string): { x: number; z: number; w: number; d: number } | null {
-  const r = layout.plan?.rooms.find(x => x.id === id); if (!r) return null;
-  const i = inner(layout.plan!, r);
-  return { x: (i.x0 + i.x1) / 2, z: (i.z0 + i.z1) / 2, w: i.x1 - i.x0, d: i.z1 - i.z0 };
+/**
+ * The centre of a room's floor (where the placement mode looks when its chip is chosen), and its inner size. LD2.0-D: in the home's frame (a level's
+ * room at its house x), with the height `y` of its level's floor.
+ */
+export function roomFrame(layout: HomeLayout, id: string): { x: number; z: number; w: number; d: number; y: number; level: string } | null {
+  const p = layout.plan, r = p?.rooms.find(x => x.id === id); if (!r) return null;
+  const i = inner(p!, r), l = levelOfRoom(p!, r);
+  return { x: (i.x0 + i.x1) / 2 - l.dx, z: (i.z0 + i.z1) / 2, w: i.x1 - i.x0, d: i.z1 - i.z0, y: l.y, level: l.id };
+}
+
+// ------------------------------------------------------------------------------------------------ LD2.0-D: a home on several levels
+/** The levels of a home (one for every home but the villa), lowest first. */
+export const homeLevels = (layout: HomeLayout): readonly Level[] => layout.plan?.levels ?? [];
+/** Where a placement (plan space) stands in the home: house metres, and `y` the height of its level's floor above the ground floor's. */
+export function inHome(layout: HomeLayout, x: number, z: number): { x: number; y: number; z: number; level: string } {
+  if (!layout.plan?.levels) return { x, y: 0, z, level: '' };
+  const w = toWorld(layout.plan, x, z);
+  return { x: w.x, y: w.y, z: w.z, level: w.level.id };
+}
+/** The placement point (plan space) under a point of the home at height `y` (the level of that height). */
+export function fromHome(layout: HomeLayout, hx: number, hz: number, y = 0): { x: number; z: number } {
+  if (!layout.plan?.levels) return { x: hx, z: hz };
+  const q = toPlan(layout.plan, hx, hz, y);
+  return { x: q.x, z: q.z };
+}
+/** The level a placement stands on (its id, '' in a one-level home). */
+export const levelOfAt = (layout: HomeLayout, at: Placement): string => layout.plan?.levels ? levelAtX(layout.plan, at.x).id : '';
+/** The level a height of the home stands on. */
+export const levelAtY = (layout: HomeLayout, y: number): string => layout.plan?.levels ? levelOf(layout.plan, y).id : '';
+/** What the placement mode frames for a whole level: the middle and size of its rooms (house metres) and its floor's height. */
+export function levelFrame(layout: HomeLayout, id: string): { x: number; z: number; w: number; d: number; y: number; level: string } | null {
+  const p = layout.plan; if (!p?.levels) return null;
+  const l = levelsOf(p).find(q => q.id === id); if (!l) return null;
+  const rs = p.rooms.filter(r => levelOfRoom(p, r) === l); if (!rs.length) return null;
+  const x0 = Math.min(...rs.map(r => r.box.x0)) - l.dx, x1 = Math.max(...rs.map(r => r.box.x1)) - l.dx, z0 = Math.min(...rs.map(r => r.box.z0)), z1 = Math.max(...rs.map(r => r.box.z1));
+  return { x: (x0 + x1) / 2, z: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0, y: l.y, level: l.id };
 }
 
 /**

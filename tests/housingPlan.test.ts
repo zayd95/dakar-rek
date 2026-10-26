@@ -6,10 +6,11 @@ const room = (id: string) => P.rooms.find(r => r.id === id)!;
 const centre = (r: Rect) => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2 });
 
 describe('the F2 of the Résidence Jàmm: a floor plan (LD2.0-C)', () => {
-  it('is the apartment\'s plan; the other homes keep their open room', () => {
+  it('is the apartment\'s plan; the other homes keep their open room (LD2.0-D: but the Almadies villa, on three levels: tests/villaPlan.test.ts)', () => {
     expect(planFor('appart_jamm')).toBe(P);
     expect(planFor('maison_cite')).toBeNull();
-    expect(Object.keys(PLANS)).toEqual(['appart_jamm']);
+    expect(planFor('residence_ngor')).toBeNull();
+    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'villa_almadies']);
   });
 
   it('has the rooms the brief asks for, and they tile the home with no gap and no overlap', () => {
