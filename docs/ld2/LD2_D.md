@@ -123,7 +123,7 @@
 - **`src/world/helicopter.ts`:** `buildHelicopter()`, a stand-in of its size that lane V-E draws.
 - **`src/housing/villaFacade.ts`:** `buildVillaFacade()`, the house's volume, which lane V-S draws from the plan.
 
-## Lanes (two agents and the integration owner)
+## Lanes (three agents and the integration owner)
 - **V-S, the villa building:**
   - the plan contract version 2 and the villa's three-level plan;
   - the shell: walls, floors, stairs, doors, windows, balconies, rooftop, pool basin;
@@ -155,11 +155,28 @@
     - new modules for the swim, the reception and the showcase;
     - the « Mes pistes » savings goal;
     - `vite.config.ts` and a title-screen entry for the showcase, only behind `import.meta.env.VITE_OWNER_SHOWCASE`.
+  - **K-L** (see below): `src/world/furnitureKit.ts`, `src/world/furnitureAtlas.ts`, `src/economy/furnitureKitAdapter.ts`, and the furniture list and `FurnitureSpec` type of `catalog.ts`.
   - Anything else: ask the integration owner.
+- **K-L, the « Collection Almadies »** (owner's request, 26 Oct: « Attached are furniture catalogues reference to make the furnitures more premium and luxurious »):
+  - **The references:** three sheets the owner sent; they are not stored in the repository, as one carries a brand.
+    - a modern-living set: wingback and tufted-leather beds, a curved sectional on a bronze plinth, marble tables, a round marble dining table, lacquered storage, a crystal ring chandelier;
+    - ten modern sofas: bouclé, rounded, chaise sectionals;
+    - a walnut-and-greige set with real sizes in cm.
+  - **Today's Prestige grade is ornate and traditional** (red velvet, gold, carving). This line is modern and calm: cream bouclé, greige linen, walnut, black and white marble, thin bronze lines, low plinths with a shadow gap, rounded cushions.
+  - **About 30 pieces**, all Prestige and marked `line: 'almadies'`, from 350 000 F to 7 500 000 F:
+    - living room: three sofas, two armchairs, three tables, a TV stand, a sideboard, two bookcases;
+    - two dining sets;
+    - bedroom: three beds, two bedside tables, a bed bench, a dresser, a chest, a wardrobe, a dressing table;
+    - a desk;
+    - a ring chandelier, two floor lamps, a round jute rug, an oval mirror, a planter.
+  - **Kit rules, as before:** ten new `lx` kit types in the three grades; one draw call (two with crystal); under 1 500 triangles; the footprint and seats from the kit. The atlas grows to 512 × 1024, with this line in y 768…1023. New ids only, no save change.
+  - **Proof:** tests, a contact sheet of the line, and the pieces that fit in the F2, by day and at night with draw calls and triangles.
 - **Integration:**
   - the contract commit (types, stubs, ids);
   - the acceptance `scripts/check-ld2d.mjs`: gate → entrance → ground floor → upstairs → rooftop → pool → SUV → furnish → invite a second player (two pages, local worker) → reload;
-  - the regression, performance, pictures and the private preview.
+  - a « Collection Almadies » section in the catalogue, and the owner's showcase villa furnished with the line;
+  - the regression, performance, pictures and the private preview;
+  - for the owner (26 Oct): screenshots of the finished villa, a video of the playthrough (the acceptance, recorded and converted to MP4), and the playable private preview.
 
 ## Not in this slice
 - Helicopter flights, the airport and the jet.
