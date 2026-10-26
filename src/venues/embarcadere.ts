@@ -8,6 +8,7 @@ import type { Effects } from '../activity/types';
 import { buildBoat } from '../world/boats';
 import { BOAT_KINDS, TRAVERSEE_SITE as S, wadeDepth, type BoatKind, type BoatModel, type LocalSeat, type P2, type Pose } from '../sea/traverseeSite';
 import { ngorGroundY } from '../world/ngor';
+import { beachSandY } from '../world/ngorBay';
 import * as R from '../sea/traverseeRules';
 import { VTC_LOOKS } from '../transport/vtcRules';
 import { ECONOMY } from '../economy/config';
@@ -91,11 +92,13 @@ const add = (a: P2, d: P2, k: number): P2 => ({ x: a.x + d.x * k, z: a.z + d.z *
 /** Each boat at the island's landing beach: the contract's pose, run in as far as the pirogue's bow (REF_LEN). */
 export const islandPose = (length: number): Pose => ({ ...S.island.beached, z: S.island.beached.z - (REF_LEN - length) / 2 });
 
-/** Where the feet are at (x, z): the island's sand (below the sea off its shore, never deeper than wading); the mainland's beach sloping into the shallows at its waterline (wadeDepth). */
+/** Where the feet are at (x, z): the island's sand (below the sea off its shore, never deeper than wading); the mainland's beach, its wet sand
+ *  sloping down to the waterline as the world built it (src/world/ngorBay.ts beachSandY; `beach` is the feet's height on the dry sand), then the
+ *  shallows (wadeDepth). */
 export function groundAt(x: number, z: number, beach = 0.12): number {
   if (z < ISLAND_Z) return Math.max(ngorGroundY(x, z), S.seaY - WADE_MAX);
   if (z < S.shoreZ) return S.seaY - wadeDepth(z);
-  return lerp(S.seaY, beach, Math.min(1, z - S.shoreZ));                 // the wet sand's last metre down to the water's edge
+  return Math.max(S.seaY, beachSandY(z) + beach - beachSandY(0));
 }
 const dry = (p: P2) => groundAt(p.x, p.z) >= S.seaY + 0.03;
 /** From `p` along `d` (unit) to the first dry sand, and `more` m beyond (`p` itself, and beyond, if it is dry already). */
@@ -688,9 +691,11 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
   };
   /** Arriving (the owner's photo from a pirogue coming in to the island): from behind the helm, over the seated heads and the bow, at the beach ahead. */
   const bowView = (c: Craft) => {
-    const s = Math.sin(c.yaw), k = Math.cos(c.yaw), back = c.m.length / 2 - 0.4, ahead = c.m.length / 2 + 15, side = -0.55;   // over the helm, port of the motor, the stern post behind
-    W1.set(c.x + side * k + back * s, S.seaY + 2.5, c.z - side * s + back * k);
-    W2.set(c.x - ahead * s, 0.7, c.z - ahead * k);
+    // over the helm, port of the motor, the stern post behind; high enough that the seated heads sit low in the picture and the beach, its parasols
+    // and the island's rooftop restaurant fill it (as in the photo)
+    const s = Math.sin(c.yaw), k = Math.cos(c.yaw), back = c.m.length / 2 - 0.4, ahead = c.m.length / 2 + 22, side = -0.55;
+    W1.set(c.x + side * k + back * s, S.seaY + 3.2, c.z - side * s + back * k);
+    W2.set(c.x - ahead * s, 1.9, c.z - ahead * k);
     return { pos: W1, look: W2 };
   };
   const viewWanted = (dt: number): { pos: THREE.Vector3; look: THREE.Vector3 } => {

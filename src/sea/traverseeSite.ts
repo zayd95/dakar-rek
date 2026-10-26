@@ -88,15 +88,6 @@ export const TRAVERSEE_SITE = {
   },
   /** A way across that stays in open water, between the two beaches (the crossing pushes off, turns the boat round and lands bow first at either end). */
   route: [{ x: 44, z: -182 }, { x: 43, z: -230 }, { x: 41, z: -272 }] as P2[],
-  /** @deprecated version 1 (the pier and the jetties), kept only until both lanes have moved to version 2: removed at integration. */
-  v1: {
-    waiting: [{ x: 28.6, z: -145.5 }, { x: 31.4, z: -146 }, { x: 28.9, z: -148.2 }, { x: 31.1, z: -148.8 }] as P2[],
-    quayPath: [{ x: 30, z: -147 }, { x: 30, z: -158 }, { x: 30.8, z: -167 }, { x: 32, z: -168.5 }] as P2[],
-    quayMooring: { x: 34.2, z: -168.5, yaw: 0 } as Pose,
-    jetty: { x0: 34, x1: 38, z0: -302, z1: -286 },
-    mooring: { x: 40.2, z: -290, yaw: 0 } as Pose,
-    path: [{ x: 38, z: -290 }, { x: 36, z: -291 }, { x: 36, z: -302 }, { x: 38, z: -312 }] as P2[],
-  },
 } as const;
 
 /** The deck a person walks on at (x, z) on the quay's scenery: the pier's planks or the pontoon; null elsewhere (sand, shallows: the world's ground). */
