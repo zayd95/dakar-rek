@@ -154,6 +154,12 @@ export interface DealerDef {
 
 const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
 
+/**
+ * An action offered at the wheel by another module, first among the driver's (LD2.0-D: « Garer à la villa », src/villa/villaModule.ts), or null
+ * when it does not apply to this vehicle where it stands. Read while the driver's actions are listed; it must not allocate.
+ */
+export const rideHooks: { extra: ((m: OwnedVehicleModule) => Affordance | null) | null } = { extra: null };
+
 /** Distance from (x, z) to the nearest road centre line (pavements are 5–7 m from it). */
 export function roadDistance(x: number, z: number): number {
   let d = Infinity;
@@ -385,6 +391,23 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     return true;
   }
 
+  /**
+   * LD2.0-D: the vehicle being driven goes into a parking place of this hub (a villa's bay, src/villa/villaModule.ts): set down there at once,
+   * stopped, the driver getting out beside it; saved like any parking spot (it is there after a reload, « Monter » takes it). False when it is
+   * not being driven, is a dealer's car on trial, or is not in this hub.
+   */
+  parkAt(x: number, z: number, yaw: number): boolean {
+    if (!this.vehicle || !this.driving || !this.hub || this.trial || this.entry || this.exit) return false;
+    this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0; this.st.steer = 0; this.leaving = false;
+    this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0);
+    this.getOff(true);
+    return true;
+  }
+  /** The vehicle in hand is a dealer's car on a trial (never the player's own). */
+  get onTrial() { return this.trial; }
+  /** Its speed now (m/s, signed), while driven. */
+  get speedNow() { return this.driving ? this.st.speed : 0; }
+
   /** Driving: its own interaction space (no shop counters while driving)… */
   space(): string | null { return this.driving && this.hub ? `${this.hub.id}:${this.def.space}` : null; }
   /** …but the player stays visible to the street. */
@@ -422,6 +445,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
     const moto = this.def.kit === 'moto';
     ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1), ...(moto ? {} : { radio: () => this.radioNext() }) });
+    { const ex = rideHooks.extra?.(this) ?? null; ridePad.extra(this, ex && !ex.disabled ? ex : null); }   // LD2.0-D: « Garer à la villa » on the pad (the action button is hidden while driving)
     // the stick: forward = throttle, left / right = steering, both at once on a diagonal. « Accélérer » (held) opens the boosted speed range, « Frein » brakes and, held at a standstill, backs a car up gently.
     const keys = ctx.input.keys, joy = ctx.mode() === 'play' ? ctx.input.joy : { x: 0, y: 0 }, pressed = (...c: string[]) => ctx.mode() === 'play' && c.some(k => keys.has(k));
     const cmd: DriveCmd = ridePad.active
@@ -1372,6 +1396,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   // ---------------------------------------------------------------- targets
   private parkedAff: Affordance[] = [];
   private rideAff: Affordance[] = [];
+  /** The driver's actions with another module's first (rideHooks), reused. */
+  private rideAll: Affordance[] = [];
 
   private collectFloor(x: number, z: number, out: Target[]) {
     const d = this.spec?.drive; if (!d) return;
@@ -1445,7 +1471,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       { id: 'vue', verb: 'use', label: 'Changer de vue', icon: '🎥', run: () => this.cam.next(this.spec?.cameras.length ?? 1) },
     ];
     this.rideAff[0].label = this.leaving ? 'Tu t’arrêtes…' : this.def.text.getOff;
-    return this.rideAff;
+    const extra = rideHooks.extra?.(this) ?? null;
+    if (!extra) return this.rideAff;
+    const all = this.rideAll; all.length = 0; all.push(extra); for (const a of this.rideAff) all.push(a);
+    return all;
   }
 }
 

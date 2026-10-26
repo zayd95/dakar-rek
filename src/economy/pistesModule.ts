@@ -6,6 +6,7 @@ import { relLevel } from '../venues/venue';
 import { dealerOffer } from './credit';
 import { specOf } from './catalog';
 import { assetsOf } from './assets';
+import { villaFactsOf } from '../villa/facts';
 import { nextPrice, unitsOwned } from './business';
 import { FURNITURE, furnitureCount, priceOf } from './furniture';
 import { ACTIVITIES, ACTIVITY_INFO, isRecent } from './polyvalence';
@@ -65,6 +66,7 @@ class PistesModule implements GameModule {
       needs: { social: d.needs.social, moral: d.needs.moral },
       square: square ? { id: square.id, hub, name: square.name } : null,
       variety: ACTIVITIES.filter(a => !isRecent(s, a)).map(a => ({ label: ACTIVITY_INFO[a].label, where: ACTIVITY_INFO[a].where })),
+      villa: villaFactsOf(s),                                                                         // LD2.0-D: the villa as a savings goal (src/villa/goal.ts)
     };
   }
 

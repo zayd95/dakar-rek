@@ -1,4 +1,5 @@
 import type { HubId } from '../core/types';
+import { VILLA_PLACE, villaBracket, villaGoalLine, villaPlausible, type VillaGoalFacts } from '../villa/goal';
 
 /**
  * « Mes pistes » (LD2.0-A1): a few honest leads drawn from the player's real situation — work done, cash, savings, what they own, who trusts them, where
@@ -51,6 +52,8 @@ export interface PisteFacts {
   square: PlaceRef | null;
   /** Activities not practised lately (src/economy/polyvalence.ts), with where they are done. */
   variety: { label: string; where: string }[];
+  /** LD2.0-D: the villa of the Almadies as a long-term savings goal (src/villa/goal.ts); null or absent when this build has none. */
+  villa?: VillaGoalFacts | null;
 }
 
 const fmt = (v: number) => `${Math.round(v).toLocaleString('fr-FR')} F`;
@@ -109,6 +112,10 @@ export function pistes(f: PisteFacts, max = 4): Piste[] {
   // people: the player has not seen anyone for a while
   if (f.square && f.needs.social < 35) {
     out.push({ id: 'meet', icon: '🫖', title: 'Voir du monde', line: `Ça fait longtemps que tu n’as parlé à personne. Passe prendre un thé et des nouvelles : ${f.square.name}.`, go: { place: f.square }, key: `social|${f.hub}`, afterWork: false });
+  }
+  // LD2.0-D: the villa, once it is a plausible next step (a restaurant, an immeuble, the income or the worth): a long-term savings goal, last
+  if (f.villa && villaPlausible(f.villa)) {
+    out.push({ id: 'villa_goal', icon: '🏡', title: 'Objectif : la villa', line: villaGoalLine(f.villa), go: { place: VILLA_PLACE }, key: `villa|${villaBracket(f.villa.cash, f.villa.price)}`, afterWork: false });
   }
   return out.slice(0, max);
 }

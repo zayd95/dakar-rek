@@ -34,6 +34,9 @@ import { footprint, homeOrigin, layoutOf, planRooms, roomKindOf, roomOf, toHome,
 import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
 import { Batch, signTexture } from '../world/batch';
 import { BLK, HALF, PITCH, ROAD } from '../world/builder';
+import { FRONT_DOOR as VILLA_DOOR, GATE as VILLA_GATE, VILLA_ID, onLot } from '../housing/villa';
+import { villaFactsOf } from '../villa/facts';
+import { villaPath } from '../villa/goal';
 import { HomeEditor, type HomeView } from './homeEditor';
 import { cannotBuy as cannotBuyVenture, ownedVentures } from './business';
 import { guestMaySit, guestMayUse } from '../online/visitRules';
@@ -169,15 +172,23 @@ class Estate {
   /**
    * The villa and the luxury residence of Almadies stand behind two villa gates of the hub (world/builder.ts puts each
    * villa lot's gate at the lot's centre, on the street side): a listing board, the door, a directory entry.
+   * LD2.0-D: the flagship villa (`villa_almadies`) has its own compound (src/world/villaCompound.ts): its street door is the house's front door,
+   * inside the walls (« Entrer chez toi » there, and the player comes out there), its sale board stays on the pavement by the gate (« Voir le
+   * logement », « Gérer ») and the walking marker leads to the gate. The residence's door, board and entry are as they were.
    */
   private buildVillas(hub: HubWorld) {
     const ctx = this.ctx;
     const hooks: PlaceHooks = { ownership: id => this.openSheet(id), holds: id => holds(this.s, id), enterHome: id => this.enterHome(id) };
-    for (const [id, gate] of Object.entries(VILLA_GATES)) {
-      const sp = homeSpec(id)!, door = { x: gate.x, z: gate.z + 1.4 }, board = { x: gate.x + 2.3, z: gate.z + 0.9 };
+    for (const [id, site] of Object.entries(VILLA_GATES)) {
+      const sp = homeSpec(id)!, { door, board, entry } = site, name = sp.name.split(' · ')[0];
       hub.interactables.push({ id: sp.home.door, name: sp.name, kind: 'actions', x: door.x, z: door.z, radius: -1, actions: [] });
-      hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: gate.x - 2.6, z: gate.z + 2.2, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
-      ctx.places.add(ownable({ id, name: sp.name.split(' · ')[0], space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: door.x, z: door.z + 0.3, radius: 2.2 }] }, hooks));
+      hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: entry.x, z: entry.z, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
+      ctx.places.add(ownable({ id, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: door.x, z: door.z + site.anchorDz, radius: 2.2 }] }, hooks));
+      if (site.boardPlace) {                                                // the board by the gate: the listing (no way in from the pavement)
+        const p = ownable({ id: `${id}:panneau`, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: board.x, z: board.z + 0.6, radius: 2.2 }] }, hooks);
+        p.offers.sign = p.offers.sign.filter(o => o.id !== 'entrer');
+        ctx.places.add(p);
+      }
       const b = new Batch();
       for (const dx of [-0.75, 0.75]) b.box(0.1, 2.3, 0.1, board.x + dx, 0.12, board.z, 0x6b4a2e);
       const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) hub.group.add(mesh);
@@ -452,6 +463,7 @@ class Estate {
       if (sp.income && sp.kind !== 'home') rows.push(`Une fois à toi et loué : <b>+${fcfa(sp.income)} / h</b> en ville`);
       if (sp.upkeep) rows.push(`Charges si tu l’achètes : ${fcfa(sp.upkeep)} / h`);
       if (sp.soon) rows.push(`<span class="soon">${esc(sp.soon)}</span>`);
+      if (specId === VILLA_ID) { const f = villaFactsOf(s); for (const l of f ? villaPath(f) : []) rows.push(`🧭 ${esc(l)}`); }   // LD2.0-D: how to get there (src/villa/goal.ts)
       if (sp.price) items.push({ icon: '🔑', label: 'Acheter', right: '−' + fcfa(sp.price), detail: cannotBuy(s, specId) ?? this.benefit(sp), disabled: !!cannotBuy(s, specId), onPick: () => this.confirmBuy(sp) });
       if (sp.rent) items.push({ icon: '📝', label: 'Louer', right: perDay(sp.rent), detail: cannotRent(s, specId) ?? `${fcfa(sp.rent / 24)} chaque heure en ville · tu rends les clés quand tu veux`, disabled: !!cannotRent(s, specId), onPick: () => this.confirmRent(sp) });
       if (home && this.inHub(sp)) items.push({ icon: '🚪', label: 'Visiter', detail: 'Entrer voir le logement, vide', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
@@ -731,11 +743,25 @@ class Estate {
 const seatId = (hub: string, uid: string, k: number) => `${hub}:home:${uid}:${k}`;
 /** A home the player holds and could live in instead (not the principal residence, not let, not the family room): the furniture sheet points to it. */
 const otherHome = (s: GameCtx['state']) => assetsOf(s, 'home').find(a => a.uid !== s.data.assets.home && a.spec !== STARTER_HOME && !a.leased && a.how !== 'given');
-/** Gates of two villa lots of Almadies, block (1, 1), lots 3 and 2 (the gate is the lot's centre, on the street side). */
+/**
+ * The street side of the two villa lots of Almadies, block (1, 1), lots 3 and 2: the home's street door (where the player comes out; `anchorDz`: its
+ * « Entrer chez toi » a little toward the street), the sale board and the directory entry (the walking marker).
+ *  - The residence (lot 2): its gate at the lot's centre on the street side (world/builder.ts), the door just outside it, the board beside it.
+ *  - The flagship villa (lot 3, LD2.0-D, src/housing/villa.ts): the door just outside the house's front door (FRONT_DOOR, inside the compound's
+ *    walls), the board on the pavement beside the gate (GATE), the entry before the gate.
+ */
 const LOT = (BLK - 2) / 2, BM = (k: number) => -HALF + ROAD + k * PITCH;   // lot size and block corner (world/builder.ts)
-const VILLA_GATES: Record<string, { x: number; z: number }> = {
-  villa_almadies: { x: BM(1) + LOT + 2 + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
-  residence_ngor: { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
+interface VillaSite { door: { x: number; z: number }; board: { x: number; z: number }; entry: { x: number; z: number }; anchorDz: number; boardPlace: boolean }
+const residenceGate = { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 };
+export const VILLA_GATES: Record<string, VillaSite> = {
+  villa_almadies: {
+    door: onLot(VILLA_DOOR.x, VILLA_DOOR.z + 1.0), board: onLot(VILLA_GATE.x0 - 2.3, VILLA_GATE.z + 0.6), entry: onLot((VILLA_GATE.x0 + VILLA_GATE.x1) / 2, VILLA_GATE.z + 1.6),
+    anchorDz: -0.2, boardPlace: true,
+  },
+  residence_ngor: {
+    door: { x: residenceGate.x, z: residenceGate.z + 1.4 }, board: { x: residenceGate.x + 2.3, z: residenceGate.z + 0.9 }, entry: { x: residenceGate.x - 2.6, z: residenceGate.z + 2.2 },
+    anchorDz: 0.3, boardPlace: false,
+  },
 };
 const ventureName = (s: GameCtx['state']) => { const v = [...VENTURES].reverse().find(x => (ownedVentures(s)[x.id] ?? 0) > 0); return v ? v.name : 'Ton affaire'; };
 function setMap(m: THREE.Mesh, tex: THREE.Texture) {
