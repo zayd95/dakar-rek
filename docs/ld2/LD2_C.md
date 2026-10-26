@@ -175,7 +175,7 @@ Both lanes are merged into `integration/ld2-c-20261026` (draft PR #72), with the
 
 **Failed:** none.
 
-**The guest's view:** in `check-visit`, the guest draws the host's walkable F2 with all 10 pieces at the host's places and turns, each within 1 cm. The guest's frame costs what the host's does: 26 draw calls and 17 908 triangles.
+**The guest's view:** in `check-visit`, the guest draws the host's walkable F2 with all 10 pieces at the host's places and turns, each within 1 cm. The guest's frame costs what the host's does: 26 draw calls and 17 860 triangles.
 
 **A save from before this phase:** an F2 furnished by the older build (bed, sofa, dining table, wardrobe and rug, all in its one open room) loads here with all five kept. Each is moved to a room of its kind, valid under the plan, with every room reachable (`check-furnish-rooms`).
 
@@ -184,16 +184,16 @@ The old F2 (one open room, the traversée build) and the walkable F2, each with 
 
 | View | Draw calls | Triangles | Whole frame (SwiftShader) |
 |---|---|---|---|
-| Old F2, the room's middle | 17 | 16 800 | 85 ms |
-| Old F2, near the door / at the back | 13 / 16 | 16 528 / 16 720 | 89 / 94 ms |
-| **Walkable F2, séjour** | **21** | **23 112** | **122 ms** |
-| Walkable F2, chambre | 23 | 23 650 | 105 ms |
-| Walkable F2, entrée | 14 | 22 560 | 114 ms |
-| Walkable F2, cuisine | 17 | 22 844 | 97 ms |
+| Old F2, the room's middle | 17 | 16 800 | 83 ms |
+| Old F2, near the door / at the back | 13 / 16 | 16 528 / 16 720 | 89 / 89 ms |
+| **Walkable F2, séjour** | **21** | **23 064** | **121 ms** |
+| Walkable F2, chambre | 23 | 23 602 | 105 ms |
+| Walkable F2, entrée | 14 | 22 512 | 108 ms |
+| Walkable F2, cuisine | 17 | 22 796 | 94 ms |
 | *The street at the Résidence Jàmm (for reference)* | *78–81* | *163 000–165 000* | *272–282 ms for the renderer alone* |
 
 - **The budget holds:** at most 23 draw calls and 24k triangles, furnished, against 60 and 80k. The shell alone is 10 draw calls and 7 432 triangles (`check-apartment-walk`, budget 14).
-- **The walkable F2 is slower than the old room in the software renderer**, by about 20–40 % a frame.
+- **The walkable F2 is slower than the old room in the software renderer**, by about 10–40 % a frame (measured again after the window fix).
   - The renderer alone in the séjour takes about 116 ms.
   - It drops to 71 ms with the shell's walls, faience, fittings, doors, lamps and windows hidden (its floors kept), and to 55 ms with the whole home hidden.
   - The full-height walls cover far more of the screen than the old low walls, and every wall pixel is lit.

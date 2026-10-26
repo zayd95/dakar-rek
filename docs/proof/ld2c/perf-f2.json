@@ -47,17 +47,17 @@
    "centre": {
     "calls": 17,
     "tris": 16800,
-    "ms": 85.2
+    "ms": 83.4
    },
    "front": {
     "calls": 13,
     "tris": 16528,
-    "ms": 89
+    "ms": 88.8
    },
    "back": {
     "calls": 16,
     "tris": 16720,
-    "ms": 93.9
+    "ms": 89.1
    }
   },
   "errors": []
@@ -109,23 +109,23 @@
   "rooms": {
    "sejour": {
     "calls": 21,
-    "tris": 23112,
-    "ms": 122.1
+    "tris": 23064,
+    "ms": 120.5
    },
    "chambre": {
     "calls": 23,
-    "tris": 23650,
-    "ms": 104.7
+    "tris": 23602,
+    "ms": 104.8
    },
    "entree": {
     "calls": 14,
-    "tris": 22560,
-    "ms": 114
+    "tris": 22512,
+    "ms": 107.9
    },
    "cuisine": {
     "calls": 17,
-    "tris": 22844,
-    "ms": 97
+    "tris": 22796,
+    "ms": 93.6
    }
   },
   "errors": []
