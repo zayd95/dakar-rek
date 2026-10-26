@@ -105,7 +105,7 @@ async function roundTrip(kind, pick, shots) {
   for (let k = 0; k < 600; k++) {
     const t = await tr(); sample(t);
     const out = t.customers.filter(c => c.leg === 'aller');
-    if (!shotBoard && out.filter(c => c.vest && c.side !== 'bord').length >= 2) { await shot(`${shots}-boarding`); shotBoard = true; }
+    if (!shotBoard && out.filter(c => c.vest && c.side !== 'bord' && !c.wading && c.z < t.poses[kind].home.z + 9.5).length >= 2) { await shot(`${shots}-boarding`); shotBoard = true; }   // jackets on, down the sand in view
     else if (!shotWade && out.filter(c => c.wading).length >= 2) { await shot(`${shots}-wading`); shotWade = true; }
     if (out.length && out.every(c => c.seated) || t.phase === 'out') break;
     await page.waitForTimeout(200);
