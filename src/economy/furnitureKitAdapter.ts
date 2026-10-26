@@ -61,6 +61,12 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   // (the comfort lane's mappings above, the decoration lane's below)
   //
   // ---- the catalogue's second round, decoration lane (K-D): its mappings here
+  jarre_herbes: 'floorVase:basic', vase_bouquet: 'floorVase:better', vase_orchidees: 'floorVase:premium',
+  statuette_bois: 'sculpture:basic', sculpture_ebene: 'sculpture:better', bronze_marbre: 'sculpture:premium',
+  paniers_muraux: 'wallDecor:basic', masques_sculptes: 'wallDecor:better', miroir_soleil: 'wallDecor:premium',
+  paravent_raphia: 'screen:basic', paravent_bois: 'screen:better', paravent_laque: 'screen:premium',
+  lanterne_tempete: 'lantern:basic', lanternes_fer: 'lantern:better', candelabre_cristal: 'lantern:premium',
+  bocal_poissons: 'aquarium:basic', aquarium_meuble: 'aquarium:better', aquarium_mer: 'aquarium:premium',
 };
 
 /** Height of the home floor the catalogue's seat tops are measured with (kit seat tops are above the piece's base). */

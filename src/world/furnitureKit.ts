@@ -749,14 +749,460 @@ const ROUND2_COMFORT: Record<'pouf' | 'cornerSofa' | 'canopyBed' | 'console', Re
 };
 // ------------------------------------------------------------------------------------------------ the catalogue's second round, decoration lane (K-D)
 // Floor vases, sculptures, wall decoration, folding screens, lanterns and candelabra, aquariums. The lane owns this block.
-const ROUND2_DECO: Record<'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium', Record<Tier, Maker>> = {
-  floorVase: { basic: standIn(0.4, 0.4, 0.9, 1, 'free'), better: standIn(0.4, 0.4, 1.0, 2, 'free'), premium: standIn(0.5, 0.5, 1.3, 3, 'free') },
-  sculpture: { basic: standIn(0.35, 0.35, 0.8, 1, 'free'), better: standIn(0.45, 0.45, 1.3, 2, 'free'), premium: standIn(0.55, 0.55, 1.7, 3, 'free') },
-  wallDecor: { basic: standIn(0.9, 0.08, 0.6, 1), better: standIn(1.0, 0.12, 0.6, 2), premium: standIn(0.9, 0.08, 0.9, 3) },
-  screen: { basic: standIn(1.5, 0.5, 1.6, 1, 'free'), better: standIn(1.6, 0.5, 1.75, 2, 'free'), premium: standIn(1.8, 0.5, 1.85, 3, 'free') },
-  lantern: { basic: standIn(0.3, 0.3, 0.5, 1, 'free'), better: standIn(0.6, 0.4, 0.9, 2, 'free'), premium: standIn(0.5, 0.5, 1.6, 3, 'free') },
-  aquarium: { basic: standIn(0.4, 0.4, 0.9, 1), better: standIn(1.0, 0.45, 1.3, 2), premium: standIn(1.8, 0.5, 1.6, 3) },
-};
+// Each grade a clear step up: earth and straw (Simple), glaze, ebony, carved wood and iron (Confort), gold, bronze, marble, lacquer and crystal (Prestige).
+// The figures are our own, in the manner of the Senegalese carvers (a woman at her mortar, a calabash carrier, a wrestler on guard): no real person or work.
+type DecoType = 'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium';
+/** The lane's makers, its palette and helpers kept inside (nothing of it clashes with the rest of the kit). */
+function decoMakers(): Record<DecoType, Record<Tier, Maker>> {
+  const D = {
+    ebony: 0x241a16, sapwood: 0xc9a06a, bronze: 0x8a5a2c, bronzeDark: 0x5a3a1c, bronzeHi: 0xa8743a, stone: 0xe2d8c4, lacquer: 0x171213,
+    iron: 0x2b2522, brass: 0xb8913c, candle: 0xf4ecd8, enamel: 0xb8322a, glass: 0xd6edf5, water: 0x5fb4dc, sea: 0x3f98e6, sand: 0xece0c4,
+    gravel: 0xa89270, weed: 0x3f8a3a, weed2: 0x5aa84a, magenta: 0xcf2a7c,
+  };
+  const UPY = new THREE.Vector3(0, 1, 0);
+  /** Part of an atlas rect: u from a to b, v from c to d (fractions; v from the image's bottom). */
+  const subRect = (r: Rect, a: number, e: number, c = 0, d = 1): Rect => [r[0] + (r[2] - r[0]) * a, r[1] + (r[3] - r[1]) * c, r[0] + (r[2] - r[0]) * e, r[1] + (r[3] - r[1]) * d];
+  /** A round limb, stalk or rod of n sides from a (radius ra) to c (radius rc), its ends capped. */
+  function limb(b: KitBuilder, a: V3, c: V3, ra: number, rc: number, paint: Paint, n = 6, caps = true) {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...c), dir = B.clone().sub(A), len = dir.length();
+    if (len < 1e-6) return;
+    const m = new THREE.Matrix4().compose(A.clone().add(B).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(UPY, dir.normalize()), new THREE.Vector3(1, 1, 1));
+    b.with(m, () => b.cyl('y', ra, rc, len, 0, 0, 0, paint, n, { neg: caps, pos: caps }));
+  }
+  /** n flat panels round a vertical axis at (cx, cz), radius r0 at y0 to r1 at y1, each showing the whole `rect` (else plain `paint`). */
+  function facets(b: KitBuilder, n: number, r0: number, r1: number, y0: number, y1: number, cx: number, cz: number, paint: Paint, rect?: Rect, phase = Math.PI / n) {
+    const p = (t: number, y: number, r: number): V3 => [cx + r * Math.sin(t), y, cz + r * Math.cos(t)];
+    for (let k = 0; k < n; k++) { const t0 = phase + k * Math.PI * 2 / n, t1 = t0 + Math.PI * 2 / n; b.quad(p(t0, y0, r0), p(t1, y0, r0), p(t1, y1, r1), p(t0, y1, r1), rect ? W : paint, rect); }
+  }
+  /** A turned profile ([y, r] pairs from the foot up) on a vertical axis at (x, z): stacked open cylinders, band i showing `rects[i]` on each face when given. */
+  function turned(b: KitBuilder, x: number, z: number, prof: readonly (readonly [number, number])[], paint: Paint, seg: number, rects: (Rect | undefined)[] = []) {
+    for (let i = 0; i + 1 < prof.length; i++) {
+      const [y0, r0] = prof[i], [y1, r1] = prof[i + 1], rect = rects[i];
+      if (rect) facets(b, seg, r0, r1, y0, y1, x, z, W, rect, 0);
+      else b.cyl('y', r0, r1, y1 - y0, x, (y0 + y1) / 2, z, paint, seg, { neg: false, pos: false });
+      if (i === 0) b.cyl('y', r0, r0, 0.002, x, y0 + 0.001, z, paint, seg, { neg: true, pos: false });
+    }
+  }
+  /** The front half of an ellipsoid (a mask's face), radii rx, ry and depth rz toward +z, open at the back against the wall. */
+  const halfShell = (b: KitBuilder, x: number, y: number, z: number, rx: number, ry: number, rz: number, paint: Paint) =>
+    b.geometry(new THREE.SphereGeometry(1, 8, 7, 0, Math.PI), paint, x, y, z, [rx, ry, rz]);
+  /** A fish swimming along x (dir 1: toward +x), `len` long and `tall` high (× len): its body, its tail and its back fin. */
+  function fish(b: KitBuilder, x: number, y: number, z: number, len: number, body: number, fin: number, dir = 1, tall = 0.42) {
+    b.blob(len / 2, x, y, z, body, [1, tall, 0.3]);
+    const T: V3[] = [[x - dir * len * 0.4, y, z], [x - dir * len * 0.74, y + len * 0.24, z], [x - dir * len * 0.74, y - len * 0.24, z]];
+    const F: V3[] = [[x - dir * len * 0.2, y + len * tall * 0.4, z], [x + dir * len * 0.12, y + len * tall * 0.42, z], [x - dir * len * 0.3, y + len * tall * 0.78, z]];
+    for (const P of [T, F]) { b.toward(P, [0, 0, 1], fin); b.toward(P, [0, 0, -1], fin); }
+  }
+  /** A folding screen of n panels pw wide, zigzagging th off the line: `panel(i)` draws panel i in its own frame (across x, facing +z, on the floor). */
+  function zigzag(b: KitBuilder, n: number, pw: number, th: number, panel: (i: number) => void) {
+    const dx = pw * Math.cos(th), dz = pw * Math.sin(th);
+    for (let i = 0; i < n; i++) { const za = i % 2 ? -dz / 2 : dz / 2; b.at(-n * dx / 2 + (i + 0.5) * dx, 0, 0, Math.atan2(2 * za, dx), () => panel(i)); }
+  }
+  /** A half disc of radius r standing on (x, y) at depth z, t thick (a crest): both faces (the front with `rect` tinted by `paint`, when given), its rim. */
+  function crest(b: KitBuilder, x: number, y: number, z: number, r: number, t: number, paint: Paint, n = 8, rect?: Rect) {
+    const pt = (k: number, zz: number): V3 => { const a = Math.PI * k / n; return [x + Math.cos(a) * r, y + Math.sin(a) * r, zz]; };
+    const front: V3[] = [], back: V3[] = [];
+    for (let k = 0; k <= n; k++) { front.push(pt(k, z + t / 2)); back.push(pt(k, z - t / 2)); }
+    const uv = rect ? front.map(p => [rect[0] + (rect[2] - rect[0]) * (p[0] - x + r) / (2 * r), rect[1] + (rect[3] - rect[1]) * (p[1] - y) / r] as [number, number]) : undefined;
+    b.toward(front, [0, 0, 1], paint, uv); b.toward(back, [0, 0, -1], paint);
+    for (let k = 0; k < n; k++) { const a = Math.PI * (k + 0.5) / n; b.toward([pt(k, z + t / 2), pt(k + 1, z + t / 2), pt(k + 1, z - t / 2), pt(k, z - t / 2)], [Math.cos(a), Math.sin(a), 0], paint); }
+  }
+  /**
+   * A carved mask hung on the wall (its back on z0): an oval face of hw × hh, `dep` deep, a brow, eyes, a long nose and a mouth; style 0 horns and
+   * kaolin-white eyes and cheek lines, 1 a crest of three fins, 2 round ears and a beard.
+   */
+  function mask(b: KitBuilder, x: number, y: number, z0: number, hw: number, hh: number, dep: number, wood: number, accent: number, style: 0 | 1 | 2) {
+    halfShell(b, x, y, z0, hw, hh, dep, wood);
+    const zs = (dx: number, dy: number) => z0 + dep * Math.sqrt(Math.max(0, 1 - (dx / hw) ** 2 - (dy / hh) ** 2));
+    const dark = dimC(wood, 0.42), light = dimC(wood, 1.18);
+    b.box(hw * 1.3, hh * 0.08, 0.02, x, y + hh * 0.2, zs(0, hh * 0.24) - 0.012, light);
+    for (const s of [-1, 1]) b.box(hw * 0.38, hh * 0.055, 0.014, x + s * hw * 0.36, y + hh * 0.05, zs(hw * 0.4, hh * 0.08) - 0.005, style === 0 ? 0xf2efe6 : dark);
+    limb(b, [x, y + hh * 0.18, zs(0, hh * 0.18) - 0.004], [x, y - hh * 0.36, zs(0, -hh * 0.36) + 0.006], hw * 0.06, hw * 0.13, light, 4);
+    b.box(hw * 0.42, hh * 0.09, 0.022, x, y - hh * 0.64, zs(0, -hh * 0.58) - 0.01, style === 1 ? dark : accent);
+    if (style === 0) {
+      for (const s of [-1, 1]) {
+        limb(b, [x + s * hw * 0.45, y + hh * 0.82, z0 + dep * 0.45], [x + s * hw * 0.95, y + hh * 1.2, z0 + dep * 0.45], 0.017, 0.012, wood);
+        limb(b, [x + s * hw * 0.95, y + hh * 1.2, z0 + dep * 0.45], [x + s * hw * 0.7, y + hh * 1.55, z0 + dep * 0.4], 0.012, 0.004, wood);
+        for (const k of [0, 1]) b.box(hw * 0.3, 0.008, 0.008, x + s * hw * 0.55, y - hh * (0.18 + k * 0.12), zs(hw * 0.55, -hh * (0.18 + k * 0.12)) - 0.003, 0xf2efe6);
+      }
+    } else if (style === 1) {
+      for (const k of [-1, 0, 1]) b.box(0.012, hh * (0.42 - Math.abs(k) * 0.12), dep * 0.7, x + k * hw * 0.42, y + hh * 0.8, z0 + dep * 0.36, dimC(wood, 0.85));
+      for (const s of [-1, 1]) b.box(0.008, hh * 0.3, 0.006, x + s * hw * 0.55, y - hh * 0.25, zs(hw * 0.55, -hh * 0.25) - 0.002, dark);
+    } else {
+      for (const s of [-1, 1]) b.blob(hw * 0.28, x + s * hw * 1.05, y + hh * 0.05, z0 + dep * 0.3, wood, [0.6, 1, 0.6]);
+      limb(b, [x, y - hh * 0.72, zs(0, -hh * 0.72) - 0.01], [x, y - hh * 1.2, z0 + dep * 0.55], hw * 0.2, hw * 0.06, dark, 4);
+      b.box(hw * 1.1, 0.01, 0.01, x, y + hh * 0.5, zs(0, hh * 0.5) - 0.004, dark);
+    }
+  }
+  /** A pierced iron lantern on (x, z), `s` its scale (s = 1: 0.74 m high), its lit body and dome, a ring on top. */
+  function ironLantern(b: KitBuilder, x: number, z: number, s: number) {
+    const pr = FUV.pierced;
+    facets(b, 8, 0.11 * s, 0.1 * s, 0, 0.05 * s, x, z, D.iron);
+    facets(b, 8, 0.1 * s, 0.092 * s, 0.05 * s, 0.07 * s, x, z, D.brass);
+    for (let k = 0; k < 3; k++) facets(b, 8, 0.092 * s, 0.092 * s, (0.07 + k * 0.13) * s, (0.2 + k * 0.13) * s, x, z, D.iron, pr);
+    facets(b, 8, 0.1 * s, 0.1 * s, 0.46 * s, 0.5 * s, x, z, D.brass);
+    facets(b, 8, 0.1 * s, 0.035 * s, 0.5 * s, 0.62 * s, x, z, D.iron, subRect(pr, 0, 1, 0.3, 0.7));
+    for (let k = 0; k < 8; k++) { const a = Math.PI / 8 + k * Math.PI / 4; b.box(0.012 * s, 0.39 * s, 0.012 * s, x + Math.sin(a) * 0.094 * s, 0.07 * s, z + Math.cos(a) * 0.094 * s, D.iron); }
+    b.cyl('y', 0.035 * s, 0.02 * s, 0.05 * s, x, 0.645 * s, z, D.brass, 8, { neg: false, pos: true });
+    b.blob(0.024 * s, x, 0.69 * s, z, D.brass);
+    limb(b, [x - 0.03 * s, 0.7 * s, z], [x, 0.74 * s, z], 0.006 * s, 0.006 * s, D.iron, 4); limb(b, [x, 0.74 * s, z], [x + 0.03 * s, 0.7 * s, z], 0.006 * s, 0.006 * s, D.iron, 4);
+  }
+  /** A candle standing on (x, y, z), h tall, its flame lit (the glow layer): two crossed panes. */
+  function candle(b: KitBuilder, x: number, y: number, z: number, h: number, r = 0.021) {
+    b.cyl('y', r, r, h, x, y + h / 2, z, D.candle, 6, { neg: false, pos: true });
+    for (const [u, v] of [[1, 0], [0, 1]] as const) { b.decal([x, y + h + 0.04, z], [u, 0, v], [0, 1, 0], 0.042, 0.08, FUV.flame); b.decal([x, y + h + 0.04, z], [-u, 0, -v], [0, 1, 0], 0.042, 0.08, FUV.flame); }
+  }
+
+  return {
+    // -------------------------------------------------------------------------------------------------- floor vases
+    floorVase: {
+      basic: b => {
+        // a terracotta jar, an incised band round its belly, dried grasses with pale plumes
+        turned(b, 0, 0, [[0, 0.1], [0.05, 0.14], [0.2, 0.172], [0.32, 0.168], [0.45, 0.12], [0.52, 0.078], [0.57, 0.08], [0.6, 0.096]], K.clay, 12, [undefined, undefined, FUV.clayBand]);
+        b.cyl('y', 0.09, 0.09, 0.004, 0, 0.594, 0, 0x3a2414, 12, { neg: false, pos: true });
+        for (let k = 0; k < 9; k++) {
+          const a = k * 2.4 + 0.3, lean = 0.24 + (k % 3) * 0.1, len = 0.34 + ((k * 7) % 5) * 0.025, tx = Math.sin(a) * Math.sin(lean) * len, tz = Math.cos(a) * Math.sin(lean) * len, ty = 0.56 + Math.cos(lean) * len;
+          limb(b, [Math.sin(a) * 0.02, 0.55, Math.cos(a) * 0.02], [tx, ty, tz], 0.005, 0.004, 0xb8a272, 4, false);
+          b.blob(0.03, tx * 1.04, ty + 0.03, tz * 1.04, k % 2 ? 0xe6d4a6 : 0xd6bf8a, [0.55, 2.1, 0.55]);
+        }
+        for (let k = 0; k < 3; k++) { const a = k * 2.1 + 1.0; limb(b, [0, 0.56, 0], [Math.sin(a) * 0.17, 0.72, Math.cos(a) * 0.17], 0.008, 0.002, 0xa89060, 3, false); }
+        return { footprint: { w: 0.38, d: 0.36, h: 1.08 }, placement: 'free', use: standUse(0.36, 'use', 'Arranger les herbes', 0.5) };
+      },
+      better: b => {
+        // a cobalt-glazed vase with its band of triangles, a dome of bougainvillea and its leaves, a spray falling over the rim
+        b.cyl('y', 0.085, 0.09, 0.03, 0, 0.015, 0, 0xe6dcc6, 12, { neg: true, pos: false });
+        turned(b, 0, 0, [[0.03, 0.09], [0.06, 0.115], [0.17, 0.155], [0.31, 0.16], [0.44, 0.11], [0.54, 0.066], [0.6, 0.07], [0.64, 0.094]], 0x24479a, 12, [undefined, undefined, FUV.glaze]);
+        b.cyl('y', 0.088, 0.088, 0.004, 0, 0.634, 0, 0x14214a, 12, { neg: false, pos: true });
+        for (let k = 0; k < 5; k++) { const a = k * 1.26; limb(b, [0, 0.6, 0], [Math.sin(a) * 0.1, 0.78, Math.cos(a) * 0.1], 0.008, 0.006, 0x5a6a2a, 4, false); }
+        const pinks = [D.magenta, 0xe0479a, 0xb81e6a, 0xd83a8a, 0xe85aa8];
+        for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.2; b.blob(0.055, Math.sin(a) * 0.15, 0.71 + (k % 2) * 0.03, Math.cos(a) * 0.15, k % 2 ? K.leaf : K.leaf3, [1.3, 0.4, 0.9]); }
+        for (let k = 0; k < 24; k++) {
+          const y = 1 - (k / 23) * 1.25, r = Math.sqrt(Math.max(0, 1 - y * y)), a = k * 2.39996;
+          b.blob(0.046 + (k % 3) * 0.006, Math.sin(a) * r * 0.19, 0.8 + y * 0.16, Math.cos(a) * r * 0.19, k === 5 || k === 17 ? 0xf6eef2 : pinks[k % 5], [1, 0.75, 1]);
+        }
+        const spray: V3[] = [[0.05, 0.66, 0.06], [0.15, 0.7, 0.13], [0.21, 0.6, 0.17], [0.22, 0.48, 0.18]];
+        for (let k = 0; k < 3; k++) { limb(b, spray[k], spray[k + 1], 0.006, 0.005, 0x5a6a2a, 4, false); b.blob(0.04 - k * 0.004, ...spray[k + 1], pinks[k], [1, 0.8, 1]); }
+        return { footprint: { w: 0.5, d: 0.48, h: 1.0 }, placement: 'free', use: standUse(0.48, 'use', 'Arranger le bouquet', 0.5) };
+      },
+      premium: b => {
+        // a black marble foot, a tall gilded vase with a frieze, white orchids arching from it over broad leaves
+        b.at(0, 0, 0, 0, () => {
+          b.box(0.36, 0.05, 0.36, 0, 0, 0, 0x1e1e22, { py: { paint: 0x2a2a30 } });
+          const gl = FUV.gold;
+          turned(b, 0, 0, [[0.05, 0.1], [0.09, 0.13], [0.28, 0.19], [0.44, 0.18], [0.62, 0.11], [0.74, 0.074], [0.8, 0.08], [0.84, 0.104]], C.gold, 14, [gl, gl, gl, gl, gl, gl, gl]);
+          b.cyl('y', 0.196, 0.196, 0.03, 0, 0.36, 0, 0xa87a2a, 14, { neg: false, pos: false }); b.cyl('y', 0.198, 0.198, 0.008, 0, 0.36, 0, C.gold, 14, { neg: false, pos: false });
+          b.cyl('y', 0.098, 0.098, 0.004, 0, 0.834, 0, 0x2a1a0e, 12, { neg: false, pos: true });
+          for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.5, ca = Math.cos(a), sa = Math.sin(a);
+            const q: V3[] = [[sa * 0.03 - ca * 0.04, 0.8, ca * 0.03 + sa * 0.04], [sa * 0.03 + ca * 0.04, 0.8, ca * 0.03 - sa * 0.04], [sa * 0.2 + ca * 0.05, 0.86, ca * 0.2 - sa * 0.05], [sa * 0.2 - ca * 0.05, 0.86, ca * 0.2 + sa * 0.05]];
+            b.toward(q, [0, 1, 0], 0x2f6b2e); b.toward(q, [0, -1, 0], 0x24521f);
+            b.toward([q[3], q[2], [sa * 0.27, 0.8, ca * 0.27]], [0, 1, 0], 0x2f6b2e); b.toward([q[3], q[2], [sa * 0.27, 0.8, ca * 0.27]], [0, -1, 0], 0x24521f); }
+          // four arching stems, each with its row of white flowers and their magenta lips
+          for (let s = 0; s < 4; s++) {
+            const az = -1.2 + s * 0.8, dir: V3 = [Math.sin(az), 0, Math.cos(az)];
+            const pt = (t: number): V3 => { const r = 0.02 + t * 0.21, y = 0.82 + Math.sin(t * Math.PI * 0.85) * (0.36 + (s % 2) * 0.07) + t * 0.04; return [dir[0] * r, y, dir[2] * r]; };
+            for (let k = 0; k < 4; k++) limb(b, pt(k / 4), pt((k + 1) / 4), 0.008, 0.006, 0x5a7a2a, 4, false);
+            for (let f = 0; f < 5; f++) {
+              const [fx, fy, fz] = pt(0.4 + f * 0.14), sz = 0.06 - f * 0.005;
+              b.at(fx, fy - 0.03, fz, az * 0.6, () => {
+                b.blob(sz * 0.8, 0, 0, 0, 0xfbf7f8, [1.25, 1, 0.35]);
+                b.box(sz * 0.42, sz * 0.36, 0.012, 0, -sz * 0.32, sz * 0.22, 0xc8287a);
+              });
+            }
+          }
+        });
+        return { footprint: { w: 0.5, d: 0.48, h: 1.3 }, placement: 'free', use: standUse(0.48, 'use', 'Arranger les orchidées', 0.5) };
+      },
+    },
+    // -------------------------------------------------------------------------------------------------- sculptures
+    sculpture: {
+      basic: b => {
+        // a woman at her mortar, the pestle raised, cut from one block of light wood with its base
+        const wd = 0x9c6a3a, dk = 0x5e3a1e, lt = 0xc29560;
+        b.cyl('y', 0.15, 0.15, 0.04, 0, 0.02, 0, dk, 12, { neg: true, pos: true });
+        const mx = 0.08, mz = 0.08;
+        b.cyl('y', 0.05, 0.036, 0.07, mx, 0.075, mz, dk, 8, { neg: false, pos: false }); b.cyl('y', 0.036, 0.072, 0.09, mx, 0.155, mz, dk, 8, { neg: false, pos: true, capPaint: 0x2a1a0e });
+        limb(b, [mx, 0.19, mz], [mx, 0.86, mz], 0.014, 0.016, lt);
+        const fx = -0.04, fz = -0.03;
+        b.cyl('y', 0.09, 0.062, 0.32, fx, 0.2, fz, wd, 8, { neg: false, pos: false });
+        b.cyl('y', 0.058, 0.068, 0.18, fx, 0.45, fz, wd, 8, { neg: false, pos: true });
+        limb(b, [fx, 0.53, fz], [fx, 0.6, fz], 0.022, 0.02, wd);
+        b.blob(0.045, fx, 0.64, fz + 0.005, wd, [0.85, 1.1, 0.95], 1);
+        b.blob(0.052, fx, 0.685, fz - 0.012, dk, [1.0, 0.72, 1.05]); b.blob(0.024, fx + 0.03, 0.72, fz - 0.03, dk);
+        const elR: V3 = [fx + 0.13, 0.48, fz + 0.05], elL: V3 = [fx - 0.06, 0.6, fz + 0.1], hU: V3 = [mx, 0.7, mz], hD: V3 = [mx, 0.6, mz];
+        limb(b, [fx + 0.06, 0.52, fz], elR, 0.02, 0.017, wd); limb(b, elR, hD, 0.017, 0.014, wd);
+        limb(b, [fx - 0.06, 0.52, fz], elL, 0.02, 0.017, wd); limb(b, elL, hU, 0.017, 0.014, wd);
+        b.blob(0.019, ...hU, wd); b.blob(0.019, ...hD, wd);
+        return { footprint: { w: 0.3, d: 0.3, h: 0.88 }, placement: 'free', use: standUse(0.3, 'inspect', 'Admirer la sculpture', 0.5) };
+      },
+      better: b => {
+        // a calabash carrier in ebony, very tall and slender, the calabash in pale sapwood, on a stone plinth with an ebony cap
+        const eb = D.ebony;
+        b.box(0.34, 0.05, 0.34, 0, 0, 0, 0x8a8478); b.box(0.3, 0.46, 0.3, 0, 0.05, 0, D.stone); b.slab(0.34, 0.035, 0.34, 0, 0.51, 0, eb);
+        const y0 = 0.545;
+        b.cyl('y', 0.1, 0.1, 0.025, 0, y0 + 0.0125, 0, eb, 10, { neg: false, pos: true });
+        b.cyl('y', 0.072, 0.047, 0.34, 0, y0 + 0.195, 0, eb, 8, { neg: false, pos: false });
+        b.cyl('y', 0.045, 0.062, 0.19, 0, y0 + 0.46, 0, eb, 8, { neg: false, pos: true });
+        limb(b, [0, y0 + 0.55, 0], [0, y0 + 0.66, 0.006], 0.019, 0.017, eb);
+        b.blob(0.042, 0, y0 + 0.7, 0.008, eb, [0.82, 1.15, 0.95], 1);
+        b.cyl('y', 0.04, 0.036, 0.02, 0, y0 + 0.75, 0, D.sapwood, 8, { neg: false, pos: true });
+        b.blob(0.078, 0, y0 + 0.8, 0, D.sapwood, [1, 0.6, 1], 1); b.cyl('y', 0.05, 0.05, 0.006, 0, y0 + 0.845, 0, 0x8a6a3a, 10, { neg: false, pos: true });
+        const elR: V3 = [0.135, y0 + 0.66, 0.01], elL: V3 = [-0.1, y0 + 0.44, 0.03];
+        limb(b, [0.058, y0 + 0.535, 0], elR, 0.018, 0.015, eb); limb(b, elR, [0.07, y0 + 0.79, 0.01], 0.015, 0.012, eb);
+        limb(b, [-0.058, y0 + 0.535, 0], elL, 0.018, 0.015, eb); limb(b, elL, [-0.045, y0 + 0.37, 0.04], 0.015, 0.012, eb);
+        for (const s of [-1, 1]) b.blob(0.022, s * 0.056, y0 + 0.535, 0, eb);
+        return { footprint: { w: 0.34, d: 0.34, h: 1.41 }, placement: 'free', use: standUse(0.34, 'inspect', 'Admirer la sculpture', 0.5) };
+      },
+      premium: b => {
+        // a wrestler on guard in bronze, crouched, arms forward, his gris-gris on his arms and belt, on a white marble plinth with a gold plate
+        const m = { rect: FUV.marble };
+        b.box(0.54, 0.07, 0.54, 0, 0, 0, K.granite, { py: { paint: 0x3a3b3f } });
+        b.box(0.46, 0.64, 0.46, 0, 0.07, 0, W, { pz: m, nz: m, px: m, nx: m });
+        b.slab(0.52, 0.05, 0.52, 0, 0.71, 0, W, { py: m, pz: m, nz: m, px: m, nx: m });
+        b.box(0.16, 0.06, 0.006, 0, 0.48, 0.233, W, { pz: { rect: FUV.gold } });
+        b.cyl('y', 0.21, 0.22, 0.03, 0, 0.775, 0, D.bronzeDark, 14, { neg: false, pos: true });
+        const S = 0.9, br = 0x74491f, hi = 0xc0904a, dk = 0x4a2e14;
+        b.at(0, 0.79, -0.085, 0.28, () => {
+          const P = (x: number, y: number, z: number): V3 => [x * S, y * S, z * S];
+          const fL = P(-0.17, 0.03, 0.05), fR = P(0.16, 0.03, -0.09), kL = P(-0.2, 0.25, 0.14), kR = P(0.21, 0.26, 0.0), hL = P(-0.085, 0.43, -0.03), hR = P(0.085, 0.43, -0.05);
+          const pel = P(0, 0.44, -0.04), nk = P(0, 0.72, 0.12), sL = P(-0.15, 0.7, 0.09), sR = P(0.15, 0.7, 0.08), eL = P(-0.22, 0.55, 0.23), eR = P(0.23, 0.57, 0.2), wL = P(-0.13, 0.46, 0.33), wR = P(0.14, 0.5, 0.32);
+          b.box(0.06 * S, 0.035 * S, 0.12 * S, fL[0], 0, fL[2] + 0.02, dk, { rotY: 0.3 }); b.box(0.06 * S, 0.035 * S, 0.12 * S, fR[0], 0, fR[2] + 0.02, dk, { rotY: -0.3 });
+          limb(b, fL, kL, 0.03 * S, 0.042 * S, br); limb(b, fR, kR, 0.03 * S, 0.042 * S, br);
+          limb(b, kL, hL, 0.046 * S, 0.06 * S, br); limb(b, kR, hR, 0.046 * S, 0.06 * S, br);
+          b.blob(0.044 * S, ...kL, hi); b.blob(0.044 * S, ...kR, hi);
+          b.blob(0.1 * S, ...pel, br, [1.1, 0.75, 0.9]);
+          b.cyl('y', 0.108 * S, 0.1 * S, 0.085 * S, pel[0], pel[1] + 0.005, pel[2], dk, 10, { neg: true, pos: true });
+          b.box(0.08 * S, 0.11 * S, 0.02 * S, pel[0], pel[1] - 0.1 * S, pel[2] + 0.095 * S, dk);
+          for (const k of [-1, 0, 1]) b.box(0.022 * S, 0.03 * S, 0.016 * S, pel[0] + k * 0.05 * S, pel[1] + 0.005, pel[2] + 0.1 * S, D.brass);
+          limb(b, pel, nk, 0.09 * S, 0.12 * S, br, 10);
+          b.at(0, 0.64 * S, 0.07 * S, 0, () => b.blob(0.1 * S, 0, 0, 0, hi, [1.42, 0.9, 0.8], 1), 0.55);
+          b.blob(0.055 * S, ...sL, hi); b.blob(0.055 * S, ...sR, hi);
+          limb(b, nk, P(0, 0.79, 0.19), 0.042 * S, 0.036 * S, br);
+          b.blob(0.07 * S, ...P(0, 0.835, 0.21), br, [0.85, 1.05, 0.95], 1);
+          limb(b, sL, eL, 0.045 * S, 0.035 * S, br); limb(b, sR, eR, 0.045 * S, 0.035 * S, br);
+          limb(b, eL, wL, 0.034 * S, 0.027 * S, br); limb(b, eR, wR, 0.034 * S, 0.027 * S, br);
+          b.blob(0.034 * S, ...wL, hi, [1, 0.8, 1.2]); b.blob(0.034 * S, ...wR, hi, [1, 0.8, 1.2]);
+          for (const [sh, el] of [[sL, eL], [sR, eR]] as const) { const at = (t: number): V3 => [sh[0] + (el[0] - sh[0]) * t, sh[1] + (el[1] - sh[1]) * t, sh[2] + (el[2] - sh[2]) * t]; limb(b, at(0.4), at(0.52), 0.05 * S, 0.048 * S, dk); }
+        });
+        return { footprint: { w: 0.54, d: 0.54, h: 1.62 }, placement: 'free', use: standUse(0.54, 'inspect', 'Admirer la sculpture', 0.5) };
+      },
+    },
+    // -------------------------------------------------------------------------------------------------- wall decoration, on the wall
+    wallDecor: {
+      basic: b => {
+        // coiled basket plates in bright colours, a cluster of six
+        const z0 = -0.02;
+        for (const [x, y, r, rect] of [[0, 1.56, 0.2, FUV.basket0], [-0.31, 1.66, 0.13, FUV.basket1], [0.294, 1.63, 0.15, FUV.basket2], [-0.27, 1.34, 0.12, FUV.basket2], [0.24, 1.33, 0.105, FUV.basket0], [-0.03, 1.27, 0.08, FUV.basket1]] as const) {
+          b.cyl('z', r * 0.78, r, 0.026, x, y, z0 + 0.013, 0x9a7438, 14, { neg: false, pos: rect });
+          b.cyl('z', r + 0.006, r + 0.006, 0.012, x, y, z0 + 0.026, 0x8a6430, 14, { neg: false, pos: false });
+        }
+        return { footprint: { w: 0.9, d: 0.04, h: 1.8 }, placement: 'wall', use: standUse(0.04, 'inspect', 'Regarder les paniers', 0.8) };
+      },
+      better: b => {
+        // three carved masks: dark wood with kaolin white and horns, red wood with its crest, pale wood with ears and a beard
+        const z0 = -0.045;
+        mask(b, 0, 1.47, z0, 0.135, 0.28, 0.065, 0x3e2414, 0xf2efe6, 0);
+        mask(b, -0.36, 1.41, z0, 0.105, 0.21, 0.05, 0x8a4a26, 0x1c1410, 1);
+        mask(b, 0.35, 1.43, z0, 0.1, 0.2, 0.05, 0xb07a44, 0xa8322a, 2);
+        return { footprint: { w: 0.94, d: 0.09, h: 1.91 }, placement: 'wall', use: standUse(0.09, 'inspect', 'Regarder les masques', 0.8) };
+      },
+      premium: b => {
+        // a gilded sunburst round a convex mirror: long and short faceted rays, a bead at each long ray's tip, a ring of small petals
+        const z0 = -0.025, cy = 1.5, gl = FUV.gold, gu = (s: number, t: number): [number, number] => [gl[0] + (gl[2] - gl[0]) * s, gl[1] + (gl[3] - gl[1]) * t];
+        b.cyl('z', 0.235, 0.235, 0.035, 0, cy, z0 + 0.0175, C.gold, 24, { neg: false, pos: gl });
+        b.cyl('z', 0.19, 0.19, 0.006, 0, cy, z0 + 0.038, W, 24, { neg: false, pos: FUV.mirror });
+        b.cyl('z', 0.2, 0.2, 0.012, 0, cy, z0 + 0.04, C.gold, 24, { neg: false, pos: false });
+        for (let k = 0; k < 24; k++) {
+          const a = (k + 0.5) * Math.PI / 12, ca = Math.cos(a), sa = Math.sin(a), at = (r: number, t: number): V3 => [ca * r - sa * t, cy + sa * r + ca * t, z0 + 0.006];
+          b.toward([at(0.22, -0.012), at(0.385, 0), at(0.22, 0.012)], [0, 0, 1], 0xa87a2a);
+        }
+        for (let k = 0; k < 24; k++) {
+          const a = k * Math.PI / 12, long = k % 2 === 0, r0 = 0.225, r1 = long ? 0.42 : 0.35, w0 = long ? 0.024 : 0.017, zb = z0 + 0.012, hz = 0.022;
+          const ca = Math.cos(a), sa = Math.sin(a), at = (r: number, t: number, z: number): V3 => [ca * r - sa * t, cy + sa * r + ca * t, z];
+          const bl = at(r0, -w0, zb), bR = at(r0, w0, zb), tip = at(r1, 0, zb), rb = at(r0, 0, zb + hz);
+          b.toward([bl, tip, rb], [0, 0, 1], W, [gu(0, 0), gu(0.5, 1), gu(0.5, 0.3)]); b.toward([bR, rb, tip], [0, 0, 1], W, [gu(1, 0), gu(0.6, 0.4), gu(0.5, 1)]);
+          if (long) b.blob(0.017, ...at(0.43, 0, zb + 0.004), C.gold);
+          else { const p0 = at(0.245, -0.016, zb + 0.02), p1 = at(0.245, 0.016, zb + 0.02), p2 = at(0.29, 0, zb + 0.012); b.toward([p0, p2, p1], [0, 0, 1], 0xe8c870); }
+        }
+        return { footprint: { w: 0.9, d: 0.05, h: 1.95 }, placement: 'wall', use: standUse(0.05, 'use', 'Se préparer', 0.6) };
+      },
+    },
+    // -------------------------------------------------------------------------------------------------- folding screens (four panels)
+    screen: {
+      basic: b => {
+        // raffia stretched in a raw-wood frame
+        const pw = 0.42, hw = pw / 2;
+        zigzag(b, 4, pw, 0.5, () => {
+          for (const sx of [-1, 1]) b.box(0.032, 1.62, 0.032, sx * (hw - 0.016), 0, 0, C.raw);
+          b.slab(pw - 0.064, 0.035, 0.03, 0, 1.5, 0, C.rawDark); b.slab(pw - 0.064, 0.035, 0.03, 0, 0.1, 0, C.rawDark);
+          b.box(pw - 0.064, 1.365, 0.01, 0, 0.135, 0, W, { pz: { rect: FUV.raffia }, nz: { rect: FUV.raffia } });
+        });
+        return { footprint: { w: 1.5, d: 0.23, h: 1.62 }, placement: 'free', use: standUse(0.23, 'use', 'Se changer', 0.5) };
+      },
+      better: b => {
+        // dark carved wood, openwork panels, turned finials, an arched crest on each panel
+        const pw = 0.44, hw = pw / 2;
+        zigzag(b, 4, pw, 0.5, () => {
+          for (const sx of [-1, 1]) { b.box(0.04, 1.62, 0.04, sx * (hw - 0.02), 0, 0, C.dark); b.blob(0.028, sx * (hw - 0.02), 1.65, 0, C.dark, [1, 1.3, 1]); }
+          b.box(pw - 0.08, 1.44, 0.024, 0, 0.12, 0, W, { pz: { rect: FUV.carvedPanel }, nz: { rect: FUV.carvedPanel }, py: { paint: C.dark } });
+          b.slab(pw - 0.08, 0.04, 0.036, 0, 1.56, 0, C.darker); b.slab(pw - 0.08, 0.04, 0.036, 0, 0.08, 0, C.darker);
+          crest(b, 0, 1.6, 0, 0.11, 0.03, C.dark, 8, FUV.carved);
+        });
+        return { footprint: { w: 1.57, d: 0.25, h: 1.72 }, placement: 'free', use: standUse(0.25, 'use', 'Se changer', 0.5) };
+      },
+      premium: b => {
+        // black lacquer and gold leaf, one picture across the four panels, gilded frames, bun feet, carved kick panels and crests
+        const pw = 0.46, hw = pw / 2, g0 = { rect: FUV.gold }, cg = { rect: FUV.carved, paint: C.gold };
+        zigzag(b, 4, pw, 0.5, i => {
+          for (const sx of [-1, 1]) { b.box(0.045, 1.66, 0.045, sx * (hw - 0.0225), 0.06, 0, C.gold, { pz: g0, nz: g0, px: g0, nx: g0 }); b.blob(0.036, sx * (hw - 0.0225), 0.034, 0, C.gold, [1, 1.1, 1]); b.blob(0.03, sx * (hw - 0.0225), 1.74, 0, C.gold); }
+          b.box(pw - 0.09, 1.28, 0.026, 0, 0.36, 0, D.lacquer, { pz: { rect: subRect(FUV.lacquer, i / 4, (i + 1) / 4) }, nz: { paint: 0x4a1016 } });
+          b.box(pw - 0.09, 0.2, 0.026, 0, 0.13, 0, C.gold, { pz: cg, nz: cg });
+          for (const y of [0.1, 0.33, 1.64]) b.slab(pw - 0.09, 0.03, 0.034, 0, y, 0, C.gold, { pz: g0, nz: g0 });
+          crest(b, 0, 1.67, 0, 0.12, 0.03, C.gold, 8, FUV.carved);
+        });
+        return { footprint: { w: 1.65, d: 0.27, h: 1.8 }, placement: 'free', use: standUse(0.27, 'use', 'Se changer', 0.5) };
+      },
+    },
+    // -------------------------------------------------------------------------------------------------- lanterns and a candelabrum (they light up: the glow layer)
+    lantern: {
+      basic: b => {
+        // a hurricane lamp in red enamel, its amber globe lit, on a little wooden stool
+        b.cyl('y', 0.15, 0.15, 0.035, 0, 0.3175, 0, C.raw, 12, { neg: true, pos: true, capPaint: C.varnishLight });
+        for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3 + 0.5; b.beam([Math.sin(a) * 0.08, 0.3, Math.cos(a) * 0.08], [Math.sin(a) * 0.13, 0.008, Math.cos(a) * 0.13], 0.035, 0.035, C.rawDark); }
+        const y = 0.335, red = D.enamel, gl = FUV.lampGlass;
+        b.cyl('y', 0.08, 0.085, 0.025, 0, y + 0.0125, 0, red, 12, { neg: false, pos: false });
+        b.cyl('y', 0.085, 0.06, 0.05, 0, y + 0.05, 0, red, 12, { neg: false, pos: true });
+        b.cyl('y', 0.04, 0.04, 0.025, 0, y + 0.0875, 0, D.brass, 8, { neg: false, pos: true }); b.cyl('x', 0.012, 0.012, 0.03, 0.05, y + 0.088, 0, D.brass, 6);
+        b.cyl('y', 0.042, 0.066, 0.06, 0, y + 0.13, 0, W, 10, { neg: false, pos: false, side: subRect(gl, 0, 1, 0, 0.5) });
+        b.cyl('y', 0.066, 0.04, 0.07, 0, y + 0.195, 0, W, 10, { neg: false, pos: false, side: subRect(gl, 0, 1, 0.5, 1) });
+        for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2, ax = Math.sin(a), az = Math.cos(a); b.beam([ax * 0.06, y + 0.075, az * 0.06], [ax * 0.074, y + 0.16, az * 0.074], 0.006, 0.006, red); b.beam([ax * 0.074, y + 0.16, az * 0.074], [ax * 0.056, y + 0.232, az * 0.056], 0.006, 0.006, red); }
+        for (const sx of [-1, 1]) { b.beam([sx * 0.09, y + 0.03, 0], [sx * 0.09, y + 0.25, 0], 0.014, 0.014, red); b.beam([sx * 0.09, y + 0.25, 0], [sx * 0.04, y + 0.25, 0], 0.012, 0.012, red); }
+        b.cyl('y', 0.07, 0.035, 0.035, 0, y + 0.2475, 0, red, 10, { neg: true, pos: false }); b.cyl('y', 0.025, 0.025, 0.02, 0, y + 0.275, 0, red, 8, { neg: false, pos: true });
+        for (let k = 0; k < 6; k++) { const t0 = Math.PI * k / 6, t1 = Math.PI * (k + 1) / 6; b.beam([Math.cos(t0) * 0.09, y + 0.25 + Math.sin(t0) * 0.11, 0], [Math.cos(t1) * 0.09, y + 0.25 + Math.sin(t1) * 0.11, 0], 0.007, 0.007, 0x8a8e93); }
+        return { footprint: { w: 0.3, d: 0.3, h: 0.7 }, placement: 'free', use: standUse(0.3, 'use', 'Allumer la lanterne', 0.45) };
+      },
+      better: b => {
+        // a pair of pierced iron lanterns, tall and short, the light coming through in stars
+        ironLantern(b, -0.136, -0.042, 1.22); ironLantern(b, 0.174, 0.078, 0.86);
+        return { footprint: { w: 0.54, d: 0.36, h: 0.92 }, placement: 'free', use: standUse(0.36, 'use', 'Allumer les lanternes', 0.45) };
+      },
+      premium: b => {
+        // a crystal candelabrum: a marble foot, a gilded stem threaded with cut crystal, five arms and a central candle, crystal drops
+        const cr = FUV.crystal;
+        b.cyl('y', 0.2, 0.18, 0.05, 0, 0.025, 0, W, 16, { neg: true, pos: FUV.marble }); b.cyl('y', 0.205, 0.205, 0.015, 0, 0.0075, 0, C.gold, 16, { neg: false, pos: false });
+        b.cyl('y', 0.13, 0.04, 0.12, 0, 0.11, 0, W, 12, { neg: false, pos: false, side: FUV.gold });
+        b.cyl('y', 0.016, 0.016, 1.3, 0, 0.82, 0, C.gold, 6, { neg: false, pos: false });
+        for (const [y0, y1, r] of [[0.22, 0.44, 0.09], [0.54, 0.78, 0.07], [0.88, 1.04, 0.085]] as const) {
+          const ym = (y0 + y1) / 2;
+          facets(b, 8, 0.028, r, y0, ym, 0, 0, W, cr); facets(b, 8, r, 0.028, ym, y1, 0, 0, W, cr);
+          b.cyl('y', 0.032, 0.032, 0.02, 0, y0 - 0.01, 0, C.gold, 8, { neg: false, pos: false }); b.cyl('y', 0.032, 0.032, 0.02, 0, y1 + 0.01, 0, C.gold, 8, { neg: false, pos: false });
+        }
+        b.cyl('y', 0.05, 0.1, 0.05, 0, 1.125, 0, C.gold, 10, { neg: true, pos: true, capPaint: 0xd8b860 });
+        const tips: V3[] = [];
+        for (let k = 0; k < 5; k++) {
+          const a = k * Math.PI * 2 / 5 + Math.PI / 5, sa = Math.sin(a), ca = Math.cos(a), at = (r: number, y: number): V3 => [sa * r, y, ca * r];
+          b.beam(at(0.08, 1.14), at(0.18, 1.12), 0.018, 0.018, C.gold, false); b.beam(at(0.18, 1.12), at(0.235, 1.22), 0.018, 0.018, C.gold, false);
+          b.cyl('y', 0.032, 0.042, 0.02, ...at(0.235, 1.23), C.gold, 8, { neg: true, pos: true, capPaint: 0xd8b860 });
+          candle(b, ...at(0.235, 1.24), 0.12);
+          tips.push(at(0.235, 1.215));
+        }
+        b.cyl('y', 0.035, 0.045, 0.02, 0, 1.47, 0, C.gold, 8, { neg: true, pos: true, capPaint: 0xd8b860 }); candle(b, 0, 1.48, 0, 0.15, 0.019);
+        for (let k = 0; k < 5; k++) {
+          const A = tips[k], B = tips[(k + 1) % 5];
+          for (let d = 0; d < 2; d++) b.blob(0.017, A[0] * (1 - d * 0.1), A[1] - 0.05 - d * 0.05, A[2] * (1 - d * 0.1), d ? 0xd8e8f8 : 0xf2f8ff, [0.7, 1.6, 0.7]);
+          for (const t of [0.33, 0.67]) b.blob(0.013, A[0] + (B[0] - A[0]) * t, A[1] - 0.06 - Math.sin(t * Math.PI) * 0.03, A[2] + (B[2] - A[2]) * t, 0xe8f2fc);
+        }
+        for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; b.blob(0.015, Math.sin(a) * 0.1, 1.06, Math.cos(a) * 0.1, 0xeef6ff, [0.7, 1.7, 0.7]); }
+        return { footprint: { w: 0.54, d: 0.56, h: 1.72 }, placement: 'free', use: standUse(0.56, 'use', 'Allumer les bougies', 0.45) };
+      },
+    },
+    // -------------------------------------------------------------------------------------------------- aquariums (glass and water: the second draw call)
+    aquarium: {
+      basic: (b, g) => {
+        // a round bowl of goldfish on a little wooden pedestal table
+        b.cyl('y', 0.15, 0.12, 0.04, 0, 0.02, 0, C.varnish, 12, { neg: true, pos: true }); b.cyl('y', 0.03, 0.04, 0.48, 0, 0.28, 0, C.varnish, 8, { neg: false, pos: false });
+        b.cyl('y', 0.19, 0.19, 0.03, 0, 0.535, 0, C.varnish, 14, { neg: true, pos: true, capPaint: C.varnishLight });
+        const yc = 0.7;
+        b.cyl('y', 0.04, 0.1, 0.045, 0, 0.5755, 0, D.gravel, 10, { neg: true, pos: true, capPaint: (x: number, _y: number, z: number) => [0xb8a070, 0x8a7a5a, 0xd8c8a0, 0xa0603a][Math.abs(Math.round(x * 97 + z * 61)) % 4] });
+        for (let k = 0; k < 3; k++) { const a = k * 2.1; limb(b, [Math.sin(a) * 0.03, 0.59, Math.cos(a) * 0.03 - 0.03], [Math.sin(a) * 0.05, 0.7 + k * 0.02, Math.cos(a) * 0.05 - 0.05], 0.006, 0.003, D.weed2, 4, false); b.blob(0.018, Math.sin(a) * 0.05, 0.71 + k * 0.02, Math.cos(a) * 0.05 - 0.05, D.weed, [0.8, 1.4, 0.8]); }
+        fish(b, -0.03, 0.68, 0.035, 0.075, 0xf07a1a, 0xf4b050, 1, 0.5); fish(b, 0.045, 0.72, -0.02, 0.065, 0xe85a10, 0xf09040, -1, 0.5);
+        b.cyl('y', 0.088, 0.092, 0.012, 0, 0.827, 0, 0xbcd8e2, 14, { neg: false, pos: false });
+        g.blob(0.17, 0, yc, 0, D.glass, [1, 0.88, 1], 1);
+        g.cyl('y', 0.11, 0.135, 0.16, 0, 0.68, 0, D.water, 12, { neg: false, pos: true });
+        return { footprint: { w: 0.38, d: 0.38, h: 0.85 }, placement: 'free', use: standUse(0.38, 'inspect', 'Regarder les poissons', 0.5) };
+      },
+      better: (b, g) => {
+        // a planted freshwater tank on its wooden cabinet: driftwood, a stone, waving grass, angelfish, neon tetras and platies, a lit lid
+        const w = 1.0, d = 0.42, f = d / 2;
+        b.box(w - 0.04, 0.06, d - 0.04, 0, 0, 0, C.dark);
+        b.box(w, 0.66, d, 0, 0.06, 0, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+        b.box(0.006, 0.6, 0.005, 0, 0.09, f + 0.0025, C.dark); for (const sx of [-1, 1]) b.cyl('z', 0.016, 0.016, 0.012, sx * 0.05, 0.42, f + 0.006, C.gold, 8);
+        b.slab(w + 0.02, 0.03, d + 0.02, 0, 0.72, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+        const y0 = 0.75, y1 = 1.22, tw = w - 0.04, td = d - 0.02, zb = -td / 2, zf = td / 2, xr = tw / 2;
+        b.box(tw, 0.025, td, 0, y0, 0, 0x1c1c1e); b.slab(tw + 0.01, 0.045, td + 0.01, 0, y1, 0, 0x1c1c1e, { ny: { rect: FUV.led } });
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.014, y1 - y0, 0.014, sx * (xr - 0.007), y0, sz * (td / 2 - 0.007), 0x1c1c1e);
+        b.box(tw - 0.02, y1 - y0 - 0.02, 0.008, 0, y0 + 0.02, zb + 0.008, W, { pz: { rect: FUV.aquaFresh } });
+        b.box(tw - 0.03, 0.05, td - 0.03, 0, y0 + 0.025, 0, D.gravel, { py: { paint: (x: number, _y: number, z: number) => [0xb8a070, 0x8a7a5a, 0xc8b890][Math.abs(Math.round(x * 31 + z * 53)) % 3] } });
+        b.blob(0.08, -0.3, y0 + 0.1, -0.08, 0x8a8a84, [1.3, 0.75, 0.9]); b.blob(0.05, -0.2, y0 + 0.08, -0.02, 0x7a7a74, [1.2, 0.8, 1]);
+        limb(b, [-0.05, y0 + 0.08, -0.06], [0.22, y0 + 0.3, -0.12], 0.022, 0.012, 0x5a3a22, 5); limb(b, [0.12, y0 + 0.2, -0.1], [0.2, y0 + 0.36, -0.05], 0.012, 0.006, 0x5a3a22, 4);
+        for (let k = 0; k < 9; k++) { const x = -0.44 + k * 0.1 + (k % 2) * 0.02, h = 0.22 + ((k * 7) % 4) * 0.04, zz = zb + 0.05 + (k % 3) * 0.02, q: V3[] = [[x - 0.012, y0 + 0.07, zz], [x + 0.012, y0 + 0.07, zz], [x + 0.03 + (k % 2) * 0.02, y0 + 0.07 + h, zz], [x + 0.012 + (k % 2) * 0.02, y0 + 0.07 + h, zz]];
+          b.toward(q, [0, 0, 1], k % 2 ? D.weed : D.weed2); b.toward(q, [0, 0, -1], D.weed); }
+        for (let k = 0; k < 5; k++) b.blob(0.045, 0.3 + (k % 3) * 0.05, y0 + 0.1 + Math.floor(k / 3) * 0.06, -0.04 + (k % 2) * 0.05, k === 2 ? 0xc84a3a : D.weed2, [1, 1.3, 0.9]);
+        fish(b, -0.12, y0 + 0.27, 0.02, 0.09, 0xd8d8cc, 0x2a2a2a, 1, 1.05); fish(b, 0.08, y0 + 0.33, -0.04, 0.08, 0xe8e0c8, 0x3a3a3a, -1, 1.05);
+        for (let k = 0; k < 4; k++) fish(b, -0.3 + k * 0.07, y0 + 0.16 + (k % 2) * 0.03, 0.06 - (k % 2) * 0.04, 0.035, 0x2a8fe0, 0xd83a3a, 1);
+        fish(b, 0.24, y0 + 0.2, 0.07, 0.05, 0xf08a2a, 0xf0a040, -1, 0.5); fish(b, -0.36, y0 + 0.32, 0.04, 0.05, 0xf06a2a, 0xf0a040, 1, 0.5);
+        const pane = (pts: V3[], n: V3, col: number) => g.toward(pts, n, col);
+        pane([[-xr, y0 + 0.025, zf], [xr, y0 + 0.025, zf], [xr, y1, zf], [-xr, y1, zf]], [0, 0, 1], D.glass);
+        pane([[-xr + 0.01, y0 + 0.025, zf - 0.008], [xr - 0.01, y0 + 0.025, zf - 0.008], [xr - 0.01, y1 - 0.05, zf - 0.008], [-xr + 0.01, y1 - 0.05, zf - 0.008]], [0, 0, 1], D.water);
+        for (const sx of [-1, 1]) pane([[sx * xr, y0 + 0.025, zb], [sx * xr, y0 + 0.025, zf], [sx * xr, y1, zf], [sx * xr, y1, zb]], [sx, 0, 0], D.water);
+        pane([[-xr + 0.01, y1 - 0.05, zb], [xr - 0.01, y1 - 0.05, zb], [xr - 0.01, y1 - 0.05, zf - 0.008], [-xr + 0.01, y1 - 0.05, zf - 0.008]], [0, 1, 0], 0x9fd8ec);
+        return { footprint: { w: 1.02, d: 0.44, h: 1.27 }, placement: 'wall', use: standUse(0.44, 'inspect', 'Regarder les poissons', 0.55) };
+      },
+      premium: (b, g) => {
+        // a reef tank on a walnut cabinet with gold trims: live rock, corals of every colour, a sea fan, an anemone and its clownfish, tangs, a blue-white lit lid
+        const w = 1.8, d = 0.5, f = d / 2;
+        b.box(w - 0.06, 0.07, d - 0.06, 0, 0, 0, 0x1a1a1c);
+        const fc = f - 0.02;
+        b.box(w, 0.72, d - 0.02, 0, 0.07, -0.01, K.walnut, { pz: { rect: FUV.wood, paint: 0x7a5232 }, px: { rect: FUV.wood, paint: 0x6a4428 }, nx: { rect: FUV.wood, paint: 0x6a4428 } });
+        for (const x of [-0.3, 0.3]) b.box(0.006, 0.66, 0.005, x, 0.1, fc + 0.0025, 0x2e1a0e);
+        for (const x of [-0.36, -0.24, 0.24, 0.36, -0.06, 0.06]) b.box(0.016, 0.22, 0.016, x, 0.36, fc + 0.008, C.gold);
+        b.box(w, 0.02, 0.006, 0, 0.07, fc + 0.003, C.gold); b.slab(w, 0.035, d, 0, 0.79, 0, 0x2a1a10, { pz: { paint: C.gold } });
+        const y0 = 0.825, y1 = 1.55, tw = w - 0.04, td = d - 0.04, zb = -td / 2, zf = td / 2, xr = tw / 2;
+        b.box(tw, 0.03, td, 0, y0, 0, 0x111214); b.slab(w, 0.05, d, 0, y1, 0, 0x111214);
+        b.box(tw - 0.06, 0.012, 0.02, 0, y1 - 0.012, zf - 0.03, W, { ny: { rect: FUV.led }, pz: { rect: FUV.led } });
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.016, y1 - y0, 0.016, sx * (xr - 0.008), y0, sz * (td / 2 - 0.008), 0x111214);
+        b.box(tw - 0.02, y1 - y0 - 0.03, 0.008, 0, y0 + 0.03, zb + 0.008, W, { pz: { rect: FUV.aquaSea } });
+        b.box(tw - 0.03, 0.06, td - 0.03, 0, y0 + 0.03, 0, D.sand);
+        const ys = y0 + 0.09;
+        ([[-0.62, 0.08, -0.12, 0.12, [1.4, 0.8, 0.8]], [-0.4, 0.1, -0.14, 0.1, [1.2, 1.1, 0.8]], [-0.2, 0.05, -0.12, 0.09, [1.5, 0.7, 0.9]], [0.18, 0.07, -0.13, 0.11, [1.3, 0.9, 0.8]],
+          [0.42, 0.12, -0.14, 0.12, [1.1, 1.3, 0.8]], [0.66, 0.06, -0.1, 0.09, [1.3, 0.8, 1]]] as const).forEach(([x, y, z, r, s], k) => b.blob(r, x, ys + y, z, [0x8a7a90, 0x7a6a80, 0x9a8a8a][k % 3], s));
+        b.blob(0.08, -0.42, ys + 0.24, -0.1, 0xb8c84a, [1, 0.7, 1]);
+        b.blob(0.06, 0.4, ys + 0.3, -0.12, 0x6ab0a0, [1.5, 0.35, 1.2]);
+        for (const [x, z, col] of [[-0.62, -0.08, 0x9a5ad0], [0.18, -0.08, 0xf08a3a], [0.68, -0.05, 0x9a5ad0]] as const) for (let k = 0; k < 4; k++) {
+          const a = k * 1.6 + x * 3, tip: V3 = [x + Math.sin(a) * 0.07, ys + 0.2 + (k % 2) * 0.06, z + Math.cos(a) * 0.04 + 0.03];
+          limb(b, [x, ys + 0.1, z], tip, 0.014, 0.009, col, 4, false); b.blob(0.014, ...tip, dimC(col, 1.2));
+        }
+        for (const [x, z] of [[-0.05, -0.06], [0.52, 0.0], [-0.78, 0.02]] as const) for (let k = 0; k < 3; k++) b.blob(0.038, x + (k - 1) * 0.035, ys + 0.05 + (k % 2) * 0.04, z + (k % 2) * 0.015, [0xf07ab0, 0xf59ac8, 0xe05a98][k]);
+        const fan: V3[] = [[0.62, ys + 0.1, -0.15]];
+        for (let k = 0; k <= 6; k++) { const a = Math.PI * (0.18 + k * 0.64 / 6); fan.push([0.62 + Math.cos(a) * 0.2, ys + 0.1 + Math.sin(a) * 0.3, -0.15]); }
+        const fuv = fan.map(p => [FUV.carved[0] + (FUV.carved[2] - FUV.carved[0]) * (0.5 + (p[0] - 0.62) / 0.4), FUV.carved[1] + (FUV.carved[3] - FUV.carved[1]) * (p[1] - ys - 0.1) / 0.3] as [number, number]);
+        b.toward(fan, [0, 0, 1], 0xe0583a, fuv); b.toward(fan, [0, 0, -1], 0xb83a2a); limb(b, [0.62, ys + 0.02, -0.15], [0.62, ys + 0.12, -0.15], 0.012, 0.01, 0xb83a2a, 4);
+        b.cyl('y', 0.05, 0.06, 0.05, -0.12, ys + 0.025, 0.06, 0xf5a07a, 10, { neg: false, pos: true });
+        for (let k = 0; k < 7; k++) { const a = k * Math.PI * 2 / 7; limb(b, [-0.12 + Math.sin(a) * 0.035, ys + 0.05, 0.06 + Math.cos(a) * 0.035], [-0.12 + Math.sin(a) * 0.07, ys + 0.11, 0.06 + Math.cos(a) * 0.07], 0.01, 0.006, 0xf8b890, 4); }
+        for (const [x, y, dir] of [[-0.02, ys + 0.14, -1], [-0.22, ys + 0.12, 1]] as const) { fish(b, x, y, 0.08, 0.07, 0xf06a1a, 0x1a1a1a, dir, 0.5); b.box(0.008, 0.03, 0.024, x + dir * 0.008, y - 0.015, 0.068, 0xf8f8f4); }
+        for (const [x, y, z, dir] of [[-0.5, ys + 0.42, 0.04, 1], [0.3, ys + 0.5, 0.08, -1]] as const) fish(b, x, y, z, 0.13, 0x2a5ad8, 0xf4d020, dir, 0.55);
+        for (const [x, y, z, dir] of [[0.05, ys + 0.38, 0.0, 1], [0.6, ys + 0.24, 0.06, -1]] as const) fish(b, x, y, z, 0.11, 0xf4d43a, 0xf4d43a, dir, 0.8);
+        for (let k = 0; k < 4; k++) fish(b, -0.75 + k * 0.42, ys + 0.3 + (k % 2) * 0.12, 0.1 - (k % 2) * 0.06, 0.045, 0x5ad0a0, 0x48b890, k % 2 ? -1 : 1);
+        const pane = (pts: V3[], n: V3, col: number) => g.toward(pts, n, col), yw = y1 - 0.05;
+        pane([[-xr, y0 + 0.03, zf], [xr, y0 + 0.03, zf], [xr, y1, zf], [-xr, y1, zf]], [0, 0, 1], D.glass);
+        pane([[-xr + 0.01, y0 + 0.03, zf - 0.008], [xr - 0.01, y0 + 0.03, zf - 0.008], [xr - 0.01, yw, zf - 0.008], [-xr + 0.01, yw, zf - 0.008]], [0, 0, 1], D.sea);
+        for (const sx of [-1, 1]) pane([[sx * xr, y0 + 0.03, zb], [sx * xr, y0 + 0.03, zf], [sx * xr, y1, zf], [sx * xr, y1, zb]], [sx, 0, 0], D.sea);
+        pane([[-xr + 0.01, yw, zb], [xr - 0.01, yw, zb], [xr - 0.01, yw, zf - 0.008], [-xr + 0.01, yw, zf - 0.008]], [0, 1, 0], 0x8fd0f4);
+        return { footprint: { w: 1.8, d: 0.5, h: 1.6 }, placement: 'wall', use: standUse(0.5, 'inspect', 'Regarder les poissons', 0.55) };
+      },
+    },
+  };
+}
+const ROUND2_DECO = decoMakers();
 
 const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
   // -------------------------------------------------------------------------------------------------- dining sets: a table and its chairs

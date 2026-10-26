@@ -138,7 +138,7 @@ export type FurnitureType = 'chair' | 'sofa' | 'bed' | 'table' | 'tv' | 'radio' 
 export const TYPE_LABEL: Record<FurnitureType, string> = {
   chair: 'Chaises et fauteuils', sofa: 'Canapés', bed: 'Lits', table: 'Tables', tv: 'Télés', radio: 'Musique', rug: 'Tapis', mirror: 'Miroirs',
   plant: 'Plantes', lamp: 'Lampes', wardrobe: 'Rangements', mattress: 'Literie', desk: 'Bureaux', kitchen: 'Cuisine',
-  dining: 'Salles à manger', appliance: 'Électroménager', bath: 'Salle de bain', decor: 'Tableaux', shelf: 'Bibliothèques', outdoor: 'Jardin et piscine',
+  dining: 'Salles à manger', appliance: 'Électroménager', bath: 'Salle de bain', decor: 'Déco et objets', shelf: 'Bibliothèques', outdoor: 'Jardin et piscine',
 };
 /** A place on a piece: `top` is the surface height; `clip` the pose held there (default Sit; beds: Lie, along the bed; floor cushions: SitFloor, cross-legged). */
 export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: 'Lie' | 'SitFloor' }
@@ -429,6 +429,32 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
   // (the comfort lane's pieces above, the decoration lane's below)
   //
   // ---- the catalogue's second round, decoration lane (K-D): its pieces here
+  // floor vases and sculptures (anywhere, the séjour first)
+  F({ id: 'jarre_herbes', type: 'decor', grade: 'basic', emoji: '🏺', name: 'Jarre en terre et herbes sèches', what: 'Terre cuite gravée et un bouquet d’herbes sèches', price: 6_000, w: 0.38, d: 0.36 }),
+  F({ id: 'vase_bouquet', type: 'decor', grade: 'better', emoji: '💐', name: 'Vase en céramique et bouquet', what: 'Émail bleu de cobalt et bougainvilliers en fleurs', price: 45_000, w: 0.5, d: 0.48 }),
+  F({ id: 'vase_orchidees', type: 'decor', grade: 'premium', emoji: '🌸', name: 'Grand vase doré et orchidées', what: 'Vase doré sur marbre noir, orchidées blanches en arc', price: 260_000, w: 0.5, d: 0.48 }),
+  F({ id: 'statuette_bois', type: 'decor', grade: 'basic', emoji: '🪵', name: 'Statuette en bois sculpté', what: 'Une femme au pilon, taillée d’un seul bloc', price: 15_000, w: 0.3, d: 0.3 }),
+  F({ id: 'sculpture_ebene', type: 'decor', grade: 'better', emoji: '♟️', name: 'Sculpture en ébène sur socle', what: 'Une porteuse de calebasse, ébène et aubier, sur son socle', price: 120_000, w: 0.34, d: 0.34 }),
+  F({ id: 'bronze_marbre', type: 'decor', grade: 'premium', emoji: '🤼', name: 'Bronze sur socle de marbre', what: 'Un lutteur en garde, en bronze, sur marbre blanc', price: 950_000, w: 0.54, d: 0.54 }),
+  // wall decoration, on the wall
+  F({ id: 'paniers_muraux', type: 'decor', grade: 'basic', emoji: '🧺', name: 'Paniers tressés au mur', what: 'Six paniers plats aux couleurs vives, au mur', price: 8_000, w: 0.9, d: 0.04, mount: 'wall' }),
+  F({ id: 'masques_sculptes', type: 'decor', grade: 'better', emoji: '🎭', name: 'Masques sculptés', what: 'Trois masques en bois sculpté, au mur', price: 65_000, w: 0.94, d: 0.09, mount: 'wall' }),
+  F({ id: 'miroir_soleil', type: 'decor', grade: 'premium', emoji: '☀️', name: 'Miroir soleil doré', what: 'Un miroir rond aux rayons dorés, au mur : « Se préparer »', price: 380_000, w: 0.9, d: 0.05, mount: 'wall', use: prepare(8, 10) }),
+  // folding screens: one changes behind them (the bedroom first)
+  F({ id: 'paravent_raphia', type: 'decor', grade: 'basic', emoji: '🎋', name: 'Paravent en raphia', what: 'Quatre panneaux de raphia tressé : « Se changer »', price: 14_000, w: 1.5, d: 0.23, room: 'chambre', use: change(4, 3) }),
+  F({ id: 'paravent_bois', type: 'decor', grade: 'better', emoji: '🪟', name: 'Paravent en bois sculpté', what: 'Bois sombre ajouré, une rosace par panneau : « Se changer »', price: 110_000, w: 1.57, d: 0.25, room: 'chambre', use: change(5, 5) }),
+  F({ id: 'paravent_laque', type: 'decor', grade: 'premium', emoji: '✨', name: 'Paravent laqué et doré', what: 'Laque noire, baobab à la feuille d’or : « Se changer »', price: 560_000, w: 1.65, d: 0.27, room: 'chambre', use: change(6, 8) }),
+  // lanterns: light for the evening
+  F({ id: 'lanterne_tempete', type: 'lamp', grade: 'basic', emoji: '🪔', name: 'Lanterne tempête', what: 'Une lampe tempête sur son tabouret, lumière chaude', price: 4_500, w: 0.3, d: 0.3 }),
+  F({ id: 'lanternes_fer', type: 'lamp', grade: 'better', emoji: '🏮', name: 'Lanternes en fer ajouré', what: 'Deux lanternes en fer ajouré : la lumière en étoiles', price: 38_000, w: 0.54, d: 0.36 }),
+  F({ id: 'candelabre_cristal', type: 'lamp', grade: 'premium', emoji: '🕯️', name: 'Candélabre en cristal', what: 'Cristal taillé, six bougies, pied de marbre', price: 450_000, w: 0.54, d: 0.56 }),
+  // aquariums: « Regarder les poissons »
+  F({ id: 'bocal_poissons', type: 'decor', grade: 'basic', emoji: '🐟', name: 'Bocal et poissons rouges', what: 'Deux poissons rouges dans leur bocal : « Regarder les poissons »', price: 9_000, w: 0.38, d: 0.38,
+    use: { id: 'poissons', label: 'Regarder les poissons', seconds: 4, needs: { moral: 4 } } }),
+  F({ id: 'aquarium_meuble', type: 'decor', grade: 'better', emoji: '🐠', name: 'Aquarium sur meuble', what: 'Plantes, scalaires et néons, sur son meuble : « Regarder les poissons »', price: 190_000, w: 1.02, d: 0.44,
+    use: { id: 'poissons', label: 'Regarder les poissons', seconds: 4, needs: { moral: 8 } } }),
+  F({ id: 'aquarium_mer', type: 'decor', grade: 'premium', emoji: '🐡', name: 'Grand aquarium d’eau de mer', what: 'Coraux, anémone et poissons des récifs : « Regarder les poissons »', price: 1_900_000, w: 1.8, d: 0.5,
+    use: { id: 'poissons', label: 'Regarder les poissons', seconds: 5, needs: { moral: 14, energie: 2 } } }),
 ];
 
 // ------------------------------------------------------------------ a supporter's colours (the arena's stall « Couleurs du Géew »)
