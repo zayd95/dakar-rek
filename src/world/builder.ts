@@ -1480,18 +1480,18 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // This replaces generic gated villas rather than placing a public restaurant inside somebody's residential compound.
         const places = i === 0
           ? [
-              { name: 'Le Patio de Ngor', board: 'LE PATIO DE NGOR · RESTAURANT', wall: 0xe7d5bd, awning: 0xb94f36, bg: '#6b3526' },
-              { name: 'Chez Binta', board: 'CHEZ BINTA · GRILLADES', wall: 0xf1e4d1, awning: 0x2f6f5a, bg: '#1c4d40' },
-              { name: 'Café du Phare', board: 'CAFÉ DU PHARE · JUS & CAFÉ', wall: 0xece1d0, awning: 0x1e6fd9, bg: '#173b63' },
+              { name: 'Le Patio de Ngor', board: 'LE PATIO DE NGOR · RESTAURANT', wall: 0xe7d5bd, awning: 0xb94f36, bg: '#6b3526', h: 4.1 },
+              { name: 'Chez Binta', board: 'CHEZ BINTA · GRILLADES', wall: 0xf1e4d1, awning: 0x2f6f5a, bg: '#1c4d40', h: 4.6 },
+              { name: 'Café du Phare', board: 'CAFÉ DU PHARE · JUS & CAFÉ', wall: 0xece1d0, awning: 0x1e6fd9, bg: '#173b63', h: 5.0 },
             ]
           : [
-              { name: 'Lounge 221', board: 'LOUNGE 221 · MUSIQUE & CUISINE', wall: 0xe5d8c5, awning: 0x8c4d77, bg: '#2e193d' },
-              { name: 'Terrasse de Ngor', board: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', wall: 0xf2e7d5, awning: 0x1f7aa6, bg: '#17465a' },
-              { name: 'Le Comptoir de Ngor', board: 'LE COMPTOIR DE NGOR · CUISINE', wall: 0xdcc7a7, awning: 0x9d5e34, bg: '#5b321e' },
+              { name: 'Lounge 221', board: 'LOUNGE 221 · MUSIQUE & CUISINE', wall: 0xe5d8c5, awning: 0x8c4d77, bg: '#2e193d', h: 6.4 },
+              { name: 'Terrasse de Ngor', board: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', wall: 0xf2e7d5, awning: 0x1f7aa6, bg: '#17465a', h: 6.4 },
+              { name: 'Le Comptoir de Ngor', board: 'LE COMPTOIR DE NGOR · CUISINE', wall: 0xdcc7a7, awning: 0x9d5e34, bg: '#5b321e', h: 4.8 },
             ];
         for (let n = 0; n < places.length; n++) {
           const v = places[n], x = bx + 7.7 + n * 15.3, z = bz + 13.5;
-          const w = 12.2, d = 9, h = 4.1, frontZ = z - d / 2;
+          const w = 12.2, d = 9, h = v.h, frontZ = z - d / 2;
           // Low independent restaurant buildings with a clear street-facing commercial frontage.
           fac.facade(w, h, d, x, G - 0.02, z, v.wall);
           plain.box(w + 0.36, 0.24, d + 0.36, x, G + h - 0.02, z, 0xd9d3c8);
@@ -1503,6 +1503,14 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           plain.box(10.8, 0.12, 1.65, x, G + 2.72, frontZ - 0.85, v.awning);
           for (const side of [-1, 1]) plain.box(0.1, 2.35, 0.1, x + side * 4.9, G + 1.15, frontZ - 1.35, 0x5a4733);
           addSign(v.board, v.bg, '#fff2d3', x, G + 3.48, frontZ - 0.12, Math.PI, 9, 0.76);
+          if (h >= 6) {
+            // Two taller venues break the low frontage rhythm with an upper floor and a simple street-facing balcony.
+            glass.box(3.3, 1.35, 0.08, x - 2.75, G + 5.05, frontZ - 0.1, 0x477f8e);
+            glass.box(3.3, 1.35, 0.08, x + 2.75, G + 5.05, frontZ - 0.1, 0x477f8e);
+            plain.box(8.0, 0.12, 1.05, x, G + 4.15, frontZ - 0.55, 0xe7dfd2);
+            plain.box(8.0, 0.08, 0.08, x, G + 4.72, frontZ - 1.0, 0x2d3748);
+            for (let rail = -3.5; rail <= 3.5; rail += 1.4) plain.box(0.05, 0.55, 0.05, x + rail, G + 4.22, frontZ - 1.0, 0x2d3748);
+          }
           // Outdoor tables and chairs make this a destination street, not a row of sealed decorative boxes.
           const tableXs = i === 1 && n === 1 ? [x - 7.2, x + 7.2] : [x - 3.3, x + 3.3];
           for (const tx of tableXs) {
