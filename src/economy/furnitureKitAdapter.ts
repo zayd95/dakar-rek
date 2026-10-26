@@ -51,6 +51,12 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   parasol: 'parasol:basic', parasol_bois: 'parasol:better', parasol_deporte: 'parasol:premium',
   salon_jardin: 'gardenSet:basic', salon_fer_forge: 'gardenSet:better', salon_teck: 'gardenSet:premium',
   // ---- the catalogue's second round, comfort lane (K-C): its mappings here
+  pouf_cuir: 'pouf:basic', pouf_wax: 'pouf:better', pouf_velours: 'pouf:premium',
+  banquette_angle: 'cornerSofa:basic', canape_angle: 'cornerSofa:better', canape_angle_velours: 'cornerSofa:premium',
+  lit_moustiquaire: 'canopyBed:basic', lit_baldaquin_bois: 'canopyBed:better', lit_baldaquin: 'canopyBed:premium',
+  console_simple: 'console:basic', console_bois: 'console:better', console_marbre: 'console:premium',
+  fauteuil_velours: 'armchair:premium', chaise_sculptee: 'woodenChair:premium', table_basse_sculptee: 'lowTable:premium', armoire_miroir: 'wardrobe:premium',
+  attaya_gaz: 'attaya:better', attaya_service: 'attaya:premium', tapis_priere_tisse: 'prayerMat:better', tapis_priere_velours: 'prayerMat:premium',
   //
   // (the comfort lane's mappings above, the decoration lane's below)
   //

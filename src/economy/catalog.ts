@@ -140,8 +140,8 @@ export const TYPE_LABEL: Record<FurnitureType, string> = {
   plant: 'Plantes', lamp: 'Lampes', wardrobe: 'Rangements', mattress: 'Literie', desk: 'Bureaux', kitchen: 'Cuisine',
   dining: 'Salles à manger', appliance: 'Électroménager', bath: 'Salle de bain', decor: 'Tableaux', shelf: 'Bibliothèques', outdoor: 'Jardin et piscine',
 };
-/** A place on a piece: `top` is the surface height; `clip` the pose held there (default Sit; beds: Lie, along the bed). */
-export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: 'Lie' }
+/** A place on a piece: `top` is the surface height; `clip` the pose held there (default Sit; beds: Lie, along the bed; floor cushions: SitFloor, cross-legged). */
+export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: 'Lie' | 'SitFloor' }
 export interface FurnitureUse {
   id: string; label: string; seconds: number; needs: Partial<Needs>; counter?: string;
   /** Paid at the start (the ingredients of a meal cooked at home). */
@@ -382,6 +382,49 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
   F({ id: 'salon_teck', type: 'outdoor', grade: 'premium', emoji: '🪑', name: 'Salon de jardin en teck', what: 'Table en teck, quatre fauteuils et leur parasol : « Préparer l’ataya »', price: 780_000, w: 2.1, d: 2.1,
     seats: setOf([[-0.35, -0.69, 0], [0.35, -0.69, 0], [-0.35, 0.69, PI], [0.35, 0.69, PI]], 0.58), use: ataya(10, 6) }),
   // ---- the catalogue's second round (docs/ld2/LD2_C.md « Catalogue, round 2 »), comfort lane (K-C): its pieces here
+  // poufs: one low seat each (the salon's chairs)
+  F({ id: 'pouf_cuir', type: 'chair', grade: 'basic', emoji: '🪑', name: 'Pouf en cuir', what: 'Cuir repoussé et cousu main : une place de plus', price: 12_000, w: 0.5, d: 0.5,
+    seats: [{ x: 0, z: 0, top: 0.5, yaw: 0, kind: 'stool' }] }),
+  F({ id: 'pouf_wax', type: 'chair', grade: 'better', emoji: '🪑', name: 'Pouf en wax', what: 'Deux wax et un passepoil ocre : une place de plus', price: 35_000, w: 0.56, d: 0.56,
+    seats: [{ x: 0, z: 0, top: 0.55, yaw: 0, kind: 'stool' }] }),
+  F({ id: 'pouf_velours', type: 'chair', grade: 'premium', emoji: '🪑', name: 'Pouf capitonné en velours', what: 'Velours bordeaux capitonné, boutons et pieds dorés', price: 180_000, w: 0.6, d: 0.6,
+    seats: [{ x: 0, z: 0, top: 0.56, yaw: 0, kind: 'stool' }] }),
+  // corner sofas: the back run along a wall, its return on the left (« Se détendre » on the first place)
+  F({ id: 'banquette_angle', type: 'sofa', grade: 'basic', emoji: '🛋️', name: 'Banquette d’angle', what: 'Cadre en bois et mousses, quatre places en coin : « Se détendre »', price: 45_000, w: 2.2, d: 1.7,
+    seats: [{ x: -0.023, z: -0.43, top: 0.54, yaw: 0, kind: 'sofa' }, { x: 0.693, z: -0.43, top: 0.54, yaw: 0, kind: 'sofa' }, { x: -0.66, z: -0.41, top: 0.54, yaw: PI / 4, kind: 'sofa' },
+      { x: -0.68, z: 0.335, top: 0.54, yaw: PI / 2, kind: 'sofa' }], use: lounge(8, 7) }),
+  F({ id: 'canape_angle', type: 'sofa', grade: 'better', emoji: '🛋️', name: 'Canapé d’angle en tissu', what: 'Tissu sable et coussins en wax, quatre places : « Se détendre »', price: 260_000, w: 2.6, d: 1.9,
+    seats: [{ x: -0.05, z: -0.46, top: 0.58, yaw: 0, kind: 'sofa' }, { x: 0.73, z: -0.46, top: 0.58, yaw: 0, kind: 'sofa' }, { x: -0.79, z: -0.44, top: 0.58, yaw: PI / 4, kind: 'sofa' },
+      { x: -0.81, z: 0.34, top: 0.58, yaw: PI / 2, kind: 'sofa' }], use: lounge(11, 11) }),
+  F({ id: 'canape_angle_velours', type: 'sofa', grade: 'premium', emoji: '🛋️', name: 'Grand canapé d’angle en velours', what: 'Velours bordeaux, cadre sculpté et doré, cinq places : « Se détendre »', price: 1_400_000, w: 3.0, d: 2.1,
+    seats: [{ x: -0.245, z: -0.515, top: 0.62, yaw: 0, kind: 'sofa' }, { x: 0.365, z: -0.515, top: 0.62, yaw: 0, kind: 'sofa' }, { x: 0.975, z: -0.515, top: 0.62, yaw: 0, kind: 'sofa' },
+      { x: -0.945, z: -0.495, top: 0.62, yaw: PI / 4, kind: 'sofa' }, { x: -0.965, z: 0.365, top: 0.62, yaw: PI / 2, kind: 'sofa' }], use: lounge(16, 16) }),
+  // canopy beds (sleep)
+  F({ id: 'lit_moustiquaire', type: 'bed', grade: 'basic', emoji: '🛏️', name: 'Lit et sa moustiquaire', what: 'Lit en fer peint sous sa moustiquaire : des nuits sans moustiques', price: 30_000, w: 1.5, d: 2.1, sleep: 65, seats: bedSeat(1.5, 0.58) }),
+  F({ id: 'lit_baldaquin_bois', type: 'bed', grade: 'better', emoji: '🛏️', name: 'Lit à baldaquin en bois', what: 'Quatre colonnes sculptées, un ciel de lit et un couvre-lit en wax', price: 240_000, w: 1.62, d: 2.14, sleep: 85, seats: bedSeat(1.62, 0.72) }),
+  F({ id: 'lit_baldaquin', type: 'bed', grade: 'premium', emoji: '🛏️', name: 'Lit à baldaquin et voilages', what: 'Colonnes dorées et voilages, brocart, velours et coussins', price: 1_600_000, w: 1.96, d: 2.3, sleep: 100, seats: bedSeat(1.96, 0.79) }),
+  // entrance consoles (the entrée): a mirror on the wall above the better ones
+  F({ id: 'console_simple', type: 'shelf', grade: 'basic', emoji: '🔑', name: 'Console et vide-poche', what: 'Une calebasse pour les clés, un porte-clés au mur : « Vider ses poches »', price: 9_000, w: 0.8, d: 0.3, room: 'entree',
+    use: { id: 'videpoche', label: 'Vider ses poches', seconds: 1, needs: { moral: 2 } } }),
+  F({ id: 'console_bois', type: 'shelf', grade: 'better', emoji: '🪞', name: 'Console en bois et miroir', what: 'Bois verni, deux tiroirs, un miroir au mur : « Se préparer » avant de sortir', price: 85_000, w: 1.1, d: 0.36, room: 'entree', use: prepare(10, 6) }),
+  F({ id: 'console_marbre', type: 'shelf', grade: 'premium', emoji: '🪞', name: 'Console en marbre et miroir doré', what: 'Marbre blanc, bois doré, grand miroir et son encensoir : « Se préparer »', price: 520_000, w: 1.3, d: 0.42, room: 'entree', use: prepare(16, 12) }),
+  // kit models already drawn, sold now
+  F({ id: 'fauteuil_velours', type: 'chair', grade: 'premium', emoji: '💺', name: 'Fauteuil de salon en velours', what: 'Velours bordeaux et bois doré, assorti au grand canapé', price: 420_000, w: 1.26, d: 1.0,
+    seats: [{ x: 0, z: 0.06, top: 0.58, yaw: 0, kind: 'chair' }] }),
+  F({ id: 'chaise_sculptee', type: 'chair', grade: 'premium', emoji: '🪑', name: 'Chaise sculptée', what: 'Dossier sculpté et doré, assise de velours', price: 95_000, w: 0.52, d: 0.6, seats: [{ x: 0, z: 0.03, top: 0.65, yaw: 0, kind: 'chair' }] }),
+  F({ id: 'table_basse_sculptee', type: 'table', grade: 'premium', emoji: '🫖', name: 'Table basse sculptée', what: 'Bois sculpté et plateau de marbre : « Préparer l’ataya »', price: 260_000, w: 1.24, d: 0.68, use: ataya(10, 5) }),
+  F({ id: 'armoire_miroir', type: 'wardrobe', grade: 'premium', emoji: '🪞', name: 'Grande armoire à miroir', what: 'Bois sculpté, une porte à miroir : « Se changer »', price: 680_000, w: 1.62 + 0.1, d: 0.66, use: change(10, 9) }),   // the kit's 1.62 + 0.1, to the bit
+  F({ id: 'attaya_gaz', type: 'table', grade: 'better', emoji: '🫖', name: 'Attaya au gaz et ses coussins', what: 'Réchaud à gaz, théière et trois coussins en wax : « Préparer l’ataya » assis', price: 45_000, w: 1.6, d: 1.12,
+    seats: [{ x: 0, z: 0.32, top: 0.17, yaw: PI, kind: 'floor', clip: 'SitFloor' }, { x: -0.58, z: -0.2, top: 0.17, yaw: PI / 2, kind: 'floor', clip: 'SitFloor' }, { x: 0.58, z: -0.2, top: 0.17, yaw: -PI / 2, kind: 'floor', clip: 'SitFloor' }],
+    use: { ...ataya(9, 6), sit: true } }),
+  F({ id: 'attaya_service', type: 'table', grade: 'premium', emoji: '🫖', name: 'Grand service à attaya', what: 'Plateau doré, six verres, trois coussins de velours : « Préparer l’ataya » assis', price: 220_000, w: 1.72, d: 1.18,
+    seats: [{ x: 0, z: 0.32, top: 0.2, yaw: PI, kind: 'floor', clip: 'SitFloor' }, { x: -0.58, z: -0.2, top: 0.2, yaw: PI / 2, kind: 'floor', clip: 'SitFloor' }, { x: 0.58, z: -0.2, top: 0.2, yaw: -PI / 2, kind: 'floor', clip: 'SitFloor' }],
+    use: { ...ataya(12, 8), sit: true } }),
+  // prayer mats (flat). Prayer brings no reward (src/activity/primitives.ts): the mat is unrolled, nothing more
+  F({ id: 'tapis_priere_tisse', type: 'rug', grade: 'better', emoji: '🟦', name: 'Tapis de prière tissé', what: 'Tissé, bordure géométrique et son arche', price: 18_000, w: 0.66, d: 1.16, flat: true,
+    use: { id: 'tapis_priere', label: 'Dérouler le tapis', seconds: 2, needs: {}, spot: [0, 0.3] } }),
+  F({ id: 'tapis_priere_velours', type: 'rug', grade: 'premium', emoji: '🟥', name: 'Tapis de prière en velours', what: 'Velours bordeaux, motifs et franges dorés', price: 95_000, w: 0.7, d: 1.3, flat: true,
+    use: { id: 'tapis_priere', label: 'Dérouler le tapis', seconds: 2, needs: {}, spot: [0, 0.3] } }),
   //
   // (the comfort lane's pieces above, the decoration lane's below)
   //

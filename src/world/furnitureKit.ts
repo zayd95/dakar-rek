@@ -179,16 +179,8 @@ function couch(b: KitBuilder, tier: Tier, n: number): { w: number; d: number; h:
     for (let k = 0; k < n; k++) { const x = (k - (n - 1) / 2) * 0.62; b.slab(0.58, 0.08, d - 0.12, x, 0.34, 0.03, 0xc96a2a); b.box(0.56, 0.32, 0.07, x, 0.42, -d / 2 + 0.09, 0xc96a2a); }
     return { w, d, h: 0.78, top };
   }
-  if (tier === 'better') {
-    const w = 0.66 * n + 0.36, d = 0.88, top = 0.46, f = 0x6f7f96;
-    legs4(b, w - 0.1, d - 0.1, 0.1, 0.05, C.dark);
-    b.slab(w, 0.28, d, 0, 0.1, 0, f, { py: { rect: FUV.fabric, paint: f } });
-    b.box(w, 0.48, 0.22, 0, 0.38, -d / 2 + 0.11, f);
-    for (const sx of [-1, 1]) b.slab(0.18, 0.32, d, sx * (w / 2 - 0.09), 0.38, 0, f);
-    for (let k = 0; k < n; k++) { const x = (k - (n - 1) / 2) * 0.66; b.slab(0.62, 0.09, d - 0.3, x, 0.37, 0.1, dimC(f, 1.1), { py: { rect: FUV.fabric, paint: dimC(f, 1.15) } }); b.at(x, 0.46, -d / 2 + 0.28, 0, () => b.box(0.6, 0.42, 0.14, 0, 0, 0, dimC(f, 1.08)), -0.18); }
-    b.at(-(w / 2 - 0.34), 0.5, -d / 2 + 0.36, 0.3, () => b.box(0.34, 0.32, 0.1, 0, 0, 0, 0xe8742c, { pz: { rect: FUV.wax1 } }), -0.25);
-    return { w, d, h: 0.9, top };
-  }
+  // the catalogue's second round (lane K-C): the sofa in wax prints (« Canapé en tissu wax »), the armchair in tan buttoned leather (« Fauteuil en cuir »)
+  if (tier === 'better') return n === 1 ? kcLeatherArmchair(b) : kcWaxSofa(b, n);
   // premium: Dakar salon — burgundy velvet, carved and gilded frame with a crest, rolled arms, cushions
   const w = 0.7 * n + 0.5, d = 0.95, top = 0.48, v = 0x9a2234;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl('y', 0.035, 0.05, 0.14, sx * (w / 2 - 0.12), 0.07, sz * (d / 2 - 0.1), C.gold, 6);
@@ -318,11 +310,442 @@ const standIn = (w: number, d: number, h: number, n: number, placement: Part['pl
 };
 // ------------------------------------------------------------------------------------------------ the catalogue's second round, comfort lane (K-C)
 // Pouf, corner sofa, canopy bed, entrance console. The lane owns this block (and nothing else of this file but sofa:better and armchair:better).
+// Its helpers are prefixed `kc` (the decoration lane writes its own beside them).
+const KCP = {
+  tan: 0xb26a33, velvet: 0x9a2234, sand: 0xd6c3a2, ochre: 0xd99a2b, iron: 0x2f6f86, cotton: 0xf4f1ea, clay: 0xa85a32,
+  net: 0xeef4f6, sheer: 0xfff3e2, ivory: 0xf3ead6, orange: 0xc96a2a,
+};
+/** The part of an atlas rect from its bottom-left corner: `a` × `c` of it (each at most the whole). */
+const kcPart = (r: Rect, a: number, c: number): Rect => [r[0], r[1], r[0] + (r[2] - r[0]) * Math.min(1, a), r[1] + (r[3] - r[1]) * Math.min(1, c)];
+/**
+ * A box upholstered in the print `r`, one tile of it covering `t` m: each face takes the part of the tile its size needs (a face longer than a
+ * tile stretches it), so a long sofa built of seat-wide boxes keeps its motifs at one scale. `paint` tints it; `skip` leaves faces out.
+ */
+function kcPrint(b: KitBuilder, w: number, h: number, d: number, x: number, y: number, z: number, r: Rect, t: number, o: { paint?: number; skip?: readonly string[] } = {}) {
+  const tint = o.paint ?? W, f = (k: string, a: number, c: number) => o.skip?.includes(k) ? { skip: true } : { rect: kcPart(r, a / t, c / t), paint: tint };
+  b.box(w, h, d, x, y, z, tint, { pz: f('pz', w, h), nz: f('nz', w, h), px: f('px', d, h), nx: f('nx', d, h), py: f('py', w, d) });
+}
+/** A flat print over a rectangle from the corner `o` along the unit axes `u` (lu m) and `v` (lv m), facing u × v, in tiles of at most `t` m (a spread, a sheet's drop). */
+function kcPanel(b: KitBuilder, o: V3, u: V3, lu: number, v: V3, lv: number, r: Rect, t: number, paint = W) {
+  const nu = Math.max(1, Math.ceil(lu / t - 1e-6)), nv = Math.max(1, Math.ceil(lv / t - 1e-6));
+  const P = (a: number, c: number): V3 => [o[0] + u[0] * a + v[0] * c, o[1] + u[1] * a + v[1] * c, o[2] + u[2] * a + v[2] * c];
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    const a0 = i * t, a1 = Math.min(lu, a0 + t), c0 = j * t, c1 = Math.min(lv, c0 + t);
+    b.quad(P(a0, c0), P(a1, c0), P(a1, c1), P(a0, c1), paint, kcPart(r, (a1 - a0) / t, (c1 - c0) / t));
+  }
+}
+/** A spread or a sheet w wide and `len` long (centred on z), laid on a mattress whose top is `y`, its sides and foot falling by `drop`, printed with `r` in tiles of `t` m. */
+function kcSpread(b: KitBuilder, w: number, len: number, z: number, y: number, drop: number, r: Rect, t: number, ground: number) {
+  const x0 = -w / 2, z1 = z + len / 2, z0 = z - len / 2, th = 0.014;
+  b.box(w, th, len, 0, y, z, ground, { py: { skip: true }, pz: { skip: true }, px: { skip: true }, nx: { skip: true } });
+  kcPanel(b, [x0, y + th, z1], [1, 0, 0], w, [0, 0, -1], len, r, t);
+  kcPanel(b, [-x0 + 0.002, y + th - drop, z1], [0, 0, -1], len, [0, 1, 0], drop, r, t); kcPanel(b, [x0 - 0.002, y + th - drop, z0], [0, 0, 1], len, [0, 1, 0], drop, r, t);
+  kcPanel(b, [x0, y + th - drop * 0.5, z1 + 0.002], [1, 0, 0], w, [0, 1, 0], drop * 0.5, r, t);
+}
+/**
+ * A cushion (a mattress, a pouf's top, an arm): a box w × h × d standing on y, centred on x, z, its top edges softened by a chamfer `c` all round.
+ * The print `r` (one tile = t m) is laid from above over the top and the chamfers, and on each side; without one it is plain `paint`.
+ */
+function kcCushion(b: KitBuilder, w: number, h: number, d: number, x: number, y: number, z: number, paint: number, r: Rect | null, t = 0.66, c = 0.035) {
+  const x0 = x - w / 2, x1 = x + w / 2, z0 = z - d / 2, z1 = z + d / 2, y1 = y + h, ym = y1 - c;
+  const uv = (p: V3): [number, number] => r ? [r[0] + (r[2] - r[0]) * Math.min(1, (p[0] - x0) / t), r[1] + (r[3] - r[1]) * Math.min(1, (z1 - p[2]) / t)] : [b.plain[0], b.plain[1]];
+  const ring = (yy: number, k: number): V3[] => [[x0 + k, yy, z1 - k], [x1 - k, yy, z1 - k], [x1 - k, yy, z0 + k], [x0 + k, yy, z0 + k]];
+  const lo = ring(ym, 0), hi = ring(y1, c), n: V3[] = [[0, 1, 1], [1, 1, 0], [0, 1, -1], [-1, 1, 0]];
+  b.toward(hi, [0, 1, 0], paint, hi.map(uv));
+  for (let k = 0; k < 4; k++) { const q = [lo[k], lo[(k + 1) % 4], hi[(k + 1) % 4], hi[k]]; b.toward(q, n[k], paint, q.map(uv)); }
+  const side = (a: number) => r ? { rect: kcPart(r, a / t, (ym - y) / t), paint } : {};
+  b.cuboid(x0, x1, y, ym, z0, z1, paint, { py: { skip: true }, pz: side(w), nz: side(w), px: side(d), nx: side(d) });
+}
+/**
+ * A back cushion `w` wide, `h` high and `t` thick, the foot of its back face at (x, y, z), leaning back by `tilt` (its top goes back by h·sin tilt),
+ * its soft face toward +z before turning by `rotY`.
+ */
+function kcBack(b: KitBuilder, x: number, y: number, z: number, w: number, h: number, t: number, paint: number, r: Rect | null, tile = 0.6, tilt = 0.2, rotY = 0) {
+  b.at(x, y, z, rotY, () => kcCushion(b, w, t, h, 0, 0, -h / 2, paint, r, tile, 0.03), Math.PI / 2 - tilt);
+}
+/**
+ * A round body of `seg` sides through `rings` ([radius, y], from the bottom up), centred on x, z: its side printed with `r` repeated `rep` times
+ * round it (`seg` a multiple of `rep`; `paint` tints it), or plain; its top a disc printed with a rect, plain (true) or open (false).
+ */
+function kcDrum(b: KitBuilder, x: number, z: number, rings: readonly (readonly [number, number])[], seg: number, paint: number, r: Rect | null, rep = 1, top: Rect | boolean = true, topPaint = paint) {
+  const y0 = rings[0][1], H = rings[rings.length - 1][1] - y0;
+  const P = (i: number, rr: number, yy: number): V3 => { const a = i / seg * Math.PI * 2; return [x + Math.sin(a) * rr, yy, z + Math.cos(a) * rr]; };
+  for (let k = 0; k + 1 < rings.length; k++) {
+    const [ra, ya] = rings[k], [rb, yb] = rings[k + 1];
+    for (let i = 0; i < seg; i++) {
+      const q = [P(i, ra, ya), P(i + 1, ra, ya), P(i + 1, rb, yb), P(i, rb, yb)];
+      if (!r) { b.poly(q, paint); continue; }
+      const va = r[1] + (r[3] - r[1]) * (ya - y0) / H, vb = r[1] + (r[3] - r[1]) * (yb - y0) / H;
+      const f0 = (i * rep / seg) % 1, u0 = r[0] + (r[2] - r[0]) * f0, u1 = r[0] + (r[2] - r[0]) * (f0 + rep / seg);
+      b.poly(q, paint, [[u0, va], [u1, va], [u1, vb], [u0, vb]]);
+    }
+  }
+  if (top === false) return;
+  const [rt, yt] = rings[rings.length - 1], rect = top === true ? null : top;
+  const cuv: [number, number] = rect ? [(rect[0] + rect[2]) / 2, (rect[1] + rect[3]) / 2] : [b.plain[0], b.plain[1]];
+  const uv = (i: number): [number, number] => { if (!rect) return cuv; const a = i / seg * Math.PI * 2; return [cuv[0] + Math.sin(a) * (rect[2] - rect[0]) / 2, cuv[1] + Math.cos(a) * (rect[3] - rect[1]) / 2]; };
+  for (let i = 0; i < seg; i++) b.poly([[x, yt, z], P(i, rt, yt), P(i + 1, rt, yt)], rect ? W : topPaint, [cuv, uv(i), uv(i + 1)]);
+}
+/**
+ * A see-through net or voile (on the glass builder) hung from a small ring at the top, down through rings [rx, rz, y, box]: an ellipse, or with
+ * `box` a rectangle (its corners kept, so the net falls straight round a bed's corners). `seg` is a multiple of 8.
+ */
+function kcVeil(g: KitBuilder, rings: readonly (readonly [number, number, number, boolean?])[], seg: number, col: number) {
+  const sq = (i: number): [number, number] => {                                   // round the square [−1, 1]² from (0, 1) towards +x, in eight half sides
+    const u = (i % seg) / seg * 8;
+    return u < 1 ? [u, 1] : u < 3 ? [1, 2 - u] : u < 5 ? [4 - u, -1] : u < 7 ? [-1, u - 6] : [u - 8, 1];
+  };
+  const P = (i: number, r: readonly [number, number, number, boolean?]): V3 => {
+    const [qx, qz] = sq(i); if (r[3]) return [qx * r[0], r[2], qz * r[1]];
+    const a = Math.atan2(qx, qz); return [Math.sin(a) * r[0], r[2], Math.cos(a) * r[1]];
+  };
+  for (let k = 0; k + 1 < rings.length; k++) for (let i = 0; i < seg; i++) g.quad(P(i, rings[k + 1]), P(i + 1, rings[k + 1]), P(i + 1, rings[k]), P(i, rings[k]), col);
+  const t = rings[0]; for (let i = 0; i < seg; i++) g.poly([[0, t[2], 0], P(i, t), P(i + 1, t)], col);
+}
+/**
+ * The places of a corner sofa W × D whose seats are `s` deep and whose ends have arms `aw` wide: along the back run facing +z (from the corner
+ * outwards), the corner itself facing into the room diagonally, then along the return on the −x side facing +x.
+ */
+function kcCornerSeats(W: number, D: number, s: number, aw: number, top: number, nMain: number, nRet: number): FurnitureSeat[] {
+  const xa = -W / 2 + s, xb = W / 2 - aw, za = -D / 2 + s, zb = D / 2 - aw, zMain = r3(-D / 2 + s / 2 + 0.06), xRet = r3(-W / 2 + s / 2 + 0.06);
+  const main = Array.from({ length: nMain }, (_, k) => seatOf(`s${k}`, r3(xa + (k + 0.5) * (xb - xa) / nMain), zMain, top, 'sofa'));
+  const corner = seatOf(`s${nMain}`, r3(-W / 2 + s / 2 + 0.08), r3(-D / 2 + s / 2 + 0.08), top, 'sofa', Math.PI / 4);
+  const ret = Array.from({ length: nRet }, (_, k) => seatOf(`s${nMain + 1 + k}`, xRet, r3(za + (k + 0.5) * (zb - za) / nRet), top, 'sofa', Math.PI / 2));
+  return [...main, corner, ...ret];
+}
+/** The six feet of an L (the back run's ends, the return's ends, the inner corner), `i` in from the edges. */
+const kcLFeet = (W: number, D: number, s: number, i: number): [number, number][] =>
+  [[-W / 2 + i, -D / 2 + i], [W / 2 - i, -D / 2 + i], [W / 2 - i, -D / 2 + s - i], [-W / 2 + i, D / 2 - i], [-W / 2 + s - i, D / 2 - i], [-W / 2 + s - i, -D / 2 + s - i]];
+
+/**
+ * « Canapé en tissu wax » (sofa:better): the same frame as before (3 seats of 0.66 m, seat top 0.46), upholstered seat by seat in an indigo and
+ * ochre wax so the motifs keep one scale, its seat cushions in the same print, its back cushions in two others.
+ */
+function kcWaxSofa(b: KitBuilder, n: number) {
+  const w = 0.66 * n + 0.36, d = 0.88, top = 0.46, T = 0.6, R = FUV.waxA, xs = (k: number) => (k - (n - 1) / 2) * 0.66;
+  legs4(b, w - 0.1, d - 0.1, 0.1, 0.05, C.dark);
+  for (let k = 0; k < n; k++) {
+    kcPrint(b, 0.66, 0.28, d, xs(k), 0.1, 0, R, T, { skip: ['px', 'nx'] });                            // the base under each seat
+    kcPrint(b, 0.66, 0.48, 0.22, xs(k), 0.38, -d / 2 + 0.11, R, T, { skip: ['px', 'nx'] });             // its back
+    kcCushion(b, 0.62, 0.09, d - 0.3, xs(k), 0.37, 0.1, W, R, T, 0.03);                                 // its seat cushion
+    kcBack(b, xs(k), 0.46, -d / 2 + 0.3, 0.6, 0.42, 0.14, W, k % 2 ? FUV.waxB : FUV.wax1, 0.5, 0.18);    // its back cushion
+  }
+  for (const sx of [-1, 1]) {
+    kcPrint(b, 0.18, 0.6, d, sx * (w / 2 - 0.09), 0.1, 0, R, T);                                      // the arms
+    b.box(0.19, 0.02, 0.02, sx * (w / 2 - 0.09), 0.69, d / 2 - 0.005, KCP.ochre);                      // their ochre piping
+  }
+  b.box(w - 0.36, 0.02, 0.02, 0, 0.37, d / 2 - 0.005, KCP.ochre);
+  b.at(-(w / 2 - 0.36), 0.5, -d / 2 + 0.4, 0.3, () => b.box(0.34, 0.32, 0.1, 0, 0, 0, 0x127a4c, { pz: { rect: FUV.waxB }, nz: { rect: FUV.waxB } }), -0.25);   // a throw cushion
+  return { w, d, h: 0.9, top };
+}
+/** « Fauteuil en cuir » (armchair:better): a tan club armchair, its back buttoned, rolled arms studded with brass nails, a stitched seat cushion. */
+function kcLeatherArmchair(b: KitBuilder) {
+  const w = 0.85, d = 0.8, top = 0.46, L = KCP.tan, aw = 0.16;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl('y', 0.024, 0.032, 0.08, sx * (w / 2 - 0.09), 0.04, sz * (d / 2 - 0.09), C.darker, 6);
+  b.box(w - 0.04, 0.29, d - 0.04, 0, 0.08, 0, L, { pz: { rect: FUV.leatherTan } });                    // the seat's base
+  b.box(w, 0.66, 0.16, 0, 0.08, -d / 2 + 0.08, L);                                                      // the back, behind the arms
+  b.box(w - 2 * aw, 0.34, 0.006, 0, 0.4, -d / 2 + 0.163, W, { pz: { rect: FUV.leatherTuft } });         // buttoned
+  b.cyl('x', 0.08, 0.08, w, 0, 0.78, -d / 2 + 0.08, L, 10);                                             // its rolled top
+  for (const sx of [-1, 1]) {
+    b.box(aw, 0.52, d - 0.03, sx * (w / 2 - aw / 2), 0.08, 0.015, L, { pz: { rect: FUV.nailFront } });
+    b.cyl('z', 0.08, 0.08, d - 0.03, sx * (w / 2 - 0.08), 0.6, 0.015, L, 10, { neg: true, pos: FUV.leatherTan });
+  }
+  kcCushion(b, w - 2 * aw - 0.01, 0.09, d - 0.22, 0, 0.37, 0.1, W, FUV.leatherTan, 0.55, 0.035);
+  return { w, d, h: 0.86, top };
+}
+
 const ROUND2_COMFORT: Record<'pouf' | 'cornerSofa' | 'canopyBed' | 'console', Record<Tier, Maker>> = {
-  pouf: { basic: standIn(0.5, 0.5, 0.42, 1, 'free'), better: standIn(0.55, 0.55, 0.42, 2, 'free'), premium: standIn(0.6, 0.6, 0.44, 3, 'free') },
-  cornerSofa: { basic: standIn(2.2, 1.7, 0.8, 1), better: standIn(2.4, 1.9, 0.9, 2), premium: standIn(2.7, 2.1, 1.0, 3) },
-  canopyBed: { basic: standIn(1.5, 2.1, 2.0, 1), better: standIn(1.7, 2.2, 2.2, 2), premium: standIn(1.9, 2.3, 2.4, 3) },
-  console: { basic: standIn(0.8, 0.3, 0.8, 1), better: standIn(1.1, 0.35, 1.7, 2), premium: standIn(1.3, 0.4, 1.9, 3) },
+  // ------------------------------------------------------------------------------------------------ poufs: one low seat each
+  pouf: {
+    // Senegalese leather: a bulging drum, its stitched side embossed with red and green points, a rosette on top
+    basic: b => {
+      kcDrum(b, 0, 0, [[0.2, 0], [0.24, 0.07], [0.25, 0.2], [0.24, 0.33], [0.2, 0.4]], 16, W, FUV.poufSide, 4, FUV.poufTop);
+      const s = seatOf('s0', 0, 0, 0.4, 'stool');
+      return { footprint: { w: 0.5, d: 0.5, h: 0.4 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'S’asseoir') };
+    },
+    // wax: a square pouf in one print, a softer cushion top in another, ochre piping, a button, little wooden feet
+    better: b => {
+      const s = 0.54;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl('y', 0.028, 0.022, 0.05, sx * 0.21, 0.025, sz * 0.21, C.varnish, 6);
+      kcPrint(b, s, 0.31, s, 0, 0.05, 0, FUV.waxA, 0.54);
+      for (const y of [0.05, 0.36]) for (const [a, c] of [[[-1, 1], [1, 1]], [[1, 1], [1, -1]], [[1, -1], [-1, -1]], [[-1, -1], [-1, 1]]] as const)
+        b.beam([a[0] * s / 2, y, a[1] * s / 2], [c[0] * s / 2, y, c[1] * s / 2], 0.02, 0.02, KCP.ochre, false);
+      kcCushion(b, s, 0.09, s, 0, 0.36, 0, W, FUV.waxB, 0.54, 0.045);
+      b.cyl('y', 0.028, 0.028, 0.012, 0, 0.456, 0, KCP.ochre, 8);
+      const st = seatOf('s0', 0, 0, 0.45, 'stool');
+      return { footprint: { w: 0.56, d: 0.56, h: 0.46 }, placement: 'free', seats: [st], use: sitUse(st, 'sit', 'S’asseoir') };
+    },
+    // buttoned velvet: a burgundy drum tufted all round with gold buttons, a gold band and piping, four gilded feet
+    premium: b => {
+      for (let k = 0; k < 4; k++) {
+        const a = Math.PI / 4 + k * Math.PI / 2, sa = Math.sin(a), ca = Math.cos(a);
+        b.beam([sa * 0.2, 0.12, ca * 0.2], [sa * 0.235, 0.025, ca * 0.235], 0.034, 0.034, C.gold); b.blob(0.024, sa * 0.237, 0.024, ca * 0.237, C.gold);
+      }
+      b.cyl('y', 0.27, 0.275, 0.035, 0, 0.1275, 0, C.gold, 20, { neg: true, pos: false });
+      kcDrum(b, 0, 0, [[0.28, 0.145], [0.296, 0.27], [0.287, 0.39]], 20, W, FUV.velvetTuft, 5, false);
+      kcDrum(b, 0, 0, [[0.287, 0.39], [0.266, 0.44], [0.22, 0.462]], 20, KCP.velvet, null, 1, FUV.velvetTuft);
+      b.cyl('y', 0.291, 0.291, 0.014, 0, 0.39, 0, C.gold, 20, { neg: false, pos: false });
+      const s = seatOf('s0', 0, 0, 0.46, 'stool');
+      return { footprint: { w: 0.6, d: 0.6, h: 0.47 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'S’asseoir') };
+    },
+  },
+  // ------------------------------------------------------------------------------------------------ corner sofas: an L, its back run along the wall (−z), its return on the −x side
+  cornerSofa: {
+    // a raw wood frame and plank backs, foam cushions in orange cotton, two wax pillows
+    basic: b => {
+      const W2 = 2.2, D = 1.7, s = 0.72, x0 = -W2 / 2, z0 = -D / 2, xc = x0 + s, zc = z0 + s, cu = KCP.orange, ys = 0.32, top = 0.44;
+      for (const [x, z] of kcLFeet(W2, D, s, 0.04)) b.box(0.06, 0.26, 0.06, x, 0, z, C.raw);
+      b.slab(W2, 0.06, s, 0, 0.26, z0 + s / 2, C.raw); b.slab(s, 0.06, D - s, x0 + s / 2, 0.26, zc + (D - s) / 2, C.raw);
+      b.box(W2 / 2 - xc, 0.1, 0.03, (xc + W2 / 2) / 2, 0.17, zc - 0.015, C.rawDark); b.box(0.03, 0.1, D - s, xc - 0.015, 0.17, zc + (D - s) / 2, C.rawDark);
+      b.box(W2, 0.4, 0.05, 0, 0.32, z0 + 0.025, C.raw, { pz: { rect: FUV.wood, paint: C.raw } });                       // plank backs
+      b.box(0.05, 0.4, D - 0.05, x0 + 0.025, 0.32, 0.025, C.raw, { px: { rect: FUV.wood, paint: C.raw } });
+      b.box(W2, 0.05, 0.08, 0, 0.72, z0 + 0.04, C.rawDark); b.box(0.08, 0.05, D - 0.08, x0 + 0.04, 0.72, 0.04, C.rawDark);
+      b.box(0.05, 0.3, s, W2 / 2 - 0.025, 0.32, z0 + s / 2, C.rawDark); b.box(s, 0.3, 0.05, x0 + s / 2, 0.32, D / 2 - 0.025, C.rawDark);   // end boards
+      const cw = s - 0.05, L = W2 / 2 - 0.05 - xc, R = D / 2 - 0.05 - zc, ch = top - ys;
+      kcCushion(b, cw, ch, cw, x0 + 0.05 + cw / 2, ys, z0 + 0.05 + cw / 2, cu, FUV.fabric, 0.6, 0.03);
+      for (let k = 0; k < 2; k++) kcCushion(b, L / 2 - 0.01, ch, cw, xc + L / 4 + k * L / 2, ys, z0 + 0.05 + cw / 2, cu, FUV.fabric, 0.6, 0.03);
+      kcCushion(b, cw, ch, R - 0.01, x0 + 0.05 + cw / 2, ys, zc + R / 2, cu, FUV.fabric, 0.6, 0.03);
+      const bh = 0.34, tl = 0.18, lean = bh * Math.sin(tl) + 0.06;
+      kcBack(b, x0 + 0.05 + cw / 2 + 0.06, top, z0 + lean, cw - 0.14, bh, 0.12, cu, FUV.fabric, 0.6, tl);
+      for (let k = 0; k < 2; k++) kcBack(b, xc + L / 4 + k * L / 2, top, z0 + lean, L / 2 - 0.04, bh, 0.12, cu, FUV.fabric, 0.6, tl);
+      kcBack(b, x0 + lean, top, zc + R / 2, R - 0.04, bh, 0.12, cu, FUV.fabric, 0.6, tl, Math.PI / 2);
+      kcBack(b, x0 + 0.24, top + 0.02, z0 + 0.24, 0.34, 0.3, 0.1, W, FUV.wax1, 0.4, 0.3, Math.PI / 4);                    // wax pillows
+      kcBack(b, W2 / 2 - 0.3, top + 0.02, z0 + 0.2, 0.32, 0.28, 0.1, W, FUV.wax0, 0.4, 0.32, -0.25);
+      const seats = kcCornerSeats(W2, D, s, 0.05, top, 2, 1);
+      return { footprint: { w: W2, d: D, h: 0.8 }, placement: 'wall', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+    // upholstered in sand fabric, soft arms, its back cushions in three wax prints
+    better: b => {
+      const W2 = 2.6, D = 1.9, s = 0.86, bt = 0.2, aw = 0.18, x0 = -W2 / 2, z0 = -D / 2, xc = x0 + s, zc = z0 + s, f = KCP.sand, ys = 0.38, top = 0.48;
+      for (const [x, z] of kcLFeet(W2, D, s, 0.07)) b.box(0.05, 0.1, 0.05, x, 0, z, C.dark);
+      b.box(W2, 0.28, s, 0, 0.1, z0 + s / 2, f); b.box(s, 0.28, D - s, x0 + s / 2, 0.1, zc + (D - s) / 2, f);
+      b.box(W2 / 2 - xc, 0.018, 0.018, (xc + W2 / 2) / 2, 0.37, zc + 0.002, KCP.ochre); b.box(0.018, 0.018, D - s - aw, xc + 0.002, 0.37, zc + (D - s - aw) / 2, KCP.ochre);   // a piping
+      kcCushion(b, W2, 0.5, bt, 0, ys, z0 + bt / 2, f, null, 0.6, 0.06);                                                 // the backs
+      kcCushion(b, bt, 0.5, D - bt, x0 + bt / 2, ys, z0 + bt + (D - bt) / 2, f, null, 0.6, 0.06);
+      kcCushion(b, aw, 0.32, s, W2 / 2 - aw / 2, ys, z0 + s / 2, f, null, 0.6, 0.07);                                    // the arms
+      kcCushion(b, s, 0.32, aw, x0 + s / 2, ys, D / 2 - aw / 2, f, null, 0.6, 0.07);
+      const cs = s - bt, L = W2 / 2 - aw - xc, R = D / 2 - aw - zc, sc = dimC(f, 1.04);
+      kcCushion(b, cs, top - ys, cs, x0 + bt + cs / 2, ys, z0 + bt + cs / 2, sc, FUV.fabric, 1.2, 0.04);
+      for (let k = 0; k < 2; k++) kcCushion(b, L / 2 - 0.01, top - ys, cs, xc + L / 4 + k * L / 2, ys, z0 + bt + cs / 2, sc, FUV.fabric, 1.2, 0.04);
+      kcCushion(b, cs, top - ys, R - 0.01, x0 + bt + cs / 2, ys, zc + R / 2, sc, FUV.fabric, 1.2, 0.04);
+      const bh = 0.4, tl = 0.2, lean = bh * Math.sin(tl) + 0.005;
+      kcBack(b, x0 + bt + cs / 2 + 0.08, top, z0 + bt + lean, cs - 0.2, bh, 0.15, W, FUV.waxA, 0.5, tl);
+      [FUV.waxB, FUV.wax1].forEach((r, k) => kcBack(b, xc + L / 4 + k * L / 2, top, z0 + bt + lean, L / 2 - 0.05, bh, 0.15, W, r, 0.5, tl));
+      kcBack(b, x0 + bt + lean, top, zc + R / 2, R - 0.06, bh, 0.15, W, FUV.waxA, 0.5, tl, Math.PI / 2);
+      kcBack(b, x0 + bt + 0.24, top + 0.02, z0 + bt + 0.24, 0.34, 0.3, 0.11, W, FUV.wax0, 0.4, 0.3, Math.PI / 4);            // a throw pillow in the corner
+      const seats = kcCornerSeats(W2, D, s, aw, top, 2, 1);
+      return { footprint: { w: W2, d: D, h: 0.9 }, placement: 'wall', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+    // burgundy velvet on a carved base, buttoned backs under a carved gilt rail and its crest, rolled arms with gold caps, damask and velvet cushions
+    premium: b => {
+      const W2 = 3.0, D = 2.1, s = 0.95, bt = 0.17, aw = 0.22, x0 = -W2 / 2, z0 = -D / 2, xc = x0 + s, zc = z0 + s, v = KCP.velvet, ys = 0.43, top = 0.52;
+      const cv = { rect: FUV.carved, paint: C.dark }, vt = { rect: FUV.velvet }, gc = { rect: FUV.carved, paint: C.gold };
+      for (const [x, z] of kcLFeet(W2, D, s, 0.1)) b.cyl('y', 0.035, 0.05, 0.14, x, 0.07, z, C.gold, 6);
+      b.slab(W2, 0.1, s, 0, 0.13, z0 + s / 2, C.darker, { pz: cv, px: cv }); b.slab(s, 0.1, D - s, x0 + s / 2, 0.13, zc + (D - s) / 2, C.darker, { pz: cv, px: cv });
+      b.box(W2 / 2 - xc, 0.02, 0.012, (xc + W2 / 2) / 2, 0.22, zc + 0.006, C.gold); b.box(0.012, 0.02, D - s, xc + 0.006, 0.22, zc + (D - s) / 2, C.gold);
+      b.slab(W2 - 0.04, 0.2, s - 0.04, 0, 0.23, z0 + s / 2, v, { py: vt }); b.slab(s - 0.04, 0.2, D - s, x0 + s / 2, 0.23, zc + (D - s) / 2 - 0.02, v, { py: vt });
+      // buttoned backs, seat-wide panels so the buttons keep their size
+      const nb = 5, sb = W2 / nb; for (let k = 0; k < nb; k++) kcPrint(b, sb, 0.57, bt, x0 + (k + 0.5) * sb, 0.41, z0 + bt / 2, FUV.velvetTuft, 0.5, { skip: k ? ['nx'] : [] });
+      const nr = 3, sr = (D - bt) / nr; for (let k = 0; k < nr; k++) b.at(x0 + bt / 2, 0.41, z0 + bt + (k + 0.5) * sr, Math.PI / 2, () => kcPrint(b, sr, 0.57, bt, 0, 0, 0, FUV.velvetTuft, 0.5));
+      b.box(W2 + 0.02, 0.1, bt + 0.04, 0, 0.98, z0 + bt / 2 + 0.01, C.dark, { pz: gc, py: { paint: C.gold } });            // carved gilt rails
+      b.box(bt + 0.04, 0.1, D - bt - 0.04, x0 + bt / 2 + 0.01, 0.98, z0 + bt + (D - bt) / 2 - 0.02, C.dark, { px: gc, py: { paint: C.gold } });
+      b.box(0.62, 0.13, 0.1, (xc + W2 / 2) / 2, 1.08, z0 + bt / 2 + 0.01, C.gold, { pz: { rect: FUV.carved, paint: C.gold } });   // the crest
+      b.box(0.3, 0.08, 0.08, (xc + W2 / 2) / 2, 1.21, z0 + bt / 2 + 0.01, C.gold, { pz: { rect: FUV.gold } });
+      b.blob(0.07, x0 + bt / 2, 1.11, z0 + bt / 2, C.gold, [1, 1, 1], 1);                                                  // a gilt ball on the corner
+      // rolled arms with gold caps
+      b.slab(aw, 0.34, s, W2 / 2 - aw / 2, ys, z0 + s / 2, v, { px: vt, nx: vt }); b.cyl('z', 0.12, 0.12, s - 0.02, W2 / 2 - 0.11, 0.78, z0 + s / 2 - 0.01, v, 8);
+      b.cyl('z', 0.125, 0.125, 0.04, W2 / 2 - 0.11, 0.78, zc - 0.02, C.gold, 8);
+      b.slab(s, 0.34, aw, x0 + s / 2, ys, D / 2 - aw / 2, v, { pz: vt, nz: vt }); b.cyl('x', 0.12, 0.12, s - 0.02, x0 + s / 2 + 0.01, 0.78, D / 2 - 0.11, v, 8);
+      b.cyl('x', 0.125, 0.125, 0.04, xc - 0.02, 0.78, D / 2 - 0.11, C.gold, 8);
+      // velvet seat cushions: the corner, three along the back, one along the return
+      const cs = s - bt, L = W2 / 2 - aw - xc, R = D / 2 - aw - zc, sc = dimC(v, 1.1);
+      kcCushion(b, cs, top - ys, cs, x0 + bt + cs / 2, ys, z0 + bt + cs / 2, W, FUV.velvet, 0.66, 0.035);
+      for (let k = 0; k < 3; k++) kcCushion(b, L / 3 - 0.01, top - ys, cs, xc + (k + 0.5) * L / 3, ys, z0 + bt + cs / 2, W, FUV.velvet, 0.66, 0.035);
+      kcCushion(b, cs, top - ys, R - 0.01, x0 + bt + cs / 2, ys, zc + R / 2, W, FUV.velvet, 0.66, 0.035);
+      // back cushions: damask and buttoned velvet in turn, a damask one on the return, bolsters at the arms
+      const bh = 0.4, tl = 0.2, lean = bh * Math.sin(tl) + 0.005;
+      kcBack(b, x0 + bt + cs / 2 + 0.08, top, z0 + bt + lean, cs - 0.2, bh, 0.15, W, FUV.wax2, 0.5, tl);
+      for (let k = 0; k < 3; k++) kcBack(b, xc + (k + 0.5) * L / 3, top, z0 + bt + lean, L / 3 - 0.06, bh, 0.15, k % 2 ? sc : W, k % 2 ? FUV.velvetTuft : FUV.wax2, 0.5, tl);
+      kcBack(b, x0 + bt + lean, top, zc + R / 2, R - 0.06, bh, 0.15, W, FUV.wax2, 0.5, tl, Math.PI / 2);
+      b.cyl('z', 0.09, 0.09, 0.42, W2 / 2 - aw - 0.1, top + 0.09, z0 + bt + 0.35, v, 8); for (const dz of [-0.215, 0.215]) b.cyl('z', 0.092, 0.092, 0.012, W2 / 2 - aw - 0.1, top + 0.09, z0 + bt + 0.35 + dz, C.gold, 8);
+      const seats = kcCornerSeats(W2, D, s, aw, top, 3, 1);
+      return { footprint: { w: W2, d: D, h: 1.3 }, placement: 'wall', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+  },
+  // ------------------------------------------------------------------------------------------------ canopy beds: head to the wall (−z), lying along +z
+  canopyBed: {
+    // a painted iron bed, a foam mattress and a wax sheet, under a mosquito net hung from the ceiling (see-through: the glass builder)
+    basic: (b, g) => {
+      const w = 1.42, d = 2.0, ir = KCP.iron, top = 0.48;
+      for (const sx of [-1, 1]) {
+        b.cyl('y', 0.022, 0.022, 0.95, sx * w / 2, 0.475, -d / 2, ir, 6); b.cyl('y', 0.022, 0.022, 0.7, sx * w / 2, 0.35, d / 2, ir, 6);
+        b.blob(0.032, sx * w / 2, 0.96, -d / 2, ir); b.blob(0.03, sx * w / 2, 0.71, d / 2, ir);
+        b.box(0.04, 0.07, d, sx * (w / 2 - 0.02), 0.24, 0, ir);
+      }
+      for (const [z, y0, y1] of [[-d / 2, 0.42, 0.9], [d / 2, 0.4, 0.66]] as const) {
+        b.cyl('x', 0.018, 0.018, w, 0, y1, z, ir, 6); b.cyl('x', 0.016, 0.016, w, 0, y0, z, ir, 6);
+        for (let k = 1; k <= 5; k++) b.beam([-w / 2 + k * w / 6, y0, z], [-w / 2 + k * w / 6, y1, z], 0.014, 0.014, ir, false);
+      }
+      kcCushion(b, w - 0.06, 0.17, d - 0.08, 0, 0.31, 0, KCP.cotton, FUV.fabric, 0.7, 0.04);
+      kcSpread(b, w - 0.04, 1.25, 0.33, top, 0.15, FUV.wax1, 0.6, 0x1f5aa8);                                                       // the wax sheet
+      kcCushion(b, 0.62, 0.1, 0.34, 0, top, -d / 2 + 0.27, C.white, null, 0.6, 0.04);
+      b.slab(0.5, 0.05, 0.3, 0.26, top + 0.012, d / 2 - 0.32, W, topRect(FUV.wax0));                                                  // a folded pagne
+      b.beam([0, 2.09, 0], [0, 2.2, 0], 0.008, 0.008, C.white); b.cyl('y', 0.085, 0.085, 0.02, 0, 2.08, 0, C.white, 10, { neg: false, pos: false });
+      kcVeil(g, [[0.085, 0.085, 2.08], [0.42, 0.56, 1.88], [0.66, 0.92, 1.4], [0.745, 1.045, 1.0, true], [0.745, 1.045, 0.3, true]], 16, KCP.net);
+      const s = seatOf('bed', 0, 0.02, top, 'bed', 0, 'Lie');
+      return { footprint: { w: 1.5, d: 2.1, h: 2.2 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+    },
+    // a wooden four-poster: carved and turned posts, a canopy frame with carved pelmets, a carved headboard, a wax bedspread
+    better: b => {
+      const w = 1.62, d = 2.14, H = 2.24, wd = C.varnish, wl = C.varnishLight, top = 0.62;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const x = sx * (w / 2 - 0.045), z = sz * (d / 2 - 0.045);
+        b.box(0.09, 0.5, 0.09, x, 0, z, wd);
+        b.cyl('y', 0.055, 0.055, 0.04, x, 0.52, z, wl, 8);
+        kcDrum(b, x, z, [[0.036, 0.54], [0.044, 0.9], [0.032, 1.5], [0.04, 1.84]], 8, wd, FUV.carved, 2, false);
+        b.cyl('y', 0.052, 0.052, 0.04, x, 1.86, z, wl, 8);
+        b.box(0.07, H - 0.09 - 1.88, 0.07, x, 1.88, z, wd);
+        b.blob(0.042, x, H - 0.05, z, wl, [1, 1.15, 1]);
+      }
+      for (const sz of [-1, 1]) b.box(w, 0.07, 0.05, 0, H - 0.18, sz * (d / 2 - 0.045), wd);
+      for (const sx of [-1, 1]) b.box(0.05, 0.07, d - 0.14, sx * (w / 2 - 0.045), H - 0.18, 0, wd);
+      for (const sx of [-1, 1]) b.box(0.02, 0.16, d - 0.14, sx * (w / 2 - 0.012), H - 0.32, 0, wd, { px: { rect: FUV.carved, paint: wl }, nx: { rect: FUV.carved, paint: wd } });   // pelmets
+      b.box(w - 0.14, 0.16, 0.02, 0, H - 0.32, d / 2 - 0.012, wd, { pz: { rect: FUV.carved, paint: wl } });
+      b.slab(w - 0.1, 0.24, d - 0.1, 0, 0.2, 0, wd, { pz: { rect: FUV.carved, paint: wd }, px: { rect: FUV.wood, paint: wd }, nx: { rect: FUV.wood, paint: wd } });
+      b.box(w - 0.09, 0.82, 0.06, 0, 0.44, -d / 2 + 0.05, wd, { pz: { rect: FUV.carved, paint: wl } });                                 // the headboard
+      b.box(0.62, 0.12, 0.06, 0, 1.26, -d / 2 + 0.05, wd, { pz: { rect: FUV.carved, paint: wl } });
+      b.box(w - 0.09, 0.2, 0.05, 0, 0.44, d / 2 - 0.05, wd, { pz: { rect: FUV.carved, paint: wl } });                                   // the footboard
+      kcCushion(b, w - 0.14, 0.18, d - 0.2, 0, 0.44, 0, KCP.cotton, FUV.fabric, 0.7, 0.04);
+      kcSpread(b, w - 0.12, 1.3, 0.33, top, 0.16, FUV.waxA, 0.5, 0x1f3f8a);                                                         // a wax bedspread
+      for (const sx of [-1, 1]) kcBack(b, sx * 0.34, top, -d / 2 + 0.27, 0.6, 0.34, 0.12, sx < 0 ? C.white : KCP.ivory, null, 0.6, 0.55);
+      kcBack(b, 0, top + 0.02, -d / 2 + 0.47, 0.44, 0.28, 0.1, W, FUV.wax0, 0.4, 0.45);
+      const s = seatOf('bed', 0, 0.02, top, 'bed', 0, 'Lie');
+      return { footprint: { w, d, h: H }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+    },
+    // gilded posts, a gilt pelmet and its crest over a velvet valance, sheer voiles tied back at each post and a sheer canopy (the glass builder),
+    // a buttoned velvet headboard, a brocade spread, a velvet throw, pillows, cushions and a bolster
+    premium: (b, g) => {
+      const w = 1.96, d = 2.3, H = 2.44, gd = C.gold, top = 0.69;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const x = sx * (w / 2 - 0.055), z = sz * (d / 2 - 0.055);
+        b.box(0.11, 0.48, 0.11, x, 0, z, C.darker, { px: { rect: FUV.carved, paint: gd }, nx: { rect: FUV.carved, paint: gd }, pz: { rect: FUV.carved, paint: gd }, nz: { rect: FUV.carved, paint: gd } });
+        b.cyl('y', 0.065, 0.065, 0.05, x, 0.505, z, gd, 8, { neg: false, pos: true });
+        kcDrum(b, x, z, [[0.042, 0.53], [0.052, 0.88], [0.038, 1.55], [0.048, 1.92]], 8, gd, FUV.carved, 2, false);
+        b.cyl('y', 0.062, 0.062, 0.05, x, 1.945, z, gd, 8, { neg: true, pos: false });
+        b.box(0.075, H - 0.1 - 1.97, 0.075, x, 1.97, z, gd);
+        b.blob(0.05, x, H - 0.055, z, gd, [1, 1.1, 1]);
+      }
+      // the canopy: gilt rails, carved gilt pelmets, a velvet valance with a gold fringe under them, a crest over the head
+      for (const sz of [-1, 1]) b.box(w, 0.07, 0.06, 0, H - 0.2, sz * (d / 2 - 0.055), gd);
+      for (const sx of [-1, 1]) b.box(0.06, 0.07, d - 0.16, sx * (w / 2 - 0.055), H - 0.2, 0, gd);
+      for (const sx of [-1, 1]) {
+        b.box(0.025, 0.18, d - 0.16, sx * (w / 2 - 0.0125), H - 0.36, 0, gd, { px: { rect: FUV.carved, paint: gd }, nx: { rect: FUV.carved, paint: gd } });
+        b.box(0.018, 0.14, d - 0.2, sx * (w / 2 - 0.03), H - 0.5, 0, KCP.velvet); b.box(0.022, 0.025, d - 0.2, sx * (w / 2 - 0.03), H - 0.525, 0, gd);
+      }
+      for (const sz of [-1, 1]) {
+        b.box(w - 0.16, 0.18, 0.025, 0, H - 0.36, sz * (d / 2 - 0.0125), gd, { pz: { rect: FUV.carved, paint: gd }, nz: { rect: FUV.carved, paint: gd } });
+        b.box(w - 0.2, 0.14, 0.018, 0, H - 0.5, sz * (d / 2 - 0.03), KCP.velvet); b.box(w - 0.2, 0.025, 0.022, 0, H - 0.525, sz * (d / 2 - 0.03), gd);
+      }
+      b.box(0.56, 0.16, 0.04, 0, H - 0.2, -d / 2 + 0.03, gd, { pz: { rect: FUV.gold } });
+      // sheer voiles, two layers: from the canopy at each post, gathered at a gold tie-back, falling to the floor (none behind the head posts, against the wall)
+      const tieY = 1.08, hang = H - 0.22;
+      const voile = (x: number, z: number, ux: number, uz: number, nx: number, nz: number) => {
+        // a panel in the plane through (x, z) along (ux, uz): its top 0.6 m wide, its waist at the tie-back, its hem 0.32 m; three pleats
+        const at = (along: number, y: number, out: number): V3 => [x + ux * along + nx * out, y, z + uz * along + nz * out];   // `out`: a pleat's fold, outwards
+        for (const [lay, top0] of [[0, 0.7], [-0.025, 0.55]] as const) for (let k = 0; k < 4; k++) {
+          const a0 = k / 4, a1 = (k + 1) / 4, o0 = lay + (k % 2 ? 0.02 : 0), o1 = lay + (k % 2 ? 0 : 0.02);
+          g.toward([at(top0 * a0, hang, o0), at(top0 * a1, hang, o1), at(0.08 * a1, tieY, lay + 0.01), at(0.08 * a0, tieY, lay + 0.01)], [nx, 0, nz], KCP.sheer);
+          g.toward([at(0.08 * a0, tieY, lay + 0.01), at(0.08 * a1, tieY, lay + 0.01), at(0.36 * a1, 0.01, o1), at(0.36 * a0, 0.01, o0)], [nx, 0, nz], KCP.sheer);
+        }
+        b.box(0.05, 0.05, 0.05, x + ux * 0.035 - nx * 0.01, tieY - 0.025, z + uz * 0.035 - nz * 0.01, gd);
+      };
+      for (const sx of [-1, 1]) {
+        const px = sx * (w / 2 - 0.015);
+        voile(px, d / 2 - 0.015, 0, -1, sx, 0); voile(px, d / 2 - 0.015, -sx, 0, 0, 1); voile(px, -d / 2 + 0.12, 0, 1, sx, 0);
+      }
+      // the bed: a carved base trimmed in gold, a buttoned velvet headboard in a carved gilt frame, a low carved footboard
+      b.slab(w - 0.14, 0.26, d - 0.14, 0, 0.18, 0, C.darker, { pz: { rect: FUV.carved, paint: C.dark }, px: { rect: FUV.carved, paint: C.dark }, nx: { rect: FUV.carved, paint: C.dark } });
+      b.box(w - 0.12, 0.025, 0.012, 0, 0.42, d / 2 - 0.064, gd);
+      b.box(w - 0.11, 1.18, 0.08, 0, 0.44, -d / 2 + 0.06, gd, { pz: { rect: FUV.carved, paint: gd } });
+      const tuft = { pz: { rect: kcPart(FUV.velvetTuft, 1, 0.85) }, px: { skip: true }, nx: { skip: true }, py: { skip: true }, nz: { skip: true } };
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) b.box((w - 0.4) / 3, 0.44, 0.012, -(w - 0.4) / 3 + i * (w - 0.4) / 3, 0.64 + j * 0.44, -d / 2 + 0.106, W, tuft);
+      b.box(0.62, 0.18, 0.08, 0, 1.62, -d / 2 + 0.06, gd, { pz: { rect: FUV.carved, paint: gd } }); b.blob(0.06, 0, 1.82, -d / 2 + 0.06, gd, [1, 1, 0.8]);
+      b.box(w - 0.11, 0.3, 0.06, 0, 0.44, d / 2 - 0.1, C.darker, { pz: { rect: FUV.carved, paint: gd } });
+      // the bedding: a deep mattress, a brocade spread over its foot, a velvet throw, pillows, buttoned cushions, a bolster
+      kcCushion(b, w - 0.16, 0.24, d - 0.26, 0, 0.44, -0.01, KCP.cotton, FUV.fabric, 0.8, 0.05);
+      kcSpread(b, w - 0.14, 1.3, 0.33, 0.68, 0.2, FUV.brocade, 0.55, KCP.ivory);
+      b.slab(w - 0.12, 0.03, 0.42, 0, 0.696, d / 2 - 0.44, KCP.velvet); for (const dz of [-0.2, 0.2]) b.box(w - 0.12, 0.012, 0.025, 0, 0.726, d / 2 - 0.44 + dz, gd);   // a velvet throw
+      for (const sx of [-1, 1]) { kcBack(b, sx * 0.42, top, -d / 2 + 0.32, 0.66, 0.42, 0.14, KCP.ivory, FUV.fabric, 0.7, 0.5); kcBack(b, sx * 0.38, top + 0.02, -d / 2 + 0.5, 0.56, 0.34, 0.12, C.white, null, 0.6, 0.42); }
+      for (const sx of [-1, 1]) kcBack(b, sx * 0.24, top + 0.04, -d / 2 + 0.66, 0.36, 0.3, 0.1, W, FUV.velvetTuft, 0.45, 0.36, sx * 0.12);
+      b.cyl('x', 0.085, 0.085, 0.86, 0, top + 0.09, -d / 2 + 0.84, KCP.ivory, 10, { neg: FUV.brocade, pos: FUV.brocade });
+      for (const sx of [-1, 1]) b.cyl('x', 0.088, 0.088, 0.02, sx * 0.43, top + 0.09, -d / 2 + 0.84, gd, 10, { neg: false, pos: false });
+      const s = seatOf('bed', 0, 0.02, top, 'bed', 0, 'Lie');
+      return { footprint: { w, d, h: H }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+    },
+  },
+  // ------------------------------------------------------------------------------------------------ entrance consoles, against a wall (a mirror on the wall above)
+  console: {
+    // a raw wood console, a calabash bowl for the keys, a phone, a little plant, a basket and sandals below, a key board on the wall
+    basic: b => {
+      const w = 0.8, d = 0.3, ht = 0.78;
+      legs4(b, w - 0.04, d - 0.02, ht, 0.035, C.raw);
+      b.slab(w - 0.06, 0.02, d - 0.06, 0, 0.15, 0, C.raw);
+      b.box(w - 0.06, 0.08, d - 0.04, 0, ht - 0.08, 0, C.rawDark);
+      b.slab(w, 0.03, d, 0, ht, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      const t = ht + 0.03;
+      b.cyl('y', 0.05, 0.11, 0.06, 0.17, t + 0.03, 0.0, W, 10, { neg: true, pos: false, side: FUV.calabash }); b.cyl('y', 0.095, 0.095, 0.004, 0.17, t + 0.05, 0, 0x5a3416, 10, { neg: false, pos: true });
+      b.box(0.05, 0.012, 0.02, 0.15, t + 0.05, 0.03, C.chrome); b.box(0.035, 0.012, 0.025, 0.2, t + 0.05, -0.02, 0xd9322b);
+      b.box(0.08, 0.012, 0.15, -0.06, t, 0.03, C.black, { py: { paint: 0x2a2f3a } });
+      b.cyl('y', 0.05, 0.04, 0.09, -0.29, t + 0.045, -0.04, K.clay, 8); for (let k = 0; k < 4; k++) b.blob(0.04, -0.29 + (k % 2 ? 0.02 : -0.02), t + 0.12 + (k > 1 ? 0.04 : 0), -0.04 + (k % 3 - 1) * 0.02, [K.leaf, K.leaf2][k % 2]);
+      b.cyl('y', 0.1, 0.09, 0.12, -0.16, 0.22, 0, W, 10, { neg: true, pos: false, side: FUV.rattan });
+      for (const [x, c] of [[0.14, 0xd9322b], [0.25, 0xd9322b]] as const) { b.box(0.08, 0.02, 0.22, x, 0.17, 0.0, 0x3a2418); b.box(0.06, 0.012, 0.03, x, 0.19, 0.03, c); }
+      b.box(0.34, 0.12, 0.02, 0.05, 1.22, -d / 2 + 0.01, C.raw, { pz: { rect: FUV.wood, paint: C.raw } });
+      for (let k = 0; k < 3; k++) { const x = -0.06 + k * 0.11; b.beam([x, 1.26, -d / 2 + 0.02], [x, 1.27, -d / 2 + 0.06], 0.012, 0.012, C.chrome); if (k !== 1) { b.box(0.012, 0.07, 0.006, x, 1.18, -d / 2 + 0.055, C.chrome); b.box(0.03, 0.03, 0.01, x, 1.15, -d / 2 + 0.055, [0x1f5aa8, 0xf4c20d, 0xd9322b][k]); } }
+      return { footprint: { w, d, h: 1.34 }, placement: 'wall', use: standUse(d, 'use', 'Vider ses poches', 0.55) };
+    },
+    // varnished wood, two drawers and a shelf, a wood-framed mirror on the wall, a clay incense burner, a woven bowl, a photo
+    better: b => {
+      const w = 1.1, d = 0.36, ht = 0.8, f = d / 2, wd = C.varnish, wl = C.varnishLight;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl('y', 0.018, 0.026, ht - 0.12, sx * (w / 2 - 0.05), (ht - 0.12) / 2, sz * (d / 2 - 0.05), wd, 6);
+      b.box(w - 0.06, 0.12, d - 0.04, 0, ht - 0.12, 0, wd, { pz: { rect: FUV.wood, paint: wl } });
+      b.box(0.006, 0.1, 0.005, 0, ht - 0.11, f - 0.0175, C.dark); for (const sx of [-1, 1]) b.cyl('z', 0.014, 0.014, 0.02, sx * 0.24, ht - 0.06, f - 0.01, C.gold, 8);
+      b.slab(w - 0.1, 0.02, d - 0.08, 0, 0.14, 0, wd, { py: { rect: FUV.wood, paint: wl } });
+      b.slab(w, 0.035, d, 0, ht, 0, wd, { py: { rect: FUV.wood, paint: wl } });
+      for (const x of [-0.3, 0.3]) kcPrint(b, 0.26, 0.14, 0.22, x, 0.16, 0, FUV.rattan, 0.3);
+      b.box(0.74, 0.86, 0.035, 0, 0.88, -f + 0.0175, wd, { pz: { rect: FUV.wood, paint: wd } }); b.box(0.62, 0.74, 0.006, 0, 0.94, -f + 0.038, W, { pz: { rect: FUV.mirror } });
+      const t = ht + 0.035;
+      b.cyl('y', 0.045, 0.06, 0.03, -0.34, t + 0.015, -0.02, KCP.clay, 8); b.cyl('y', 0.065, 0.06, 0.07, -0.34, t + 0.065, -0.02, KCP.clay, 8); b.blob(0.055, -0.34, t + 0.1, -0.02, dimC(KCP.clay, 0.9), [1, 0.6, 1]); b.blob(0.018, -0.34, t + 0.14, -0.02, K.clayDark);
+      b.cyl('y', 0.06, 0.12, 0.05, 0.3, t + 0.025, 0.02, W, 10, { neg: true, pos: false, side: FUV.rattan }); b.cyl('y', 0.11, 0.11, 0.004, 0.3, t + 0.04, 0.02, 0x6b4a2e, 10, { neg: false, pos: true });
+      b.at(0.02, t, -0.06, 0, () => b.box(0.15, 0.2, 0.015, 0, 0, 0, C.dark, { pz: { rect: FUV.art0 } }), -0.15);
+      return { footprint: { w, d, h: 1.74 }, placement: 'wall', use: standUse(d, 'use', 'Se préparer', 0.55) };
+    },
+    // gilded and carved, a white marble top edged in gold, a tall gilt mirror and its crest, a brass incense burner on a gold tray, scent bottles
+    premium: b => {
+      const w = 1.3, d = 0.42, ht = 0.84, f = d / 2, gd = C.gold, cg = { rect: FUV.carved, paint: gd };
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        const knee: V3 = [sx * (w / 2 - 0.07), ht - 0.12, sz * (d / 2 - 0.07)], mid: V3 = [sx * (w / 2 - 0.035), 0.42, sz * (d / 2 - 0.04)], foot: V3 = [sx * (w / 2 - 0.09), 0.035, sz * (d / 2 - 0.08)];
+        b.beam(knee, mid, 0.07, 0.07, gd); b.beam(mid, foot, 0.055, 0.055, gd); b.blob(0.038, foot[0], 0.038, foot[2], gd, [1.2, 1, 1.2]); b.blob(0.04, mid[0], mid[1], mid[2], gd);
+      }
+      for (const sz of [-1, 1]) b.beam([-(w / 2 - 0.1), 0.16, sz * (d / 2 - 0.09)], [w / 2 - 0.1, 0.16, sz * (d / 2 - 0.09)], 0.03, 0.03, gd);
+      b.beam([0, 0.16, -(d / 2 - 0.09)], [0, 0.16, d / 2 - 0.09], 0.03, 0.03, gd); b.cyl('y', 0.04, 0.06, 0.1, 0, 0.225, 0, gd, 8); b.blob(0.035, 0, 0.3, 0, gd, [1, 1, 1], 1);
+      b.box(w - 0.08, 0.14, d - 0.06, 0, ht - 0.14, 0, gd, { pz: cg, px: cg, nx: cg });
+      b.box(0.24, 0.1, 0.03, 0, ht - 0.21, f - 0.035, gd, { pz: { rect: FUV.gold } });
+      b.slab(w, 0.045, d, 0, ht, 0, W, { py: { rect: FUV.marble }, pz: { rect: kcPart(FUV.marble, 1, 0.1) }, px: { rect: kcPart(FUV.marble, 0.5, 0.1) }, nx: { rect: kcPart(FUV.marble, 0.5, 0.1) } });
+      b.cuboid(-w / 2, w / 2, ht - 0.006, ht + 0.006, f - 0.004, f + 0.008, gd, { bottom: true });
+      b.box(0.92, 0.94, 0.05, 0, 0.92, -f + 0.025, gd, { pz: cg }); b.box(0.76, 0.78, 0.006, 0, 1.0, -f + 0.053, W, { pz: { rect: FUV.mirror } });
+      // its pediment: a carved gilt gable and a gold medallion
+      const zf = -f + 0.05, zb = -f, gy = 1.86, gh = 0.2, C2 = FUV.carved, cu = (x: number, y: number): [number, number] => [C2[0] + (C2[2] - C2[0]) * (x + 0.46) / 0.92, C2[1] + (C2[3] - C2[1]) * (y - gy) / 0.46];
+      b.toward([[-0.46, gy, zf], [0.46, gy, zf], [0, gy + gh, zf]], [0, 0, 1], gd, [cu(-0.46, gy), cu(0.46, gy), cu(0, gy + gh)]);
+      for (const sx of [-1, 1]) b.toward([[sx * 0.46, gy, zf], [0, gy + gh, zf], [0, gy + gh, zb], [sx * 0.46, gy, zb]], [sx * gh, 0.46, 0], dimC(gd, 1.08));
+      b.cyl('z', 0.065, 0.065, 0.02, 0, gy + 0.085, zf + 0.01, gd, 12, { neg: false, pos: FUV.gold });
+      const t = ht + 0.045;
+      b.cyl('y', 0.16, 0.16, 0.012, 0.3, t + 0.006, 0.02, gd, 14, { neg: false, pos: FUV.gold });
+      b.cyl('y', 0.035, 0.05, 0.04, 0.3, t + 0.032, 0.02, gd, 8); b.cyl('y', 0.075, 0.05, 0.07, 0.3, t + 0.087, 0.02, gd, 10); b.blob(0.07, 0.3, t + 0.125, 0.02, gd, [1, 0.75, 1], 1); b.blob(0.02, 0.3, t + 0.19, 0.02, gd);
+      for (const [x, z, c, hh] of [[0.12, -0.05, 0xc98a2a, 0.12], [0.18, 0.06, 0xd98ab0, 0.09]] as const) { b.cyl('y', 0.032, 0.036, hh, x, t + hh / 2, z, c, 8); b.cyl('y', 0.014, 0.014, 0.04, x, t + hh + 0.02, z, gd, 6); }
+      b.box(0.16, 0.08, 0.11, -0.34, t, 0.0, C.darker, { pz: cg, py: { paint: gd } });
+      return { footprint: { w, d, h: 2.06 }, placement: 'wall', use: standUse(d, 'use', 'Se préparer', 0.55) };
+    },
+  },
 };
 // ------------------------------------------------------------------------------------------------ the catalogue's second round, decoration lane (K-D)
 // Floor vases, sculptures, wall decoration, folding screens, lanterns and candelabra, aquariums. The lane owns this block.
