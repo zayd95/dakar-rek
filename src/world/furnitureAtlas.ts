@@ -1,14 +1,16 @@
-import { atlasRect, type Rect } from './kitGeometry';
+import { atlasRect, seeded, type Rect } from './kitGeometry';
 
 /**
- * Paint atlas of the furniture kit (512 × 512 colour, 128 × 128 glow), drawn in code: wax-style prints of our own,
+ * Paint atlas of the furniture kit (512 × 1024 colour, 128 × 256 glow), drawn in code: wax-style prints of our own,
  * woven mats, rugs, prayer mats with a plain arch and geometric borders (no text), screens, mirror, tiles, a display
  * cabinet with tea glasses and plates. No brand, logo or real product.
  */
-export const FW = 512, FH = 768;
+export const FW = 512, FH = 1024;
 /**
  * Free space, for the catalogue's second round (docs/ld2/LD2_C.md): the comfort lane paints in x 0…255, y 480…767; the decoration lane in
  * x 256…511, y 480…767. Each lane adds its rects to `PX` and its drawing to `drawFurnitureAtlas` in its own marked block.
+ * LD2.0-D grew the atlas from 512 × 768 to 512 × 1024 for the « Collection Almadies » (lane K-L): its band is y 768…1023. The rects are in pixels
+ * and every UV is computed from them and the atlas size (`FUV`, `FPLAIN`), so the pieces drawn before keep their paint.
  */
 const PX = {
   plain: [0, 0, 16, 16], wax0: [16, 0, 64, 64], wax1: [80, 0, 64, 64], wax2: [144, 0, 64, 64], velvet: [208, 0, 64, 64], fabric: [272, 0, 64, 64],
@@ -34,6 +36,16 @@ const PX = {
   basket0: [256, 480, 48, 48], basket1: [304, 480, 48, 48], basket2: [352, 480, 48, 48], pierced: [400, 480, 32, 48], lampGlass: [432, 480, 32, 32],
   flame: [464, 480, 16, 16], crystal: [464, 496, 16, 16], glaze: [480, 480, 32, 32], clayBand: [432, 512, 32, 16],
   raffia: [256, 528, 32, 96], carvedPanel: [288, 528, 32, 96], lacquer: [320, 528, 128, 96], aquaFresh: [256, 624, 96, 48], aquaSea: [352, 624, 128, 48],
+  // ---- LD2.0-D « Collection Almadies » (lane K-L): its rects here, inside x 0…511, y 768…1023 (the band the atlas grew by)
+  // bouclé and greige linen (plain and as a cushion's top with its seam), walnut, black and white marble, greige lacquer, black leather (tufted and
+  // plain), bedding, a knitted throw, channel quilting, taupe velvet, a round jute braid, brushed bronze, fluting, a pleated shade, calm books,
+  // a lit shelf's glow, a linen lamp shade and a lit niche's back
+  lxBoucle: [0, 768, 64, 64], lxBoucleTop: [64, 768, 64, 64], lxLinen: [128, 768, 64, 64], lxLinenTop: [192, 768, 64, 64], lxWalnut: [256, 768, 64, 64],
+  lxMarbleBlack: [320, 768, 64, 64], lxMarbleWhite: [384, 768, 64, 64], lxLacquer: [448, 768, 64, 64],
+  lxLeatherTuft: [0, 832, 64, 64], lxLeather: [64, 832, 64, 64], lxSheet: [128, 832, 64, 64], lxThrow: [192, 832, 64, 64], lxChannel: [256, 832, 64, 64],
+  lxTaupe: [320, 832, 64, 64], lxJute: [384, 832, 128, 128],
+  lxBronze: [0, 896, 64, 32], lxFluted: [64, 896, 64, 32], lxPleat: [128, 896, 64, 32], lxBooks: [192, 896, 64, 32], lxGlow: [256, 896, 32, 32], lxShade: [288, 896, 32, 32],
+  lxNiche: [0, 928, 64, 64],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type FurnKey = keyof typeof PX;
 export const FUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, FW, FH)])) as Record<FurnKey, Rect>;
@@ -125,6 +137,7 @@ export function drawFurnitureAtlas(c: C2, g: C2) {
     for (let k = -64; k < 64; k += 6) { c.beginPath(); c.moveTo(x + k, y); c.lineTo(x + k + 64, y + 64); c.stroke(); c.beginPath(); c.moveTo(x + k + 64, y); c.lineTo(x + k, y + 64); c.stroke(); } }
   wax(c, 'cloth', '#f4f1e8', '#d9322b', '#2f6fb3', '#1a9d54');
   drawHomeAtlas(c, g);
+  drawAlmadiesAtlas(c, g);
 }
 
 /**
@@ -350,4 +363,190 @@ function drawHomeAtlas(c: C2, g: C2) {
       for (const [sx, sy, col] of [[22, 14, '#f4d43a'], [70, 10, '#f4d43a'], [96, 20, '#7fd0ff'], [46, 24, '#ff8a3a'], [112, 12, '#7fd0ff']] as const) { c.fillStyle = col; c.fillRect(x + sx, y + sy, 3, 1.5); }
       g.fillStyle = '#0a1e3a'; g.fillRect(x, y, w, h); g.fillStyle = '#123468'; g.fillRect(x, y, w, h / 3); }
   }
+}
+
+/**
+ * LD2.0-D « Collection Almadies » (lane K-L, src/world/furnitureKit.ts « Collection Almadies »): the line's materials, in their own colours and
+ * with their soft shading baked in (the home's lights are simple): ivory bouclé and greige linen (each also as a cushion's top, its seam or piping
+ * round the edge and a gentle crown), warm walnut, black marble veined in white and brown, white marble veined in grey, greige lacquer, black
+ * leather buttoned and plain, white bedding and a taupe knitted throw, channel quilting, taupe velvet, a round jute braid, brushed bronze, dark
+ * bronze fluting, a pleated shade and a linen one (both lit at night), calm book spines, a lit shelf's glow and a lit niche. All our own; no text.
+ */
+function drawAlmadiesAtlas(c: C2, g: C2) {
+  const rnd = seeded(2610);
+  const within = (k: FurnKey, draw: (x: number, y: number, w: number, h: number) => void, ctx: C2 = c) => {
+    const [x, y, w, h] = PX[k]; ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); draw(x, y, w, h); ctx.restore();
+  };
+  const disc = (cx: number, cy: number, r: number, col: string) => { c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); };
+  /** A soft crown over a cushion's top: lighter in the middle, a little darker toward the edges. */
+  const crown = (x: number, y: number, w: number, h: number, hi = 0.14, lo = 0.2) => {
+    const gr = c.createRadialGradient(x + w * 0.46, y + h * 0.42, 2, x + w / 2, y + h / 2, w * 0.72);
+    gr.addColorStop(0, `rgba(255,252,245,${hi})`); gr.addColorStop(0.55, 'rgba(255,252,245,0)'); gr.addColorStop(1, `rgba(70,52,34,${lo})`);
+    c.fillStyle = gr; c.fillRect(x, y, w, h);
+  };
+  const roundRect = (x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  // bouclé: small curly nubs, light and shadowed, on ivory
+  const boucle = (x: number, y: number, w: number, h: number) => {
+    c.fillStyle = '#e9e3d6'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 300; k++) {
+      const px = x + rnd() * w, py = y + rnd() * h, r = 0.7 + rnd() * 0.8;
+      disc(px + 0.4, py + 0.5, r, 'rgba(150,132,104,0.16)'); disc(px, py, r, rnd() < 0.6 ? '#f1ebe0' : '#e2dacb'); disc(px - 0.3, py - 0.3, r * 0.35, 'rgba(255,255,255,0.35)');
+    }
+  };
+  within('lxBoucle', (x, y, w, h) => { boucle(x, y, w, h); const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, 'rgba(255,255,255,0.06)'); gr.addColorStop(1, 'rgba(90,70,45,0.08)'); c.fillStyle = gr; c.fillRect(x, y, w, h); });
+  within('lxBoucleTop', (x, y, w, h) => {
+    boucle(x, y, w, h); crown(x, y, w, h, 0.16, 0.26);
+    c.strokeStyle = 'rgba(120,98,72,0.4)'; c.lineWidth = 1.3; roundRect(x + 3.5, y + 3.5, w - 7, h - 7, 6); c.stroke();
+  });
+  // greige linen: a fine weave with slubs
+  const linen = (x: number, y: number, w: number, h: number, base: string) => {
+    c.fillStyle = base; c.fillRect(x, y, w, h);
+    for (let j = 0; j < h; j += 2) { c.fillStyle = (j / 2) % 2 ? 'rgba(255,255,255,0.025)' : 'rgba(60,45,30,0.02)'; c.fillRect(x, y + j, w, 1); }
+    for (let k = 0; k < 900; k++) { c.fillStyle = rnd() < 0.5 ? 'rgba(255,250,240,0.07)' : 'rgba(80,62,44,0.06)'; c.fillRect(x + rnd() * w, y + rnd() * h, 1, 1); }
+    for (let k = 0; k < 30; k++) { c.fillStyle = rnd() < 0.5 ? 'rgba(255,250,240,0.1)' : 'rgba(90,72,52,0.08)'; c.fillRect(x + rnd() * w, y + Math.floor(rnd() * h), 2 + rnd() * 5, 1); }
+  };
+  within('lxLinen', (x, y, w, h) => linen(x, y, w, h, '#cfc6b7'));
+  within('lxLinenTop', (x, y, w, h) => {
+    linen(x, y, w, h, '#d3cabb'); crown(x, y, w, h, 0.14, 0.22);
+    c.strokeStyle = 'rgba(95,78,60,0.5)'; c.lineWidth = 1.6; roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 5); c.stroke();
+    c.strokeStyle = 'rgba(255,250,240,0.35)'; c.lineWidth = 0.8; roundRect(x + 4.2, y + 4.2, w - 8.4, h - 8.4, 4); c.stroke();
+  });
+  // walnut: warm brown, a long grain with a cathedral in the middle, a soft sheen
+  within('lxWalnut', (x, y, w, h) => {
+    const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#80583a'); gr.addColorStop(0.5, '#734d32'); gr.addColorStop(1, '#7d553a'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 22; k++) {
+      const yy = y + rnd() * h, a = 1.5 + rnd() * 3; c.strokeStyle = rnd() < 0.6 ? `rgba(62,38,22,${0.35 + rnd() * 0.35})` : `rgba(160,112,72,${0.3 + rnd() * 0.3})`; c.lineWidth = 0.6 + rnd() * 1.4;
+      c.beginPath(); c.moveTo(x - 2, yy); c.bezierCurveTo(x + w * 0.3, yy - a, x + w * 0.6, yy + a, x + w + 2, yy - a * 0.5); c.stroke();
+    }
+    c.strokeStyle = 'rgba(58,36,20,0.45)'; c.lineWidth = 1; for (let k = 0; k < 4; k++) { c.beginPath(); c.ellipse(x + w / 2, y + h / 2 + 4, 22 - k * 5, 6 - k * 1.2, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }
+    const sh = c.createLinearGradient(x, y, x + w, y + h); sh.addColorStop(0, 'rgba(255,230,200,0.10)'); sh.addColorStop(0.5, 'rgba(255,230,200,0)'); sh.addColorStop(1, 'rgba(40,20,5,0.10)'); c.fillStyle = sh; c.fillRect(x, y, w, h);
+  });
+  // marble: clouds, then veins that wander and branch
+  const veins = (x: number, y: number, w: number, h: number, n: number, col: (k: number) => string, wd: number) => {
+    for (let k = 0; k < n; k++) {
+      let px = x + rnd() * w, py = y - 4; c.strokeStyle = col(k); c.lineWidth = wd * (0.5 + rnd());
+      c.beginPath(); c.moveTo(px, py);
+      while (py < y + h + 4) { const nx = px + (rnd() - 0.5) * 18, ny = py + 6 + rnd() * 10; c.quadraticCurveTo(px + (rnd() - 0.5) * 12, (py + ny) / 2, nx, ny); px = nx; py = ny; }
+      c.stroke();
+      if (rnd() < 0.7) { const bx = x + rnd() * w, by = y + rnd() * h; c.lineWidth *= 0.5; c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + 8, by + 4, bx + 14 + rnd() * 10, by + 12 + rnd() * 6); c.stroke(); }
+    }
+  };
+  within('lxMarbleBlack', (x, y, w, h) => {
+    c.fillStyle = '#1b191a'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 14; k++) { const gr = c.createRadialGradient(x + rnd() * w, y + rnd() * h, 1, x + rnd() * w, y + rnd() * h, 10 + rnd() * 14); gr.addColorStop(0, rnd() < 0.5 ? 'rgba(92,70,52,0.28)' : 'rgba(60,58,60,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x, y, w, h); }
+    veins(x, y, w, h, 3, () => 'rgba(176,140,96,0.45)', 1.4);
+    veins(x, y, w, h, 5, k => k % 2 ? 'rgba(236,230,220,0.75)' : 'rgba(200,196,190,0.5)', 0.9);
+    const gl = c.createLinearGradient(x, y, x + w, y + h); gl.addColorStop(0, 'rgba(255,255,255,0.07)'); gl.addColorStop(0.4, 'rgba(255,255,255,0)'); c.fillStyle = gl; c.fillRect(x, y, w, h);
+  });
+  within('lxMarbleWhite', (x, y, w, h) => {
+    c.fillStyle = '#eeebe5'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 10; k++) { const gr = c.createRadialGradient(x + rnd() * w, y + rnd() * h, 1, x + rnd() * w, y + rnd() * h, 12 + rnd() * 12); gr.addColorStop(0, 'rgba(190,184,174,0.22)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(x, y, w, h); }
+    veins(x, y, w, h, 5, k => k % 2 ? 'rgba(130,124,116,0.55)' : 'rgba(165,158,148,0.45)', 0.8);
+  });
+  // greige lacquer: a satin sheen
+  within('lxLacquer', (x, y, w, h) => {
+    const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#d1c8bb'); gr.addColorStop(1, '#c1b7a9'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+    const sh = c.createLinearGradient(x, y + h, x + w, y); sh.addColorStop(0.3, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,0.12)'); sh.addColorStop(0.7, 'rgba(255,255,255,0)'); c.fillStyle = sh; c.fillRect(x, y, w, h);
+  });
+  // black leather, buttoned: puffed diamonds between creases, a covered button at each crossing
+  within('lxLeatherTuft', (x, y, w, h) => {
+    const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#2a282a'); gr.addColorStop(1, '#1a191a'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+    for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) if ((i + j) % 2) {
+      const cx = x + i * 16, cy = y + j * 16, rg = c.createRadialGradient(cx - 3, cy - 4, 1, cx, cy, 14);
+      rg.addColorStop(0, 'rgba(120,116,118,0.55)'); rg.addColorStop(0.5, 'rgba(70,67,69,0.3)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(cx - 16, cy - 16, 32, 32);
+    }
+    c.strokeStyle = '#0a090a'; c.lineWidth = 1.5;
+    for (let m = -2; m <= 2; m++) { c.beginPath(); c.moveTo(x + 32 * m, y); c.lineTo(x + 32 * m + 64, y + 64); c.stroke(); c.beginPath(); c.moveTo(x + 32 * m, y + 64); c.lineTo(x + 32 * m + 64, y); c.stroke(); }
+    for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) if (!((i + j) % 2)) { disc(x + i * 16, y + j * 16, 3, '#0c0b0c'); disc(x + i * 16, y + j * 16, 2.1, '#3a3739'); disc(x + i * 16 - 0.7, y + j * 16 - 0.8, 0.7, 'rgba(255,255,255,0.5)'); }
+  });
+  // plain black leather: a soft sheen and a stitched welt round the edge
+  within('lxLeather', (x, y, w, h) => {
+    c.fillStyle = '#212022'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 80; k++) { c.fillStyle = k % 2 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.08)'; c.fillRect(x + rnd() * w, y + rnd() * h, 2, 1.5); }
+    crown(x, y, w, h, 0.1, 0.25);
+    c.fillStyle = '#5d595b'; for (let k = 6; k < 58; k += 4) { c.fillRect(x + k, y + 4.5, 2, 0.8); c.fillRect(x + k, y + 58.7, 2, 0.8); c.fillRect(x + 4.5, y + k, 0.8, 2); c.fillRect(x + 58.7, y + k, 0.8, 2); }
+  });
+  // white bedding: soft folds
+  within('lxSheet', (x, y, w, h) => {
+    c.fillStyle = '#f3f1ec'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 4; k++) {
+      const yy = y + 6 + k * 16 + rnd() * 6, a = (rnd() - 0.5) * 14; c.strokeStyle = `rgba(150,140,128,${0.04 + rnd() * 0.04})`; c.lineWidth = 5 + rnd() * 5;
+      c.beginPath(); c.moveTo(x - 2, yy); c.bezierCurveTo(x + 20, yy + a, x + 40, yy - a, x + w + 2, yy + a * 0.4); c.stroke();
+    }
+    const gr = c.createRadialGradient(x + w * 0.4, y + h * 0.35, 4, x + w / 2, y + h / 2, w * 0.75); gr.addColorStop(0, 'rgba(255,255,255,0.18)'); gr.addColorStop(1, 'rgba(120,110,96,0.08)'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+  });
+  // a taupe knitted throw: ribs, a cream band near each end
+  within('lxThrow', (x, y, w, h) => {
+    c.fillStyle = '#8a7969'; c.fillRect(x, y, w, h);
+    for (let j = 0; j < h; j += 4) { c.fillStyle = 'rgba(255,245,230,0.12)'; c.fillRect(x, y + j, w, 1.5); c.fillStyle = 'rgba(40,28,18,0.14)'; c.fillRect(x, y + j + 2.5, w, 1); }
+    for (let i = 0; i < w; i += 3) { c.fillStyle = 'rgba(40,28,18,0.06)'; c.fillRect(x + i, y, 1, h); }
+    c.fillStyle = 'rgba(236,228,212,0.75)'; c.fillRect(x, y + 6, w, 2); c.fillRect(x, y + 56, w, 2);
+  });
+  // channel quilting on greige: soft vertical channels, a seam between each
+  within('lxChannel', (x, y, w, h) => {
+    linen(x, y, w, h, '#d6cdbf');
+    for (let i = 0; i < 4; i++) {
+      const cx = x + i * 16, gr = c.createLinearGradient(cx, 0, cx + 16, 0);
+      gr.addColorStop(0, 'rgba(80,62,44,0.32)'); gr.addColorStop(0.3, 'rgba(255,250,240,0.12)'); gr.addColorStop(0.55, 'rgba(255,250,240,0.18)'); gr.addColorStop(1, 'rgba(80,62,44,0.3)'); c.fillStyle = gr; c.fillRect(cx, y, 16, h);
+      c.fillStyle = 'rgba(70,52,36,0.5)'; c.fillRect(cx, y, 1, h);
+    }
+  });
+  // taupe velvet: a soft sheen, a seam round it
+  within('lxTaupe', (x, y, w, h) => {
+    c.fillStyle = '#9d8b7c'; c.fillRect(x, y, w, h);
+    const gr = c.createRadialGradient(x + w * 0.42, y + h * 0.38, 2, x + w / 2, y + h / 2, w * 0.7); gr.addColorStop(0, 'rgba(212,196,178,0.5)'); gr.addColorStop(0.6, 'rgba(160,140,122,0.1)'); gr.addColorStop(1, 'rgba(40,30,22,0.3)'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+    c.strokeStyle = 'rgba(60,46,36,0.45)'; c.lineWidth = 1.2; roundRect(x + 3, y + 3, w - 6, h - 6, 6); c.stroke();
+  });
+  // a round jute rug: a braid coiled from the middle, stitched, a darker border
+  within('lxJute', (x, y, w) => {
+    const cx = x + w / 2, cy = y + w / 2, R = w / 2;
+    c.fillStyle = '#a58c69'; c.fillRect(x, y, w, w);
+    for (let r = R; r > 0; r -= 4) { disc(cx, cy, r, (r / 4) % 2 ? '#bca37f' : '#ae9572'); }
+    for (let r = R - 2; r > 3; r -= 4) for (let a = (r % 7) * 0.13; a < Math.PI * 2; a += 3.2 / r) {
+      c.strokeStyle = 'rgba(110,88,58,0.5)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(cx + Math.cos(a) * (r - 1.6), cy + Math.sin(a) * (r - 1.6)); c.lineTo(cx + Math.cos(a + 0.9 / r * 2) * (r + 1.6), cy + Math.sin(a + 0.9 / r * 2) * (r + 1.6)); c.stroke();
+    }
+    c.strokeStyle = 'rgba(122,98,66,0.9)'; c.lineWidth = 5; c.beginPath(); c.arc(cx, cy, R - 6, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = 'rgba(230,214,186,0.35)'; c.lineWidth = 1; c.beginPath(); c.arc(cx, cy, R - 9, 0, Math.PI * 2); c.stroke();
+  });
+  // brushed bronze: a lengthwise brushing and a highlight across
+  within('lxBronze', (x, y, w, h) => {
+    const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#80603f'); gr.addColorStop(0.45, '#b08c5f'); gr.addColorStop(0.6, '#a07c51'); gr.addColorStop(1, '#6e5034'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 60; k++) { c.fillStyle = rnd() < 0.5 ? 'rgba(255,236,200,0.18)' : 'rgba(50,32,16,0.16)'; c.fillRect(x, y + rnd() * h, w, 0.6); }
+  });
+  // fluting in dark bronze: each flute shaded round, a thin light ridge between
+  within('lxFluted', (x, y, _w, h) => {
+    for (let i = 0; i < 8; i++) {
+      const fx = x + i * 8, gr = c.createLinearGradient(fx, 0, fx + 8, 0); gr.addColorStop(0, '#17140f'); gr.addColorStop(0.45, '#4a3e30'); gr.addColorStop(1, '#1a1611'); c.fillStyle = gr; c.fillRect(fx, y, 8, h);
+      c.fillStyle = 'rgba(214,180,130,0.35)'; c.fillRect(fx, y, 0.8, h);
+    }
+  });
+  // a pleated shade: cream pleats, lit from inside at night
+  for (const ctx of [c, g]) within('lxPleat', (x, y, w, h) => {
+    const lit = ctx === g; ctx.fillStyle = lit ? '#b98a4a' : '#eee5d2'; ctx.fillRect(x, y, w, h);
+    for (let i = 0; i < w; i += 4) { ctx.fillStyle = lit ? 'rgba(255,220,160,0.35)' : 'rgba(255,255,255,0.32)'; ctx.fillRect(x + i, y, 2, h); ctx.fillStyle = lit ? 'rgba(60,35,10,0.25)' : 'rgba(130,104,70,0.2)'; ctx.fillRect(x + i + 3, y, 1, h); }
+    ctx.fillStyle = lit ? 'rgba(60,35,10,0.3)' : 'rgba(150,126,92,0.35)'; ctx.fillRect(x, y, w, 2); ctx.fillRect(x, y + h - 2, w, 2);
+  }, ctx);
+  // books in calm tones, a stack lying at one end
+  within('lxBooks', (x, y, w, h) => {
+    c.fillStyle = '#3a312a'; c.fillRect(x, y, w, h);
+    const cols = ['#e9e2d4', '#8c7b6b', '#2a2827', '#cfc6b7', '#a58a6c', '#f3efe7', '#5e5049', '#b7a48c', '#6f7468'];
+    let bx = x + 1, k = 0;
+    while (bx < x + 46) { const bw = 3 + (k * 5) % 4, bh = 22 + (k * 7) % 9; c.fillStyle = cols[k % cols.length]; c.fillRect(bx, y + h - bh, bw, bh); c.fillStyle = 'rgba(200,170,110,0.6)'; c.fillRect(bx, y + h - bh + 3, bw, 1); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(bx + bw - 0.6, y + h - bh, 0.6, bh); bx += bw + 0.6; k++; }
+    for (let s = 0; s < 4; s++) { c.fillStyle = cols[(s * 3 + 1) % cols.length]; c.fillRect(x + 48, y + h - 4 - s * 4, 15, 3.6); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 48, y + h - 0.6 - s * 4, 15, 0.6); }
+  });
+  // a lit shelf's glow (LED strip) and a linen lamp shade, both glowing at night
+  for (const ctx of [c, g]) {
+    within('lxGlow', (x, y, w, h) => { const gr = ctx.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, ctx === g ? '#ffe0a8' : '#fff4dc'); gr.addColorStop(1, ctx === g ? '#b07a30' : '#f2d29a'); ctx.fillStyle = gr; ctx.fillRect(x, y, w, h); }, ctx);
+    within('lxShade', (x, y, w, h) => {
+      ctx.fillStyle = ctx === g ? '#c49250' : '#efe7d8'; ctx.fillRect(x, y, w, h);
+      for (let j = 0; j < h; j += 2) { ctx.fillStyle = ctx === g ? 'rgba(255,214,150,0.2)' : 'rgba(150,130,100,0.1)'; ctx.fillRect(x, y + j, w, 1); }
+    }, ctx);
+  }
+  // a lit niche's back: walnut veneer, warm where the strip above lights it
+  within('lxNiche', (x, y, w, h) => {
+    c.fillStyle = '#8a6243'; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 16; k++) { const xx = x + rnd() * w; c.strokeStyle = `rgba(60,38,22,${0.25 + rnd() * 0.3})`; c.lineWidth = 0.6 + rnd(); c.beginPath(); c.moveTo(xx, y); c.bezierCurveTo(xx + 3, y + 20, xx - 3, y + 44, xx + 2, y + h); c.stroke(); }
+    const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, 'rgba(255,214,150,0.55)'); gr.addColorStop(0.45, 'rgba(255,214,150,0.12)'); gr.addColorStop(1, 'rgba(30,18,8,0.25)'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+  });
+  within('lxNiche', (x, y, w, h) => { const gr = g.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#6a4a22'); gr.addColorStop(0.5, '#1c1208'); gr.addColorStop(1, '#000000'); g.fillStyle = gr; g.fillRect(x, y, w, h); }, g);
 }
