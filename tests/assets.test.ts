@@ -78,8 +78,8 @@ describe('placement', () => {
   });
   it('walls, built-ins, passages and other pieces are refused; rugs only avoid rugs', () => {
     const sofa = furnitureSpec('canape_wax')!, rug = furnitureSpec('tapis_tisse')!, table = furnitureSpec('table_basse')!;
-    expect(whyNot(appart, sofa, { x: 3.5, z: 0, rot: 0 }, [])).toBe('Contre le mur');
-    expect(whyNot(appart, sofa, { x: -2.9, z: -2.6, rot: 0 }, [])).toBe('Gêné par un meuble de la maison');   // the kitchen counter
+    expect(whyNot(appart, sofa, { x: appart.w / 2 - 0.5, z: 0, rot: 0 }, [])).toBe('Contre le mur');            // through the east wall (the F2's size: catalog.ts)
+    expect(whyNot(appart, sofa, { x: -appart.w / 2 + 1.1, z: -2.6, rot: 0 }, [])).toBe('Gêné par un meuble de la maison');   // the kitchen counter
     expect(whyNot(appart, sofa, { x: appart.doorX, z: 2.8, rot: 0 }, [])).toBe('Laisse le passage libre');      // the door
     expect(whyNot(appart, sofa, { x: 0, z: 1, rot: 0 }, [])).toBeNull();
     const placed: Placed[] = [{ spec: sofa, at: { x: 0, z: 1, rot: 0 } }];
