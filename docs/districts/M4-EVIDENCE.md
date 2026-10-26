@@ -53,7 +53,7 @@ Awa (one body) costs about 10 draw calls and 5 000 triangles, and only while the
 - **Labelled shortcuts in the run:** the hour (21:30 for La Vague, then 19:00 on the next city day), the next day, putting the car at the start of its lane, the beat game's finish (`gestureFinish`), and the teleport back into Almadies after the taxi. The drive, the parking, every walk, every tap, the order, the talk, the club's door and the taxi were done with fingers.
 - **The beat game was not played on the beat.** The dance counted comes from the existing finish shortcut.
 - **The taxi leaves for another district.** « Home » is proven with the taxi (and the car staying put), not with the player driving the Teranga home.
-- **No waiter walks the food to the table at the rooftop**; the plate appears when the guest sits. No valet area.
+- **No waiter walks the food to the table at the rooftop**; the plate appears when the guest sits. No valet or parking-attendant system. The previous recording parks at the road edge; the marked visitor bay in the updated forecourt still needs a new run to prove it.
 - **Pre-fix limitation:** the 40/40 video below predates the dedicated hospitality-strip change. The new door is on the authored Terrasse de Ngor frontage; rerun the journey and inspect the updated street view before treating the exterior as accepted.
 - **One recurring character.** Awa remembers one choice and the stages of the last evening; there is no longer story.
 - **The `walkTo` marker** is a marker on the neighbourhood's directory entry for La Vague, not a route.
