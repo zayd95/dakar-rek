@@ -74,7 +74,7 @@ let t0 = await tr();
 check('the embarcadère is built in the Almadies: both boats moored, customers waiting on the pier', !!t0 && t0.phase === 'idle' && t0.customers.length >= 3,
   JSON.stringify({ moored: t0?.moored && Object.fromEntries(Object.entries(t0.moored).map(([k, p]) => [k, [p.x, p.z, p.yaw]])), waiting: t0?.customers.length }));
 const c1 = await takeCrossing('pirogue');
-check('standing at the pier\'s end focuses the embarcadère; the action button offers the crossings', c1.focused && /Traversées/.test(c1.act), c1.act);
+check('standing at the pier\'s end focuses the embarcadère; the action button offers the crossings', c1.focused && /Prendre le bateau/.test(c1.act), c1.act);
 const pir = c1.items.find(i => /Traversée en pirogue/.test(i.text)), cha = c1.items.find(i => /Traversée en chaloupe/.test(i.text));
 check('a tap opens the choice: the pirogue shows its fare, the passengers waiting and Ousmane\'s share', c1.sheet && !!pir && !pir.dis && /passagers? attend/.test(pir.text) && /1.000.F la place/.test(pir.text) && /Ousmane prend 40/.test(pir.text), pir?.text);
 check('the chaloupe is closed and says how many pirogue crossings remain', !!cha && cha.dis && /encore 3/.test(cha.text), cha?.text);

@@ -82,7 +82,7 @@ describe('la traversée: a pirogue round trip at the Embarcadère de Ngor', () =
   it('the choice at the pier\'s end: the pirogue with its fare, passengers and share; the chaloupe closed with the crossings left', () => {
     const r = rig(10); r.tick();
     const t = r.target()!;
-    expect(t.name).toBe('Embarcadère de Ngor'); expect(t.affordances()[0].label).toBe('Traversées'); expect(t.affordances()[0].disabled).toBeNull();
+    expect(t.name).toBe('Embarcadère de Ngor'); expect(t.affordances()[0].label).toBe('Prendre le bateau'); expect(t.affordances()[0].disabled).toBeNull();
     const m = r.choose()!;
     expect(m.title).toBe('Embarcadère de Ngor');
     const [p, c] = m.items;

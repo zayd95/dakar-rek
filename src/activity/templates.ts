@@ -332,7 +332,7 @@ export function embarcadere(b: Base, h: PlaceHooks & { crossing: CrossingHooks }
   return {
     id: b.id, name: b.name, space: b.space, type: 'traversee', hours: [TRAVERSEE_HOURS[0], TRAVERSEE_HOURS[1]], closedWhy: nightReason, chat: true,
     peaks: TRAVERSEE_BUSY.map(([x, y]) => [x, y] as [number, number]), anchors: [at('quai')], offers: {
-      quai: [live(P.ride({ id: 'traversees', label: 'Traversées', icon: '⛵', then: () => c.choose() }), () => c.summary?.())],
+      quai: [live(P.ride({ id: 'traversees', label: 'Prendre le bateau', icon: '⛵', then: () => c.choose() }), () => c.summary?.())],
       barre: BOAT_KINDS.map(trip),
     },
   };
