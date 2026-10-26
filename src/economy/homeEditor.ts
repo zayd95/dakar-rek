@@ -120,6 +120,7 @@ export class HomeEditor {
   close() {
     const v = this.view; if (!v) return;
     this.drop();
+    v.int.holeFocus = null;
     v.furniture.remove(this.marker);
     for (const c of v.ceiling) c.visible = true;
     this.view = null; this.sel = null; this.pending = null;
@@ -233,6 +234,8 @@ export class HomeEditor {
     const v = this.view; if (!v) return;
     const L = this.layout(), room = id ? planRooms(L).find(r => r.id === id) ?? L.plan?.rooms.find(r => r.id === id) ?? null : null;
     this.room = room?.id ?? null; this.filtered = !!room;
+    // the shell's see-through hole (src/housing/apartment.ts) opens round the framed room, not round the hidden player
+    v.int.holeFocus = room ? new THREE.Vector3(v.ox + (room.box.x0 + room.box.x1) / 2, 1.0, v.oz + (room.box.z0 + room.box.z1) / 2) : null;
     this.look.zoom = 1; this.focusT = performance.now(); this.focusFrom = this.focus ? { ...this.focus } : null;
     if (room && this.look.pitch < ROOM_PITCH) this.look.pitch = ROOM_PITCH;
     const f = this.sel ? this.items().find(x => x.uid === this.sel) : undefined;

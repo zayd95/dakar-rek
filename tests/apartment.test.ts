@@ -122,7 +122,7 @@ describe('the F2 of the Résidence Jàmm, built from its floor plan (LD2.0-C)', 
 
   it('never pushes the player with a leaf: standing where the open leaf goes, it opens without a collider until they step off', () => {
     const h = build(), d = () => desc(h).doors.find(q => q.id === 'degagement-chambre')!;
-    const p = at(-1.5, -1.1);                                                                // in the chambre, where the open leaf lies
+    const p = at(-1.5, -0.3);                                                                // in the chambre, where the open leaf lies (hinged at the door's south end, it folds back toward the chambre's south wall)
     run(h, p, 0.6);
     expect(d()).toMatchObject({ k: 1, blocks: false });
     expect(h.int.colliders.some(c => c.x0 < 1e5 && p.x > c.x0 - 0.3 && p.x < c.x1 + 0.3 && p.z > c.z0 - 0.3 && p.z < c.z1 + 0.3 && c.h < 2.5 && c.h > 2)).toBe(false);

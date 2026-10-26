@@ -74,9 +74,9 @@ export const F2_JAMM: FloorPlan = {
   openings: [
     { id: 'front', kind: 'front', a: 'entree', b: 'out', axis: 'x', x: 3.15, z: 3.5, width: 1.0, height: 2.15 },
     { id: 'entree-sejour', kind: 'arch', a: 'entree', b: 'sejour', axis: 'z', x: 1.8, z: 2.45, width: 1.1, height: 2.2 },
-    { id: 'sejour-cuisine', kind: 'door', a: 'sejour', b: 'cuisine', axis: 'z', x: 1.8, z: 0.7, width: 0.9, height: 2.1, hinge: 'start', swing: 'cuisine' },
+    { id: 'sejour-cuisine', kind: 'door', a: 'sejour', b: 'cuisine', axis: 'z', x: 1.8, z: 0.7, width: 0.9, height: 2.1, hinge: 'end', swing: 'cuisine' },
     { id: 'sejour-degagement', kind: 'arch', a: 'sejour', b: 'degagement', axis: 'x', x: 0.5, z: 0, width: 1.1, height: 2.2 },
-    { id: 'degagement-chambre', kind: 'door', a: 'degagement', b: 'chambre', axis: 'z', x: -1.0, z: -0.65, width: 0.9, height: 2.1, hinge: 'start', swing: 'chambre' },
+    { id: 'degagement-chambre', kind: 'door', a: 'degagement', b: 'chambre', axis: 'z', x: -1.0, z: -0.65, width: 0.9, height: 2.1, hinge: 'end', swing: 'chambre' },
     { id: 'degagement-sdb', kind: 'door', a: 'degagement', b: 'sdb', axis: 'x', x: 1.1, z: -1.3, width: 0.8, height: 2.1, hinge: 'end', swing: 'sdb' },
   ],
   windows: [
