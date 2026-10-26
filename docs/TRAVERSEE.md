@@ -139,6 +139,29 @@ Each lane works in its own worktree on its own branch, from the contract's commi
 - Performance at the quay against LD2.0-B (fixed places, as in `docs/ld2/LD2_B.md`).
 - Phone-sized checks only here; the owner's iPhone review is still due.
 
+## Results
+**How they were obtained:** headless Chromium with a software renderer (SwiftShader) on a 4-core container, phone pages at 390×844 with real touches. None of it is a measurement from a real iPhone.
+
+### The acceptance: `scripts/check-traversee.mjs` (results filled in below)
+
+### Performance against LD2.0-B (`21f0337`)
+**Setup:** solo builds served locally; a phone viewport; the player placed and turned the same way; two runs per build, alternating.
+
+| Place | LD2.0-B: draw calls / triangles / fps | La traversée |
+|---|---|---|
+| The pier's end, facing the island, 13 h | 33 / 92k / 8.6 · 33 / 91k / 8.0 | 80 / 121k / 6.0 · 79 / 121k / 6.1 |
+| The pier's end, 21 h | 41 / 95k / 8.4 · 41 / 95k / 8.2 | 77 / 118k / 6.9 · 77 / 118k / 7.0 |
+| The quay from the block, 13 h | 57 / 109k / 5.2 · 57 / 109k / 5.8 | 54 / 112k / 5.4 · 59 / 115k / 5.5 |
+| The beach east of the quay, 13 h | 34 / 92k / 8.7 · 34 / 92k / 9.0 | 35 / 97k / 8.5 · 34 / 96k / 8.7 |
+| Pikine's avenue (control) | 77 / 174k / 3.7 · 73 / 167k / 4.1 | 71 / 167k / 4.2 · 81 / 173k / 3.9 |
+
+**What the cost at the pier's end is:**
+- **The customers:** about 10 draw calls each. Each is the game's usual person (`humanoid_v2`), the body the VTC passengers have, and 3 or 4 wait at the pier's end.
+- **The boats:** 2 draw calls each.
+- **The static quay and the island:** no new draw call (lane W measured the world group at 26 → 25 there). They add about 5k triangles where the island is in view.
+- **Frame rate:** the pier's end was among the Almadies' cheapest views and is now about as heavy as Pikine's avenue. On the software renderer the frame rate there drops by about a quarter.
+- **Elsewhere:** the same as before.
+
 ## Later slices (not in this one)
 - Buying a pirogue or a chaloupe (`src/economy/assets.ts`, credit), with no share then.
 - Walking on the island.
