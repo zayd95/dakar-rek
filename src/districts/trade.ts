@@ -47,7 +47,7 @@ let headLoad: THREE.Object3D | null = null, cart: THREE.Group | null = null;
 let porterPath: { points: Pt[]; length: number } | null = null;
 /** Where the player's vehicle was left, and what it is (a motorbike carries one unit, a car four). */
 let parked: { x: number; z: number; moto: boolean } | null = null;
-const log = { said: [] as string[], sold: [] as SaleResult[], bought: 0, recognised: 0 };
+const log = { said: [] as string[], sold: [] as SaleResult[], cards: [] as { title: string; rows: string[]; next: string[] }[], bought: 0, recognised: 0 };
 
 /** Close the sheet and give movement back (a pick that ends the exchange). */
 const done = (ctx: GameCtx) => { ctx.hud.closeModal(); ctx.setMode('play'); };
@@ -225,17 +225,19 @@ function doSell(ctx: GameCtx) {
   log.sold.push(r.r);
   new Relations(s.data).change(PLAYER, SALL.id, 1);
   const G = GOODS[r.r.good], up = r.r.profit >= 0;
-  ctx.hud.boutCard({
+  const card = {
     icon: up ? '📈' : '📉', title: `Lot ${r.r.seq} vendu · ${r.r.units} ${r.r.units > 1 ? G.units : G.unit} de ${G.name.toLowerCase()}`, sub: 'Diallo & Frères (Médina) → Comptoir Sall (Plateau)',
     rows: [
-      { k: 'Vente', v: fr(r.r.revenue), d: `+${fr(r.r.revenue)}`, tone: 'up' },
+      { k: 'Vente', v: `+${fr(r.r.revenue)}`, tone: 'up' },
       { k: 'Achat', v: `−${fr(r.r.cost)}` },
       ...(r.r.fee ? [{ k: 'Transport', v: `−${fr(r.r.fee)}` }] : []),
       { k: 'Bénéfice', v: `${up ? '+' : ''}${fr(r.r.profit)}`, tone: up ? 'up' : 'down', ...(r.r.spoiled ? { note: 'mangues abîmées' } : {}) },
       { k: 'Tes affaires', v: `${s.data.counters[PL.trades] ?? 0} lot${(s.data.counters[PL.trades] ?? 0) > 1 ? 's' : ''} · ${fr(s.data.counters[PL.profit] ?? 0)} de bénéfice` },
     ],
     next: [r.r.left ? `Il te reste ${r.r.left} ${G.units} : Sall les prend demain.` : 'L’argent est à toi : le garder, le placer à la Banque Teranga, ou racheter un lot chez Diallo.'],
-  }, 8000);
+  };
+  ctx.hud.boutCard(card);
+  log.cards.push({ title: card.title, rows: card.rows.map(x => `${x.k}: ${x.v}`), next: card.next });
   showHeadLoad(ctx); syncPorter(ctx);
 }
 
@@ -299,11 +301,12 @@ export const tradeModule: GameModule = {
       info: () => ({
         lot: lotOf(ctx.state), wallet: ctx.state.data.wallet, inventory: Object.fromEntries(Object.entries(ctx.state.data.inventory).filter(([k]) => k.startsWith('pl_'))),
         counters: Object.fromEntries(Object.entries(ctx.state.data.counters).filter(([k]) => k.startsWith('pl_'))),
-        said: [...log.said], sold: log.sold.map(r => ({ ...r })), bought: log.bought, recognised: log.recognised,
+        said: [...log.said], sold: log.sold.map(r => ({ ...r })), cards: log.cards.map(k => ({ ...k })), bought: log.bought, recognised: log.recognised,
         people: { diallo: !!people.diallo, sall: !!people.sall, porter: people.porter ? { x: people.porter.group.position.x, z: people.porter.group.position.z } : null },
         parked, demand: Object.fromEntries(GOOD_IDS.map(g => [g, demandLeft(ctx.state, g, ctx.day())])), spoiled: lotOf(ctx.state) ? spoiled(lotOf(ctx.state)!, ctx.day()) : false,
         ledger: ctx.state.data.ledger.filter(e => /· lot \d+/.test(e.label)).slice(-12),
         trust: { trades: ctx.state.data.counters[PL.trades] ?? 0, needed: TRUST.trades, trusted: trusted(ctx.state) },
+        lotsLeft: lotsLeft(ctx.state, ctx.day()),
       }),
       talkDiallo: () => talkDiallo(ctx), talkSall: () => talkSall(ctx),
     },

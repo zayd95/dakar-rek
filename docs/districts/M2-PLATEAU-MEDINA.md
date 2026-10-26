@@ -27,6 +27,23 @@ It is not a delivery job:
 - **The building:** a four-storey trading house behind an arcade. The arcade stays a walkway.
 - **The loading bay:** at the kerb.
 
+### The Médina quarter (the four south-west blocks of the Plateau hub)
+The Médina is the older, lower and busier half of the hub. It is built by `src/world/builder.ts` (`medinaBlock`, `medinaFront`, the market streets):
+- **Buildings:** two or three storeys in ochre, faded lime and grey whitewash. There are no towers.
+- **Shopfronts:** a rusty tin awning on thin poles replaces the Plateau's concrete arcade. The walkway under it stays as deep.
+- **Shop signs:** a few painted boards: QUINCAILLERIE, TISSUS · WAX, ALIMENTATION, and others.
+- **Goods outside the shops:** sacks, basins of produce, rolls of wax cloth and buckets stand against the wall between the shutters. They never stand in front of a door, and the walkway keeps 2 m.
+- **The two market streets:**
+  - These are the street at x = −60 (past Diallo & Frères) and the street at z = 60.
+  - Wax-print shade cloths are strung across them at 5.2–5.6 m, well above the traffic, with their hems hanging down.
+  - The cloths hang on ropes between poles at the block edges, never on the pavement. The junctions stay open to the sky.
+  - Vendors stand on the block side of the pavement, clear of the crossings.
+- **A merchants' loading area:** on the street at z = 60, kept clear of parked cars.
+- **What it leaves alone:**
+  - The Grande Mosquée's block and its frontage are untouched.
+  - The roads, pavements and crossings are unchanged.
+  - Everything draws from its own random stream, so the rest of the hub keeps its layout. The one exception: a street vendor that would overlap the new pieces is not placed.
+
 ### Between them
 - About 200 m by road, with two turns.
 - Both bays are kept clear of parked cars and street dressing (`keepClear`).
