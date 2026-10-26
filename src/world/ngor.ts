@@ -326,7 +326,7 @@ export function rooftopPieces(): RoofPiece[] {
 
 /**
  * The island's rooftop restaurant and lounge bar (island.rooftop; the owner, 26 Oct): the landmark above the landing beach, white with an ochre band,
- * facing the sea. Level on a stone plinth (its front proud of the sloping beach, its back sunk in the hill, steps up at its front); the kitchen behind
+ * facing the sea; its name on the roof's front edge (src/world/builder.ts, « SUNU TOIT »). Level on a stone plinth (its front proud of the sloping beach, its back sunk in the hill, steps up at its front); the kitchen behind
  * (its hatch lit at night) and a shaded front on pillars under the roof; the outside stair up the west wall to the roof terrace, under a light pergola
  * and two shade sails, a low parapet with a rail along the front (the diners show over it from the boat), walls at the sides and back. The furniture to
  * the contract's poses (rooftopPieces), warm wood and colourful cushions, potted plants, and strings of warm bulbs on the lamps' material, lit at night.
@@ -341,7 +341,7 @@ function buildRooftop(k: NgorBatches, lite: boolean) {
   for (const [n, z] of [[1, B.z1 + 0.52], [2, B.z1 + 0.97]] as const) plain.box(4.2, G - n * 0.22 - low, 0.45, cx, low, z, STONE);
   // the ground floor: the kitchen behind (its door, its hatch lit at night), the shaded front on pillars, the roof over all, its edge banded ochre
   const kz = cz - 0.3, H = RT.roofY - 0.22;
-  plain.box(w, H, kz - B.z0, cx, G, (B.z0 + kz) / 2, WALL);
+  plain.box(w, H, kz - B.z0, cx, G, (B.z0 + kz) / 2, 0xe6b073);                         // the kitchen's wall in warm ochre: in the shade of the roof, white read as concrete
   bulbs.box(2.2, 0.8, 0.05, cx + 2.4, G + 1.15, kz + 0.03, 0xffd890);
   plain.box(1.0, 2.1, 0.05, cx - 3.4, G, kz + 0.03, BLUE);
   for (let n = 0; n < 5; n++) plain.box(0.36, H, 0.36, B.x0 + 0.3 + n * (w - 0.6) / 4, G, B.z1 - 0.3, WALL);

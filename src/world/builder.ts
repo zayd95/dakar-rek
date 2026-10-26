@@ -13,7 +13,7 @@ import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, media
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { buildShopInterior, type ShopDetail } from './shopKit';
-import { buildNgorIsland, buildNgorQuay } from './ngor';
+import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
 import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
 import { TRAVERSEE_HUB, TRAVERSEE_SITE } from '../sea/traverseeSite';
 import { isComposed, type Site } from './sites';
@@ -1076,6 +1076,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
         addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
+        // the island's rooftop restaurant and lounge bar, named on the roof's front edge, toward the sea and the boats coming in (« sunu toit »: our roof)
+        { const rb = TRAVERSEE_SITE.island.rooftop.box; addSign('SUNU TOIT · RESTAURANT · LOUNGE', '#0e5a6b', '#fdf1d6', (rb.x0 + rb.x1) / 2, rooftopFloors().roof - 0.62, rb.z1 + 0.21, 0, 8.2, 0.5); }
         plain.box(0.2, 3.4, 0.2, cx - 3, B, bz + 1, 0x555555); plain.box(0.2, 3.4, 0.2, cx + 3, B, bz + 1, 0x555555);
         interactables.push({ id: `${id}:port`, name: 'Embarcadère de Ngor', kind: 'actions', x: cx, z: bz + 4, radius: 5, actions: ACTIONS.port, description: 'Les pirogues et la chaloupe partent de la plage, à côté de la jetée, pour l’île de Ngor, de 7 h à 19 h.' });
         break;
