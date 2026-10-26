@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { stubCanvas } from './hubstub';
 import { Batch } from '../src/world/batch';
 import { buildBoat } from '../src/world/boats';
-import { NGOR_ISLAND_LAYOUT, buildNgorIsland, buildNgorQuay, ngorGround, ngorGroundY, ngorPathDistance, ngorShore, rooftopFloors, rooftopPieces } from '../src/world/ngor';
+import { NGOR_ISLAND_LAYOUT, ROOF_SEAT, buildNgorIsland, buildNgorQuay, ngorGround, ngorGroundY, ngorPathDistance, ngorShore, rooftopFloors, rooftopPieces } from '../src/world/ngor';
 import { BEACH_PALMS, LAUNCHES, beachSandY, buildNgorLaunches, buildNgorShallows } from '../src/world/ngorBay';
 import { BOAT_KINDS, TRAVERSEE_SITE as S, deckY, type BoatKind, type P2, type Pose } from '../src/sea/traverseeSite';
 import type { HubWorld } from '../src/world/types';
@@ -255,12 +255,22 @@ describe('the Embarcadère de Ngor: the quay, the pontoon, the island and the ba
     const solid = pieces.filter(p => p.kind !== 'chair' && p.kind !== 'sofa');
     for (const p of [...RT.dining, ...RT.lounge, ...RT.bar, RT.barman, RT.dj, ...RT.dance] as P2[]) for (const q of solid) expect(inBox(q, p.x, p.z, 0.15), `${JSON.stringify(p)} in ${JSON.stringify(q)}`).toBe(false);
     for (const p of RT.dance) for (const q of pieces) expect(inBox(q, p.x, p.z, 0.25), `dancer ${JSON.stringify(p)} in ${JSON.stringify(q)}`).toBe(false);
-    // the bar along the back where the contract has it, its shelf behind the barman, the booth in front of the DJ
+    // the seated people's seats at their height (0.48 m), their knees (0.45 m forward, 0.6 m up) under the tables' tops and clear of everything else
+    expect(ROOF_SEAT).toBe(0.48);
+    for (const p of pieces.filter(q => q.kind === 'chair' || q.kind === 'sofa')) expect(p.h).toBe(ROOF_SEAT);
+    for (const s of [...RT.dining, ...RT.lounge]) {
+      const knee = { x: s.x + Math.sin(s.yaw) * 0.45, z: s.z + Math.cos(s.yaw) * 0.45 };
+      for (const q of solid) if (inBox(q, knee.x, knee.z, 0.05)) expect(q.kind === 'table' && q.h - 0.05 >= 0.68, `knee of ${JSON.stringify(s)} in ${JSON.stringify(q)}`).toBe(true);
+    }
+    // the bar along the back where the contract has it (its front face at −329.0 or further back), its shelf behind the barman; the booth narrow, just
+    // in front of the DJ, half a metre clear of the dancers
     const bar = pieces.find(p => p.kind === 'bar')!, shelf = pieces.find(p => p.kind === 'shelf')!, booth = pieces.find(p => p.kind === 'booth')!;
-    expect(bar.x0).toBe(39); expect(bar.x1).toBe(47); expect((bar.z0 + bar.z1) / 2).toBeCloseTo(-329.5, 6);
+    expect(bar.x0).toBe(39); expect(bar.x1).toBe(47); expect((bar.z0 + bar.z1) / 2).toBeCloseTo(-329.5, 6); expect(bar.z1).toBeLessThanOrEqual(-329.0);
     for (const b of RT.bar) expect(b.z).toBeGreaterThan(bar.z1);
     expect(RT.barman.z).toBeLessThan(bar.z0); expect(RT.barman.z).toBeGreaterThan(shelf.z1);
-    expect(booth.z0).toBeGreaterThan(RT.dj.z); expect(RT.dj.x).toBeGreaterThan(booth.x0); expect(RT.dj.x).toBeLessThan(booth.x1);
+    expect(booth.z0).toBeGreaterThan(RT.dj.z); expect(booth.z0 - RT.dj.z).toBeLessThan(0.5); expect(RT.dj.x).toBeGreaterThan(booth.x0); expect(RT.dj.x).toBeLessThan(booth.x1);
+    expect(booth.x1 - booth.x0).toBeLessThanOrEqual(1.0);
+    for (const p of RT.dance) for (const q of pieces.filter(q => q.kind === 'booth' || q.kind === 'speaker')) expect(inBox(q, p.x, p.z, 0.45), `dancer ${JSON.stringify(p)} by ${q.kind}`).toBe(false);
   });
 
   it('the bay\'s launches: four to six, white, outside both clear zones and the corridor, within their budget (fewer on Low)', () => {

@@ -11,7 +11,11 @@ import type { Collider } from './types';
  * the pirogues pulled up on the beach) and the island of Ngor offshore with its landing beach. The bay (the launches at anchor, the wet sand, the
  * turquoise shallows) is src/world/ngorBay.ts; the boats that cross are the crossing's (src/world/boats.ts, src/venues/embarcadere.ts).
  */
-export interface NgorBatches { plain: Batch; leaves: Batch; trunks: Batch; bulbs: Batch }
+export interface NgorBatches {
+  plain: Batch; leaves: Batch; trunks: Batch; bulbs: Batch;
+  /** A pool of the lamps' light laid on a floor at night (src/world/builder.ts's pools: the hub's one lamp-glow mesh), at (x, z), radius r, height y. */
+  pool?: (x: number, z: number, r: number, y: number) => void;
+}
 /** A walked surface (src/world/builder.ts heightAt): flat here, y0 = y1. */
 export interface NgorRamp { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }
 
@@ -179,10 +183,10 @@ function parasol(b: Batch, x: number, y: number, z: number, color: number, r = 1
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   b.geometry(g, color, x, y, z);
 }
-/** A chair facing `yaw` (forward = (sin yaw, cos yaw)), its seat centred at (x, z): the seat on its legs, and its back. */
-function chair(b: Batch, x: number, y: number, z: number, yaw: number, color: number) {
-  b.box(0.44, 0.44, 0.42, x, y, z, color, yaw);
-  b.box(0.44, 0.46, 0.06, x - Math.sin(yaw) * 0.2, y + 0.44, z - Math.cos(yaw) * 0.2, color, yaw);
+/** A chair facing `yaw` (forward = (sin yaw, cos yaw)), its seat centred at (x, z) and `seat` high: the seat on its legs, and its back. */
+function chair(b: Batch, x: number, y: number, z: number, yaw: number, color: number, seat = 0.44) {
+  b.box(0.44, seat, 0.42, x, y, z, color, yaw);
+  b.box(0.44, 0.46, 0.06, x - Math.sin(yaw) * 0.2, y + seat, z - Math.cos(yaw) * 0.2, color, yaw);
 }
 /** A white plastic table: its top on one leg (a parasol's pole goes through it). */
 function table(b: Batch, x: number, y: number, z: number) {
@@ -282,6 +286,9 @@ export interface RoofPiece { kind: 'table' | 'chair' | 'sofa' | 'sofa-back' | 'l
 const SAIL_LOUNGE: V3[] = [[36.35, 0, -320.45], [41.3, 0, -320.45], [36.8, 0, -326.4]], SAIL_BAR: V3[] = [[38.7, 0, -330.75], [47.3, 0, -330.75]];
 const PERGOLA = { x0: 42.6, x1: 49.6, z0: -327.6, z1: -320.55 };
 const POTS: [number, number][] = [[36.7, -320.7], [45.3, -320.7], [49.3, -329.2], [36.7, -327.7]];
+/** The seated sit this high above the terrace's floor (the rooftop's people, src/crowd): the chairs' and the sofas' seats. Their knees reach 0.45 m
+ *  forward of the seat point, 0.6 m up: under the tables' tops (0.71 m), clear of their legs. */
+export const ROOF_SEAT = 0.48;
 /**
  * The roof terrace's furniture as footprints on its floor, built to the contract's poses (island.rooftop): a table at the mean of each dining four with a
  * chair under each diner, the lounge's U of low sofas (seats and backs) round its low table, the bar counter along the back and its shelf behind the
@@ -292,24 +299,25 @@ export function rooftopPieces(): RoofPiece[] {
   const P: RoofPiece[] = [], at = (kind: RoofPiece['kind'], x: number, z: number, w: number, d: number, h: number) => P.push({ kind, x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h });
   for (let t = 0; t < RT.dining.length; t += 4) {
     const four = RT.dining.slice(t, t + 4), x = four.reduce((s, p) => s + p.x, 0) / 4, z = four.reduce((s, p) => s + p.z, 0) / 4;
-    at('table', x, z, 0.76, 1.5, 0.74);
-    for (const s of four) at('chair', s.x - Math.sin(s.yaw) * 0.04, s.z - Math.cos(s.yaw) * 0.04, 0.44, 0.44, 0.44);
+    at('table', x, z, 0.76, 1.5, 0.76);
+    for (const s of four) at('chair', s.x - Math.sin(s.yaw) * 0.04, s.z - Math.cos(s.yaw) * 0.04, 0.44, 0.44, ROOF_SEAT);
   }
   // the lounge: each side's sofa under its poses (seats 0.8 deep, the hips 0.4 in from the back), the back sofa joining them; the low table between
   const side = (yaw: number) => RT.lounge.filter(p => Math.abs(p.yaw - yaw) < 0.01);
   for (const s of [1, -1]) {
     const ps = side(s * Math.PI / 2), x = ps[0].x, z0 = Math.min(...ps.map(p => p.z)) - 0.7, z1 = Math.max(...ps.map(p => p.z)) + 0.7, back = x - s * 0.42;
-    P.push({ kind: 'sofa', x0: Math.min(back, x + s * 0.38), x1: Math.max(back, x + s * 0.38), z0, z1, h: 0.42 });
-    P.push({ kind: 'sofa-back', x0: Math.min(back, back - s * 0.18), x1: Math.max(back, back - s * 0.18), z0, z1, h: 0.8 });
+    P.push({ kind: 'sofa', x0: Math.min(back, x + s * 0.38), x1: Math.max(back, x + s * 0.38), z0, z1, h: ROOF_SEAT });
+    P.push({ kind: 'sofa-back', x0: Math.min(back, back - s * 0.18), x1: Math.max(back, back - s * 0.18), z0, z1, h: 0.85 });
   }
   const north = side(0), nz = north[0].z, wx = side(Math.PI / 2)[0].x - 0.42, ex = side(-Math.PI / 2)[0].x + 0.42;
-  P.push({ kind: 'sofa', x0: wx, x1: ex, z0: nz - 0.42, z1: nz + 0.38, h: 0.42 }, { kind: 'sofa-back', x0: wx - 0.18, x1: ex + 0.18, z0: nz - 0.6, z1: nz - 0.42, h: 0.8 });
+  P.push({ kind: 'sofa', x0: wx, x1: ex, z0: nz - 0.42, z1: nz + 0.38, h: ROOF_SEAT }, { kind: 'sofa-back', x0: wx - 0.18, x1: ex + 0.18, z0: nz - 0.6, z1: nz - 0.42, h: 0.85 });
   at('low-table', 39, -323, 1.0, 1.3, 0.38);
-  // the bar along the back (x 39…47 at z −329.5) and its shelf behind the barman; the DJ's booth before the DJ, a speaker either side
+  // the bar along the back (x 39…47 at z −329.5, its front face at −329.2: those standing at it face it at −328.6) and its shelf behind the barman;
+  // the DJ's booth, narrow, just before the DJ, a speaker either side behind: the dancers' spots stay half a metre clear of them
   P.push({ kind: 'bar', x0: 39, x1: 47, z0: -329.8, z1: -329.2, h: 1.1 }, { kind: 'shelf', x0: 39, x1: 47, z0: RT.box.z0 + 0.05, z1: RT.box.z0 + 0.3, h: 1.9 });
   const dj = RT.dj;
-  at('booth', dj.x + Math.sin(dj.yaw) * 0.58, dj.z + Math.cos(dj.yaw) * 0.58, 1.2, 0.45, 1.0);
-  for (const s of [-1, 1]) at('speaker', dj.x + s * 1.25, dj.z - 0.25, 0.45, 0.4, 1.1);
+  at('booth', dj.x + Math.sin(dj.yaw) * 0.55, dj.z + Math.cos(dj.yaw) * 0.55, 1.0, 0.4, 1.0);
+  for (const s of [-1, 1]) at('speaker', dj.x + s * 1.15, dj.z - 0.25, 0.42, 0.38, 1.1);
   for (const [x, , z] of [...SAIL_LOUNGE, ...SAIL_BAR]) at('post', x, z, 0.1, 0.1, 2.6);
   for (const x of [PERGOLA.x0, PERGOLA.x1]) for (const z of [PERGOLA.z0, PERGOLA.z1]) at('post', x, z, 0.12, 0.12, 2.75);
   for (const [x, z] of POTS) at('pot', x, z, 0.5, 0.5, 0.5);
@@ -367,8 +375,8 @@ function buildRooftop(k: NgorBatches, lite: boolean) {
       plain.box(pw, 0.05, pd, x, Y + p.h - 0.05, z, PALE_WOOD);
       for (const s of [-1, 1]) plain.box(0.08, p.h - 0.05, 0.08, x, Y, z + s * (pd / 2 - 0.25), TEAK);
     } else if (p.kind === 'sofa') {
-      plain.box(pw, 0.28, pd, x, Y, z, TEAK);
-      plain.box(pw - 0.04, 0.14, pd - 0.04, x, Y + 0.28, z, cushions[cushion++ % 3]);
+      plain.box(pw, p.h - 0.16, pd, x, Y, z, TEAK);
+      plain.box(pw - 0.04, 0.16, pd - 0.04, x, Y + p.h - 0.16, z, cushions[cushion++ % 3]);
     } else if (p.kind === 'sofa-back') plain.box(pw, p.h, pd, x, Y, z, 0xeee6d6);
     else if (p.kind === 'low-table') plain.box(pw, p.h, pd, x, Y, z, TEAK);
     else if (p.kind === 'bar') {
@@ -387,7 +395,7 @@ function buildRooftop(k: NgorBatches, lite: boolean) {
   }
   for (let n = 0; n < RT.dining.length; n++) {
     const s = RT.dining[n], c = [0xf4f3ee, 0x2bb3b8, 0xf0682a][Math.floor(n / 4)];
-    chair(plain, s.x - Math.sin(s.yaw) * 0.04, Y, s.z - Math.cos(s.yaw) * 0.04, s.yaw, c);
+    chair(plain, s.x - Math.sin(s.yaw) * 0.04, Y, s.z - Math.cos(s.yaw) * 0.04, s.yaw, c, ROOF_SEAT);
   }
   // the pergola over the dining tables (posts, beams, slats), the sails over the lounge and the bar on their posts
   for (const x of [PERGOLA.x0, PERGOLA.x1]) for (const z of [PERGOLA.z0, PERGOLA.z1]) plain.box(0.12, 2.75, 0.12, x, Y, z, PALE_WOOD);
@@ -407,6 +415,10 @@ function buildRooftop(k: NgorBatches, lite: boolean) {
     for (let i = 1; i < n; i++) { const p = at(i / n); bulbs.geometry(new THREE.OctahedronGeometry(0.07, 0), 0xffd27a, p[0], p[1] - 0.05, p[2]); }
     if (!lite) for (const [f0, f1] of [[0, 0.5], [0.5, 1]]) rod(plain, at(f0), at(f1), 0.015, 0x2b2b2b);
   }
+  // at night the bulbs' light on the terrace and under the shaded front (the lamps' pools: the floor warmed where people sit, dance and drink, the
+  // people standing out against it), each inside its floor; two laid on each other, a pool doubling what is under it: the moonlit floor turns warm
+  for (const [x, z, r] of [[39.2, -323.2, 2.8], [42.6, -327.4, 2.8], [46.4, -324.2, 3.4]]) for (const f of [1, 0.65]) k.pool?.(x, z, r * f, Y + 0.02);
+  k.pool?.(cx, (kz + B.z1) / 2, 2.7, G + 0.02);
 }
 
 /** What of the island is where (checks: the landing, its path, its waiting spots and the restaurant are clear of it). */

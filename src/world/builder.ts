@@ -1068,7 +1068,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // (z bz − 14 … bz) stays a road: a 0.4 m platform laid across it stopped every car and motorbike on the Almadies' coast road.
         const quay = buildNgorQuay({ plain, leaves, trunks, bulbs: lampBulbs }, { cx, bz, base: B, lite, rand: R });
         ramps.push(...quay.ramps); colliders.push(...quay.colliders);
-        buildNgorIsland({ plain, leaves, trunks, bulbs: lampBulbs }, lite);
+        buildNgorIsland({ plain, leaves, trunks, bulbs: lampBulbs, pool: (x, z, r, y) => pool(x, z, r, y) }, lite);
         // the bay (src/world/ngorBay.ts): the white launches at anchor in the batch; the turquoise shallows along the beach and round the island, the
         // one draw call the embarcadère adds to the static scene; more palms along the beach, either side of the boarding beach
         buildNgorLaunches(plain, lite);
