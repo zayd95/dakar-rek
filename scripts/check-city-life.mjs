@@ -99,10 +99,14 @@ try {
     await page.evaluate(() => { const d = window.__dakar; d.place(30, 47, Math.PI); d.setHour(21); d.cam([60, 16, 60], [30, 2, 26]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-mall-night.jpg`, type: 'jpeg', quality: 88 });
     // M4 placemaking regression: capture the dedicated Terrasse frontage and hospitality strip, not the old residential-facade placement.
-    await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.setHour(20); d.cam([-30, 14, -132], [-30, 1.5, -102]); });
+    await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.setHour(20); });
+    await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.rooftop.info()?.hub === 'almadies', null, { timeout: 30000 });
+    await page.evaluate(() => window.__dakar.cam([-30, 14, -132], [-30, 1.5, -102]));
     await page.waitForTimeout(500);
     const terraceSite = await page.evaluate(() => window.__dakar.rooftop.info());
     check(`${label}: Terrasse de Ngor uses its authored hospitality frontage`, !!terraceSite && Math.abs(terraceSite.door.x + 30) < 0.1 && Math.abs(terraceSite.door.z + 105.1) < 0.1, JSON.stringify(terraceSite?.door));
+    const bayClear = await page.evaluate(() => { const c = window.__dakar.cityGeometry().colliders; return !c.some(v => v.x0 < -26.4 && v.x1 > -33.6 && v.z0 < -107 && v.z1 > -112); });
+    check(`${label}: the marked Terrasse visitor bay is free of static colliders`, bayClear);
     await page.screenshot({ path: `${out}/${label}-almadies-hospitality-frontage.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { window.__dakar.cam([-82, 24, -141], [-48, 2, -101]); });
     await page.waitForTimeout(400);
