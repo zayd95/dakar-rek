@@ -6,7 +6,7 @@
     2.45
    ],
    "room": "entree",
-   "dist": 0.14,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -15,7 +15,7 @@
     2.45
    ],
    "room": "sejour",
-   "dist": 0.38,
+   "dist": 0.37,
    "ok": true
   },
   {
@@ -24,6 +24,42 @@
     0.75
    ],
    "room": "sejour",
+   "dist": 0.3,
+   "ok": true
+  },
+  {
+   "to": [
+    2.3,
+    0.75
+   ],
+   "room": "cuisine",
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    3.2,
+    0.8
+   ],
+   "room": "cuisine",
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    3.2,
+    -1.2
+   ],
+   "room": "cuisine",
+   "dist": 0.26,
+   "ok": true
+  },
+  {
+   "to": [
+    3.2,
+    0.8
+   ],
+   "room": "cuisine",
    "dist": 0.29,
    "ok": true
   },
@@ -33,43 +69,7 @@
     0.75
    ],
    "room": "cuisine",
-   "dist": 0.15,
-   "ok": true
-  },
-  {
-   "to": [
-    3.2,
-    0.8
-   ],
-   "room": "cuisine",
-   "dist": 0.23,
-   "ok": true
-  },
-  {
-   "to": [
-    3.2,
-    -1.2
-   ],
-   "room": "cuisine",
-   "dist": 0.14,
-   "ok": true
-  },
-  {
-   "to": [
-    3.2,
-    0.8
-   ],
-   "room": "cuisine",
-   "dist": 0.15,
-   "ok": true
-  },
-  {
-   "to": [
-    2.3,
-    0.75
-   ],
-   "room": "cuisine",
-   "dist": 0.17,
+   "dist": 0.28,
    "ok": true
   },
   {
@@ -78,7 +78,7 @@
     0.7
    ],
    "room": "sejour",
-   "dist": 0.31,
+   "dist": 0.29,
    "ok": true
   },
   {
@@ -87,7 +87,7 @@
     0.6
    ],
    "room": "sejour",
-   "dist": 0.28,
+   "dist": 0.07,
    "ok": true
   },
   {
@@ -96,7 +96,7 @@
     -0.6
    ],
    "room": "degagement",
-   "dist": 0.08,
+   "dist": 0.35,
    "ok": true
   },
   {
@@ -105,7 +105,7 @@
     -0.65
    ],
    "room": "degagement",
-   "dist": 0.07,
+   "dist": 0.28,
    "ok": true
   },
   {
@@ -114,7 +114,7 @@
     -0.6
    ],
    "room": "chambre",
-   "dist": 0.17,
+   "dist": 0.38,
    "ok": true
   },
   {
@@ -123,7 +123,7 @@
     -0.55
    ],
    "room": "chambre",
-   "dist": 0.1,
+   "dist": 0.34,
    "ok": true
   },
   {
@@ -132,7 +132,7 @@
     -1.8
    ],
    "room": "chambre",
-   "dist": 0.44,
+   "dist": 0.2,
    "ok": true
   },
   {
@@ -141,7 +141,7 @@
     -0.55
    ],
    "room": "chambre",
-   "dist": 0.17,
+   "dist": 0.37,
    "ok": true
   },
   {
@@ -150,7 +150,7 @@
     -0.6
    ],
    "room": "chambre",
-   "dist": 0.24,
+   "dist": 0.11,
    "ok": true
   },
   {
@@ -159,7 +159,7 @@
     -0.65
    ],
    "room": "degagement",
-   "dist": 0.17,
+   "dist": 0.36,
    "ok": true
   },
   {
@@ -168,7 +168,7 @@
     -0.7
    ],
    "room": "degagement",
-   "dist": 0.08,
+   "dist": 0.3,
    "ok": true
   },
   {
@@ -177,7 +177,7 @@
     -1.9
    ],
    "room": "sdb",
-   "dist": 0.37,
+   "dist": 0.22,
    "ok": true
   },
   {
@@ -186,7 +186,7 @@
     -2.2
    ],
    "room": "sdb",
-   "dist": 0.33,
+   "dist": 0.26,
    "ok": true
   },
   {
@@ -195,7 +195,7 @@
     -1.9
    ],
    "room": "sdb",
-   "dist": 0.09,
+   "dist": 0.25,
    "ok": true
   },
   {
@@ -204,7 +204,7 @@
     -0.7
    ],
    "room": "degagement",
-   "dist": 0.25,
+   "dist": 0.41,
    "ok": true
   },
   {
@@ -213,7 +213,7 @@
     -0.5
    ],
    "room": "degagement",
-   "dist": 0.24,
+   "dist": 0.11,
    "ok": true
   },
   {
@@ -222,7 +222,7 @@
     0.6
    ],
    "room": "sejour",
-   "dist": 0.13,
+   "dist": 0.03,
    "ok": true
   },
   {
@@ -231,7 +231,7 @@
     2.45
    ],
    "room": "sejour",
-   "dist": 0.23,
+   "dist": 0.11,
    "ok": true
   },
   {
@@ -240,7 +240,7 @@
     2.45
    ],
    "room": "entree",
-   "dist": 0.27,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -249,12 +249,12 @@
     2.85
    ],
    "room": "entree",
-   "dist": 0.26,
+   "dist": 0.25,
    "ok": true
   }
  ],
  "samples": {
-  "n": 161,
+  "n": 159,
   "closest": 0.2999999999999545,
   "rooms": [
    "entree",
@@ -305,16 +305,16 @@
   },
   "furnished": {
    "sejour": {
-    "calls": 17,
-    "tris": 23016
+    "calls": 19,
+    "tris": 23030
    },
    "chambre": {
     "calls": 20,
-    "tris": 22978
+    "tris": 23414
    },
    "entree": {
-    "calls": 17,
-    "tris": 22980
+    "calls": 14,
+    "tris": 22560
    }
   },
   "pieces": 7
@@ -322,55 +322,55 @@
  "pictures": [
   [
    "entree-day",
-   268861
+   266777
   ],
   [
    "sejour-day",
-   331110
+   331357
   ],
   [
    "cuisine-day",
-   227261
+   229854
   ],
   [
    "degagement-day",
-   285211
+   285784
   ],
   [
    "chambre-day",
-   250969
+   253647
   ],
   [
    "sdb-day",
-   260574
+   261608
   ],
   [
    "entree-night",
-   262942
+   264120
   ],
   [
    "sejour-night",
-   328081
+   327415
   ],
   [
    "cuisine-night",
-   229608
+   227943
   ],
   [
    "degagement-night",
-   280595
+   280352
   ],
   [
    "chambre-night",
-   250559
+   253134
   ],
   [
    "sdb-night",
-   257205
+   257221
   ],
   [
    "furnished-sejour-day",
-   332464
+   329297
   ]
  ]
 }
