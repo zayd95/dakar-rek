@@ -54,7 +54,7 @@ export function buildNgorQuay(k: NgorBatches, at: { cx: number; bz: number; base
     plain.box(0.26, 2.5, 0.26, x, -0.9, z, PILE);
     if (z < pcz) { bulbs.box(0.22, 0.26, 0.22, x, 1.6, z, BULB); plain.box(0.3, 0.05, 0.3, x, 1.86, z, IRON); }
   }
-  const moorZ = S.quayMooring.z;
+  const moorZ = S.v1.quayMooring.z;
   for (const z of [moorZ - 2.8, moorZ + 2.9]) plain.cyl(0.09, 0.12, 0.26, Q.x1 - 0.3, PD, z, IRON, 6);
   for (const x of [pcx - 0.3, pcx + 0.3]) { plain.box(0.05, 1.55, 0.05, x, -0.6, Q.z0 - 0.05, STEEL); plain.box(0.05, 0.05, 0.42, x, 0.9, Q.z0 + 0.14, STEEL); }
   for (const y of [-0.22, 0.06]) plain.box(0.6, 0.04, 0.05, pcx, y, Q.z0 - 0.07, STEEL);
@@ -75,7 +75,7 @@ export function buildNgorQuay(k: NgorBatches, at: { cx: number; bz: number; base
 // ------------------------------------------------------------------ the island
 const I = S.island, ICX = I.centre.x, ICZ = I.centre.z, IA = I.size.x / 2, IB = I.size.z / 2;
 /** The landing's direction from the island's centre (the jetty's foot): the shore keeps to the contract's z −300 there. */
-const LANDING = Math.atan2(((I.jetty.z0 + 2) - ICZ) / IB, ((I.jetty.x0 + I.jetty.x1) / 2 - ICX) / IA);
+const LANDING = Math.atan2(((S.v1.jetty.z0 + 2) - ICZ) / IB, ((S.v1.jetty.x0 + S.v1.jetty.x1) / 2 - ICX) / IA);
 const angleTo = (a: number, b: number) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 /** The shore's radius (1 = the contract's ellipse) round the island: coves and points, none at the landing. */
 function shore(t: number) {
@@ -188,7 +188,7 @@ export function buildNgorIsland(k: NgorBatches, lite: boolean) {
     if (n < 2) bulbs.box(0.12, 0.12, 0.12, x, TY + 1.7, z, 0xffd27a);
   });
   // the landing jetty (deckY: 0.45) on its piles, a lamp at its end on the west corner (the boat moors on the east)
-  const J = I.jetty, jcx = (J.x0 + J.x1) / 2, jcz = (J.z0 + J.z1) / 2, JD = 0.45;
+  const J = S.v1.jetty, jcx = (J.x0 + J.x1) / 2, jcz = (J.z0 + J.z1) / 2, JD = 0.45;
   plain.box(J.x1 - J.x0, 0.12, J.z1 - J.z0, jcx, JD - 0.12, jcz, 0x93714c);
   if (!lite) for (let z = J.z0 + 0.6; z < J.z1 - 0.3; z += 1.25) plain.flat(J.x1 - J.x0 - 0.1, 0.04, jcx, JD + 0.003, z, SEAM);
   for (const z of lite ? [J.z1 - 1.2, J.z1 - 8.8] : [J.z1 - 1.2, J.z1 - 5, J.z1 - 8.8, J.z1 - 12.6]) for (const x of [J.x0 + 0.12, J.x1 - 0.12]) plain.box(0.22, 1.4, 0.22, x, -0.85, z, PILE);

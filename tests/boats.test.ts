@@ -112,7 +112,7 @@ describe('the Embarcadère de Ngor: the quay, the pontoon and the island (static
     const q = quayOf(false), deck = verts(q.meshes).filter(v => Math.abs(v.y - 0.54) < 0.005 && v.x >= S.pier.x0 - 0.01 && v.x <= S.pier.x1 + 0.01);
     expect(Math.min(...deck.map(v => v.z))).toBeCloseTo(S.pier.z0, 1);
     const pier = q.ramps.find(r => r.z0 <= S.pier.z0 && r.z1 < road.z0)!;
-    expect(pier).toBeDefined(); expect(pier.x0).toBeLessThanOrEqual(S.anchor.x - 2); expect(pier.xEnd).toBeGreaterThanOrEqual(S.anchor.x + 2);
+    expect(pier).toBeDefined(); expect(pier.x0).toBeLessThanOrEqual((S.pier.x0 + S.pier.x1) / 2 - 2); expect(pier.xEnd).toBeGreaterThanOrEqual((S.pier.x0 + S.pier.x1) / 2 + 2);
     expect(deckY(30, -158)).toBe(0.32); expect(deckY(30, -157.9)).toBe(0.54);
     // the pontoon's deck at its height over its whole box
     const pd = verts(q.meshes).filter(v => Math.abs(v.y - 0.32) < 0.002);
@@ -132,7 +132,7 @@ describe('the Embarcadère de Ngor: the quay, the pontoon and the island (static
 
   it('the beach pirogues lie clear of the pier, the pontoon, the moored boats and the road', () => {
     const q = quayOf(false), overlaps = (c: { x0: number; x1: number; z0: number; z1: number }, r: { x0: number; x1: number; z0: number; z1: number }) => c.x1 > r.x0 && c.x0 < r.x1 && c.z1 > r.z0 && c.z0 < r.z1;
-    const moored = { x0: S.quayMooring.x - 1.8, x1: S.quayMooring.x + 1.8, z0: S.quayMooring.z - 6, z1: S.quayMooring.z + 6 };
+    const moored = { x0: S.v1.quayMooring.x - 1.8, x1: S.v1.quayMooring.x + 1.8, z0: S.v1.quayMooring.z - 6, z1: S.v1.quayMooring.z + 6 };
     expect(q.colliders).toHaveLength(5);
     for (const c of q.colliders) {
       for (const r of [{ ...S.pier, x0: S.pier.x0 - 0.5, x1: S.pier.x1 + 0.5 }, S.pontoon, moored]) expect(overlaps(c, r), JSON.stringify(c)).toBe(false);
@@ -145,16 +145,16 @@ describe('the Embarcadère de Ngor: the quay, the pontoon and the island (static
     const full = count(false), low = count(true);
     expect(full.tris).toBeLessThanOrEqual(3000); expect(low.tris).toBeLessThan(full.tris * 0.7);
     // offshore, out of the walkable bounds, nothing on the water's route but the jetty
-    for (const v of verts(full.ms)) expect(v.z).toBeLessThan(S.island.jetty.z1 + 0.5);
+    for (const v of verts(full.ms)) expect(v.z).toBeLessThan(S.v1.jetty.z1 + 0.5);
     for (const p of S.route.slice(0, -1)) expect(ngorGroundY(p.x, p.z)).toBeLessThan(0);
     // the waterline: the south shore at z −300 by the landing, the sand above the sea on the island's side of it and below on the water's
     expect(ngorGroundY(36, -296)).toBeLessThan(S.seaY); expect(ngorGroundY(36, -301)).toBeGreaterThan(S.seaY);
     const south = ngorShore(96).filter(p => Math.abs(p[0] - 36) < 4)[0];
     expect(south[2]).toBeGreaterThan(-301); expect(south[2]).toBeLessThan(-299);
     // the jetty's foot rests on the sand, a step below its deck; the landing path climbs gently; a little height inland
-    const foot = ngorGroundY(36, S.island.jetty.z0);
+    const foot = ngorGroundY(36, S.v1.jetty.z0);
     expect(foot).toBeGreaterThan(S.seaY); expect(foot).toBeLessThan(0.45);
-    const path = S.island.path.map(p => ngorGroundY(p.x, p.z));
+    const path = S.v1.path.map(p => ngorGroundY(p.x, p.z));
     expect(path[path.length - 1]).toBeLessThan(1.4);
     expect(ngorGroundY(S.island.centre.x, S.island.centre.z)).toBeGreaterThan(2.5);
   });
@@ -167,7 +167,7 @@ describe('the Almadies as built', () => {
   it('walks from the block over the road and down the pier to its end, with nothing in the way', async () => {
     const h = await almadies();
     expect(h.heightAt(30, -105)).toBeCloseTo(0.4); expect(h.heightAt(30, -120)).toBe(0);
-    for (const z of [-140, -152, -157.9]) expect(h.heightAt(S.anchor.x, z)).toBeCloseTo(0.4);
+    for (const z of [-140, -152, -157.9]) expect(h.heightAt((S.pier.x0 + S.pier.x1) / 2, z)).toBeCloseTo(0.4);
     expect(h.bounds.z0).toBe(-157);
     const walk = { x0: 27.6, x1: 32.4, z0: -157, z1: -100 };
     expect(h.colliders.filter(c => c.x1 > walk.x0 && c.x0 < walk.x1 && c.z1 > walk.z0 && c.z0 < walk.z1)).toEqual([]);

@@ -62,7 +62,7 @@ const until = (r: ReturnType<typeof rig>, done: () => boolean, seconds = 400) =>
 
 describe('la traversée: the way on the water', () => {
   it('out leaves the pontoon bow first and lies at the island\'s mooring; back turns round and lies at the quay\'s mooring the same way', () => {
-    const o = wayOut(5.5), b = wayBack(5.5), M = S.quayMooring, I = S.island.mooring;
+    const o = wayOut(5.5), b = wayBack(5.5), M = S.v1.quayMooring, I = S.v1.mooring;
     expect(o.at(0).x).toBeCloseTo(M.x, 3); expect(o.at(0).z).toBeCloseTo(M.z, 3); expect(o.at(o.len).x).toBeCloseTo(I.x, 1); expect(o.at(o.len).z).toBeCloseTo(I.z, 1);
     expect(o.at(0).hz).toBeLessThan(-0.95); expect(o.at(o.len - 0.1).hz).toBeLessThan(-0.95);          // heading −z at both ends: the moorings' yaw 0
     expect(b.at(0).x).toBeCloseTo(I.x, 1); expect(b.at(b.len).x).toBeCloseTo(M.x, 1); expect(b.at(b.len).z).toBeCloseTo(M.z, 1);
@@ -73,7 +73,7 @@ describe('la traversée: the way on the water', () => {
       const p = w.at(s);
       expect(p.z).toBeLessThan(-164); expect(p.z).toBeGreaterThan(-296);
       expect(p.x >= S.pontoon.x0 - 1 && p.x <= S.pontoon.x1 + 1.2 && p.z > S.pontoon.z0 && p.z < S.pontoon.z1).toBe(false);
-      expect(p.x >= S.island.jetty.x0 - 1 && p.x <= S.island.jetty.x1 + 1.2 && p.z > S.island.jetty.z0 && p.z < S.island.jetty.z1).toBe(false);
+      expect(p.x >= S.v1.jetty.x0 - 1 && p.x <= S.v1.jetty.x1 + 1.2 && p.z > S.v1.jetty.z0 && p.z < S.v1.jetty.z1).toBe(false);
     }
   });
 });
@@ -107,7 +107,7 @@ describe('la traversée: a pirogue round trip at the Embarcadère de Ngor', () =
     });
     expect(n * 0.1).toBeLessThan(200);
     expect(stages).toEqual(Object.values(CROSSING_STEPS));
-    expect(minZ).toBeLessThan(S.island.mooring.z + 1);                                 // it went to the island's jetty
+    expect(minZ).toBeLessThan(S.v1.mooring.z + 1);                                 // it went to the island's jetty
     expect(maxRoll).toBeGreaterThan(0.03); expect(maxWake).toBeGreaterThan(0.3); expect(lockedAtSea).toBe(true);
     expect(seenSeated).toBe(plan.out.passengers);
     // paid once per leg, the exact amounts of the rules: fares − Ousmane's share, one wallet line each
@@ -134,7 +134,7 @@ describe('la traversée: a pirogue round trip at the Embarcadère de Ngor', () =
     until(r, () => r.info().phase === 'idle', 5);
     const i = r.info();
     expect(r.state.wallet).toBe(w); expect(i.paid).toEqual([]); expect(i.counters.traversees).toBe(0);
-    expect(i.moored.pirogue).toMatchObject({ x: S.quayMooring.x, z: S.quayMooring.z, yaw: 0 });
+    expect(i.moored.pirogue).toMatchObject({ x: S.v1.quayMooring.x, z: S.v1.quayMooring.z, yaw: 0 });
     expect(i.moored.chaloupe.x).toBeLessThan(S.pontoon.x0);
     expect(r.seated).toBeNull(); expect(Math.hypot(r.pos.x - S.anchor.x, r.pos.z - S.anchor.z)).toBeLessThan(2);
     expect(i.customers.every(c => c.side === 'quai' && c.state === 'wait')).toBe(true);
@@ -170,7 +170,7 @@ describe('la traversée: a pirogue round trip at the Embarcadère de Ngor', () =
     expect(i.boat).toBe('chaloupe'); expect(i.paid.map(p => p.amount)).toEqual([2 * 1500, i.paid[1].passengers * 1500]);
     expect(i.counters).toMatchObject({ traversees: 1, traversees_chaloupe: 1, traversees_pirogue: 3 });
     expect(maxRoll).toBeLessThan(0.05); expect(frames * 0.1).toBeLessThan(24);
-    expect(i.moored.chaloupe).toMatchObject({ x: S.quayMooring.x, z: S.quayMooring.z });   // the boat in use lies alongside, the other on the west side
+    expect(i.moored.chaloupe).toMatchObject({ x: S.v1.quayMooring.x, z: S.v1.quayMooring.z });   // the boat in use lies alongside, the other on the west side
     expect(i.moored.pirogue.x).toBeLessThan(S.pontoon.x0);
   });
 

@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 
 /**
  * « La traversée » (docs/TRAVERSEE.md): the Almadies' fishing quay becomes the Embarcadère de Ngor, where the player takes paying customers across to
- * the island of Ngor by pirogue or by chaloupe. This file is the contract between the world (the quay, the pontoon, the island, the boats' models:
+ * the island of Ngor by pirogue or by chaloupe. This file is the contract between the world (the quay, the beaches, the island, the boats' models:
  * src/world/builder.ts, src/world/boats.ts) and the crossing (src/venues/embarcadere.ts): where things are, in the Almadies' hub-local metres.
  *
  * Frames: the game's yaw faces +z at 0 (forward = (sin yaw, cos yaw)). A boat is built along its local z, bow at −z and stern (the motor) at +z, so a
@@ -13,44 +13,67 @@ export const TRAVERSEE_HUB = 'almadies' as const;
 export interface P2 { x: number; z: number }
 export interface Pose extends P2 { yaw: number }
 
+/**
+ * Version 2 (the owner's reference photos of Ngor, 26 Oct): the boats are boarded and left on the sand, as at Ngor. On the mainland both are pulled up
+ * on the Almadies' beach east of the pier, bows on the sand and sterns in the water; at the island the boat runs its bow up the landing beach. The
+ * customers cross the sand, wade into the shallows and climb in over the gunwale near the bow (life jackets on), and step off the same way. The pier
+ * and the pontoon stay as the quay's scenery (other boats moor there); the island has no jetty.
+ */
 export const TRAVERSEE_SITE = {
   /** Sea level: the Almadies' sea plane (src/world/builder.ts). A boat's origin floats here; the hull's own y offset is in its model. */
   seaY: 0.05,
-  /** The place's anchor: the pier's end, inside the walkable bounds (the player stops at z −157). The crossing starts here. */
-  anchor: { x: 30, z: -152 } as P2,
-  /** The pier (x 27…33) and its walkway, extended over the beach to z −158; then the floating pontoon (x 28…32) out over the water to z −172 (the water starts at z −163). */
+  /** The mainland's waterline: the Almadies' north beach (sand) ends and the sea begins at this z. */
+  shoreZ: -163,
+  /** The place's anchor: on the sand at the water's edge between the two beached boats, inside the walkable bounds (the player stops at z −157). */
+  anchor: { x: 48.5, z: -154.5 } as P2,
+  /** Scenery since version 2: the pier (x 27…33) carried over the beach to z −158, and the floating pontoon (x 28…32) out to z −172. */
   pier: { x0: 27, x1: 33, z0: -158, z1: -103 },
   pontoon: { x0: 28, x1: 32, z0: -172, z1: -158 },
-  /** Where the customers of the next crossing wait, on the pier, before boarding (up to 4 standing). */
-  waiting: [{ x: 28.6, z: -145.5 }, { x: 31.4, z: -146 }, { x: 28.9, z: -148.2 }, { x: 31.1, z: -148.8 }] as P2[],
-  /** From the waiting spots to the pontoon's edge beside the moored boat (and back up, for those who land at the quay). */
-  quayPath: [{ x: 30, z: -147 }, { x: 30, z: -158 }, { x: 30.8, z: -167 }, { x: 32, z: -168.5 }] as P2[],
-  /** The boat moored at the quay: alongside the pontoon's east edge, bow to the open sea (north, −z), its stern clear of the sand. The crossing brings it
-   *  back to this pose (its west gunwale against the pontoon) whichever way it came in. */
-  quayMooring: { x: 34.2, z: -168.5, yaw: 0 } as Pose,
+  beach: {
+    /** The two boats pulled up on the mainland beach, bows on the sand (toward the beach, +z: yaw π), sterns in the water. The crossing brings a boat
+     *  back to its own pose. */
+    pirogue: { x: 44, z: -167, yaw: Math.PI } as Pose,
+    chaloupe: { x: 53, z: -166.5, yaw: Math.PI } as Pose,
+    /** Where the customers of the next crossing wait, on the sand above the waterline (up to 4 standing). */
+    waiting: [{ x: 42.5, z: -151 }, { x: 45, z: -150.2 }, { x: 51, z: -150.5 }, { x: 53.5, z: -151.2 }] as P2[],
+    /** Kept clear for the beached boats, their pushing off and their turn: no static boat, rock, collider or mooring here. */
+    clear: { x0: 37, x1: 60, z0: -200, z1: -158 },
+  },
   island: {
     /** The island of Ngor, offshore: its centre and its size (x by z). Its south shore is at z −300. Out of the walkable bounds: nobody walks on it but the customers. */
     centre: { x: 40, z: -335 } as P2,
     size: { x: 120, z: 70 },
-    /** The island's landing jetty, from the sand (z −302) out over the water (z −286). */
+    /** The boat run up on the island's landing beach, bow first (yaw 0: bow north, toward the island), its bow on the sand at about z −299. */
+    beached: { x: 40, z: -294, yaw: 0 } as Pose,
+    /** Kept clear for the landing, the pushing off and the turn: no rock, jetty, moored boat or parasol here (the beach's sand slopes gently into the sea). */
+    clear: { x0: 30, x1: 52, z0: -301, z1: -268 },
+    /** From the shallows beside the bow up the beach among the parasols to the restaurants: where those who land walk off (and those going back come from). */
+    path: [{ x: 38.6, z: -298 }, { x: 38.4, z: -302 }, { x: 36.5, z: -309 }, { x: 37.5, z: -317 }] as P2[],
+    /** Where the island's customers going back wait, on the beach under the parasols (up to 3). */
+    waiting: [{ x: 35.5, z: -304.5 }, { x: 38.2, z: -305.5 }, { x: 42.5, z: -304.8 }] as P2[],
+  },
+  /** A way across that stays in open water, between the two beaches (the crossing pushes off, turns the boat round and lands bow first at either end). */
+  route: [{ x: 44, z: -182 }, { x: 43, z: -230 }, { x: 41, z: -272 }] as P2[],
+  /** @deprecated version 1 (the pier and the jetties), kept only until both lanes have moved to version 2: removed at integration. */
+  v1: {
+    waiting: [{ x: 28.6, z: -145.5 }, { x: 31.4, z: -146 }, { x: 28.9, z: -148.2 }, { x: 31.1, z: -148.8 }] as P2[],
+    quayPath: [{ x: 30, z: -147 }, { x: 30, z: -158 }, { x: 30.8, z: -167 }, { x: 32, z: -168.5 }] as P2[],
+    quayMooring: { x: 34.2, z: -168.5, yaw: 0 } as Pose,
     jetty: { x0: 34, x1: 38, z0: -302, z1: -286 },
-    /** The boat moored at the island: alongside the jetty's east edge, its west gunwale against it. */
     mooring: { x: 40.2, z: -290, yaw: 0 } as Pose,
-    /** From the jetty's edge beside the boat up onto the island, where the customers who land walk off (and those going back come from). */
     path: [{ x: 38, z: -290 }, { x: 36, z: -291 }, { x: 36, z: -302 }, { x: 38, z: -312 }] as P2[],
   },
-  /** A way across that stays in open water, quay to island (the crossing may smooth it and turns the boat round at either end). */
-  route: [{ x: 34.2, z: -168.5 }, { x: 36, z: -190 }, { x: 40, z: -240 }, { x: 41.5, z: -272 }, { x: 40.2, z: -290 }] as P2[],
 } as const;
 
-/** The deck a person walks on at (x, z) near the quay or the island's jetty: the pier's planks, the pontoon, or the island's jetty; null elsewhere. */
+/** The deck a person walks on at (x, z) on the quay's scenery: the pier's planks or the pontoon; null elsewhere (sand, shallows: the world's ground). */
 export function deckY(x: number, z: number): number | null {
   const S = TRAVERSEE_SITE, inBox = (b: { x0: number; x1: number; z0: number; z1: number }) => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1;
   if (inBox(S.pontoon)) return 0.32;
   if (inBox(S.pier)) return 0.54;
-  if (inBox(S.island.jetty)) return 0.45;
   return null;
 }
+/** How deep a person wading off the mainland's beach stands (feet below the sea's surface), to wading depth at most; 0 on the sand. */
+export const wadeDepth = (z: number) => Math.max(0, Math.min(0.45, (TRAVERSEE_SITE.shoreZ - z) * 0.18));
 
 export type BoatKind = 'pirogue' | 'chaloupe';
 export const BOAT_KINDS: readonly BoatKind[] = ['pirogue', 'chaloupe'];
@@ -71,7 +94,7 @@ export interface BoatModel {
   beam: number;
   helm: LocalSeat;
   seats: LocalSeat[];
-  /** On the boat's west gunwale (−x), mid-length: where a customer steps over from the pontoon or the island's jetty. */
+  /** Where a customer climbs in or out, in the boat's frame: on the gunwale near the bow (the end run up on the sand), from the shallows beside it. */
   step: P2;
   /** Draw calls and triangles the model adds (one boat), for the performance budget. */
   cost: { draws: number; tris: number };

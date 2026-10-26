@@ -7,7 +7,35 @@ The roadmap entry is `docs/ROADMAP_NEXT.md` §6. This document is the first slic
 - **Branch:** `feature/ngor-traversee-20261026`, stacked on LD2.0-B (`integration/ld2-b-20261025`).
 - **Not for production:** `wip/visual-pass` is untouched and nothing is deployed.
 
-## What the player does
+## Version 2: boarding and landing on the sand (the owner's references, 26 Oct)
+The owner's reference photos of Ngor, and his words: « create a beach sand like feel when getting on the boats and on arriving ».
+
+**What the photos show:**
+- The long white-and-red pirogue is pulled up at the water's edge on the mainland beach. Its passengers wear orange life jackets, and people wade around it.
+- White launches with outboards ride at anchor in the bay.
+- The island has golden sand with dark rocks in turquoise shallows, colourful parasols (orange, pink, red, blue) over plastic chairs and tables, beach restaurants, palms and green trees, and houses in red, ochre and yellow behind stone walls.
+- The boats come in bow first onto the island's beach.
+
+**What changes (`src/sea/traverseeSite.ts`, version 2):**
+- **Boarding on the sand:**
+  - Both boats are pulled up on the Almadies' beach east of the pier, bows on the sand and sterns in the water: the pirogue at x 44, the chaloupe at x 53.
+  - The place's anchor is on the sand at the water's edge between them, at (48.5, −154.5).
+  - The customers wait on the sand, put on orange life jackets, cross the sand, wade into the shallows and climb in over the gunwale near the bow.
+- **Leaving:** the boat is pushed off stern first, turns round and crosses.
+- **Landing on the island's beach:**
+  - The boat runs its bow up the landing beach at (40, −294).
+  - The customers step down into the shallows and walk up the sand among the parasols and the beach restaurants.
+  - Those going back wait under the parasols.
+  - The island has no jetty any more.
+- **The way back:** the same, onto the mainland beach.
+- **The look:**
+  - turquoise shallows along both shores;
+  - white launches at anchor in the bay (static);
+  - more pirogues on the sand;
+  - the island's landing beach dressed as in the photos.
+- **The pier and the pontoon stay:** they are the quay's scenery, and other boats moor there.
+
+## What the player does (version 1; boarding and landing as changed above)
 1. **The quay.** In the Almadies, the old fishing quay is now the **Embarcadère de Ngor**: a new sign, the pier carried over the beach, and a floating pontoon out on the water.
    - Customers wait on the pier for the next crossing, and a pirogue and a chaloupe are moored at the pontoon.
    - The island of Ngor lies offshore, about 150 m out, with its landing jetty, sand, rocks, a few houses and palms.

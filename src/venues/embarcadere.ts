@@ -47,9 +47,9 @@ const LANDING: Pose = { x: S.anchor.x + 1.1, z: S.anchor.z - 1, yaw: Math.PI };
 /** The new customers come down the pier from here; those who landed at the quay walk off up to here. */
 const PIER_IN: P2 = { x: 30.3, z: -132 };
 /** Where the island's return customers wait on the jetty (its west side, clear of those landing), first to board first. */
-const jettyQueue = (k: number): P2 => ({ x: S.island.jetty.x0 + 0.8, z: S.island.mooring.z - 1.6 - k * 1.1 });
+const jettyQueue = (k: number): P2 => ({ x: S.v1.jetty.x0 + 0.8, z: S.v1.mooring.z - 1.6 - k * 1.1 });
 /** The pontoon's west side, where the boat not in use waits (east gunwale to the pontoon, bow to the sea). */
-const spareMooring = (beam: number): Pose => ({ x: S.pontoon.x0 - 0.35 - beam / 2, z: S.quayMooring.z, yaw: 0 });
+const spareMooring = (beam: number): Pose => ({ x: S.pontoon.x0 - 0.35 - beam / 2, z: S.v1.quayMooring.z, yaw: 0 });
 
 const LOOKS: PersonLook[] = [
   ...VTC_LOOKS,
@@ -104,7 +104,7 @@ export class Way {
   }
 }
 
-const MQ = S.quayMooring, MI = S.island.mooring;
+const MQ = S.v1.quayMooring, MI = S.v1.mooring;
 const arc = (n: number, f: (a: number) => P2) => Array.from({ length: n + 1 }, (_, k) => ({ ...f((Math.PI * k) / n), slow: TURN_SLOW }));
 /** Out: bow first off the pontoon, along the route, in to the island's jetty heading for the island (the mooring's pose). */
 export function wayOut(cruise: number): Way {
@@ -238,7 +238,7 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
 
   // ---------------------------------------------------------------- the customers
   let riders: Rider[] = [], seq = 0, made = 0;
-  const groundY = (x: number, z: number) => deckY(x, z) ?? (z < S.island.jetty.z0 ? ngorGroundY(x, z) : 0.12 + (ctx.world()?.heightAt(x, z) ?? 0));   // the island's sand rises from the landing
+  const groundY = (x: number, z: number) => deckY(x, z) ?? (z < S.v1.jetty.z0 ? ngorGroundY(x, z) : 0.12 + (ctx.world()?.heightAt(x, z) ?? 0));   // the island's sand rises from the landing
   const rider = (side: 'quai' | 'ile', at: P2, state: RState, alpha = 1): Rider => {
     const r: Rider = {
       id: seq, look: LOOKS[(seq * 5 + 3) % LOOKS.length], state, t: 0, side, x: at.x, z: at.z, yaw: Math.PI, path: [], then: 'wait', endYaw: Math.PI, pace: WALK,
@@ -251,7 +251,7 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
   /** Customers waiting on the pier for the next crossing (not taken by the crossing in hand). */
   const waitingAtQuay = () => riders.filter(r => r.side === 'quai' && (r.state === 'wait' || r.state === 'come') && !inTrip(r));
   const inTrip = (r: Rider) => !!trip && (trip.outR.includes(r) || trip.backR.includes(r));
-  const freeSpot = () => { for (let k = 0; k < S.waiting.length; k++) if (!riders.some(r => r.spot === k && r.side === 'quai' && (r.state === 'wait' || r.state === 'come') && !inTrip(r))) return k; return -1; };
+  const freeSpot = () => { for (let k = 0; k < S.v1.waiting.length; k++) if (!riders.some(r => r.spot === k && r.side === 'quai' && (r.state === 'wait' || r.state === 'come') && !inTrip(r))) return k; return -1; };
   /** As many as the next pirogue would take, during the hours: placed (a fresh hub) or walking down the pier. */
   let comeT = 0;
   const refill = (now: boolean, dt = 0) => {
@@ -264,7 +264,7 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
     comeT -= dt;
     while (here.length < want && (now || comeT <= 0)) {
       const k = freeSpot(); if (k < 0) break;
-      const spot = S.waiting[k];
+      const spot = S.v1.waiting[k];
       if (now) { const r = rider('quai', spot, 'wait'); r.spot = k; r.yaw = Math.PI; }
       else {
         const r = rider('quai', { x: PIER_IN.x + (seq % 2 ? 0.5 : -0.5), z: PIER_IN.z }, 'come', 0);
@@ -345,7 +345,7 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
   const begin = (kind: BoatKind) => {
     const plan = R.crossingPlan(kind, ctx.hour(), seed(), trusted());
     const waiting = waitingAtQuay().sort((a, b) => a.z - b.z || a.spot - b.spot);
-    while (waiting.length < plan.out.passengers) { const k = freeSpot(); const r = rider('quai', S.waiting[Math.max(0, k)], 'wait'); r.spot = k; waiting.push(r); }
+    while (waiting.length < plan.out.passengers) { const k = freeSpot(); const r = rider('quai', S.v1.waiting[Math.max(0, k)], 'wait'); r.spot = k; waiting.push(r); }
     trip = { kind, craft: crafts[kind], plan, stage: null, outR: waiting.slice(0, plan.out.passengers), backR: [], lastStep: -9 };
     for (const r of trip.outR) r.spot = -1;
     for (const k of Object.keys(stageOver) as CrossingStage[]) stageOver[k] = false;
@@ -366,9 +366,9 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
         setTimeout(() => ctx.hud.fade(false), 120);
         // the customers set off down the pier as the player takes the helm, nearest first
         tr.outR.forEach((r, k) => {
-          const after = S.quayPath.filter(p => p.z < r.z - 0.4);
+          const after = S.v1.quayPath.filter(p => p.z < r.z - 0.4);
           r.delay = k * 0.6; r.state = 'walk'; r.walked = 0; r.seat = seats[k % seats.length]; r.craft = c;
-          walkTo(r, after.length ? after : [S.quayPath[S.quayPath.length - 1]], 'queue', Math.PI / 2);
+          walkTo(r, after.length ? after : [S.v1.quayPath[S.v1.quayPath.length - 1]], 'queue', Math.PI / 2);
         });
         break;
       case 'board': break;
@@ -376,21 +376,21 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
         c.sail(ways[tr.kind].out);
         // those coming back walk down from the island's houses to the jetty, the next crossing's customers down the pier
         tr.backR = Array.from({ length: tr.plan.back.passengers }, (_, k) => {
-          const r = rider('ile', S.island.path[S.island.path.length - 1], 'come', 0);
+          const r = rider('ile', S.v1.path[S.v1.path.length - 1], 'come', 0);
           r.spot = k; r.delay = k * 1.6; r.craft = c; r.seat = seats[k % seats.length];
-          walkTo(r, [S.island.path[2], { x: 35.6, z: jettyQueue(k).z - 1.5 }, jettyQueue(k)], 'wait', Math.PI / 2);
+          walkTo(r, [S.v1.path[2], { x: 35.6, z: jettyQueue(k).z - 1.5 }, jettyQueue(k)], 'wait', Math.PI / 2);
           return r;
         });
         break;
       case 'land':
-        for (const r of tr.outR) { r.ashore = S.island.path[0]; r.onward = S.island.path.slice(1); }
+        for (const r of tr.outR) { r.ashore = S.v1.path[0]; r.onward = S.v1.path.slice(1); }
         break;
       case 'boardBack':
-        tr.backR.forEach((r, k) => { r.delay = k * 0.8; r.state = 'walk'; r.walked = 0; walkTo(r, [{ x: 36.4, z: S.island.mooring.z - 0.8 }, S.island.path[0]], 'queue', Math.PI / 2); });
+        tr.backR.forEach((r, k) => { r.delay = k * 0.8; r.state = 'walk'; r.walked = 0; walkTo(r, [{ x: 36.4, z: S.v1.mooring.z - 0.8 }, S.v1.path[0]], 'queue', Math.PI / 2); });
         break;
       case 'back': c.sail(ways[tr.kind].back); break;
       case 'landBack':
-        for (const r of tr.backR) { r.ashore = S.quayPath[S.quayPath.length - 1]; r.onward = [...S.quayPath.slice(0, -1)].reverse().concat([{ x: 30.2, z: -140 }, PIER_IN]); }
+        for (const r of tr.backR) { r.ashore = S.v1.quayPath[S.v1.quayPath.length - 1]; r.onward = [...S.v1.quayPath.slice(0, -1)].reverse().concat([{ x: 30.2, z: -140 }, PIER_IN]); }
         break;
     }
   };
