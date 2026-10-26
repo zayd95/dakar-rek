@@ -1438,12 +1438,12 @@ function almadiesMakers(): Record<LxType, Record<Tier, Maker>> {
     rod(b, [0, 0.42, -0.19], [0, 0.56, -0.225], 0.013, 0.013, wd, 4, false);
     for (const sx of [-1, 1]) rod(b, [0, 0.56, -0.225], [sx * 0.08, 0.745, -0.23], 0.012, 0.012, wd, 4, false);
   }
-  /** A glossy leaf (both faces) from p, `len` long and `wid` wide, pointing at azimuth az (0: +z) and elevation el. */
+  /** A glossy oval leaf (both faces, its upper face lighter) from p, `len` long and `wid` wide, pointing at azimuth az (0: +z) and elevation el. */
   function leaf(b: KitBuilder, p: V3, az: number, el: number, len: number, wid: number, col: number) {
     const u: V3 = [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)], v: V3 = [Math.cos(az), 0, -Math.sin(az)];
     const at = (s: number, t: number): V3 => [p[0] + u[0] * s * len + v[0] * t * wid / 2, p[1] + u[1] * s * len + v[1] * t * wid / 2 + (s > 0.2 && s < 0.8 ? 0.012 : 0), p[2] + u[2] * s * len + v[2] * t * wid / 2];
-    const n: V3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]], q = [at(0, 0), at(0.45, 1), at(1, 0), at(0.45, -1)];
-    b.toward(q, n, col); b.toward(q, [-n[0], -n[1], -n[2]], dimC(col, 0.72));
+    const n: V3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]], q = [at(0, 0), at(0.22, 0.8), at(0.58, 1), at(1, 0), at(0.58, -1), at(0.22, -0.8)];
+    b.toward(q, n, dimC(col, 1.08)); b.toward(q, [-n[0], -n[1], -n[2]], dimC(col, 0.72));
   }
   /** A small ceramic vase at (x, y, z), h high. */
   const vase = (b: KitBuilder, x: number, y: number, z: number, h: number, r: number, col: number) =>

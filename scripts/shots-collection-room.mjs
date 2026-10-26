@@ -11,18 +11,23 @@ const [base = 'http://127.0.0.1:4966/', out = 'docs/proof/ld2d/collection'] = pr
 fs.mkdirSync(out, { recursive: true });
 // What is bought, in this order: each piece is delivered by the game to a spot of its own (src/economy/placement.ts autoPlace: against a wall of its
 // room, flush, facing into it), so the order decides who gets which wall: the curved sofa takes the séjour's north wall, the mushroom lamp the gap at its
-// end, the sideboard the west wall, the TV stand then the south wall facing the sofa; the black bed goes to the chambre.
+// end, the sideboard the west wall, the TV stand then the south wall facing the sofa; the black bed goes to the chambre. The chambre (3.3 m square, its
+// door swinging in by the bed's side) takes the king bed with one nightstand: a second does not fit beside it.
 const BUY = ['canape_courbe', 'lampadaire_champignon', 'enfilade_bronze', 'meuble_tv_laque', 'tapis_rond_jute', 'table_basse_marbre_noir', 'fauteuil_boucle', 'gueridon_marbre',
-  'pot_cannele', 'lustre_couronne', 'lit_capitonne_noir', 'banc_lit', 'chevet_greige', 'chevet_greige', 'miroir_ovale'];
+  'pot_cannele', 'lustre_couronne', 'lit_capitonne_noir', 'banc_lit', 'chevet_greige', 'miroir_ovale'];
 // Then set out with the home editor's hooks, in home coordinates of the F2 (src/housing/plan.ts F2_JAMM: the séjour x −4.5…1.8, z 0…3.5; the chambre
 // x −4.5…−1, z −3.5…0): ['rot', quarter turns], ['move', dx, dz] in 0.25 m steps (a piece slides along its wall and stays flush), ['to', x, z] (on the
-// 0.25 m grid), ['stash'] then ['auto'] (the game finds it a spot again, once the pieces it depends on have moved). Each spot is the game's to refuse.
+// 0.25 m grid), ['store'] (put away for now), ['auto'] (the game finds it a spot again, once the pieces in its way have moved). Each spot is the game's
+// to refuse.
 const OPS = [
-  ['tapis_rond_jute', 0, [['to', -1.75, 2.0]]], ['table_basse_marbre_noir', 0, [['rot', 0], ['to', -1.75, 1.75]]], ['fauteuil_boucle', 0, [['rot', 3], ['to', -0.25, 1.75]]],
-  ['gueridon_marbre', 0, [['to', -0.25, 2.5]]], ['pot_cannele', 0, [['to', -4.0, 3.0]]], ['lustre_couronne', 0, [['to', -1.75, 2.0]]],
-  // the black bed: head against the chambre's north wall, under the window's middle; its nightstands found again either side; the bench at its foot
-  ['lit_capitonne_noir', 0, [['rot', 0], ['move', -2, 0]]], ['chevet_greige', 0, [['stash'], ['auto']]], ['chevet_greige', 1, [['stash'], ['auto']]],
-  ['banc_lit', 0, [['rot', 0], ['to', -2.75, -0.75]]], ['miroir_ovale', 0, [['to', -4.3, -0.5]]],
+  // the séjour: the TV stand slid along the south wall to face the sofa; the rug, the black marble table and the crown between them; the cocoon
+  // armchair across, the side table by it, the ficus in the south-west corner
+  ['meuble_tv_laque', 0, [['move', -2, 0]]], ['tapis_rond_jute', 0, [['to', -1.75, 2.0]]], ['table_basse_marbre_noir', 0, [['rot', 0], ['to', -1.75, 2.0]]],
+  ['fauteuil_boucle', 0, [['rot', 3], ['to', -0.25, 2.0]]], ['gueridon_marbre', 0, [['to', -0.25, 2.75]]], ['pot_cannele', 0, [['to', -4.0, 3.0]]], ['lustre_couronne', 0, [['to', -1.75, 2.0]]],
+  // the chambre: the black bed turned head to the north wall (under the window) and slid west of the door's swing, its nightstand slid along the north
+  // wall beside the head, the bench at the foot, the oval mirror on the west wall
+  ['chevet_greige', 0, [['store']]], ['lit_capitonne_noir', 0, [['rot', 0], ['move', -4, 0]]], ['chevet_greige', 0, [['auto']]],
+  ['banc_lit', 0, [['rot', 0], ['to', -3.25, -0.75]]], ['miroir_ovale', 0, [['to', -4.3, -0.5]]],
 ];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const results = [];
@@ -48,6 +53,7 @@ try {
     const item = info.items.filter(f => f.spec === id)[nth]; if (!item) { placed.push([id, 'missing']); continue; }
     const r = await d(async ([uid, ops]) => {
       const P = window.__dakar.placer; P.select(uid);
+      if (ops[0][0] === 'store') { P.stash(); return { ok: true, why: null, at: null }; }
       for (const [op, a, c] of ops) {
         if (op === 'rot') for (let k = 0; k < 4 && P.info().pending && P.info().pending.rot !== a; k++) P.rotate();
         else if (op === 'move') { for (let k = 0; k < Math.abs(a); k++) P.move(Math.sign(a), 0); for (let k = 0; k < Math.abs(c); k++) P.move(0, Math.sign(c)); }
@@ -66,7 +72,7 @@ try {
   check('every piece valid where it stands, every room reachable', rules.pieces.every(p => p.why === null) && rules.reachable?.ok, JSON.stringify({ stored: rules.stored, bad: rules.pieces.filter(p => p.why), reach: rules.reachable }));
   const view = await d(() => window.__dakar.homeView()), O = { x: view.ox, z: view.oz };
   // the player stands at (x, z) facing yaw; the game camera follows behind
-  const shots = { sejour: [0.9, 2.5, -Math.PI * 0.62], 'sejour-tv': [-1.75, 1.4, 0.15], chambre: [-2.6, -0.2, Math.PI * 1.03] };
+  const shots = { sejour: [0.9, 2.3, -Math.PI * 0.58], 'sejour-tv': [-1.75, 1.4, 0.15], chambre: [-2.0, -0.55, Math.atan2(-0.8, -0.6)] };
   const perf = {}, sizes = [];
   const picture = async name => {
     let buf = await page.screenshot({ scale: 'css' });

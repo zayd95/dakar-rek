@@ -42,9 +42,9 @@ for (const p of pieces) {
   const hang = p.mount === 'ceiling' || (spec && spec.h > 2.5), wall = p.mount === 'wall';
   const w = spec?.w ?? r.width, d = spec?.d ?? 0.5, h = spec?.h ?? r.height, zc = r.wallZ + 0.02 + d / 2;
   // framing: the piece's box seen three-quarters from the front right, a little above
-  const lo = hang ? 1.8 : wall ? 0.45 : 0, hi = hang ? 2.8 : h, ty = (lo + hi) / 2 - (hang ? 0 : h * 0.06);
-  const R = 0.5 * Math.hypot(w, d, hi - lo), fov = 30, dist = Math.max(1.4, R / Math.sin((fov / 2) * Math.PI / 180) * (h < 0.1 ? 0.75 : 0.98));
-  const az = wall ? 0.32 : 0.6, el = hang ? 0.05 : h < 0.1 ? 0.9 : 0.36;
+  const lo = hang ? 1.8 : wall ? 0.45 : 0, hi = hang ? 2.8 : h, ty = (lo + hi) / 2 - (hang || h > 1.3 ? 0 : h * 0.06);
+  const R = 0.5 * Math.hypot(w, d, hi - lo), fov = 30, dist = Math.max(1.4, R / Math.sin((fov / 2) * Math.PI / 180) * (h < 0.1 ? 0.75 : h > 1.3 ? 1.12 : 0.98));
+  const az = wall ? 0.32 : 0.6, el = hang ? 0.24 : h < 0.1 ? 0.9 : 0.36;
   const cam = [r.cx + Math.sin(az) * Math.cos(el) * dist, ty + Math.sin(el) * dist, zc + Math.cos(az) * Math.cos(el) * dist];
   const png = await page.evaluate(({ cam, t, fov }) => {
     const { scene, renderer, camera } = window.__dakar.three;
