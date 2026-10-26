@@ -121,6 +121,8 @@ const TEST = readTestParams(location.hostname, location.search);   // preview-on
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
 try { store = window.localStorage; store.getItem('x'); } catch { store = null; }
+// LD2.0-D: the owner's private showcase (src/showcase/start.ts), only in a build made with VITE_OWNER_SHOWCASE=1 (npm run build:showcase); compiled out of every other
+if (import.meta.env.VITE_OWNER_SHOWCASE === '1') store = await (await import('./showcase/start')).chooseStart(store);
 initSaveHealth(!!store);
 
 // ------------------------------------------------------------------ renderer and scene

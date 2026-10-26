@@ -10,6 +10,15 @@ import type { HubId } from '../src/core/types';
 stubCanvas();
 
 describe('street dress: stalls, cantines, billboards and plates on the main roads', () => {
+  it('almadies: the mall\'s way in from the street stays open at every quality (LD2.0-D: the villa\'s compound reshuffled the dressing, a cantine stood across it)', () => {
+    for (const lite of [true, false]) for (const q of ['low', 'medium', 'high'] as const) {
+      const hub = buildHub('almadies', lite), open = hub.keepClear?.find(k => k.why === 'mall_entrance');
+      expect(open, `${q} ${lite}`).toBeDefined();
+      const before = hub.colliders.length, r = dressHub(hub, q);
+      for (const c of hub.colliders.slice(before)) expect(c.x1 <= open!.x0 || c.x0 >= open!.x1 || c.z1 <= open!.z0 || c.z0 >= open!.z1, `${q} ${lite}: ${JSON.stringify(c)}`).toBe(true);
+      expect(r.items.length).toBeGreaterThan(0);
+    }
+  });
   for (const id of ['plateau', 'pikine'] as HubId[]) {
     it(`${id}: placed from the seed, off the stops and the crossings, solid pieces leave the pavement lanes of the busy streets`, () => {
       const hub = buildHub(id, true);

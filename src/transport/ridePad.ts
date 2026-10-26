@@ -16,7 +16,9 @@ export interface PadOptions {
   /** « 📻 »: the car's radio, next station (a car only). */
   radio?: () => void;
 }
-let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement, radioB: HTMLButtonElement;
+let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement, radioB: HTMLButtonElement, extraB: HTMLButtonElement;
+/** An action another module offers at the wheel where the vehicle stands (LD2.0-D: « Garer à la villa »), shown above « Descendre ». */
+let extraAct: { label: string; run(): void } | null = null;
 let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null, onHorn: ((on: boolean) => void) | null = null, onRadio: (() => void) | null = null;
 /** What the pad's own buttons count (the on-device diagnostics: whether a thumb's touch reached the Klaxon button at all). */
 const seen = { hornDown: 0, hornUp: 0, hornCancel: 0 };
@@ -40,7 +42,7 @@ export const ridePad = {
     const row = (cls: string) => { const r = document.createElement('div'); r.className = cls; root!.appendChild(r); return r; };
     const top = row('rp-top'), pedals = row('rp-pedals');
     const mk = (into: HTMLElement, cls: string, label: string) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; into.appendChild(b); return b; };
-    offB = mk(top, 'rp-off', 'Descendre'); hornB = mk(top, 'rp-horn', 'Klaxon'); radioB = mk(top, 'rp-radio', '📻'); radioB.setAttribute('aria-label', 'Radio : station suivante'); viewB = mk(top, 'rp-view', 'Vue');
+    extraB = mk(top, 'rp-extra', ''); offB = mk(top, 'rp-off', 'Descendre'); hornB = mk(top, 'rp-horn', 'Klaxon'); radioB = mk(top, 'rp-radio', '📻'); radioB.setAttribute('aria-label', 'Radio : station suivante'); viewB = mk(top, 'rp-view', 'Vue');
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
     const rb = document.createElement('div'); rb.className = 'rp-r'; rb.textContent = 'R'; rb.setAttribute('aria-hidden', 'true'); pedals.insertBefore(rb, brakeB);   // shown only while the vehicle really reverses
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void, count?: (what: 'down' | 'up' | 'cancel') => void) => {
@@ -68,6 +70,7 @@ export const ridePad = {
       b.addEventListener('click', e => e.preventDefault());
     };
     tap(offB, () => onDescend?.());
+    tap(extraB, () => extraAct?.run());
     tap(viewB, () => onView?.());
     tap(radioB, () => onRadio?.());
     parent.appendChild(root);
@@ -81,12 +84,20 @@ export const ridePad = {
     document.body.classList.toggle('ridepad-car', !!o.car);
     root.classList.toggle('stopped', stopped);
   },
+  /** The extra action of the moment (null: none), for the pad's owner only; its label is written only when it changes. */
+  extra(by: Owner, a: { label: string; run(): void } | null) {
+    if (!root || owner !== by) return;
+    if (a?.label !== extraAct?.label && a) extraB.textContent = a.label;
+    extraAct = a;
+    root.classList.toggle('extra', !!a);
+  },
+  get extraLabel() { return extraAct?.label ?? null; },
   /** Gives the pad back (only the module that holds it can). */
   hide(by: Owner) {
     if (owner !== by) return;
     if (this.horn) onHorn?.(false);
-    owner = null; onDescend = null; onView = null; onHorn = null; onRadio = null; this.gas = false; this.brake = false; this.horn = false;
-    document.body.classList.remove('ridepad', 'ridepad-car', 'ridepad-radio'); root?.classList.remove('stopped', 'reversing');
+    owner = null; onDescend = null; onView = null; onHorn = null; onRadio = null; extraAct = null; this.gas = false; this.brake = false; this.horn = false;
+    document.body.classList.remove('ridepad', 'ridepad-car', 'ridepad-radio'); root?.classList.remove('stopped', 'reversing', 'extra');
     gasB?.classList.remove('down'); brakeB?.classList.remove('down'); hornB?.classList.remove('down');
   },
 };
