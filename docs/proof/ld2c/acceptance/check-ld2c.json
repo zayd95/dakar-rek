@@ -31,7 +31,7 @@
    "ok": true
   },
   {
-   "name": "never inside a wall, a fitting or a door (129 samples, closest 0.300 m), and the player always seen",
+   "name": "never inside a wall, a fitting or a door (126 samples, closest 0.300 m), and the player always seen",
    "ok": true
   },
   {
@@ -116,8 +116,8 @@
   }
  ],
  "walk": {
-  "samples": 129,
-  "closest": 0.2999999999999211,
+  "samples": 126,
+  "closest": 0.2999999999999545,
   "rooms": [
    "entree",
    "sejour",
