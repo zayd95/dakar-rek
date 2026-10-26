@@ -15,7 +15,12 @@ export class Interactions {
   /** Picks the focused target. `facing` is the player's yaw (forward = sin/cos of it, as everywhere in the game). */
   update(space: string, x: number, z: number, facing: number): Target | null {
     const buf = this.buf; buf.length = 0;
-    for (const s of this.sources) s.collect(space, x, z, buf);
+    let from = -1, to = 0;
+    for (const s of this.sources) {
+      const i = buf.length; s.collect(space, x, z, buf);
+      if (from < 0 && s.exclusive?.()) { from = i; to = buf.length; }
+    }
+    if (from >= 0) { buf.copyWithin(0, from, to); buf.length = to - from; }          // a source holding the button: its targets only
     this.focus = pickTarget(buf, space, x, z, facing);
     return this.focus;
   }

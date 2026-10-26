@@ -50,4 +50,6 @@ export interface Target {
 export interface TargetSource {
   readonly name: string;
   collect(space: string, x: number, z: number, out: Target[]): void;
+  /** While true, only this source's targets can be focused (the player in a match: the action button is the ball's, never a passer-by's). */
+  exclusive?(): boolean;
 }
