@@ -15,6 +15,7 @@ import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
+import { COMPTOIR, GROSSISTE, TRADE_PLACES, isTradeLot } from '../districts/tradePlaces';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -581,9 +582,82 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     solidC(cx, cz, w, d, h);
   };
 
+  /** The yellow bay at a kerb where goods are loaded (M2, src/districts/tradePlaces.ts): its outline and a hatch, painted on the carriageway. */
+  const loadingBay = (r: { x0: number; z0: number; x1: number; z1: number }) => {
+    const Y = 0.084, col = 0xe2b62a, cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, w = r.x1 - r.x0, d = r.z1 - r.z0;
+    plain.flat(0.16, d, r.x0 + 0.08, Y, cz, col); plain.flat(0.16, d, r.x1 - 0.08, Y, cz, col);
+    plain.flat(w, 0.16, cx, Y, r.z0 + 0.08, col); plain.flat(w, 0.16, cx, Y, r.z1 - 0.08, col);
+    for (let z = r.z0 + 1.2; z < r.z1 - 0.8; z += 1.6) plain.flat(w * 1.25, 0.12, cx, Y, z, col, Math.PI / 4);
+    plain.flat(w * 0.7, 1.0, cx, Y + 0.001, cz, 0x2f3236);
+  };
+  /**
+   * M2 (src/districts/tradePlaces.ts): Diallo & Frères, the Médina wholesaler. A worn two-storey depot set back from the street (front at x = −74), its
+   * open mouth and rolled-up shutter, a canvas awning over the forecourt, and the forecourt stacked against the depot with what it sells: sacks of rice,
+   * cartons of tea, crates of mangoes. The trader's table in the middle, a porters' pousse-pousse, two porters. The pavement stays free; the bay is at the kerb.
+   */
+  const grossiste = (L: ReturnType<typeof lotRect>) => {
+    const fx = -74, w = 14.5, d = 20, cx = fx - w / 2, cz = (L.z0 + L.z1) / 2, h = 2 * 3.2;
+    fac.facade(w, h, d, cx, G - 0.02, cz, 0xd9a86c);
+    plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xb98a5a);
+    plain.box(w + 0.24, 0.16, d + 0.24, cx, G + 3.1, cz, 0xb98a5a);
+    parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, 0xc8955f, 0.7);
+    roofClutter(cx, cz, w, d, G + h + 0.28);
+    plain.box(0.08, 2.9, d - 4, fx + 0.03, G, cz, 0x221d18);                                              // the depot's open mouth
+    metal.box(0.1, 0.5, d - 3.6, fx + 0.06, G + 2.9, cz, 0x7d848a);                                       // its shutter, rolled up
+    awning(fx + 1.6, cz, d - 2, 3.2, G + 3.5, 0x2f6f5a, false, 1);
+    addSign('DIALLO & FRÈRES · GROSSISTE', '#7a2d0e', '#f6e7c1', fx + 0.09, G + 4.15, cz, Math.PI / 2, 9, 1.1);
+    solidC(cx, cz, w, d, h);
+    const sack = (x: number, y: number, z: number) => { plain.box(0.95, 0.32, 0.6, x, y, z, 0xece6d4, (R() - 0.5) * 0.16); plain.box(0.97, 0.05, 0.62, x, y + 0.14, z, 0x2f7d4a, 0); };
+    for (let r = 0; r < 6; r++) for (let k = 0; k < (r < 4 ? 5 : 3); k++) sack(-73.1, G + k * 0.32, L.z0 + 2.2 + r * 0.66);           // rice, against the depot
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) sack(-72.0, G + k * 0.32, L.z0 + 2.5 + r * 0.66);
+    solid(-73.7, L.z0 + 1.8, -71.4, L.z0 + 6.4, 1.6);
+    const carton = (x: number, y: number, z: number, c: number) => { plain.box(0.55, 0.4, 0.45, x, y, z, c, (R() - 0.5) * 0.1); plain.box(0.56, 0.05, 0.46, x, y + 0.3, z, 0xf2efe6, 0); };
+    for (let r = 0; r < 5; r++) for (let k = 0; k < 4; k++) carton(-73.2 + (k % 2) * 0.05, G + k * 0.4, cz + 1.6 + r * 0.5, r % 2 ? 0x2f8f4e : 0xc0392b);   // tea
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 2; k++) carton(-72.5, G + k * 0.4, cz + 1.8 + r * 0.5, 0x2f8f4e);
+    solid(-73.6, cz + 1.3, -72.1, cz + 4.2, 1.6);
+    const crate = (x: number, y: number, z: number) => { plain.box(0.6, 0.3, 0.42, x, y, z, 0xa77b4f, (R() - 0.5) * 0.12); plain.box(0.54, 0.06, 0.36, x, y + 0.27, z, pick([0xf2a23a, 0xe8c13b, 0x8fb339], R), 0); };
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) crate(-73.1, G + k * 0.3, cz + 4.8 + r * 0.5);                               // mangoes
+    for (let r = 0; r < 3; r++) crate(-72.3, G, cz + 5.0 + r * 0.5);
+    solid(-73.5, cz + 4.4, -71.9, cz + 6.7, 1.0);
+    plain.box(0.8, 0.75, 1.4, -73.2, G, GROSSISTE.keeper.z, 0x6b4a2e); plain.box(0.3, 0.12, 0.4, -73.2, G + 0.75, GROSSISTE.keeper.z - 0.3, 0x2b2b2b);   // the trader's table and his cash box
+    solidC(-73.2, GROSSISTE.keeper.z, 0.8, 1.4, 0.8);
+    // the porters' pousse-pousse (a flat two-wheeled hand cart), parked by the depot's corner
+    const px = -72.3, pz = L.z1 - 1.6;
+    plain.box(1.2, 0.08, 2.2, px, G + 0.62, pz, 0x8a6a46); for (const s of [-1, 1]) { plain.cyl(0.36, 0.36, 0.08, px + s * 0.66, G + 0.36, pz + 0.2, 0x2b2b2b, 10, [0, 0, Math.PI / 2]); plain.box(0.06, 0.06, 1.0, px + s * 0.5, G + 0.66, pz - 1.5, 0x6b5238); }
+    solidC(px, pz, 1.5, 2.4, 0.9);
+    people.push({ x: -71.0, z: L.z0 + 4.6, yaw: Math.PI / 2, clip: 'Idle' }, { x: -70.9, z: cz + 5.6, yaw: -2.4, clip: 'Talk' });
+    loadingBay(GROSSISTE.bay);
+  };
+  /**
+   * M2: the Comptoir Sall, the Plateau buyer. A four-storey trading house in the formal Plateau style, its street face behind an arcade (pillars at the
+   * pavement's inner edge, the gallery's slab above): the shop's glass front and door under it, a few sacks and cartons waiting in the gallery for the
+   * next lorry, a clerk. The gallery stays a walkway; the bay is at the kerb of the street at x = 60.
+   */
+  const comptoir = (L: ReturnType<typeof lotRect>) => {
+    const fx = 72.6, w = 15.4, d = 20, cx = fx + w / 2, cz = (L.z0 + L.z1) / 2, fl = 4, h = fl * 3.2, col = 0xf1e9da;
+    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xdcd3c3);
+    for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));
+    parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.9);
+    roofClutter(cx, cz, w, d, G + h + 0.28);
+    for (let z = L.z0 + 1.5; z <= L.z1 - 1.2; z += 3.45) { plain.box(0.5, 3.6, 0.5, 69.4, G, z, 0xe6dccb); solidC(69.4, z, 0.5, 0.5, 3.6); }
+    plain.box(3.7, 0.4, d + 0.6, 70.95, G + 3.6, cz, 0xe9e0cf);                                           // the gallery's slab
+    for (let z = L.z0 + 2; z < L.z1 - 1; z += 4) canopies.push({ x: 70.95, z, r: 2.2, y0: G + 3.5, y1: G + 4.1 });
+    glass.box(0.08, 2.5, d - 6, fx - 0.04, G + 0.3, cz - 1.5, 0x7f97a8);
+    plain.box(0.1, 2.6, 1.6, fx - 0.06, G, cz + 6, 0x3b2a1d);
+    addSign('COMPTOIR SALL · GROS & DEMI-GROS', '#1f3d5c', '#f3ecdc', 69.1, G + 4.5, cz, -Math.PI / 2, 10.5, 1.0);
+    solidC(cx, cz, w, d, h);
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 2; k++) plain.box(0.95, 0.32, 0.6, 71.9, G + k * 0.32, L.z0 + 2.4 + r * 0.66, 0xece6d4);
+    for (let k = 0; k < 3; k++) plain.box(0.55, 0.4, 0.45, 71.9, G + k * 0.4, L.z1 - 3, 0xc0392b);
+    solid(71.4, L.z0 + 2, 72.5, L.z0 + 4.2, 0.7); solid(71.6, L.z1 - 3.3, 72.3, L.z1 - 2.7, 1.2);
+    people.push({ x: 71.2, z: L.z1 - 5, yaw: -Math.PI / 2, clip: 'Idle' });
+    loadingBay(COMPTOIR.bay);
+  };
+
   const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
+    if (id === 'plateau') { const tp = isTradeLot(i, j, a, b); if (tp) { (tp === GROSSISTE ? grossiste : comptoir)(L); return; } }   // M2's two places
     if (sp.style === 'mermoz') { mermozLot(i, j, a, b, L, faces); return; }
     if (sp.style === 'banlieue') {
       // Cramped self-built houses: one to three per yard, set askew, roofs bristling with rebar for the next floor,
@@ -793,7 +867,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
   const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
   /** Ground kept open (a shop's frontage, a loading bay: `citeFronts`), returned with the hub for the street dressing that comes after. */
-  const keepClear: KeepClear[] = id === 'pikine' ? citeFronts() : [];
+  const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
+    : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }]) : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
