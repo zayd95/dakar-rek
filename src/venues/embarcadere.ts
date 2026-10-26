@@ -7,6 +7,7 @@ import { CROSSING_STEPS, crossingStage, embarcadere, type CrossingStage } from '
 import type { Effects } from '../activity/types';
 import { buildBoat } from '../world/boats';
 import { BOAT_KINDS, TRAVERSEE_SITE as S, deckY, type BoatKind, type BoatModel, type LocalSeat, type P2, type Pose } from '../sea/traverseeSite';
+import { ngorGroundY } from '../world/ngor';
 import * as R from '../sea/traverseeRules';
 import { VTC_LOOKS } from '../transport/vtcRules';
 import { ECONOMY } from '../economy/config';
@@ -237,7 +238,7 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
 
   // ---------------------------------------------------------------- the customers
   let riders: Rider[] = [], seq = 0, made = 0;
-  const groundY = (x: number, z: number) => deckY(x, z) ?? (z < S.island.jetty.z0 ? 0.5 : 0.12 + (ctx.world()?.heightAt(x, z) ?? 0));
+  const groundY = (x: number, z: number) => deckY(x, z) ?? (z < S.island.jetty.z0 ? ngorGroundY(x, z) : 0.12 + (ctx.world()?.heightAt(x, z) ?? 0));   // the island's sand rises from the landing
   const rider = (side: 'quai' | 'ile', at: P2, state: RState, alpha = 1): Rider => {
     const r: Rider = {
       id: seq, look: LOOKS[(seq * 5 + 3) % LOOKS.length], state, t: 0, side, x: at.x, z: at.z, yaw: Math.PI, path: [], then: 'wait', endYaw: Math.PI, pace: WALK,
