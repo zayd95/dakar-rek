@@ -1,6 +1,6 @@
 # M2 · Plateau / Médina — « Ma première affaire » (My First Trade)
 
-**Status: in progress.** The world and the trade are built. The commerce contract was agreed with Living Dakar 2.0 (`CONTRACT.md` v5, rows 9–12).
+**Status: Gate A evidence in [`M2-EVIDENCE.md`](M2-EVIDENCE.md); Gate B (the owner's iPhone) pending.** The world and the trade are built. The commerce contract was agreed with Living Dakar 2.0 (`CONTRACT.md` v5, rows 9–12).
 
 ## The idea
 

@@ -420,15 +420,15 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     plain.box(w, hgt, 0.22, cx, y, cz - d / 2 + 0.11, col); plain.box(w, hgt, 0.22, cx, y, cz + d / 2 - 0.11, col);
     plain.box(0.22, hgt, d, cx - w / 2 + 0.11, y, cz, col); plain.box(0.22, hgt, d, cx + w / 2 - 0.11, y, cz, col);
   };
-  const roofClutter = (cx: number, cz: number, w: number, d: number, y: number) => {
+  const roofClutter = (cx: number, cz: number, w: number, d: number, y: number, rnd = R) => {
     if (lite) return;
-    if (R() < 0.65) { const tx = cx + (R() - 0.5) * (w - 3), tz = cz + (R() - 0.5) * (d - 3); plain.cyl(0.65, 0.65, 1.3, tx, y, tz, 0x1d1f22, 10); plain.cyl(0.25, 0.25, 0.15, tx, y + 1.3, tz, 0x2b2d30, 8); }
-    if (R() < 0.5) { const tx = cx + (R() - 0.5) * (w - 2), tz = cz + (R() - 0.5) * (d - 2); plain.box(0.06, 0.9, 0.06, tx, y, tz, 0x777777); plain.cyl(0.55, 0.08, 0.22, tx, y + 0.85, tz, 0xe9e9e6, 10, [0.9, R() * 6, 0]); }
-    if (R() < 0.3) { const tx = cx + (R() - 0.5) * (w - 3), tz = cz + (R() - 0.5) * (d - 3); plain.box(2.2, 2.3, 2.2, tx, y, tz, shade(0xd6cfc2, 0.95)); plain.box(0.9, 1.9, 0.05, tx, y, tz + 1.12, 0x5a6f86); } // stair head
-    if (R() < 0.35) { // washing line
-      const tx = cx + (R() - 0.5) * (w - 4), tz = cz + (R() - 0.5) * (d - 4);
+    if (rnd() < 0.65) { const tx = cx + (rnd() - 0.5) * (w - 3), tz = cz + (rnd() - 0.5) * (d - 3); plain.cyl(0.65, 0.65, 1.3, tx, y, tz, 0x1d1f22, 10); plain.cyl(0.25, 0.25, 0.15, tx, y + 1.3, tz, 0x2b2d30, 8); }
+    if (rnd() < 0.5) { const tx = cx + (rnd() - 0.5) * (w - 2), tz = cz + (rnd() - 0.5) * (d - 2); plain.box(0.06, 0.9, 0.06, tx, y, tz, 0x777777); plain.cyl(0.55, 0.08, 0.22, tx, y + 0.85, tz, 0xe9e9e6, 10, [0.9, rnd() * 6, 0]); }
+    if (rnd() < 0.3) { const tx = cx + (rnd() - 0.5) * (w - 3), tz = cz + (rnd() - 0.5) * (d - 3); plain.box(2.2, 2.3, 2.2, tx, y, tz, shade(0xd6cfc2, 0.95)); plain.box(0.9, 1.9, 0.05, tx, y, tz + 1.12, 0x5a6f86); } // stair head
+    if (rnd() < 0.35) { // washing line
+      const tx = cx + (rnd() - 0.5) * (w - 4), tz = cz + (rnd() - 0.5) * (d - 4);
       plain.box(0.05, 1.6, 0.05, tx - 1.6, y, tz, 0x777777); plain.box(0.05, 1.6, 0.05, tx + 1.6, y, tz, 0x777777);
-      for (let k = 0; k < 4; k++) plain.box(0.5, 0.7, 0.02, tx - 1.2 + k * 0.8, y + 0.85, tz, pick([0xf2f2ec, 0xd9482b, 0x2f6fb3, 0xf4c20d, 0x1a9d54], R));
+      for (let k = 0; k < 4; k++) plain.box(0.5, 0.7, 0.02, tx - 1.2 + k * 0.8, y + 0.85, tz, pick([0xf2f2ec, 0xd9482b, 0x2f6fb3, 0xf4c20d, 0x1a9d54], rnd));
     }
   };
   /** Street-facing details for a box building: plinth, AC units, shutters. faces = outward normals that see a street. */
@@ -601,27 +601,29 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
    * open mouth and rolled-up shutter, a canvas awning over the forecourt, and the forecourt stacked against the depot with what it sells: sacks of rice,
    * cartons of tea, crates of mangoes. The trader's table in the middle, a porters' pousse-pousse, two porters. The pavement stays free; the bay is at the kerb.
    */
+  /** The trade places' own random stream (M2): the hub's stream R goes on exactly as before them. */
+  const TR = rng(sp.seed * 977 + 2);
   const grossiste = (L: ReturnType<typeof lotRect>) => {
     const fx = -74, w = 14.5, d = 20, cx = fx - w / 2, cz = (L.z0 + L.z1) / 2, h = 2 * 3.2;
     fac.facade(w, h, d, cx, G - 0.02, cz, 0xd9a86c);
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xb98a5a);
     plain.box(w + 0.24, 0.16, d + 0.24, cx, G + 3.1, cz, 0xb98a5a);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, 0xc8955f, 0.7);
-    roofClutter(cx, cz, w, d, G + h + 0.28);
+    roofClutter(cx, cz, w, d, G + h + 0.28, TR);
     plain.box(0.08, 2.9, d - 4, fx + 0.03, G, cz, 0x221d18);                                              // the depot's open mouth
     metal.box(0.1, 0.5, d - 3.6, fx + 0.06, G + 2.9, cz, 0x7d848a);                                       // its shutter, rolled up
     awning(fx + 1.6, cz, d - 2, 3.2, G + 3.5, 0x2f6f5a, false, 1);
     addSign('DIALLO & FRÈRES · GROSSISTE', '#7a2d0e', '#f6e7c1', fx + 0.09, G + 4.15, cz, Math.PI / 2, 9, 1.1);
     solidC(cx, cz, w, d, h);
-    const sack = (x: number, y: number, z: number) => { plain.box(0.95, 0.32, 0.6, x, y, z, 0xece6d4, (R() - 0.5) * 0.16); plain.box(0.97, 0.05, 0.62, x, y + 0.14, z, 0x2f7d4a, 0); };
+    const sack = (x: number, y: number, z: number) => { plain.box(0.95, 0.32, 0.6, x, y, z, 0xece6d4, (TR() - 0.5) * 0.16); plain.box(0.97, 0.05, 0.62, x, y + 0.14, z, 0x2f7d4a, 0); };
     for (let r = 0; r < 6; r++) for (let k = 0; k < (r < 4 ? 5 : 3); k++) sack(-73.1, G + k * 0.32, L.z0 + 2.2 + r * 0.66);           // rice, against the depot
     for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) sack(-72.0, G + k * 0.32, L.z0 + 2.5 + r * 0.66);
     solid(-73.7, L.z0 + 1.8, -71.4, L.z0 + 6.4, 1.6);
-    const carton = (x: number, y: number, z: number, c: number) => { plain.box(0.55, 0.4, 0.45, x, y, z, c, (R() - 0.5) * 0.1); plain.box(0.56, 0.05, 0.46, x, y + 0.3, z, 0xf2efe6, 0); };
+    const carton = (x: number, y: number, z: number, c: number) => { plain.box(0.55, 0.4, 0.45, x, y, z, c, (TR() - 0.5) * 0.1); plain.box(0.56, 0.05, 0.46, x, y + 0.3, z, 0xf2efe6, 0); };
     for (let r = 0; r < 5; r++) for (let k = 0; k < 4; k++) carton(-73.2 + (k % 2) * 0.05, G + k * 0.4, cz + 1.6 + r * 0.5, r % 2 ? 0x2f8f4e : 0xc0392b);   // tea
     for (let r = 0; r < 3; r++) for (let k = 0; k < 2; k++) carton(-72.5, G + k * 0.4, cz + 1.8 + r * 0.5, 0x2f8f4e);
     solid(-73.6, cz + 1.3, -72.1, cz + 4.2, 1.6);
-    const crate = (x: number, y: number, z: number) => { plain.box(0.6, 0.3, 0.42, x, y, z, 0xa77b4f, (R() - 0.5) * 0.12); plain.box(0.54, 0.06, 0.36, x, y + 0.27, z, pick([0xf2a23a, 0xe8c13b, 0x8fb339], R), 0); };
+    const crate = (x: number, y: number, z: number) => { plain.box(0.6, 0.3, 0.42, x, y, z, 0xa77b4f, (TR() - 0.5) * 0.12); plain.box(0.54, 0.06, 0.36, x, y + 0.27, z, pick([0xf2a23a, 0xe8c13b, 0x8fb339], TR), 0); };
     for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) crate(-73.1, G + k * 0.3, cz + 4.8 + r * 0.5);                               // mangoes
     for (let r = 0; r < 3; r++) crate(-72.3, G, cz + 5.0 + r * 0.5);
     solid(-73.5, cz + 4.4, -71.9, cz + 6.7, 1.0);
@@ -646,7 +648,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xdcd3c3);
     for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.9);
-    roofClutter(cx, cz, w, d, G + h + 0.28);
+    roofClutter(cx, cz, w, d, G + h + 0.28, TR);
     for (let z = L.z0 + 1.5; z <= L.z1 - 1.2; z += 3.45) { plain.box(0.5, 3.6, 0.5, 69.4, G, z, 0xe6dccb); solidC(69.4, z, 0.5, 0.5, 3.6); }
     plain.box(3.7, 0.4, d + 0.6, 70.95, G + 3.6, cz, 0xe9e0cf);                                           // the gallery's slab
     for (let z = L.z0 + 2; z < L.z1 - 1; z += 4) canopies.push({ x: 70.95, z, r: 2.2, y0: G + 3.5, y1: G + 4.1 });
@@ -665,10 +667,12 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   /** The Plateau's Médina quarter (M2, docs/districts/M2-PLATEAU-MEDINA.md): the four south-west blocks, round Diallo & Frères, the gargote and the dibiterie. */
   const medinaBlock = (i: number, j: number) => id === 'plateau' && i <= 1 && j >= 2;
   let medinaSigns = 0;
+  /** The Médina's shop goods, set out after the hub's own street dressing (they must not move a tree, a palm or a stall of the rest of the hub). */
+  const medinaGoods: { x: number; z: number }[] = [];
   /**
    * A Médina building's street front: a rusty tin awning on thin poles instead of the Plateau's concrete arcade (the walkway under it as deep as the
-   * arcade's), the same three shutters, and the shop's goods set out on the pavement side of the wall between them: sacks, basins, rolls of cloth,
-   * buckets. Never in front of a shutter, and the walkway keeps 2 m. Own random stream (the shutters draw R exactly as the arcade's did).
+   * arcade's), the same three shutters, and the places for the shop's goods on the pavement side of the wall between them (`medinaGoods`, set out
+   * later): never in front of a shutter, the walkway keeps 2 m. Own random stream (the shutters draw R exactly as the arcade's did).
    */
   const medinaFront = (i: number, j: number, a: number, b: number, cx: number, cz: number, w: number, d: number) => {
     const MR = rng(sp.seed * 7919 + i * 101 + j * 37 + a * 7 + b * 3), fz = b ? 1 : -1, wall = cz + fz * (d / 2);
@@ -680,24 +684,31 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       medinaSigns++;
       addSign(pick(MEDINA_SHOPS, MR), pick(['#c0392b', '#1f5fa8', '#2f7d4a', '#e0a10b', '#6b3fa0'], MR), '#fbf6ea', cx + k * (w / 3.2), G + 2.9, wall + fz * 0.17, fz > 0 ? 0 : Math.PI, 3.0, 0.6);
     }
-    // the goods: between the shutters, against the wall
-    for (const gx of [cx - w / 3.2 - 2.0, cx - w / 3.2 + 2.0, cx + w / 3.2 - 2.0, cx + w / 3.2 + 2.0]) {
-      if (Math.abs(gx - cx) + 0.75 > w / 2 || MR() < 0.3) continue;
-      const z = wall + fz * 0.42, kind = MR();
-      if (kind < 0.28) { for (let q = 0; q < 3; q++) plain.box(0.62, 0.34, 0.46, gx - 0.33 + (q % 2) * 0.66, G + (q >> 1) * 0.34, z, q % 2 ? 0xe8e0c8 : 0xd9cba6); }   // sacks
-      else if (kind < 0.55) {                                                                                                     // basins of produce on a low table
-        plain.box(1.4, 0.6, 0.62, gx, G, z, 0x7a5a3c);
-        for (const ox of [-0.38, 0.38]) { plain.cyl(0.3, 0.24, 0.18, gx + ox, G + 0.6, z, pick([0xc9cdd2, 0x2f6fb3, 0xd9482b], MR), 10); plain.blob(0.2, gx + ox, G + 0.8, z, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d], MR), 0.6, 0); }
-      } else if (kind < 0.8) { for (let q = 0; q < 4; q++) plain.cyl(0.11, 0.11, 1.25, gx - 0.45 + q * 0.3, G, z, pick(MEDINA_CLOTH, MR), 8); }   // rolls of wax cloth, upright
-      else { for (let q = 0; q < 3; q++) plain.cyl(0.26, 0.2, 0.32, gx - 0.4 + q * 0.4, G + (q === 1 ? 0.32 : 0), z, pick([0x2f8f4e, 0x1e6fd9, 0xd9482b, 0xf4c20d], MR), 10); }   // plastic buckets
-      solidC(gx, z, 1.45, 0.62, 1.1);
-    }
+    for (const gx of [cx - w / 3.2 - 2.0, cx - w / 3.2 + 2.0, cx + w / 3.2 - 2.0, cx + w / 3.2 + 2.0])     // between the shutters, against the wall
+      if (Math.abs(gx - cx) + 0.75 <= w / 2 && MR() >= 0.3) medinaGoods.push({ x: gx, z: wall + fz * 0.42 });
   };
 
-  const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
+  /** The trade places' own solid boxes (M2), handed to the world after the hub's street dressing (`tradeLot`). */
+  const tradeSolids: Collider[] = [];
+  /**
+   * M2's two places stand on lots of their own. The lot's ordinary building is still drawn from the hub's random stream and its solid boxes kept as
+   * ghosts while the street dressing is placed, then the geometry is dropped: every later building, tree, palm and stall of the hub stays where it
+   * was. The place's own boxes join the world after the dressing.
+   */
+  const tradeLot = (tp: typeof GROSSISTE, i: number, j: number, a: number, b: number) => {
+    const batches = [plain, fac, glass, metal, tin, tileRoof, lampBulbs, leaves, trunks], marks = batches.map(x => x.mark());
+    const n = colliders.length, nc = canopies.length, nr = roofs.length;
+    buildLotBuilding(i, j, a, b, true);
+    batches.forEach((x, k) => x.rollback(marks[k])); canopies.length = nc; roofs.length = nr;
+    for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
+    const m = colliders.length;
+    (tp === GROSSISTE ? grossiste : comptoir)(lotRect(i, j, a, b));
+    tradeSolids.push(...colliders.splice(m));
+  };
+  const buildLotBuilding = (i: number, j: number, a: number, b: number, ordinary = false) => {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
-    if (id === 'plateau') { const tp = isTradeLot(i, j, a, b); if (tp) { (tp === GROSSISTE ? grossiste : comptoir)(L); return; } }   // M2's two places
+    if (id === 'plateau' && !ordinary) { const tp = isTradeLot(i, j, a, b); if (tp) { tradeLot(tp, i, j, a, b); return; } }   // M2's two places
     if (sp.style === 'mermoz') { mermozLot(i, j, a, b, L, faces); return; }
     if (sp.style === 'banlieue') {
       // Cramped self-built houses: one to three per yard, set askew, roofs bristling with rebar for the next floor,
@@ -786,9 +797,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const med = medinaBlock(i, j);
     const tower0 = sp.style === 'dense' && R() < 0.16;
     const tiles0 = sp.style === 'dense' && !tower0 && R() < 0.3;
-    const tower = tower0 && !med, tiles = tiles0 && !med;
+    const tower = tower0 && !med, tiles = tiles0;                                   // (a Médina lot keeps the red tile roof it drew: its flat roof would draw more)
     let fl = sp.floors[0] + Math.floor(R() * (sp.floors[1] - sp.floors[0] + 1));
     if (tower0) fl = 11 + Math.floor(R() * 8); else if (tiles) fl = Math.min(fl, 4);
+    const flDrawn = fl;
     if (med) fl = 2 + (fl % 2);
     const w = tower0 ? 13 + R() * 3 : 15 + R() * 5, d = tower0 ? 13 + R() * 3 : 15 + R() * 5, h = fl * 3.2;
     const col = tower0 ? pick(med ? MEDINA_WALLS : [0xf1e6d2, 0xe8d8b8, 0xf4efe6, 0xe3c9a6, 0xd9773f], R) : pick(med ? MEDINA_WALLS : sp.palette, R);
@@ -809,6 +821,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       glass.box(w * 0.34, h - 4, 0.12, cx, G + 3.4, cz + (b ? 1 : -1) * (d / 2 + 0.07), 0x35607e);    // glazed stair core
     }
     dressBuilding(cx, cz, w, d, h, col, lotFaces(a, b), sp.style === 'student');
+    if (med) for (const [nx] of lotFaces(a, b)) for (let f = fl; f < flDrawn; f++) for (let k = 1; k < Math.floor((nx ? d : w) / 3.4); k++) R();   // the AC draws of the floors the Médina took off: the stream goes on as before
     if (sp.style === 'dense' && med) medinaFront(i, j, a, b, cx, cz, w, d);
     else if (sp.style === 'dense') {
       const fz = b ? 1 : -1;
@@ -1658,11 +1671,34 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
-  // The Médina's market streets (M2): shade cloths strung high across the street at x = −60 and the street at z = 60 (well above the traffic: 5.5 m),
-  // on ropes between poles at the block edges, the junctions left open to the sky; vendors along their kerbs. Own random stream.
+  // A few street vendors on the sidewalks.
+  yield;
+  for (let n = 0; n < (banlieue ? 13 : 5); n++) {
+    const k = Math.floor(R() * (NB + 1)), t = -HALF + 20 + R() * (size - 40), s = R() < 0.5 ? -1 : 1, along = R() < 0.5;
+    const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
+    if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
+    if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3) continue;
+    dress(x, z, () => stall(x, z));
+  }
+
+  colliders.push(...tradeSolids);                                                  // M2's two places, now that the street dressing is placed (`tradeLot`)
+  // The Médina (M2), after the hub's own street dressing so that every tree, palm and stall of the rest of the hub stays where it was: the shops' goods,
+  // then the market streets: shade cloths strung high across the street at x = −60 and the street at z = 60 (well above the traffic: 5.5 m), on ropes
+  // between poles at the block edges, the junctions left open to the sky; vendors along their kerbs. Own random stream; a spot already taken is skipped.
   if (id === 'plateau') {
     yield;
     const MR = rng(sp.seed * 104729 + 5), E = ROAD / 2 + 0.4, Y = 5.5;
+    for (const { x: gx, z } of medinaGoods) {
+      const kind = MR();
+      if (blocked(gx, z, 0.1)) continue;
+      if (kind < 0.28) { for (let q = 0; q < 3; q++) plain.box(0.62, 0.34, 0.46, gx - 0.33 + (q % 2) * 0.66, G + (q >> 1) * 0.34, z, q % 2 ? 0xe8e0c8 : 0xd9cba6); }   // sacks
+      else if (kind < 0.55) {                                                                                                     // basins of produce on a low table
+        plain.box(1.4, 0.6, 0.62, gx, G, z, 0x7a5a3c);
+        for (const ox of [-0.38, 0.38]) { plain.cyl(0.3, 0.24, 0.18, gx + ox, G + 0.6, z, pick([0xc9cdd2, 0x2f6fb3, 0xd9482b], MR), 10); plain.blob(0.2, gx + ox, G + 0.8, z, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d], MR), 0.6, 0); }
+      } else if (kind < 0.8) { for (let q = 0; q < 4; q++) plain.cyl(0.11, 0.11, 1.25, gx - 0.45 + q * 0.3, G, z, pick(MEDINA_CLOTH, MR), 8); }   // rolls of wax cloth, upright
+      else { for (let q = 0; q < 3; q++) plain.cyl(0.26, 0.2, 0.32, gx - 0.4 + q * 0.4, G + (q === 1 ? 0.32 : 0), z, pick([0x2f8f4e, 0x1e6fd9, 0xd9482b, 0xf4c20d], MR), 10); }   // plastic buckets
+      solidC(gx, z, 1.45, 0.62, 1.1);
+    }
     const streets: [number, number, number, boolean][] = [[roadC(1), blockMin(2), blockMin(3) + BLK, true], [roadC(3), blockMin(0), blockMin(1) + BLK, false]];
     for (const [c, t0, t1, alongZ] of streets) {
       const at = (u: number, t: number) => (alongZ ? { x: c + u, z: t } : { x: t, z: c + u });
@@ -1698,16 +1734,6 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     }
     const bay = { x0: blockMin(1) + 10, z0: roadC(3) + 1.6, x1: blockMin(1) + 25, z1: roadC(3) + 5 };      // a merchants' loading area on the z = 60 street
     loadingBay(bay); keepClear.push({ ...bay, why: 'medina_bay' });
-  }
-
-  // A few street vendors on the sidewalks.
-  yield;
-  for (let n = 0; n < (banlieue ? 13 : 5); n++) {
-    const k = Math.floor(R() * (NB + 1)), t = -HALF + 20 + R() * (size - 40), s = R() < 0.5 ? -1 : 1, along = R() < 0.5;
-    const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
-    if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
-    if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3) continue;
-    dress(x, z, () => stall(x, z));
   }
 
   yield;

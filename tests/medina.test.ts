@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { stubCanvas } from './hubstub';
 import { buildHub, BLK, PITCH, ROAD } from '../src/world/builder';
+import { placeParked, PARKED_COUNT } from '../src/game/parkedVehicles';
+import { TRADE_PLACES } from '../src/districts/tradePlaces';
 
 stubCanvas();
 const HALF = 127, roadC = (k: number) => -HALF + ROAD / 2 + k * PITCH, blockMin = (i: number) => -HALF + ROAD + i * PITCH;   // (src/world/builder.ts)
@@ -35,5 +37,14 @@ describe('the Plateau’s Médina quarter', () => {
     const poles = hub.colliders.filter(c => Math.abs(c.x1 - c.x0 - 0.16) < 0.01 && Math.abs(c.z1 - c.z0 - 0.16) < 0.01 && Math.abs(c.h - 5.5) < 0.01);
     expect(poles.length).toBeGreaterThan(8);
     for (const p of poles) expect(p.x0 > blockMin(1) - ROAD && p.x1 < blockMin(1) + BLK + ROAD && p.z0 > blockMin(1) - ROAD && p.z1 < blockMin(1) + BLK + ROAD, JSON.stringify(p)).toBe(false);
+  });
+
+  it('no parked car in the trade places’ loading bays or the merchants’ loading area (at every quality’s count)', () => {
+    const bays = [...TRADE_PLACES.map(p => p.bay), ...(hub.keepClear ?? []).filter(k => k.why === 'medina_bay')];
+    for (const n of [PARKED_COUNT.low, PARKED_COUNT.medium, PARKED_COUNT.high]) {
+      const g = placeParked(hub, n);
+      expect(g.children.length).toBeGreaterThan(0);
+      for (const v of g.children) for (const b of bays) expect(v.position.x > b.x0 - 1 && v.position.x < b.x1 + 1 && v.position.z > b.z0 - 1 && v.position.z < b.z1 + 1, JSON.stringify([v.position, b])).toBe(false);
+    }
   });
 });
