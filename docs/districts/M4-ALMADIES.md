@@ -17,14 +17,18 @@ Nothing is compulsory: no drinking, no spending, no nightlife. Every step is an 
 
 ## What already existed (and is reused, not replaced)
 
-- **Terrasse de Ngor** (`src/venues/rooftop.ts`): a dedicated commercial plot with its own street-facing entrance, forecourt and outdoor seating, leading to an open-air roof terrace and a bar with « Commander ». The neighbouring blocks form a visible restaurant-and-lounge strip.
+- **The rooftop activity system** (`src/venues/rooftop.ts`): the existing open-air terrace, stair/exit flow, bar and « Commander » menu; Almadies now reaches it through an authored commercial frontage rather than a randomly selected residential facade.
 - **The activity runner** (`src/activity/`): the `order` primitive (pay, prepare, sit, eat), seats with tables, the plate of `src/game/meals.ts`.
 - **La Vague** (`src/venues/club.ts`): entry fee, the dance floor and its beat game, the music, the crowd, its own counters.
 - **The shared NPC memory** (`src/social/memory.ts`, `relations.ts`), the owned vehicle's parking, the taxi rank.
 
 ## What M4 adds
 
-### 1. A real meal at the rooftop (`rooftop.ts`)
+### 0. A destination street and independent plot (`src/world/builder.ts`)
+- Two north-side Almadies blocks replace generic villas with six visible restaurant/lounge frontages, varied one- and two-storey silhouettes, signs, awnings and outdoor seating.
+- Terrasse de Ngor has its own open forecourt and a marked visitor bay. Its entrance is authored rather than inferred from a random residential facade; La Vague remains the existing playable nightclub.
+
+### 1. A real meal at Terrasse de Ngor (`rooftop.ts`)
 Before, « Commander » charged, fed and toasted at once. Now it starts the ordinary `order` activity:
 - the price is charged **once, at the start**, by the activity runner (one ledger line);
 - the dish is prepared, the guest **walks to a table and sits** (a seat with a table first, the stools last), the **plate is set on the table** and eaten;
