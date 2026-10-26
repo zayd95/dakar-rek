@@ -5,7 +5,7 @@ import type { Humanoid, PersonLook } from '../actors/humanoid';
 import { hubLayout } from '../world/builder';
 import { ambientLife, type AmbientDrive, type AmbientPerson } from '../social/ambientLife';
 import { bend, bodyPoint, crouch, footStrike, grip, legTo, pointFoot, reach } from '../actors/gesture';
-import { AFTER, BALL_R, HUMAN_KEEP, Match, PITCH, ballSpeed, type Ball, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
+import { AFTER, BALL_R, HUMAN_KEEP, Match, PITCH, VEL_SMOOTH, ballSpeed, type Ball, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
 import { HOLD_FULL, KICK_REACH, KickBall, type GoalNote } from './kickabout';
 import type { Target } from '../interact/types';
 import type { BallRelay } from '../multiplayer/protocol';
@@ -388,12 +388,12 @@ class Football implements GameModule {
     // the player's motion (pitch space): a jump (a teleport, a door) is no motion
     const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
     if (this.hasP && dt > 0) {
-      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * 12);
+      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * VEL_SMOOTH);
       if (Math.hypot(vx, vz) > 12) { this.pvx = this.pvz = 0; } else { this.pvx += (vx - this.pvx) * k; this.pvz += (vz - this.pvz) * k; }
     }
     this.px = x; this.pz = z; this.hasP = true;
     const playing = ctx.mode() === 'play' && !ctx.player.seated();
-    if (playing) kb.dribble(x, z, this.pvx, this.pvz, dt, self, now);
+    if (playing) kb.dribble(x, z, this.pvx, this.pvz, dt, self, now, ctx.player.facing());
     // the shot: « Frappe » or F held near the ball, struck on release with the power of the hold
     const held = playing && (this.btnHeld || ctx.input.keys.has('KeyF'));
     if (held && this.hold < 0 && kb.inReach(x, z)) this.hold = 0;
@@ -655,7 +655,7 @@ class Football implements GameModule {
       this.leave('Tu as quitté le terrain : la partie n’est pas comptée.'); return;
     }
     if (this.hasP && dt > 0) {
-      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * 12);
+      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * VEL_SMOOTH);
       if (Math.hypot(vx, vz) > 12) { this.pvx = this.pvz = 0; } else { this.pvx += (vx - this.pvx) * k; this.pvz += (vz - this.pvz) * k; }
     }
     this.px = x; this.pz = z; this.hasP = true;

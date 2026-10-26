@@ -81,10 +81,10 @@ describe('M3 · the player in the NPC match', () => {
     for (let i = 0; i < 30 * 8 && m.phase !== 'play'; i++) m.step(1 / 30);
     m.ball.x = 2; m.ball.z = 0; m.ball.vx = 0; m.ball.vz = 0; m.ball.vh = 0;
     for (const q of m.players) if (!q.human) { q.x = q.team ? 12 : -12; q.z = q.team ? 10 : -10; q.tx = q.x; q.tz = q.z; q.kick = null; }
-    m.setHuman(H, 2 - 0.34 - 0.8, 0.13, 0, 0, Math.PI / 2);                // the ball 0.8 m beyond the foot
+    m.setHuman(H, 2 - 0.34 - (HUMAN_REACH + 0.1), 0.13, 0, 0, Math.PI / 2);   // the ball just beyond the control model's reach, within the kick's
     expect(m.humanInReach(H, 0)).toBe(false);
     m.humanAsk(H, 'shot', 0.7);
-    m.setHuman(H, 2 - 0.34 - 0.8, 0.13, 0, 0, Math.PI / 2); m.step(1 / 30);
+    m.setHuman(H, 2 - 0.34 - (HUMAN_REACH + 0.1), 0.13, 0, 0, Math.PI / 2); m.step(1 / 30);
     const shot = m.log.find(c => c.who === H && c.kind === 'shot');
     expect(shot).toBeTruthy();
     expect(m.ball.vx).toBeGreaterThan(8);                                       // on its way to the goal at +x
@@ -95,12 +95,12 @@ describe('M3 · the player in the NPC match', () => {
     for (let i = 0; i < 30 * 120 && !(m.last === H && m.phase === 'play'); i++) { thumb(m, 1 / 30); m.step(1 / 30); }
     expect(m.last).toBe(H);
     const b = m.ball, place = (back: number) => { const p = m.get(H)!, a = Math.atan2(b.x - p.x, b.z - p.z); m.setHuman(H, b.x - Math.sin(a) * back, b.z - Math.cos(a) * back, 0, 0, a); };
-    place(2.2);                                                                     // a step behind: out of the instant reach, still theirs
+    place(2.6);                                                                     // a step behind: out of the instant reach, still theirs
     expect(m.humanInReach(H, 0.9)).toBe(false);
     expect(m.humanHas(H)).toBe(true);
     place(HUMAN_KEEP + 0.6);
     expect(m.humanHas(H)).toBe(false);                                              // too far: not theirs any more
-    place(2.2);
+    place(2.6);
     m.humanAsk(H, 'pass');
     for (let i = 0; i < 36 && !m.log.some(c => c.who === H && c.kind === 'pass'); i++) { thumb(m, 1 / 30); m.step(1 / 30); }
     expect(m.log.some(c => c.who === H && c.kind === 'pass')).toBe(true);
