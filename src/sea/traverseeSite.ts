@@ -51,6 +51,40 @@ export const TRAVERSEE_SITE = {
     path: [{ x: 38.6, z: -298 }, { x: 38.4, z: -302 }, { x: 36.5, z: -309 }, { x: 37.5, z: -317 }] as P2[],
     /** Where the island's customers going back wait, on the beach under the parasols (up to 3). */
     waiting: [{ x: 35.5, z: -304.5 }, { x: 38.2, z: -305.5 }, { x: 42.5, z: -304.8 }] as P2[],
+    /**
+     * The island's rooftop restaurant and lounge bar (the owner, 26 Oct: « an open rooftop restaurant with lounge bar at the island for food and
+     * entertainment »): the landmark above the landing beach, where the path from the boat ends. A ground floor (the kitchen, a shaded front) on a level
+     * plinth, an outside stair, and on the roof an open terrace under a light pergola and shade sails: dining tables, the lounge's low sofas, the bar
+     * along the back, the DJ's corner, a balustrade, plants, and strings of warm bulbs lit at night. It faces the sea (+z), seen from the boat arriving.
+     *
+     * Heights: the building stands level at ngorGroundY at its box's centre (src/world/ngor.ts); the roof terrace's floor is `roofY` above that. Every
+     * pose below is on the roof terrace (y = that floor), in hub-local metres; a pose's yaw is the way the person faces. The world builds the furniture
+     * to these poses (src/world/ngor.ts), the crossing's venue seats its people on them (src/venues/embarcadere.ts and the crowd).
+     */
+    rooftop: {
+      box: { x0: 36, x1: 50, z0: -331, z1: -320 },
+      roofY: 3.4,
+      /** Three tables of four, the diners facing across the table (a table's centre: the mean of its four seats). */
+      dining: [
+        ...[{ x: 44, z: -322.5 }, { x: 47.5, z: -322.5 }, { x: 47.5, z: -326 }].flatMap(t => [
+          { x: t.x - 0.75, z: t.z - 0.45, yaw: Math.PI / 2 }, { x: t.x - 0.75, z: t.z + 0.45, yaw: Math.PI / 2 },
+          { x: t.x + 0.75, z: t.z - 0.45, yaw: -Math.PI / 2 }, { x: t.x + 0.75, z: t.z + 0.45, yaw: -Math.PI / 2 },
+        ]),
+      ] as Pose[],
+      /** The lounge: a U of low sofas round a low table at (39, −323), open to the sea. */
+      lounge: [
+        { x: 37.4, z: -322.4, yaw: Math.PI / 2 }, { x: 37.4, z: -323.8, yaw: Math.PI / 2 }, { x: 39, z: -325, yaw: 0 },
+        { x: 40.6, z: -323.8, yaw: -Math.PI / 2 }, { x: 40.6, z: -322.4, yaw: -Math.PI / 2 },
+      ] as Pose[],
+      /** Standing at the bar (the counter along the back, x 39…47 at z −329.5), facing it; the barman behind it, facing the terrace. */
+      bar: [{ x: 40, z: -328.6, yaw: Math.PI }, { x: 42, z: -328.6, yaw: Math.PI }, { x: 44, z: -328.6, yaw: Math.PI }, { x: 46, z: -328.6, yaw: Math.PI }] as Pose[],
+      barman: { x: 43, z: -330.3, yaw: 0 } as Pose,
+      /** The DJ's corner, between the bar and the lounge, facing the terrace; the evening's dancers in front of it. */
+      dj: { x: 41.6, z: -327, yaw: 0 } as Pose,
+      dance: [{ x: 41.6, z: -325.4 }, { x: 42.9, z: -325.0 }, { x: 43.4, z: -326.2 }, { x: 40.6, z: -326.0 }] as P2[],
+      /** The outside stair up the west wall (from the beach side at z −320 up to the roof at z −330). */
+      stair: { x0: 34.6, x1: 36, z0: -330, z1: -320 },
+    },
   },
   /** A way across that stays in open water, between the two beaches (the crossing pushes off, turns the boat round and lands bow first at either end). */
   route: [{ x: 44, z: -182 }, { x: 43, z: -230 }, { x: 41, z: -272 }] as P2[],

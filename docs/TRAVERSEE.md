@@ -8,7 +8,7 @@ The roadmap entry is `docs/ROADMAP_NEXT.md` §6. This document is the first slic
 - **Not for production:** `wip/visual-pass` is untouched and nothing is deployed.
 
 ## Version 2: boarding and landing on the sand (the owner's references, 26 Oct)
-The owner's reference photos of Ngor, and his words: « create a beach sand like feel when getting on the boats and on arriving ».
+The owner's reference photos of Ngor, and the owner's words: « create a beach sand like feel when getting on the boats and on arriving ».
 
 **What the photos show:**
 - The long white-and-red pirogue is pulled up at the water's edge on the mainland beach. Its passengers wear orange life jackets, and people wade around it.
@@ -34,6 +34,20 @@ The owner's reference photos of Ngor, and his words: « create a beach sand like
   - more pirogues on the sand;
   - the island's landing beach dressed as in the photos.
 - **The pier and the pontoon stay:** they are the quay's scenery, and other boats moor there.
+
+### The island's rooftop restaurant and lounge bar, and more trees (the owner, 26 Oct)
+The owner's words: « more trees and an open rooftop restaurant with lounge bar at the island for food and entertainment ».
+- **More trees:** palms and green trees on the island's hill and round its houses, as in the photos, and more palms along the Almadies' beach, outside the boats' clear zones.
+- **The rooftop restaurant (`TRAVERSEE_SITE.island.rooftop`):**
+  - It is the island's landmark above the landing beach, where the path from the boat ends. It faces the sea, so the boat sees it arriving.
+  - The ground floor holds the kitchen and a shaded front. An outside stair climbs the west wall.
+  - The roof is an open terrace under a pergola and shade sails. It has three tables of four, a lounge of low sofas round a low table, the bar along the back with its barman, the DJ's corner, a balustrade, plants, and strings of warm bulbs lit at night.
+- **Its life:**
+  - Diners at lunch, more people from the evening, and the bar and the lounge busy at night.
+  - The DJ plays, with a few dancers in front of the booth in the evening.
+  - Its music is heard from the boat at the island.
+  - The people are the reusable crowd's cheap figures (`src/crowd/crowd.ts`), seen from the boat.
+- **Not in this slice:** the player can't step off the boat onto the island yet. Eating and dancing there yourself would need part of the island to be walkable, and that is a later slice.
 
 ## What the player does (version 1; boarding and landing as changed above)
 1. **The quay.** In the Almadies, the old fishing quay is now the **Embarcadère de Ngor**: a new sign, the pier carried over the beach, and a floating pontoon out on the water.
