@@ -3,45 +3,45 @@
  "results": {
   "medina-street-walk": {
    "frameMedian": 233.3,
-   "frameP95": 316.7,
-   "callsMax": 69,
-   "trisMax": 82448
+   "frameP95": 266.7,
+   "callsMax": 66,
+   "trisMax": 82154
   },
   "medina-z60-walk": {
-   "frameMedian": 250,
-   "frameP95": 266.7,
-   "callsMax": 110,
-   "trisMax": 114276
+   "frameMedian": 266.7,
+   "frameP95": 333.3,
+   "callsMax": 109,
+   "trisMax": 115634
   },
   "medina-high": {
    "frameMedian": 316.6,
-   "frameP95": 333.4,
-   "callsMax": 80,
-   "trisMax": 99028
+   "frameP95": 366.7,
+   "callsMax": 79,
+   "trisMax": 100460
   },
   "diallo-forecourt": {
    "frameMedian": 283.3,
-   "frameP95": 466.7,
-   "callsMax": 82,
-   "trisMax": 96076
+   "frameP95": 350,
+   "callsMax": 86,
+   "trisMax": 97868
   },
   "comptoir-arcade": {
-   "frameMedian": 283.3,
-   "frameP95": 333.4,
-   "callsMax": 51,
-   "trisMax": 81118
+   "frameMedian": 250,
+   "frameP95": 316.7,
+   "callsMax": 52,
+   "trisMax": 81572
   },
   "mosque-street": {
-   "frameMedian": 316.8,
-   "frameP95": 416.7,
-   "callsMax": 92,
-   "trisMax": 107812
+   "frameMedian": 283.3,
+   "frameP95": 349.9,
+   "callsMax": 79,
+   "trisMax": 102982
   },
   "plateau-office-street": {
-   "frameMedian": 250,
-   "frameP95": 333.3,
-   "callsMax": 72,
-   "trisMax": 111962
+   "frameMedian": 266.7,
+   "frameP95": 383.3,
+   "callsMax": 78,
+   "trisMax": 114940
   }
  },
  "errors": []

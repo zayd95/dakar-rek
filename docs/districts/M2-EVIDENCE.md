@@ -4,7 +4,7 @@
 - **Gate B** is the owner's own iPhone playtest. It has **not happened**, and nothing here claims it.
 
 - **Branch:** `feature/ld-m2-plateau-20261026`. It is stacked on M1 (`feature/ld-m1-mermoz-20261025` @ `7dc9deb`), in draft PR zayd95/dakar-rek#70.
-- **Evidence run on:** `f4c5026` (golden path run 6 and the tests). The performance views ran on `1fab1bb`–`f4c5026`.
+- **Evidence run on:** `835654e` (golden path run 8, the tests and the performance views).
 
 The design is in [`M2-PLATEAU-MEDINA.md`](M2-PLATEAU-MEDINA.md). The commerce contract with Living Dakar 2.0 is [`CONTRACT.md`](CONTRACT.md) v5, rows 9–12, agreed by LD2.0.
 
@@ -57,7 +57,7 @@ The debug shortcuts are labelled in the script:
 - giving the player a Teranga, bought at its Pikine dealer with the wallet put back as it was;
 - the next city day.
 
-**Run 6** on `f4c5026`: **33 / 33 checks passed**, no page errors, one session of 21 min 31 s (the video). The log is [`proof/m2/golden-path-run6.log`](proof/m2/golden-path-run6.log), with a contact sheet in [`proof/m2/golden-path-run6.jpg`](proof/m2/golden-path-run6.jpg).
+**Run 8** on `835654e` (the game code pushed; the next commit only makes the check's own tap wait for the sheet to stand still): **33 / 33 checks passed**, no page errors, one session of 23 min 40 s (the video). The log is [`proof/m2/golden-path-run8.log`](proof/m2/golden-path-run8.log), with a contact sheet in [`proof/m2/golden-path-run8.jpg`](proof/m2/golden-path-run8.jpg).
 
 1. **On foot, with tea:**
    - The player walks up the Médina street to Diallo & Frères and talks to Oumar (first meeting).
@@ -88,11 +88,12 @@ The debug shortcuts are labelled in the script:
 6. **Every lot reconciles:** the trade's ledger lines sum to the saved total profit.
 7. **No page errors.**
 
-The earlier runs (1 to 5) found and fixed:
+The earlier runs (1 to 7) found and fixed:
 - a sale card whose « Vente » row showed the amount twice;
 - the card's result row, out of sight on a phone held upright, so the title now says it;
 - the check's own walking and boarding round a parked car;
-- the dealer's hub for the car set-up.
+- the dealer's hub for the car set-up;
+- a tap the check made while the sheet was still sliding up (run 7: the sale was offered, the tap missed it).
 
 ## Tests
 
@@ -109,7 +110,15 @@ The earlier runs (1 to 5) found and fixed:
   - its market streets keep their roads and pavements;
   - the loading area is kept clear, and nothing of it is on the mosque's block or frontage;
   - no parked car stands in any of the three bays, at every quality.
-- The full suite: **182 files, 2222 passed, 2 skipped** on `f4c5026` plus `tests/medina.test.ts`'s fourth test. `tsc` is clean.
+- The full suite: **182 files, 2222 passed, 2 skipped** on `835654e`. `tsc` is clean.
+
+## The rest of the Plateau is unchanged
+
+The Plateau was built on the M1 head (`7dc9deb`) and on `835654e`, and every collider and person was compared outside the Médina's four blocks, its two market streets and the Comptoir's lot. Both lite and full detail are **identical** (172 and 178 colliders). This holds because:
+- each trade lot still draws its ordinary building from the hub's random stream (its geometry dropped, its boxes ghosts while the street dressing is placed);
+- the depot draws from its own stream;
+- a lower Médina building draws the numbers of the floors it lost;
+- the Médina's goods and market streets are set out after the hub's own trees, palms and stalls.
 
 ## Save, payment and memory
 
@@ -130,7 +139,7 @@ The baseline is the repo's own draw-call budget (`scripts/check-perf-evening.mjs
 
 **Method:**
 - `scripts/m2-views.mjs` puts fixed cameras on the same Plateau places.
-- It runs on the M1 head (`7dc9deb`, before M2) and on this branch, the Médina and the trade (`1fab1bb` to `f4c5026`; the commits between change only the sale card's text and the check script, neither in these views).
+- It runs on the M1 head (`7dc9deb`, before M2) and on this branch (`835654e`, the Médina and the trade).
 - Both run at 390 × 844 in SwiftShader.
 - Draw calls and triangles transfer to a phone. Frame times do not, and no iPhone was measured.
 
@@ -138,36 +147,37 @@ The baseline is the repo's own draw-call budget (`scripts/check-perf-evening.mjs
 
 | View | Draw calls before → after | Triangles before → after | Frame median ms before → after (SwiftShader, not a phone) |
 |---|---|---|---|
-| medina-street-walk | 62 → 65 | 60,280 → 67,486 | 100 → 116.6 |
-| medina-z60-walk | 108 → 102 | 88,744 → 89,274 | 150 → 150 |
-| medina-high | 67 → 71 | 67,546 → 74,554 | 149.9 → 150 |
-| diallo-forecourt | 58 → 82 | 57,810 → 82,800 | 133.2 → 133.4 |
-| comptoir-arcade | 43 → 51 | 55,916 → 66,152 | 133.3 → 133.3 |
-| mosque-street | 73 → 76 | 72,260 → 79,872 | 133.3 → 150 |
-| plateau-office-street | 60 → 69 | 74,104 → 86,988 | 100 → 116.7 |
+| medina-street-walk | 62 → 65 | 60,280 → 67,202 | 100 → 100 |
+| medina-z60-walk | 108 → 104 | 88,744 → 88,652 | 150 → 150 |
+| medina-high | 67 → 71 | 67,546 → 74,510 | 149.9 → 150 |
+| diallo-forecourt | 58 → 87 | 57,810 → 86,820 | 133.2 → 150 |
+| comptoir-arcade | 43 → 50 | 55,916 → 65,234 | 133.3 → 116.7 |
+| mosque-street | 73 → 86 | 72,260 → 85,492 | 133.3 → 150 |
+| plateau-office-street | 60 → 66 | 74,104 → 83,500 | 100 → 116.7 |
 
 **Medium quality**
 
 | View | Draw calls before → after | Triangles before → after | Frame median ms before → after (SwiftShader, not a phone) |
 |---|---|---|---|
-| medina-street-walk | 64 → 69 | 75,912 → 82,448 | 216.6 → 233.3 |
-| medina-z60-walk | 106 → 110 | 109,472 → 114,276 | 266.7 → 250 |
-| medina-high | 76 → 80 | 94,350 → 99,028 | 300 → 316.6 |
-| diallo-forecourt | 58 → 82 | 73,750 → 96,076 | 249.9 → 283.3 |
-| comptoir-arcade | 45 → 51 | 74,206 → 81,118 | 233.4 → 283.3 |
-| mosque-street | 77 → 92 | 96,862 → 107,812 | 266.7 → 316.8 |
-| plateau-office-street | 66 → 72 | 106,112 → 111,962 | 250 → 250 |
+| medina-street-walk | 64 → 66 | 75,912 → 82,154 | 216.6 → 233.3 |
+| medina-z60-walk | 106 → 109 | 109,472 → 115,634 | 266.7 → 266.7 |
+| medina-high | 76 → 79 | 94,350 → 100,460 | 300 → 316.6 |
+| diallo-forecourt | 58 → 86 | 73,750 → 97,868 | 249.9 → 283.3 |
+| comptoir-arcade | 45 → 52 | 74,206 → 81,572 | 233.4 → 250 |
+| mosque-street | 77 → 79 | 96,862 → 102,982 | 266.7 → 283.3 |
+| plateau-office-street | 66 → 78 | 106,112 → 114,940 | 250 → 266.7 |
 
 **Reading:**
-- Every view stays far inside the budget. The heaviest is 110 calls, on the market street at z = 60 at medium quality, against 300.
-- The biggest rise is at Diallo's forecourt: +24 calls (58 → 82) and +25 % triangles.
-  - That view now has the depot, its goods, its sign, Oumar Diallo, two porters and the shop boards, where before it had a plain block.
+- Every view stays far inside the budget. The heaviest is 109 calls, on the market street at z = 60 at medium quality, against 300.
+- **Live traffic and pedestrians are in every view and vary from run to run.** The office street at x = 60 shows the size of that noise: its layout is proven identical to before (the next section), yet its calls moved by +6 at low and +12 at medium. Read the other rows with that margin.
+- The biggest rise is at Diallo's forecourt: +29 / +28 calls (58 → 87 / 86) and about +40 % triangles.
+  - That view now has the depot, its stacked goods, its sign, Oumar Diallo, two porters and the Médina's shop boards and goods, where before it had a plain block.
   - The calls have not been broken down per object.
-- The market streets themselves cost 3 to 5 calls.
-  - The cloths are in the shared batches.
-  - Each painted shop board is its own call; the Médina has 10 at most.
-- **The mosque view (+15 at medium) is not like for like:** a passing bus fills the "after" frame. The Médina adds nothing on the mosque's block (`tests/medina.test.ts`).
-- The frame times (SwiftShader, CPU) move by about one frame step either way. They are not a phone's.
+- The Médina's market streets cost +3 to −4 calls, within the noise.
+  - The cloths, poles and goods are in the shared batches.
+  - Each painted shop board is its own call; there are 10 at most.
+- **The mosque street** (+13 at low, +2 at medium) is within the noise. The Médina adds nothing on the mosque's block (`tests/medina.test.ts`).
+- The frame times (SwiftShader, CPU) move by about one frame step. They are not a phone's.
 
 Before / after images at medium quality: [`proof/m2/before-after-medina-medium.jpg`](proof/m2/before-after-medina-medium.jpg). The numbers are in `proof/m2/perf-*.json`.
 

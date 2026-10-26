@@ -31,9 +31,16 @@ const ready = async () => { await page.waitForFunction(() => window.__dakar?.pos
 const items = () => d(() => [...document.querySelectorAll('#modal.on .item')].map(e => ({ text: e.textContent.replace(/\s+/g, ' ').trim(), off: e.classList.contains('dis') })).filter(i => i.text !== '✕'));   // (not the sheet's close button)
 const sheet = () => d(() => { const m = document.querySelector('#modal.on'); return m ? m.textContent.replace(/\s+/g, ' ').trim() : null; });
 async function tapItem(re) {
-  const box = await d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }, re);
-  if (!box) throw new Error(`no sheet row matches /${re}/: ${JSON.stringify(await items())}`);
-  await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(700);
+  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }, re);
+  const before = await sheet();
+  for (let n = 0; n < 2; n++) {
+    let box = await rowAt();
+    for (let k = 0; k < 10 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) break; box = again; }   // the sheet slides up: tap once it stands still
+    if (!box) { if (n) return; throw new Error(`no sheet row matches /${re}/: ${JSON.stringify(await items())}`); }
+    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(700);
+    if ((await sheet()) !== before) return;                                         // the tap was taken: the sheet changed or closed
+    log(`tap on /${re}/ not taken, once more`);
+  }
 }
 /** Walk a line of pavement points with the stick; a point not reached (a lamp post, a vendor in the way) is retried from a step aside. */
 async function walkPath(pts, { tol = 1.2 } = {}) {
