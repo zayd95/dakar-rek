@@ -75,12 +75,12 @@ export const KIND_ORDER: PlaceKind[] = ['food', 'shop', 'transport', 'arena', 'm
 /** Kind of a place from its id and name (ids look like `plateau:gargote:12`, `pikine:city:bank`). */
 export function placeKind(id: string, name = ''): PlaceKind {
   const s = (id + ' ' + name).toLowerCase();
-  if (/:station\b/.test(id)) return 'transport';
+  if (/:station\b|:port$/.test(id)) return 'transport';                       // the Almadies' quay is the Embarcadère de Ngor: crossings to the island
   if (/mosque|prière|priere/.test(s)) return 'mosque';
   if (/:arena\b|:ecurie\b|écurie|city:club|\barène\b/.test(s) && !/:arena:/.test(id)) return 'arena';
   if (/:home:|city:(villa|residence|jamm|maison|parcelles)/.test(id)) return 'home';
   if (/gargote|dibiterie|restaurant|maiga|cafe|juice|café/.test(s)) return 'food';
-  if (/city:bank|:port\b|garage|soumbedioune|débarquement/.test(s)) return 'work';
+  if (/city:bank|garage|soumbedioune|débarquement/.test(s)) return 'work';
   if (/boutique|salon|shop|meubles|mall-|craft|atelier|market|marché|étal|showroom|:mall\b|réparation/.test(s)) return 'shop';
   return 'spot';
 }

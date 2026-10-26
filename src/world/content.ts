@@ -36,7 +36,6 @@ export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'):
 const garageShift = (id: string, label: string, pay: number) => trade({ id, label, pay, needs: { energie: -18, hygiene: -14, faim: -6 }, counter: 'garage', category: 'artisanat', clip: 'Grab',
   parts: [{ label: 'Passer les outils', gesture: G.tools(4), share: 1 }, { label: 'Serrer les écrous', gesture: G.bolts(4), share: 1 }] });
 const garage = during(7, 19, 'Garage fermé · Modou ouvre à 7 h');
-const morning = during(5, 12, 'La pirogue part le matin, entre 5 h et 12 h');
 
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
@@ -62,11 +61,9 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'barres', label: 'Faire les barres', needs: { energie: -15, moral: 6, hygiene: -6 }, seconds: 3, counter: 'forme', requires: tired(15) },
   ],
   port: [
-    // once the morning pirogue has left, the quay still needs hands
-    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: 'Tirer la pirogue au rythme des vagues · jusqu’à +4 200 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(during(5, 18, 'Le quai est vide · les pêcheurs reviennent à 5 h'), tired(28)), visible: s => noFlag('ousmane_trust')(s) || !!morning(s as GameState),
-      steps: trade({ id: 'pecheurs', label: 'Aider les pêcheurs', pay: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, counter: 'peche', category: 'peche', clip: 'Grab', parts: [{ label: 'Tirer la pirogue', gesture: G.haul() }] }).steps },
-    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: 'Tirer la pirogue · jusqu’à +5 400 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(morning, tired(28)), visible: flag('ousmane_trust'),
-      steps: trade({ id: 'pirogue', label: 'Pirogue du matin', pay: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, counter: 'peche', category: 'peche', clip: 'Grab', parts: [{ label: 'Tirer la pirogue', gesture: G.haul(5) }] }).steps },
+    // the quay's fishing is Soumbédioune's now (Corniche): this is the Embarcadère de Ngor, whose crossings leave from the pier's end
+    // (src/venues/embarcadere.ts, docs/TRAVERSEE.md); here, by the sign, one stays a moment to look at the island
+    { id: 'ile', label: 'Regarder l’île de Ngor', detail: 'Les pirogues et la chaloupe d’Ousmane partent de la plage, à côté de la jetée', needs: { moral: 4 }, seconds: 3 },
   ],
   garage: [
     { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +3 600 F', gain: 3000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),

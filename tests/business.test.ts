@@ -4,7 +4,7 @@ import { newSave, migrate, SCHEMA_VERSION, MONEY_MAX } from '../src/core/save';
 import { ECONOMY } from '../src/economy/config';
 import { VENTURES, HOUR_MS, accrue, buyVenture, cannotBuy, incomePerHour, lockedWhy, nextPrice, unitPrice, venturesValue, baseIncome, ownedOf, ownedVentures } from '../src/economy/business';
 import { ownedFurnitureIds } from '../src/economy/furniture';
-import { ACTIVITIES, WINDOW_MS, activityOf, multiplier, multiplierFor, noticeActivities, polyLine, polyvalence, practise, signature, type Activity } from '../src/economy/polyvalence';
+import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, multiplier, multiplierFor, noticeActivities, polyLine, polyvalence, practise, signature, type Activity } from '../src/economy/polyvalence';
 import { acceptJob, completeJob } from '../src/economy/jobs';
 import { buyFurniture } from '../src/economy/furniture';
 import { fcfaShort, fcfaText } from '../src/economy/format';
@@ -154,7 +154,8 @@ describe('variety bonus (polyvalence): optional, active pay only', () => {
   it('categories are inferred from action ids, places and counters', () => {
     const cat = (id: string, place = '') => activityOf(CONTENT_ACTIONS.find(a => a.id === id)!, place);
     expect(cat('debarquement', 'corniche:city:soumbedioune')).toBe('peche');
-    expect(cat('pirogue', 'almadies:port')).toBe('peche');
+    expect(activityOf({ id: 'nouveau', gain: 900 }, 'almadies:port')).toBe('service');            // the quay is the Embarcadère de Ngor: no fishing there
+    expect(ACTIVITY_INFO.peche.where).toBe('Soumbédioune (Corniche)');
     expect(cat('atelier', 'corniche:city:craft')).toBe('artisanat');
     expect(cat('meca', 'pikine:garage:12')).toBe('artisanat');
     expect(cat('couture')).toBe('artisanat');

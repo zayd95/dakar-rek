@@ -91,6 +91,8 @@ const byId = re => `(() => { const i = window.__dakar.interactables().find(i => 
 const find = re => new Function(`return ${byId(re)};`);
 
 const SIDE = { side: [2.5, Math.PI / 2, 1.3] };
+/** Soumbédioune's pirogue (src/venues/beach.ts): its place's anchor, standing on the sand beside the hull. */
+const soumbedioune = () => { const v = window.__dakar.venues?.().find(x => x.type === 'beach'), a = v?.anchors.find(x => x.id === 'pirogue'); return a && { id: `${v.id}:pirogue`, x: a.x, z: a.z, yaw: -Math.PI / 2 }; };
 // Corniche: the landing (crates carried on the head), the fish market (clean fish on the market's own table)
 await hub('corniche');
 await act({ name: 'carry-crates', find: find(/:city:soumbedioune$/), label: 'Débarquer les caisses', wait: 0.5, until: i => i.onHead, cam: [5, 1.4, 2.6], views: { close: [3, 0.9, 1.8] },
@@ -100,7 +102,7 @@ await act({ name: 'carry-crates', find: find(/:city:soumbedioune$/), label: 'Dé
 const nearStalls = () => { const i = window.__dakar.cityPlaces().find(i => /:city:fish-market$/.test(i.id)); return i && { id: i.id, x: i.x + 1, z: i.z - 2.6, yaw: Math.PI }; };
 await act({ name: 'clean-fish', find: nearStalls, label: 'Aider au nettoyage', wait: 0.6, cam: [2.4, 0.8, 1.6], views: SIDE,
   expect: (a, b) => a.kind === 'handwork' && b.done > a.done && b.surface === true });
-// Gym, garage, café, market and port wherever they are
+// Gym, garage, café and market wherever they are
 for (const h of ['corniche', 'plateau', 'almadies', 'pikine']) {
   await hub(h);
   const has = await d(() => window.__dakar.interactables().map(i => i.id.split(':')[1]));
@@ -108,11 +110,12 @@ for (const h of ['corniche', 'plateau', 'almadies', 'pikine']) {
     await act({ name: `run-${h}`, find: find(/:gym$/), label: 'Courir', wait: 0.3, cam: [7, 1.5, 2.5], expect: (a, b) => a.kind === 'run' && b.metres > 2 });
     await act({ name: `pull-ups-${h}`, find: find(/:gym$/), label: 'Faire les barres', wait: 0.25, cam: [3.4, 1.2, 1.6], expect: (a, b) => a.kind === 'pullups' && b.reps >= 1 });
   }
-  // wave 5 plays the garage, the stall and the pirogue with the shared timing gesture (scripts/check-gestures.mjs): it starts
+  // wave 5 plays the garage, the stall and the pirogue with the shared timing gesture (scripts/check-gestures.mjs): it starts. The pirogue's haul is
+  // Soumbédioune's (the Almadies' quay is the Embarcadère de Ngor, without fishing: docs/TRAVERSEE.md): the trip's « Tu tires le filet », out at sea
+  if (h === 'corniche') await act({ name: 'haul-corniche', find: soumbedioune, label: 'Partir avec les pêcheurs', wait: 0.3, cam: [5, 2.2, 2.6], read: 'gesture', expect: a => a.kind === 'timing' });
   if (has.includes('garage')) await act({ name: `garage-${h}`, find: find(/:garage:/), label: 'Aider le mécanicien', wait: 0.3, cam: [2.6, 0.9, 1.6], read: 'gesture', expect: a => !!a.kind });
   if (has.includes('cafe')) await act({ name: `cafe-touba-${h}`, find: find(/:cafe:/), label: 'Café Touba', wait: 0.35, until: i => i.raised, cam: [2.1, 0.6, 1.6, 1.3], expect: (a, b) => a.kind === 'drink' && b.left < a.left });
   if (has.includes('market')) await act({ name: `market-sell-${h}`, find: find(/:market$/), label: 'Tenir l’étal', wait: 0.3, cam: [2.8, 0.9, 2.3], read: 'gesture', expect: a => a.kind === 'choose' });
-  if (has.includes('port')) await act({ name: `port-crates-${h}`, find: find(/:port$/), label: 'Aider les pêcheurs', wait: 0.3, cam: [5, 2.2, 2.6], read: 'gesture', expect: a => a.kind === 'timing' });
 }
 // Almadies: Jus & Go (a juice in hand), the gallery walk
 await hub('almadies');

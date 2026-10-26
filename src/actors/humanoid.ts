@@ -531,6 +531,70 @@ export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xfff
   return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
 }
 
+// ---------------------------------------------------------------- the life jacket (la traversée, src/venues/embarcadere.ts)
+/** The orange of the life jackets at Ngor (the owner's photo of the boarding: docs/proof/traversee/references/01-boarding-ngor-beach.jpg). */
+export const VEST_ORANGE = 0xf26a1b;
+/** The garments a vest is cut from, in the order they are looked for on a body; a body with none of them wears it on its skin. */
+const TRUNK = ['Cloth_Tee', 'Cloth_DressTop', 'Cloth_Boubou'];
+/** How far the vest stands out from the garment (m), and how much more at the chest and the back, where a life jacket's floats are. */
+const VEST_PUFF = 0.03, VEST_FLOAT = 0.02;
+const vestGeos = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry | null>();
+/**
+ * The garment a body wears on its trunk, as a life vest: its own geometry with the trunk's vertices (those skinned to the hips, the spine, the chest and
+ * the shoulders: not the sleeves, the skirt or the collar) pushed out a few centimetres and marked by a `vest` attribute (1 on the trunk, 0 elsewhere,
+ * in between at the edges) that the patched material paints orange. Everything else is the garment's own (its index, its skinning, its morph targets:
+ * the vest fits every body shape and follows the trunk in every clip). The vertices that share a position move together (along their averaged normal,
+ * or outward from the spine where that faces in), so the seams stay closed. One per garment, shared by every body that wears it; null if it has no skin.
+ */
+function vestGeometry(m: THREE.SkinnedMesh): THREE.BufferGeometry | null {
+  const src = m.geometry;
+  if (vestGeos.has(src)) return vestGeos.get(src)!;
+  const pos = src.getAttribute('position'), nor = src.getAttribute('normal'), si = src.getAttribute('skinIndex'), sw = src.getAttribute('skinWeight');
+  if (!pos || !nor || !si || !sw || !m.skeleton) { vestGeos.set(src, null); return null; }
+  const bones = m.skeleton.bones, off = bones.map(b => /^(upper_arm|forearm|hand|thigh|shin|foot|neck|head)/.test(b.name));
+  const hi = bones.findIndex(b => b.name === 'hips'), hipY = hi < 0 ? -Infinity : new THREE.Vector3().setFromMatrixPosition(m.skeleton.boneInverses[hi].clone().invert()).y;
+  const n = pos.count, w = new Float32Array(n), key = (i: number) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  const avg = new Map<string, THREE.Vector3>();
+  for (let i = 0; i < n; i++) {
+    let o = 0; for (let k = 0; k < 4; k++) if (off[si.getComponent(i, k)]) o += sw.getComponent(i, k);
+    w[i] = (1 - Math.min(1, Math.max(0, (o - 0.2) / 0.3))) * Math.min(1, Math.max(0, (pos.getY(i) - hipY + 0.04) / 0.08));   // off the limbs, above the hips
+    const k = key(i), a = avg.get(k) ?? avg.set(k, new THREE.Vector3()).get(k)!;
+    a.x += nor.getX(i); a.y += nor.getY(i); a.z += nor.getZ(i);
+  }
+  const out = new Float32Array(n * 3), d = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), r = Math.hypot(x, z) || 1;
+    d.copy(avg.get(key(i))!).normalize();
+    if (d.x * x + d.z * z < 0.2 * r) d.set(x / r, 0, z / r);                 // a normal facing in (a collar's lip, a fold): outward from the spine instead
+    const k = w[i] * (VEST_PUFF + VEST_FLOAT * Math.abs(d.z));
+    out[i * 3] = x + d.x * k; out[i * 3 + 1] = y + d.y * k; out[i * 3 + 2] = z + d.z * k;
+  }
+  const g = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(src.attributes)) g.setAttribute(name, attr);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3)); g.setAttribute('vest', new THREE.Float32BufferAttribute(w, 1));
+  g.setIndex(src.index); g.morphAttributes = src.morphAttributes; g.morphTargetsRelative = src.morphTargetsRelative;
+  for (const gr of src.groups) g.addGroup(gr.start, gr.count, gr.materialIndex);
+  g.computeBoundingSphere(); g.computeBoundingBox();
+  vestGeos.set(src, g);
+  return g;
+}
+const VEST_COLOR = { value: new THREE.Color(VEST_ORANGE) };
+/** Materials that know the vest: their shader reads the `vest` attribute (times the body's own `vestOn`) and paints the trunk orange. */
+const vestPatched = new WeakSet<THREE.Material>();
+function patchVest(mat: THREE.Material, on: { value: number }) {
+  if (vestPatched.has(mat)) return;
+  vestPatched.add(mat);
+  mat.onBeforeCompile = shader => {
+    shader.uniforms.vestOn = on; shader.uniforms.vestColor = VEST_COLOR;
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float vest;\nuniform float vestOn;\nvarying float vVest;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvVest = vest * vestOn;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 vestColor;\nvarying float vVest;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix( diffuseColor.rgb, vestColor, step( 0.5, vVest ) );');
+  };
+  mat.customProgramCacheKey = () => 'vest';
+  mat.needsUpdate = true;
+}
+
 /** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
 const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Jog', 'Run']);
 
@@ -677,6 +741,31 @@ export class Humanoid {
     this.meshy?.setBare(on);
   }
   get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
+  /** The life jacket worn: the garment that carries it and that garment's own geometry, put back when it comes off. */
+  private vest: { mesh: THREE.SkinnedMesh; own: THREE.BufferGeometry } | null = null;
+  private vestU = { value: 0 };
+  /** Whether the life jacket is on. */
+  get vestOn() { return !!this.vest; }
+  /**
+   * An orange life jacket (la traversée: the customers wade out to the pirogue in one), put on and taken off at any time. It is no extra mesh: the
+   * garment worn on the trunk (the tee, the dress's top, the boubou; else the skin) swaps to its vest geometry (vestGeometry: the trunk pushed out, the
+   * sleeves and the skirt as they were) and its material, patched once, paints that part orange. No draw call, no material and nothing at all changes
+   * for a body that never wears one; one that took it off keeps the patched material, which then paints nothing. The vest is skinned as the garment
+   * is: it follows the trunk walking, sitting, standing. A Meshy body (its clothes baked into its shell, its own shader) does not wear one: false.
+   */
+  setVest(on: boolean): boolean {
+    if (!on) { if (this.vest) { this.vest.mesh.geometry = this.vest.own; this.vest = null; } this.vestU.value = 0; return true; }
+    if (this.body !== 'v4') return false;
+    const part = TRUNK.map(k => this.parts.get(k)).find(p => p?.visible) ?? (this.root.getObjectByName('DR_Body') as THREE.Mesh | undefined);
+    const mesh = part as THREE.SkinnedMesh | undefined;
+    if (!mesh?.isSkinnedMesh || Array.isArray(mesh.material)) return false;
+    if (this.vest?.mesh === mesh) return true;
+    const geo = vestGeometry(mesh); if (!geo) return false;
+    this.setVest(false);
+    this.vest = { mesh, own: mesh.geometry }; mesh.geometry = geo;
+    patchVest(mesh.material, this.vestU); this.vestU.value = 1;
+    return true;
+  }
   /** The body drawn: the one asked for when it is loaded, else v4. */
   readonly body: BodyId;
   /** How this body's mesh differs from the rig (BODY_FIT); v4's own is all zeros. */
@@ -729,6 +818,7 @@ export class Humanoid {
 
   /** City clothing. */
   setLook(l: PersonLook) {
+    const vest = this.vestOn; if (vest) this.setVest(false);               // refitted below to what the new look wears on its trunk
     this.clearAccessories();
     this.setSkin(l.skin);
     const vis = ['Cloth_Shoes'];
@@ -745,6 +835,7 @@ export class Humanoid {
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
     if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1).multiplyScalar(this.seatK);
+    if (vest) this.setVest(true);
   }
 
   /** Body shape via morph targets shared by the body and every fitted garment. */
@@ -928,6 +1019,7 @@ export class Humanoid {
     this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0; this.relaxW = -1;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
     this.faceOn = true; for (const m of this.face) m.visible = true;
+    this.setVest(false);
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
   }
   /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
@@ -973,7 +1065,7 @@ export class Humanoid {
   }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
-  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.meshy?.dispose(); this.group.removeFromParent(); }
+  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.setVest(false); this.meshy?.dispose(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */

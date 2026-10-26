@@ -13,6 +13,9 @@ import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, media
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { buildShopInterior, type ShopDetail } from './shopKit';
+import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
+import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
+import { TRAVERSEE_HUB, TRAVERSEE_SITE } from '../sea/traverseeSite';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
@@ -238,9 +241,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
   yield;
   if (sp.sea === 'north') {
-    plain.box(size + 40, 0.1, 40, 0, 0, -HALF - 16, 0xe9d9a8);                       // beach
+    // the beach: dry sand down to a few metres from the water, then the wet sand sloping gently into the sea (src/world/ngorBay.ts), so whatever is
+    // pulled up at the water's edge lies over sand and no kerb shows between the beach and the sea; the foam at the water's edge is the shallows'
+    // (the Embarcadère de Ngor's, below), translucent
+    const dry = -HALF + 4 - WET_SAND_TOP;
+    plain.box(size + 40, 0.1, dry, 0, 0, -HALF + 4 - dry / 2, 0xe9d9a8);
+    wetSand(plain, -HALF - 20, HALF + 20, lite);
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 700), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.05, -HALF - 36 - 350); group.add(sea);
-    plain.box(size + 60, 0.06, 4, 0, 0.02, -HALF - 37, 0xf4f1e6);                   // surf line
     bounds.z0 = -HALF - 30;
   }
 
@@ -667,7 +674,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
   const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
   /** Ground kept open (a shop's frontage, a loading bay: `citeFronts`), returned with the hub for the street dressing that comes after. */
-  const keepClear: KeepClear[] = id === 'pikine' ? citeFronts() : [];
+  // the Almadies' pier (the Embarcadère de Ngor, src/sea/traverseeSite.ts) from the block to its end: no palm, tree or stall stands on it, no car parks across it
+  const keepClear: KeepClear[] = id === 'pikine' ? citeFronts() : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1055,27 +1063,23 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         break;
       }
       case 'port': {
-        // the pier toward the sea, in two parts: the boardwalk on the block and the pier from the far kerb out over the beach. The coast road between them
+        // The Embarcadère de Ngor (docs/TRAVERSEE.md, src/world/ngor.ts): the pier from the block over the beach to the floating pontoon, the pirogues
+        // pulled up on the sand, and the island of Ngor offshore, all in this hub's batches. The coast road between the pier's two parts
         // (z bz − 14 … bz) stays a road: a 0.4 m platform laid across it stopped every car and motorbike on the Almadies' coast road.
-        plain.box(6, 0.4, 10, cx, B, bz + 5, 0x8b6a47);
-        plain.box(6, 0.4, 11.7, cx, B, bz - 14.3 - 5.85, 0x8b6a47);
-        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });             // walked on: feet on the planks (flat)
-        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz - 14.3, y0: 0.4, y1: 0.4, xEnd: cx + 3 });
-        for (let k = 0; k < 12; k++) { const pz = bz - 25 + k * 3; if (pz > bz - 14.4 && pz < bz + 0.1) continue; plain.box(6.05, 0.05, 0.12, cx, B + 0.4, pz, 0x6b4f33); }
-        const cols = [0x1e6fd9, 0xe7b82f, 0xd9482b, 0x2f8f4e];
-        for (let k = 0; k < 5; k++) {
-          // painted pirogues on the beach, clear of the coast road (they reached 4 m into it; nothing stops a car there, so it drove through them)
-          const bx2 = cx - 17 + k * 8, bz2 = bz - 21.5 - R() * 3;
-          plain.box(1.8, 0.9, 9, bx2, 0.05, bz2, cols[k % 4]);
-          plain.box(1.9, 0.25, 9.1, bx2, 0.95, bz2, cols[(k + 1) % 4]);
-          plain.box(1.2, 1.1, 1.8, bx2, 0.05, bz2 - 5.1, cols[(k + 2) % 4]);
-          plain.box(1.2, 1.1, 1.8, bx2, 0.05, bz2 + 5.1, cols[(k + 2) % 4]);
-          plain.box(0.1, 1.2, 0.1, bx2, 1.2, bz2 - 5.5, 0xf2f2ec);
-        }
+        const quay = buildNgorQuay({ plain, leaves, trunks, bulbs: lampBulbs }, { cx, bz, base: B, lite, rand: R });
+        ramps.push(...quay.ramps); colliders.push(...quay.colliders);
+        buildNgorIsland({ plain, leaves, trunks, bulbs: lampBulbs, pool: (x, z, r, y) => pool(x, z, r, y) }, lite);
+        // the bay (src/world/ngorBay.ts): the white launches at anchor in the batch; the turquoise shallows along the beach and round the island, the
+        // one draw call the embarcadère adds to the static scene; more palms along the beach, either side of the boarding beach
+        buildNgorLaunches(plain, lite);
+        group.add(buildNgorShallows(lite, () => facadeMat.emissiveIntensity / 1.25));     // the city's night (src/main.ts lights the windows by it)
+        colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
-        addSign('PORT DE PÊCHE · NGOR', '#0c4a6e', '#e0f2fe', cx, 3.4, bz + 1, 0, 6, 1.1);
+        addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
+        // the island's rooftop restaurant and lounge bar, named on the roof's front edge, toward the sea and the boats coming in (« sunu toit »: our roof)
+        { const rb = TRAVERSEE_SITE.island.rooftop.box; addSign('SUNU TOIT · RESTAURANT · LOUNGE', '#0e5a6b', '#fdf1d6', (rb.x0 + rb.x1) / 2, rooftopFloors().roof - 0.62, rb.z1 + 0.21, 0, 8.2, 0.5); }
         plain.box(0.2, 3.4, 0.2, cx - 3, B, bz + 1, 0x555555); plain.box(0.2, 3.4, 0.2, cx + 3, B, bz + 1, 0x555555);
-        interactables.push({ id: `${id}:port`, name: 'Port de pêche', kind: 'actions', x: cx, z: bz + 4, radius: 5, actions: ACTIONS.port });
+        interactables.push({ id: `${id}:port`, name: 'Embarcadère de Ngor', kind: 'actions', x: cx, z: bz + 4, radius: 5, actions: ACTIONS.port, description: 'Les pirogues et la chaloupe partent de la plage, à côté de la jetée, pour l’île de Ngor, de 7 h à 19 h.' });
         break;
       }
       case 'arena': {
@@ -1315,7 +1319,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     dress(x, z, () => palm(x, z, 0.9 + R() * 0.4));
   }
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
-  if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
+  if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) dress(x, -HALF - 3, () => palm(x, -HALF - 3, 1.1));
   // A few street vendors on the sidewalks.
   yield;
   for (let n = 0; n < (banlieue ? 13 : 5); n++) {
