@@ -1,5 +1,5 @@
 {
- "base": "http://127.0.0.1:4972/",
+ "base": "http://127.0.0.1:4991/",
  "failed": 0,
  "results": [
   {
@@ -10,7 +10,7 @@
   {
    "name": "five pieces bought by touch, each delivered to the F2 and set up in a room of its kind",
    "ok": true,
-   "detail": "[[\"canape_wax\",{\"x\":-1.33,\"z\":0.5,\"rot\":0}],[\"table_basse\",{\"x\":-2.83,\"z\":0.32,\"rot\":0}],[\"tele_plate\",{\"x\":-4.16,\"z\":1.73,\"rot\":1}],[\"lit_bois\",{\"x\":-2.12,\"z\":-1.98,\"rot\":3}],[\"armoire_bois\",{\"x\":-2.73,\"z\":-0.37,\"rot\":2}]] · Canapé en tissu wax ✓  −95 000 F · livré et installé · Séjou | Table basse ✓  −6 000 F · livré et installé · SéjourTable ba | Télé écran plat ✓  −180 000 F · livré et installé · SéjourTé | Télé écran plat ✓  −180 000 F · livré et installé · SéjourLi | Armoire en bois ✓  −110 000 F · livré et installé · ChambreA"
+   "detail": "[[\"canape_wax\",{\"x\":-1.33,\"z\":0.5,\"rot\":0}],[\"table_basse\",{\"x\":-2.83,\"z\":0.32,\"rot\":0}],[\"tele_plate\",{\"x\":-4.16,\"z\":1.73,\"rot\":1}],[\"lit_bois\",{\"x\":-2.12,\"z\":-1.98,\"rot\":3}],[\"armoire_bois\",{\"x\":-2.73,\"z\":-0.37,\"rot\":2}]] · Canapé en tissu wax ✓  −95 000 F · livré et installé · Séjou | Canapé en tissu wax ✓  −95 000 F · livré et installé · Séjou | Table basse ✓  −6 000 F · livré et installé · SéjourTélé écr | Télé écran plat ✓  −180 000 F · livré et installé · SéjourLi | Lit en bois, deux places ✓  −120 000 F · livré et installé ·"
   },
   {
    "name": "charged once for each, the catalogue's prices",
@@ -80,7 +80,7 @@
   {
    "name": "« Poser » there is refused and the saved spot is kept",
    "ok": true,
-   "detail": "{\"before\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"after\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"toast\":\"Il faut laisser la porte s’ouvrir\"}"
+   "detail": "{\"before\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"after\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"toast\":\"Posé ✓ · ChambreIl faut laisser la porte s’ouvrir\"}"
   },
   {
    "name": "the five pieces stand in their rooms: three in the séjour, two in the chambre",
