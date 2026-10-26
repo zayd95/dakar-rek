@@ -1,0 +1,1058 @@
+{
+ "legs": [
+  {
+   "to": [
+    -3,
+    1
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.8,
+    0.75
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.39,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.65,
+    0.75
+   ],
+   "room": "bureau",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    -5.4,
+    0.75
+   ],
+   "room": "bureau",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.06,
+   "ok": true
+  },
+  {
+   "to": [
+    -6,
+    1.8
+   ],
+   "room": "bureau",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.31,
+   "ok": true
+  },
+  {
+   "to": [
+    -5.4,
+    0.75
+   ],
+   "room": "bureau",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.3,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.65,
+    0.75
+   ],
+   "room": "bureau",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.8,
+    0.75
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    0.9
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.12,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    -1.5
+   ],
+   "room": "salon",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.26,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.6,
+    -3.6
+   ],
+   "room": "salon",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.5,
+    -5.6
+   ],
+   "room": "jardin",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.1,
+   "ok": true
+  },
+  {
+   "to": [
+    5,
+    -5.6
+   ],
+   "room": "jardin",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    7,
+    -8
+   ],
+   "room": "jardin",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.08,
+   "ok": true
+  },
+  {
+   "to": [
+    5,
+    -5.6
+   ],
+   "room": "jardin",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    1.7,
+    -5.6
+   ],
+   "room": "jardin",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    1.7,
+    -4
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    2.6,
+    -1
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    2.6,
+    0.9
+   ],
+   "room": "cuisine",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    2.6,
+    -1
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    3.4,
+    -3.85
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.02,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    -3.85
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.32,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    -2.6
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    0.9
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.08,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    2.4
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.06,
+   "ok": true
+  },
+  {
+   "to": [
+    6.2,
+    2.6
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.43,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    2.4
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.07,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    0.9
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    7.2,
+    -3
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.03,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    -3.6
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    -3
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    -0.5
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 2.11,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    1.3
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    2.3
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    2.6
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    -2.4,
+    3.2
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    -2.4,
+    4.75
+   ],
+   "room": "balcon_rue",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.3,
+   "ok": true
+  },
+  {
+   "to": [
+    -2.4,
+    3.2
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    0.3
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.4,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    -1.1
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.19,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    -2.6
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    -5.4,
+    -4.4
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.37,
+   "ok": true
+  },
+  {
+   "to": [
+    -5.4,
+    -5.85
+   ],
+   "room": "balcon_piscine",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.24,
+   "ok": true
+  },
+  {
+   "to": [
+    -5.4,
+    -4.4
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.4,
+    -1.6
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.6,
+    -1.6
+   ],
+   "room": "dressing",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.36,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.4,
+    -1.6
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.1,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    -1.1
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.11,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    0.4
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.26,
+   "ok": true
+  },
+  {
+   "to": [
+    0.25,
+    0.5
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    0.25,
+    -1.2
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    1.4,
+    -2.6
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    0.25,
+    -1.2
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.12,
+   "ok": true
+  },
+  {
+   "to": [
+    0.25,
+    0.5
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.4,
+   "ok": true
+  },
+  {
+   "to": [
+    6.2,
+    2.4
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    1.9
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    -0.5
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 5.16,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    -3.4
+   ],
+   "room": "edicule",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.06,
+   "ok": true
+  },
+  {
+   "to": [
+    6,
+    -3.9
+   ],
+   "room": "edicule",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.39,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    -3.9
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    0.6,
+    -3.4
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.38,
+   "ok": true
+  },
+  {
+   "to": [
+    -1,
+    1
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.33,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    3
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    6.2,
+    3
+   ],
+   "room": "terrasse_rue",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    3
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.4,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    -3.9
+   ],
+   "room": "terrasse",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    6,
+    -3.9
+   ],
+   "room": "edicule",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.33,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    -3.3
+   ],
+   "room": "edicule",
+   "level": "toit",
+   "y": 6.9,
+   "dist": 0.33,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    0
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 4.5,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    7.15,
+    2
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.09,
+   "ok": true
+  },
+  {
+   "to": [
+    6.2,
+    2.4
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    2.2
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    0.5
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 2.71,
+   "dist": 0.38,
+   "ok": true
+  },
+  {
+   "to": [
+    5.15,
+    -3.2
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.44,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    -3.85
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.3,
+   "ok": true
+  },
+  {
+   "to": [
+    3.4,
+    -3.85
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    -1.5
+   ],
+   "room": "salon",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.03,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    2.6
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.09,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    3.1
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.23,
+   "ok": true
+  }
+ ],
+ "samples": {
+  "n": 628,
+  "closest": 0.2999999999999118,
+  "rooms": [
+   "entree",
+   "bureau",
+   "salon",
+   "jardin",
+   "manger",
+   "cuisine",
+   "hall",
+   "sde",
+   "palier",
+   "salon_familial",
+   "balcon_rue",
+   "suite",
+   "balcon_piscine",
+   "dressing",
+   "chambre2",
+   "edicule",
+   "terrasse",
+   "terrasse_rue"
+  ],
+  "levels": [
+   "rdc",
+   "etage",
+   "toit"
+  ],
+  "doors": {
+   "entree-bureau": 1,
+   "hall-sde": 1,
+   "couloir-sdb": 0,
+   "salon-chambre2": 1,
+   "salon-suite": 1,
+   "salon-chambre3": 0
+  },
+  "maxY": 6.8999999999999995
+ },
+ "perf": {
+  "empty": {
+   "rdc": {
+    "calls": 16,
+    "tris": 26364
+   },
+   "etage": {
+    "calls": 26,
+    "tris": 27560
+   },
+   "toit": {
+    "calls": 23,
+    "tris": 21992
+   }
+  },
+  "furnished": {
+   "rdc": {
+    "calls": 23,
+    "tris": 27052
+   },
+   "etage": {
+    "calls": 29,
+    "tris": 27758
+   },
+   "toit": {
+    "calls": 23,
+    "tris": 21690
+   }
+  },
+  "shell": {
+   "rdc": {
+    "calls": 14,
+    "tris": 10946,
+    "frame": {
+     "calls": 16,
+     "tris": 25876
+    }
+   },
+   "etage": {
+    "calls": 21,
+    "tris": 11914,
+    "frame": {
+     "calls": 26,
+     "tris": 27560
+    }
+   },
+   "toit": {
+    "calls": 19,
+    "tris": 6348,
+    "frame": {
+     "calls": 21,
+     "tris": 21278
+    }
+   }
+  },
+  "pieces": 12
+ },
+ "pictures": [
+  [
+   "rdc-salon-day",
+   142059
+  ],
+  [
+   "rdc-pool-day",
+   299448
+  ],
+  [
+   "rdc-hall-day",
+   312742
+  ],
+  [
+   "rdc-cuisine-day",
+   350572
+  ],
+  [
+   "etage-salon-day",
+   137934
+  ],
+  [
+   "etage-suite-day",
+   313828
+  ],
+  [
+   "etage-balcon-day",
+   267235
+  ],
+  [
+   "toit-helipad-day",
+   333036
+  ],
+  [
+   "toit-terrasse-day",
+   323620
+  ],
+  [
+   "rdc-salon-night",
+   138453
+  ],
+  [
+   "rdc-pool-night",
+   288036
+  ],
+  [
+   "rdc-hall-night",
+   313413
+  ],
+  [
+   "rdc-cuisine-night",
+   351975
+  ],
+  [
+   "etage-salon-night",
+   379770
+  ],
+  [
+   "etage-suite-night",
+   319021
+  ],
+  [
+   "etage-balcon-night",
+   272521
+  ],
+  [
+   "toit-helipad-night",
+   335102
+  ],
+  [
+   "toit-terrasse-night",
+   316644
+  ],
+  [
+   "furnished-rdc-salon",
+   370615
+  ],
+  [
+   "furnished-etage-suite",
+   302822
+  ],
+  [
+   "furnished-rdc-pool",
+   299343
+  ],
+  [
+   "editor-etage-suite",
+   259932
+  ]
+ ]
+}

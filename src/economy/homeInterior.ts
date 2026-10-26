@@ -40,7 +40,8 @@ function materials() {
   return mats;
 }
 
-export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z: number }; shower: { x: number; z: number } }; ceiling: THREE.Object3D[] }
+/** `spots`: where the kitchen and the shower are used from (world x, z; LD2.0-D: `y`, the height of their level's floor above the ground floor's). */
+export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z: number; y?: number }; shower: { x: number; z: number; y?: number } }; ceiling: THREE.Object3D[] }
 
 /**
  * `upgrades`: the home's upgrades that show in the shell (« peinture »: freshly painted walls). A home with a floor plan (src/housing/plan.ts

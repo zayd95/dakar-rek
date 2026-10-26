@@ -41,7 +41,18 @@ export interface Interactable {
   /** How its action menu looks (presentation only): 'shop' = compact action rows of the shared UI primitives (src/ui/primitives.ts). */
   menu?: 'shop';
 }
-export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
+export interface Collider {
+  x0: number; z0: number; x1: number; z1: number; h: number;
+  /**
+   * LD2.0-D: a collider that does not stand on the ground (a wall, a piece of furniture or a railing on an upper floor of the villa): it spans the
+   * heights `y0`…`h`, and a body whose feet are above its top (less a step) or whose head is under its bottom passes it (`inBand`, main.ts pushOut).
+   * Absent: from the ground up to `h`, as every collider before.
+   */
+  y0?: number;
+}
+/** LD2.0-D: a standing body's height (m) and the step it climbs: does a collider stop a body whose feet are at `y`? (Always, without `y0`.) */
+export const BODY_H = 1.6, BODY_STEP = 0.25;
+export const inBand = (c: Collider, y: number) => c.y0 === undefined || (y + BODY_H > c.y0 && y < c.h - BODY_STEP);
 /** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
 export interface Canopy { x: number; z: number; r: number; y0: number; y1: number }
 
