@@ -48,23 +48,23 @@ const rooms: Room[] = [
   { id: 'bureau', kind: 'bureau', name: 'Bureau', level: 'rdc', box: box(H0.x0, -4.6, 0, H0.z1), floor: 'wood' },
   { id: 'hall', kind: 'palier', name: 'Hall de l’escalier', level: 'rdc', box: box(4.4, H0.x1, H0.z0, 1.6), floor: 'marble' },
   { id: 'sde', kind: 'sdb', name: 'Salle d’eau', level: 'rdc', box: box(4.4, H0.x1, 1.6, H0.z1), floor: 'tiles' },
-  { id: 'jardin', kind: 'terrasse', name: 'Terrasse de la piscine', level: 'rdc', outdoor: true, edge: 'garden', box: { ...BACK_GARDEN }, floor: 'stone' },
+  { id: 'jardin', kind: 'terrasse', name: 'Terrasse de la piscine', short: 'Piscine', level: 'rdc', outdoor: true, edge: 'garden', box: { ...BACK_GARDEN }, floor: 'stone' },
   // ---------------------------------------------------------------- étage
   { id: 'salon_familial', kind: 'sejour', name: 'Salon familial', level: 'etage', box: box(-4.4, 4.4, -0.6, H0.z1, ET), floor: 'marble' },
-  { id: 'suite', kind: 'chambre', name: 'Suite parentale', level: 'etage', box: box(H0.x0, -2.8, H0.z0, -0.6, ET), floor: 'wood' },
+  { id: 'suite', kind: 'chambre', name: 'Suite parentale', short: 'Suite', level: 'etage', box: box(H0.x0, -2.8, H0.z0, -0.6, ET), floor: 'wood' },
   { id: 'dressing', kind: 'dressing', name: 'Dressing', level: 'etage', box: box(-2.8, -0.4, -2.6, -0.6, ET), floor: 'wood' },
-  { id: 'bain', kind: 'sdb', name: 'Salle de bain parentale', level: 'etage', box: box(-2.8, -0.4, H0.z0, -2.6, ET), floor: 'tiles' },
+  { id: 'bain', kind: 'sdb', name: 'Salle de bain parentale', short: 'Bain parental', level: 'etage', box: box(-2.8, -0.4, H0.z0, -2.6, ET), floor: 'tiles' },
   { id: 'chambre2', kind: 'chambre', name: 'Chambre 2', level: 'etage', box: box(-0.4, 3.0, H0.z0, -0.6, ET), floor: 'wood' },
   { id: 'chambre3', kind: 'chambre', name: 'Chambre 3', level: 'etage', box: box(H0.x0, -4.4, -0.6, H0.z1, ET), floor: 'wood' },
   { id: 'sdb', kind: 'sdb', name: 'Salle de bain', level: 'etage', box: box(4.4, H0.x1, H0.z0, -2.83, ET), floor: 'tiles' },
   { id: 'couloir', kind: 'degagement', name: 'Couloir', level: 'etage', box: box(3.0, 4.4, H0.z0, -0.6, ET), floor: 'marble' },
   { id: 'palier', kind: 'palier', name: 'Palier', level: 'etage', box: box(4.4, H0.x1, -2.83, H0.z1, ET), floor: 'marble' },
-  { id: 'balcon_rue', kind: 'balcon', name: 'Balcon sur rue', level: 'etage', outdoor: true, edge: 'railing', box: box(BALCONIES[0].x0, BALCONIES[0].x1, BALCONIES[0].z0, BALCONIES[0].z1, ET), floor: 'stone' },
-  { id: 'balcon_piscine', kind: 'balcon', name: 'Balcon de la suite', level: 'etage', outdoor: true, edge: 'railing', box: box(BALCONIES[1].x0, BALCONIES[1].x1, BALCONIES[1].z0, BALCONIES[1].z1, ET), floor: 'stone' },
+  { id: 'balcon_rue', kind: 'balcon', name: 'Balcon sur rue', short: 'Balcon rue', level: 'etage', outdoor: true, edge: 'railing', box: box(BALCONIES[0].x0, BALCONIES[0].x1, BALCONIES[0].z0, BALCONIES[0].z1, ET), floor: 'stone' },
+  { id: 'balcon_piscine', kind: 'balcon', name: 'Balcon de la suite', short: 'Balcon suite', level: 'etage', outdoor: true, edge: 'railing', box: box(BALCONIES[1].x0, BALCONIES[1].x1, BALCONIES[1].z0, BALCONIES[1].z1, ET), floor: 'stone' },
   // ---------------------------------------------------------------- toit-terrasse
   { id: 'edicule', kind: 'palier', name: 'Palier du toit', level: 'toit', box: box(4.4, H0.x1, H0.z0, 1.6, TO), floor: 'marble', facade: WOOD },
-  { id: 'terrasse', kind: 'terrasse', name: 'Terrasse du toit', level: 'toit', outdoor: true, edge: 'parapet', box: box(H0.x0, 4.4, H0.z0, H0.z1, TO), floor: 'stone' },
-  { id: 'terrasse_rue', kind: 'terrasse', name: 'Terrasse sur rue', level: 'toit', outdoor: true, edge: 'parapet', box: box(4.4, H0.x1, 1.6, H0.z1, TO), floor: 'stone' },
+  { id: 'terrasse', kind: 'terrasse', name: 'Terrasse du toit', short: 'Terrasse', level: 'toit', outdoor: true, edge: 'parapet', box: box(H0.x0, 4.4, H0.z0, H0.z1, TO), floor: 'stone' },
+  { id: 'terrasse_rue', kind: 'terrasse', name: 'Terrasse sur rue', short: 'Côté rue', level: 'toit', outdoor: true, edge: 'parapet', box: box(4.4, H0.x1, 1.6, H0.z1, TO), floor: 'stone' },
 ];
 
 const D = (id: string, a: string, b: string, axis: 'x' | 'z', x: number, z: number, width: number, swing: string, hinge: 'start' | 'end'): Opening =>

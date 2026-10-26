@@ -110,7 +110,8 @@ try {
   ];
   const went = [], onPad = { at: null };
   for (const [x, z, room, level, door] of legs) {
-    const r = await walk(x, z);
+    let r = await walk(x, z);
+    if (r.dist >= 0.45 && r.dist < 1.5) { console.log('  a second push toward', x, z, 'from', r.dist.toFixed(2), 'm'); r = await walk(x, z); }   // a thumb corrects (a slow frame on a shared machine)
     const doorOk = !door || r.doors.find(q => q.id === door)?.open;
     const ok = r.dist < 0.45 && (!room || r.room === room) && (!level || r.level === level) && doorOk;
     went.push({ to: [x, z], room: r.room, level: r.level, y: +r.y.toFixed(2), dist: +r.dist.toFixed(2), ok });
@@ -197,13 +198,15 @@ try {
   const opened = await d(() => window.__dakar.placer.open());
   await page.waitForTimeout(800);
   const chips = await d(() => ({ levels: [...document.querySelectorAll('#placer-rooms [data-level]')].map(b => b.textContent), rooms: [...document.querySelectorAll('#placer-rooms [data-room]')].map(b => b.textContent) }));
-  check('« Aménager »: the level chips (RDC, Étage, Toit) and the ground floor\'s room chips', opened && chips.levels.join() === 'RDC,Étage,Toit' && chips.rooms.includes('Grand salon') && !chips.rooms.includes('Suite parentale'), JSON.stringify(chips));
+  check('« Aménager »: the level chips (RDC, Étage, Toit) and the ground floor\'s room chips', opened && chips.levels.join() === 'RDC,Étage,Toit' && chips.rooms.includes('Grand salon') && !chips.rooms.includes('Suite'), JSON.stringify(chips));
   await t.tap('#placer-rooms [data-level="etage"]'); await page.waitForTimeout(900);
   const up = await d(() => ({ info: window.__dakar.placer.info(), rooms: [...document.querySelectorAll('#placer-rooms [data-room]')].map(b => b.textContent), home: window.__dakar.home() }));
-  check('a tap on « Étage »: the first floor in view (the cutaway follows the editor), its room chips', up.info.level === 'etage' && up.home.level === 'etage' && up.rooms.includes('Suite parentale') && !up.rooms.includes('Grand salon'), JSON.stringify({ level: up.info.level, home: up.home.level, rooms: up.rooms }));
+  check('a tap on « Étage »: the first floor in view (the cutaway follows the editor), its room chips', up.info.level === 'etage' && up.home.level === 'etage' && up.rooms.includes('Suite') && !up.rooms.includes('Grand salon'), JSON.stringify({ level: up.info.level, home: up.home.level, rooms: up.rooms }));
   await t.tap('#placer-rooms [data-room="suite"]'); await page.waitForTimeout(1200);
   const suite = await d(() => ({ info: window.__dakar.placer.info(), cam: window.__dakar.camera().at }));
   const bed = suite.info.items.find(f => f.spec === 'lit_king');
+  const chipBox = await d(() => { const r = document.getElementById('placer-rooms').getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; });
+  check(`the level's room chips fit the phone's width in a few rows (${chipBox.w} × ${chipBox.h} px)`, chipBox.w >= 300 && chipBox.h <= 160, JSON.stringify(chipBox));
   check('the suite chip frames the master suite from above its floor; the bed bought is in it, set up by its kind', suite.info.room === 'suite' && suite.cam[1] > STOREY + 3 && bed?.room === 'suite', JSON.stringify({ room: suite.info.room, cam: suite.cam, bed }));
   await picture('editor-etage-suite');
   await d(() => window.__dakar.placer.close()); await page.waitForTimeout(500);

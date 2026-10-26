@@ -454,7 +454,7 @@ export class HomeEditor {
     const head = levels.length > 1
       ? [`<div class="pl-levels">${levels.map(l => `<button type="button" data-level="${l.id}" aria-label="${l.name}" aria-pressed="${this.level === l.id && !this.room}" class="lv ${this.level === l.id ? 'on' : ''}">${SHORT[l.id] ?? l.name}</button>`).join('')}</div>`]
       : [`<button type="button" data-room="" aria-label="Tout le logement" aria-pressed="${!this.room}" class="${this.room ? '' : 'on'}">🏠</button>`];
-    this.roomsEl.innerHTML = [...head, ...rooms.map(r => `<button type="button" data-room="${r.id}" aria-pressed="${this.room === r.id}" class="${this.room === r.id ? 'on' : ''}">${r.name}</button>`)].join('');
+    this.roomsEl.innerHTML = [...head, ...rooms.map(r => `<button type="button" data-room="${r.id}" aria-label="${r.name}" aria-pressed="${this.room === r.id}" class="${this.room === r.id ? 'on' : ''}">${r.short ?? r.name}</button>`)].join('');
     this.roomsEl.querySelectorAll<HTMLElement>('[data-room]').forEach(b => b.addEventListener('click', () => this.chooseRoom(b.dataset.room || null)));
     this.roomsEl.querySelectorAll<HTMLElement>('[data-level]').forEach(b => b.addEventListener('click', () => this.chooseLevel(b.dataset.level!)));
   }

@@ -32,6 +32,8 @@ export interface Room {
   kind: RoomKind;
   /** As the player reads it (the editor's room picker, the HUD). */
   name: string;
+  /** LD2.0-D: a shorter name for the editor's room chip (a phone's width), when the name is long. */
+  short?: string;
   box: Rect;
   /** 'stone': paving outdoors (a deck, a terrace). */
   floor: 'tiles' | 'wood' | 'marble' | 'stone';

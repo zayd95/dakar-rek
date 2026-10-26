@@ -8,7 +8,7 @@
 #placer-rooms button.on { background:var(--gold); color:#1f2937; }
 #placer-rooms button:active { transform:scale(.96); }
 /* LD2.0-D: a home on several levels: its level chips on a row of their own, the rooms of the level in view under them */
-#placer-rooms.levels { flex-wrap:wrap; justify-content:center; row-gap:2px; }
+#placer-rooms.levels { flex-wrap:wrap; justify-content:center; row-gap:2px; width:min(380px, calc(100vw - 16px - var(--sa-l) - var(--sa-r))); }
 #placer-rooms .pl-levels { display:flex; flex-basis:100%; justify-content:center; gap:4px; padding-bottom:2px; border-bottom:1px solid rgba(127,127,127,.25); }
 #placer-rooms .pl-levels button { min-height:30px; padding:0 12px; font-weight:800; letter-spacing:.02em; }
 #placer-why { position:absolute; left:0; top:0; display:none; transform:translate(-50%, -100%); max-width:min(300px, calc(100vw - 24px)); padding:5px 10px; border-radius:12px;
