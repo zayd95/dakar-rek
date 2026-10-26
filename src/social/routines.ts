@@ -43,6 +43,8 @@ export interface Routine {
 const PI = Math.PI;
 const P = (at: string, label: string, o: Omit<PlaceSpec, 'at' | 'label'> = {}): PlaceSpec => ({ at, label, ...o });
 const abs = (x: number, z: number, label: string, o: Omit<PlaceSpec, 'at' | 'label' | 'ox' | 'oz'> = {}): PlaceSpec => ({ at: 'abs', ox: x, oz: z, label, ...o });
+/** Ousmane at work: on the sand by his boats pulled up on the Almadies' beach (src/sea/traverseeSite.ts: the pirogue's bow, the anchor beside him), facing the sea. */
+const NGOR_BOATS = (label: string) => abs(46.2, -156.4, label, { yaw: PI });
 const S = (from: number, to: number, place: PlaceSpec, act: Activity): Slot => ({ from, to, place, act });
 
 // Shared spots (world coordinates come from src/world/builder.ts and src/world/city.ts; checked by scripts/check-npc.mjs).
@@ -219,9 +221,9 @@ export const ROUTINES: Routine[] = [
     id: 'ousmane', hub: 'almadies',
     slots: [
       S(0, 6, abs(66.4, -90, 'chez lui', { yaw: PI / 2 }), 'home'),
-      S(6, 12, P('port', 'à l’embarcadère de Ngor : il loue ses bateaux pour l’île', { ox: 4, oz: 1 }), 'work'),
+      S(6, 12, NGOR_BOATS('à l’embarcadère de Ngor : il loue ses bateaux pour l’île'), 'work'),
       S(12, 14, P('restaurant', 'au Pointe : il livre le poisson à Khady', { ox: 1.5, oz: 0.5 }), 'chat'),
-      S(14, 19, P('port', 'à l’embarcadère de Ngor : les dernières traversées', { ox: 4, oz: 1 }), 'work'),
+      S(14, 19, NGOR_BOATS('à l’embarcadère de Ngor : les dernières traversées'), 'work'),
       S(19, 21, P('city:square', 'place des voisins, il regarde les dames', { ox: -21.5, oz: -2.5, yaw: PI, sit: true, stool: true }), 'chat'),
       S(21, 24, abs(66.4, -90, 'chez lui', { yaw: PI / 2 }), 'home'),
     ],

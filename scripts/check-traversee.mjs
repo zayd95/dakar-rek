@@ -1,16 +1,18 @@
-// La traversée's acceptance on a phone (docs/TRAVERSEE.md « Acceptance »): the quay is the Embarcadère de Ngor and offers no fishing any more; at the
-// pier's end the choice opens with real taps on the action button; a pirogue round trip to the island of Ngor and back, followed through
-// window.__dakar.traversee(), each leg paying once exactly what the rules say (fares − Ousmane's share); after three pirogue round trips (the first
-// by taps, the counter set for the other two) the chaloupe opens and a chaloupe round trip pays its own fares; a reload in the middle of a leg (back
-// on the pier, nothing paid, nothing twice); the night (no crossing, the reason shown); Soumbédioune still offers its fishing trip. Pictures of the
-// quay, the island from the pier, the boarding, the crossing, the island, the return (PNG, compressed under 400 kB).
+// La traversée's acceptance on a phone (docs/TRAVERSEE.md « Acceptance », version 2: boarded and left on the sand): the quay is the Embarcadère de
+// Ngor and offers no fishing any more; both boats lie pulled up on the beach; on the sand by them the choice opens with real taps on the action button;
+// a pirogue round trip to the island of Ngor and back, followed through window.__dakar.traversee(): the customers put on life jackets on the sand,
+// wade in (feet under the sea) and climb aboard; the boat is pushed off stern first, crosses and runs up the island's beach bow first; they climb out
+// into the shallows and take the jackets off on the sand; each leg pays once exactly what the rules say (fares − Ousmane's share); after three pirogue
+// round trips (the first by taps, the counter set for the other two) the chaloupe opens and a chaloupe round trip pays its own fares; a reload in the
+// middle of a leg (back on the sand at the anchor, nothing paid, nothing twice); the night (no crossing, the reason shown); Soumbédioune still offers
+// its fishing trip. Pictures of the quay, the boats on the beach, the boarding, the wading, the crossing, the island's beach, the return (PNG, < 400 kB).
 // Usage: npx vite build && node /tmp/claude-0/beta/tools/serve.mjs "$PWD/dist" 4817 &  node scripts/check-traversee.mjs [baseUrl] [outDir]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import sharp from 'sharp';
 
 const base = process.argv[2] ?? 'http://127.0.0.1:4817/';
-const out = process.argv[3] ?? 'docs/proof/traversee/acceptance';
+const out = process.argv[3] ?? 'docs/proof/traversee/crossing2';
 fs.mkdirSync(out, { recursive: true });
 const SLOW = Number(process.env.SLOW ?? 1);
 const results = []; let failed = 0;
@@ -39,9 +41,13 @@ const ledgerSince = n => d(k => window.__dakar.state.data.ledger.slice(k).map(l 
 const ledgerLen = () => d(() => window.__dakar.state.data.ledger.length);
 const wallet = () => d(() => window.__dakar.state.wallet);
 
-/** At the pier's end, the choice opened by a real tap on the action button (#act), the boat picked by a tap in the sheet. */
+/** On the sand at the anchor, the choice opened by a real tap on the action button (#act), the boat picked by a tap in the sheet. */
+const ANCHOR = { x: 48.5, z: -154.5 };
+const atAnchor = p => Math.hypot(p.x - ANCHOR.x, p.z - ANCHOR.z) < 2.5 && p.z > -157.01;
+/** A boat on its beach pose: there, its heading, grounded (the bow lifted). */
+const beachedAt = (b, at) => !!b && Math.abs(b.x - at.x) < 0.3 && Math.abs(b.z - at.z) < 0.3 && Math.abs(Math.atan2(Math.sin(b.yaw - at.yaw), Math.cos(b.yaw - at.yaw))) < 0.05 && b.ground > 0.99 && b.pitch > 0.025;
 async function takeCrossing(kind) {
-  await d(() => { window.__dakar.setHour(10); window.__dakar.place(30, -150, Math.PI); window.__dakar.state.data.needs.energie = 100; });
+  await d(a => { window.__dakar.setHour(10); window.__dakar.place(a.x, a.z + 1.3, Math.PI); window.__dakar.state.data.needs.energie = 100; }, ANCHOR);
   const focused = await until(() => /:quai$/.test(window.__dakar.focus()?.id ?? ''), null, 60);
   const act = await d(() => document.getElementById('act')?.textContent ?? '');
   await page.locator('#act').tap();
@@ -65,16 +71,18 @@ check('the quay is the « Embarcadère de Ngor » and offers no fishing (« Aide
   port?.name === 'Embarcadère de Ngor' && quayFocused && !/pêcheurs|Pirogue du matin/.test((quay?.all ?? []).join(' ')), JSON.stringify({ port, actions: quay?.all }));
 await d(() => window.__dakar.place(30, -98, Math.PI)); await page.waitForTimeout(1500);
 await shot('00-quay');
-await d(() => { window.__dakar.setHour(10); window.__dakar.place(30, -150, Math.PI); });
+await d(a => { window.__dakar.setHour(10); window.__dakar.place(a.x + 3, a.z + 4, Math.PI - 0.35); }, ANCHOR);
 await until(() => (window.__dakar.traversee()?.customers ?? []).filter(c => c.state === 'wait').length >= 3, null, 60);
-await shot('01-island-from-the-pier');
+await shot('01-boats-on-the-beach');
 
-// ================================================================== the choice at the pier's end
+// ================================================================== the choice on the sand
 let t0 = await tr();
-check('the embarcadère is built in the Almadies: both boats moored, customers waiting on the pier', !!t0 && t0.phase === 'idle' && t0.customers.length >= 3,
-  JSON.stringify({ moored: t0?.moored && Object.fromEntries(Object.entries(t0.moored).map(([k, p]) => [k, [p.x, p.z, p.yaw]])), waiting: t0?.customers.length }));
+const home0 = t0?.poses ?? {};
+check('the embarcadère is built in the Almadies: both boats pulled up on the beach at their poses (bows on the sand), customers waiting on the sand without jackets',
+  !!t0 && t0.phase === 'idle' && t0.customers.length >= 3 && ['pirogue', 'chaloupe'].every(k => beachedAt(t0.boats[k], home0[k].home)) && t0.customers.every(c => !c.vest && c.y > t0.seaY),
+  JSON.stringify({ boats: t0?.boats && Object.fromEntries(Object.entries(t0.boats).map(([k, p]) => [k, [p.x, p.z, p.yaw, p.ground, p.pitch]])), waiting: t0?.customers.map(c => [c.x, c.z, c.vest]) }));
 const c1 = await takeCrossing('pirogue');
-check('standing at the pier\'s end focuses the embarcadère; the action button offers the crossings', c1.focused && /Prendre le bateau/.test(c1.act), c1.act);
+check('standing on the sand by the boats focuses the embarcadère; the action button offers the crossings', c1.focused && /Prendre le bateau/.test(c1.act), c1.act);
 const pir = c1.items.find(i => /Traversée en pirogue/.test(i.text)), cha = c1.items.find(i => /Traversée en chaloupe/.test(i.text));
 check('a tap opens the choice: the pirogue shows its fare, the passengers waiting and Ousmane\'s share', c1.sheet && !!pir && !pir.dis && /passagers? attend/.test(pir.text) && /1.000.F la place/.test(pir.text) && /Ousmane prend 40/.test(pir.text), pir?.text);
 check('the chaloupe is closed and says how many pirogue crossings remain', !!cha && cha.dis && /encore 3/.test(cha.text), cha?.text);
@@ -84,33 +92,52 @@ await shot('02-choice');
 /** Picks `kind` in the open choice and follows the crossing to the island and back, checking each leg's payment, the counters and the way off. */
 async function roundTrip(kind, pick, shots) {
   const w0 = await wallet(), l0 = await ledgerLen(), counters0 = (await tr()).counters, fare = kind === 'pirogue' ? 1000 : 2500;
+  const tStart = (await tr()).events.at(-1)?.t ?? -1, evs = t => t.events.filter(e => e.t > tStart);     // this crossing's moves only
   await pick();
   const helm = await until(() => { const t = window.__dakar.traversee(); return t.helm.seated && t.helm.locked && t.phase !== 'idle'; }, null, 60);
   const plan = (await tr()).plan;
   check(`${kind}: a tap on « Traversée en ${kind} »: the player takes the helm (seated, locked)`, helm && (await tr()).boat === kind, JSON.stringify({ seated: await d(() => window.__dakar.seated()), plan: { out: plan.out.passengers, back: plan.back.passengers } }));
-  if (shots) {
-    await until(() => { const t = window.__dakar.traversee(); return t.customers.filter(c => c.leg === 'aller' && c.seated).length >= 2 && t.customers.some(c => c.leg === 'aller' && !c.seated); }, null, 120);
-    await shot(`${shots}-boarding`);
+  const poses = (await tr()).poses[kind];
+  // the boarding, sampled as it goes: jackets on, feet under the sea while wading in
+  const seen = { vested: new Set(), wading: new Set(), seatedVest: new Set(), seatedBare: new Set() };
+  const sample = t => { for (const c of t.customers) { if (!c.leg) continue; if (c.vest && c.side !== 'bord' && c.y > t.seaY) seen.vested.add(c.id); if (c.wading && c.vest) seen.wading.add(c.id); if (c.seated) (c.vest ? seen.seatedVest : seen.seatedBare).add(c.id); } };
+  let shotBoard = !shots, shotWade = !shots;
+  for (let k = 0; k < 600; k++) {
+    const t = await tr(); sample(t);
+    const out = t.customers.filter(c => c.leg === 'aller');
+    if (!shotBoard && out.filter(c => c.vest && c.side !== 'bord' && !c.wading && c.z < t.poses[kind].home.z + 9.5).length >= 2) { await shot(`${shots}-boarding`); shotBoard = true; }   // jackets on, down the sand in view
+    else if (!shotWade && out.filter(c => c.wading).length >= 2) { await shot(`${shots}-wading`); shotWade = true; }
+    if (out.length && out.every(c => c.seated) || t.phase === 'out') break;
+    await page.waitForTimeout(200);
   }
-  const boarded = await until(p => window.__dakar.traversee().customers.filter(c => c.leg === 'aller' && c.seated).length === p, plan.out.passengers, 180);
-  check(`${kind}: ${plan.out.passengers} customers walk down the pier and sit aboard`, boarded, JSON.stringify((await tr()).customers.map(c => [c.state, c.leg])));
+  const tb = await tr(), evB = evs(tb).filter(e => e.leg === 'aller');
+  const boardEv = evB.filter(e => e.what === 'board'), onEv = evB.filter(e => e.what === 'vest-on');
+  const boarded = tb.customers.filter(c => c.leg === 'aller' && c.seated && c.vest).length === plan.out.passengers;
+  check(`${kind}: ${plan.out.passengers} customers put on life jackets on the sand, wade in (feet under the sea) and sit aboard in them`,
+    boarded && onEv.length === plan.out.passengers && onEv.every(e => e.y > tb.seaY) && boardEv.length === plan.out.passengers && boardEv.every(e => e.y < tb.seaY - 0.02 && e.vest) && seen.wading.size >= 1 && seen.seatedBare.size === 0,
+    JSON.stringify({ seated: tb.customers.filter(c => c.leg === 'aller').map(c => [c.state, c.vest]), vestOn: onEv.map(e => e.y), climbFrom: boardEv.map(e => e.y), wadingSeen: seen.wading.size }));
   const z0 = (await tr()).pose.z;
-  let sea = { roll: 0, wake: 0, z: z0 };
+  let sea = { roll: 0, wake: 0, z: z0 }, pushed = { astern: false, ground0: 1, groundMin: 1 };
   await until(() => window.__dakar.traversee().phase === 'out', null, 60);
+  pushed.ground0 = (await tr()).pose.ground;
   for (let k = 0; k < 400; k++) {
     const t = await tr();
+    if (t.pose.astern) pushed.astern = true;
+    pushed.groundMin = Math.min(pushed.groundMin, t.pose.ground);
     sea = { roll: Math.max(sea.roll, Math.abs(t.pose.roll)), wake: Math.max(sea.wake, t.pose.wake), z: Math.min(sea.z, t.pose.z), locked: t.helm.locked };
     if (t.pose.z < -222 || t.phase !== 'out') break;
     await page.waitForTimeout(250);
   }
   const mid = await tr();
+  check(`${kind}: pushed off stern first from the sand: astern, its bow off the sand (grounded → afloat)`, pushed.astern && pushed.ground0 > 0.9 && pushed.groundMin < 0.01, JSON.stringify(pushed));
   check(`${kind}: across the open water: the boat moves, rocks, its wake shows, the helm stays locked`, mid.pose.z < z0 - 40 && sea.roll > 0.005 && sea.wake > 0.2 && mid.helm.locked && mid.helm.seated,
     JSON.stringify({ z: mid.pose.z, roll: +sea.roll.toFixed(3), wake: sea.wake, yaw: mid.pose.yaw }));
   if (shots) await shot(`${shots}-mid-crossing`);
+  if (shots) { await until(() => { const t = window.__dakar.traversee(); return t.phase !== 'out' || t.pose.len - t.pose.s < 26; }, null, 180); await shot(`${shots}-arriving`); }
   const landed = await until(() => window.__dakar.traversee().phase === 'land', null, 180);
   const atIsland = await tr();
-  check(`${kind}: it moors at the island's jetty`, landed && Math.abs(atIsland.pose.x - 40.2) < 0.3 && Math.abs(atIsland.pose.z + 290) < 0.3, JSON.stringify(atIsland.pose));
-  if (shots) { await until(() => window.__dakar.traversee().customers.filter(c => c.leg === 'aller' && c.state === 'leave').length >= 2, null, 60); await shot(`${shots}-island`); }
+  check(`${kind}: it comes in bow first and runs up the island's beach (grounded, the bow lifted)`, landed && beachedAt(atIsland.pose, poses.isle), JSON.stringify({ pose: atIsland.pose, isle: poses.isle }));
+  if (shots) { await until(() => window.__dakar.traversee().customers.some(c => c.leg === 'aller' && c.side === 'ile' && c.wading), null, 60); await shot(`${shots}-island`); }
   const paid1 = await until(() => window.__dakar.traversee().paid.some(p => p.leg === 'aller' && p.kind === window.__dakar.traversee().boat), null, 120);
   const w1 = await wallet(), legs1 = await ledgerSince(l0);
   const leg1 = legs1.filter(([l]) => /^Traversée vers Ngor/.test(l));
@@ -118,14 +145,25 @@ async function roundTrip(kind, pick, shots) {
     paid1 && plan.out.fares === plan.out.passengers * fare && leg1.length === 1 && leg1[0][1] === plan.out.net && w1 - w0 === legs1.reduce((s, [, a]) => s + a, 0),
     JSON.stringify({ lines: legs1, wallet: [w0, w1] }));
   const walkedOff = await until(() => window.__dakar.traversee().customers.filter(c => c.leg === 'aller').every(c => c.state === 'leave' || c.state === 'gone'), null, 60);
-  check(`${kind}: the customers step off onto the jetty and walk up onto the island`, walkedOff, JSON.stringify((await tr()).customers.filter(c => c.side === 'ile').map(c => [c.state, c.x, c.z])));
+  await until(([n, t0]) => window.__dakar.traversee().events.filter(e => e.t > t0 && e.what === 'vest-off' && e.side === 'ile').length >= n, [plan.out.passengers, tStart], 60);
+  const ti = await tr(), off1 = evs(ti).filter(e => e.side === 'ile' && e.what === 'alight' && e.leg === 'aller'), bare1 = evs(ti).filter(e => e.side === 'ile' && e.what === 'vest-off');
+  check(`${kind}: the customers climb out into the shallows, wade to the sand, take their jackets off there and walk up the beach`,
+    walkedOff && off1.length === plan.out.passengers && off1.every(e => e.y < ti.seaY - 0.02 && e.vest) && bare1.length === plan.out.passengers && bare1.every(e => e.y > ti.seaY && !e.vest),
+    JSON.stringify({ climbOut: off1.map(e => e.y), jacketsOff: bare1.map(e => e.y), ashore: ti.customers.filter(c => c.side === 'ile').map(c => [c.state, c.x, c.z, c.vest]) }));
   const backBoarded = await until(() => window.__dakar.traversee().phase === 'back', null, 120);
-  check(`${kind}: ${plan.back.passengers} return customers come down the jetty and board`, backBoarded && (await tr()).customers.filter(c => c.leg === 'retour' && c.seated).length === plan.back.passengers);
+  const tbb = await tr(), evR = evs(tbb).filter(e => e.leg === 'retour');
+  check(`${kind}: ${plan.back.passengers} return customers come down the beach from the parasols, put on jackets, wade in and board`,
+    backBoarded && tbb.customers.filter(c => c.leg === 'retour' && c.seated && c.vest).length === plan.back.passengers && evR.filter(e => e.what === 'vest-on' && e.y > tbb.seaY).length === plan.back.passengers
+      && evR.filter(e => e.what === 'board' && e.y < tbb.seaY - 0.02).length === plan.back.passengers, JSON.stringify(evR.map(e => [e.id, e.what, e.y])));
+  if (shots) { await until(() => { const t = window.__dakar.traversee(); return t.phase !== 'back' || t.pose.len - t.pose.s < 26; }, null, 240); await shot(`${shots}-return`); }
   const home = await until(() => window.__dakar.traversee().phase === 'landBack', null, 240);
   const atQuay = await tr();
-  check(`${kind}: the boat crosses back and moors at the pontoon, west side against it`, home && Math.abs(atQuay.pose.x - 34.2) < 0.3 && Math.abs(atQuay.pose.z + 168.5) < 0.3 && Math.abs(atQuay.pose.yaw) < 0.05, JSON.stringify(atQuay.pose));
+  check(`${kind}: the boat crosses back and runs up its own beach bow first, at its pose`, home && beachedAt(atQuay.pose, poses.home), JSON.stringify({ pose: atQuay.pose, home: poses.home }));
+  if (shots) { await until(() => window.__dakar.traversee().customers.some(c => c.leg === 'retour' && c.side === 'quai'), null, 30); await shot(`${shots}-back`); }
   const done = await until(() => window.__dakar.traversee().phase === 'idle' && !window.__dakar.activity(), null, 120);
-  if (shots) { await until(() => window.__dakar.traversee().customers.some(c => c.side === 'quai' && c.state === 'leave'), null, 10); await shot(`${shots}-back`); }
+  const tq = await tr(), offQ = evs(tq).filter(e => e.side === 'quai' && e.what === 'alight' && e.t >= (evR.at(-1)?.t ?? 0)), bareQ = evs(tq).filter(e => e.side === 'quai' && e.what === 'vest-off' && e.t >= (evR.at(-1)?.t ?? 0));
+  check(`${kind}: at the mainland the same: out into the shallows, jackets off on the sand`, offQ.length === plan.back.passengers && offQ.every(e => e.y < tq.seaY - 0.02) && bareQ.length === plan.back.passengers && bareQ.every(e => e.y > tq.seaY && !e.vest),
+    JSON.stringify({ climbOut: offQ.map(e => e.y), jacketsOff: bareQ.map(e => e.y) }));
   const w2 = await wallet(), legs2 = await ledgerSince(l0), t2 = await tr();
   const leg2 = legs2.filter(([l]) => /^Traversée retour de Ngor/.test(l));
   check(`${kind}: the return leg is paid once: ${plan.back.net} F (${plan.back.passengers} × ${fare} F − Ousmane's ${plan.back.share} F)`, done && plan.back.fares === plan.back.passengers * fare && leg2.length === 1 && leg2[0][1] === plan.back.net && w2 - w0 === legs2.reduce((s, [, a]) => s + a, 0),
@@ -133,7 +171,8 @@ async function roundTrip(kind, pick, shots) {
   const key = `traversees_${kind}`;
   check(`${kind}: the counters move by one round trip`, t2.counters.traversees === counters0.traversees + 1 && t2.counters[key] === counters0[key] + 1 && t2.counters.passagers_ngor === counters0.passagers_ngor + plan.out.passengers + plan.back.passengers, JSON.stringify(t2.counters));
   const p2 = await d(() => window.__dakar.pos());
-  check(`${kind}: the player is set down on the pier at the anchor, free to walk`, Math.hypot(p2.x - 30, p2.z + 152) < 2.5 && p2.mode === 'play' && !(await d(() => window.__dakar.seated())), JSON.stringify(p2));
+  check(`${kind}: the player is set down on the sand at the anchor, free to walk; the other boat never left its pose`, atAnchor(p2) && p2.mode === 'play' && !(await d(() => window.__dakar.seated())) && Object.entries(t2.boats).every(([k, b]) => beachedAt(b, t2.poses[k].home)),
+    JSON.stringify({ pos: p2, boats: Object.fromEntries(Object.entries(t2.boats).map(([k, p]) => [k, [p.x, p.z, p.ground]])) }));
   console.log(`PAID ${kind}: aller ${leg1[0]?.[1]} F · retour ${leg2[0]?.[1]} F · plan ${JSON.stringify({ out: plan.out, back: plan.back })}`);
 }
 await roundTrip('pirogue', c1.pick, '03');
@@ -158,12 +197,12 @@ await until(() => window.__dakar?.pos?.()?.hub === 'almadies' && !!window.__daka
 await d(() => window.__dakar.setHour(10));
 await page.waitForTimeout(1500);
 const pR = await d(() => window.__dakar.pos()), tR = await tr();
-check('reloaded mid-leg: the player is back on the pier at the anchor', Math.hypot(pR.x - 30, pR.z + 152) < 2.5 && !(await d(() => window.__dakar.seated())), JSON.stringify(pR));
-check('both boats are at their moorings, nothing is paid for the unfinished leg, the counters as they were', tR.phase === 'idle' && Math.abs(tR.moored.pirogue.z + 168.5) < 0.1 && Math.abs(tR.moored.chaloupe.z + 168.5) < 0.1
-  && (await wallet()) === wR && (await ledgerLen()) === lR && JSON.stringify(tR.counters) === JSON.stringify(cR), JSON.stringify({ moored: tR.moored, wallet: [wR, await wallet()], counters: tR.counters }));
+check('reloaded mid-leg: the player is back on the sand at the anchor', atAnchor(pR) && !(await d(() => window.__dakar.seated())), JSON.stringify(pR));
+check('both boats are back on the beach at their poses, nothing is paid for the unfinished leg, the counters as they were', tR.phase === 'idle' && ['pirogue', 'chaloupe'].every(k => beachedAt(tR.boats[k], tR.poses[k].home))
+  && (await wallet()) === wR && (await ledgerLen()) === lR && JSON.stringify(tR.counters) === JSON.stringify(cR), JSON.stringify({ boats: tR.boats, wallet: [wR, await wallet()], counters: tR.counters }));
 
 // ================================================================== at night
-await d(() => { window.__dakar.setHour(21); window.__dakar.place(30, -150, Math.PI); });
+await d(a => { window.__dakar.setHour(21); window.__dakar.place(a.x, a.z + 1.3, Math.PI); }, ANCHOR);
 await until(() => /:quai$/.test(window.__dakar.focus()?.id ?? ''), null, 60);
 await page.waitForTimeout(800);
 const why = await d(() => window.__dakar.focus()?.why ?? []);

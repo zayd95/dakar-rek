@@ -275,8 +275,8 @@ export function fishingBeach(b: Base & { boat?: string }, h: PlaceHooks = {}): P
  * customers along them and says when each one is over. Labels are unique: the venue reads the step it is on by its label.
  */
 export const CROSSING_STEPS = {
-  start: 'Ousmane largue les amarres', helm: 'Tu prends la barre', board: 'Les passagers embarquent', out: 'Cap sur l’île de Ngor',
-  land: 'Débarquement sur l’île', boardBack: 'Embarquement pour le retour', back: 'Retour à l’embarcadère', landBack: 'Débarquement au ponton',
+  start: 'Ousmane distribue les gilets', helm: 'Tu prends la barre', board: 'Les passagers embarquent', out: 'Cap sur l’île de Ngor',
+  land: 'Débarquement sur la plage de l’île', boardBack: 'Embarquement pour le retour', back: 'Retour à l’embarcadère', landBack: 'Débarquement sur la plage',
 } as const;
 export type CrossingStage = keyof typeof CROSSING_STEPS;
 /** The stage a step label stands for. */
@@ -284,9 +284,9 @@ export const crossingStage = (label: string): CrossingStage | null => (Object.ke
 
 /** The venue's side of a crossing (src/venues/embarcadere.ts). */
 export interface CrossingHooks {
-  /** The helm's seat of this boat: the step that boards it seats the player there from the pier's end, as a vehicle's seat. */
+  /** The helm's seat of this boat: the step that boards it seats the player there from the anchor on the sand, as a vehicle's seat. */
   helm(kind: BoatKind): string;
-  /** The venue's word that this stage is over (the runner waits on it: the passengers seated, the boat moored…). */
+  /** The venue's word that this stage is over (the runner waits on it: the passengers seated, the boat run up on the other beach…). */
   over(kind: BoatKind, stage: CrossingStage): boolean;
   /** About how long a stage lasts (s), for the progress bar. */
   seconds(kind: BoatKind, stage: CrossingStage): number;
@@ -299,18 +299,19 @@ export interface CrossingHooks {
   detail(kind: BoatKind): string;
   /** What is said as the boarding starts (« Nanu dem ! »). */
   call?(kind: BoatKind): string;
-  /** Open the choice at the pier's end. */
+  /** Open the choice on the sand by the boats. */
   choose(): void;
   /** The line of the place's own offer (who waits, the hours). */
   summary?(): string;
 }
 
 /**
- * Embarcadère de Ngor (la traversée, docs/TRAVERSEE.md): at the pier's end one offer opens the choice of the crossing, by pirogue or by chaloupe
- * (fare, passengers waiting, Ousmane's share; the chaloupe closed until Ousmane trusts the player with it). A crossing is a round trip of
- * `ride` steps the venue plays out — the player at the helm, the customers aboard, across to the island's jetty, the customers off and the leg
- * paid (the step's own effects: never twice), the return customers, back to the pontoon and that leg paid. Open 7 h–19 h, busier 9–12 h and 16–18 h.
- * The crossings are in `offers.barre` (no anchor of their own: the choice starts them).
+ * Embarcadère de Ngor (la traversée, docs/TRAVERSEE.md): on the sand by the beached boats one offer opens the choice of the crossing, by pirogue or
+ * by chaloupe (fare, passengers waiting, Ousmane's share; the chaloupe closed until Ousmane trusts the player with it). A crossing is a round trip
+ * of `ride` steps the venue plays out — life jackets on, the player at the helm, the customers wading out and climbing aboard, pushed off and across
+ * to the island's beach, the customers off into the shallows and the leg paid (the step's own effects: never twice), the return customers, back
+ * onto the mainland's beach and that leg paid. Open 7 h–19 h, busier 9–12 h and 16–18 h. The crossings are in `offers.barre` (no anchor of their
+ * own: the choice starts them).
  */
 export function embarcadere(b: Base, h: PlaceHooks & { crossing: CrossingHooks }): PlaceSpec {
   const at = anchors(b.anchors), c = h.crossing;
