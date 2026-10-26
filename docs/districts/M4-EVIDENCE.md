@@ -54,7 +54,7 @@ Awa (one body) costs about 10 draw calls and 5 000 triangles, and only while the
 - **The beat game was not played on the beat.** The dance counted comes from the existing finish shortcut.
 - **The taxi leaves for another district.** « Home » is proven with the taxi (and the car staying put), not with the player driving the Teranga home.
 - **No waiter walks the food to the table at the rooftop**; the plate appears when the guest sits. No valet area.
-- **The rooftop door is still the facade the generator finds** (here the villa at x = −42): reached from the road by crossing a lot, not from a forecourt.
+- **Pre-fix limitation:** the 40/40 video below predates the dedicated hospitality-strip change. The new door is on the authored Terrasse de Ngor frontage; rerun the journey and inspect the updated street view before treating the exterior as accepted.
 - **One recurring character.** Awa remembers one choice and the stages of the last evening; there is no longer story.
 - **The `walkTo` marker** is a marker on the neighbourhood's directory entry for La Vague, not a route.
 - **Multiplayer:** the presence whitelist does not know the rooftop's space (an existing limit); other players do not see the guest on the terrace.
