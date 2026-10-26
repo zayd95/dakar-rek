@@ -626,6 +626,3 @@ export function buildEmbarcadere(env: VenueEnv): EmbarcadereVenue {
     setPirogueTrips: (n: number) => { ctx.state.data.counters[R.TRAV_COUNTERS.of('pirogue')] = n; return n; },
   };
 }
-
-/** The labels of the crossing's steps (the checks follow them). */
-export const TRAVERSEE_STEPS = CROSSING_STEPS;
