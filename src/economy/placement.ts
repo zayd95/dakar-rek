@@ -222,12 +222,12 @@ export const WHY = {
 const ON_FIXTURE: Record<Fixture['kind'], string> = {
   counter: 'Pas sur le plan de travail', sink: 'Pas sur le plan de travail', stove: 'Pas sur le plan de travail', fridge: 'Pas sur le frigo',
   shower: 'Pas dans la douche', wc: 'Pas sur les toilettes', basin: 'Pas sur le lavabo',
-  bath: 'Pas dans la baignoire', pool: 'Pas dans la piscine', heli: 'Pas sur l’hélicoptère',
+  bath: 'Pas dans la baignoire', pool: 'Pas dans la piscine', heli: 'Pas sur l’hélicoptère', post: 'Pas sur un poteau de la pergola',
 };
 const FRONT_OF: Record<Fixture['kind'], string> = {
   counter: 'Laisse la place devant le plan de travail', sink: 'Laisse la place devant l’évier', stove: 'Laisse la place devant la cuisinière', fridge: 'Laisse la place devant le frigo',
   shower: 'Laisse l’accès à la douche', wc: 'Laisse l’accès aux toilettes', basin: 'Laisse la place devant le lavabo',
-  bath: 'Laisse l’accès à la baignoire', pool: 'Laisse le bord de la piscine libre', heli: 'Laisse le passage autour de l’hélicoptère',
+  bath: 'Laisse l’accès à la baignoire', pool: 'Laisse le bord de la piscine libre', heli: 'Laisse le passage autour de l’hélicoptère', post: 'Laisse le passage autour du poteau',
 };
 /** « vers la chambre »: a room named with its article. */
 const ARTICLE: Record<RoomKind, string> = {

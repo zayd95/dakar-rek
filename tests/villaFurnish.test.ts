@@ -11,6 +11,7 @@ import { furnitureIn, normalize } from '../src/economy/assets';
 import { installFurnitureKit } from '../src/economy/furnitureKitAdapter';
 import type { Placement } from '../src/core/types';
 import { STOREY } from '../src/housing/villa';
+import { VILLA_ALMADIES_LAYOUT } from '../src/housing/villaLayout';
 
 /**
  * LD2.0-D lane V-S: furnishing the villa on its three levels (src/economy/placement.ts on the villa's plan): the editor's rooms, the automatic
@@ -185,5 +186,35 @@ describe('an older save\'s villa (its one open room): every piece kept, re-check
     const out = relayout(L, [{ spec: spec('lit_bois'), at: bed }, { spec: spec('canape_wax'), at: at(5.2, -1) }]);
     expect(out[0]).toEqual(bed);
     expect(roomOf(L, out[1]!)?.kind).toBe('sejour');
+  });
+});
+
+describe('the villa furnished with the « Collection Almadies » (the look pass: src/housing/villaLayout.ts, the owner\'s showcase can reuse it)', () => {
+  const laid = VILLA_ALMADIES_LAYOUT;
+  it('each piece valid at its spot beside those before it, in the room the list says, every room still reachable', () => {
+    const placed: Placed[] = [];
+    for (const p of laid) {
+      const f = spec(p.spec), a = at(p.x, p.z, p.rot);
+      expect(whyNot(L, f, a, placed), `${p.spec} in ${p.room}`).toBeNull();
+      expect(roomOf(L, a)?.id, p.spec).toBe(p.room);
+      placed.push({ spec: f, at: a });
+    }
+    expect(valid(placed)).toBe(true);
+    expect(reachable(V, obstaclesOf(placed)).ok).toBe(true);
+    for (const p of laid) expect(Math.abs(p.x)).toBeLessThanOrEqual(30);
+  });
+  it('the line\'s pieces K-L suggested for each room, the ring chandeliers over the lounge and the dining table, the teak outside', () => {
+    const inRoom = (room: string) => laid.filter(p => p.room === room).map(p => p.spec);
+    expect(inRoom('salon')).toEqual(expect.arrayContaining(['canape_courbe', 'table_basse_marbre_noir', 'tapis_rond_jute', 'fauteuil_boucle', 'gueridon_marbre', 'lampadaire_champignon', 'lustre_couronne']));
+    expect(inRoom('salon').filter(id => id === 'fauteuil_boucle')).toHaveLength(2);
+    expect(inRoom('manger')).toEqual(expect.arrayContaining(['salle_manger_ronde', 'lustre_couronne', 'enfilade_bronze']));
+    expect(inRoom('suite')).toEqual(expect.arrayContaining(['lit_capitonne_noir', 'chevet_greige', 'banc_lit', 'dressing_bronze', 'miroir_ovale']));
+    expect(inRoom('suite').filter(id => id === 'chevet_greige')).toHaveLength(2);
+    expect(inRoom('bureau')).toEqual(expect.arrayContaining(['bureau_caisson', 'bibliotheque_bronze']));
+    expect(inRoom('chambre2')).toEqual(expect.arrayContaining(['lit_lin_greige', 'chevet_noyer', 'chiffonnier_noyer']));
+    expect(inRoom('salon_familial')).toEqual(expect.arrayContaining(['meuble_tv_laque', 'bibliotheque_noyer', 'lampadaire_arc_plisse']));
+    expect(laid.map(p => p.spec)).toEqual(expect.arrayContaining(['coiffeuse_ronde', 'commode_six', 'pot_cannele']));
+    // indoors, every piece is of the line; outdoors, the premium teak
+    for (const p of laid) expect(V.rooms.find(r => r.id === p.room)!.outdoor ? spec(p.spec).type : spec(p.spec).line, p.spec).toBe(V.rooms.find(r => r.id === p.room)!.outdoor ? 'outdoor' : 'almadies');
   });
 });

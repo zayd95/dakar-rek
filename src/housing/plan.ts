@@ -35,8 +35,8 @@ export interface Room {
   /** LD2.0-D: a shorter name for the editor's room chip (a phone's width), when the name is long. */
   short?: string;
   box: Rect;
-  /** 'stone': paving outdoors (a deck, a terrace). */
-  floor: 'tiles' | 'wood' | 'marble' | 'stone';
+  /** 'stone': paving outdoors (a terrace); 'deck' (LD2.0-D look pass): teak boards outdoors (a pool deck, a roof terrace). */
+  floor: 'tiles' | 'wood' | 'marble' | 'stone' | 'deck';
   /** LD2.0-D: the level it is on (a plan with `levels`); absent: the plan's one level. */
   level?: string;
   /** LD2.0-D: open to the sky (a garden, a terrace, a balcony). */
@@ -45,6 +45,10 @@ export interface Room {
   edge?: EdgeKind;
   /** LD2.0-D: the colour of the outside faces of its walls (a stone-clad entrance, a wood-clad stair head), inside and in the street façade alike. */
   facade?: number;
+  /** LD2.0-D look pass: the outside faces of its walls clad in travertine (inside the lot and in the street façade alike); default the render. */
+  clad?: 'stone';
+  /** LD2.0-D look pass: its one accent wall inside (the side of the room it is on): wood slat panelling or a stone face. */
+  accent?: { side: Side; kind: 'wood' | 'stone' };
 }
 /**
  * A way through a wall. `front`: the street door (the home's way out: « Sortir »). `door`: an interior door with a leaf that swings into room `swing`,
@@ -62,7 +66,12 @@ export interface Window { room: string; side: Side; at: number; width: number; s
  * side a person uses it from. LD2.0-D: a bathtub (`bath`), a swimming pool's basin (`pool`, `depth` m deep, its edge walked round), the helicopter
  * parked on the roof (`heli`: its body, walked round, src/world/helicopter.ts); `island`: a counter standing free in the room (no cupboards on a wall).
  */
-export interface Fixture { id: string; room: string; kind: 'counter' | 'fridge' | 'stove' | 'sink' | 'shower' | 'wc' | 'basin' | 'bath' | 'pool' | 'heli'; box: Rect; h: number; front: Side; depth?: number; island?: boolean }
+export interface Fixture { id: string; room: string; kind: 'counter' | 'fridge' | 'stove' | 'sink' | 'shower' | 'wc' | 'basin' | 'bath' | 'pool' | 'heli' | 'post'; box: Rect; h: number; front: Side; depth?: number; island?: boolean }
+/**
+ * LD2.0-D look pass: a pergola over an open room: its roof of wooden slats over `box`, `h` m above the floor, on the plan's `post` fixtures of that
+ * room (each a fitting: walked round, never furnished over).
+ */
+export interface Pergola { id: string; room: string; box: Rect; h: number }
 /** LD2.0-D: a level of a plan: its floor `y` m above the ground floor's, and where its rooms sit in plan space (house x + `dx`). */
 export interface Level { id: string; name: string; y: number; dx: number }
 /**
@@ -89,6 +98,8 @@ export interface FloorPlan {
   levels?: Level[];
   stairs?: Stair[];
   marks?: Mark[];
+  /** LD2.0-D look pass: pergolas over open rooms (their posts are fixtures). */
+  pergolas?: Pergola[];
   /** The home's extent in its own frame (house metres, every level stacked): default ±w/2, ±d/2. */
   box?: Rect;
   /** Plan space's extent (unfolded: every level side by side): default `box`. */
@@ -531,7 +542,7 @@ export function clearZones(p: FloorPlan, step = 0.8, use = 0.6): Clear[] {
     }
   }
   for (const f of p.fixtures) {
-    if (f.kind === 'sink' || f.kind === 'stove' || f.kind === 'pool' || f.kind === 'heli') continue;   // on the counter: the counter's own front covers them
+    if (f.kind === 'sink' || f.kind === 'stove' || f.kind === 'pool' || f.kind === 'heli' || f.kind === 'post') continue;   // on the counter: the counter's own front covers them
     const b = f.box, d = f.front === 'w' ? { x0: b.x0 - use, x1: b.x0, z0: b.z0, z1: b.z1 } : f.front === 'e' ? { x0: b.x1, x1: b.x1 + use, z0: b.z0, z1: b.z1 }
       : f.front === 'n' ? { x0: b.x0, x1: b.x1, z0: b.z0 - use, z1: b.z0 } : { x0: b.x0, x1: b.x1, z0: b.z1, z1: b.z1 + use };
     out.push({ ...d, why: 'fitting' });
