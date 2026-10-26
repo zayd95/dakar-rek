@@ -67,6 +67,8 @@ import { arrivalModule } from '../arena/arrival';
 import { meals } from './meals';
 import { perform } from './perform';
 import { football } from './football';
+import { VISIT_MODULE } from '../online/visit';
+import { MEETUPS_MODULE } from '../online/meetups';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -273,4 +275,6 @@ export const MODULES: GameModule[] = [
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)
   signFitModule,        // every painted board repainted at its plane's own proportions after the hub is built (src/game/signFit.ts)
   pikineDnaModule,      // Pikine Street DNA phase 2: the first walk's walls, gates, wires, landmarks, in one draw call (src/game/pikineDna.ts)
+  VISIT_MODULE,         // LD2.0-B: home invitations — the host's snapshot, the guest at the door and inside, read-only; presence `home:<tag>` (src/online/visit.ts)
+  MEETUPS_MODULE,       // LD2.0-B: meetings at real places of the city at a city time — places, « Y aller », being there (src/online/meetups.ts)
 ];

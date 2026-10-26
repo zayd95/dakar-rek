@@ -8,7 +8,7 @@ Game money only: fictional francs, no real payment, no cash-out. Code: `src/econ
 |---|---|---|---|
 | `wallet` (Portefeuille) | `SaveData.wallet`, this device | the game, through `GameState.addMoney` (pay, prices, fares, income) and `move` | `SaveData.ledger` (last 100) |
 | `savings` (Épargne Teranga) | `SaveData.bank.savings`, this device | only `move` (wallet ↔ savings) and `postSavings` (the bank's interest) | `SaveData.bank.tx` (last 200) |
-| `online` (LD2.0-B) | the server (Cloudflare Worker, Durable Object) | only the server | the server's transfer ledger |
+| `online` (Teranga Money, LD2.0-B) | the server (`server/social.ts`, the `ledger` object) | only the server | the server's ledger (`online.history()`) |
 
 Rules every operation keeps:
 - Whole francs, never below 0, never above `MONEY_MAX` (2^53 − 1).
@@ -40,13 +40,35 @@ Rules: `src/economy/bank.ts` (pure, `tests/bank.test.ts`). Counter: `src/economy
   - He « étudiera ta demande » only when his rules would not refuse. When they would, the advice says what is missing (his trust, the late debt) or says nothing.
   - A venture is called « à ta portée » only when wallet + savings cover its price.
 
-## What LD2.0-B adds (not built yet)
-- The `online` account is server-authoritative. The client never sets its balance; it shows what the server says.
-- Moving money between the local wallet and `online` is a `move` whose remote side is confirmed by the server.
-  - The local side is written as pending, with the server operation id as its `ref`.
-  - It is applied once the server acknowledges. It is refunded if the server refuses or the operation expires, and never both, thanks to the ref.
-- A transfer between two players happens on the server only: one atomic, idempotent operation that debits A's `online` account and credits B's.
-  - Chat text never triggers it; only the « Envoyer de l'argent » confirmation does.
-  - Both clients then read their balance and history from the server.
-- Saves made before B keep their wallet and savings. Nothing moves to `online` unless the player chooses to, so no saved wealth is replaced silently.
-- Offline solo play keeps working: `wallet` and `savings` never need the server.
+## Teranga Money (LD2.0-B, built)
+The design is in `docs/ld2/LD2_B_CONTRACT.md`. The code:
+- the ledger: `server/social.ts`, with its rules in `src/online/ledgerRules.ts`;
+- the device's side: `src/economy/money.ts` (`reserveOnline`, `settleOnline`, `quotePay`) and `SaveData.online`;
+- the client: `src/online/client.ts`.
+
+**The account:**
+- **Server-held:** the device never sets its balance. It shows the server's balance, with when it was given (« il y a 3 min · hors ligne »).
+- **One ledger object:** each operation is one transaction, applied whole or not at all, and idempotent by its id (the id made when the confirmation showed).
+- **The operations:**
+  - `fund` (« Recharger »): wallet → Teranga Money.
+  - `cashout` (« Retirer »): Teranga Money → wallet.
+  - `pay`: one player's Teranga Money → another's, with a top-up from the sender's wallet in the same operation when the balance is short.
+- **A money request** is paid at most once, by the payment that names it.
+- **Limits (`ECONOMY.online`):** 250 000 F per operation; per server day, 500 000 F topped up, 500 000 F sent and 1 000 000 F received; 5 000 000 F balance.
+
+**The device's side:**
+1. Before a top-up leaves, the wallet is debited (« Teranga Money · recharge ») and the operation written as pending in `SaveData.online`.
+2. The save is written synchronously; nothing is sent if it fails.
+3. Then:
+   - The server says yes: the pending entry closes.
+   - It says no: the wallet is refunded once (« recharge annulée »).
+   - No answer: the same id is sent again at the next connection, so the server applies it or returns its first answer.
+- A withdrawal credits the wallet once, by its id, when the server has debited.
+- `online` is in the fourth extras backup (`dakarrek.guest.save.v6.extras.4`), so a rollback to the LD2.0-A client never loses a pending top-up.
+
+**What it cannot guarantee:** money a device brings in comes from that device's own wallet. The whole single-player economy lives on the device, so a modified device could bring money it never earned. The daily limits bound that.
+
+**Unchanged:**
+- Saves made before B keep their wallet and savings. Nothing moves to Teranga Money unless the player chooses to.
+- Offline solo play never needs the server.
+- Chat text never moves money.

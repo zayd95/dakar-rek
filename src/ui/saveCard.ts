@@ -14,8 +14,11 @@ export interface SaveCardHooks {
   save(): boolean;
   /** The current game as a code (saved first). */
   code(): string;
-  /** Replace the game by an imported one and reload; false when the storage refuses. */
-  replace(data: SaveData, profile: CodeProfile | null): boolean;
+  /**
+   * Replace the game by an imported one and reload; false when the storage refuses. `key`: the online account's device key the code carries (LD2.0-B),
+   * installed with the game (src/core/saveTransfer.ts importSave), or null for a code without one.
+   */
+  replace(data: SaveData, profile: CodeProfile | null, key?: string | null): boolean;
   canUndo(): boolean;
   undo(): boolean;
   /** Catalogue name and kind of an asset id, for the summary of a code. */
@@ -27,7 +30,7 @@ export interface SaveCardHooks {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 /** The import being checked, kept while the phone re-renders. */
-let pending: { data: SaveData; profile: CodeProfile | null } | null = null;
+let pending: { data: SaveData; profile: CodeProfile | null; key: string | null } | null = null;
 let panel: 'none' | 'copy' | 'import' = 'none';
 let lastError = '';
 /** The code shown after « Copier » (made once per tap: making it saves the game). */
@@ -47,12 +50,14 @@ export function saveCardHtml(): string {
     ${b('copy', 'Copier ma sauvegarde', 'Un code qui contient toute ta partie')}
     ${panel === 'copy' ? `<div class="ph-save-io"><textarea class="ph-code" readonly rows="3" aria-label="Code de ta sauvegarde">${esc(copied)}</textarea>
       <p class="pk-note">Copie refusée ? Touche le code, sélectionne tout, puis copie.</p>
+      <p class="pk-note warn">Ce code contient aussi la clé de ton compte en ligne (Messages, Teranga Money) : ne le partage avec personne.</p>
       ${h.framed ? '' : b('file', 'Enregistrer un fichier', 'dakar-rek-sauvegarde.txt')}</div>` : ''}
     ${b('import', 'Importer une sauvegarde', 'Un code copié depuis le jeu, ou son fichier')}
     ${panel === 'import' ? `<div class="ph-save-io">
       ${sum ? `<div class="pk-rows"><div class="pk-row"><span class="pk-tx"><b>Partie du ${esc(when)}</b><small>${esc(plays)}</small></span><em class="pk-val">${esc(fcfa(sum.wallet))}</em></div>
           <div class="pk-row"><span class="pk-tx"><b>Domicile principal</b></span><em class="pk-val">${esc(sum.home)}</em></div></div>
         <p class="pk-note warn">Elle remplace la partie de cet appareil. Ta partie actuelle est gardée de côté : tu pourras y revenir.</p>
+        ${pending?.key ? '<p class="pk-note warn">Ce code contient un compte en ligne : il remplacera celui de cet appareil (Messages, Teranga Money).</p>' : ''}
         ${b('apply', 'Remplacer ma partie', '', 'danger')}`
       : `<textarea class="ph-code" rows="3" placeholder="Colle ici le code DAKARREK6:…" aria-label="Code à importer"></textarea>
         <label class="pk-btn secondary ph-file"><span>Choisir un fichier</span><input type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
@@ -60,7 +65,7 @@ export function saveCardHtml(): string {
         ${b('check', 'Vérifier le code', '', 'primary')}`}
       ${b('cancel', 'Annuler', '', 'quiet')}</div>` : ''}
     ${h.canUndo() ? b('undo', 'Revenir à la partie d’avant l’import', 'Celle qu’un import a remplacée ici') : ''}
-    <p class="pk-note">Ta partie reste sur cet appareil. Pour changer de téléphone : copie le code ici, importe-le là-bas.</p>
+    <p class="pk-note">Ta partie reste sur cet appareil. Pour changer de téléphone : copie le code ici, importe-le là-bas. Le code est aussi la clé de ton compte en ligne : ne le partage pas.</p>
   </div>`;
 }
 
@@ -98,7 +103,7 @@ export function bindSaveCard(root: HTMLElement, rerender: () => void, notify?: (
   on('apply', () => {
     if (!pending) return;
     const p = pending; pending = null; panel = 'none';
-    if (!h.replace(p.data, p.profile)) { lastError = 'Ce navigateur refuse d’enregistrer : rien n’a été remplacé.'; panel = 'import'; rerender(); }
+    if (!h.replace(p.data, p.profile, p.key)) { lastError = 'Ce navigateur refuse d’enregistrer : rien n’a été remplacé.'; panel = 'import'; rerender(); }
   });
   on('undo', () => { if (!h.undo()) say('Impossible de revenir en arrière ici', 'warn'); });
   // the code box selects itself on a tap (copying by hand where the clipboard is refused)

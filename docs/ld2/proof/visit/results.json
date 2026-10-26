@@ -1,0 +1,302 @@
+{
+ "perf": {
+  "f2": {
+   "host": {
+    "calls": 24,
+    "tris": 10730
+   },
+   "guest": {
+    "calls": 24,
+    "tris": 10730
+   }
+  },
+  "room": {
+   "host": {
+    "calls": 23,
+    "tris": 10110
+   },
+   "guest": {
+    "calls": 23,
+    "tris": 10110
+   }
+  }
+ },
+ "snapshotChars": 701,
+ "results": [
+  {
+   "name": "A: the F2 is the principal residence, furnished",
+   "ok": true,
+   "extra": "home=appart_jamm"
+  },
+  {
+   "name": "A: homeToInvite is the F2 with its street door and district",
+   "ok": true,
+   "extra": "{\"spec\":\"appart_jamm\",\"hub\":\"pikine\",\"door\":\"pikine:home:jamm\",\"name\":\"Appartement F2 · Résidence Jàmm\"}"
+  },
+  {
+   "name": "A: the snapshot holds the home, the upgrade and every placed piece, well under 12 000 characters",
+   "ok": true,
+   "extra": "10 pieces, 701 chars"
+  },
+  {
+   "name": "A: in the legacy way (no account yet) the home is the private « home »",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "A: inside the home invited into, with the account known, the presence space is home:<own tag>",
+   "ok": true,
+   "extra": "home:7f3a91c20b4e55d1"
+  },
+  {
+   "name": "the host moves a piece with an invitation open: one new snapshot for the account, with the new spot",
+   "ok": true,
+   "extra": "{\"n\":1,\"old\":{\"x\":-1.75,\"z\":-3,\"rot\":0},\"now\":{\"x\":-2,\"z\":-3,\"rot\":0}}"
+  },
+  {
+   "name": "B: owns the same F2 with its own furniture",
+   "ok": true,
+   "extra": "[\"banquette\",\"plante\",\"matelas_sol\",\"radio\"]"
+  },
+  {
+   "name": "« Y aller »: the walking marker is on A’s street door, under A’s name",
+   "ok": true,
+   "extra": "{\"dest\":\"pikine:pin:visit\",\"pin\":{\"id\":\"pikine:pin:visit\",\"name\":\"Chez Awa\",\"x\":-22,\"z\":-70.7}}"
+  },
+  {
+   "name": "« Y aller » in the same district, another presence room: find, then join the host’s room",
+   "ok": true,
+   "extra": "{\"visit\":[],\"find\":[\"7f3a91c20b4e55d1\"],\"here\":[],\"join\":[[\"pikine\",1]]}"
+  },
+  {
+   "name": "away from the door: no « Entrer chez Awa »",
+   "ok": true,
+   "extra": "null"
+  },
+  {
+   "name": "B walked to the door with the joystick and sees « Entrer chez Awa (invité) »",
+   "ok": true,
+   "extra": "{\"dist\":0.5897409747284683,\"atDoor\":{\"id\":\"visit:7f3a91c20b4e55d1\",\"name\":\"Chez Awa\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez Awa (invité)\",\"all\":[\"Entrer chez Awa (invité)\",\"Entrer chez toi\"],\"why\":[]}}"
+  },
+  {
+   "name": "the same door still lets B into B’s own F2",
+   "ok": true,
+   "extra": "[\"Entrer chez Awa (invité)\",\"Entrer chez toi\"]"
+  },
+  {
+   "name": "a real tap on the action button: `visit` asked once, B is inside A’s home",
+   "ok": true,
+   "extra": "{\"host\":\"7f3a91c20b4e55d1\",\"name\":\"Awa\",\"inside\":true,\"perms\":{\"use\":true},\"spec\":\"appart_jamm\"}"
+  },
+  {
+   "name": "B draws A’s home at A’s origin: same pieces, each within 1 cm (and the same turn)",
+   "ok": true,
+   "extra": "A 10 / B 10, worst 0"
+  },
+  {
+   "name": "B draws none of B’s own pieces there",
+   "ok": true,
+   "extra": "[\"visit9\",\"visit0\",\"visit5\",\"visit4\",\"visit7\",\"visit3\",\"visit6\",\"visit1\",\"visit8\",\"visit2\"]"
+  },
+  {
+   "name": "the host’s upgrade that shows (the ceiling fan) is drawn for the guest",
+   "ok": true,
+   "extra": "upgrade meshes 4"
+  },
+  {
+   "name": "B’s presence space inside is home:<host>",
+   "ok": true,
+   "extra": "home:7f3a91c20b4e55d1"
+  },
+  {
+   "name": "the room’s own actions: only « Sortir »",
+   "ok": true,
+   "extra": "[{\"id\":\"pikine:in:door:appart_jamm\",\"name\":\"Sortir\",\"x\":1662.7,\"z\":2.65}]"
+  },
+  {
+   "name": "seats offered with « use »: the sofa’s three and the chairs (wood chair, the desk’s), never the bed",
+   "ok": true,
+   "extra": "[\"sofa\",\"sofa\",\"sofa\",\"chair\",\"chair\"]"
+  },
+  {
+   "name": "activities: the TV and the hi-fi only (no kitchen, shower, desk work, sleep)",
+   "ok": true,
+   "extra": "{\"id\":\"home:appart_jamm\",\"type\":\"home\",\"name\":\"Chez Awa\",\"space\":\"home\",\"anchors\":[\"visit2\",\"visit5\"]}"
+  },
+  {
+   "name": "no « Aménager » for the guest (the placement mode refuses)",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "no « Aménager », « Commander des meubles » or listing in the visited home",
+   "ok": true,
+   "extra": "null"
+  },
+  {
+   "name": "the phone’s « Maison » app: « Aménager » greyed (B is not in B’s own home)",
+   "ok": true,
+   "extra": "[{\"t\":\"🛋️AménagerEntre chez toi pour aménager\",\"off\":true},{\"t\":\"🛒Commander chez Keur MeublesLivré et installé chez toi\",\"off\":false}]"
+  },
+  {
+   "name": "with « use »: B can sit on A’s sofa",
+   "ok": true,
+   "extra": "pikine:home:visit0:0"
+  },
+  {
+   "name": "performance: draw calls and triangles as guest match the host’s in the same view",
+   "ok": true,
+   "extra": "host 24 calls 10730 tris · guest 24 calls 10730 tris"
+  },
+  {
+   "name": "« Sortir » with a real key: back in the street, the visit over",
+   "ok": true,
+   "extra": "{\"id\":\"pikine:in:door:appart_jamm\",\"name\":\"Sortir\",\"kind\":\"door\",\"space\":\"home\",\"primary\":\"Sortir\",\"all\":[\"Sortir\"],\"why\":[]}"
+  },
+  {
+   "name": "B’s save is untouched by the visit (the assets, furniture spots included)",
+   "ok": true,
+   "extra": "700 / 700 chars"
+  },
+  {
+   "name": "B’s own F2 is drawn again exactly as it was (pieces, spots, turns)",
+   "ok": true,
+   "extra": "[\"banquette\",\"plante\",\"matelas_sol\",\"radio\"]"
+  },
+  {
+   "name": "B in B’s own home: presence home:<B’s tag>",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "revoked: B is back in the street with « Awa a mis fin à la visite. » on screen",
+   "ok": true,
+   "extra": "Awa a mis fin à la visite."
+  },
+  {
+   "name": "right after the revocation: no « Entrer chez Awa (invité) » at the door (even before the invitation’s new state arrives)",
+   "ok": true,
+   "extra": "{\"id\":\"appart_jamm:sign\",\"name\":\"Appartement F2\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez toi\",\"all\":[\"Entrer chez toi\",\"Gérer ton logement\"],\"why\":[]}"
+  },
+  {
+   "name": "after the revocation B’s save is still untouched",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "a revoked invitation: no « Entrer chez Awa (invité) » at the door any more",
+   "ok": true,
+   "extra": "{\"id\":\"appart_jamm:sign\",\"name\":\"Appartement F2\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez toi\",\"all\":[\"Entrer chez toi\",\"Gérer ton logement\"],\"why\":[]}"
+  },
+  {
+   "name": "C: the family room’s snapshot: its door, the good mattress in the shell, four pieces",
+   "ok": true,
+   "extra": "{\"home\":{\"spec\":\"chambre_pikine\",\"hub\":\"pikine\",\"door\":\"pikine:home:11\",\"name\":\"Chambre familiale · Pikine\"},\"up\":[\"matelas\"],\"n\":4}"
+  },
+  {
+   "name": "the family room’s door: « Entrer chez Moussa (invité) » first, B’s own room one tap further",
+   "ok": true,
+   "extra": "{\"id\":\"visit:5e6f708192a3b4c5\",\"name\":\"Chez Moussa\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez Moussa (invité)\",\"all\":[\"Entrer chez Moussa (invité)\",\"Entrer dans ta chambre\"],\"why\":[]}"
+  },
+  {
+   "name": "B draws C’s family room at C’s origin, each piece within 1 cm",
+   "ok": true,
+   "extra": "C 4 / B 4, worst 0"
+  },
+  {
+   "name": "in C’s room: no bed (« Dormir »), no bucket (« Se laver »): only « Sortir »",
+   "ok": true,
+   "extra": "[\"Sortir\"]"
+  },
+  {
+   "name": "« use » off: nothing to sit or lie on (the plastic chairs, the bed), no TV or radio",
+   "ok": true,
+   "extra": "[]"
+  },
+  {
+   "name": "in C’s room: presence home:<C>",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "performance in the family room: guest and host draw the same",
+   "ok": true,
+   "extra": "host 23/10110 guest 23/10110"
+  },
+  {
+   "name": "after C’s room, B’s save is still untouched",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "no page errors (C)",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "« Y aller » to a meeting proposed by A: the marker on the place, B joins A’s presence room",
+   "ok": true,
+   "extra": "{\"visit\":[\"7f3a91c20b4e55d1\",\"7f3a91c20b4e55d1\",\"5e6f708192a3b4c5\"],\"find\":[\"7f3a91c20b4e55d1\"],\"here\":[],\"join\":[[\"pikine\",1]]}"
+  },
+  {
+   "name": "away from the place: no `here`",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "at the place in the window: `here` sent once (and only once)",
+   "ok": true,
+   "extra": "[\"meet-1\"]"
+  },
+  {
+   "name": "« met »: one card « Vous êtes au rendez-vous ✓ »",
+   "ok": true,
+   "extra": "[\"🤝Vous êtes au rendez-vous ✓Avec Awa · Grand-place de PikineSocial +12✕\"]"
+  },
+  {
+   "name": "« met »: the social lift (once this city day)",
+   "ok": true,
+   "extra": "59.49644044444384 → 71.44799511111044"
+  },
+  {
+   "name": "an old meeting already « met » when first seen: no card, no lift",
+   "ok": true,
+   "extra": "{\"here\":[\"meet-1\"],\"cards\":[\"meet-1\"],\"lifts\":1}"
+  },
+  {
+   "name": "a meeting « chez moi » of A: the marker on A’s door, under A’s name",
+   "ok": true,
+   "extra": "{\"id\":\"pikine:pin:visit\",\"name\":\"Chez Awa\",\"x\":-22,\"z\":-70.7}"
+  },
+  {
+   "name": "hereNow: the district, the point and the nearest named place",
+   "ok": true,
+   "extra": "{\"hub\":\"pikine\",\"x\":-17.5,\"z\":95,\"name\":\"Grand-place de Pikine\"}"
+  },
+  {
+   "name": "meetupPlaces: « Chez moi » (the home’s door) first, then the city’s places",
+   "ok": true,
+   "extra": "[{\"id\":\"pikine:home:jamm\",\"hub\":\"pikine\",\"name\":\"Chez moi · Appartement F2\",\"icon\":\"🏠\"},{\"id\":\"pikine:arena:guichet\",\"hub\":\"pikine\",\"name\":\"Arène de Pikine · guichet\",\"icon\":\"🤼\"},{\"id\":\"pikine:city:square\",\"hub\":\"pikine\",\"name\":\"Grand-place de Pikine\",\"icon\":\"🫖\"}]"
+  },
+  {
+   "name": "a shared position in another district: the marker names it",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "the shared position’s pin stands at the very point once in its district",
+   "ok": true,
+   "extra": "{\"id\":\"plateau:pin:pos\",\"name\":\"Position de Awa\",\"x\":12.5,\"z\":-20.5}"
+  },
+  {
+   "name": "all 15 meeting places resolve with the walking marker (guidePlace) in their district",
+   "ok": true,
+   "extra": ""
+  },
+  {
+   "name": "no page errors (host, guest)",
+   "ok": true,
+   "extra": ""
+  }
+ ]
+}

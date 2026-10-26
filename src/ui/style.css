@@ -146,8 +146,8 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 /* moment cards (hud.moment: a bout's recap, a new word on a gauge; hud.boutCard: the after-bout card): one at a time,
    on the right under the social buttons, clear of the middle (30 vw wide at most) and of the action column; a tap
    anywhere on it dismisses it; taller than its room, it scrolls inside */
-#toast .mo { position:absolute; right:calc(10px + var(--sa-r)); top:calc(162px + var(--sa-t)); pointer-events:auto; display:flex; align-items:flex-start; gap:10px;
-  width:min(360px, calc(30vw - 20px)); box-sizing:border-box; max-height:calc(100vh - 162px - 160px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 162px - 160px - var(--sa-t) - var(--sa-b));
+#toast .mo { position:absolute; right:calc(10px + var(--sa-r)); top:calc(166px + var(--sa-t)); pointer-events:auto; display:flex; align-items:flex-start; gap:10px;
+  width:min(360px, calc(30vw - 20px)); box-sizing:border-box; max-height:calc(100vh - 166px - 160px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 166px - 160px - var(--sa-t) - var(--sa-b));
   overflow-y:auto; overscroll-behavior:contain; padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); text-align:left; cursor:pointer;
   animation:moIn .28s ease-out; transition:opacity .2s, transform .2s; }
 #toast .mo.out { opacity:0; transform:translateY(-6px); }

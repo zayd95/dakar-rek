@@ -185,6 +185,39 @@ export const ECONOMY = {
     /** The savings goals offered: these ventures (ECONOMY.business tiers) at the price the player would pay for the next unit. */
     goalTiers: ['bana', 'kiosque', 'boutique'],
   },
+  /**
+   * LD2.0-B « Belong Online » (docs/ld2/LD2_B_CONTRACT.md): Teranga Money, the server-held account, and the Messages account around it. The server
+   * (server/social.ts, through src/online/ledgerRules.ts) enforces these and sends the money limits in `welcome`; the device only shows them first.
+   * The server day is the UTC date. Game money only.
+   */
+  online: {
+    /** One operation (a send, a request, a top-up, a withdrawal): 1 … opMax F. */
+    opMax: 250_000,
+    /** Brought in from devices' wallets per server day (top-ups, including a send's top-up part). */
+    fundDayMax: 500_000,
+    /** Sent to other players per server day, and received from them. */
+    sendDayMax: 500_000, receiveDayMax: 1_000_000,
+    /** Largest Teranga Money balance. */
+    balanceMax: 5_000_000,
+    /** Items kept per conversation on the server (the newest), and a page of history (conversation items, money operations). */
+    convMax: 500, page: 50,
+    /** A home snapshot as JSON, at most (characters). */
+    snapshotMax: 12_000,
+    /** How long an invitation stays good (ms of real time) unless revoked; its `until`. */
+    inviteMs: 24 * 3_600_000,
+    /**
+     * A meeting's window around its time (server ms of real time): from 5 real minutes before to 10 after. In city time that is 5 hours before to 10 after
+     * (src/core/clock.ts: 1 city hour = 1 real minute): the city's clock runs fast, players have to cross the city on foot or by car. A meeting
+     * « maintenant » gets its time when it is accepted.
+     */
+    meetEarlyMs: 5 * 60_000, meetLateMs: 10 * 60_000,
+    /** How long a « maintenant » proposal waits for its answer before it is missed (ms of real time: a quarter of a city day). */
+    meetNowOpenMs: 6 * 60_000,
+    /** Furthest ahead a meeting may be set (ms of real time). */
+    meetAheadMs: 7 * 86_400_000,
+    /** How long CityRoom keeps an account's answer to « may this guest be in this home? » (ms). */
+    visitCacheMs: 30_000,
+  },
   /** Wallet history kept in the save. */
   ledgerMax: 100,
 } as const;

@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, OnlinePending, OnlineSave, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -43,8 +43,16 @@ export const EXTRA_FIELDS = ['loans', 'vtc', 'play', 'streak', 'appearance'] as 
  * backups at its saves without `bank`; it never touches this key, so savings dropped by a rollback come back with the next LD2.0 client.
  */
 export const EXTRAS_V3_KEY = 'dakarrek.guest.save.v6.extras.3';
-export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes', 'bana'] as const;
+export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes', 'bana', 'online'] as const;
+/**
+ * The same third backup a second time (LD2.0-B on), under a key only LD2.0-B clients know. The LD2.0-A client rewrites `EXTRAS_V3_KEY` at its saves with
+ * the fields it knows, so without `online`: a top-up it would drop (reserved from the wallet, not yet answered by the server) comes back from this one.
+ */
+export const EXTRAS_V4_KEY = 'dakarrek.guest.save.v6.extras.4';
 type ExtraField = typeof EXTRA_FIELDS_V3[number];
+/** Teranga Money operations waiting for the server's answer, and settled op ids remembered (a refund or a withdrawal is never applied twice). */
+export const ONLINE_PENDING_MAX = 50;
+export const ONLINE_REFS_MAX = 200;
 /** Savings history kept in the save, and idempotency keys remembered (an operation is never applied twice). */
 export const BANK_TX_MAX = 200;
 export const BANK_REFS_MAX = 200;
@@ -75,9 +83,11 @@ export function newSave(now = Date.now()): SaveData {
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
-    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(), bana: newBana(),
+    play: { day: 0, city: -1 }, streak: newStreak(), appearance: null, bank: newBank(), pistes: newPistes(), bana: newBana(), online: newOnline(),
   };
 }
+/** The device's side of Teranga Money of a game that never connected. */
+export const newOnline = (): OnlineSave => ({ tag: null, pending: [], refs: [], balance: null, at: 0 });
 export const newBank = (): BankState => ({ opened: -1, savings: 0, tx: [], seq: 0, goal: null, refs: [], interestDay: -1, milestones: [] });
 /** The bana-bana table of a player who never owned one (src/economy/bana.ts sets it up with the first unit). */
 export const newBana = (): BanaState => ({ since: -1, stock: {}, clients: 0, clientMs: 0, open: null, last: null, day: -1, today: 0, total: 0, sessions: 0, seq: 0, ack: false });
@@ -180,7 +190,36 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     pistes: pistesOf(r.pistes, playedMs),
     // the player's bana-bana table (additive, no version change: a save without it gets an empty table, set up by src/economy/bana.ts if a unit is owned)
     bana: banaOf(r.bana, playedMs),
+    // Teranga Money's pending operations on this device (additive, no version change: a save without it has nothing pending)
+    online: onlineOf(r.online),
   };
+}
+
+const OP_ID = /^[A-Za-z0-9-]{8,64}$/, TAG = /^[0-9a-f]{16}$/;
+/**
+ * The device's side of Teranga Money: well-formed pending operations only (a malformed one is dropped, so a corrupted save never sends or refunds
+ * anything it cannot read), whole amounts, a send's top-up never more than the send, each id once; settled ids; the last balance known.
+ */
+function onlineOf(v: unknown): OnlineSave {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, pending: OnlinePending[] = [], seen = new Set<string>();
+  for (const e of Array.isArray(o.pending) ? (o.pending as unknown[]).slice(0, ONLINE_PENDING_MAX) : []) {
+    const x = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>;
+    if (typeof x.id !== 'string' || !OP_ID.test(x.id) || seen.has(x.id) || (x.kind !== 'fund' && x.kind !== 'cashout' && x.kind !== 'pay')) continue;
+    if (typeof x.tag !== 'string' || !TAG.test(x.tag) || typeof x.amount !== 'number' || !Number.isSafeInteger(x.amount) || x.amount <= 0) continue;
+    const fund = x.kind === 'fund' ? x.amount : x.kind === 'cashout' ? 0 : typeof x.fund === 'number' && Number.isSafeInteger(x.fund) && x.fund >= 0 && x.fund <= x.amount ? x.fund : -1;
+    if (fund < 0 || (x.kind === 'pay' && (typeof x.to !== 'string' || !TAG.test(x.to)))) continue;
+    seen.add(x.id);
+    const p: OnlinePending = { id: x.id, kind: x.kind, amount: x.amount, fund, at: Math.max(0, num(x.at, 0)), tag: x.tag };
+    if (x.kind === 'pay') {
+      p.to = x.to as string;
+      if (typeof x.note === 'string' && x.note) p.note = x.note.slice(0, 80);
+      if (typeof x.req === 'string' && OP_ID.test(x.req)) p.req = x.req;
+    }
+    pending.push(p);
+  }
+  const refs = Array.isArray(o.refs) ? [...new Set((o.refs as unknown[]).filter((r): r is string => typeof r === 'string' && OP_ID.test(r)))].slice(-ONLINE_REFS_MAX) : [];
+  const balance = typeof o.balance === 'number' && Number.isFinite(o.balance) ? money(o.balance) : null;
+  return { tag: typeof o.tag === 'string' && TAG.test(o.tag) ? o.tag : null, pending, refs, balance, at: balance === null ? 0 : Math.max(0, num(o.at, 0)) };
 }
 
 /** Goods of the table: known shape only (ids like the catalogue's, whole non-negative counts, at most a few hundred); src/economy/bana.ts ignores ids it does not sell. */
@@ -480,7 +519,8 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); ok = !!store; } catch { return false; }
   const extras = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS.map(k => [k, data[k]])) });
   for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store?.setItem(key, extras); } catch { /* full storage: the save itself was written */ } }
-  try { store?.setItem(EXTRAS_V3_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS_V3.map(k => [k, data[k]])) })); } catch { /* full storage */ }
+  const v3 = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS_V3.map(k => [k, data[k]])) });
+  for (const key of [EXTRAS_V3_KEY, EXTRAS_V4_KEY]) { try { store?.setItem(key, v3); } catch { /* full storage */ } }
   return ok;
 }
 /**
@@ -495,7 +535,7 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
   if (!missing.length && !lostShare) return [];
   // both backups of this guest, newest first; each field is taken from the newest one that has it (an older client may have rewritten the first without it)
   const backups: { raw: Record<string, unknown>; back: SaveData }[] = [];
-  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY]) {
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY, EXTRAS_V4_KEY]) {
     let b: Record<string, unknown> | null = null;
     try { b = JSON.parse(store.getItem(key) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
     const back = b && b.guestId === data.guestId ? migrate({ ...b, schemaVersion: SCHEMA_VERSION, playedMs: data.playedMs }) : null;
@@ -518,6 +558,9 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     else if (k === 'bank') { if (back.bank.opened < 0 && !back.bank.savings) continue; data.bank = back.bank; }   // the savings, exactly as the last LD2.0 save left them
     else if (k === 'pistes') data.pistes = back.pistes;
     else if (k === 'bana') { if (back.bana.since < 0) continue; data.bana = back.bana; }   // the table as the last LD2.0 save left it (its till included: paid at the next closing)
+    // Teranga Money's side as the last LD2.0-B save left it: a top-up reserved from the wallet (which the older client kept debited) is sent again at
+    // the next connection, and the server applies it once or returns its first answer; nothing is counted twice
+    else if (k === 'online') { if (!back.online.pending.length && !back.online.refs.length && back.online.balance === null) continue; data.online = back.online; }
     else data.streak = back.streak;
     out.push(k);
   }
@@ -537,6 +580,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
-  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY, EXTRAS_V4_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }
