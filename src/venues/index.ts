@@ -5,6 +5,7 @@ import { buildDibi } from './dibi';
 import { buildMosque } from './mosque';
 import { buildBeach } from './beach';
 import { buildEmbarcadere, type EmbarcadereVenue } from './embarcadere';
+import { buildIslandRooftop, islandRooftopInfo } from './islandRooftop';
 import { TRAVERSEE_HUB } from '../sea/traverseeSite';
 import { buildSalon } from './salon';
 import { buildClub, CLUB_SITE, setVagueVirtual, shiftClubDay } from './club';
@@ -84,6 +85,7 @@ export const VenuesModule: GameModule = {
     if (salon) { venues.push(buildSalon(env, salon)); yield; }
     if (club) { venues.push(buildClub(env)); yield; }
     if (port) { embarcadere = buildEmbarcadere(env); venues.push(embarcadere); }
+    if (port) venues.push(buildIslandRooftop(env));                      // the island's rooftop restaurant and lounge bar: its people and its music
   },
   update(ctx, dt) {
     styleT -= dt;                                                            // the salon's cut and beard stay on the player in every hub
@@ -117,5 +119,7 @@ export const VenuesModule: GameModule = {
     traversee: () => embarcadere?.traversee() ?? null,
     /** Checks: set the pirogue round trips Ousmane has seen (the chaloupe opens at 3). */
     traverseeSet: (n: number) => embarcadere?.setPirogueTrips(n) ?? null,
+    /** The island's rooftop: open or not, who is there by role, whether its people are drawn, its music (null outside the Almadies). */
+    islandRooftop: () => islandRooftopInfo(),
   }),
 };
