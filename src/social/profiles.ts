@@ -472,10 +472,10 @@ export const PROFILES: Profile[] = [
     place: 'almadies:port', menu: 'chat',
     reactions: [
       { when: { flag: 'info_ousmane', noFlag: 'ousmane_trust' }, line: 'Ibou m’a parlé de toi hier soir. Alors c’est toi, le voisin de mon cousin ?' },
-      { when: { flag: 'ousmane_trust', hours: [6, 10] }, line: `Les premiers clients attendent au bout de la jetée. Prends la pirogue. ${say('Gaawal')} !` },
+      { when: { flag: 'ousmane_trust', hours: [6, 10] }, line: `Les premiers clients attendent sur la plage. Les gilets d’abord, puis la pirogue. ${say('Gaawal')} !` },
       { when: { act: ['chat'], hours: [18, 21] }, line: `Regarde-les jouer aux dames. Celui de gauche triche, mais personne n’ose le dire. ${say('Ndeysaan')}, celui de droite.` },
       { when: { flag: 'ousmane_trust' }, line: 'Avec toi à la barre, je ne prends que trente pour cent. Les gens de confiance, je ne les oublie pas.' },
-      { when: {}, line: `${say('Jàmm nga am ?')} Mes bateaux attendent au bout de la jetée. Tu fais passer les clients à l’île, je garde ma part.` },
+      { when: {}, line: `${say('Jàmm nga am ?')} Mes bateaux attendent sur la plage. Tu fais passer les clients à l’île, je garde ma part.` },
     ],
     memories: [{ when: { flag: 'ousmane_trust' }, text: 'Te laisse ses bateaux à part réduite' }],
   },

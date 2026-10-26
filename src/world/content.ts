@@ -63,7 +63,7 @@ export const ACTIONS: Record<string, Action[]> = {
   port: [
     // the quay's fishing is Soumbédioune's now (Corniche): this is the Embarcadère de Ngor, whose crossings leave from the pier's end
     // (src/venues/embarcadere.ts, docs/TRAVERSEE.md); here, by the sign, one stays a moment to look at the island
-    { id: 'ile', label: 'Regarder l’île de Ngor', detail: 'Les pirogues et la chaloupe d’Ousmane partent du bout de la jetée', needs: { moral: 4 }, seconds: 3 },
+    { id: 'ile', label: 'Regarder l’île de Ngor', detail: 'Les pirogues et la chaloupe d’Ousmane partent de la plage, à côté de la jetée', needs: { moral: 4 }, seconds: 3 },
   ],
   garage: [
     { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +3 600 F', gain: 3000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),
