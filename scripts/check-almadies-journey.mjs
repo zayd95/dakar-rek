@@ -1,7 +1,7 @@
 // M4 « One Evening Out » (docs/districts/M4-ALMADIES.md): the golden path, played with the REAL touch controls in one session (video recorded).
-// Almadies at 19:00, the player's Teranga driven with the pedal stick into the marked visitor bay in the Terrasse de Ngor forecourt, parked,
-// stepped out of). On foot to the door, « Entrer », up on the terrace. The bar: « Commander » a dish, which is a real activity: paid once at the start, prepared,
-// the guest walks to a table and sits, the plate is set on the table and eaten, the needs rise at the last bite; « Se lever ». Awa Sy, who keeps the house:
+// Almadies at 19:00, the player's Teranga is driven with the pedal stick into the marked visitor bay in the Terrasse de Ngor forecourt, parked and stepped out of.
+// On foot to the door, « Entrer », up to the terrace. The bar: « Commander » a dish, which is a real activity: paid once at the start, prepared,
+// the guest walks to a table and sits, the plate is set on the table and eaten, the needs rise at the last bite; « Se lever ». Awa Sy, the venue host:
 // « Parler à Awa », « Je fête un bon travail », her hand-off to La Vague (the walking marker). A second word the same evening gives nothing more.
 // Downstairs, La Vague (21:30, a labelled hour shortcut): the door, the fee shown first and paid once, the dance floor and one dance (the beat game is finished
 // with the existing debug shortcut `gestureFinish`, as scripts/check-venues.mjs does), the way out: the end-of-evening card, once. The taxi from the rank takes the
