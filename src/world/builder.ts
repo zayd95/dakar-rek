@@ -1517,9 +1517,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           if (i === 1 && n === 1) {
             // A small, marked visitor bay in the Terrasse's own forecourt: reachable from the coast road, clear of the door and patio tables.
             const px = x, pz = frontZ - 5.5;
-            plain.box(5.8, 0.035, 4.2, px, B - 0.005, pz, 0x696b6d);
-            for (const side of [-1, 1]) plain.box(0.11, 0.02, 4.0, px + side * 2.82, B + 0.005, pz, 0xf2f2ec);
-            for (const end of [-1, 1]) plain.box(5.7, 0.02, 0.11, px, B + 0.005, pz + end * 1.98, 0xf2f2ec);
+            plain.box(7.2, 0.035, 5.0, px, B - 0.005, pz, 0x696b6d);
+            for (const side of [-1, 1]) plain.box(0.11, 0.02, 4.8, px + side * 3.48, B + 0.005, pz, 0xf2f2ec);
+            for (const end of [-1, 1]) plain.box(7.0, 0.02, 0.11, px, B + 0.005, pz + end * 2.38, 0xf2f2ec);
           }
           if (!(i === 1 && n === 1)) people.push({ x: x + 1.0, z: frontZ - 3.0, yaw: Math.PI, clip: 'Talk' });
           solidC(x, z, w + 0.5, d + 0.5, h);
