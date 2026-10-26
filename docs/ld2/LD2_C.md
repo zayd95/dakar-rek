@@ -136,6 +136,81 @@ What to build:
 - **Performance inside the F2** on a phone viewport: the shell alone ≤ 14 draw calls; furnished (10 pieces) ≤ 60 draw calls and ≤ 80k triangles. The street is hidden indoors.
 - Pictures of every room, by day and at night.
 
+## Results (the integrated branch, 26 Oct)
+Both lanes are merged into `integration/ld2-c-20261026` (draft PR #72), with the fixes the integration needed:
+- the cuisine's and the chambre's doors are hinged toward the wall, so an open leaf no longer sweeps across the way in;
+- the editor's see-through hole follows the framed room;
+- the F2's sheet names its rooms;
+- two older checks are brought up to date with the phone since U2 (`check-ownership`, `check-visit`).
+
+### The acceptance (`scripts/check-ld2c.mjs`): 28/28, on a phone page, by touches
+- **Buy or rent:** the F2 is rented at the Résidence Jàmm's sign, made the principal residence, and entered by « Entrer chez toi ». A second, fresh game buys it at the sign and enters the same apartment.
+- **Walk through the real rooms:** 22 joystick legs: entrée → séjour → cuisine → séjour → dégagement → chambre → dégagement → salle de bain → entrée.
+  - Every room was visited, and the three inner doors opened as the player came.
+  - Over 125 samples, the player was never inside a wall, a fitting or a door (closest 0.30 m), and always seen.
+- **Furnish two rooms:**
+  - five pieces bought at Keur Meubles by touch, then placed by touch in the editor with its room chips;
+  - in the séjour, the sofa, the coffee table and the television; in the chambre, the bed and the wardrobe;
+  - the wardrobe is refused in the bedroom door's swing, with a plain reason, and its saved spot is kept.
+- **Leave and reload:** « Sortir » by a tap, then a reload. The player is still renting and living in the F2. The same five pieces stand at the same places and turns, each in its room, valid under the plan, every room still reachable.
+- No page errors.
+
+### The other checks
+| Check | Result |
+|---|---|
+| `tsc`, `typecheck:server`, build | clean |
+| vitest | 203 files; 2 539 passed, 3 skipped, 0 failed |
+| `check-apartment-walk` (lane H: the walk, the doors, pictures, draw calls) | 15/15 |
+| `check-furnish-rooms` (lane F: rooms, refusals, reload, a save from the older build) | 24/24 |
+| `check-ownership` | 63/63 |
+| `check-home-editor` | 34/34 |
+| `check-home-move` | 12/12 |
+| `check-residence-reload` | 32/32 |
+| `check-keur-meubles` | 4/4 |
+| `check-visit` (two players: a guest sees the host's furnished F2) | 55/55 |
+| `check-save-compat` (a v3 save migrated to v6, rollback to the older client, tabs side by side, New Game) | 25/25 |
+| `check-phone` | 69/69 |
+| `check-ui-consistency` | 95/95 |
+
+**Failed:** none.
+
+**The guest's view:** in `check-visit`, the guest draws the host's walkable F2 with all 10 pieces at the host's places and turns, each within 1 cm. The guest's frame costs what the host's does: 26 draw calls and 17 908 triangles.
+
+**A save from before this phase:** an F2 furnished by the older build (bed, sofa, dining table, wardrobe and rug, all in its one open room) loads here with all five kept. Each is moved to a room of its kind, valid under the plan, with every room reachable (`check-furnish-rooms`).
+
+### Performance inside the F2 (phone page, 390 × 844, SwiftShader)
+The old F2 (one open room, the traversée build) and the walkable F2, each with the same 10 pieces bought (sofa, coffee table, television, bed, wardrobe, chair, plant, radio, rug, floor lamp). Low quality, at 10 h. Measured by `scripts/perf-f2.mjs`; the numbers are in `docs/proof/ld2c/perf-f2.json`.
+
+| View | Draw calls | Triangles | Whole frame (SwiftShader) |
+|---|---|---|---|
+| Old F2, the room's middle | 17 | 16 800 | 85 ms |
+| Old F2, near the door / at the back | 13 / 16 | 16 528 / 16 720 | 89 / 94 ms |
+| **Walkable F2, séjour** | **21** | **23 112** | **122 ms** |
+| Walkable F2, chambre | 23 | 23 650 | 105 ms |
+| Walkable F2, entrée | 14 | 22 560 | 114 ms |
+| Walkable F2, cuisine | 17 | 22 844 | 97 ms |
+| *The street at the Résidence Jàmm (for reference)* | *78–81* | *163 000–165 000* | *272–282 ms for the renderer alone* |
+
+- **The budget holds:** at most 23 draw calls and 24k triangles, furnished, against 60 and 80k. The shell alone is 10 draw calls and 7 480 triangles (`check-apartment-walk`, budget 14).
+- **The walkable F2 is slower than the old room in the software renderer**, by about 20–40 % a frame.
+  - The renderer alone in the séjour takes about 116 ms.
+  - It drops to 71 ms with the shell's walls, faience, fittings, doors, lamps and windows hidden (its floors kept), and to 55 ms with the whole home hidden.
+  - The full-height walls cover far more of the screen than the old low walls, and every wall pixel is lit.
+  - The see-through hole (a shader that may discard) accounts for about 12 % of the frame (102 ms without it). The shadow pass is negligible.
+- **For scale:** the street outside costs about 280 ms a frame in the same renderer. Inside, the F2 costs under half of what the player's phone already draws outdoors, so the shell is left as it is.
+- **Not measured on an iPhone:** these are SwiftShader numbers (a CPU rasteriser), which follow fragment cost. A real phone's GPU is far faster, but this is no substitute for the owner's iPhone review once a preview can be built.
+
+### Pictures
+- `docs/proof/ld2c/acceptance/`: the acceptance's own views, from the entrée on arrival to the séjour after the reload.
+- `docs/proof/ld2c/shell/`: each room by day and at 21 h.
+- `docs/proof/ld2c/furnish/`: the editor's room chips, the two rooms furnished, the doorway refusal, the reloaded rooms, Keur Meubles, and the new catalogue (`catalogue.png`).
+
+### Limitations
+- **No iPhone preview yet.** The Cloudflare preview build fails on the account's namespace limit (as on PRs #69 and #71), so the phase is checked on a phone-sized page in Chromium, not on a real iPhone.
+- **The street door is modelled shut.** The player goes in and out by « Entrer chez toi » and « Sortir » at the door, with a fade, as in every other home.
+- **An older client and a newer save.** A client from before this phase rejects a visit snapshot that holds one of the new furniture ids. This is the rule from LD2.0-B (`src/online/visitRules.ts`); both players need this build.
+- **The other homes keep their open room.** That is the brief: one excellent apartment first.
+
 ## Not in this slice
 - Houses and villas with several storeys, stairs, balconies, terraces and compounds come after the apartment has been reviewed.
 - The owner's flagship villa is LD2.0-D.
