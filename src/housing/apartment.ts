@@ -358,7 +358,8 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const b = room(w.room).box, axis = w.side === 'n' || w.side === 's' ? 'x' as const : 'z' as const, at = { n: b.z0, s: b.z1, w: b.x0, e: b.x1 }[w.side];
     const t = halfOf(p, axis, at), into = w.side === 'n' || w.side === 'w' ? 1 : -1, lo = w.at - w.width / 2, hi = w.at + w.width / 2;
     const y0 = w.sill, y1 = w.sill + w.height, ac = (c0: number, c1: number) => lineRect(axis, at, lo, hi, into * c0, into * c1);
-    rbox(sky, ac(-t + 0.004, -t + 0.012), y0, y1, 0xffffff);                              // daylight, at the outside face
+    // daylight, at the outside face: its room side only, so the camera above the outside of the wall sees the shutters and the room, not a pale slab
+    pbox(sky, ac(-t + 0.004, -t + 0.012), y0, y1, 0xffffff, [{ n: 'pz', s: 'nz', w: 'px', e: 'nx' }[w.side] as Face]);
     if (F.glass) {
       for (const e of [lo, (lo + hi) / 2 - 0.02, hi - 0.04]) rbox(plain, lineRect(axis, at, e, e + 0.04, into * (-t + 0.012), into * (-t + 0.06)), y0, y1, TRIM);
       rbox(plain, ac(-t + 0.012, -t + 0.06), y0 + w.height * 0.7, y0 + w.height * 0.7 + 0.04, TRIM);
