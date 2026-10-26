@@ -28,6 +28,9 @@ const PX = {
   // (the comfort lane's rects above, the decoration lane's below)
   //
   // ---- the catalogue's second round, decoration lane (K-D): its rects here, inside x 256…511, y 480…767
+  basket0: [256, 480, 48, 48], basket1: [304, 480, 48, 48], basket2: [352, 480, 48, 48], pierced: [400, 480, 32, 48], lampGlass: [432, 480, 32, 32],
+  flame: [464, 480, 16, 16], crystal: [464, 496, 16, 16], glaze: [480, 480, 32, 32], clayBand: [432, 512, 32, 16],
+  raffia: [256, 528, 32, 96], carvedPanel: [288, 528, 32, 96], lacquer: [320, 528, 128, 96], aquaFresh: [256, 624, 96, 48], aquaSea: [352, 624, 128, 48],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type FurnKey = keyof typeof PX;
 export const FUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, FW, FH)])) as Record<FurnKey, Rect>;
@@ -167,4 +170,101 @@ function drawHomeAtlas(c: C2, g: C2) {
   // (the comfort lane's drawing above, the decoration lane's below)
   //
   // ---- the catalogue's second round, decoration lane (K-D): its drawing here
+  // Coiled basket plates in bright colours, raffia, carved openwork, black lacquer with a gold baobab, a hurricane lamp's lit globe, candle flames,
+  // cut crystal, pierced iron, a glazed band, an incised clay band, and two aquarium backdrops (fresh water, a reef). All our own; no text.
+  {
+    const disc = (cx: number, cy: number, r: number, col: string) => { c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); };
+    /** A coiled basket plate seen from the front: `at(r)` colours its coil at radius r (px), `motif` draws over it; stitches on top. */
+    const basket = (k: FurnKey, at: (r: number) => string, motif?: (cx: number, cy: number) => void) => {
+      const [x, y, w] = PX[k], cx = x + w / 2, cy = y + w / 2;
+      c.fillStyle = '#9a7438'; c.fillRect(x, y, w, w);
+      for (let r = w / 2; r > 0; r -= 1) disc(cx, cy, r, at(r));
+      motif?.(cx, cy);
+      c.strokeStyle = 'rgba(70,40,10,0.28)'; c.lineWidth = 0.7;
+      for (let r = w / 2 - 2; r > 2; r -= 2.4) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      c.strokeStyle = 'rgba(60,35,10,0.45)'; c.lineWidth = 0.8;
+      for (let r = w / 2 - 3; r > 3; r -= 4.8) for (let a = (r % 3) * 0.2; a < Math.PI * 2; a += 4.2 / r) { c.beginPath(); c.moveTo(cx + Math.cos(a) * (r - 1.2), cy + Math.sin(a) * (r - 1.2)); c.lineTo(cx + Math.cos(a) * (r + 1.2), cy + Math.sin(a) * (r + 1.2)); c.stroke(); }
+      disc(cx, cy, 1.2, '#5a3a14');
+    };
+    const straw = (r: number) => (Math.floor(r / 2) % 2 ? '#dcbb7c' : '#cfa865');
+    basket('basket0', r => r > 22 ? '#9a7438' : r > 18 ? '#c8322a' : r > 15 ? straw(r) : r > 12 ? '#1c1814' : r > 5 ? straw(r) : '#c8322a', (cx, cy) => {
+      for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, b = a + Math.PI / 16, e = a + Math.PI / 8; c.fillStyle = k % 2 ? '#1c1814' : '#c8322a';
+        c.beginPath(); c.moveTo(cx + Math.cos(a) * 15, cy + Math.sin(a) * 15); c.lineTo(cx + Math.cos(b) * 18, cy + Math.sin(b) * 18); c.lineTo(cx + Math.cos(e) * 15, cy + Math.sin(e) * 15); c.fill(); }
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.fillStyle = '#1c1814'; c.beginPath(); c.moveTo(cx + Math.cos(a) * 5, cy + Math.sin(a) * 5); c.lineTo(cx + Math.cos(a + 0.2) * 10, cy + Math.sin(a + 0.2) * 10); c.lineTo(cx + Math.cos(a + 0.4) * 5, cy + Math.sin(a + 0.4) * 5); c.fill(); }
+    });
+    basket('basket1', r => r > 22 ? '#9a7438' : r > 20 ? '#2e8b4c' : straw(r), (cx, cy) => {
+      const cols = ['#2e8b4c', '#f4c20d', '#7a3a8a', '#f4c20d'];
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; c.fillStyle = cols[k % 4]; c.beginPath(); c.arc(cx, cy, 18, a, a + Math.PI / 6); c.arc(cx, cy, 8, a + Math.PI / 6, a, true); c.fill(); }
+      disc(cx, cy, 6, '#2e8b4c'); disc(cx, cy, 3, '#f4c20d');
+    });
+    basket('basket2', r => r > 22 ? '#9a7438' : r > 19 ? '#1f5aa8' : r > 17 ? straw(r) : r > 14.5 ? '#e8742c' : r > 12.5 ? straw(r) : r > 10 ? '#d94a8c' : r > 8 ? straw(r) : r > 5.5 ? '#1a9d54' : r > 3 ? straw(r) : '#f4c20d');
+    // raffia stretched in a frame: woven rows, indigo and rust bands, lozenges
+    { const [x, y, w, h] = PX.raffia; c.fillStyle = '#d8c08a'; c.fillRect(x, y, w, h);
+      for (let j = 0; j < h; j += 2) { c.fillStyle = (j / 2) % 2 ? '#c9ad74' : '#e3cd98'; c.fillRect(x, y + j, w, 1); }
+      c.fillStyle = 'rgba(110,80,35,0.22)'; for (let i = 1; i < w; i += 3) c.fillRect(x + i, y, 1, h);
+      for (const [yy, col] of [[5, '#2f3f78'], [9, '#a8452a'], [12, '#2f3f78'], [82, '#2f3f78'], [85, '#a8452a'], [89, '#2f3f78']] as const) { c.fillStyle = col; c.fillRect(x, y + yy, w, 2); }
+      for (let k = 0; k < 5; k++) { diamond(c, x + 16, y + 26 + k * 12, 8, 6, '#a8452a'); diamond(c, x + 16, y + 26 + k * 12, 5, 4, '#e3cd98'); diamond(c, x + 16, y + 26 + k * 12, 2, 2, '#2f3f78'); } }
+    // carved openwork: a frame, a rosette under the arch, a lattice of diamonds, slots below (the holes near black)
+    { const [x, y, w, h] = PX.carvedPanel; c.fillStyle = '#6e4527'; c.fillRect(x, y, w, h);
+      c.fillStyle = '#3a2212'; c.fillRect(x, y, w, 3); c.fillRect(x, y + h - 3, w, 3); c.fillRect(x, y, 3, h); c.fillRect(x + w - 3, y, 3, h); c.fillRect(x, y + 24, w, 2); c.fillRect(x, y + 74, w, 2);
+      disc(x + 16, y + 13, 9, '#2a160a'); disc(x + 16, y + 13, 7, '#8a5a32');
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.fillStyle = '#140a05'; c.beginPath(); c.ellipse(x + 16 + Math.cos(a) * 4.5, y + 13 + Math.sin(a) * 4.5, 2.2, 1.1, a, 0, Math.PI * 2); c.fill(); }
+      disc(x + 16, y + 13, 1.6, '#140a05');
+      for (let j = 0; j < 9; j++) for (let i = 0; i < 4; i++) { const cx = x + 6 + i * 7 + (j % 2) * 3.5, cy = y + 30 + j * 5; if (cx < x + 27) diamond(c, cx, cy, 2.6, 2.2, '#140a05'); }
+      for (let i = 0; i < 4; i++) { c.fillStyle = '#140a05'; c.fillRect(x + 6 + i * 6, y + 79, 3, 12); }
+      c.fillStyle = 'rgba(255,220,170,0.18)'; c.fillRect(x + 3, y + 3, w - 6, 1); }
+    // black lacquer and gold leaf across four panels: a crescent and stars, a great baobab, birds over the dunes, a smaller baobab
+    { const [x, y, w, h] = PX.lacquer; const bg = c.createLinearGradient(x, y, x, y + h); bg.addColorStop(0, '#1d1517'); bg.addColorStop(1, '#0b0909'); c.fillStyle = bg; c.fillRect(x, y, w, h);
+      const gold = c.createLinearGradient(x, y, x + w, y + h); gold.addColorStop(0, '#f6dc8a'); gold.addColorStop(0.45, '#c8962e'); gold.addColorStop(0.7, '#f0cc6a'); gold.addColorStop(1, '#b8862e');
+      c.fillStyle = gold; c.strokeStyle = gold;
+      c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, y + 80); c.bezierCurveTo(x + 30, y + 72, x + 50, y + 84, x + 78, y + 78); c.bezierCurveTo(x + 100, y + 73, x + 116, y + 80, x + w, y + 77); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath(); c.fill();
+      c.fillStyle = '#0b0909'; for (let k = 0; k < 9; k++) c.fillRect(x + 6 + k * 14, y + 86 + (k % 3), 6, 1.2);
+      c.fillStyle = gold; c.beginPath(); c.arc(x + 15, y + 20, 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#1b1416'; c.beginPath(); c.arc(x + 18, y + 18, 6.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = gold; for (const [sx, sy] of [[8, 40], [24, 34], [12, 58], [26, 52], [20, 8]]) { c.fillRect(x + sx - 0.5, y + sy - 2, 1, 4); c.fillRect(x + sx - 2, y + sy - 0.5, 4, 1); }
+      const baobab = (bx: number, by: number, s: number) => { c.beginPath(); c.moveTo(bx - 7 * s, by); c.lineTo(bx - 4.5 * s, by - 26 * s); c.lineTo(bx + 4.5 * s, by - 26 * s); c.lineTo(bx + 7 * s, by); c.fill();
+        c.lineWidth = 2.2 * s; for (const [a, l] of [[-2.4, 13], [-1.9, 11], [-1.2, 12], [-0.7, 14], [-1.55, 9]]) { c.beginPath(); c.moveTo(bx, by - 25 * s); c.lineTo(bx + Math.cos(a) * l * s, by - 25 * s + Math.sin(a) * l * s); c.stroke(); }
+        for (const [dx, dy, r] of [[-12, -34, 4], [-8, -38, 3.5], [0, -40, 4], [8, -37, 3.5], [12, -33, 4], [-4, -36, 3], [5, -35, 3]]) { c.beginPath(); c.arc(bx + dx * s, by + dy * s, r * s, 0, Math.PI * 2); c.fill(); } };
+      baobab(x + 48, y + 80, 1.15); baobab(x + 112, y + 78, 0.7);
+      c.fillStyle = '#9a2a1a'; c.beginPath(); c.arc(x + 80, y + 30, 8, 0, Math.PI * 2); c.fill(); c.lineWidth = 1; c.beginPath(); c.arc(x + 80, y + 30, 9.5, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = 1.1; for (const [bx, by, s] of [[72, 52, 1], [86, 46, 0.8], [92, 58, 0.7], [104, 30, 0.8], [70, 20, 0.6]]) { c.beginPath(); c.moveTo(x + bx - 4 * s, y + by - 2 * s); c.quadraticCurveTo(x + bx - 1.5 * s, y + by - 3 * s, x + bx, y + by); c.quadraticCurveTo(x + bx + 1.5 * s, y + by - 3 * s, x + bx + 4 * s, y + by - 2 * s); c.stroke(); }
+      c.lineWidth = 1.4; for (let i = 0; i < 4; i++) c.strokeRect(x + i * 32 + 2.5, y + 2.5, 27, h - 5); }
+    // a hurricane lamp's globe, lit: amber glass round a white flame (the globe's lower half is the image's lower half)
+    { const [x, y, w, h] = PX.lampGlass; for (const ctx of [c, g]) {
+      const gr = ctx.createRadialGradient(x + w / 2, y + 17, 1, x + w / 2, y + 16, 19); gr.addColorStop(0, '#fffbe6'); gr.addColorStop(0.28, '#ffd877'); gr.addColorStop(0.65, '#f2a443'); gr.addColorStop(1, '#c8742a');
+      ctx.fillStyle = gr; ctx.fillRect(x, y, w, h); ctx.fillStyle = '#fffdf2'; ctx.beginPath(); ctx.ellipse(x + w / 2, y + 17, 2.6, 5.5, 0, 0, Math.PI * 2); ctx.fill(); }
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x + 5, y + 4, 2, 24); }
+    { const [x, y] = P('flame'); for (const ctx of [c, g]) { ctx.fillStyle = '#ff9a30'; ctx.fillRect(x, y, 16, 16); ctx.fillStyle = '#ffd36a'; ctx.beginPath(); ctx.ellipse(x + 8, y + 9, 5, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fffbea'; ctx.beginPath(); ctx.ellipse(x + 8, y + 10, 2.5, 4.5, 0, 0, Math.PI * 2); ctx.fill(); } }
+    { const [x, y] = P('crystal'); c.fillStyle = '#e4f0fa'; c.fillRect(x, y, 16, 16);
+      for (const [pts, col] of [[[0, 0, 8, 6, 0, 12], '#b9cfe8'], [[16, 4, 8, 6, 16, 14], '#cfe0f2'], [[4, 16, 8, 6, 12, 16], '#a9bfe0'], [[6, 0, 8, 6, 12, 0], '#ffffff']] as const) { c.fillStyle = col; c.beginPath(); c.moveTo(x + pts[0], y + pts[1]); c.lineTo(x + pts[2], y + pts[3]); c.lineTo(x + pts[4], y + pts[5]); c.fill(); }
+      g.fillStyle = '#323c48'; g.fillRect(x, y, 16, 16); g.fillStyle = '#b8c8dc'; g.fillRect(x + 6, y + 2, 4, 4); }
+    // pierced iron: stars, drops and dots let the light through (the holes glow)
+    { const [x, y, w, h] = PX.pierced; c.fillStyle = '#2a2420'; c.fillRect(x, y, w, h); c.fillStyle = '#7a5e2e'; c.fillRect(x, y, w, 3); c.fillRect(x, y + h - 3, w, 3);
+      const star = (ctx: C2, cx: number, cy: number, r: number) => { for (const a of [0, Math.PI / 4]) { ctx.beginPath(); for (let k = 0; k < 4; k++) { const t = a + k * Math.PI / 2; ctx.lineTo(cx + Math.cos(t) * r, cy + Math.sin(t) * r); } ctx.fill(); } };
+      for (const ctx of [c, g]) {
+        ctx.fillStyle = '#ffc45e'; for (const [sx, sy] of [[8, 11], [24, 11], [16, 24], [8, 37], [24, 37]]) star(ctx, x + sx, y + sy, 4.2);
+        ctx.fillStyle = '#ffe2a0'; for (const [sx, sy] of [[16, 8], [3, 24], [29, 24], [16, 40], [8, 24], [24, 24], [16, 15], [16, 33]]) { ctx.beginPath(); ctx.arc(x + sx, y + sy, 1.3, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = '#ffd27a'; for (const [sx, sy] of [[3, 7], [29, 7], [3, 41], [29, 41]]) { ctx.beginPath(); ctx.ellipse(x + sx, y + sy, 1.3, 2.6, 0, 0, Math.PI * 2); ctx.fill(); }
+      } }
+    // a cobalt glaze with a cream band of triangles (the vase's belly)
+    { const [x, y, w, h] = PX.glaze; const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#2a5cb8'); gr.addColorStop(1, '#1a3a86'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+      c.fillStyle = '#efe4c8'; c.fillRect(x, y + 10, w, 12); c.fillStyle = '#c98a2a'; c.fillRect(x, y + 10, w, 1.5); c.fillRect(x, y + 20.5, w, 1.5);
+      for (let k = 0; k < 4; k++) { c.fillStyle = '#1f4aa0'; c.beginPath(); c.moveTo(x + k * 8, y + 20); c.lineTo(x + k * 8 + 4, y + 12); c.lineTo(x + k * 8 + 8, y + 20); c.fill(); c.fillStyle = '#c98a2a'; c.beginPath(); c.arc(x + k * 8 + 8, y + 14, 1.4, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 10; k++) c.fillRect(x + ((k * 13) % 31), y + 2 + ((k * 7) % 6) + (k > 5 ? 22 : 0), 1, 1); }
+    // terracotta with an incised zigzag and dots (the jar's belly)
+    { const [x, y, w, h] = PX.clayBand; c.fillStyle = '#b5653a'; c.fillRect(x, y, w, h); c.fillStyle = '#9a5230'; c.fillRect(x, y + 1, w, 1); c.fillRect(x, y + h - 2, w, 1);
+      c.strokeStyle = '#6e3418'; c.lineWidth = 1.2; c.beginPath(); for (let i = 0; i <= 8; i++) c.lineTo(x + i * 4, y + (i % 2 ? 5 : 11)); c.stroke();
+      c.fillStyle = '#6e3418'; for (let i = 0; i < 8; i++) c.fillRect(x + i * 4 + 1.5, y + (i % 2 ? 11.5 : 4), 1, 1); }
+    // aquarium backdrops: fresh water with its plants, a reef in deep blue (a little light of their own at night)
+    { const [x, y, w, h] = PX.aquaFresh; const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#4fb3a6'); gr.addColorStop(0.6, '#23707a'); gr.addColorStop(1, '#123e46'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+      c.fillStyle = 'rgba(255,255,255,0.12)'; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(x + 6 + k * 20, y); c.lineTo(x + 14 + k * 20, y); c.lineTo(x + 2 + k * 20, y + h); c.lineTo(x - 4 + k * 20, y + h); c.fill(); }
+      for (let k = 0; k < 22; k++) { const sx = x + 2 + ((k * 37) % 92), top = y + 8 + ((k * 11) % 22); c.strokeStyle = ['#3f8a3a', '#5aa84a', '#2e6b2e', '#6ab84e'][k % 4]; c.lineWidth = 1.6; c.beginPath(); c.moveTo(sx, y + h - 4); c.quadraticCurveTo(sx + (k % 2 ? 4 : -4), (top + y + h) / 2, sx + (k % 3) - 1, top); c.stroke(); }
+      for (const [sx, sy] of [[20, 30], [60, 22], [75, 34], [40, 18]]) { c.fillStyle = '#c84a3a'; c.beginPath(); c.arc(x + sx, y + sy, 2.2, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#8a7a5a'; c.fillRect(x, y + h - 5, w, 5); c.fillStyle = '#b8a47a'; for (let k = 0; k < 40; k++) c.fillRect(x + ((k * 29) % w), y + h - 5 + (k % 4), 1.5, 1);
+      g.fillStyle = '#0c2a2a'; g.fillRect(x, y, w, h); g.fillStyle = '#163e3c'; g.fillRect(x, y, w, h / 3); }
+    { const [x, y, w, h] = PX.aquaSea; const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#36a2ec'); gr.addColorStop(0.55, '#1a62b8'); gr.addColorStop(1, '#0a2a62'); c.fillStyle = gr; c.fillRect(x, y, w, h);
+      c.fillStyle = 'rgba(255,255,255,0.13)'; for (let k = 0; k < 6; k++) { c.beginPath(); c.moveTo(x + 8 + k * 22, y); c.lineTo(x + 18 + k * 22, y); c.lineTo(x + 6 + k * 22, y + h); c.lineTo(x - 2 + k * 22, y + h); c.fill(); }
+      for (const [sx, r, col] of [[10, 9, '#3a3a8a'], [30, 12, '#4a3a90'], [58, 8, '#2e4a8a'], [80, 13, '#4a3a90'], [104, 10, '#3a3a8a'], [124, 8, '#2e4a8a']] as const) { c.fillStyle = col; c.beginPath(); c.arc(x + sx, y + h, r, Math.PI, 0); c.fill(); }
+      for (const [sx, sy, col] of [[22, 14, '#f4d43a'], [70, 10, '#f4d43a'], [96, 20, '#7fd0ff'], [46, 24, '#ff8a3a'], [112, 12, '#7fd0ff']] as const) { c.fillStyle = col; c.fillRect(x + sx, y + sy, 3, 1.5); }
+      g.fillStyle = '#0a1e3a'; g.fillRect(x, y, w, h); g.fillStyle = '#123468'; g.fillRect(x, y, w, h / 3); }
+  }
 }

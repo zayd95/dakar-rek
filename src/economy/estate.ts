@@ -75,7 +75,7 @@ const ROOMS: { id: string; label: string; what: string; types: FurnitureType[] }
   { id: 'bain', label: 'Salle de bain', what: 'Lavabos et vasques, miroirs, porte-serviettes', types: ['bath'] },
   { id: 'bureau', label: 'Bureau', what: 'Travailler chez toi, une fois par heure en ville', types: ['desk'] },
   { id: 'loisirs', label: 'Télé et musique', what: 'Télés, meubles télé, radios, chaînes hi-fi', types: ['tv', 'radio'] },
-  { id: 'deco', label: 'Lumière et déco', what: 'Lampes, suspensions, tableaux, tapis, miroirs et plantes', types: ['lamp', 'decor', 'rug', 'mirror', 'plant'] },
+  { id: 'deco', label: 'Lumière et déco', what: 'Lampes, lanternes, tableaux, vases, sculptures, paravents, aquariums, tapis, miroirs et plantes', types: ['lamp', 'decor', 'rug', 'mirror', 'plant'] },
   { id: 'jardin', label: 'Jardin et piscine', what: 'Transats, parasols, salons de jardin · pour la villa, ou près de la fenêtre', types: ['outdoor'] },
 ];
 
