@@ -381,6 +381,11 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
     seats: ringOf(0.59, 0.59), use: ataya(8, 5) }),
   F({ id: 'salon_teck', type: 'outdoor', grade: 'premium', emoji: '🪑', name: 'Salon de jardin en teck', what: 'Table en teck, quatre fauteuils et leur parasol : « Préparer l’ataya »', price: 780_000, w: 2.1, d: 2.1,
     seats: setOf([[-0.35, -0.69, 0], [0.35, -0.69, 0], [-0.35, 0.69, PI], [0.35, 0.69, PI]], 0.58), use: ataya(10, 6) }),
+  // ---- the catalogue's second round (docs/ld2/LD2_C.md « Catalogue, round 2 »), comfort lane (K-C): its pieces here
+  //
+  // (the comfort lane's pieces above, the decoration lane's below)
+  //
+  // ---- the catalogue's second round, decoration lane (K-D): its pieces here
 ];
 
 // ------------------------------------------------------------------ a supporter's colours (the arena's stall « Couleurs du Géew »)

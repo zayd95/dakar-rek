@@ -30,9 +30,15 @@ export type FurnitureType =
  */
 export type HomeType =
   | 'dining' | 'kitchenTable' | 'microwave' | 'waterDispenser' | 'cooker' | 'vanity' | 'bathMirror' | 'towelRail' | 'floorLamp' | 'pendant'
-  | 'bedside' | 'dresser' | 'closet' | 'wallArt' | 'tvWall' | 'audio' | 'plant' | 'lounger' | 'parasol' | 'gardenSet';
+  | 'bedside' | 'dresser' | 'closet' | 'wallArt' | 'tvWall' | 'audio' | 'plant' | 'lounger' | 'parasol' | 'gardenSet'
+  // the catalogue's second round (docs/ld2/LD2_C.md « Catalogue, round 2 »): comfort and prestige pieces…
+  | 'pouf' | 'cornerSofa' | 'canopyBed' | 'console'
+  // …and decoration
+  | 'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium';
 export const HOME_TYPES: readonly HomeType[] = ['dining', 'kitchenTable', 'microwave', 'waterDispenser', 'cooker', 'vanity', 'bathMirror', 'towelRail', 'floorLamp', 'pendant',
-  'bedside', 'dresser', 'closet', 'wallArt', 'tvWall', 'audio', 'plant', 'lounger', 'parasol', 'gardenSet'];
+  'bedside', 'dresser', 'closet', 'wallArt', 'tvWall', 'audio', 'plant', 'lounger', 'parasol', 'gardenSet',
+  'pouf', 'cornerSofa', 'canopyBed', 'console',
+  'floorVase', 'sculpture', 'wallDecor', 'screen', 'lantern', 'aquarium'];
 export const FURNITURE_TYPES: readonly FurnitureType[] = ['bed', 'sofa', 'armchair', 'plasticChair', 'woodenChair', 'table', 'lowTable', 'desk', 'tv', 'wardrobe', 'shower', 'kitchen', 'fan', 'rug', 'lamp', 'shelf', 'mirror', 'attaya', 'prayerMat', ...HOME_TYPES];
 export type FurnitureId = `${FurnitureType}:${Tier}`;
 export const FURNITURE_IDS: readonly FurnitureId[] = FURNITURE_TYPES.flatMap(t => TIERS.map(r => `${t}:${r}` as FurnitureId));
@@ -109,6 +115,18 @@ export const FURNITURE_NAME: Record<FurnitureType, [string, string, string]> = {
   lounger: ['Transat en toile', 'Bain de soleil tressé', 'Bain de soleil en teck'],
   parasol: ['Parasol de plage', 'Parasol en bois', 'Parasol déporté'],
   gardenSet: ['Salon de jardin en plastique', 'Salon de jardin en fer forgé', 'Salon de jardin en teck'],
+  // the catalogue's second round: comfort and prestige
+  pouf: ['Pouf en cuir', 'Pouf en wax', 'Pouf capitonné en velours'],
+  cornerSofa: ['Banquette d’angle', 'Canapé d’angle en tissu', 'Grand canapé d’angle en velours'],
+  canopyBed: ['Lit et sa moustiquaire', 'Lit à baldaquin en bois', 'Lit à baldaquin et voilages'],
+  console: ['Console et vide-poche', 'Console en bois et miroir', 'Console en marbre et miroir doré'],
+  // the catalogue's second round: decoration
+  floorVase: ['Jarre en terre et herbes sèches', 'Vase en céramique et bouquet', 'Grand vase doré et orchidées'],
+  sculpture: ['Statuette en bois sculpté', 'Sculpture en ébène sur socle', 'Bronze sur socle de marbre'],
+  wallDecor: ['Paniers tressés au mur', 'Masques sculptés', 'Miroir soleil doré'],
+  screen: ['Paravent en raphia', 'Paravent en bois sculpté', 'Paravent laqué et doré'],
+  lantern: ['Lanterne tempête', 'Lanternes en fer ajouré', 'Candélabre en cristal'],
+  aquarium: ['Bocal et poissons rouges', 'Aquarium sur meuble', 'Grand aquarium d’eau de mer'],
 };
 
 // ------------------------------------------------------------------------------------------------------------ materials
@@ -289,6 +307,33 @@ function canopy(b: KitBuilder, rim: number, apex: number, r: number, n: number, 
     b.beam([0, apex - 0.3, 0], [P[0] * 0.96, rim - 0.015, P[2] * 0.96], 0.016, 0.016, ribs);
   }
 }
+
+/**
+ * A stand-in until a lane draws the real piece: `n` stacked boxes in the footprint (more for a richer tier), stood in front of.
+ * The catalogue's second round (docs/ld2/LD2_C.md) replaces every one of them.
+ */
+const standIn = (w: number, d: number, h: number, n: number, placement: Part['placement'] = 'wall'): Maker => b => {
+  for (let k = 0; k < n; k++) b.box(w * (1 - k * 0.15), h / n, d * (1 - k * 0.15), 0, k * h / n, 0, k % 2 ? C.dark : C.gold);
+  return { footprint: { w, d, h }, placement, use: standUse(d, 'use', 'Regarder') };
+};
+// ------------------------------------------------------------------------------------------------ the catalogue's second round, comfort lane (K-C)
+// Pouf, corner sofa, canopy bed, entrance console. The lane owns this block (and nothing else of this file but sofa:better and armchair:better).
+const ROUND2_COMFORT: Record<'pouf' | 'cornerSofa' | 'canopyBed' | 'console', Record<Tier, Maker>> = {
+  pouf: { basic: standIn(0.5, 0.5, 0.42, 1, 'free'), better: standIn(0.55, 0.55, 0.42, 2, 'free'), premium: standIn(0.6, 0.6, 0.44, 3, 'free') },
+  cornerSofa: { basic: standIn(2.2, 1.7, 0.8, 1), better: standIn(2.4, 1.9, 0.9, 2), premium: standIn(2.7, 2.1, 1.0, 3) },
+  canopyBed: { basic: standIn(1.5, 2.1, 2.0, 1), better: standIn(1.7, 2.2, 2.2, 2), premium: standIn(1.9, 2.3, 2.4, 3) },
+  console: { basic: standIn(0.8, 0.3, 0.8, 1), better: standIn(1.1, 0.35, 1.7, 2), premium: standIn(1.3, 0.4, 1.9, 3) },
+};
+// ------------------------------------------------------------------------------------------------ the catalogue's second round, decoration lane (K-D)
+// Floor vases, sculptures, wall decoration, folding screens, lanterns and candelabra, aquariums. The lane owns this block.
+const ROUND2_DECO: Record<'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium', Record<Tier, Maker>> = {
+  floorVase: { basic: standIn(0.4, 0.4, 0.9, 1, 'free'), better: standIn(0.4, 0.4, 1.0, 2, 'free'), premium: standIn(0.5, 0.5, 1.3, 3, 'free') },
+  sculpture: { basic: standIn(0.35, 0.35, 0.8, 1, 'free'), better: standIn(0.45, 0.45, 1.3, 2, 'free'), premium: standIn(0.55, 0.55, 1.7, 3, 'free') },
+  wallDecor: { basic: standIn(0.9, 0.08, 0.6, 1), better: standIn(1.0, 0.12, 0.6, 2), premium: standIn(0.9, 0.08, 0.9, 3) },
+  screen: { basic: standIn(1.5, 0.5, 1.6, 1, 'free'), better: standIn(1.6, 0.5, 1.75, 2, 'free'), premium: standIn(1.8, 0.5, 1.85, 3, 'free') },
+  lantern: { basic: standIn(0.3, 0.3, 0.5, 1, 'free'), better: standIn(0.6, 0.4, 0.9, 2, 'free'), premium: standIn(0.5, 0.5, 1.6, 3, 'free') },
+  aquarium: { basic: standIn(0.4, 0.4, 0.9, 1), better: standIn(1.0, 0.45, 1.3, 2), premium: standIn(1.8, 0.5, 1.6, 3) },
+};
 
 const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
   // -------------------------------------------------------------------------------------------------- dining sets: a table and its chairs
@@ -1030,6 +1075,8 @@ const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
       return { footprint: { w: 2.1, d: 2.1, h: 2.52 }, placement: 'free', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
     },
   },
+  ...ROUND2_COMFORT,
+  ...ROUND2_DECO,
 };
 
 const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {

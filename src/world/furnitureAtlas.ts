@@ -5,7 +5,11 @@ import { atlasRect, type Rect } from './kitGeometry';
  * woven mats, rugs, prayer mats with a plain arch and geometric borders (no text), screens, mirror, tiles, a display
  * cabinet with tea glasses and plates. No brand, logo or real product.
  */
-export const FW = 512, FH = 512;
+export const FW = 512, FH = 768;
+/**
+ * Free space, for the catalogue's second round (docs/ld2/LD2_C.md): the comfort lane paints in x 0…255, y 480…767; the decoration lane in
+ * x 256…511, y 480…767. Each lane adds its rects to `PX` and its drawing to `drawFurnitureAtlas` in its own marked block.
+ */
 const PX = {
   plain: [0, 0, 16, 16], wax0: [16, 0, 64, 64], wax1: [80, 0, 64, 64], wax2: [144, 0, 64, 64], velvet: [208, 0, 64, 64], fabric: [272, 0, 64, 64],
   natte: [336, 0, 64, 64], plasticMat: [400, 0, 64, 64], canvas: [464, 0, 48, 64],
@@ -19,6 +23,11 @@ const PX = {
   art0: [0, 352, 64, 96], art1: [64, 352, 72, 96], art2: [136, 352, 144, 96],
   stripes0: [280, 352, 64, 64], stripes1: [344, 352, 64, 64], towel: [408, 352, 48, 64], grille: [456, 352, 48, 64],
   mwave: [280, 416, 64, 32], calabash: [344, 416, 64, 64], led: [408, 416, 16, 16],
+  // ---- the catalogue's second round, comfort lane (K-C): its rects here, inside x 0…255, y 480…767
+  //
+  // (the comfort lane's rects above, the decoration lane's below)
+  //
+  // ---- the catalogue's second round, decoration lane (K-D): its rects here, inside x 256…511, y 480…767
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type FurnKey = keyof typeof PX;
 export const FUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, FW, FH)])) as Record<FurnKey, Rect>;
@@ -153,4 +162,9 @@ function drawHomeAtlas(c: C2, g: C2) {
     for (let j = 0; j < 4; j++) { const yy = y + 8 + j * 16; c.beginPath(); for (let i = 0; i <= 8; i++) c.lineTo(x + i * 8, yy + (i % 2 ? -5 : 5)); c.stroke(); }
     c.fillStyle = '#5a3416'; for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const cx = x + 8 + i * 16, cy = y + 16 + j * 16; c.beginPath(); c.moveTo(cx, cy - 3); c.lineTo(cx + 3, cy + 2); c.lineTo(cx - 3, cy + 2); c.fill(); } }
   { const [x, y] = P('led'); c.fillStyle = '#ffffff'; c.fillRect(x, y, 16, 16); g.fillStyle = '#fff6e0'; g.fillRect(x, y, 16, 16); }
+  // ---- the catalogue's second round, comfort lane (K-C): its drawing here
+  //
+  // (the comfort lane's drawing above, the decoration lane's below)
+  //
+  // ---- the catalogue's second round, decoration lane (K-D): its drawing here
 }

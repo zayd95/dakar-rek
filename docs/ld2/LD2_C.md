@@ -212,6 +212,68 @@ The old F2 (one open room, the traversée build) and the walkable F2, each with 
 - **An older client and a newer save.** A client from before this phase rejects a visit snapshot that holds one of the new furniture ids. This is the rule from LD2.0-B (`src/online/visitRules.ts`); both players need this build.
 - **The other homes keep their open room.** That is the brief: one excellent apartment first.
 
+## Catalogue, round 2 (owner's request, 26 Oct: « we keep improving comfort, deco and luxury catalogues »)
+**What the survey found:**
+- The catalogue sells 96 pieces: 31 Simple, 33 Confort, 32 Prestige.
+- Its « Lumière et déco » shelf has three pictures, the lamps, the rugs, the mirrors and the plants, but no objects: no vases, sculptures, wall decoration, screens or lanterns.
+- Several good kit models are drawn but not sold: the velvet armchair, the carved chair, the carved coffee table, the wardrobe with a mirror, the attaya sets with their floor cushions, and the woven and velvet prayer mats.
+- Two pieces do not look like their names:
+  - « Canapé en tissu wax » is a plain grey-blue sofa (`sofa:better`).
+  - « Fauteuil en cuir » is a blue fabric armchair (`armchair:better`).
+
+**The contract** (commit « catalogue round 2 contract »): ten new kit types, each in the three grades, with their names in `FURNITURE_NAME`.
+- Each type has a stand-in model (`standIn`) that its lane replaces.
+- Each lane writes only inside its own marked blocks:
+  - `ROUND2_COMFORT` or `ROUND2_DECO` in `src/world/furnitureKit.ts`;
+  - its part of `PX` and `drawFurnitureAtlas` in `src/world/furnitureAtlas.ts` (now 512 × 768): comfort x 0…255, decoration x 256…511, both y 480…767;
+  - its part of `FURNITURE_SPECS` (`src/economy/catalog.ts`) and of `KIT_PIECES` (`src/economy/furnitureKitAdapter.ts`).
+- Kit rules, as before:
+  - one draw call (two with glass), under 1 500 triangles;
+  - the geometry inside the footprint;
+  - Prestige richer than Simple;
+  - a catalogue piece's footprint and seats are its kit model's (`tests/furnishRooms.test.ts`).
+- No save field: new ids only. Every id sold today stays.
+
+### Lane K-C, comfort and prestige furniture
+| Kit type | Simple | Confort | Prestige |
+|---|---|---|---|
+| `pouf` (type `chair`) | `pouf_cuir` Pouf en cuir · 12 000 F | `pouf_wax` Pouf en wax · 35 000 F | `pouf_velours` Pouf capitonné en velours · 180 000 F |
+| `cornerSofa` (`sofa`) | `banquette_angle` Banquette d’angle · 45 000 F | `canape_angle` Canapé d’angle en tissu · 260 000 F | `canape_angle_velours` Grand canapé d’angle en velours · 1 400 000 F |
+| `canopyBed` (`bed`) | `lit_moustiquaire` Lit et sa moustiquaire · 30 000 F | `lit_baldaquin_bois` Lit à baldaquin en bois · 240 000 F | `lit_baldaquin` Lit à baldaquin et voilages · 1 600 000 F |
+| `console` (`shelf`, room `entree`) | `console_simple` Console et vide-poche · 9 000 F | `console_bois` Console en bois et miroir · 85 000 F | `console_marbre` Console en marbre et miroir doré · 520 000 F |
+
+**Kit models already drawn, now sold:**
+- `fauteuil_velours` (armchair:premium, Prestige) Fauteuil de salon en velours · 420 000 F.
+- `chaise_sculptee` (woodenChair:premium, Prestige) Chaise sculptée · 95 000 F.
+- `table_basse_sculptee` (lowTable:premium, Prestige) Table basse sculptée · 260 000 F, « Préparer l’ataya ».
+- `armoire_miroir` (wardrobe:premium, Prestige) Grande armoire à miroir · 680 000 F.
+- `attaya_gaz` (attaya:better, Confort) Attaya au gaz et ses coussins · 45 000 F.
+- `attaya_service` (attaya:premium, Prestige) Grand service à attaya · 220 000 F.
+- `tapis_priere_tisse` (prayerMat:better, Confort) Tapis de prière tissé · 18 000 F.
+- `tapis_priere_velours` (prayerMat:premium, Prestige) Tapis de prière en velours · 95 000 F.
+
+**Models brought in line with their names:**
+- `sofa:better` (« Canapé en tissu wax ») is upholstered in wax prints.
+- `armchair:better` (« Fauteuil en cuir ») becomes a tan buttoned-leather armchair.
+
+### Lane K-D, decoration and luxury accents
+| Kit type | Simple | Confort | Prestige |
+|---|---|---|---|
+| `floorVase` (`decor`) | `jarre_herbes` Jarre en terre et herbes sèches · 6 000 F | `vase_bouquet` Vase en céramique et bouquet · 45 000 F | `vase_orchidees` Grand vase doré et orchidées · 260 000 F |
+| `sculpture` (`decor`) | `statuette_bois` Statuette en bois sculpté · 15 000 F | `sculpture_ebene` Sculpture en ébène sur socle · 120 000 F | `bronze_marbre` Bronze sur socle de marbre · 950 000 F |
+| `wallDecor` (`decor`, on a wall) | `paniers_muraux` Paniers tressés au mur · 8 000 F | `masques_sculptes` Masques sculptés · 65 000 F | `miroir_soleil` Miroir soleil doré · 380 000 F |
+| `screen` (`decor`) | `paravent_raphia` Paravent en raphia · 14 000 F | `paravent_bois` Paravent en bois sculpté · 110 000 F | `paravent_laque` Paravent laqué et doré · 560 000 F |
+| `lantern` (`lamp`) | `lanterne_tempete` Lanterne tempête · 4 500 F | `lanternes_fer` Lanternes en fer ajouré · 38 000 F | `candelabre_cristal` Candélabre en cristal · 450 000 F |
+| `aquarium` (`decor`) | `bocal_poissons` Bocal et poissons rouges · 9 000 F | `aquarium_meuble` Aquarium sur meuble · 190 000 F | `aquarium_mer` Grand aquarium d’eau de mer · 1 900 000 F |
+
+The « Lumière et déco » shelf of the catalogue is renamed for what it now holds (lane K-D: `ROOMS` in `src/economy/estate.ts`, `TYPE_LABEL.decor` in `src/economy/catalog.ts`).
+
+### Integration (the integration owner)
+- Merge both lanes.
+- Put the new pieces on show at Keur Meubles (`src/economy/citeJamm.ts`).
+- Retake the catalogue sheet and the furnished rooms.
+- Run the regression and measure a richly furnished F2 against the budget (≤ 60 draw calls, ≤ 80k triangles).
+
 ## Not in this slice
 - Houses and villas with several storeys, stairs, balconies, terraces and compounds come after the apartment has been reviewed.
 - The owner's flagship villa is LD2.0-D.

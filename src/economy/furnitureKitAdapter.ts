@@ -50,6 +50,11 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   transat: 'lounger:basic', bain_soleil: 'lounger:better', bain_soleil_teck: 'lounger:premium',
   parasol: 'parasol:basic', parasol_bois: 'parasol:better', parasol_deporte: 'parasol:premium',
   salon_jardin: 'gardenSet:basic', salon_fer_forge: 'gardenSet:better', salon_teck: 'gardenSet:premium',
+  // ---- the catalogue's second round, comfort lane (K-C): its mappings here
+  //
+  // (the comfort lane's mappings above, the decoration lane's below)
+  //
+  // ---- the catalogue's second round, decoration lane (K-D): its mappings here
 };
 
 /** Height of the home floor the catalogue's seat tops are measured with (kit seat tops are above the piece's base). */
