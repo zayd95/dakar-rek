@@ -3,8 +3,8 @@ import type { SaveData } from '../core/types';
 /**
  * M4 « One Evening Out » (docs/districts/M4-ALMADIES.md): the rules of one evening in Almadies/Ngor, pure so the tests read them.
  *
- * The evening is made of things that already exist, in this order if the player likes: a meal at the Terrasse de Ngor (src/venues/rooftop.ts: an
- * ordinary `order` activity), a word with Awa Sy who keeps the house, La Vague (src/venues/club.ts: the club's own entry, dance and counters).
+ * The evening is made of things that already exist, in this order if the player likes: a meal at the independent Terrasse de Ngor frontage (src/venues/rooftop.ts: an
+ * ordinary `order` activity), a word with Awa Sy who hosts the venue, La Vague (src/venues/club.ts: the club's own entry, dance and counters).
  * This file only remembers what was really done that evening, says when it is over, and what Awa says on a later evening. Nothing here pays,
  * feeds or admits anyone: the activities do, and a stage counts only after the activity itself finished (its own counter moved).
  *
@@ -13,7 +13,7 @@ import type { SaveData } from '../core/types';
  */
 export const AWA_ID = 'terrasse_awa';
 export const AWA_NAME = 'Awa Sy';
-export const AWA_TITLE = 'maîtresse de maison · Terrasse de Ngor';
+export const AWA_TITLE = 'hôtesse · Terrasse de Ngor';
 
 /** The same night as `clubNight` (src/activity/templates.ts): a test holds the two together. */
 export const eveningOf = (day: number, hour: number) => Math.floor(day) - (hour < 12 ? 1 : 0);
@@ -106,7 +106,7 @@ export function endEvening(d: D, night: number): EveningCard | null {
 
 /** What Awa says. The toast lines answer the guest's choice; `recall` remembers it on a later evening. */
 export const AWA_LINES = {
-  first: 'Bonsoir, bienvenue à la Terrasse. Je suis Awa, c’est moi qui tiens la maison. Qu’est-ce qui t’amène ce soir ?',
+  first: 'Bonsoir, bienvenue à la Terrasse de Ngor. Je suis Awa, je m’occupe de la terrasse. Qu’est-ce qui t’amène ce soir ?',
   recognise: (toast: number, mask: number) => {
     const before = toast === 2 ? 'Tu fêtais un bon travail, la dernière fois. Ça continue ?' : toast === 3 ? 'Tu découvrais Dakar, la dernière fois. Tu t’y fais ?' : 'Te revoilà. La dernière fois, tu étais venu « sans raison »…';
     const after = mask & STAGE.dance ? ' Et Lamine m’a dit que tu avais fait danser La Vague.' : mask & STAGE.dine ? ' Ta table t’attend.' : '';
