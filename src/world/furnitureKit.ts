@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KitBuilder, paintAtlas, type Paint, type Rect, type V3 } from './kitGeometry';
+import { KitBuilder, paintAtlas, seeded, type Paint, type Rect, type V3 } from './kitGeometry';
 import { FW, FH, FUV, FPLAIN, drawFurnitureAtlas } from './furnitureAtlas';
 import { floorSeatTop, type Seat, type SeatKind } from '../interact/seats';
 import type { Clip } from '../actors/humanoid';
@@ -34,11 +34,14 @@ export type HomeType =
   // the catalogue's second round (docs/ld2/LD2_C.md « Catalogue, round 2 »): comfort and prestige pieces…
   | 'pouf' | 'cornerSofa' | 'canopyBed' | 'console'
   // …and decoration
-  | 'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium';
+  | 'floorVase' | 'sculpture' | 'wallDecor' | 'screen' | 'lantern' | 'aquarium'
+  // LD2.0-D « Collection Almadies » (lane K-L): the modern-luxury line, eleven types of three pieces each
+  | 'lxSofa' | 'lxArmchair' | 'lxLowTable' | 'lxTableSet' | 'lxBed' | 'lxNightstand' | 'lxChest' | 'lxCabinet' | 'lxLight' | 'lxDecor' | 'lxAccent';
 export const HOME_TYPES: readonly HomeType[] = ['dining', 'kitchenTable', 'microwave', 'waterDispenser', 'cooker', 'vanity', 'bathMirror', 'towelRail', 'floorLamp', 'pendant',
   'bedside', 'dresser', 'closet', 'wallArt', 'tvWall', 'audio', 'plant', 'lounger', 'parasol', 'gardenSet',
   'pouf', 'cornerSofa', 'canopyBed', 'console',
-  'floorVase', 'sculpture', 'wallDecor', 'screen', 'lantern', 'aquarium'];
+  'floorVase', 'sculpture', 'wallDecor', 'screen', 'lantern', 'aquarium',
+  'lxSofa', 'lxArmchair', 'lxLowTable', 'lxTableSet', 'lxBed', 'lxNightstand', 'lxChest', 'lxCabinet', 'lxLight', 'lxDecor', 'lxAccent'];
 export const FURNITURE_TYPES: readonly FurnitureType[] = ['bed', 'sofa', 'armchair', 'plasticChair', 'woodenChair', 'table', 'lowTable', 'desk', 'tv', 'wardrobe', 'shower', 'kitchen', 'fan', 'rug', 'lamp', 'shelf', 'mirror', 'attaya', 'prayerMat', ...HOME_TYPES];
 export type FurnitureId = `${FurnitureType}:${Tier}`;
 export const FURNITURE_IDS: readonly FurnitureId[] = FURNITURE_TYPES.flatMap(t => TIERS.map(r => `${t}:${r}` as FurnitureId));
@@ -127,6 +130,18 @@ export const FURNITURE_NAME: Record<FurnitureType, [string, string, string]> = {
   screen: ['Paravent en raphia', 'Paravent en bois sculpté', 'Paravent laqué et doré'],
   lantern: ['Lanterne tempête', 'Lanternes en fer ajouré', 'Candélabre en cristal'],
   aquarium: ['Bocal et poissons rouges', 'Aquarium sur meuble', 'Grand aquarium d’eau de mer'],
+  // LD2.0-D « Collection Almadies » (lane K-L): three pieces of the line per type, the richest in the premium slot
+  lxSofa: ['Canapé arrondi en bouclé, socle doré', 'Canapé d’angle méridienne en lin', 'Grand canapé courbe sur socle bronze'],
+  lxArmchair: ['Banc de lit tapissé', 'Fauteuil enveloppant, lin et noyer', 'Fauteuil cocon en bouclé'],
+  lxLowTable: ['Guéridon en marbre sur fût noir', 'Table basse en marbre blanc et noyer', 'Table basse en marbre noir'],
+  lxTableSet: ['Bureau à caisson et chaise tapissée', 'Table en noyer et quatre chaises', 'Table ronde en marbre et quatre chaises'],
+  lxBed: ['Lit en noyer, tête tapissée', 'Lit tapissier en lin grège', 'Lit en cuir noir capitonné'],
+  lxNightstand: ['Chevet en noyer, deux tiroirs', 'Chevet arrondi grège', 'Chevet en cuir noir'],
+  lxChest: ['Chiffonnier en noyer', 'Commode six tiroirs', 'Dressing quatre portes, poignées bronze'],
+  lxCabinet: ['Meuble télé bas laqué', 'Enfilade grège à filets bronze', 'Bibliothèque éclairée en noyer'],
+  lxLight: ['Lampadaire champignon', 'Lampadaire arc, abat-jour plissé', 'Lustre couronne de cristal'],
+  lxDecor: ['Grand tapis rond en jute', 'Ficus en pot cannelé', 'Miroir ovale, cadre bronze'],
+  lxAccent: ['Lampe champignon', 'Étagère ouverte noir et bronze', 'Coiffeuse, miroir rond et tabouret'],
 };
 
 // ------------------------------------------------------------------------------------------------------------ materials
@@ -1196,6 +1211,744 @@ function decoMakers(): Record<DecoType, Record<Tier, Maker>> {
 }
 const ROUND2_DECO = decoMakers();
 
+// ------------------------------------------------------------------------------------------------ LD2.0-D « Collection Almadies » (lane K-L)
+// A modern-luxury line from the owner's three reference sheets (docs/ld2/LD2_D.md, the furniture brief): a calm palette (ivory bouclé, greige
+// linen, taupe, warm walnut, black and white marble, thin brushed bronze, black leather), soft rounded silhouettes, plump cushions with their
+// seams, low plinths with a recessed shadow gap, real sizes. Eleven kit types `lx…` of three pieces each, the premium slot the richest. The lane
+// owns this block, its rects and drawing in src/world/furnitureAtlas.ts (y 768…1023), and its catalogue lines (`line: 'almadies'`).
+type LxType = 'lxSofa' | 'lxArmchair' | 'lxLowTable' | 'lxTableSet' | 'lxBed' | 'lxNightstand' | 'lxChest' | 'lxCabinet' | 'lxLight' | 'lxDecor' | 'lxAccent';
+/** The line's makers, its palette and helpers kept inside (nothing of it clashes with the rest of the kit). */
+function almadiesMakers(): Record<LxType, Record<Tier, Maker>> {
+  const A = {
+    ivory: 0xece6da, greige: 0xcfc5b6, greigeLight: 0xddd5c8, taupe: 0x8c7b6b, walnut: 0x7a5236, walnutDark: 0x56381f, lacquer: 0xc9bfb1,
+    gap: 0x6f665b, bronze: 0x9a7650, brass: 0xb8935e, black: 0x1d1c1e, plinth: 0x141210, white: 0xf4f2ee, ceramic: 0xe9e3d8, ceramic2: 0xc9b8a4,
+    leaf: 0x2f5a2c, leaf2: 0x3d6b35, leaf3: 0x4f7f41, bark: 0x5a4632, soil: 0x3a2c22, screen: 0x0e0e10, crystal: 0xe6f2fb, shade: 0xcbbfae,
+    legDark: 0x2a221d, cover: 0xc9b9a6,
+  };
+  const U = FUV;
+  const UPY = new THREE.Vector3(0, 1, 0);
+  type P2 = [number, number];
+  /** The part of rect r a face a × c m long takes when one tile of r covers t m (from the rect's bottom-left corner). */
+  const cut = (r: Rect, a: number, c: number, t: number): Rect => kcPart(r, a / t, c / t);
+  /** A round rod of n sides from a (radius ra) to c (radius rc): tapered legs, tubes, stems. An end on the floor is lifted so its tilted cap stays above it. */
+  function rod(b: KitBuilder, a: V3, c: V3, ra: number, rc: number, paint: Paint, n = 6, caps = true) {
+    const lift = (p: V3, q: V3, r: number): V3 => { if (p[1] > 0.002) return p; const h = Math.hypot(q[0] - p[0], q[2] - p[2]), l = Math.hypot(h, q[1] - p[1]); return [p[0], p[1] + r * h / l + 0.001, p[2]]; };
+    a = lift(a, c, ra); c = lift(c, a, rc);
+    const P = new THREE.Vector3(...a), Q = new THREE.Vector3(...c), dir = Q.clone().sub(P), len = dir.length();
+    if (len < 1e-6) return;
+    const m = new THREE.Matrix4().compose(P.clone().add(Q).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(UPY, dir.normalize()), new THREE.Vector3(1, 1, 1));
+    b.with(m, () => b.cyl('y', ra, rc, len, 0, 0, 0, paint, n, { neg: caps, pos: caps }));
+  }
+  /** The outline of a w × d rectangle centred on (x, z), its corners rounded (radius r, n steps a corner), counter-clockwise from +x round by +z. */
+  function outline(w: number, d: number, r: number, n: number, x = 0, z = 0): P2[] {
+    r = Math.min(r, w / 2 - 1e-4, d / 2 - 1e-4);
+    const out: P2[] = [];
+    ([[1, 1], [-1, 1], [-1, -1], [1, -1]] as const).forEach(([sx, sz], k) => {
+      if (r <= 0 || n < 1) { out.push([x + sx * w / 2, z + sz * d / 2]); return; }
+      const cx = x + sx * (w / 2 - r), cz = z + sz * (d / 2 - r);
+      for (let i = 0; i <= n; i++) { const a = (k + i / n) * Math.PI / 2; out.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); }
+    });
+    return out;
+  }
+  interface Loft { top?: Rect | null; side?: Rect | null; T?: number; tint?: number; bottom?: boolean; topPaint?: number }
+  /**
+   * A body lofted through outlines (each from outline(), the same count of points) at rising heights: a straight band between two outlines of the
+   * same size, a bevel or a rounding between a larger and a smaller one. The top (the last outline) and the bands that lie more than they stand wear
+   * `top` laid from above (the whole rect over the first outline's bounds); the standing bands wear `side`, cut to a tile of T m (or stretched round
+   * once when T is 0); without a rect, plain `paint` (the top `topPaint`). Textured faces take `tint` (default white: the paint's own colours).
+   */
+  function loft(b: KitBuilder, rings: readonly { pts: P2[]; y: number }[], paint: number, o: Loft = {}) {
+    const p0 = rings[0].pts, n = p0.length, tint = o.tint ?? W;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const [x, z] of p0) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const plan = (r: Rect, x: number, z: number): [number, number] => [r[0] + (r[2] - r[0]) * (x - x0) / (x1 - x0), r[1] + (r[3] - r[1]) * (z1 - z) / (z1 - z0)];
+    let per = 0; for (let i = 0; i < n; i++) per += Math.hypot(p0[(i + 1) % n][0] - p0[i][0], p0[(i + 1) % n][1] - p0[i][1]);
+    for (let k = 0; k + 1 < rings.length; k++) {
+      const A0 = rings[k], A1 = rings[k + 1], dy = A1.y - A0.y;
+      let s = 0;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n, a = A0.pts[i], c = A0.pts[j], e = A1.pts[j], f = A1.pts[i];
+        const q: V3[] = [[a[0], A0.y, a[1]], [c[0], A0.y, c[1]], [e[0], A1.y, e[1]], [f[0], A1.y, f[1]]];
+        const mx = (a[0] + c[0] + e[0] + f[0]) / 4, mz = (a[1] + c[1] + e[1] + f[1]) / 4, step = Math.hypot((a[0] + c[0] - e[0] - f[0]) / 2, (a[1] + c[1] - e[1] - f[1]) / 2);
+        const lying = step > Math.abs(dy), len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+        const hint: V3 = lying ? [0, 1, 0] : [mx - cx, 0, mz - cz];
+        const r = lying ? o.top : o.side;
+        if (!r) b.toward(q, hint, lying ? (o.topPaint ?? paint) : paint);
+        else if (lying) b.toward(q, hint, tint, q.map(p => plan(r, p[0], p[2])));
+        else {
+          const T = o.T ?? 0.5, rr = T > 0 ? cut(r, len, Math.abs(dy), T) : r;
+          const u0 = T > 0 ? rr[0] : r[0] + (r[2] - r[0]) * s / per, u1 = T > 0 ? rr[2] : r[0] + (r[2] - r[0]) * (s + len) / per;
+          b.toward(q, hint, tint, [[u0, rr[1]], [u1, rr[1]], [u1, rr[3]], [u0, rr[3]]]);
+        }
+        s += len;
+      }
+    }
+    const last = rings[rings.length - 1], top: V3[] = last.pts.map(([x, z]) => [x, last.y, z]);
+    if (o.top) b.toward(top, [0, 1, 0], tint, top.map(p => plan(o.top!, p[0], p[2]))); else b.toward(top, [0, 1, 0], o.topPaint ?? paint);
+    if (o.bottom) b.toward(p0.map(([x, z]) => [x, rings[0].y, z] as V3), [0, -1, 0], paint);
+  }
+  /** A slab of outline `pts` from y0 to y1 (see loft). */
+  const slabOf = (b: KitBuilder, pts: P2[], y0: number, y1: number, paint: number, o: Loft = {}) => loft(b, [{ pts, y: y0 }, { pts, y: y1 }], paint, o);
+  /** A slab w × d with rounded corners whose top edge is rounded over by c (two steps): soft lacquer cases, marble tops. */
+  const softSlab = (b: KitBuilder, w: number, d: number, r: number, n: number, x: number, z: number, y0: number, y1: number, c: number, paint: number, o: Loft = {}) =>
+    loft(b, [{ pts: outline(w, d, r, n, x, z), y: y0 }, { pts: outline(w, d, r, n, x, z), y: y1 - c }, { pts: outline(w - c * 0.8, d - c * 0.8, Math.max(0.002, r - c * 0.4), n, x, z), y: y1 - c * 0.3 },
+      { pts: outline(w - c * 2, d - c * 2, Math.max(0.001, r - c), n, x, z), y: y1 }], paint, o);
+  interface Puff { c?: number; k?: number; crown?: number; T?: number; tint?: number; bottom?: boolean }
+  /**
+   * A plump cushion w × d standing on y, h high, centred on (x, z): straight sides up to y + h − c, then rounded over in two steps into a top crowned
+   * by `crown` at its middle; its vertical edges cut by k (soft corners). The top and the rounding wear the whole `top` rect (its seam or piping round
+   * the edge), the sides `side` cut to a tile of T m; without a rect, plain `paint`. Textured faces take `tint` (default white).
+   */
+  function puff(b: KitBuilder, w: number, h: number, d: number, x: number, y: number, z: number, paint: number, top: Rect | null, side: Rect | null, o: Puff = {}) {
+    const c = Math.min(o.c ?? 0.04, h * 0.9, w / 3, d / 3), k = Math.min(o.k ?? 0.03, w / 3, d / 3), tint = o.tint ?? W, T = o.T ?? 0.5;
+    const ring = (i: number, yy: number): V3[] => {
+      const hx = w / 2 - i, hz = d / 2 - i, kk = Math.max(0.001, k - i * 0.3);
+      return [[x + hx - kk, yy, z + hz], [x - hx + kk, yy, z + hz], [x - hx, yy, z + hz - kk], [x - hx, yy, z - hz + kk], [x - hx + kk, yy, z - hz], [x + hx - kk, yy, z - hz], [x + hx, yy, z - hz + kk], [x + hx, yy, z + hz - kk]];
+    };
+    const uvTop = (p: V3): [number, number] => top ? [top[0] + (top[2] - top[0]) * (p[0] - (x - w / 2)) / w, top[1] + (top[3] - top[1]) * ((z + d / 2) - p[2]) / d] : [b.plain[0], b.plain[1]];
+    const R = [ring(0, y), ring(0, y + h - c), ring(c * 0.42, y + h - c * 0.28), ring(c, y + h)];
+    for (let s = 0; s < 3; s++) for (let i = 0; i < 8; i++) {
+      const j = (i + 1) % 8, q = [R[s][i], R[s][j], R[s + 1][j], R[s + 1][i]];
+      const mx = (q[0][0] + q[1][0]) / 2 - x, mz = (q[0][2] + q[1][2]) / 2 - z, hint: V3 = s === 0 ? [mx, 0, mz] : [mx, (s === 1 ? 0.6 : 1.6) * Math.hypot(mx, mz), mz];
+      if (s === 0) {
+        if (!side) { b.toward(q, hint, paint); continue; }
+        const len = Math.hypot(q[1][0] - q[0][0], q[1][2] - q[0][2]), rr = cut(side, len, h - c, T);
+        b.toward(q, hint, tint, [[rr[0], rr[1]], [rr[2], rr[1]], [rr[2], rr[3]], [rr[0], rr[3]]]);
+      } else if (top) b.toward(q, hint, tint, q.map(uvTop)); else b.toward(q, hint, paint);
+    }
+    const C: V3 = [x, y + h + (o.crown ?? 0), z];
+    for (let i = 0; i < 8; i++) { const q = [C, R[3][i], R[3][(i + 1) % 8]]; if (top) b.toward(q, [0, 1, 0], tint, q.map(uvTop)); else b.toward(q, [0, 1, 0], paint); }
+    if (o.bottom) b.toward(R[0], [0, -1, 0], paint);
+  }
+  /**
+   * A back cushion or a pillow w wide, h high and t thick: the foot of its back face at (x, y, z), leaning back by `tilt` (its top goes back by
+   * h·sin tilt), its soft face toward +z before turning by `rotY` (a puff stood up).
+   */
+  const pillow = (b: KitBuilder, x: number, y: number, z: number, w: number, h: number, t: number, paint: number, top: Rect | null, side: Rect | null, tilt = 0.2, rotY = 0, o: Puff = {}) =>
+    b.at(x, y, z, rotY, () => puff(b, w, t, h, 0, 0, -h / 2, paint, top, side, { c: Math.min(t * 0.45, 0.06), k: 0.05, crown: t * 0.18, T: 0.4, ...o }), Math.PI / 2 - tilt);
+  /**
+   * A shell swept along a path in plan ([x, z] points): at point i its section sec(i), [o, y] pairs from the inside up over the top and down the
+   * outside (o outward, away from the path's left: a path running along +x has its outside toward −z). Its ends capped. Faces wear `rect` cut to a
+   * tile of T m (tinted `tint`), else plain `paint`.
+   */
+  function sweep(b: KitBuilder, path: P2[], sec: (i: number) => P2[], paint: number, rect: Rect | null, T = 0.4, tint = W) {
+    const N = path.length, S = sec(0).length;
+    const nrm = path.map((_, i) => { const a = path[Math.max(0, i - 1)], c = path[Math.min(N - 1, i + 1)], tx = c[0] - a[0], tz = c[1] - a[1], l = Math.hypot(tx, tz); return [tz / l, -tx / l] as P2; });
+    const pt = (i: number, s: P2): V3 => [path[i][0] + nrm[i][0] * s[0], s[1], path[i][1] + nrm[i][1] * s[0]];
+    const secs = path.map((_, i) => sec(i));
+    for (let i = 0; i + 1 < N; i++) {
+      const L = Math.hypot(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]);
+      const oc = secs[i].reduce((t, s) => t + s[0], 0) / S, yc = secs[i].reduce((t, s) => t + s[1], 0) / S;
+      for (let j = 0; j + 1 < S; j++) {
+        const a = secs[i][j], c = secs[i][j + 1], q = [pt(i, a), pt(i + 1, secs[i + 1][j]), pt(i + 1, secs[i + 1][j + 1]), pt(i, c)];
+        const om = (a[0] + c[0]) / 2 - oc, ym = (a[1] + c[1]) / 2 - yc, nm: P2 = [(nrm[i][0] + nrm[i + 1][0]) / 2, (nrm[i][1] + nrm[i + 1][1]) / 2];
+        const hint: V3 = [nm[0] * om, ym, nm[1] * om];
+        if (!rect) { b.toward(q, hint, paint); continue; }
+        const rr = cut(rect, L, Math.hypot(c[0] - a[0], c[1] - a[1]), T);
+        b.toward(q, hint, tint, [[rr[0], rr[1]], [rr[2], rr[1]], [rr[2], rr[3]], [rr[0], rr[3]]]);
+      }
+    }
+    for (const [i, dir] of [[0, -1], [N - 1, 1]] as const) {
+      const a = path[Math.max(0, i - 1)], c = path[Math.min(N - 1, i + 1)], l = Math.hypot(c[0] - a[0], c[1] - a[1]);
+      b.toward(secs[i].map(s => pt(i, s)), [dir * (c[0] - a[0]) / l, 0, dir * (c[1] - a[1]) / l], rect ? tint : paint, rect ? secs[i].map(() => [rect[0] + 0.3 * (rect[2] - rect[0]), rect[1] + 0.5 * (rect[3] - rect[1])] as [number, number]) : undefined);
+    }
+  }
+  /**
+   * A profile ([r, y] points, the bottom edge left open) turned round a vertical axis at (cx, cz) from angle a0 to a1 in n steps (angle 0 points
+   * toward −z: P = (cx + r sin a, y, cz − r cos a)): a curved sofa's base and cushions, a crown's bands. Its ends capped unless it goes all round.
+   * Edge j wears rects[j] (cut to a tile of T m) when given, else plain `paint`.
+   */
+  function spin(b: KitBuilder, cx: number, cz: number, prof: readonly P2[], a0: number, a1: number, n: number, paint: number, rects: (Rect | null)[] = [], T = 0.4, tint = W) {
+    const P = (a: number, p: P2): V3 => [cx + p[0] * Math.sin(a), p[1], cz - p[0] * Math.cos(a)];
+    const rc = prof.reduce((t, p) => t + p[0], 0) / prof.length, yc = prof.reduce((t, p) => t + p[1], 0) / prof.length;
+    for (let k = 0; k < n; k++) {
+      const aa = a0 + (a1 - a0) * k / n, ab = a0 + (a1 - a0) * (k + 1) / n, am = (aa + ab) / 2;
+      for (let j = 0; j + 1 < prof.length; j++) {
+        const p = prof[j], q = prof[j + 1], quad = [P(aa, p), P(ab, p), P(ab, q), P(aa, q)];
+        const dr = (p[0] + q[0]) / 2 - rc, dy = (p[1] + q[1]) / 2 - yc, hint: V3 = [Math.sin(am) * dr, dy, -Math.cos(am) * dr];
+        const r = rects[j];
+        if (!r) { b.toward(quad, hint, paint); continue; }
+        const rr = cut(r, Math.abs(ab - aa) * (p[0] + q[0]) / 2, Math.hypot(q[0] - p[0], q[1] - p[1]), T);
+        b.toward(quad, hint, tint, [[rr[0], rr[1]], [rr[2], rr[1]], [rr[2], rr[3]], [rr[0], rr[3]]]);
+      }
+    }
+    if (Math.abs(a1 - a0) > Math.PI * 2 - 1e-6) return;
+    const tri = THREE.ShapeUtils.triangulateShape(prof.map(p => new THREE.Vector2(p[0], p[1])), []);
+    for (const [a, s] of [[a0, -1], [a1, 1]] as const) for (const t of tri) b.toward(t.map(k => P(a, prof[k])), [s * Math.cos(a), 0, s * Math.sin(a)], paint);
+  }
+  /**
+   * A fluted column: 2n faces round (cx, cz), alternately at radius r and r − depth, from y0 to y1 (open ends). With `rect` (eight flutes drawn
+   * across it) each face wears a sixteenth of it, so every flute is shaded round; else plain `paint`.
+   */
+  function fluted(b: KitBuilder, cx: number, cz: number, r: number, depth: number, n: number, y0: number, y1: number, paint: number, rect?: Rect, tint = W) {
+    const P = (i: number, y: number): V3 => { const a = i * Math.PI / n, rr = i % 2 ? r - depth : r; return [cx + Math.sin(a) * rr, y, cz + Math.cos(a) * rr]; };
+    for (let i = 0; i < 2 * n; i++) {
+      const a = (i + 0.5) * Math.PI / n, q = [P(i, y0), P(i + 1, y0), P(i + 1, y1), P(i, y1)], hint: V3 = [Math.sin(a), 0, Math.cos(a)];
+      if (!rect) { b.toward(q, hint, paint); continue; }
+      const u0 = rect[0] + (rect[2] - rect[0]) * (i % 16) / 16, u1 = rect[0] + (rect[2] - rect[0]) * (i % 16 + 1) / 16;
+      b.toward(q, hint, tint, [[u0, rect[1]], [u1, rect[1]], [u1, rect[3]], [u0, rect[3]]]);
+    }
+  }
+  /** The OE mushroom lamp at (x, y, z), h high, its dome r wide: a bronze foot and stem, the dome in `shadeCol`, lit underneath (it glows at night). */
+  function mushroom(b: KitBuilder, x: number, y: number, z: number, h: number, r: number, foot: number, shadeCol: number = A.shade, metal: number = A.bronze) {
+    b.cyl('y', foot, foot * 1.04, 0.016, x, y + 0.008, z, metal, 16, { neg: false, pos: true });
+    b.cyl('y', foot * 0.55, foot * 0.75, 0.012, x, y + 0.022, z, metal, 12, { neg: false, pos: true });
+    const ys = y + h - r * 0.55;
+    b.cyl('y', 0.006 + r * 0.03, 0.006 + r * 0.03, ys - y - 0.02, x, (y + 0.028 + ys) / 2, z, metal, 6, { neg: false, pos: false });
+    kcDrum(b, x, z, [[r, ys], [r * 0.98, ys + r * 0.14], [r * 0.88, ys + r * 0.32], [r * 0.64, ys + r * 0.47], [r * 0.3, ys + r * 0.55]], 16, shadeCol, null, 1, true);
+    b.cyl('y', r * 0.96, r * 0.96, 0.004, x, ys + 0.004, z, W, 16, { neg: FUV.bulb, pos: false });
+  }
+  /**
+   * The bedding of a bed whose mattress (w × len, its head at zh, standing on y): the mattress, a white duvet over its lower part falling over the
+   * sides and the foot, its edge turned down, a taupe knitted throw folded across the foot, pillows against the head (two white, two shams in
+   * `sham`, an accent cushion). Returns the top of the bed (the lying height).
+   */
+  function bedding(b: KitBuilder, w: number, len: number, zh: number, y: number, sham: [number, Rect | null, Rect | null], accent: [number, Rect | null], ph = 0.48) {
+    const top = y + 0.2, z0 = zh + 0.52, z1 = zh + len + 0.025, dw = w + 0.05;
+    puff(b, w, 0.2, len, 0, y, zh + len / 2, A.white, U.lxSheet, U.lxSheet, { c: 0.04, k: 0.03, crown: 0.004, T: 0.7 });
+    puff(b, dw, 0.05, z1 - z0, 0, top - 0.012, (z0 + z1) / 2, A.white, U.lxSheet, U.lxSheet, { c: 0.025, k: 0.02, crown: 0.022, T: 0.7 });
+    for (const sx of [-1, 1]) b.box(0.012, 0.2, z1 - z0, sx * (dw / 2 - 0.006), top - 0.19, (z0 + z1) / 2, W, { px: { rect: U.lxSheet }, nx: { rect: U.lxSheet }, py: { skip: true }, pz: { skip: true }, nz: { skip: true } });
+    b.box(dw, 0.2, 0.012, 0, top - 0.19, z1 - 0.006, W, { pz: { rect: U.lxSheet }, py: { skip: true }, px: { skip: true }, nx: { skip: true }, nz: { skip: true } });
+    b.cyl('x', 0.032, 0.032, dw - 0.03, 0, top + 0.035, z0 + 0.01, A.white, 8, { neg: false, pos: false });
+    const tz = zh + len - 0.34, tw = dw + 0.02;
+    b.box(tw, 0.022, 0.42, 0, top + 0.045, tz, W, { py: { rect: U.lxThrow }, pz: { rect: U.lxThrow }, nz: { rect: U.lxThrow }, px: { skip: true }, nx: { skip: true } });
+    for (const sx of [-1, 1]) b.box(0.012, 0.25, 0.42, sx * (tw / 2 - 0.006), top - 0.183, tz, W, { px: { rect: U.lxThrow }, nx: { rect: U.lxThrow }, py: { skip: true } });
+    const tl = 0.5, p = ph;
+    for (const sx of [-1, 1]) pillow(b, sx * w * 0.235, top, zh + p * Math.sin(tl) + 0.02, w * 0.4, p, 0.16, A.white, U.lxSheet, U.lxSheet, tl);
+    for (const sx of [-1, 1]) pillow(b, sx * w * 0.2, top, zh + p * Math.sin(tl) + 0.17, w * 0.34, p * 0.86, 0.14, sham[0], sham[1], sham[2], 0.42);
+    pillow(b, 0, top + 0.01, zh + p * Math.sin(tl) + 0.3, 0.42, 0.3, 0.11, accent[0], accent[1], accent[1], 0.36);
+    return Math.round((top + 0.05 + 0.01) * 100) / 100;
+  }
+  /** An upholstered dining chair (the OE set's, the desk's): a padded seat, a curved shell back wrapping round the sitter, four dark tapered legs. Seat top 0.49; x ±0.25, z −0.27 … 0.25. */
+  function upChair(b: KitBuilder, tint: number) {
+    for (const sx of [-1, 1]) { rod(b, [sx * 0.19, 0.4, 0.16], [sx * 0.21, 0, 0.22], 0.017, 0.012, A.black, 5); rod(b, [sx * 0.19, 0.4, -0.16], [sx * 0.21, 0, -0.245], 0.017, 0.012, A.black, 5); }
+    puff(b, 0.46, 0.09, 0.44, 0, 0.39, 0.02, A.cover, U.lxLinenTop, U.lxLinen, { c: 0.035, k: 0.05, crown: 0.008, T: 0.4, tint });
+    const path: P2[] = []; for (let k = 0; k <= 6; k++) { const a = -0.85 + k * 0.85 / 3; path.push([Math.sin(a) * 0.3, 0.06 - Math.cos(a) * 0.3]); }
+    sweep(b, path, () => [[-0.024, 0.44], [-0.024, 0.82], [-0.008, 0.85], [0.012, 0.85], [0.024, 0.82], [0.024, 0.44]], A.cover, U.lxLinen, 0.4, tint);
+  }
+  /** A walnut wishbone chair (sheet 3: 50 × 55 × 80): the back legs rise into a curved top rail, a Y in the back, a linen seat. Seat top 0.48; x ±0.25, z −0.27 … 0.25. */
+  function wishbone(b: KitBuilder) {
+    const wd = A.walnut;
+    for (const sx of [-1, 1]) { rod(b, [sx * 0.2, 0.42, 0.19], [sx * 0.215, 0, 0.235], 0.017, 0.013, wd, 5); rod(b, [sx * 0.19, 0, -0.23], [sx * 0.2, 0.75, -0.13], 0.016, 0.014, wd, 5); }
+    b.box(0.44, 0.04, 0.42, 0, 0.38, 0, wd, { pz: { rect: U.lxWalnut }, px: { rect: U.lxWalnut }, nx: { rect: U.lxWalnut } });
+    puff(b, 0.42, 0.05, 0.4, 0, 0.42, 0.005, A.greigeLight, U.lxLinenTop, U.lxLinen, { c: 0.025, k: 0.04, crown: 0.008 });
+    const rail: V3[] = []; for (let k = 0; k <= 6; k++) { const a = -1.12 + k * 2.24 / 6; rail.push([Math.sin(a) * 0.215, 0.76 - Math.abs(a) * 0.01, -0.03 - Math.cos(a) * 0.215]); }
+    for (let k = 0; k < 6; k++) b.beam(rail[k], rail[k + 1], 0.024, 0.045, wd, false);
+    rod(b, [0, 0.42, -0.19], [0, 0.56, -0.225], 0.013, 0.013, wd, 4, false);
+    for (const sx of [-1, 1]) rod(b, [0, 0.56, -0.225], [sx * 0.08, 0.745, -0.23], 0.012, 0.012, wd, 4, false);
+  }
+  /** A glossy oval leaf (both faces, its upper face lighter) from p, `len` long and `wid` wide, pointing at azimuth az (0: +z) and elevation el. */
+  function leaf(b: KitBuilder, p: V3, az: number, el: number, len: number, wid: number, col: number) {
+    const u: V3 = [Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)], v: V3 = [Math.cos(az), 0, -Math.sin(az)];
+    const at = (s: number, t: number): V3 => [p[0] + u[0] * s * len + v[0] * t * wid / 2, p[1] + u[1] * s * len + v[1] * t * wid / 2 + (s > 0.2 && s < 0.8 ? 0.012 : 0), p[2] + u[2] * s * len + v[2] * t * wid / 2];
+    const n: V3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]], q = [at(0, 0), at(0.22, 0.8), at(0.58, 1), at(1, 0), at(0.58, -1), at(0.22, -0.8)];
+    b.toward(q, n, dimC(col, 1.08)); b.toward(q, [-n[0], -n[1], -n[2]], dimC(col, 0.72));
+  }
+  /** A small ceramic vase at (x, y, z), h high. */
+  const vase = (b: KitBuilder, x: number, y: number, z: number, h: number, r: number, col: number) =>
+    kcDrum(b, x, z, [[r * 0.6, y], [r, y + h * 0.35], [r * 0.85, y + h * 0.75], [r * 0.45, y + h * 0.92], [r * 0.5, y + h]], 10, col, null, 1, true, dimC(col, 0.45));
+  /** A few books lying in a stack at (x, y, z). */
+  function books(b: KitBuilder, x: number, y: number, z: number, n: number, rot = 0) {
+    const cols = [0xe9e2d4, 0x8c7b6b, 0x2a2827, 0xcfc6b7, 0xa58a6c];
+    b.at(x, y, z, rot, () => { for (let k = 0; k < n; k++) b.box(0.24 - k * 0.02, 0.035, 0.17 - k * 0.012, k * 0.008, k * 0.035, 0, cols[(k * 2 + n) % cols.length], { py: { paint: dimC(cols[(k * 2 + n) % cols.length], 1.04) } }); });
+  }
+  /** A finger-pull groove or a seam on a front at z (a dark line w × h). */
+  const groove = (b: KitBuilder, w: number, h: number, x: number, y: number, z: number, col: number = A.gap) => b.box(w, h, 0.004, x, y, z + 0.002, col);
+  /** Doors or drawer fronts proud of a case's front at z: lacquer panels w × h each, `gap` apart, side by side centred on x0. */
+  function fronts(b: KitBuilder, n: number, w: number, h: number, x0: number, y: number, z: number, rect: Rect = U.lxLacquer, gapW = 0.006) {
+    for (let i = 0; i < n; i++) b.box(w, h, 0.008, x0 + (i - (n - 1) / 2) * (w + gapW), y, z + 0.004, W, { pz: { rect }, py: { skip: true }, nz: { skip: true }, px: { paint: A.lacquer }, nx: { paint: A.lacquer } });
+  }
+  const shadeOn = (b: KitBuilder, lo: number, y0: number, h: number) => { b.shade = { lo, y0, h }; };
+  const lieOn = (top: number): FurnitureSeat => seatOf('bed', 0, 0.02, top, 'bed', 0, 'Lie');
+
+  return {
+    // ------------------------------------------------------------------------------------------------ sofas: a bouclé curve, a linen méridienne, the OE curved sectional
+    lxSofa: {
+      // sofas 1 and 7 of the sofa sheet: one rounded shell in ivory bouclé, its back curving into the arms, a long crowned seat cushion, two bouclé
+      // balls, on a thin brass base set in under it
+      basic: b => {
+        shadeOn(b, 0.72, 0, 0.5);
+        slabOf(b, outline(2.02, 0.66, 0.28, 4, 0, 0.0), 0, 0.05, A.brass, { side: U.lxBronze, T: 0.6, topPaint: A.brass });
+        loft(b, [{ pts: outline(2.26, 0.9, 0.36, 4, 0, 0.0), y: 0.05 }, { pts: outline(2.26, 0.9, 0.36, 4, 0, 0.0), y: 0.27 }, { pts: outline(2.2, 0.84, 0.33, 4, 0, 0.0), y: 0.31 }], A.ivory, { side: U.lxBoucle, T: 0.35, topPaint: A.ivory });
+        const xa = 1.03, zb = -0.33, rc = 0.42, path: P2[] = [[-xa, 0.42]];
+        for (let k = 0; k <= 4; k++) { const a = Math.PI + k * Math.PI / 8; path.push([-xa + rc + Math.cos(a) * rc, zb + rc + Math.sin(a) * rc]); }
+        for (let k = 0; k <= 4; k++) { const a = Math.PI * 1.5 + k * Math.PI / 8; path.push([xa - rc + Math.cos(a) * rc, zb + rc + Math.sin(a) * rc]); }
+        path.push([xa, 0.42]);
+        const H = (i: number) => 0.6 + 0.2 * Math.min(1, Math.max(0, (0.42 - path[i][1]) / 0.75));
+        sweep(b, path, i => { const h = H(i); return [[-0.12, 0.29], [-0.12, h - 0.1], [-0.09, h - 0.03], [-0.03, h], [0.03, h], [0.09, h - 0.03], [0.12, h - 0.1], [0.12, 0.29]]; }, A.ivory, U.lxBoucle, 0.35);
+        puff(b, 1.82, 0.15, 0.72, 0, 0.3, 0.06, A.ivory, U.lxBoucleTop, U.lxBoucle, { c: 0.06, k: 0.1, crown: 0.025, T: 0.35 });
+        for (const sx of [-1, 1]) b.geometry(new THREE.SphereGeometry(0.135, 10, 7), dimC(A.ivory, 0.98), sx * 0.78, 0.475 + 0.13, -0.12);
+        b.shade = null;
+        const seats = [-0.6, 0, 0.6].map((x, i) => seatOf(`s${i}`, x, 0.06, 0.48, 'sofa'));
+        return { footprint: { w: 2.3, d: 0.9, h: 0.82 }, placement: 'wall', seats, use: sitUse(seats[1], 'sit', 'S’asseoir') };
+      },
+      // sheet 3's sofa (280 × 160 × 85): a run along the wall and a chaise on the left in greige linen, an arm on the right, loose seat and back
+      // cushions piped round, thin black metal legs, a taupe velvet and an ivory bouclé pillow, a knitted throw over the chaise
+      better: b => {
+        for (const [x, z] of [[-1.34, -0.74], [1.34, -0.74], [1.34, 0.09], [-0.51, 0.09], [-1.34, 0.74], [-0.51, 0.74]] as const) rod(b, [x, 0.14, z], [x, 0, z], 0.018, 0.011, A.black, 6);
+        shadeOn(b, 0.74, 0.1, 0.45);
+        puff(b, 2.8, 0.24, 0.95, 0, 0.13, -0.325, A.greige, null, U.lxLinen, { c: 0.035, k: 0.03, T: 0.5 });
+        puff(b, 0.95, 0.24, 0.66, -0.925, 0.13, 0.47, A.greige, null, U.lxLinen, { c: 0.035, k: 0.03, T: 0.5 });
+        puff(b, 0.2, 0.53, 0.95, 1.3, 0.13, -0.325, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.07, k: 0.04, crown: 0.008 });
+        puff(b, 2.62, 0.3, 0.2, -0.09, 0.36, -0.7, A.greige, null, U.lxLinen, { c: 0.06, k: 0.03 });
+        for (const x of [-0.04, 0.78]) puff(b, 0.81, 0.13, 0.75, x, 0.36, -0.225, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.045, k: 0.05, crown: 0.016 });
+        puff(b, 0.93, 0.13, 1.4, -0.925, 0.36, 0.1, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.045, k: 0.05, crown: 0.016 });
+        b.shade = null;
+        const bh = 0.36, tl = 0.2, lean = bh * Math.sin(tl) + 0.005;
+        for (const [x, w] of [[-0.925, 0.88], [-0.04, 0.78], [0.78, 0.78]] as const) pillow(b, x, 0.47, -0.6 + lean, w, bh, 0.17, A.greigeLight, U.lxLinenTop, U.lxLinen, tl, 0, { tint: 0xf4efe6 });
+        pillow(b, 0.98, 0.5, -0.42, 0.42, 0.38, 0.12, W, U.lxTaupe, U.lxTaupe, 0.34, -0.28);
+        pillow(b, -1.12, 0.5, -0.42, 0.42, 0.38, 0.12, A.ivory, U.lxBoucleTop, U.lxBoucle, 0.34, 0.3);
+        b.box(0.64, 0.024, 0.5, -1.07, 0.502, 0.42, W, { py: { rect: U.lxThrow }, pz: { rect: U.lxThrow }, nz: { rect: U.lxThrow }, px: { rect: U.lxThrow }, nx: { skip: true } });
+        b.box(0.012, 0.22, 0.5, -1.394, 0.3, 0.42, W, { nx: { rect: U.lxThrow }, px: { skip: true }, py: { skip: true } });
+        const seats = [[0.78, -0.16], [-0.04, -0.16], [-0.925, -0.16]].map(([x, z], i) => seatOf(`s${i}`, x, z, 0.51, 'sofa'));
+        return { footprint: { w: 2.8, d: 1.6, h: 0.88 }, placement: 'wall', seats, use: sitUse(seats[1], 'sit', 'S’asseoir') };
+      },
+      // the OE sofa: three modules in ivory bouclé along a gentle curve (its ends come forward), crowned seat cushions, loose back cushions,
+      // ivory and taupe pillows, wide arms, a brushed bronze plate on a black plinth set well in (the shadow gap under the body)
+      premium: b => {
+        const R = 4.3, cz = -0.65 + R, am = Math.asin(1.7 / R), da = 0.24 / 3.8, e0 = -am + da, e3 = am - da, gap = 0.0016;
+        const e = [e0, e0 + (e3 - e0) / 3, e0 + 2 * (e3 - e0) / 3, e3];
+        shadeOn(b, 0.7, 0.04, 0.5);
+        spin(b, 0, cz, [[3.52, 0], [3.52, 0.06], [4.14, 0.06], [4.14, 0]], -am + 0.03, am - 0.03, 9, A.plinth);
+        spin(b, 0, cz, [[3.29, 0.06], [3.29, 0.095], [4.25, 0.095], [4.25, 0.06]], -am + 0.01, am - 0.01, 9, A.bronze, [U.lxBronze, null, null], 0.6);
+        const base: P2[] = [[3.32, 0.095], [3.32, 0.29], [3.35, 0.32], [4.08, 0.32], [4.08, 0.57], [4.12, 0.61], [4.26, 0.61], [4.3, 0.57], [4.3, 0.09]];
+        const seat: P2[] = [[3.36, 0.31], [3.36, 0.42], [3.41, 0.465], [3.72, 0.49], [4.04, 0.465], [4.09, 0.42], [4.09, 0.31]];
+        const back: P2[] = [[3.93, 0.45], [3.99, 0.78], [4.05, 0.825], [4.15, 0.825], [4.21, 0.78], [4.13, 0.45]];
+        const bc = [U.lxBoucle, U.lxBoucle, U.lxBoucle, null, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle];
+        for (let m = 0; m < 3; m++) {
+          const a0 = e[m] + gap, a1 = e[m + 1] - gap;
+          spin(b, 0, cz, base, a0, a1, 3, A.ivory, bc, 0.35);
+          spin(b, 0, cz, seat, a0 + 0.002, a1 - 0.002, 3, A.ivory, [U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle], 0.35);
+          spin(b, 0, cz, back, a0 + 0.003, a1 - 0.003, 3, A.ivory, [U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle], 0.35);
+        }
+        const arm: P2[] = [[3.32, 0.095], [3.32, 0.57], [3.36, 0.61], [4.26, 0.61], [4.3, 0.57], [4.3, 0.095]];
+        spin(b, 0, cz, arm, -am, e0 - gap, 1, A.ivory, [U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle], 0.35);
+        spin(b, 0, cz, arm, e3 + gap, am, 1, A.ivory, [U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle, U.lxBoucle], 0.35);
+        b.shade = null;
+        ([[-0.31, A.ivory, U.lxBoucleTop], [-0.19, W, U.lxTaupe], [0.0, A.ivory, U.lxBoucleTop], [0.19, W, U.lxTaupe], [0.31, A.ivory, U.lxBoucleTop]] as const).forEach(([a, col, r], k) => {
+          const rr = 3.9 - (k % 2) * 0.06;
+          pillow(b, rr * Math.sin(a), 0.47, cz - rr * Math.cos(a), k % 2 ? 0.42 : 0.46, k % 2 ? 0.38 : 0.42, 0.13, col, r, r === U.lxTaupe ? U.lxTaupe : U.lxBoucle, 0.32, -a);
+        });
+        const seats = [0, 1, 2, 3].map(k => { const a = e0 + (k + 0.5) * (e3 - e0) / 4, r = 3.66; return seatOf(`s${k}`, r3(r * Math.sin(a)), r3(cz - r * Math.cos(a)), 0.49, 'sofa', r3(-a)); });
+        return { footprint: { w: 3.4, d: 1.3, h: 0.9 }, placement: 'wall', seats, use: sitUse(seats[1], 'sit', 'S’asseoir') };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ the bed bench and the armchairs
+    lxArmchair: {
+      // the OE bed bench: a long greige linen cushion, piped, on a black base, its middle set in (the shadow gap)
+      basic: b => {
+        for (const sx of [-1, 1]) slabOf(b, outline(0.24, 0.43, 0.025, 2, sx * 0.57, 0), 0, 0.27, A.black, { topPaint: A.black });
+        b.box(0.92, 0.27, 0.3, 0, 0, 0, A.plinth);
+        shadeOn(b, 0.82, 0.25, 0.25);
+        puff(b, 1.4, 0.19, 0.45, 0, 0.27, 0, A.greigeLight, U.lxLinenTop, U.lxLinen, { c: 0.05, k: 0.03, crown: 0.012, tint: 0xf6f1e8 });
+        b.shade = null;
+        const seats = [seatOf('s0', -0.35, 0, 0.47, 'stool'), seatOf('s1', 0.35, 0, 0.47, 'stool')];
+        return { footprint: { w: 1.4, d: 0.45, h: 0.48 }, placement: 'free', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+      },
+      // sheet 3's armchair (80 × 85 × 90): greige linen, rolled arms, a leaning back, a taupe lumbar pillow, on a walnut rail and tapered legs
+      better: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.3, 0.16, sz * 0.31], [sx * 0.345, 0.008, sz * 0.37], 0.024, 0.016, A.walnut, 6);
+        slabOf(b, outline(0.76, 0.78, 0.03, 2), 0.14, 0.18, A.walnut, { side: U.lxWalnut, T: 0.5 });
+        shadeOn(b, 0.76, 0.15, 0.45);
+        puff(b, 0.76, 0.2, 0.78, 0, 0.18, 0, A.greige, null, U.lxLinen, { c: 0.03, k: 0.03 });
+        for (const sx of [-1, 1]) puff(b, 0.15, 0.3, 0.74, sx * 0.315, 0.38, 0.0, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.07, k: 0.04, crown: 0.01 });
+        pillow(b, 0, 0.36, -0.42 + 0.52 * Math.sin(0.16) + 0.005, 0.76, 0.52, 0.16, A.greige, U.lxLinenTop, U.lxLinen, 0.16, 0, { c: 0.07 });
+        puff(b, 0.48, 0.1, 0.6, 0, 0.38, 0.07, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.04, k: 0.05, crown: 0.012 });
+        b.shade = null;
+        pillow(b, 0, 0.48, -0.2, 0.42, 0.28, 0.11, W, U.lxTaupe, U.lxTaupe, 0.3);
+        const s = seatOf('s0', 0, 0.08, 0.49, 'chair');
+        return { footprint: { w: 0.8, d: 0.85, h: 0.92 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'S’asseoir') };
+      },
+      // the OE lounge chair: a bouclé cocoon whose back sweeps round into the arms and down to the front, a crowned seat, dark splayed legs
+      premium: b => {
+        for (const sx of [-1, 1]) { rod(b, [sx * 0.2, 0.18, 0.1], [sx * 0.29, 0.016, 0.25], 0.032, 0.022, A.legDark, 4); rod(b, [sx * 0.19, 0.18, -0.15], [sx * 0.28, 0.016, -0.3], 0.032, 0.022, A.legDark, 4); }
+        shadeOn(b, 0.74, 0.15, 0.5);
+        loft(b, [{ pts: outline(0.68, 0.64, 0.27, 6, 0, 0.03), y: 0.16 }, { pts: outline(0.68, 0.64, 0.27, 6, 0, 0.03), y: 0.3 }, { pts: outline(0.64, 0.6, 0.25, 6, 0, 0.03), y: 0.33 }], A.ivory, { side: U.lxBoucle, T: 0.35 });
+        const Rs = 0.315, path: P2[] = [], N = 16;
+        for (let k = 0; k <= N; k++) { const a = -2.2 + k * 4.4 / N; path.push([Rs * Math.sin(a), 0.02 - Rs * Math.cos(a)]); }
+        sweep(b, path, i => {
+          const t = (i - N / 2) / (N / 2), h = 0.58 + 0.2 * (1 - t * t);
+          return [[-0.1, 0.3], [-0.1, h - 0.09], [-0.088, h - 0.045], [-0.055, h - 0.012], [0, h], [0.055, h - 0.012], [0.088, h - 0.045], [0.1, h - 0.09], [0.1, 0.18]];
+        }, A.ivory, U.lxBoucle, 0.32);
+        puff(b, 0.5, 0.12, 0.5, 0, 0.32, 0.08, A.ivory, U.lxBoucleTop, U.lxBoucle, { c: 0.05, k: 0.12, crown: 0.02, T: 0.32 });
+        b.shade = null;
+        const s = seatOf('s0', 0, 0.09, 0.47, 'chair');
+        return { footprint: { w: 0.86, d: 0.84, h: 0.8 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'S’asseoir') };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ low tables
+    lxLowTable: {
+      // the OE side table: a black marble disc on a black drum, a bronze ring under the top
+      basic: b => {
+        kcDrum(b, 0, 0, [[0.16, 0], [0.17, 0.02], [0.17, 0.49]], 20, A.black, null, 1, false);
+        b.cyl('y', 0.174, 0.174, 0.012, 0, 0.496, 0, A.bronze, 20, { neg: false, pos: false });
+        b.cyl('y', 0.25, 0.25, 0.035, 0, 0.5195, 0, 0x2a2626, 24, { neg: true, pos: U.lxMarbleBlack, side: U.lxMarbleBlack });
+        return { footprint: { w: 0.5, d: 0.5, h: 0.54 }, placement: 'free', use: standUse(0.5, 'use', 'Poser quelque chose', 0.45) };
+      },
+      // sheet 3's coffee table (120 × 60 × 40): a white marble top with soft corners over walnut, a greige drawer on the left, an open niche with
+      // books on the right, a ceramic vase with a branch and a black tray with two cups
+      better: b => {
+        slabOf(b, outline(1.08, 0.48, 0.05, 3, 0, 0), 0, 0.045, A.walnutDark);
+        slabOf(b, outline(1.16, 0.56, 0.07, 3, 0, 0), 0.045, 0.085, A.walnut, { side: U.lxWalnut, T: 0.6, top: U.lxWalnut });
+        b.box(0.68, 0.27, 0.54, -0.23, 0.085, 0, A.walnut, { nx: { rect: U.lxWalnut }, nz: { rect: U.lxWalnut }, pz: { paint: A.gap } });
+        fronts(b, 1, 0.64, 0.22, -0.23, 0.11, 0.27);
+        b.box(0.16, 0.012, 0.012, -0.23, 0.3, 0.284, A.walnutDark);
+        b.box(0.04, 0.27, 0.54, 0.56, 0.085, 0, A.walnut, { px: { rect: U.lxWalnut }, pz: { rect: U.lxWalnut }, nz: { rect: U.lxWalnut } });
+        b.box(0.44, 0.27, 0.02, 0.33, 0.085, -0.26, A.walnutDark);
+        b.box(0.3, 0.15, 0.2, 0.33, 0.085, -0.13, W, { pz: { rect: U.lxBooks }, py: { paint: 0xe9e2d4 } });
+        books(b, 0.33, 0.085, 0.14, 2);
+        softSlab(b, 1.2, 0.6, 0.08, 4, 0, 0, 0.355, 0.395, 0.012, 0xe8e4dd, { top: U.lxMarbleWhite, side: U.lxMarbleWhite, T: 0, bottom: true });
+        vase(b, -0.32, 0.395, -0.06, 0.16, 0.07, A.ceramic);
+        for (const [x, y, z] of [[-0.36, 0.78, -0.1], [-0.25, 0.74, -0.02], [-0.32, 0.7, 0.04]] as const) { rod(b, [-0.32, 0.53, -0.06], [x, y, z], 0.005, 0.003, A.bark, 4, false); for (let k = 0; k < 3; k++) leaf(b, [x, y - k * 0.05, z], k * 2.1 + x * 9, 0.3 - k * 0.2, 0.06, 0.03, [A.leaf2, A.leaf3, A.leaf][k]); }
+        slabOf(b, outline(0.32, 0.2, 0.03, 2, 0.24, 0.04), 0.395, 0.41, A.black);
+        for (const x of [0.17, 0.29]) b.cyl('y', 0.03, 0.026, 0.05, x, 0.435, 0.04, A.ceramic, 8, { neg: false, pos: true, capPaint: 0x6b4a2f });
+        return { footprint: { w: 1.2, d: 0.6, h: 0.8 }, placement: 'free', use: standUse(0.6, 'use', 'Poser quelque chose', 0.45) };
+      },
+      // the OE coffee table: a thick black marble slab, its corners and edge rounded, on four black blocks set well in; two books, a bronze bowl
+      premium: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) slabOf(b, outline(0.24, 0.13, 0.035, 3, sx * 0.36, sz * 0.21), 0, 0.27, 0x171616, { topPaint: 0x171616 });
+        softSlab(b, 1.2, 0.8, 0.13, 6, 0, 0, 0.27, 0.37, 0.025, 0x221f20, { top: U.lxMarbleBlack, side: U.lxMarbleBlack, T: 0, bottom: true });
+        books(b, -0.3, 0.37, 0.02, 2, 0.2);
+        kcDrum(b, 0.28, -0.05, [[0.06, 0.37], [0.11, 0.39], [0.135, 0.425]], 16, A.bronze, null, 1, true, 0x4a3520);
+        for (const [x, z, r] of [[0.24, -0.08, 0.045], [0.31, -0.02, 0.04]] as const) b.geometry(new THREE.SphereGeometry(r, 8, 5), A.ivory, x, 0.41 + r * 0.8, z);
+        return { footprint: { w: 1.2, d: 0.8, h: 0.5 }, placement: 'free', use: standUse(0.8, 'use', 'Poser quelque chose', 0.45) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ tables with their chairs: the desk, the walnut set, the round marble set
+    lxTableSet: {
+      // the OE desk: a dark walnut top over a greige drawer pedestal on the left and a thin black frame on the right, its upholstered chair; a
+      // laptop, a mushroom lamp and books on it
+      basic: b => {
+        const D = 0.6, d = D + 0.65, zc = -d / 2 + D / 2;
+        softSlab(b, 1.5, D, 0.02, 1, 0, zc, 0.72, 0.76, 0.008, 0x3c332d, { top: U.lxWalnut, side: U.lxWalnut, T: 0.6, tint: 0x8a786a, bottom: true });
+        b.box(0.4, 0.05, D - 0.08, -0.53, 0, zc, A.plinth);
+        b.box(0.44, 0.67, D, -0.53, 0.05, zc, A.gap, { nx: { rect: U.lxLacquer }, px: { rect: U.lxLacquer }, nz: { paint: A.lacquer } });
+        for (let k = 0; k < 3; k++) { fronts(b, 1, 0.435, 0.215, -0.53, 0.055 + k * 0.222, zc + D / 2, U.lxLacquer); b.box(0.12, 0.01, 0.012, -0.53, 0.235 + k * 0.222, zc + D / 2 + 0.014, A.bronze); }
+        for (const sz of [-1, 1]) b.box(0.025, 0.72, 0.025, 0.72, 0, zc + sz * 0.27, A.black);
+        b.box(0.025, 0.025, D - 0.06, 0.72, 0, zc, A.black); b.box(0.025, 0.025, D - 0.06, 0.72, 0.695, zc, A.black);
+        b.box(1.0, 0.05, 0.02, 0.21, 0.66, zc - D / 2 + 0.04, A.black);
+        b.slab(0.33, 0.014, 0.23, 0.14, 0.76, zc + 0.04, 0x2a2a2c); b.at(0.14, 0.774, zc - 0.07, 0, () => b.box(0.33, 0.22, 0.01, 0, 0, 0, 0x2a2a2c, { pz: { rect: FUV.laptop } }), -0.26);
+        mushroom(b, -0.56, 0.76, zc - 0.14, 0.36, 0.11, 0.06);
+        books(b, 0.56, 0.76, zc - 0.12, 3, -0.15);
+        const cz = d / 2 - 0.3;
+        b.at(0, 0, cz, Math.PI, () => upChair(b, 0xf0e9de));
+        const s = seatOf('chair', 0, r3(cz - 0.02), 0.49, 'chair', Math.PI);
+        return { footprint: { w: 1.5, d, h: 1.13 }, placement: 'wall', seats: [s], use: sitUse(s, 'work', 'Travailler au bureau') };
+      },
+      // sheet 3's dining set: a walnut table (160 × 90 × 75) with soft corners on splayed tapered legs, four wishbone chairs (50 × 55 × 80), a
+      // ceramic vase and its branch
+      better: b => {
+        softSlab(b, 1.6, 0.9, 0.06, 2, 0, 0, 0.715, 0.75, 0.01, A.walnut, { top: U.lxWalnut, side: U.lxWalnut, T: 0.8, bottom: true });
+        b.box(1.36, 0.07, 0.66, 0, 0.645, 0, A.walnut, { pz: { rect: U.lxWalnut }, nz: { rect: U.lxWalnut }, px: { rect: U.lxWalnut }, nx: { rect: U.lxWalnut } });
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.6, 0.65, sz * 0.27], [sx * 0.69, 0, sz * 0.36], 0.028, 0.018, A.walnut, 6);
+        vase(b, 0.05, 0.75, 0.0, 0.17, 0.075, A.ceramic);
+        for (const [x, y, z] of [[0.0, 1.0, -0.04], [0.12, 0.96, 0.03], [0.06, 0.92, 0.08]] as const) { rod(b, [0.05, 0.9, 0], [x, y, z], 0.005, 0.003, A.bark, 4, false); for (let k = 0; k < 3; k++) leaf(b, [x, y - k * 0.045, z], k * 2.1 + x * 9, 0.3 - k * 0.2, 0.065, 0.032, [A.leaf2, A.leaf3, A.leaf][k]); }
+        const seats = chairsAt(b, [[-0.4, -0.6, 0], [0.4, -0.6, 0], [-0.4, 0.6, Math.PI], [0.4, 0.6, Math.PI]], 0.48, () => wishbone(b));
+        return { footprint: { w: 1.6, d: 1.74, h: 1.04 }, placement: 'free', seats, use: sitUse(seats[0], 'eat', 'Manger à table') };
+      },
+      // the OE dining set: a round black marble top (Ø 1.3) on a fluted dark bronze drum, four upholstered chairs round it, a bronze bowl
+      premium: b => {
+        b.cyl('y', 0.3, 0.31, 0.03, 0, 0.015, 0, 0x1c1916, 24, { neg: false, pos: true });
+        fluted(b, 0, 0, 0.26, 0.016, 20, 0.03, 0.69, 0x3a3128, U.lxFluted, 0xd8c8b4);
+        b.cyl('y', 0.3, 0.3, 0.02, 0, 0.7, 0, 0x1c1916, 24, { neg: true, pos: false });
+        b.cyl('y', 0.65, 0.65, 0.04, 0, 0.73, 0, 0x231f20, 40, { neg: true, pos: U.lxMarbleBlack, side: U.lxMarbleBlack });
+        kcDrum(b, 0, 0, [[0.07, 0.75], [0.13, 0.77], [0.16, 0.81]], 16, A.bronze, null, 1, true, 0x4a3520);
+        const r = 0.86, spots = [Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4, -Math.PI / 4].map(a => [r3(Math.sin(a) * r), r3(Math.cos(a) * r), r3(Math.atan2(-Math.sin(a), -Math.cos(a)))] as const);
+        const seats = chairsAt(b, spots, 0.49, () => upChair(b, 0xd8cbbb));
+        return { footprint: { w: 1.96, d: 1.96, h: 0.9 }, placement: 'free', seats, use: sitUse(seats[0], 'eat', 'Manger à table') };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ beds: head to the wall (−z), lying along +z
+    lxBed: {
+      // sheet 3's bed (180 × 200 × 105): a walnut frame on tapered legs, a headboard of two padded taupe linen panels, white bedding, a throw
+      basic: b => {
+        const w = 1.8, d = 2.1, zh = -d / 2 + 0.08;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.82, 0.15, sz * 0.94], [sx * 0.85, 0.008, sz * 0.99], 0.03, 0.02, A.walnut, 6);
+        slabOf(b, outline(1.8, 1.98, 0.04, 2, 0, 0.06), 0.14, 0.34, A.walnut, { side: U.lxWalnut, T: 0.8, topPaint: A.walnutDark });
+        b.box(1.8, 0.75, 0.08, 0, 0.3, -d / 2 + 0.04, A.walnut, { pz: { rect: U.lxWalnut }, py: { rect: U.lxWalnut }, px: { rect: U.lxWalnut }, nx: { rect: U.lxWalnut } });
+        for (const sx of [-1, 1]) pillow(b, sx * 0.43, 0.47, zh, 0.82, 0.52, 0.07, W, U.lxLinenTop, U.lxLinen, 0, 0, { tint: 0xb8a998, crown: 0.02 });
+        const top = bedding(b, 1.62, 1.92, zh + 0.07, 0.3, [0xd8d0c4, U.lxLinenTop, U.lxLinen], [W, U.lxTaupe], 0.44);
+        const s = lieOn(top);
+        return { footprint: { w, d, h: 1.05 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+      },
+      // the OE greige bed: a deep upholstered base in greige linen on a recessed plinth, a wingback headboard whose ends curve forward, a quilted
+      // runner over it, white bedding, a taupe throw, greige and taupe pillows
+      better: b => {
+        const w = 2.0, d = 2.3;
+        slabOf(b, outline(1.84, 2.0, 0.04, 2, 0, 0.1), 0, 0.07, A.plinth);
+        shadeOn(b, 0.78, 0.05, 0.4);
+        puff(b, 2.0, 0.3, 2.14, 0, 0.07, 0.08, A.greige, null, U.lxLinen, { c: 0.05, k: 0.04, T: 0.6 });
+        const zb = -1.08, rc = 0.36, path: P2[] = [[-0.94, -0.62]];
+        for (let k = 0; k <= 4; k++) { const a = Math.PI + k * Math.PI / 8; path.push([-0.58 + Math.cos(a) * rc, zb + rc + Math.sin(a) * rc]); }
+        for (let k = 0; k <= 4; k++) { const a = Math.PI * 1.5 + k * Math.PI / 8; path.push([0.58 + Math.cos(a) * rc, zb + rc + Math.sin(a) * rc]); }
+        path.push([0.94, -0.62]);
+        sweep(b, path, i => { const h = 1.0 + 0.2 * Math.min(1, Math.max(0, (-0.62 - path[i][1]) / 0.4)); return [[-0.07, 0.07], [-0.07, h - 0.07], [-0.045, h - 0.015], [0, h], [0.045, h - 0.015], [0.07, h - 0.07], [0.07, 0.07]]; }, A.greige, U.lxLinen, 0.5);
+        b.shade = null;
+        b.box(0.62, 0.6, 0.012, 0, 0.5, zb + 0.076, W, { pz: { rect: U.lxChannel }, py: { rect: U.lxChannel }, px: { skip: true }, nx: { skip: true } });
+        const top = bedding(b, 1.84, 2.0, -0.99, 0.37, [0xcfc5b6, U.lxLinenTop, U.lxLinen], [W, U.lxTaupe]);
+        const s = lieOn(top);
+        return { footprint: { w, d, h: 1.2 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+      },
+      // the OE black bed: a tall headboard of buttoned black leather framed by rolled welts, a deep black leather base on a recessed plinth,
+      // white bedding, a taupe throw, taupe and black pillows
+      premium: b => {
+        const w = 2.1, d = 2.3, zb = -d / 2, t = 0.16;
+        slabOf(b, outline(1.94, 2.0, 0.04, 2, 0, 0.1), 0, 0.07, A.plinth);
+        shadeOn(b, 0.8, 0.05, 0.4);
+        puff(b, 2.1, 0.32, 2.12, 0, 0.07, 0.09, A.black, null, U.lxLeather, { c: 0.05, k: 0.04, T: 0.5 });
+        b.box(2.04, 1.21, t, 0, 0.07, zb + t / 2, A.black, { px: { rect: U.lxLeather }, nx: { rect: U.lxLeather } });
+        b.shade = null;
+        const cols = 5, rows = 2, pw = 1.84 / cols, ph = 0.4;
+        for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) b.box(pw, ph, 0.01, -0.92 + (i + 0.5) * pw, 0.42 + j * ph, zb + t + 0.005, W, { pz: { rect: U.lxLeatherTuft }, px: { skip: true }, nx: { skip: true }, py: { skip: true }, nz: { skip: true } });
+        b.cyl('x', 0.065, 0.065, 2.06, 0, 1.24, zb + t / 2 + 0.03, A.black, 14, { neg: true, pos: true, side: U.lxLeather });
+        for (const sx of [-1, 1]) b.cyl('y', 0.06, 0.06, 0.86, sx * 0.99, 0.79, zb + t / 2 + 0.03, A.black, 14, { neg: false, pos: true, side: U.lxLeather });
+        for (const sx of [-1, 1]) b.box(0.006, 0.006, 2.04, sx * 1.053, 0.35, 0.09, 0x3a3739);
+        b.box(2.0, 0.006, 0.006, 0, 0.35, 1.153, 0x3a3739);
+        const top = bedding(b, 1.86, 2.0, zb + t + 0.02, 0.39, [W, U.lxTaupe, U.lxTaupe], [A.black, U.lxLeather]);
+        b.cyl('x', 0.085, 0.085, 0.9, 0, top + 0.08, -0.4, A.black, 14, { neg: true, pos: true, side: U.lxLeather });
+        for (const sx of [-1, 1]) b.cyl('x', 0.088, 0.088, 0.012, sx * 0.45, top + 0.08, -0.4, A.bronze, 14, { neg: false, pos: false });
+        const s = lieOn(top);
+        return { footprint: { w, d, h: 1.31 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ nightstands, each with its lamp (they glow at night)
+    lxNightstand: {
+      // sheet 3's nightstand (50 × 40 × 45): walnut on tapered legs, two greige drawers with bronze pulls, a ceramic lamp and its linen shade
+      basic: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.2, 0.11, sz * 0.15], [sx * 0.225, 0, sz * 0.175], 0.018, 0.012, A.walnut, 6);
+        slabOf(b, outline(0.5, 0.4, 0.02, 2), 0.1, 0.45, A.walnut, { side: U.lxWalnut, T: 0.5, top: U.lxWalnut });
+        for (let k = 0; k < 2; k++) { fronts(b, 1, 0.44, 0.15, 0, 0.12 + k * 0.165, 0.2); b.box(0.1, 0.012, 0.014, 0, 0.235 + k * 0.165, 0.215, A.bronze); }
+        kcDrum(b, 0.08, -0.04, [[0.05, 0.45], [0.085, 0.51], [0.08, 0.59], [0.04, 0.64], [0.018, 0.66]], 12, A.ceramic2, null, 1, true);
+        b.cyl('y', 0.008, 0.008, 0.08, 0.08, 0.7, -0.04, A.brass, 6, { neg: false, pos: false });
+        b.cyl('y', 0.15, 0.12, 0.2, 0.08, 0.82, -0.04, W, 14, { neg: FUV.bulb, pos: false, side: U.lxShade });
+        return { footprint: { w: 0.5, d: 0.42, h: 0.93 }, placement: 'free', use: standUse(0.42, 'use', 'Allumer la lampe', 0.45) };
+      },
+      // the OE nightstand: a greige lacquer case with rounded corners and a soft top edge, two drawers, short dark legs, the OE mushroom lamp
+      better: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.2, 0.1, sz * 0.14], [sx * 0.235, 0, sz * 0.17], 0.016, 0.011, A.legDark, 6);
+        softSlab(b, 0.55, 0.42, 0.07, 3, 0, 0, 0.09, 0.48, 0.02, A.lacquer, { side: U.lxLacquer, T: 0, top: U.lxLacquer, bottom: true });
+        groove(b, 0.42, 0.006, 0, 0.28, 0.21); groove(b, 0.42, 0.012, 0, 0.43, 0.21, 0x5a5248);
+        mushroom(b, 0.06, 0.48, -0.03, 0.42, 0.13, 0.065);
+        return { footprint: { w: 0.55, d: 0.42, h: 0.91 }, placement: 'free', use: standUse(0.42, 'use', 'Allumer la lampe', 0.45) };
+      },
+      // the OE's other nightstand, beside the black bed: black leather with rounded corners and a stitched welt, a bronze lip, the mushroom lamp
+      // with a black dome (a kit model the catalogue does not sell yet)
+      premium: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.2, 0.1, sz * 0.14], [sx * 0.235, 0, sz * 0.17], 0.016, 0.011, A.legDark, 6);
+        softSlab(b, 0.55, 0.42, 0.07, 3, 0, 0, 0.09, 0.47, 0.025, A.black, { side: U.lxLeather, T: 0.4, top: U.lxLeather, bottom: true });
+        slabOf(b, outline(0.53, 0.4, 0.06, 3), 0.47, 0.48, A.bronze, { side: U.lxBronze, T: 0 });
+        groove(b, 0.42, 0.006, 0, 0.28, 0.21, 0x0a0909);
+        b.box(0.08, 0.012, 0.014, 0, 0.36, 0.215, A.bronze); b.box(0.08, 0.012, 0.014, 0, 0.2, 0.215, A.bronze);
+        mushroom(b, 0.06, 0.48, -0.03, 0.42, 0.13, 0.065, 0x2a2828, A.brass);
+        return { footprint: { w: 0.55, d: 0.42, h: 0.91 }, placement: 'free', use: standUse(0.42, 'use', 'Allumer la lampe', 0.45) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ chests and the dressing, against a wall
+    lxChest: {
+      // sheet 3's chest of drawers (80 × 40 × 120): walnut on tapered legs, five greige drawers with bronze pulls; a framed print and a little plant
+      basic: b => {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.34, 0.12, sz * 0.15], [sx * 0.37, 0, sz * 0.17], 0.02, 0.014, A.walnut, 6);
+        slabOf(b, outline(0.8, 0.4, 0.02, 2), 0.11, 1.2, A.walnut, { side: U.lxWalnut, T: 0.6, top: U.lxWalnut });
+        for (let k = 0; k < 5; k++) { fronts(b, 1, 0.72, 0.19, 0, 0.14 + k * 0.207, 0.2); b.box(0.12, 0.012, 0.014, 0, 0.3 + k * 0.207, 0.216, A.bronze); }
+        b.at(0.2, 1.2, -0.08, -0.25, () => { b.box(0.17, 0.22, 0.015, 0, 0, 0, A.black); b.box(0.13, 0.17, 0.004, 0, 0.025, 0.009, W, { pz: { rect: U.lxMarbleWhite } }); }, -0.12);
+        vase(b, -0.2, 1.2, 0.0, 0.12, 0.06, A.ceramic);
+        for (let k = 0; k < 6; k++) leaf(b, [-0.2, 1.3, 0], k * 1.05, 0.5 + (k % 2) * 0.3, 0.1, 0.045, [A.leaf, A.leaf2, A.leaf3][k % 3]);
+        return { footprint: { w: 0.8, d: 0.42, h: 1.42 }, placement: 'wall', use: standUse(0.42, 'use', 'Se changer', 0.55) };
+      },
+      // the OE dresser: greige lacquer, six drawers in two columns, thin bronze pulls, a soft top edge, on a recessed black plinth; vases and books
+      better: b => {
+        slabOf(b, outline(1.5, 0.42, 0.02, 1, 0, -0.02), 0, 0.06, A.plinth);
+        softSlab(b, 1.6, 0.5, 0.025, 2, 0, 0, 0.06, 0.8, 0.018, A.gap, { side: U.lxLacquer, T: 0, top: U.lxLacquer });
+        for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { fronts(b, 1, 0.774, 0.232, sx * 0.39, 0.075 + k * 0.238, 0.25); b.box(0.18, 0.01, 0.012, sx * 0.39, 0.075 + k * 0.238 + 0.2, 0.264, A.bronze); }
+        vase(b, 0.48, 0.8, -0.06, 0.3, 0.09, A.ceramic); vase(b, 0.64, 0.8, -0.02, 0.18, 0.07, A.ceramic2);
+        books(b, -0.5, 0.8, -0.02, 3, 0.1);
+        kcDrum(b, -0.1, 0.0, [[0.05, 0.8], [0.1, 0.82], [0.12, 0.85]], 14, A.bronze, null, 1, true, 0x4a3520);
+        return { footprint: { w: 1.6, d: 0.52, h: 1.1 }, placement: 'wall', use: standUse(0.52, 'use', 'Se changer', 0.55) };
+      },
+      // the OE wardrobe (200 × 60 × 210): four greige lacquer doors, two long brushed bronze handles at each pair, a soft top edge, a recessed plinth
+      premium: b => {
+        slabOf(b, outline(1.92, 0.5, 0.02, 2, 0, -0.03), 0, 0.07, A.plinth);
+        softSlab(b, 2.0, 0.6, 0.05, 6, 0, 0, 0.07, 2.1, 0.03, A.gap, { side: U.lxLacquer, T: 0, top: U.lxLacquer });
+        fronts(b, 4, 0.484, 1.98, 0, 0.085, 0.3, U.lxLacquer, 0.008);
+        b.box(1.9, 0.01, 0.01, 0, 0.074, 0.305, A.bronze, { pz: { rect: U.lxBronze } });
+        for (const x of [-0.522, -0.47, 0.47, 0.522]) {
+          rod(b, [x, 0.6, 0.326], [x, 1.54, 0.326], 0.011, 0.011, A.bronze, 6);
+          for (const y of [0.66, 1.48]) rod(b, [x, y, 0.307], [x, y, 0.318], 0.008, 0.008, A.brass, 6, false);
+        }
+        return { footprint: { w: 2.0, d: 0.64, h: 2.1 }, placement: 'wall', use: standUse(0.64, 'use', 'Se changer', 0.65) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ living room storage: the TV stand, the sideboard, the lit bookcase
+    lxCabinet: {
+      // the OE TV stand (≈ 2.4 × 0.45 × 0.45): five greige lacquer doors on a recessed black plinth, a soft top; a flat TV on its foot (it lights
+      // like the other TVs), a vase and books
+      basic: b => {
+        slabOf(b, outline(2.3, 0.37, 0.02, 1, 0, -0.02), 0, 0.08, A.plinth);
+        b.box(2.4, 0.37, 0.43, 0, 0.08, -0.01, A.gap, { px: { rect: U.lxLacquer }, nx: { rect: U.lxLacquer } });
+        fronts(b, 5, 0.474, 0.35, 0, 0.09, 0.2);
+        softSlab(b, 2.4, 0.45, 0.02, 1, 0, 0, 0.45, 0.47, 0.008, A.lacquer, { side: U.lxLacquer, T: 0, top: U.lxLacquer });
+        b.box(0.42, 0.014, 0.22, 0, 0.47, -0.08, A.black); b.box(0.06, 0.08, 0.03, 0, 0.484, -0.1, A.black);
+        b.box(1.46, 0.84, 0.035, 0, 0.52, -0.1, A.screen); b.box(1.42, 0.8, 0.004, 0, 0.54, -0.0805, W, { pz: { rect: FUV.flat } });
+        vase(b, 0.95, 0.47, -0.04, 0.28, 0.08, A.ceramic); vase(b, 1.08, 0.47, 0.02, 0.16, 0.06, A.ceramic2);
+        books(b, -0.98, 0.47, 0.0, 3, 0.2);
+        return { footprint: { w: 2.4, d: 0.45, h: 1.36 }, placement: 'wall', use: standUse(0.45, 'use', 'Regarder la télé', 2.2) };
+      },
+      // the OE sideboard: greige lacquer with rounded ends, four doors, brushed bronze fillets down the front and along the foot, a recessed
+      // plinth; on it the mushroom lamp, two vases, a bronze bowl and books
+      better: b => {
+        slabOf(b, outline(1.7, 0.4, 0.02, 1, 0, -0.02), 0, 0.07, A.plinth);
+        softSlab(b, 1.8, 0.48, 0.07, 3, 0, 0, 0.07, 0.78, 0.015, A.lacquer, { side: U.lxLacquer, T: 0, top: U.lxLacquer });
+        fronts(b, 4, 0.392, 0.66, 0, 0.09, 0.24);
+        for (const sx of [-1, 1]) b.box(0.016, 0.68, 0.012, sx * 0.83, 0.085, 0.246, A.bronze, { pz: { rect: U.lxBronze } });
+        b.box(1.66, 0.012, 0.012, 0, 0.074, 0.246, A.bronze, { pz: { rect: U.lxBronze } });
+        mushroom(b, -0.6, 0.78, -0.06, 0.4, 0.12, 0.065);
+        vase(b, 0.48, 0.78, -0.08, 0.32, 0.09, A.ceramic); vase(b, 0.64, 0.78, -0.03, 0.2, 0.07, A.ceramic2);
+        kcDrum(b, 0.12, 0.0, [[0.05, 0.78], [0.1, 0.8], [0.125, 0.835]], 14, A.bronze, null, 1, true, 0x4a3520);
+        books(b, -0.25, 0.78, 0.0, 2, -0.1);
+        return { footprint: { w: 1.8, d: 0.48, h: 1.2 }, placement: 'wall', use: standUse(0.48, 'use', 'Sortir les beaux verres', 0.55) };
+      },
+      // sheet 3's bookcase (160 × 30 × 200): walnut, greige doors below, nine open niches above lit by a strip under each shelf (warm at night),
+      // books in calm tones, vases, a bronze sphere
+      premium: b => {
+        const w = 1.6, d = 0.3, f = d / 2;
+        b.box(1.54, 0.06, 0.26, 0, 0, -0.01, A.walnutDark);
+        for (const sx of [-1, 1]) b.box(0.03, 1.94, d, sx * (w / 2 - 0.015), 0.06, 0, A.walnut, { pz: { rect: U.lxWalnut }, px: { rect: U.lxWalnut }, nx: { rect: U.lxWalnut } });
+        b.box(w, 0.03, d, 0, 1.97, 0, A.walnut, { py: { rect: U.lxWalnut }, pz: { rect: U.lxWalnut } });
+        b.box(w - 0.06, 0.6, d - 0.02, 0, 0.06, -0.01, A.gap);
+        fronts(b, 4, 0.379, 0.58, 0, 0.07, f - 0.01);
+        for (let i = 0; i < 4; i++) b.cyl('z', 0.012, 0.012, 0.016, (i - 1.5) * 0.385, 0.58, f + 0.006, A.bronze, 8);
+        const ys = [0.66, 1.095, 1.53, 1.97], xs = [-0.77, -0.265, 0.265, 0.77];
+        for (let k = 0; k < 3; k++) b.box(w - 0.06, 0.025, d, 0, ys[k], 0, A.walnut, { pz: { rect: U.lxWalnut }, py: { rect: U.lxWalnut } });
+        for (const x of [-0.265, 0.265]) b.box(0.022, 1.31, d - 0.02, x, 0.685, -0.01, A.walnut, { pz: { rect: U.lxWalnut } });
+        for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) {
+          const xa = xs[i] + (i ? 0.011 : 0), xb = xs[i + 1] - (i < 2 ? 0.011 : 0), y0 = ys[k] + 0.025, y1 = ys[k + 1];
+          b.quad([xa, y0, -f + 0.012], [xb, y0, -f + 0.012], [xb, y1, -f + 0.012], [xa, y1, -f + 0.012], W, U.lxNiche);
+          b.box(xb - xa - 0.02, 0.008, 0.014, (xa + xb) / 2, y1 - 0.008, f - 0.03, W, { ny: { rect: U.lxGlow }, pz: { rect: U.lxGlow }, py: { skip: true } });
+        }
+        const bk = (x: number, y: number, wd: number) => b.box(wd, 0.24, 0.2, x, y, -0.03, W, { pz: { rect: U.lxBooks }, py: { paint: 0xe9e2d4 }, px: { paint: 0x8c7b6b }, nx: { paint: 0x8c7b6b } });
+        bk(-0.52, 0.685, 0.4); bk(0.05, 1.12, 0.36); bk(0.56, 1.12, 0.3); bk(-0.6, 1.555, 0.24);
+        vase(b, 0.0, 0.685, -0.02, 0.3, 0.09, A.ceramic); vase(b, 0.14, 0.685, 0.0, 0.18, 0.06, A.ceramic2);
+        books(b, 0.5, 0.685, 0.0, 3, 0.1); b.geometry(new THREE.SphereGeometry(0.06, 10, 6), A.bronze, 0.62, 0.84, 0.0);
+        vase(b, -0.52, 1.12, -0.02, 0.26, 0.08, A.ceramic2);
+        kcDrum(b, 0.0, 0.0, [[0.05, 1.555], [0.1, 1.575], [0.12, 1.61]], 14, A.bronze, null, 1, true, 0x4a3520);
+        vase(b, 0.52, 1.555, -0.02, 0.28, 0.08, A.ceramic);
+        return { footprint: { w, d, h: 2.0 }, placement: 'wall', use: standUse(d, 'browse', 'Prendre un livre', 0.55) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ lights (they glow at night, like the kit's other lamps)
+    lxLight: {
+      // the OE floor lamp: a greige mushroom dome on a slim bronze stem and a round foot
+      basic: b => { mushroom(b, 0, 0, 0, 1.6, 0.22, 0.16); return { footprint: { w: 0.45, d: 0.45, h: 1.61 }, placement: 'free', use: standUse(0.45, 'use', 'Allumer la lampe', 0.45) }; },
+      // sheet 3's arc lamp (40 × 165): a round walnut foot ringed in bronze, a brushed bronze arc, a pleated shade hanging from its end
+      better: b => {
+        const bz = -0.26, sz = 0.24;
+        b.cyl('y', 0.16, 0.17, 0.045, 0, 0.0225, bz, A.walnut, 20, { neg: false, pos: U.lxWalnut });
+        b.cyl('y', 0.171, 0.171, 0.008, 0, 0.041, bz, A.bronze, 20, { neg: false, pos: false });
+        const P0: V3 = [0, 0.045, bz], P1: V3 = [0, 2.1, bz - 0.05], P2: V3 = [0, 1.62, sz];
+        const pt = (t: number): V3 => [0, (1 - t) ** 2 * P0[1] + 2 * (1 - t) * t * P1[1] + t * t * P2[1], (1 - t) ** 2 * P0[2] + 2 * (1 - t) * t * P1[2] + t * t * P2[2]];
+        for (let k = 0; k < 10; k++) rod(b, pt(k / 10), pt((k + 1) / 10), 0.013, 0.013, A.bronze, 6, false);
+        rod(b, [0, 1.62, sz], [0, 1.55, sz], 0.006, 0.006, A.bronze, 4);
+        b.cyl('y', 0.2, 0.15, 0.24, 0, 1.43, sz, W, 16, { neg: FUV.bulb, pos: false, side: U.lxPleat });
+        b.cyl('y', 0.152, 0.152, 0.004, 0, 1.548, sz, A.bronze, 16, { neg: false, pos: true });
+        return { footprint: { w: 0.44, d: 0.9, h: 1.74 }, placement: 'free', use: standUse(0.9, 'use', 'Allumer la lampe', 0.45) };
+      },
+      // the OE chandelier: a crown of crystal rods between two brass bands, a lit ring inside it, cut drops below, hung by six brass rods from a
+      // ceiling rose (the crystal on the glass material: two draw calls)
+      premium: (b, g) => {
+        const R = 0.42, y0 = 1.86, y1 = 2.12;
+        b.cyl('y', 0.09, 0.1, 0.03, 0, 2.785, 0, A.brass, 14, { neg: true, pos: false });
+        for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; rod(b, [0, 2.77, 0], [Math.sin(a) * R * 0.99, y1, Math.cos(a) * R * 0.99], 0.004, 0.004, A.brass, 4, false); }
+        spin(b, 0, 0, [[R - 0.012, y1 - 0.025], [R + 0.012, y1 - 0.025], [R + 0.012, y1], [R - 0.012, y1], [R - 0.012, y1 - 0.025]], 0, Math.PI * 2, 24, A.brass);
+        spin(b, 0, 0, [[R - 0.012, y0], [R + 0.012, y0], [R + 0.012, y0 + 0.02], [R - 0.012, y0 + 0.02], [R - 0.012, y0]], 0, Math.PI * 2, 24, A.brass);
+        b.cyl('y', R - 0.06, R - 0.06, 0.07, 0, (y0 + y1) / 2, 0, W, 20, { neg: false, pos: false, side: FUV.bulb });
+        for (let k = 0; k < 20; k++) { const a = (k + 0.5) * Math.PI / 10, s = Math.sin(a), c = Math.cos(a); b.decal([s * (R + 0.006), y0 - 0.035, c * (R + 0.006)], [c, 0, -s], [0, 1, 0], 0.022, 0.05, FUV.crystal); }
+        for (let k = 0; k < 40; k++) { const a = k * Math.PI / 20; g.cyl('y', 0.008, 0.008, y1 - y0 - 0.045, Math.sin(a) * R, (y0 + y1) / 2 - 0.0025, Math.cos(a) * R, A.crystal, 4, { neg: false, pos: false }, a); }
+        for (let k = 0; k < 24; k++) { const a = (k + 0.5) * Math.PI / 12; g.cyl('y', 0.007, 0.007, y1 - y0 + 0.02, Math.sin(a) * (R - 0.035), (y0 + y1) / 2 - 0.03, Math.cos(a) * (R - 0.035), A.crystal, 4, { neg: false, pos: false }, a); }
+        return { footprint: { w: 0.9, d: 0.9, h: 2.8 }, placement: 'free', use: standUse(0.9, 'use', 'Allumer la lumière', 0.5) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ decoration: the jute rug, the ficus, the oval mirror
+    lxDecor: {
+      // the OE rug: a round braided jute rug, 2.2 m across, flat
+      basic: b => {
+        kcDrum(b, 0, 0, [[1.1, 0], [1.1, 0.012]], 40, 0xa58c69, null, 1, U.lxJute);
+        const seats = [seatOf('m0', -0.5, 0, 0.012, 'mat', 0, 'SitFloor'), seatOf('m1', 0.5, 0, 0.012, 'mat', 0, 'SitFloor')];
+        return { footprint: { w: 2.2, d: 2.2, h: 0.012 }, placement: 'floor', walkable: true, seats, use: sitUse(seats[0], 'sit', 'S’asseoir sur le tapis') };
+      },
+      // sheet 3's planter (30 × 30 × 50): a fluted cream pot with a rolled lip, a ficus of three slim trunks and glossy leaves, about 1.4 m
+      better: b => {
+        fluted(b, 0, 0, 0.15, 0.012, 14, 0.0, 0.46, A.ceramic);
+        b.cyl('y', 0.158, 0.158, 0.035, 0, 0.4775, 0, A.ceramic, 20, { neg: true, pos: true });
+        b.cyl('y', 0.136, 0.136, 0.004, 0, 0.497, 0, A.soil, 14, { neg: false, pos: true });
+        const rnd = seeded(77), tops: V3[] = [[-0.15, 1.2, 0.06], [0.13, 1.28, -0.08], [0.07, 1.02, 0.15]];
+        tops.forEach((t, s) => {
+          rod(b, [0, 0.497, 0], t, 0.013, 0.006, A.bark, 5);
+          for (let k = 0; k < 19; k++) {
+            const f = 0.3 + k * 0.039, p: V3 = [t[0] * f, 0.497 + (t[1] - 0.497) * f, t[2] * f], az = k * 2.39 + s * 1.3;
+            leaf(b, p, az, -0.35 + rnd() * 0.8, 0.14 + rnd() * 0.05, 0.1 + rnd() * 0.02, [A.leaf, A.leaf2, A.leaf3][(k + s) % 3]);
+          }
+        });
+        return { footprint: { w: 0.6, d: 0.6, h: 1.4 }, placement: 'free', use: standUse(0.6, 'use', 'Arroser la plante', 0.45) };
+      },
+      // the OE mirror: a tall capsule in a thin brushed bronze frame, hung on the wall
+      premium: b => {
+        const hw = 0.34, ya = 0.5 + hw, yb = 1.9 - hw, zb = -0.025, zf = 0.022, n = 18;
+        const ring = (r: number): P2[] => { const out: P2[] = []; for (let k = 0; k <= n; k++) { const a = k * Math.PI / n; out.push([Math.cos(a) * r, yb + Math.sin(a) * r]); } for (let k = 0; k <= n; k++) { const a = Math.PI + k * Math.PI / n; out.push([Math.cos(a) * r, ya + Math.sin(a) * r]); } return out; };
+        const O = ring(hw), I = ring(hw - 0.024), m = O.length, zm = zf - 0.01;
+        for (let i = 0; i < m; i++) {
+          // the edge's outward normal: from the middle line of the capsule (x 0, y clamped between the two centres) to the edge's middle
+          const j = (i + 1) % m, nx = (O[i][0] + O[j][0]) / 2, my = (O[i][1] + O[j][1]) / 2, ny = my - Math.min(yb, Math.max(ya, my));
+          b.toward([[O[i][0], O[i][1], zf], [O[j][0], O[j][1], zf], [I[j][0], I[j][1], zf], [I[i][0], I[i][1], zf]], [0, 0, 1], A.bronze);
+          b.toward([[O[i][0], O[i][1], zb], [O[j][0], O[j][1], zb], [O[j][0], O[j][1], zf], [O[i][0], O[i][1], zf]], [nx, ny, 0], A.brass);
+          b.toward([[I[i][0], I[i][1], zm], [I[j][0], I[j][1], zm], [I[j][0], I[j][1], zf], [I[i][0], I[i][1], zf]], [-nx, -ny, 0], A.bronze);
+        }
+        const mx = hw, mirror = I.map(([x, y]) => [x, y, zm] as V3), r = FUV.mirror;
+        b.toward(mirror, [0, 0, 1], W, mirror.map(p => [r[0] + (r[2] - r[0]) * (p[0] + mx) / (2 * mx), r[1] + (r[3] - r[1]) * (p[1] - 0.5) / 1.4] as [number, number]));
+        return { footprint: { w: 0.7, d: 0.05, h: 1.92 }, placement: 'wall', use: standUse(0.05, 'use', 'Se préparer', 0.7) };
+      },
+    },
+    // ------------------------------------------------------------------------------------------------ the mushroom table lamp, the open shelf, the dressing table
+    lxAccent: {
+      // the OE table lamp: the mushroom lamp, small (a kit model the catalogue does not sell yet)
+      basic: b => { mushroom(b, 0, 0, 0, 0.42, 0.13, 0.07); return { footprint: { w: 0.28, d: 0.28, h: 0.43 }, placement: 'free', use: standUse(0.28, 'use', 'Allumer la lampe', 0.45) }; },
+      // the OE bookshelf: two flat black uprights, five smoked walnut shelves edged in brushed bronze reaching past them, books, vases, a bowl
+      better: b => {
+        const w = 1.5, d = 0.38;
+        for (const sx of [-1, 1]) b.box(0.06, 1.25, d - 0.02, sx * 0.42, 0, 0, A.black);
+        for (let k = 0; k < 5; k++) b.box(w, 0.03, d, 0, 0.05 + k * 0.29, 0, 0x5e4630, { pz: { rect: U.lxBronze }, py: { rect: U.lxWalnut, paint: 0x9a8a7c }, px: { paint: A.bronze }, nx: { paint: A.bronze } });
+        b.box(0.5, 0.24, 0.2, -0.05, 0.37, -0.05, W, { pz: { rect: U.lxBooks }, py: { paint: 0xe9e2d4 }, px: { paint: 0x8c7b6b }, nx: { paint: 0x8c7b6b } });
+        vase(b, 0.58, 0.08, -0.02, 0.26, 0.08, A.ceramic); vase(b, -0.6, 0.66, 0.0, 0.2, 0.07, A.ceramic2);
+        books(b, 0.15, 0.66, 0.0, 3, 0.15); b.geometry(new THREE.SphereGeometry(0.055, 10, 6), A.bronze, 0.36, 0.71, 0.0);
+        kcDrum(b, -0.2, 0.0, [[0.05, 0.95], [0.1, 0.97], [0.12, 1.0]], 14, A.bronze, null, 1, true, 0x4a3520);
+        vase(b, 0.5, 0.95, -0.04, 0.24, 0.08, A.ceramic);
+        vase(b, -0.55, 1.24, -0.04, 0.2, 0.07, A.ceramic2);
+        return { footprint: { w, d, h: 1.45 }, placement: 'wall', use: standUse(d, 'browse', 'Prendre un livre', 0.55) };
+      },
+      // sheet 3's dressing table (100 × 40 × 75): walnut on tapered legs, two greige drawers with bronze pulls, a round mirror ringed in brass on
+      // its stand, toiletries on a tray, and its upholstered stool in front
+      premium: b => {
+        const D = 0.4, d = 0.86, zc = -d / 2 + D / 2;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) rod(b, [sx * 0.455, 0.6, zc + sz * 0.165], [sx * 0.47, 0, zc + sz * 0.18], 0.021, 0.015, A.walnut, 6);
+        b.box(0.96, 0.14, D - 0.02, 0, 0.58, zc, A.walnut, { pz: { paint: A.gap }, px: { rect: U.lxWalnut }, nx: { rect: U.lxWalnut } });
+        for (const sx of [-1, 1]) { fronts(b, 1, 0.44, 0.12, sx * 0.23, 0.59, zc + D / 2 - 0.01); b.box(0.09, 0.01, 0.012, sx * 0.23, 0.66, zc + D / 2 + 0.006, A.bronze); }
+        softSlab(b, 1.0, D, 0.02, 2, 0, zc, 0.72, 0.75, 0.008, A.walnut, { top: U.lxWalnut, side: U.lxWalnut, T: 0.8, bottom: true });
+        b.box(0.24, 0.015, 0.11, 0, 0.75, zc - 0.07, A.brass); rod(b, [0, 0.765, zc - 0.09], [0, 0.86, zc - 0.09], 0.01, 0.01, A.brass, 6);
+        b.cyl('z', 0.26, 0.26, 0.024, 0, 1.07, zc - 0.075, A.brass, 28, { neg: true, pos: true });
+        b.cyl('z', 0.238, 0.238, 0.004, 0, 1.07, zc - 0.061, W, 28, { neg: false, pos: FUV.mirror });
+        slabOf(b, outline(0.3, 0.16, 0.03, 2, 0.3, zc + 0.02), 0.75, 0.762, A.brass);
+        for (const [x, h, col] of [[0.22, 0.12, A.ceramic], [0.3, 0.08, 0xb8865a], [0.38, 0.1, A.black]] as const) b.cyl('y', 0.025, 0.025, h, x, 0.762 + h / 2, zc + 0.02, col, 8);
+        const sz = d / 2 - 0.21;
+        for (const sx of [-1, 1]) for (const s2 of [-1, 1]) rod(b, [sx * 0.15, 0.36, sz + s2 * 0.12], [sx * 0.17, 0, sz + s2 * 0.14], 0.016, 0.012, A.walnut, 5);
+        puff(b, 0.42, 0.11, 0.34, 0, 0.36, sz, A.greige, U.lxLinenTop, U.lxLinen, { c: 0.045, k: 0.05, crown: 0.01 });
+        const s = seatOf('s0', 0, r3(sz), 0.48, 'stool', Math.PI);
+        return { footprint: { w: 1.0, d, h: 1.34 }, placement: 'wall', seats: [s], use: sitUse(s, 'use', 'Se préparer') };
+      },
+    },
+  };
+}
+const COLLECTION_ALMADIES = almadiesMakers();
+
 const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
   // -------------------------------------------------------------------------------------------------- dining sets: a table and its chairs
   dining: {
@@ -1938,6 +2691,7 @@ const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
   },
   ...ROUND2_COMFORT,
   ...ROUND2_DECO,
+  ...COLLECTION_ALMADIES,
 };
 
 const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {

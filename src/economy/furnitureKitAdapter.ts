@@ -68,6 +68,18 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   paravent_raphia: 'screen:basic', paravent_bois: 'screen:better', paravent_laque: 'screen:premium',
   lanterne_tempete: 'lantern:basic', lanternes_fer: 'lantern:better', candelabre_cristal: 'lantern:premium',
   bocal_poissons: 'aquarium:basic', aquarium_meuble: 'aquarium:better', aquarium_mer: 'aquarium:premium',
+  // ---- LD2.0-D « Collection Almadies » (lane K-L): each piece of the line on its own kit model (src/world/furnitureKit.ts « Collection Almadies »)
+  canape_boucle: 'lxSofa:basic', canape_meridienne: 'lxSofa:better', canape_courbe: 'lxSofa:premium',
+  banc_lit: 'lxArmchair:basic', fauteuil_noyer: 'lxArmchair:better', fauteuil_boucle: 'lxArmchair:premium',
+  gueridon_marbre: 'lxLowTable:basic', table_basse_noyer: 'lxLowTable:better', table_basse_marbre_noir: 'lxLowTable:premium',
+  bureau_caisson: 'lxTableSet:basic', salle_manger_noyer: 'lxTableSet:better', salle_manger_ronde: 'lxTableSet:premium',
+  lit_noyer: 'lxBed:basic', lit_lin_greige: 'lxBed:better', lit_capitonne_noir: 'lxBed:premium',
+  chevet_noyer: 'lxNightstand:basic', chevet_greige: 'lxNightstand:better',                       // lxNightstand:premium, the OE black nightstand: drawn, not sold yet
+  chiffonnier_noyer: 'lxChest:basic', commode_six: 'lxChest:better', dressing_bronze: 'lxChest:premium',
+  meuble_tv_laque: 'lxCabinet:basic', enfilade_bronze: 'lxCabinet:better', bibliotheque_noyer: 'lxCabinet:premium',
+  lampadaire_champignon: 'lxLight:basic', lampadaire_arc_plisse: 'lxLight:better', lustre_couronne: 'lxLight:premium',
+  tapis_rond_jute: 'lxDecor:basic', pot_cannele: 'lxDecor:better', miroir_ovale: 'lxDecor:premium',
+  bibliotheque_bronze: 'lxAccent:better', coiffeuse_ronde: 'lxAccent:premium',                    // lxAccent:basic, the OE table lamp: drawn, not sold yet
 };
 
 /** Height of the home floor the catalogue's seat tops are measured with (kit seat tops are above the piece's base). */
