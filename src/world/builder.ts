@@ -46,7 +46,7 @@ export function citeFronts(): KeepClear[] {
   ];
 }
 
-type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
+type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza' | 'hospitality';
 type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
 type Style = 'dense' | 'villa' | 'student' | 'banlieue' | 'mermoz';
@@ -74,7 +74,8 @@ const SPECS: Record<HubId, HubSpec> = {
   almadies: {
     id: 'almadies', seed: 37, style: 'villa', ground: 0xe3d3a3, road: 0x50535a, walk: 0xe0dccc, blockGround: 0xd9ceb0,
     palette: [0xfafafa, 0xf3f0ea, 0xeeeeee, 0xf7efe2], floors: [2, 3], sea: 'north', palms: 30,
-    specials: { '2,0': 'port', '1,2': 'station' },
+    // The north-side hospitality strip replaces two generic villa blocks beside La Vague: independent venues, not restaurants inside private compounds.
+    specials: { '0,0': 'hospitality', '1,0': 'hospitality', '2,0': 'port', '1,2': 'station' },
     kiosks: [{ i: 0, j: 1, lot: 0, kind: 'restaurant', name: 'Restaurant Le Pointe' }, { i: 3, j: 1, lot: 1, kind: 'cafe', name: 'Café Touba · Ngor' }],
     spawnBlock: [1, 2],
   },
@@ -1470,6 +1471,52 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         addSign('ÉCURIE BAOBAB', '#3b1d0b', '#ffd98a', cx, B + 5.1, cz - 1.05, Math.PI, 7, 1.1);
         interactables.push({ id: `${id}:ecurie`, name: 'Écurie Baobab', kind: 'actions', x: cx, z: cz - 6, radius: 5, actions: ACTIONS.ecurie });
         ecurieInfo = { cx, cz: cz - 8 };
+        break;
+      }
+      case 'hospitality': {
+        if (id !== 'almadies') break;
+        // Two consecutive Almadies blocks become a small restaurant/nightlife strip. Each venue has its own street-facing
+        // frontage and open forecourt; the middle frontage in block 1 is the interactive Terrasse de Ngor (rooftop.ts).
+        // This replaces generic gated villas rather than placing a public restaurant inside somebody's residential compound.
+        const places = i === 0
+          ? [
+              { name: 'Le Patio de Ngor', board: 'LE PATIO DE NGOR · RESTAURANT', wall: 0xe7d5bd, awning: 0xb94f36, bg: '#6b3526' },
+              { name: 'Chez Binta', board: 'CHEZ BINTA · GRILLADES', wall: 0xf1e4d1, awning: 0x2f6f5a, bg: '#1c4d40' },
+              { name: 'Café du Phare', board: 'CAFÉ DU PHARE · JUS & CAFÉ', wall: 0xece1d0, awning: 0x1e6fd9, bg: '#173b63' },
+            ]
+          : [
+              { name: 'Lounge 221', board: 'LOUNGE 221 · MUSIQUE & CUISINE', wall: 0xe5d8c5, awning: 0x8c4d77, bg: '#2e193d' },
+              { name: 'Terrasse de Ngor', board: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', wall: 0xf2e7d5, awning: 0x1f7aa6, bg: '#17465a' },
+              { name: 'Le Comptoir de Ngor', board: 'LE COMPTOIR DE NGOR · CUISINE', wall: 0xdcc7a7, awning: 0x9d5e34, bg: '#5b321e' },
+            ];
+        for (let n = 0; n < places.length; n++) {
+          const v = places[n], x = bx + 7.7 + n * 15.3, z = bz + 13.5;
+          const w = 12.2, d = 9, h = 4.1, frontZ = z - d / 2;
+          // Low independent restaurant buildings with a clear street-facing commercial frontage.
+          fac.facade(w, h, d, x, G - 0.02, z, v.wall);
+          plain.box(w + 0.36, 0.24, d + 0.36, x, G + h - 0.02, z, 0xd9d3c8);
+          plain.box(w + 0.12, 0.5, d + 0.12, x, G - 0.02, z, shade(v.wall, 0.7));
+          // A central entrance, broad glazed bays and an awning; the front remains open to the shared forecourt.
+          plain.box(1.45, 2.3, 0.14, x, G + 1.13, frontZ - 0.08, 0x30271f);
+          glass.box(3.0, 1.6, 0.08, x - 3.55, G + 1.35, frontZ - 0.1, 0x477f8e);
+          glass.box(3.0, 1.6, 0.08, x + 3.55, G + 1.35, frontZ - 0.1, 0x477f8e);
+          plain.box(10.8, 0.12, 1.65, x, G + 2.72, frontZ - 0.85, v.awning);
+          for (const side of [-1, 1]) plain.box(0.1, 2.35, 0.1, x + side * 4.9, G + 1.15, frontZ - 1.35, 0x5a4733);
+          addSign(v.board, v.bg, '#fff2d3', x, G + 3.48, frontZ - 0.12, Math.PI, 9, 0.76);
+          // Outdoor tables and chairs make this a destination street, not a row of sealed decorative boxes.
+          const tableXs = i === 1 && n === 1 ? [x - 7.2, x + 7.2] : [x - 3.3, x + 3.3];
+          for (const tx of tableXs) {
+            const tz = frontZ - 4.1;
+            plain.cyl(0.52, 0.52, 0.06, tx, B + 0.78, tz, 0x6b4a2e, 12);
+            plain.cyl(0.05, 0.05, 0.72, tx, B + 0.36, tz, 0x2a2a30, 6);
+            for (const side of [-1, 1]) {
+              plain.box(0.42, 0.05, 0.42, tx + side * 0.82, B + 0.44, tz, v.awning);
+              plain.box(0.42, 0.48, 0.05, tx + side * 0.82, B + 0.67, tz + 0.23, v.awning);
+            }
+          }
+          if (!(i === 1 && n === 1)) people.push({ x: x + 1.0, z: frontZ - 3.0, yaw: Math.PI, clip: 'Talk' });
+          solidC(x, z, w + 0.5, d + 0.5, h);
+        }
         break;
       }
       case 'plaza': default: break;
