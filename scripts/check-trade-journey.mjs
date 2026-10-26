@@ -45,6 +45,19 @@ async function walkPath(pts, { tol = 1.2 } = {}) {
     if (left > tol * 3) log(`walk: stopped ${left.toFixed(1)} m short of (${x}, ${z})`);
   }
 }
+/** From beside the parked car to (x, z) on its other side: round its front, as a player does (the driver gets out on the street side, the shop is on the kerb's). */
+async function roundCar(x, z) {
+  const c = await AT(), me = await d(() => window.__dakar.pos()), F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) };
+  const side = (p) => Math.sign((p.x - c.x) * L.x + (p.z - c.z) * L.z) || 1;
+  const at = (s) => [c.x + F.x * 3.8 + L.x * s * 1.9, c.z + F.z * 3.8 + L.z * s * 1.9];
+  await walkPath([at(side(me)), at(side({ x, z })), [x, z]], { tol: 0.8 });
+}
+/** Back from a shop to the driver's door (on the street side), round the car's front, then in (realTouch's boardVehicle). */
+async function boardFromShop() {
+  const c = await AT(), L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) };
+  await roundCar(c.x + L.x * 2.2, c.z + L.z * 2.2);
+  await boardVehicle(page, t, 'teranga');
+}
 /** Face a trader and tap the action button (« Parler à … »), as a player standing at their table does. */
 async function talkTo(id) {
   const ok = await page.waitForFunction(i => window.__dakar.focus()?.id === i, id, { timeout: 8000 }).then(() => true, () => false);
@@ -143,10 +156,10 @@ if (PARTS.includes('foot')) {
   const w2 = await wallet();
   await tapItem('^\\W*Vendre');
   await page.waitForTimeout(3500); await shot('sale-card');
-  const sold = await TR(), w3 = await wallet(), cards = await d(() => window.__dakar.trade.info().cards);
-  const card = cards.find(k => /^Lot 1 vendu/.test(k.title));
+  const sold = await TR(), w3 = await wallet(), cards = await d(() => window.__dakar.trade.info().cards.map(k => ({ ...k, rows: k.rows.map(r => r.replace(/\s/g, ' ')) })));
+  const card = cards.find(k => /^Lot 1 · /.test(k.title));
   check('sold: one credit of 11 100 F, one ledger line « Plateau · vente thé vert ×3 · lot 1 »; the lot and the goods are gone', w3 - w2 === 11100 && !sold.lot && !sold.inventory.pl_the && sold.ledger.filter(e => /vente/.test(e.label)).length === 1 && sold.counters.pl_trades === 1, JSON.stringify({ got: w3 - w2, ledger: sold.ledger, c: sold.counters }));
-  check('the card shows the real result: Vente 11 100 F, Achat −9 000 F, Bénéfice +2 100 F, and the player’s trades so far', !!card && card.rows.some(r => /^Vente: \+11 100/.test(r)) && card.rows.some(r => /^Achat: −9 000/.test(r)) && card.rows.some(r => /^Bénéfice: \+2 100/.test(r)) && /garder|placer|racheter/.test(card.next.join(' ')), JSON.stringify(card));
+  check('the card shows the real result: « Lot 1 · +2 100 F de bénéfice » in its title (what a phone held upright always shows), then Vente 11 100 F, Achat −9 000 F, Bénéfice +2 100 F, and the player’s trades so far', !!card && /^Lot 1 · \+2 100 F de bénéfice/.test(card.title.replace(/\s/g, ' ')) && card.rows.some(r => /^Vente: \+11 100/.test(r)) && card.rows.some(r => /^Achat: −9 000/.test(r)) && card.rows.some(r => /^Bénéfice: \+2 100/.test(r)) && /garder|placer|racheter/.test(card.next.join(' ')), JSON.stringify(card));
   check('the profit reconciles: the wallet moved by +2 100 F, the lot’s ledger lines sum to +2 100 F, the saved total says +2 100 F', w3 - w0 === 2100 && sumLedger(sold.ledger) === 2100 && sold.counters.pl_profit_total === 2100, JSON.stringify({ wallet: w3 - w0, ledger: sumLedger(sold.ledger), total: sold.counters.pl_profit_total }));
   await page.waitForTimeout(4000);
   await talkTo('plateau:comptoir:sall');
@@ -164,12 +177,12 @@ if (PARTS.includes('car')) {
   log('next day, by car');
   const day = await d(() => window.__dakar.nextDay(1));                            // (debug shortcut, labelled: the later city day a journey cannot wait 24 minutes for)
   const me = await d(() => window.__dakar.pos());
-  // (set-up, labelled: the player owns a Teranga. It is bought at its Corniche dealer, as in the M1 check, and the wallet is put back as it was: the car is a
+  // (set-up, labelled: the player owns a Teranga. It is bought at its dealer in Pikine (where a new save starts), and the wallet is put back as it was: the car is a
   // given of this check, not part of the trade)
   if (!(await d(() => window.__dakar.teranga.info().owned))) {
     const keep = await wallet();
-    await d(() => window.__dakar.teleport('corniche', 67, -14, 0));
-    await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche' && window.__dakar.pos().mode === 'play' && window.__dakar.teranga.info().floor.length > 0, null, T);
+    await d(() => window.__dakar.teleport('pikine', 95, 4, 0));
+    await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.pos().mode === 'play' && window.__dakar.teranga.info().floor.length > 0, null, { timeout: 120000 });
     await d(() => { window.__dakar.state.data.wallet += 5_000_000; window.__dakar.teranga.own(); });
     await page.waitForFunction(() => window.__dakar.teranga.info().owned, null, T);
     await d(w => { window.__dakar.state.data.wallet = w; }, keep);
@@ -187,11 +200,12 @@ if (PARTS.includes('car')) {
   await shot('car-in-diallo-bay');
   await getOut();
   const parked = (await TR()).parked;
+  await roundCar(...AT_DIALLO);
   check('the car is left in Diallo’s loading bay', !!parked && parked.x > -69.4 && parked.x < -58.9 && parked.z > 8 && parked.z < 28, JSON.stringify(parked));
-  await walkPath([AT_DIALLO], { tol: 0.8 });
   check('« Parler à Oumar » again', await talkTo('plateau:grossiste:diallo'));
   const rec = await TR();
-  check('a later day: Diallo recognises the player (once), asks how the Comptoir paid', rec.recognised === 1 && /te revoilà/.test(rec.said[rec.said.length - 1] ?? '') && rec.counters.pl_diallo_seen_day === day + 1, JSON.stringify({ said: rec.said.slice(-1), day, seen: rec.counters.pl_diallo_seen_day }));
+  // (the seen day: the city day may roll over during the drive, hence ≥)
+  check('a later day: Diallo recognises the player (once), asks how the Comptoir paid', rec.recognised === 1 && /te revoilà/.test(rec.said[rec.said.length - 1] ?? '') && rec.counters.pl_diallo_seen_day >= day + 1, JSON.stringify({ said: rec.said.slice(-1), day, seen: rec.counters.pl_diallo_seen_day }));
   await shot('diallo-recognises');
   await tapItem('^\\W*Riz brisé'); await tapItem('^\\W*2 sacs');
   const load2 = await items(), rz = await TR();
@@ -200,18 +214,18 @@ if (PARTS.includes('car')) {
   await tapItem('^\\W*Charger dans ton véhicule');
   const inCar = await TR();
   check('loaded in the car: stage carried, by vehicle', inCar.lot?.stage === 2 && inCar.lot.mode === 'vehicle', JSON.stringify(inCar.lot));
-  await boardVehicle(page, t, 'teranga');
+  await boardFromShop();
   const a2 = await AT();
   const toComptoir = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, { x: 64.3, z: -79.5, yaw: Math.PI }, { cruise: 7, avoid: await closedZones(page) });
   check('a street route from the depot to the Comptoir’s bay', !!toComptoir);
   if (toComptoir) await pilot(page, t, 'teranga', toComptoir, { cruise: 7, stall: 60000, ms: 1200000, brakeAtEnd: true });
   await shot('car-in-comptoir-bay');
   await getOut();
-  await walkPath([AT_SALL], { tol: 0.8 });
+  await roundCar(...AT_SALL);
   check('« Parler à Awa », the car in her bay', await talkTo('plateau:comptoir:sall'));
   const w5 = await wallet();
   await tapItem('^\\W*Vendre');
-  const sold2 = await TR(), cards2 = await d(() => window.__dakar.trade.info().cards), card2 = cards2.find(k => /^Lot 2 vendu/.test(k.title));
+  const sold2 = await TR(), cards2 = await d(() => window.__dakar.trade.info().cards.map(k => ({ ...k, rows: k.rows.map(r => r.replace(/\s/g, ' ')) }))), card2 = cards2.find(k => /^Lot 2 · /.test(k.title));
   check('sold from the car: +20 400 F once; the card says Bénéfice +2 400 F', (await wallet()) - w5 === 20400 && !sold2.lot && !!card2 && card2.rows.some(r => /^Bénéfice: \+2 400/.test(r)) && sold2.counters.pl_trades === 2, JSON.stringify({ card2, c: sold2.counters }));
   await page.waitForTimeout(3500); await shot('rice-sale-card');
 }
@@ -220,12 +234,12 @@ if (PARTS.includes('porter')) {
   // ---------------------------------------------------------------- 5. the porters' pousse-pousse: mangoes, the fee once, the sale waits for the porter
   log('the porters');
   await page.waitForTimeout(4000);
-  await boardVehicle(page, t, 'teranga');
+  await boardFromShop();
   const a3 = await AT();
   const back = route({ x: a3.x, z: a3.z, yaw: a3.yaw }, { x: -64.3, z: 19, yaw: 0 }, { cruise: 7, avoid: await closedZones(page) });
   if (back) await pilot(page, t, 'teranga', back, { cruise: 7, stall: 60000, ms: 1200000, brakeAtEnd: true });
   await getOut();
-  await walkPath([AT_DIALLO], { tol: 0.8 });
+  await roundCar(...AT_DIALLO);
   await talkTo('plateau:grossiste:diallo');
   const w6 = await wallet();
   await tapItem('^\\W*Mangues'); await tapItem('^\\W*4 cagettes');
@@ -237,7 +251,7 @@ if (PARTS.includes('porter')) {
   const p1 = (await TR()).people.porter; await page.waitForTimeout(4000); const p2 = (await TR()).people.porter;
   check('the porter and his cart are on the street, walking', !!p1 && !!p2 && Math.hypot(p2.x - p1.x, p2.z - p1.z) > 2, JSON.stringify({ p1, p2 }));
   await shot('porter-leaves');
-  await boardVehicle(page, t, 'teranga');
+  await boardFromShop();
   const a4 = await AT();
   const fwd = route({ x: a4.x, z: a4.z, yaw: a4.yaw }, { x: 64.3, z: -100, yaw: Math.PI }, { cruise: 7, avoid: await closedZones(page) });
   if (fwd) await pilot(page, t, 'teranga', fwd, { cruise: 7, stall: 60000, ms: 1200000, brakeAtEnd: true });
@@ -254,7 +268,7 @@ if (PARTS.includes('porter')) {
   await shot('porter-arrived');
   check('« Parler à Awa » once the porter is there', await talkTo('plateau:comptoir:sall'));
   await tapItem('^\\W*Vendre');
-  const sold3 = await TR(), cards3 = await d(() => window.__dakar.trade.info().cards), card3 = cards3.find(k => /^Lot 3 vendu/.test(k.title));
+  const sold3 = await TR(), cards3 = await d(() => window.__dakar.trade.info().cards.map(k => ({ ...k, rows: k.rows.map(r => r.replace(/\s/g, ' ')) }))), card3 = cards3.find(k => /^Lot 3 · /.test(k.title));
   check('sold: +13 600 F; the card counts the transport: Transport −1 500 F, Bénéfice +2 100 F', (await wallet()) - w7 === 13600 && !!card3 && card3.rows.some(r => /^Transport: −1 500/.test(r)) && card3.rows.some(r => /^Bénéfice: \+2 100/.test(r)), JSON.stringify(card3));
   await page.waitForTimeout(3500); await shot('mango-sale-card');
   const all = sold3.ledger, totals = sold3.counters;

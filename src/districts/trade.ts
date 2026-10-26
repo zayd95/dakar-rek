@@ -226,7 +226,8 @@ function doSell(ctx: GameCtx) {
   new Relations(s.data).change(PLAYER, SALL.id, 1);
   const G = GOODS[r.r.good], up = r.r.profit >= 0;
   const card = {
-    icon: up ? '📈' : '📉', title: `Lot ${r.r.seq} vendu · ${r.r.units} ${r.r.units > 1 ? G.units : G.unit} de ${G.name.toLowerCase()}`, sub: 'Diallo & Frères (Médina) → Comptoir Sall (Plateau)',
+    icon: up ? '📈' : '📉', title: `Lot ${r.r.seq} · ${up ? '+' : '−'}${fr(Math.abs(r.r.profit))} de ${up ? 'bénéfice' : 'perte'}`,   // the result in the title: on a phone held upright the card shows its first rows only
+    sub: `${r.r.units} ${r.r.units > 1 ? G.units : G.unit} de ${G.name.toLowerCase()} vendus · Diallo & Frères (Médina) → Comptoir Sall (Plateau)`,
     rows: [
       { k: 'Vente', v: `+${fr(r.r.revenue)}`, tone: 'up' },
       { k: 'Achat', v: `−${fr(r.r.cost)}` },
