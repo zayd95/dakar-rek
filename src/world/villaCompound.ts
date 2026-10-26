@@ -140,11 +140,16 @@ export function buildVillaCompound(kit: CompoundKit): VillaCompound {
   }
   // bougainvillea over the wall's top (the street sees it spill), climbing up the corner
   const blooms: [number, number, number][] = [[-10.2, s, 0.9], [-8.6, s, 0.75], [-5.5, s, 0.85], [-1.8, s, 0.7], [9.3, s, 0.7], [s, 9.0, 0.8], [s, 4.2, 0.7], [s, -6.6, 0.75], [-s, 7.4, 0.7], [-6.2, -s, 0.7]];
+  // a cushion of leaves and a few rounder clusters of flowers over it, one spilling down the street side (finer blobs than the street's own)
+  const along = (_x: number, z: number) => (Math.abs(z) === s ? { dx: 1, dz: 0, out: Math.sign(z) } : { dx: 0, dz: 1, out: 0 });
   blooms.forEach(([x, z, r], k) => {
     if (lite && k % 2) return;
-    leaves.blob(r * 0.85, X(x), top - 0.15, Z(z), C.hedge, 0.55, 0);
-    leaves.blob(r, X(x + 0.25), top + 0.05, Z(z), k % 3 ? C.bloom : C.bloom2, 0.6, 0);
-    if (!lite) leaves.blob(r * 0.6, X(x - 0.35), top - 0.55, Z(z + (z === s ? 0.35 : 0)), C.bloom2, 0.7, 0);
+    const a = along(x, z), d = lite ? 0 : 1;
+    leaves.blob(r * 0.8, X(x), top - 0.1, Z(z), C.hedge, 0.5, d);
+    for (const [t, dy, rr] of [[-0.45, 0.12, 0.55], [0.1, 0.22, 0.62], [0.55, 0.08, 0.5]] as const) {
+      leaves.blob(r * rr, X(x + a.dx * t * r), top + dy, Z(z + a.dz * t * r), (k + Math.round(t * 4)) % 3 ? C.bloom : C.bloom2, 0.75, d);
+    }
+    if (!lite && a.out) leaves.blob(r * 0.42, X(x + 0.2), top - 0.6, Z(z + a.out * 0.32), C.bloom2, 1.3, 1);   // spilling over on the street side
   });
 
   // ------------------------------------------------------------------------------------------------ the gate (its own mesh: it slides)
@@ -202,9 +207,9 @@ export function buildVillaCompound(kit: CompoundKit): VillaCompound {
   for (const [x, z] of bollards) {
     box(plain, 0.13, 0.62, 0.13, x, Y, z, C.post);
     box(bulbs, 0.1, 0.08, 0.14, x, Y + 0.5, z, C.bulb);
-    light(x, z, 1.7, 0.175);
+    light(x, z, 2.2, 0.175);
   }
-  light(FRONT_DOOR.x, fy0 + 0.9, 1.8, 0.185);                                // the porch light's pool
+  light(FRONT_DOOR.x, fy0 + 0.9, 2.4, 0.185);                                // the porch light's pool
 
   // ------------------------------------------------------------------------------------------------ palms (own, drawn without random numbers)
   const palm = (x: number, z: number, sc: number, turn: number) => {
@@ -218,7 +223,7 @@ export function buildVillaCompound(kit: CompoundKit): VillaCompound {
     leaves.blob(0.42 * sc, tx, ty - 0.1, tz, 0x6b5a2a, 1, 0);
     canopies.push({ x: tx, z: tz, r: 3.2 * sc, y0: ty - 0.8 * sc, y1: ty + 0.3 * sc });
     solid(x - 0.25, z - 0.25, x + 0.25, z + 0.25, 3);
-    light(x + 0.4, z + 0.4, 1.7, 0.17);                                      // the uplight at its foot
+    light(x + 0.4, z + 0.4, 2.1, 0.17);                                      // the uplight at its foot
   };
   palm(-8.5, 7.4, 1.05, 0.2); palm(-5.6, 9.6, 0.9, 0.9); palm(9.4, 6.4, 1.0, 0.5); palm(9.4, 1.8, 0.85, 1.3);
 

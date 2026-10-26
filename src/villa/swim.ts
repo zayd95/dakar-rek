@@ -147,8 +147,8 @@ export class VillaSwim {
     if (this.wake) {
       const c = swimPose(this.s0 + this.t * PACE, this.c), k = (this.t * 0.9) % 1;
       this.wake.position.set(this.origin.x + c.x, 0.1 + WATER_Y + 0.012, this.origin.z + c.z);
-      this.wake.scale.setScalar(0.7 + k * 0.9);
-      (this.wake.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k);
+      this.wake.scale.setScalar(0.6 + k * 1.2);
+      (this.wake.material as THREE.MeshBasicMaterial).opacity = 0.3 * (1 - k);
     }
     if (this.t >= SWIM_SECONDS) this.stop();
   }
@@ -180,7 +180,7 @@ export class VillaSwim {
 
   private showWake(on: boolean) {
     if (on && !this.wake) {
-      const g = new THREE.RingGeometry(0.45, 0.62, 28); g.rotateX(-Math.PI / 2);
+      const g = new THREE.RingGeometry(0.5, 0.58, 28); g.rotateX(-Math.PI / 2);
       this.wake = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false }));
       this.wake.name = 'villa-swim-wake'; this.wake.renderOrder = 3;
       this.room.add(this.wake);

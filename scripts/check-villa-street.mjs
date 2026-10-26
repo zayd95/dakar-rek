@@ -71,16 +71,17 @@ async function cost(s, cam) {
     const D = window.__dakar, scene = D.three.scene;
     D.cam(c.p, c.t); D.render();
     const all = { calls: D.drawCalls(), tris: D.tris() };
-    const verts = o => { let n = 0; o.traverse(m => { if (m.isMesh && m.geometry?.attributes?.position) n += m.geometry.attributes.position.count; }); return n; };
-    const hub = scene.children.reduce((a, b) => (verts(b) > verts(a) ? b : a));
+    // the district's group: the scene's child that holds the largest single mesh (the merged street batch)
+    let big = null, bn = 0; scene.traverse(m => { const n = m.isMesh ? m.geometry?.attributes?.position?.count ?? 0 : 0; if (n > bn) { bn = n; big = m; } });
+    let hub = big; while (hub.parent && hub.parent !== scene) hub = hub.parent;
     const was = scene.children.map(o => o.visible);
     scene.children.forEach(o => { o.visible = o === hub; });
     D.render();
     const own = { calls: D.drawCalls(), tris: D.tris() };
-    scene.children.forEach((o, i) => { o.visible = was[i]; });
-    const g = hub.getObjectByName('villa-compound');
+    const g = hub.getObjectByName('villa-compound');                                     // its own group (the gate, the house, the helicopter), the district alone
     let compound = null;
     if (g) { g.visible = false; D.render(); compound = { calls: own.calls - D.drawCalls(), tris: own.tris - D.tris() }; g.visible = true; }
+    scene.children.forEach((o, i) => { o.visible = was[i]; });
     D.render();
     return { all, hub: own, compound };
   }, cam);
@@ -102,7 +103,7 @@ console.log('PERF', JSON.stringify(perf));
 if (perf.before && perf.after) {
   for (const v of ['street', 'wide']) {
     const b = perf.before[v].hub, a = perf.after[v].hub;
-    check(`low preset, ${v === 'street' ? 'the villa from the street' : 'the Almadies from above'}: the compound adds at most 25 draw calls to the district`, a.calls - b.calls <= 25, JSON.stringify({ before: b, after: a, compound: perf.after[v].compound, all: { before: perf.before[v].all, after: perf.after[v].all } }));
+    check(`low preset, ${v === 'street' ? 'the villa from the street' : 'the Almadies from above'}: the compound adds at most 25 draw calls to the district`, a.calls - b.calls <= 25 && !!perf.after[v].compound && perf.after[v].compound.calls >= 1 && perf.after[v].compound.calls <= 25, JSON.stringify({ before: b, after: a, compound: perf.after[v].compound, all: { before: perf.before[v].all, after: perf.after[v].all } }));
   }
 }
 
@@ -190,7 +191,7 @@ check('eight guests, chatting and dancing, music; social up', r1.r.running && r1
 await shot(s, '06-reception', tiered ? { p: [O.x + 3.5, 4.2, O.z - 2.5], t: [O.x + 8, 0.8, O.z - 7.5] } : { p: [O.x + 5.8, 3.6, O.z + 3.8], t: [O.x - 0.5, 0.8, O.z - 1] }, true);
 const h0 = await s.d(() => window.__dakar.villa.reception.info().at);
 await s.d(h => window.__dakar.setHour(((h % 24) + 2.2) % 24), h0);
-await s.page.waitForFunction(() => !window.__dakar.villa.reception.info().running, null, { timeout: 20000 }).catch(() => {});
+await s.page.waitForFunction(() => window.__dakar.villa.reception.info().log.ended >= 1, null, { timeout: 30000 }).catch(() => {});
 const r2 = await s.d(() => window.__dakar.villa.reception.info());
 check('two city hours later it ends by itself, the guests gone', !r2.running && !r2.drawn && r2.log.ended === 1, JSON.stringify(r2));
 await s.page.waitForTimeout(600);
