@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { buildFurniture, furnitureSpec as kitSpec, type FurnitureId } from '../world/furnitureKit';
 import { FURNITURE_SPECS } from './catalog';
 import { setFurnitureKit } from './furnitureModels';
+import { setPieceSpans } from './placement';
 
 /**
  * The 3D asset lane's furniture kit (src/world/furnitureKit.ts) standing in for the catalogue's pieces, through the
@@ -83,7 +84,17 @@ export function installFurnitureKit() {
     const top = kitSpec(partsOf(m)[0][0]).seats[0]?.top;
     if (top !== undefined) for (const s of f.seats) s.top = Math.round((top + FLOOR) * 1000) / 1000;
   }
-  setFurnitureKit(id => {
+  // how high each piece's model reaches, for the placement rule « hidden behind a tall piece » (src/economy/placement.ts)
+  const spans = new Map<string, { y0: number; y1: number } | null>();
+  setPieceSpans(f => {
+    if (!spans.has(f.id)) {
+      const g = KIT_PIECES[f.id] ? build(f.id) : null, box = g && new THREE.Box3().setFromObject(g);
+      spans.set(f.id, box && !box.isEmpty() ? { y0: box.min.y, y1: box.max.y } : null);
+    }
+    return spans.get(f.id)!;
+  });
+  setFurnitureKit(id => build(id));
+  function build(id: string): THREE.Group | null {
     const m = KIT_PIECES[id], f = FURNITURE_SPECS.find(x => x.id === id);
     if (!m || !f) return null;
     const inner = new THREE.Group();
@@ -96,5 +107,5 @@ export function installFurnitureKit() {
     inner.scale.set(Math.min(1, f.w / w), 1, Math.min(1, f.d / d));
     const g = new THREE.Group(); g.name = `kit_${id}`; g.add(inner);
     return g;
-  });
+  }
 }

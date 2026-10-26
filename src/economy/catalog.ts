@@ -231,7 +231,7 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
     use: { id: 'detente', label: 'Se détendre', seconds: 4, needs: { energie: 6, moral: 6 }, sit: true } }),
   F({ id: 'canape_wax', type: 'sofa', grade: 'better', emoji: '🛋️', name: 'Canapé en tissu wax', what: 'Trois places, tissu aux motifs du marché : « Se détendre »', price: 95_000, w: 2.0, d: 0.85, seats: sofaSeats(3, 2.0, 0.46),
     use: { id: 'detente', label: 'Se détendre', seconds: 4, needs: { energie: 10, moral: 9 }, sit: true } }),
-  F({ id: 'canape_cuir', type: 'sofa', grade: 'premium', emoji: '🛋️', name: 'Grand canapé en cuir', what: 'Trois places en cuir capitonné : « Se détendre »', price: 650_000, w: 2.6, d: 0.95, seats: sofaSeats(3, 2.6, 0.45),
+  F({ id: 'canape_cuir', type: 'sofa', grade: 'premium', emoji: '🛋️', name: 'Grand canapé en velours', what: 'Trois places en velours, cadre sculpté et doré : « Se détendre »', price: 650_000, w: 2.6, d: 0.95, seats: sofaSeats(3, 2.6, 0.45),
     use: { id: 'detente', label: 'Se détendre', seconds: 4, needs: { energie: 14, moral: 14 }, sit: true } }),
   // beds (sleep)
   F({ id: 'matelas_sol', type: 'bed', grade: 'basic', emoji: '🛏️', name: 'Matelas au sol', what: 'Une mousse et un drap en wax : on dort, c’est déjà ça', price: 9_000, w: 1.0, d: 2.0, sleep: 55, seats: bedSeat(1.0, 0.24) }),

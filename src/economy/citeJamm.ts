@@ -120,11 +120,13 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
   // the hanging lamps and the outdoor furniture on the forecourt). The seats of the sofas, armchair, chairs, dining set, garden set and bed can be tried.
   // The way in (u 7.5 … 11.5 from the door to the till) stays free: scripts/check-keur-meubles.mjs walks it.
   const display: [string, number, number, number][] = [
-    // the living room: the sofa on its rug, the coffee table, the armchair, the TV unit, the desk, a canvas above the sofa and a poster above the desk
-    ['canape_wax', 5.0, 32.85, 0], ['tapis_soie', 5.0, 34.6, 0], ['table_basse', 5.0, 34.5, 0], ['fauteuil_cuir', 7.6, 33.0, 0],
-    ['meuble_tv', 10.0, 32.55, 0], ['bureau_bois', 11.9, 33.0, 0], ['armoire_bois', 14.8, 32.6, 0], ['toile_artiste', 5.0, 32.38, 0], ['affiche', 11.9, 32.32, 0],
-    // the bedroom: the bed, its bedside table, a chest of drawers and the sous-verre above it
-    ['lit_bois', 3.45, 38.2, 1], ['chevet_bois', 2.51, 36.95, 1], ['commode', 2.52, 34.4, 1], ['sous_verre', 2.32, 34.4, 1],
+    // the living room: the sofa on its rug, the coffee table and a velvet pouf, the armchair, the crystal candelabra, the TV unit, the desk, a canvas
+    // above the sofa and carved masks above the desk (the catalogue's second round: the pouf, the candelabra, the masks)
+    ['canape_wax', 5.0, 32.85, 0], ['tapis_soie', 5.0, 34.6, 0], ['table_basse', 5.0, 34.5, 0], ['pouf_velours', 6.4, 34.5, 0], ['fauteuil_cuir', 7.6, 33.0, 0],
+    ['candelabre_cristal', 8.5, 32.65, 0], ['meuble_tv', 10.0, 32.55, 0], ['bureau_bois', 11.9, 33.0, 0], ['armoire_bois', 14.8, 32.6, 0], ['toile_artiste', 5.0, 32.38, 0],
+    ['masques_sculptes', 11.9, 32.345, 0],
+    // the bedroom: the canopy bed with its voiles, its bedside table, a chest of drawers and the sous-verre above it; the reef tank on the east wall
+    ['lit_baldaquin', 3.45, 38.2, 1], ['chevet_bois', 2.51, 36.95, 1], ['commode', 2.52, 34.4, 1], ['sous_verre', 2.32, 34.4, 1], ['aquarium_mer', 15.45, 34.6, 3],
     // the dining set under a woven hanging lamp
     ['salle_manger_bois', 9.5, 36.6, 0], ['suspension_osier', 9.5, 36.6, 0],
     // the kitchen corner: the cooker, a kitchen table and its stools, the microwave and the water dispenser
@@ -133,8 +135,9 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     ['meuble_vasque', 15.46, 37.7, 3], ['miroir_lumineux', 15.63, 37.7, 3], ['seche_serviettes', 15.65, 38.65, 3],
     // out front: the bench and the planter, a deck chair, and the garden set under its parasol and a sun lounger on the forecourt
     ['banquette', 5.0, 42.7, 0], ['jardiniere', 11.0, 42.3, 0], ['transat', 2.9, 43.0, 0], ['salon_teck', 14.4, 43.5, 0], ['bain_soleil', 17.0, 43.4, 0],
+    ['jarre_herbes', 6.25, 42.7, 0], ['lanternes_fer', 2.75, 41.6, 0],
     ...(lite ? [] : [['lampadaire_laiton', 2.8, 32.8, 0], ['palmier', 15.2, 40.4, 0], ['plante', 2.7, 36.0, 0], ['enceintes', 12.5, 39.8, 3],
-      ['lustre', 5.0, 34.6, 0], ['suspension_calebasse', 3.45, 38.2, 0], ['vitrine', 13.35, 32.55, 0], ['lampadaire_arc', 6.6, 32.9, 3], ['ventilo_pied', 4.0, 36.6, 0], ['canari', 7.05, 40.6, 0]] as [string, number, number, number][]),
+      ['lustre', 5.0, 34.6, 0], ['vitrine', 13.35, 32.55, 0], ['lampadaire_arc', 6.6, 32.9, 3], ['ventilo_pied', 4.0, 36.6, 0], ['canari', 7.05, 40.6, 0]] as [string, number, number, number][]),
   ];
   const models: THREE.Object3D[] = [];
   display.forEach(([id, u, v, rot], n) => {

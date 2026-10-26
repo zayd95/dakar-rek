@@ -146,12 +146,12 @@ export function whyNot(layout: HomeLayout, f: FurnitureSpec, at: Placement, othe
     if ([r.z0 + D, r.x0 + W, D - r.z1, W - r.x1][rot] > BACK) return WHY.onWall;
     if (rot === 2 && r.x0 < layout.doorX + 0.6 && r.x1 > layout.doorX - 0.6) return 'Pas devant la porte';
     if (layout.blocks.some(b => overlaps(r, b))) return 'Gêné par un meuble de la maison';
-    return hung(f, r, others) ? WHY.other : null;
+    return hung(f, r, others) ? WHY.other : hiding(f, at, others);
   }
   if (layout.blocks.some(b => overlaps(r, b))) return 'Gêné par un meuble de la maison';
   if (!f.flat && layout.clear.some(b => overlaps(r, b))) return 'Laisse le passage libre';
   for (const o of others) if (!o.spec.mount && !!o.spec.flat === !!f.flat && overlaps(r, footprint(o.spec, o.at))) return WHY.other;
-  return null;
+  return hiding(f, at, others);
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
@@ -207,6 +207,8 @@ export const WHY = {
   other: 'Gêné par un autre meuble',
   onWall: 'À accrocher contre un mur',
   window: 'Pas devant la fenêtre',
+  hidden: 'Caché derrière un grand meuble',
+  hides: 'Ça cacherait ce qui est accroché au mur',
 } as const;
 /** On a built-in fitting, and in front of it (where a person stands to use it). */
 const ON_FIXTURE: Record<Fixture['kind'], string> = {
@@ -231,6 +233,36 @@ const hung = (f: FurnitureSpec, r: Rect, others: readonly Placed[]) => others.so
 const obstacles = (others: readonly Placed[]) => others.filter(o => !o.spec.flat && !o.spec.mount).map(o => footprint(o.spec, o.at));
 
 /**
+ * How high a piece's model reaches (y0 its lowest point, y1 its top, m above the floor), installed with the furniture kit
+ * (src/economy/furnitureKitAdapter.ts); null when no model is known (a hung piece is then never said to be hidden).
+ */
+let spanOf: (f: FurnitureSpec) => { y0: number; y1: number } | null = () => null;
+export const setPieceSpans = (fn: typeof spanOf) => { spanOf = fn; };
+/** The floor in front of a piece hung on a wall that must stay clear of anything tall enough to hide it (m from the wall). */
+const FRONT = 0.75;
+function frontOf(f: FurnitureSpec, at: Placement): Rect {
+  const r = footprint(f, at);
+  switch (quarter(at)) {
+    case 0: return R(r.x0, r.z1, r.x1, r.z1 + FRONT);
+    case 1: return R(r.x1, r.z0, r.x1 + FRONT, r.z1);
+    case 2: return R(r.x0, r.z0 - FRONT, r.x1, r.z0);
+    default: return R(r.x0 - FRONT, r.z0, r.x0, r.z1);
+  }
+}
+/** A floor piece reaching above a hung piece's lowest edge, standing in front of it, hides it (a picture behind a wardrobe, a mirror behind an aquarium). */
+function hidesIt(floor: FurnitureSpec, at: Placement, wall: FurnitureSpec, wallAt: Placement): boolean {
+  if (floor.flat || floor.mount) return false;
+  const top = spanOf(floor)?.y1, low = spanOf(wall)?.y0;
+  return top !== undefined && low !== undefined && top > low + 0.05 && overlaps(frontOf(wall, wallAt), footprint(floor, at));
+}
+/** A hung piece hidden by a piece standing in front of it, or a floor piece that would hide one (null: neither). */
+function hiding(f: FurnitureSpec, at: Placement, others: readonly Placed[]): string | null {
+  if (f.mount === 'wall') return others.some(o => hidesIt(o.spec, o.at, f, at)) ? WHY.hidden : null;
+  if (f.mount || f.flat) return null;
+  return others.some(o => o.spec.mount === 'wall' && hidesIt(f, at, o.spec, o.at)) ? WHY.hides : null;
+}
+
+/**
  * The plan's rules (src/housing/plan.ts `whyNotPlan`, `reachable`): a piece fits inside one room, never through a wall, on a fitting, in a door's
  * swing, in front of an arch or a fitting or in the entry (rugs may lie in a passage); it does not overlap another piece; and after the move every
  * room and opening can still be reached from the street door. A piece hung on a wall needs its back against a wall of its room (not over an
@@ -243,7 +275,7 @@ function whyNotInPlan(p: FloorPlan, f: FurnitureSpec, at: Placement, others: rea
   const why = whyNotPlan(p, r, { rug: !!f.flat });
   if (why) return reasonOf(p, why, r);
   for (const o of others) if (!o.spec.mount && !!o.spec.flat === !!f.flat && overlaps(r, footprint(o.spec, o.at))) return WHY.other;
-  return f.flat ? null : cutsOff(p, r, others);
+  return f.flat ? null : hiding(f, at, others) ?? cutsOff(p, r, others);
 }
 function reasonOf(p: FloorPlan, why: NonNullable<ReturnType<typeof whyNotPlan>>, r: Rect): string {
   switch (why) {
@@ -284,7 +316,7 @@ function whyNotOnWall(p: FloorPlan, f: FurnitureSpec, at: Placement, r: Rect, ot
   for (const w of p.windows) if (w.room === room.id && w.side === side && a0 < w.at + w.width / 2 && a1 > w.at - w.width / 2) return WHY.window;
   const tall = p.fixtures.find(x => x.h > 1.2 && overlaps(x.box, r)); if (tall) return ON_FIXTURE[tall.kind];
   if (clearZones(p).some(c => c.why === 'door' && overlaps(c, r))) return WHY.door;
-  return hung(f, r, others) ? WHY.other : null;
+  return hung(f, r, others) ? WHY.other : hiding(f, at, others);
 }
 
 /** The room each type of furniture goes to first in a home built from a floor plan; 'any': the séjour first, else wherever it fits. */

@@ -93,6 +93,24 @@ describe('the F2 is furnished by room (its floor plan)', () => {
     expect(whyNot(F2, spec('canape_wax'), at(-1.35, 0.5), [P('toile_artiste', -1.35, 0.15)])).toBeNull();
   });
 
+  it('a hung piece is never hidden behind a tall one: refused behind an aquarium or a wardrobe, fine above a sofa or a console', () => {
+    installFurnitureKit();
+    // the séjour's north wall, x −1.35: the sunburst mirror (it hangs from about 1 m) and the reef tank (1.6 m) in front of it, either way round
+    const mirror = onWall(F2, spec('miroir_soleil'), -1.35, 0.4), tank = P('aquarium_mer', -1.35, 0.35);
+    expect(whyNot(F2, spec('miroir_soleil'), mirror, [])).toBeNull();
+    expect(whyNot(F2, spec('miroir_soleil'), mirror, [tank])).toBe(WHY.hidden);
+    expect(whyNot(F2, tank.spec, tank.at, [{ spec: spec('miroir_soleil'), at: mirror }])).toBe(WHY.hides);
+    // a low piece below it is fine (a sofa, a console's top), and a tall piece beside it too
+    expect(whyNot(F2, spec('miroir_soleil'), mirror, [P('canape_wax', -1.35, 0.5)])).toBeNull();
+    expect(whyNot(F2, spec('miroir_soleil'), mirror, [P('aquarium_mer', -3.4, 0.35)])).toBeNull();
+    expect(whyNot(F2, spec('toile_artiste'), at(-1.35, 0.15, 0), [P('armoire_bois', -1.35, 0.4)])).toBe(WHY.hidden);
+    // the automatic placement never puts one behind the other
+    const placed: Placed[] = [tank];
+    const spot = autoPlace(F2, spec('miroir_soleil'), placed, { room: 'sejour' })!;
+    expect(spot).not.toBeNull();
+    expect(whyNot(F2, spec('miroir_soleil'), spot, placed)).toBeNull();
+  });
+
   it('autoPlace chooses the room by the piece\'s kind, a good spot against a wall facing into it, else any room, else storage', () => {
     const kinds: [string, string][] = [['lit_bois', 'chambre'], ['armoire_bois', 'chambre'], ['coiffeuse', 'chambre'], ['chevet_bois', 'chambre'], ['canape_wax', 'sejour'],
       ['fauteuil_cuir', 'sejour'], ['table_basse', 'sejour'], ['tele_plate', 'sejour'], ['salle_manger_bois', 'sejour'], ['bibliotheque', 'sejour'], ['table_cuisine', 'cuisine'],

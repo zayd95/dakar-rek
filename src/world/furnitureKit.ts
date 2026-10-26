@@ -300,14 +300,6 @@ function canopy(b: KitBuilder, rim: number, apex: number, r: number, n: number, 
   }
 }
 
-/**
- * A stand-in until a lane draws the real piece: `n` stacked boxes in the footprint (more for a richer tier), stood in front of.
- * The catalogue's second round (docs/ld2/LD2_C.md) replaces every one of them.
- */
-const standIn = (w: number, d: number, h: number, n: number, placement: Part['placement'] = 'wall'): Maker => b => {
-  for (let k = 0; k < n; k++) b.box(w * (1 - k * 0.15), h / n, d * (1 - k * 0.15), 0, k * h / n, 0, k % 2 ? C.dark : C.gold);
-  return { footprint: { w, d, h }, placement, use: standUse(d, 'use', 'Regarder') };
-};
 // ------------------------------------------------------------------------------------------------ the catalogue's second round, comfort lane (K-C)
 // Pouf, corner sofa, canopy bed, entrance console. The lane owns this block (and nothing else of this file but sofa:better and armchair:better).
 // Its helpers are prefixed `kc` (the decoration lane writes its own beside them).

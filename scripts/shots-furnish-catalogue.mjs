@@ -3,7 +3,7 @@
 // camera (the game's own camera is left alone) and laid out in a grid with the catalogue's names and prices.
 // Headless Chromium + SwiftShader: a software renderer, not a phone.
 //
-// Usage: node scripts/shots-furnish-catalogue.mjs <baseUrl> <out.png> [cols=3]
+// Usage: [TYPES=a,b,c] [TITLE=…] node scripts/shots-furnish-catalogue.mjs <baseUrl> <out.png> [cols=3]
 //   (the PNG is then reduced to a 256-colour palette with Python PIL when it is there, to stay under 400 kB)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -11,6 +11,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const [base = 'http://127.0.0.1:4972/', out = 'docs/proof/ld2c/furnish/catalogue.png', colsArg = '3'] = process.argv.slice(2);
+const TITLE = process.env.TITLE ?? 'Keur Meubles · les nouveaux meubles (LD2.0-C) — Simple · Confort · Prestige';
 const COLS = +colsArg, TW = +(process.env.TW ?? 400), TH = +(process.env.TH ?? 250), CAP = 50;
 fs.mkdirSync(path.dirname(out), { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -20,7 +21,7 @@ const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.goto(`${base}?debug&heure=11`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__dakar?.pos?.().hub && window.__dakar.drawCalls() > 0 && window.__dakar.kitFurniture && window.__dakar.furnitureList);
 
-const TYPES = ['dining', 'kitchenTable', 'microwave', 'waterDispenser', 'cooker', 'vanity', 'bathMirror', 'towelRail', 'floorLamp', 'pendant',
+const TYPES = process.env.TYPES ? process.env.TYPES.split(',') : ['dining', 'kitchenTable', 'microwave', 'waterDispenser', 'cooker', 'vanity', 'bathMirror', 'towelRail', 'floorLamp', 'pendant',
   'bedside', 'dresser', 'closet', 'wallArt', 'tvWall', 'audio', 'plant', 'lounger', 'parasol', 'gardenSet', 'shelf', 'fan'];
 const list = await page.evaluate(() => window.__dakar.furnitureList());
 const sold = kit => list.filter(f => f.kit === kit);
@@ -29,7 +30,7 @@ for (const type of TYPES) {
   const ids = ['basic', 'better', 'premium'].map(t => `${type}:${t}`);
   // the row against its wall, far from the hub; a fixed camera in front of it, a little above
   const rows = await page.evaluate(ids => window.__dakar.kitFurniture([ids], { x: 4000, z: 0 }), ids);
-  const r = rows[0], hang = type === 'pendant', wall = ['bathMirror', 'towelRail', 'wallArt'].includes(type);
+  const r = rows[0], hang = type === 'pendant', wall = ['bathMirror', 'towelRail', 'wallArt', 'wallDecor'].includes(type);
   const span = r.width + 1.5, fov = 38, aspect = TW / TH, tanH = Math.tan((fov / 2) * Math.PI / 180) * aspect;
   const dist = Math.max(span / 2 / tanH, (r.height + 0.5) / 2 / Math.tan((fov / 2) * Math.PI / 180)) * 0.98;
   const ty = hang ? 2.25 : wall ? 1.45 : Math.max(0.45, r.height * 0.42), py = hang ? 1.75 : ty + dist * 0.32;
@@ -44,11 +45,11 @@ for (const type of TYPES) {
 }
 await page.evaluate(() => window.__dakar.kitClear());
 // the grid, drawn in the page (its fonts), saved as one PNG
-const sheet = await page.evaluate(async ({ tiles, COLS, TW, TH, CAP }) => {
+const sheet = await page.evaluate(async ({ tiles, COLS, TW, TH, CAP, TITLE }) => {
   const rows = Math.ceil(tiles.length / COLS), cv = document.createElement('canvas');
   cv.width = COLS * TW; cv.height = 40 + rows * (TH + CAP);
   const g = cv.getContext('2d'); g.fillStyle = '#f4efe6'; g.fillRect(0, 0, cv.width, cv.height);
-  g.fillStyle = '#1f2937'; g.font = '700 20px sans-serif'; g.fillText('Keur Meubles · les nouveaux meubles (LD2.0-C) — Simple · Confort · Prestige', 12, 27);
+  g.fillStyle = '#1f2937'; g.font = '700 20px sans-serif'; g.fillText(TITLE, 12, 27);
   for (const [i, t] of tiles.entries()) {
     const x = (i % COLS) * TW, y = 40 + Math.floor(i / COLS) * (TH + CAP);
     const img = new Image(); img.src = t.png; await img.decode(); g.drawImage(img, x, y, TW, TH);
@@ -59,7 +60,7 @@ const sheet = await page.evaluate(async ({ tiles, COLS, TW, TH, CAP }) => {
     g.strokeStyle = '#d6cfc2'; g.strokeRect(x + 0.5, y + 0.5, TW - 1, TH + CAP - 1);
   }
   return cv.toDataURL('image/png');
-}, { tiles, COLS, TW, TH, CAP });
+}, { tiles, COLS, TW, TH, CAP, TITLE });
 const palette = f => { try { execFileSync('python3', ['-c', 'import sys; from PIL import Image; im = Image.open(sys.argv[1]).convert("RGB"); im.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG).save(sys.argv[1], optimize=True)', f]); } catch (e) { console.log('palette:', e.message); } };
 fs.writeFileSync(out, Buffer.from(sheet.split(',')[1], 'base64')); palette(out);
 console.log(out, Math.round(fs.statSync(out).size / 1024) + ' kB', `${tiles.length} rows`);
