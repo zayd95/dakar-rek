@@ -1,0 +1,33 @@
+06:06:14 boot
+PASS: a new save: no match played, nothing of the regulars remembered {}
+06:06:27 to the pitch
+PASS: the evening’s footballers are playing: two teams on the pitch, the ball moving; the regulars among them {"teams":[5,5],"regs":{"babou":{"team":0,"x":-96.24,"z":30.59,"bench":false},"khadim":{"team":1,"x":-82.54,"z":30.26,"bench":false}}}
+PASS: « Rejoindre le match » at the touchline 
+PASS: the offer: play with a team, the short match’s rules; Babou introduces himself {"offer":[{"text":"⚽JouerAvec les Jaunes, Babou · premier à 3 buts, 4 minutes au plus","off":false},{"text":"👀Pas maintenantRegarder depuis le bord du terrain","off":false}],"said":["Babou: « Tu joues avec nous ? Moi c’est Babou. On fait trois buts, pas plus : mets-toi devant ! »"]}
+PASS: in the match: the player on a team, 0–0, the regulars met (the save remembers them), a side of five kept to five {"me":{"team":0,"seq":1,"t":0.3,"goals":0,"touches":0,"passes":0,"shots":0,"x":-95.74,"z":12.15,"inReach":false},"teams":[5,5],"c":{"ft_match_seq":1,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217}}
+06:06:53 match 1
+PASS: the match ran to its end (first to 3, or four minutes): the result recorded once {"results":["loss"],"c":{"ft_match_seq":1,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217,"ft_match_recorded":1,"ft_matches":1,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0},"did":{"shots":7,"passes":9,"aims":339}}
+PASS: the player played: touches of the ball {"mine":[{"kind":"pass","t":23.516,"to":-1},{"kind":"touch","t":42.283,"to":-1},{"kind":"touch","t":64.533,"to":-1},{"kind":"touch","t":104.766,"to":-1},{"kind":"touch","t":110.466,"to":-1},{"kind":"touch","t":113.199,"to":-1}],"did":{"shots":7,"passes":9,"aims":339}}
+PASS: the result card: Victoire / Défaite / Match nul with the score; first the player’s goals, passes and shots; their record {"title":"Défaite 1–3","rows":["Toi: 0 but · 1 passe · 0 tir","Score: Jaunes 1 – 3 Rouges","Tes matchs: 1 joué · 0 gagné"]}
+PASS: the regulars say something about the match (Babou, Khadim) ["Khadim: « Khadim, capitaine d’en face. On verra si tu cours aussi vite que tu parles ! »","Babou: « On les aura la prochaine fois. Viens, on boit l’ataya quand même. »","Khadim: « Pas mal, mais il faut courir plus ! Reviens quand tu veux. »"]
+PASS: the end sheet: « Rejouer », « L’ataya avec Babou », « Partir » [{"text":"🔁RejouerUne autre partie, tout de suite","off":false},{"text":"🍵L’ataya avec BabouAu bord du terrain","off":false},{"text":"👋PartirLes autres jouent encore","off":false}]
+PASS: no money moved 
+06:10:48 rematch
+PASS: « Rejouer »: a new match at once, 0–0 {"me":{"team":0,"seq":2,"t":0.3,"goals":0,"touches":0,"passes":0,"shots":0,"x":-106.42,"z":28.81,"inReach":false},"score":[0,0]}
+PASS: the second match recorded as a second match (two in all, no double count) {"c":{"ft_match_seq":2,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217,"ft_match_recorded":2,"ft_matches":2,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0},"did":{"shots":3,"passes":16,"aims":431}}
+PASS: « Frappe » and « Passer » play the ball: the match counted the player’s shots and passes (both matches’ cards) {"card1":["Toi: 0 but · 1 passe · 0 tir","Score: Jaunes 1 – 3 Rouges","Tes matchs: 1 joué · 0 gagné"],"card2":["Toi: 0 but · 2 passes · 2 tirs","Score: Jaunes 0 – 3 Rouges","Tes matchs: 2 joués · 0 gagné"],"did1":{"shots":7,"passes":9,"aims":339},"did2":{"shots":3,"passes":16,"aims":431}}
+PASS: Babou comes off to the touchline on the street side, the player joins him there {"o":{"team":-1,"x":-107.99,"z":11.42,"bench":true},"spot":{"x":-108,"z":11.4},"me":[-106.8203138672389,11.037898277851664]}
+PASS: « L’ataya avec Babou » 
+PASS: the ataya: a glass at the touchline, the match told over; the save remembers it {"said":["Babou te tend un petit verre d’ataya au bord du terrain : « Le premier est amer comme la vie. » Vous refaites le match, but par but."],"c":{"ft_match_seq":2,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217,"ft_match_recorded":2,"ft_matches":2,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0,"ft_ataya":1}}
+PASS: Babou goes back on the pitch afterwards 
+06:16:34 reload
+PASS: reloaded: the matches, goals, the regulars’ memory and the ataya are kept, nothing counted twice {"before":{"ft_match_seq":2,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217,"ft_match_recorded":2,"ft_matches":2,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0,"ft_ataya":1},"after":{"ft_match_seq":2,"ft_babou_met":1217,"ft_babou_seen_day":1217,"ft_khadim_met":1217,"ft_khadim_seen_day":1217,"ft_match_recorded":2,"ft_matches":2,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0,"ft_ataya":1}}
+PASS: the same day: no « te revoilà » 
+PASS: a later day at the pitch: Babou knows the player again (once), naming their last match {"said":["Babou: « Te revoilà ! Il faut prendre notre revanche, tu viens ? »"],"day":1217,"seen":1218}
+06:16:58 join and walk off
+PASS: the phone opened and closed mid-match: still in the match, the stick plays again {"inPhone":{"open":true,"me":true},"me":{"team":0,"seq":3,"t":10,"goals":0,"touches":1,"passes":0,"shots":0,"x":-90.91,"z":30.39,"inReach":true}}
+PASS: walked off the pitch mid-match: the match goes on without the player, nothing recorded {"mid":{"team":0,"seq":3,"t":14.4,"goals":0,"touches":1,"passes":0,"shots":0,"x":-103.7,"z":31.79,"inReach":false},"left":1,"c":{"ft_match_seq":3,"ft_babou_met":1217,"ft_babou_seen_day":1218,"ft_khadim_met":1217,"ft_khadim_seen_day":1218,"ft_match_recorded":2,"ft_matches":2,"ft_goals":0,"ft_last":3,"ft_last_day":1217,"ft_last_goals":0,"ft_ataya":1}}
+PASS: the controls are the ordinary ones again: playing, the stick, no « Frappe » button {"mode":"play","joy":true,"shot":false}
+PASS: no page errors []
+25/25 checks passed
+exit 0

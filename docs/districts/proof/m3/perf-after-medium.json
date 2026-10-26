@@ -1,0 +1,62 @@
+{
+ "quality": "medium",
+ "results": {
+  "pitch-touchline": {
+   "frameMedian": 300,
+   "frameP95": 383.3,
+   "callsMax": 78,
+   "trisMax": 135662,
+   "match": {
+    "active": true,
+    "teams": [
+     5,
+     5
+    ],
+    "fans": 6
+   }
+  },
+  "pitch-grass": {
+   "frameMedian": 366.7,
+   "frameP95": 416.8,
+   "callsMax": 121,
+   "trisMax": 139370,
+   "match": {
+    "active": true,
+    "teams": [
+     5,
+     5
+    ],
+    "fans": 6
+   }
+  },
+  "pitch-high": {
+   "frameMedian": 400,
+   "frameP95": 466.7,
+   "callsMax": 120,
+   "trisMax": 166182,
+   "match": {
+    "active": true,
+    "teams": [
+     5,
+     5
+    ],
+    "fans": 6
+   }
+  },
+  "corniche-street": {
+   "frameMedian": 266.8,
+   "frameP95": 966.5,
+   "callsMax": 59,
+   "trisMax": 111688,
+   "match": {
+    "active": true,
+    "teams": [
+     5,
+     5
+    ],
+    "fans": 6
+   }
+  }
+ },
+ "errors": []
+}
