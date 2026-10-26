@@ -87,14 +87,14 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && wind
 await page.waitForTimeout(1500);
 await boardVehicle(page, t, 'teranga');
 await shot('driving-to-the-terrace');
-await pilot(page, t, 'teranga', [{ x: endPt.x, z: endPt.z + (vert ? 8 : 0), tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.4, speed: 1.3 }], { brakeAtEnd: true, cruise: 5 });
+await pilot(page, t, 'teranga', [{ x: endPt.x, z: endPt.z + (vert ? 8 : 0), tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.0, speed: 1.1 }], { brakeAtEnd: true, cruise: 5 });
 const parked = await d(() => window.__dakar.teranga.at());
 await shot('parked');
 await t.tap('#ridepad .rp-off');
 await until(() => !window.__dakar.teranga.at().driving && window.__dakar.pos().mode === 'play', null, 60000);
 await page.waitForTimeout(1200);
 const car1 = await d(() => window.__dakar.teranga.info()), pk = await d(() => window.__dakar.teranga.at());
-const inBay = Math.abs(pk.x - parkingPt.x) <= 2.0 && Math.abs(pk.z - parkingPt.z) <= 1.6;
+const inBay = Math.abs(pk.x - parkingPt.x) <= 1.3 && Math.abs(pk.z - parkingPt.z) <= 1.2;
 check('driven with the pedal stick into the marked Terrasse visitor bay and parked within 25 m of the door', inBay && Math.hypot(pk.x - R.x, pk.z - R.z) < 25, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [+parkingPt.x.toFixed(1), +parkingPt.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
 check('stepped out: the car stays where it was left, saved as parked in Almadies', car1.owned && !pk.driving && car1.record?.hub === 'almadies' && Math.hypot(car1.record.x - pk.x, car1.record.z - pk.z) < 0.5, JSON.stringify(car1.record));
 
