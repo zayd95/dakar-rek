@@ -14,6 +14,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { buildNgorIsland, buildNgorQuay } from './ngor';
+import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
 import { TRAVERSEE_HUB, TRAVERSEE_SITE } from '../sea/traverseeSite';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
@@ -240,9 +241,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
   yield;
   if (sp.sea === 'north') {
-    plain.box(size + 40, 0.1, 40, 0, 0, -HALF - 16, 0xe9d9a8);                       // beach
+    // the beach: dry sand down to a few metres from the water, then the wet sand sloping gently into the sea (src/world/ngorBay.ts), so whatever is
+    // pulled up at the water's edge lies over sand and no kerb shows between the beach and the sea; the foam at the water's edge is the shallows'
+    // (the Embarcadère de Ngor's, below), translucent
+    const dry = -HALF + 4 - WET_SAND_TOP;
+    plain.box(size + 40, 0.1, dry, 0, 0, -HALF + 4 - dry / 2, 0xe9d9a8);
+    wetSand(plain, -HALF - 20, HALF + 20, lite);
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 700), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.05, -HALF - 36 - 350); group.add(sea);
-    plain.box(size + 60, 0.06, 4, 0, 0.02, -HALF - 37, 0xf4f1e6);                   // surf line
     bounds.z0 = -HALF - 30;
   }
 
@@ -1064,6 +1069,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         const quay = buildNgorQuay({ plain, leaves, trunks, bulbs: lampBulbs }, { cx, bz, base: B, lite, rand: R });
         ramps.push(...quay.ramps); colliders.push(...quay.colliders);
         buildNgorIsland({ plain, leaves, trunks, bulbs: lampBulbs }, lite);
+        // the bay (src/world/ngorBay.ts): the white launches at anchor in the batch; the turquoise shallows along the beach and round the island, the
+        // one draw call the embarcadère adds to the static scene; more palms along the beach, either side of the boarding beach
+        buildNgorLaunches(plain, lite);
+        group.add(buildNgorShallows(lite, () => facadeMat.emissiveIntensity / 1.25));     // the city's night (src/main.ts lights the windows by it)
+        colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
         addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
         plain.box(0.2, 3.4, 0.2, cx - 3, B, bz + 1, 0x555555); plain.box(0.2, 3.4, 0.2, cx + 3, B, bz + 1, 0x555555);

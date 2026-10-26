@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch } from './batch';
 import { pirogue } from './city';
-import type { BoatKind, BoatModel, LocalSeat } from '../sea/traverseeSite';
+import type { BoatKind, BoatModel, LocalSeat, P2 } from '../sea/traverseeSite';
 
 /**
  * The traversée's boats (docs/TRAVERSEE.md, the contract in src/sea/traverseeSite.ts): the painted pirogue with its thwarts and outboard, and the
@@ -10,6 +10,8 @@ import type { BoatKind, BoatModel, LocalSeat } from '../sea/traverseeSite';
  * sits above is above it, so the sea plane never shows inside a boat at rest or rocking a little.
  */
 type V3 = [number, number, number];
+/** What a hull's builder returns besides its geometry: the helm, the seats, the beam, and the step aboard (the contract's BoatModel). */
+interface Fitted { helm: LocalSeat; seats: LocalSeat[]; beam: number; step: P2 }
 const WOOD = 0x8c6542, WOOD_DARK = 0x5c4128, MOTOR = 0x2b2f35;
 const SEAT_YAW = Math.PI;   // seated facing the bow (−z)
 
@@ -62,7 +64,7 @@ function pirogueHalf(z: number, y: number) {
   return pWidth(t) * (0.45 + 0.55 * f);
 }
 
-function buildPirogue(b: Batch, lite: boolean): { helm: LocalSeat; seats: LocalSeat[]; beam: number } {
+function buildPirogue(b: Batch, lite: boolean): Fitted {
   pirogue(b, 0, 0, 10, 0, 0, P_KEEL, { trued: true, fittings: false });
   // the floorboards, following the bottom's rise to either end: they hide the sea plane that crosses the hull below them
   const left: V3[] = [], right: V3[] = [];
@@ -89,7 +91,9 @@ function buildPirogue(b: Batch, lite: boolean): { helm: LocalSeat; seats: LocalS
     [0x1f8a4c, 0xf2c318, 0xd23a2b].forEach((c, i) => b.box(0.02, 0.28, 0.14, 0, 1.92, -4.88 + i * 0.14, c));
   }
   const seats = thwarts.flatMap((z, k) => [-1, 1].map((s, j) => ({ id: `p${k * 2 + j}`, x: s * 0.36, y: P_SEAT, z, yaw: SEAT_YAW })));
-  return { helm: { id: 'helm', x: 0.12, y: P_HELM, z: 3.2, yaw: SEAT_YAW }, seats, beam: 2 * pWidth(0.5) };
+  // the step: the west gunwale just forward of the first thwart, where the bow, run up on the sand, still stands in the shallows (knee-deep at most)
+  const step = { x: -pWidth(0.2), z: -3 };
+  return { helm: { id: 'helm', x: 0.12, y: P_HELM, z: 3.2, yaw: SEAT_YAW }, seats, beam: 2 * pWidth(0.5), step };
 }
 
 // ------------------------------------------------------------------ the chaloupe
@@ -116,7 +120,7 @@ function cHalf(s: Sec, y: number) {
 }
 const secAtZ = (z: number) => sec(z / C_LEN + 0.5);
 
-function buildChaloupe(b: Batch, lite: boolean): { helm: LocalSeat; seats: LocalSeat[]; beam: number } {
+function buildChaloupe(b: Batch, lite: boolean): Fitted {
   const WHITE = 0xf4f3ee, BAND = 0x1d5fa6, LINE = 0xf2c318, BOTTOM = 0x8f3b2d, INSIDE = 0xe4e1d8;
   const N = 16, secs = Array.from({ length: N + 1 }, (_, i) => sec(Math.pow(i / N, 1.25)));   // closer sections toward the bow, where it curves
   // the skin: antifouling below the chine, white topsides with the blue band and its yellow line, both faces (the inside light grey)
@@ -179,7 +183,9 @@ function buildChaloupe(b: Batch, lite: boolean): { helm: LocalSeat; seats: Local
     for (const z of [-0.6, 1.0]) b.blob(0.11, -(secAtZ(z).hw + 0.08), 0.42, z, 0xf2f2ee, 2.2, 0);
   }
   const seats = benches.flatMap((z, k) => [-1, 1].map((s, j) => ({ id: `c${k * 2 + j}`, x: s * 0.55, y: C_SEAT, z, yaw: SEAT_YAW })));
-  return { helm: { id: 'helm', x: 0.3, y: C_HELM, z: 2.95, yaw: SEAT_YAW }, seats, beam: 2 * C_HALF };
+  // the step: the west gunwale just aft of the foredeck, forward of the first bench (the stem itself is run up over the sand)
+  const step = { x: -secAtZ(-2.2).hw, z: -2.2 };
+  return { helm: { id: 'helm', x: 0.3, y: C_HELM, z: 2.95, yaw: SEAT_YAW }, seats, beam: 2 * C_HALF, step };
 }
 
 /**
@@ -189,12 +195,12 @@ function buildChaloupe(b: Batch, lite: boolean): { helm: LocalSeat; seats: Local
 export function buildBoat(kind: BoatKind, material: THREE.Material, lite = false): BoatModel {
   const b = new Batch(), group = new THREE.Group(); group.name = `boat:${kind}`;
   const length = kind === 'pirogue' ? 10 : C_LEN;
-  const { helm, seats, beam } = kind === 'pirogue' ? buildPirogue(b, lite) : buildChaloupe(b, lite);
+  const { helm, seats, beam, step } = kind === 'pirogue' ? buildPirogue(b, lite) : buildChaloupe(b, lite);
   const hull = b.build(material, true, true)!; hull.name = 'hull'; group.add(hull);
   const wake = wakeMesh(beam, length / 2); group.add(wake.mesh);
   const tris = (g: THREE.BufferGeometry) => (g.index ? g.index.count : g.attributes.position.count) / 3;
   return {
-    kind, group, wake: wake.mesh, length, beam, helm, seats, step: { x: -beam / 2, z: 0 },
+    kind, group, wake: wake.mesh, length, beam, helm, seats, step,
     cost: { draws: 2, tris: Math.round(tris(hull.geometry) + tris(wake.geo)) },
     dispose() { hull.geometry.dispose(); wake.geo.dispose(); wake.mat.dispose(); group.removeFromParent(); },
   };
