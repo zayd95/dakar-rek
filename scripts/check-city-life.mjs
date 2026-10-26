@@ -98,6 +98,15 @@ try {
     }
     await page.evaluate(() => { const d = window.__dakar; d.place(30, 47, Math.PI); d.setHour(21); d.cam([60, 16, 60], [30, 2, 26]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-mall-night.jpg`, type: 'jpeg', quality: 88 });
+    // M4 placemaking regression: capture the dedicated Terrasse frontage and hospitality strip, not the old residential-facade placement.
+    await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.setHour(20); d.cam([-30, 14, -132], [-30, 1.5, -102]); });
+    await page.waitForTimeout(500);
+    const terraceSite = await page.evaluate(() => window.__dakar.rooftop.info());
+    check(`${label}: Terrasse de Ngor uses its authored hospitality frontage`, !!terraceSite && Math.abs(terraceSite.door.x + 30) < 0.1 && Math.abs(terraceSite.door.z + 105.1) < 0.1, JSON.stringify(terraceSite?.door));
+    await page.screenshot({ path: `${out}/${label}-almadies-hospitality-frontage.jpg`, type: 'jpeg', quality: 88 });
+    await page.evaluate(() => { window.__dakar.cam([-82, 24, -141], [-48, 2, -101]); });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${out}/${label}-almadies-hospitality-strip.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('plateau'); d.place(90, -28.5, Math.PI); d.setHour(13); d.cam([110, 8, -5], [90, 2.2, -35]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-bank.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-19.5, 93, Math.PI); d.setHour(17); d.cam([-4, 12, 115], [-30, 1.5, 89]); });
