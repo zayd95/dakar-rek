@@ -5,7 +5,7 @@ import type { Humanoid, PersonLook } from '../actors/humanoid';
 import { hubLayout } from '../world/builder';
 import { ambientLife, type AmbientDrive, type AmbientPerson } from '../social/ambientLife';
 import { bend, bodyPoint, crouch, footStrike, grip, legTo, pointFoot, reach } from '../actors/gesture';
-import { AFTER, BALL_R, Match, PITCH, ballSpeed, type Ball, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
+import { AFTER, BALL_R, HUMAN_KEEP, Match, PITCH, ballSpeed, type Ball, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
 import { HOLD_FULL, KICK_REACH, KickBall, type GoalNote } from './kickabout';
 import type { Target } from '../interact/types';
 import type { BallRelay } from '../multiplayer/protocol';
@@ -166,7 +166,7 @@ class Football implements GameModule {
   private bench: { e: Entry; until: number; x: number; z: number } | null = null;
   private joinT: Target | null = null; private ballT: Target | null = null; private regT = new Map<RegularId, Target>();
   /** Checks: what was said, the cards shown, the results, the recognitions, the matches joined and left. */
-  private m3 = { said: [] as string[], cards: [] as { title: string; rows: string[] }[], results: [] as Result[], recognised: 0, joined: 0, left: 0, finished: 0 };
+  private m3 = { said: [] as string[], cards: [] as { title: string; rows: string[] }[], results: [] as Result[], recognised: 0, joined: 0, left: 0, finished: 0, asked: { pass: 0, shot: 0 } };
   /** The checks: the simulated ball's last TRACK_N frames (shared time ms, x, z of pitch space), a ring with no allocation. */
   private track = new Float64Array(TRACK_N * 3); private trackI = 0;
 
@@ -174,7 +174,7 @@ class Football implements GameModule {
     this.ctx = ctx;
     ctx.ballNet.listen(m => this.onBall(m));
     ctx.interactions.add({ name: 'kickabout', collect: (space, x, z, out) => { const t = this.kbFocus(space, x, z); if (t) out.push(t); } });
-    ctx.interactions.add({ name: 'football:match', collect: (space, x, z, out) => this.matchFocus(space, x, z, out) });
+    ctx.interactions.add({ name: 'football:match', collect: (space, x, z, out) => this.matchFocus(space, x, z, out), exclusive: () => !!this.me });   // in the match the button is the ball's
     this.makeShotButton();
   }
 
@@ -581,15 +581,15 @@ class Football implements GameModule {
     const pt = this.pitch, m = this.match, ctx = this.ctx;
     if (!pt || !m || space !== 'street' || ctx.player.seated() || !this.near) return;
     if (this.me) {
-      if (!m.humanInReach(HUMAN, 0.9)) return;
+      if (!m.humanInReach(HUMAN, 0.9) && !m.humanHas(HUMAN)) return;
       const t = this.ballT ?? (this.ballT = {
-        id: 'football:ball', name: 'Ballon', kind: 'spot', space: 'street', x: 0, z: 0, y: 0.6, radius: 3, bias: -1,
+        id: 'football:ball', name: 'Ballon', kind: 'spot', space: 'street', x: 0, z: 0, y: 0.6, radius: HUMAN_KEEP + 0.5, bias: -1,
         affordances: () => {
           const p = this.match?.get(HUMAN), q = p ? this.match!.humanReceiver(p) : null;
           const name = q ? ([...this.regs].find(([, e]) => e.id === q.id)?.[0] ?? null) : null;
           return [
-            { id: 'pass', verb: 'use' as const, label: 'Passer', icon: '⚽', detail: q ? `À ${name ? REGULARS[name].name : 'ton coéquipier'}` : 'Droit devant', run: () => { this.match?.humanAsk(HUMAN, 'pass'); } },
-            { id: 'shot', verb: 'use' as const, label: 'Tirer', icon: '🥅', detail: 'Maintiens « Frappe » pour doser', run: () => { this.match?.humanAsk(HUMAN, 'shot', 0.6); } },
+            { id: 'pass', verb: 'use' as const, label: 'Passer', icon: '⚽', detail: q ? `À ${name ? REGULARS[name].name : 'ton coéquipier'}` : 'Droit devant', run: () => { if (this.match?.humanAsk(HUMAN, 'pass')) this.m3.asked.pass++; } },
+            { id: 'shot', verb: 'use' as const, label: 'Tirer', icon: '🥅', detail: 'Maintiens « Frappe » pour doser', run: () => { if (this.match?.humanAsk(HUMAN, 'shot', 0.6)) this.m3.asked.shot++; } },
           ];
         },
       });
@@ -649,7 +649,9 @@ class Football implements GameModule {
   private humanFrame(ctx: GameCtx, dt: number) {
     const m = this.match!, pt = this.pitch!, me = this.me!;
     const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
-    if (ctx.mode() !== 'play' || ctx.player.seated() || this.edgeDist(ctx.player.pos.x, ctx.player.pos.z) > LEAVE_AT) {
+    // Leaving is the player's doing: off the grass, or sitting / in a vehicle (a hub change: release()). A sheet or a scene up (the phone) only
+    // leaves them standing while play goes on.
+    if (ctx.player.seated() || this.edgeDist(ctx.player.pos.x, ctx.player.pos.z) > LEAVE_AT) {
       this.leave('Tu as quitté le terrain : la partie n’est pas comptée.'); return;
     }
     if (this.hasP && dt > 0) {
@@ -658,11 +660,11 @@ class Football implements GameModule {
     }
     this.px = x; this.pz = z; this.hasP = true;
     m.setHuman(HUMAN, x, z, this.pvx, this.pvz, ctx.player.facing());
-    const held = this.btnHeld || ctx.input.keys.has('KeyF'), close = m.humanInReach(HUMAN, 1.4);
+    const held = this.btnHeld || ctx.input.keys.has('KeyF'), close = m.humanInReach(HUMAN, 1.4) || m.humanHas(HUMAN);
     if (held && this.hold < 0 && close) this.hold = 0;
     if (this.hold >= 0) {
       if (held) this.hold += dt;
-      else { m.humanAsk(HUMAN, 'shot', Math.min(1, this.hold / HOLD_FULL)); this.hold = -1; }
+      else { if (m.humanAsk(HUMAN, 'shot', Math.min(1, this.hold / HOLD_FULL))) this.m3.asked.shot++; this.hold = -1; }
     }
     this.showShot(close || this.hold >= 0);
     if (this.celebrate > 0) {
@@ -831,7 +833,7 @@ class Football implements GameModule {
           score: [...m.score], phase: m.phase, active: this.active, teams: [this.count(0), this.count(1)],
           regulars: Object.fromEntries([...this.regs].map(([id, e]) => [id, { team: e.team, x: +e.person.x.toFixed(2), z: +e.person.z.toFixed(2), bench: e === this.bench?.e }])),
           bench: !!this.bench, benchAt: this.bench ? { x: +this.bench.x.toFixed(2), z: +this.bench.z.toFixed(2) } : null, said: [...this.m3.said], cards: this.m3.cards.map(c => ({ ...c })), results: [...this.m3.results], recognised: this.m3.recognised,
-          joined: this.m3.joined, left: this.m3.left, finished: this.m3.finished,
+          joined: this.m3.joined, left: this.m3.left, finished: this.m3.finished, asked: { ...this.m3.asked },
           counters: Object.fromEntries(Object.entries(this.ctx.state.data.counters).filter(([k]) => k.startsWith('ft_'))),
           ball: { x: +(pt.x + m.ball.x).toFixed(2), z: +(pt.z + m.ball.z).toFixed(2), h: +m.ball.h.toFixed(2), speed: +ballSpeed(m.ball).toFixed(2) },
           mine: m.log.filter(c => c.who === HUMAN).slice(-12).map(c => ({ kind: c.kind, t: c.t, to: c.to })) };

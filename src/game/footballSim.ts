@@ -248,6 +248,10 @@ const ACC = 7, DEC = 10;
 export interface PlayerSpec { id: number; team: 0 | 1; keeper?: boolean; x?: number; z?: number; yaw?: number; foot?: 1 | -1; pace?: number; skill?: number; human?: boolean }
 /** M3: how far from the human's contact point the ball may be for a touch (m: a little more than an NPC's planned REACH, the human's steering is the thumb's). */
 export const HUMAN_REACH = 0.6;
+/** M3: a pass or shot the player asked for plays the ball this far from the foot (m): the same button as the kickabout's, which strikes within 1.6 m of the body, so a press with the ball just ahead is never lost. */
+export const HUMAN_ASK_REACH = 1.0;
+/** M3: how far ahead a dribbled ball still counts as the player's (m): their buttons stay up. */
+export const HUMAN_KEEP = 3;
 /** M3: the human's dribbling touches: at most one per this many seconds; how long a pass or shot asked for waits for the ball (s). */
 export const HUMAN_TOUCH_GAP = 0.26, HUMAN_ASK_HOLD = 1.2;
 /** M3: the human's shot: speed (m/s) and lift (m/s up) from no power to full. */
@@ -878,6 +882,14 @@ export class Match {
     const cp = Match.contactPoint(p.x, p.z, p.yaw, p.foot, V2);
     return !b.net && b.h <= FOOT_H && hyp(b.x - cp.x, b.z - cp.z) <= HUMAN_REACH + margin;
   }
+  /**
+   * The human has the ball: theirs was the last touch, play is on and the ball is still within HUMAN_KEEP m (a dribble pushes it a step or two
+   * ahead). The pass and shot buttons stay up meanwhile, not only in the instants it is at the foot.
+   */
+  humanHas(id: number) {
+    const p = this.byId.get(id), b = this.ball;
+    return !!p && this.last === id && this.phase === 'play' && !b.net && b.h <= FOOT_H && hyp(b.x - p.x, b.z - p.z) <= HUMAN_KEEP;
+  }
   /** The teammate a pass from the human goes to: ahead of the facing (within about 70°), the nearest best; null: none. */
   humanReceiver(p: Player): Player | null {
     const b = this.ball, fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
@@ -902,7 +914,7 @@ export class Match {
     if (this.phase === 'goal' || this.phase === 'fetch') return false;
     if ((this.phase === 'kickoff' || this.phase === 'restart') && this.taker !== p.id) return false;   // set pieces are the NPCs' to take
     const cp = Match.contactPoint(p.x, p.z, p.yaw, p.foot, V2), reach = hyp(b.x - cp.x, b.z - cp.z);
-    if (reach > HUMAN_REACH) return false;
+    if (reach > (p.ask ? HUMAN_ASK_REACH : HUMAN_REACH)) return false;
     const v = hyp(p.vx, p.vz), bs = ballSpeed(b), fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     let kind: KickKind, dx: number, dz: number, speed: number, lift = 0, to = -1;
     if (p.ask?.kind === 'shot') {

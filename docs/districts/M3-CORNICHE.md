@@ -1,6 +1,6 @@
 # M3 · Corniche / Fann — « Join the match »
 
-**Status: in progress.** The player can join the evening match on the Corniche's pitch.
+**Status: Gate A (engineering) evidenced in [`M3-EVIDENCE.md`](M3-EVIDENCE.md); Gate B (the owner's iPhone) pending.** The player can join the evening match on the Corniche's pitch.
 
 ## The idea
 
@@ -28,7 +28,7 @@ What a match leaves behind:
 - **Touches:**
   - running into the ball gives a dribbling touch toward where the player runs;
   - standing in a fast ball's way traps it;
-  - « Passer » (to a teammate ahead) and « Tirer », or the held « Frappe » (power from the hold), play the ball once it is at the foot.
+  - « Passer » (to a teammate ahead) and « Tirer », or the held « Frappe » (power from the hold), play the ball once it is at the foot. An asked pass or shot reaches 1 m from the foot (a dribble's touch 0.6 m), and waits 1.2 s for the ball, so a press with the ball just ahead is never lost. The kickabout's button strikes within 1.6 m of the body, so both feel the same.
 - **Every touch goes through the match's own contacts:** passes, shots, goals and stats count as any player's.
 - **The player is never the taker** of a kick-off or a restart, and never fetches the ball, so a player who just stands never stalls the match.
 - **The NPCs play with the player:** teammates pass to them, opponents press them when they have the ball.
@@ -42,6 +42,8 @@ What a match leaves behind:
   2. The regulars' words.
   3. A sheet: « Rejouer », « L'ataya avec Babou », « Partir ».
 - **Leaving early:** walking off the grass (more than 6 m), getting into a vehicle or leaving the hub ends the player's part. Nothing is recorded, and the NPCs play on.
+- **Not leaving by accident:** opening the phone only leaves the player standing, still in the match. During the match the action button is the ball's alone (an `exclusive` interaction source), so a tap never greets a passer-by or sits on a bench.
+- **The second thumb:** « Passer » on the action button works with the other thumb still on the stick. The HUD acts on a second finger's tap, which the browser gives no click.
 - **After the match:** the controls are the ordinary ones. Nothing about movement was changed.
 
 ### 3. The regulars (`matchRules.ts`, `REGULARS`)

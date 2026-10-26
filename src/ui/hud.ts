@@ -119,7 +119,14 @@ export class Hud {
     root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
     this.sheet = new Sheet(this.el.modal, { deny: r => this.toast(r, 'warn'), opened: () => this.resetTouch(), picked: () => this.markAct() });
     // Tapped or clicked HUD buttons give the focus back: a focused button would also fire on Space/Enter, the game's action keys.
-    const tap = (e: HTMLElement, fn: () => void) => e.addEventListener('click', () => { e.blur(); fn(); });
+    // A tap by a second finger (the other thumb on the stick: « Passer » while running) gets no click from the browser: its pointerup acts,
+    // and a click that might still follow it is not taken twice.
+    const tap = (e: HTMLElement, fn: () => void) => {
+      let second = -1, tookAt = -1e9;
+      e.addEventListener('pointerdown', ev => { second = ev.pointerType === 'touch' && !ev.isPrimary ? ev.pointerId : -1; });
+      e.addEventListener('pointerup', ev => { if (ev.pointerId !== second) return; second = -1; tookAt = performance.now(); e.blur(); fn(); });
+      e.addEventListener('click', () => { if (performance.now() - tookAt < 600) return; e.blur(); fn(); });
+    };
     tap(this.el.act, () => this.onAction());
     tap(this.el.actMore, () => this.onMore());
     tap(this.el.menuBtn, () => this.onMenu());

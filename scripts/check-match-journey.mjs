@@ -50,23 +50,26 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const LEAVE_TEST = 12;
 
 /**
- * Plays the player's match with the thumbs until it ends (or `ms` of real time): the stick toward the ball, then, with the ball at the foot, toward
- * the goal attacked (the dribble carries it); within shooting range « Frappe » is held and released. Returns what the thumbs did.
+ * Plays the player's match with the thumbs until it ends (or `ms` of real time): the stick toward the ball, then, with the ball at the foot, through
+ * it toward the goal attacked (the dribble carries it); far from the goal the action button passes (« Passer », to a teammate ahead) now and then;
+ * within shooting range « Frappe » is held and released. Returns what the thumbs did.
  */
 async function playMatch({ ms = 1500000, stopAfter = Infinity } = {}) {
-  const j = await t.centre('#joy'), R = 46, t0 = Date.now(), did = { shots: 0, aims: 0 };
-  let down = false, lastShot = 0;
+  const j = await t.centre('#joy'), R = 46, t0 = Date.now(), did = { shots: 0, passes: 0, aims: 0 };
+  let down = false, lastShot = 0, lastPass = Date.now();
   while (Date.now() - t0 < ms) {
-    const s = await d(() => { const A = window.__dakar, m = A.match3(), f = A.football(); return { m, p: A.pos(), pitch: f.pitch, shotBtn: !!document.getElementById('kickShot')?.classList.contains('on') }; });
+    const s = await d(() => { const A = window.__dakar, m = A.match3(), f = A.football(); return { m, p: A.pos(), pitch: f.pitch, focus: A.focus()?.id ?? null, shotBtn: !!document.getElementById('kickShot')?.classList.contains('on') }; });
     if (!s.m.me || s.m.me.t > stopAfter) break;
     const dir = s.m.me.team === 0 ? 1 : -1, gx = s.pitch.x + dir * s.pitch.hx, gz = s.pitch.z;
     const atFoot = s.m.me.inReach, toGoal = Math.hypot(gx - s.p.x, gz - s.p.z);
-    const tx = atFoot ? gx : s.m.ball.x, tz = atFoot ? gz : s.m.ball.z;
+    const bx = s.m.ball.x, bz = s.m.ball.z, bg = Math.hypot(gx - bx, gz - bz) || 1;
+    const tx = atFoot ? bx + (gx - bx) / bg * 2 : bx, tz = atFoot ? bz + (gz - bz) / bg * 2 : bz;          // through the ball, toward the goal
     const a = wrap(Math.atan2(tx - s.p.x, tz - s.p.z) - s.p.cam);
     if (!down) { await t.down(3, j.x, j.y); down = true; }
     await t.move(3, j.x - Math.sin(a) * R, j.y - Math.cos(a) * R, 1);
     did.aims++;
-    if (atFoot && toGoal < 13 && s.shotBtn && Date.now() - lastShot > 1500) {
+    if (toGoal > 17 && s.focus === 'football:ball' && Date.now() - lastPass > 6000) { await t.tap('#act'); did.passes++; lastPass = Date.now(); }
+    if (toGoal < 13 && s.shotBtn && Date.now() - lastShot > 1500) {
       const b = await t.centre('#kickShot'); await t.down(4, b.x, b.y); await page.waitForTimeout(550); await t.up(4);
       did.shots++; lastShot = Date.now();
     }
@@ -103,6 +106,11 @@ const j1 = await M();
 check('in the match: the player on a team, 0–0, the regulars met (the save remembers them), a side of five kept to five', !!j1.me && j1.score[0] === 0 && j1.score[1] === 0 && j1.counters.ft_babou_met > 0 && j1.counters.ft_khadim_met > 0 && j1.teams[j1.me.team] <= 5, JSON.stringify({ me: j1.me, teams: j1.teams, c: j1.counters }));
 
 // ---------------------------------------------------------------- 2. play the match to its end
+if (process.env.PROBE) {                                                                   // (a probe: 90 s of play, what the thumbs did against what the match took)
+  const did = await playMatch({ ms: Number(process.env.PROBE) * 1000 }), m = await M();
+  console.log('PROBE', JSON.stringify({ did, asked: m.asked, me: m.me, mine: m.mine }));
+  await context.close(); await browser.close(); process.exit(0);
+}
 log('match 1');
 const did1 = await playMatch();
 await page.waitForTimeout(1500);
@@ -110,7 +118,7 @@ await shot('match1-result');
 const r1 = await M();
 const card1 = r1.cards[0];
 check('the match ran to its end (first to 3, or four minutes): the result recorded once', r1.finished === 1 && r1.results.length === 1 && r1.counters.ft_matches === 1 && r1.counters.ft_match_recorded === 1, JSON.stringify({ results: r1.results, c: r1.counters, did: did1 }));
-check('the player played: touches of the ball, shots with « Frappe »', (r1.mine?.length ?? 0) > 0 || (card1 && /Tes tirs: [1-9]/.test(card1.rows.join(' '))), JSON.stringify({ mine: r1.mine, card: card1 }));
+check('the player played: touches of the ball', (r1.mine?.length ?? 0) > 0, JSON.stringify({ mine: r1.mine?.slice(-6), did: did1 }));
 check('the result card: Victoire / Défaite / Match nul with the score, the player’s goals, passes and shots, their record', !!card1 && /^(Victoire|Défaite|Match nul) \d–\d$/.test(card1.title) && card1.rows.some(r => /^Tes buts: \d/.test(r)) && card1.rows.some(r => /^Tes matchs: 1 joué/.test(r)), JSON.stringify(card1));
 check('the regulars say something about the match (Babou, Khadim)', r1.said.some(l => /^Babou: /.test(l) && /(Bien joué|Égalité|prochaine fois)/.test(l)) && r1.said.some(l => /^Khadim: /.test(l)), JSON.stringify(r1.said.slice(-3)));
 const end1 = await items();
@@ -127,6 +135,8 @@ await page.waitForTimeout(1500);
 const r2 = await M();
 check('the second match recorded as a second match (two in all, no double count)', r2.finished === 2 && r2.counters.ft_matches === 2 && r2.counters.ft_match_recorded === 2, JSON.stringify({ c: r2.counters, did: did2 }));
 await shot('match2-result');
+const card2 = r2.cards[1], rows = c => (c?.rows ?? []).join(' '), num = (c, k) => +(new RegExp(`Tes ${k}: (\\d+)`).exec(rows(c))?.[1] ?? 0);
+check('« Frappe » and « Passer » play the ball: the match counted the player’s shots and passes (both matches’ cards)', num(card1, 'tirs') + num(card2, 'tirs') > 0 && num(card1, 'passes') + num(card2, 'passes') > 0, JSON.stringify({ card1: card1?.rows, card2: card2?.rows, did1, did2 }));
 await tapItem('ataya avec Babou');
 await page.waitForFunction(() => { const m = window.__dakar.match3(); return m.bench && m.regulars.babou?.bench; }, null, { timeout: 15000 }).catch(() => {});
 const spot = (await M()).benchAt;
@@ -138,8 +148,8 @@ await shot('ataya-babou');
 check('« L’ataya avec Babou »', await act('football:babou', 15000));
 const a1 = await M();
 check('the ataya: a glass at the touchline, the match told over; the save remembers it', a1.said.some(l => /ataya/.test(l)) && a1.counters.ft_ataya === 1, JSON.stringify({ said: a1.said.slice(-1), c: a1.counters }));
-await page.waitForTimeout(8000);
-check('Babou goes back on the pitch afterwards', !(await M()).bench);
+const back = await page.waitForFunction(() => !window.__dakar.match3().bench, null, { timeout: 60000 }).then(() => true, () => false);   // (6 s of match time; the headless frames are slow)
+check('Babou goes back on the pitch afterwards', back);
 
 // ---------------------------------------------------------------- 4. save, reload: the record kept, nothing twice; a later day: recognised
 log('reload');
@@ -165,7 +175,13 @@ await shot('recognised');
 log('join and walk off');
 await act('football:join');
 await tapItem('^\\W*Jouer');
-await playMatch({ ms: 30000, stopAfter: 12 });
+await playMatch({ ms: 30000, stopAfter: 8 });
+await t.tap('#menuBtn'); await page.waitForTimeout(1500);                                    // the phone, mid-match: the player stands, play goes on
+const inPhone = await d(() => ({ open: !!document.querySelector('#phone.on') || window.__dakar.pos().mode !== 'play', me: !!window.__dakar.match3().me }));
+await t.tap('#phone [data-nav="close"]'); await page.waitForTimeout(1200);
+const afterPhone = await M();
+check('the phone opened and closed mid-match: still in the match, the stick plays again', inPhone.open && inPhone.me && !!afterPhone.me && (await d(() => window.__dakar.pos().mode)) === 'play', JSON.stringify({ inPhone, me: afterPhone.me }));
+await playMatch({ ms: 30000, stopAfter: 14 });
 const mid = await M();
 await walkTo(page, t, P.x, P.z - P.hz - LEAVE_TEST, { tol: 1.5, ms: 60000 });
 await page.waitForTimeout(1500);
