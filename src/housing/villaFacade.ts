@@ -47,7 +47,7 @@ function materials() {
 /** The night (0 by day … 1 at night, main.ts updateLighting): the windows' warm light, the uplights, the roof's edge, the helipad's lights. */
 export function setVillaFacadeNight(night: number) {
   const M = materials();
-  M.glaze.emissiveIntensity = 0.3 * night;
+  M.glaze.emissiveIntensity = 0.18 * night;
   M.light.color.setScalar(night);
   M.render.emissiveIntensity = 0.1 * (1 - night);
 }
@@ -153,7 +153,7 @@ export function buildVillaFacade(plan: FloorPlan = VILLA_PLAN): THREE.Group {
     const inset = q.out * (t - 0.09), fr = (a: number, b: number, y0: number, y1: number) => box(trim, lineRect(q.axis, q.at, a, b, inset - 0.03, inset + 0.03), y0, y1, ALU);
     quad(glaze, q.axis, q.at + inset, q.lo, q.hi, q.y0, q.y1, q.out, SKY_LO, SKY_HI);
     // at night the room behind is lit, unevenly from one window to the next, brighter toward its ceiling
-    const lit = 0.06 + 0.16 * ((Math.abs(Math.round(q.lo * 7.3 + q.y0 * 3.1)) % 5) / 4);
+    const lit = 0.04 + 0.11 * ((Math.abs(Math.round(q.lo * 7.3 + q.y0 * 3.1)) % 5) / 4);
     quad(light, q.axis, q.at + inset + q.out * 0.004, q.lo + 0.05, q.hi - 0.05, q.y0 + 0.05, q.y1 - 0.05, q.out, WARM.clone().multiplyScalar(lit * 0.6), WARM.clone().multiplyScalar(lit));
     fr(q.lo, q.lo + 0.05, q.y0, q.y1); fr(q.hi - 0.05, q.hi, q.y0, q.y1); fr(q.lo, q.hi, q.y1 - 0.05, q.y1); fr(q.lo, q.hi, q.y0, q.y0 + 0.05);
     const n = Math.max(1, Math.round((q.hi - q.lo) / 1.4));
@@ -207,9 +207,11 @@ export function buildVillaFacade(plan: FloorPlan = VILLA_PLAN): THREE.Group {
   edgeLine(grow(H1, 0.6, 0, 0.6, 0.6), P2.y0);
   {
     // and a line along the roof's fascia, seen from anywhere at night
+    // (toward the street the slab reaches a metre out but for the tower, where it stops at the wall behind the claustra)
     const r = grow(H1, 0.6, 1.0, 0.6, 0.6), y = P2.y0 + 0.015, c = 0xffd9a8;
-    box(light, { x0: r.x0, x1: r.x1, z0: r.z1, z1: r.z1 + 0.006 }, y, y + 0.025, c); box(light, { x0: r.x0, x1: r.x1, z0: r.z0 - 0.006, z1: r.z0 }, y, y + 0.025, c);
+    box(light, { x0: r.x0, x1: towerX0, z0: r.z1, z1: r.z1 + 0.006 }, y, y + 0.025, c); box(light, { x0: r.x0, x1: r.x1, z0: r.z0 - 0.006, z1: r.z0 }, y, y + 0.025, c);
     box(light, { x0: r.x0 - 0.006, x1: r.x0, z0: r.z0, z1: r.z1 }, y, y + 0.025, c); box(light, { x0: r.x1, x1: r.x1 + 0.006, z0: r.z0, z1: H1.z1 + t }, y, y + 0.025, c);
+    box(light, { x0: towerX0 - 0.006, x1: towerX0, z0: H1.z1 + t, z1: r.z1 }, y, y + 0.025, c);
   }
   edgeLine({ x0: H1.x0 - t - 0.6, x1: towerX0, z0: H1.z1 + t + 0.3, z1: H1.z1 + t + 1.0 }, P2.y0);
   // downlights under the roof's overhang along the street, each washing the wall below it

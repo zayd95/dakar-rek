@@ -375,6 +375,8 @@ function updateLighting(hour: number) {
     sun.intensity *= 0.25; hemi.intensity = isNight ? 0.35 : 0.55; hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a5a48);
     setInteriorDaylight(sky.horizon.clone().lerp(new THREE.Color(0xffffff), isNight ? 0 : 0.5).multiplyScalar(isNight ? 0.5 : 1.1));
     roomLight.position.copy(inside.int.light); roomLight.color.set(inside.int.lightColor); roomLight.intensity = isNight ? 9 : 6;
+    // LD2.0-D look pass: by a home's pool or on its roof terrace at night, the moon's light rather than a room's (src/housing/apartment.ts)
+    if (isNight && inside.int.outdoors?.()) { hemi.intensity = 0.8; hemi.color.copy(NIGHT_SKY); hemi.groundColor.set(0x2a2620); roomLight.intensity = 2.5; }
   } else roomLight.intensity = 0;
   if (world) {
     world.facadeMat.emissiveIntensity = night * 1.25;

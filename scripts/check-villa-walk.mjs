@@ -182,8 +182,9 @@ try {
   });
   const shell = {};
   for (const [lv, spot] of [['rdc', shots['rdc-salon']], ['etage', shots['etage-salon']], ['toit', shots['toit-terrasse']]]) { await stand(spot); shell[lv] = await shellOf(); }
-  check(`the shell of each level about 12–16 draw calls (with what is seen of the levels below; the helicopter's own on the roof): ${Object.entries(shell).map(([k, v]) => `${k} ${v.calls} calls ${v.tris} tris`).join(', ')}`,
-    Object.values(shell).every(v => v.calls > 0 && v.calls <= 24), JSON.stringify(shell));
+  // (the look pass: a draw call more per part for the stone, the view in the windows; the furnished level's budget, below, is what counts)
+  check(`the shell of each level at most 30 draw calls (with what is seen of the levels below; the helicopter's own on the roof): ${Object.entries(shell).map(([k, v]) => `${k} ${v.calls} calls ${v.tris} tris`).join(', ')}`,
+    Object.values(shell).every(v => v.calls > 0 && v.calls <= 30), JSON.stringify(shell));
   // about ten pieces of furniture, delivered and set up by the game by their kind (across the levels)
   const ids = ['canape_cuir', 'table_basse', 'tele_plate', 'salle_manger_bois', 'lit_king', 'armoire_bois', 'canape_wax', 'transat', 'parasol', 'plante', 'lampadaire_trepied', 'tapis_soie'];
   await d(list => { for (const id of list) window.__dakar.buyPiece(id); }, ids);

@@ -126,6 +126,14 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
     expect(mid2).toBeGreaterThan(STOREY + 1.5); expect(mid2).toBeLessThan(STOREY + 1.9);
   });
 
+  it('says when the player stands outdoors (the pool deck, a balcony, the roof terrace: lit as the outside at night)', () => {
+    const h = build();
+    for (const [x, z, y, out] of [[-3, -1.5, 0, false], [5, -7, 0, true], [-2.4, 4.75, STOREY, true], [-5, -2.5, STOREY, false], [3.6, 3.0, 2 * STOREY, true]] as const) {
+      run(h, at(x, z, y), 0.1);
+      expect(h.int.outdoors!(), `${x},${z} y ${y}`).toBe(out);
+    }
+  });
+
   it('a door opens only for the player on its own floor', () => {
     const h = build(), k = (id: string) => desc(h).doors.find(d => d.id === id)!.k;
     run(h, at(-4.0, 0.75), 0.6);                                                        // beside the bureau's door, on the ground floor
@@ -199,7 +207,7 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
     const lights = (g.getObjectByName('villa-facade:lights') as THREE.Mesh).material as THREE.MeshBasicMaterial, glaze = (g.getObjectByName('villa-facade:glazing') as THREE.Mesh).material as THREE.MeshLambertMaterial;
     expect(lights.blending).toBe(THREE.AdditiveBlending);
     setVillaFacadeNight(0); expect(lights.color.r).toBe(0); expect(glaze.emissiveIntensity).toBe(0);
-    setVillaFacadeNight(1); expect(lights.color.r).toBe(1); expect(glaze.emissiveIntensity).toBeGreaterThan(0.2);
+    setVillaFacadeNight(1); expect(lights.color.r).toBe(1); expect(glaze.emissiveIntensity).toBeGreaterThan(0.1);
     setVillaFacadeNight(0);
   });
 

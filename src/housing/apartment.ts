@@ -46,6 +46,10 @@ import {
  *   stair hall and the outer faces of its walls: `shell`), so the camera above the player always sees the player's level and the frame stays cheap.
  *   The furniture follows the same rule (src/economy/estate.ts tags each piece with its level).
  * - Colliders carry their level's heights (`Collider.y0`); `groundAt` gives main.ts the floor or the flight under the player.
+ * - The look pass (the owner's « modern premium Senegalese villa »): large marble slabs, oak and teak (src/housing/villaFinish.ts); warm white walls,
+ *   one accent wall per main room (oak slats or stone, the plan's `accent`), stone bathrooms, a cove light under the ceiling; travertine outside
+ *   where the plan clads a room; plain openings, bronze frames, walnut doors; tall panes showing the view; frameless glass balustrades; the
+ *   pergola; no lamp hanging (the cove strips and the furniture's lamps and chandeliers light it).
  *
  * Draw calls: one mesh per material (the tiled floors, the chambre's wood, the faience, the walls, the fittings and trims, the lamps, the daylight)
  * and one per moving door leaf: 10 for the F2 (tests/apartment.test.ts holds it to ≤ 14). The villa: per level, the same in two parts (under the
@@ -1097,7 +1101,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     spawn: { x: W(p.spawn.x), z: Z(p.spawn.z), yaw: p.spawn.yaw },
     light: lampAt.get(firstRoom.id)!.clone(), lightColor: 0xffd9a0,
     holeFocus: null,
-    ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y) } : {}),
+    ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y), outdoors: () => !!roomId && !!room(roomId).outdoor } : {}),
     update(dt, player, camera, hour) {
       const lx = player.x - ox, lz = player.z - oz;
       feet = player.y;

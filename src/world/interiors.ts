@@ -52,6 +52,9 @@ export interface Interior {
    * ramp. main.ts puts the player there instead of the fixed floor; absent: the floor (0), as in every other interior.
    */
   groundAt?(x: number, z: number, y: number): number;
+  /** LD2.0-D look pass: whether the player stands in an open room of the home (its garden, a terrace, a balcony): at night main.ts lights it as
+   *  the outside (the moon's blue, the room's lamp dimmed) rather than as a room. Absent: never. */
+  outdoors?(): boolean;
 }
 
 const H = 2.9; // ceiling height
