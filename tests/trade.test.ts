@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { GameState } from '../src/core/state';
-import { newSave, migrate } from '../src/core/save';
+import { MONEY_MAX, newSave, migrate } from '../src/core/save';
 import {
-  BUYBACK, CAPACITY, GOODS, PL, PORTER, SPOILED, STAGE, TRUST, buy, buyBack, cancel, demandLeft, itemOf, ledgerOf, load, lotOf, priceOf, quote, sell,
+  BUYBACK, CAPACITY, GOODS, LOTS_PER_DAY, PL, PORTER, SPOILED, STAGE, TRUST, buy, buyBack, cancel, demandLeft, itemOf, ledgerOf, load, lotOf, lotsLeft, priceOf, quote, sell,
   whyNotBuy, whyNotLoad, whyNotSell,
 } from '../src/districts/tradeRules';
 
@@ -108,5 +108,22 @@ describe('M2 · a trade from the Médina to the Plateau', () => {
     expect(CAPACITY.car * (GOODS.riz.sell - GOODS.riz.buy)).toBeLessThanOrEqual(5000);
     expect(PORTER.max * (GOODS.mangue.sell - GOODS.mangue.buy) - PORTER.fee).toBeLessThanOrEqual(5000);
     expect(CAPACITY.bed * (GOODS.riz.sell - GOODS.riz.buy)).toBeLessThanOrEqual(12000);   // a pickup's full load: the most, and it ties up 90 000 F
+  });
+
+  it('Diallo sells two lots a day, and a reload does not reset the count; a lot cancelled on his forecourt gives its place back', () => {
+    const s = fresh(200000);
+    for (let k = 0; k < LOTS_PER_DAY; k++) { expect(buy(s, 'the', 1, 5).ok).toBe(true); load(s, 'hand'); sell(s, 5, true); }
+    expect(whyNotBuy(s, 'the', 1, 5)).toMatch(/demain/);
+    const t = reload(s); expect(lotsLeft(t, 5)).toBe(0); expect(buy(t, 'the', 1, 5).ok).toBe(false);
+    expect(buy(t, 'the', 1, 6).ok).toBe(true); expect(cancel(t).ok).toBe(true); expect(lotsLeft(t, 6)).toBe(LOTS_PER_DAY);
+  });
+
+  it('the amounts are what the wallet really took and got: a sale clamped at the wallet ceiling still reconciles with the ledger', () => {
+    const s = fresh(); buy(s, 'the', 3, 0); load(s, 'hand');
+    s.data.wallet = MONEY_MAX - 1000;
+    const r = sell(s, 0, true); expect(r.ok).toBe(true); if (!r.ok) return;
+    expect(r.r.revenue).toBe(1000); expect(s.data.wallet).toBe(MONEY_MAX);
+    expect(r.r.profit).toBe(1000 - 3 * GOODS.the.buy); expect(ledgerOf(s, r.r.seq)).toBe(r.r.profit);
+    expect(s.data.counters[PL.profit]).toBe(r.r.profit);
   });
 });

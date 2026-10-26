@@ -9,7 +9,7 @@ import { Relations, PLAYER } from '../social/relations';
 import { routePath, type Pt } from '../ui/minimapMath';
 import { COMPTOIR, GROSSISTE, type TradePlace } from './tradePlaces';
 import {
-  CAPACITY, GOODS, GOOD_IDS, MAX_LOT, PL, PORTER, STAGE, TRUST, buy, buyBack, cancel, demandLeft, fr, load, lotOf, priceOf, quote, sell, spoiled, trusted,
+  BUYBACK, CAPACITY, GOODS, GOOD_IDS, LOTS_PER_DAY, MAX_LOT, PL, PORTER, STAGE, TRUST, buy, buyBack, cancel, demandLeft, fr, load, lotOf, lotsLeft, priceOf, quote, sell, spoiled, trusted,
   whyNotBuy, whyNotLoad, whyNotSell, type GoodId, type Lot, type Mode, type SaleResult,
 } from './tradeRules';
 
@@ -144,7 +144,8 @@ function dialloMenu(ctx: GameCtx) {
       const carry = G.hand ? `à la main : ${G.hand} au plus` : 'trop lourd à porter : un véhicule ou le pousse-pousse';
       return { icon: G.icon, label: `${G.name} · ${G.unit}`, right: `${fr(p)}`, detail: `Le Comptoir Sall paie ${fr(G.sell)} · ${carry}${G.perish ? ` · s’abîment en ${G.perish} jours` : ''}`, onPick: () => qtyMenu(ctx, g) };
     });
-    ctx.menu('Diallo & Frères · grossiste', `Tu as ${fr(cash)} sur toi. Choisis une marchandise.`, items);
+    const left = lotsLeft(s, ctx.day());
+    ctx.menu('Diallo & Frères · grossiste', `Tu as ${fr(cash)} sur toi. ${left > 0 ? `Choisis une marchandise · encore ${left} lot${left > 1 ? 's' : ''} sur ${LOTS_PER_DAY} aujourd’hui.` : 'Diallo t’a servi tes lots du jour : reviens demain.'}`, items);
     return;
   }
   const G = GOODS[l.good], what = `${l.qty} ${l.qty > 1 ? G.units : G.unit} de ${G.name.toLowerCase()}`;
@@ -162,13 +163,13 @@ function dialloMenu(ctx: GameCtx) {
   }
   speak(ctx, DIALLO, LINES.away);
   ctx.menu(`Lot ${l.seq} · ${what}`, `Payé ${fr(l.cost)}${l.fee ? ` + transport ${fr(l.fee)}` : ''}.`, [
-    { icon: '↩️', label: 'Le revendre à Diallo', right: `+${fr(Math.round(l.cost * 0.7))}`, detail: l.stage === STAGE.porter ? 'Le lot est avec le pousse-pousse' : 'À 70 % de ce qu’il a coûté', disabled: l.stage === STAGE.porter, onPick: () => { done(ctx); const r = buyBack(s); if (r.ok) { ctx.toast(`Diallo reprend le lot · +${fr(r.paid)} (perte ${fr(r.lost)})`); ctx.save(); } } },
+    { icon: '↩️', label: 'Le revendre à Diallo', right: `+${fr(Math.round(l.cost * BUYBACK))}`, detail: l.stage === STAGE.porter ? 'Le lot est avec le pousse-pousse' : 'À 70 % de ce qu’il a coûté', disabled: l.stage === STAGE.porter, onPick: () => { done(ctx); const r = buyBack(s); if (r.ok) { ctx.toast(`Diallo reprend le lot · +${fr(r.paid)} (perte ${fr(r.lost)})`); ctx.save(); } } },
   ]);
 }
 function qtyMenu(ctx: GameCtx, g: GoodId) {
   const s = ctx.state, G = GOODS[g], p = priceOf(s, g);
   const items: MenuItem[] = [1, 2, 3, 4, 6, MAX_LOT].filter((q, i, a) => a.indexOf(q) === i).map(q => {
-    const why = whyNotBuy(s, g, q), margin = q * (G.sell - p);
+    const why = whyNotBuy(s, g, q, ctx.day()), margin = q * (G.sell - p);
     return { icon: G.icon, label: `${q} ${q > 1 ? G.units : G.unit}`, right: `−${fr(q * p)}`, detail: why ?? `Au Comptoir : ${fr(q * G.sell)} · marge possible +${fr(margin)}${q > G.hand && G.hand ? ' · à charger dans un véhicule ou sur le pousse-pousse' : ''}`,
       disabled: !!why, reason: why ?? undefined, onPick: () => doBuy(ctx, g, q) };
   });

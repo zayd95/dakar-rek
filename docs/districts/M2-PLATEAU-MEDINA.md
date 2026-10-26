@@ -1,6 +1,6 @@
 # M2 · Plateau / Médina — « Ma première affaire » (My First Trade)
 
-**Status: in progress.** The world is built. The trade itself waits for Living Dakar 2.0's answer to the commerce contract (`CONTRACT.md`, rows 9–12).
+**Status: in progress.** The world and the trade are built. The commerce contract was agreed with Living Dakar 2.0 (`CONTRACT.md` v5, rows 9–12).
 
 ## The idea
 
@@ -66,6 +66,8 @@ It is not a delivery job:
 ## Rules (anti-exploit)
 
 - **A lot in hand:** one at a time, numbered (`pl_lot_seq`). Its number is in every ledger line.
+- **Diallo's lots:** 2 a day (`pl_trader_day`, `pl_trader_n`; a reload resets nothing; a lot cancelled on his forecourt gives its place back).
+- **Amounts:** the wallet is checked before every debit, and the lot's cost, fee and revenue are what `addMoney` actually applied, so the profit reconciles with the ledger.
 - **Paying:** all money goes through the existing `GameState.addMoney` (one ledger line each). There is no other wallet and no other stock: the goods are counted in the existing player `inventory` (`pl_the`, `pl_riz`, `pl_mangue`).
 - **Selling:** only while the lot is loaded or delivered. The stage becomes `sold` in the same step as the credit, then the save is written. A retry, a double tap or a reload never pays twice.
 - **Cancelling:**
@@ -74,11 +76,12 @@ It is not a delivery job:
 - **The Comptoir's demand per in-game day:** tea 10, rice 8, mangoes 8. Moving between hubs creates no stock and no money.
 - **Reload:** a bought lot survives a reload at its stage.
 
-## Save (pending the contract)
+## Save (agreed: CONTRACT.md rows 10–11)
 
-- **Proposed:** the lot's facts in the existing `counters` with the `pl_` prefix:
-  - `pl_lot_seq`, `pl_lot_good`, `pl_lot_qty`, `pl_lot_cost`, `pl_lot_fee`, `pl_lot_stage`, `pl_lot_day`;
+- The lot's facts in the existing `counters` with the `pl_` prefix:
+  - `pl_lot_seq`, `pl_lot_good` (an index in the append-only `GOOD_IDS`), `pl_lot_qty`, `pl_lot_cost`, `pl_lot_fee`, `pl_lot_stage`, `pl_lot_day`;
   - the totals `pl_trades`, `pl_rev_total`, `pl_profit_total`;
-  - the Comptoir's daily demand `pl_sold_<good>_day`.
+  - the Comptoir's daily demand: `pl_sold_day`, `pl_sold_<good>`;
+  - Diallo's lots of the day: `pl_trader_day`, `pl_trader_n`.
 - **The goods themselves:** in `inventory`.
 - **No schema change.**

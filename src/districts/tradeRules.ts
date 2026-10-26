@@ -9,7 +9,10 @@ import type { GameState } from '../core/state';
  * - money only through `GameState.addMoney` (one ledger line each, the lot's number in every label); no other wallet, no `move`;
  * - one lot in hand at a time. Its facts are in the existing `counters` (prefix `pl_`); its goods are counted in the existing `inventory` (`pl_<good>`);
  * - the sale is applied only from a stage that can sell, and the stage changes in the same synchronous step as the credit (the caller saves right after):
- *   a retry, a double tap or a reload never pays twice; moving between hubs makes no stock and no money.
+ *   a retry, a double tap or a reload never pays twice; moving between hubs makes no stock and no money;
+ * - `addMoney` clamps (at 0 and MONEY_MAX) and returns what it applied: every price is checked against the wallet before it is debited, and a lot's cost,
+ *   fee and revenue are the amounts actually applied, so the profit always reconciles with the ledger;
+ * - the goods table is append-only (the lot's good is saved as its index in GOOD_IDS: never reorder it).
  */
 export type GoodId = 'the' | 'riz' | 'mangue';
 export interface Good {
@@ -28,7 +31,7 @@ export const GOODS: Record<GoodId, Good> = {
   riz: { id: 'riz', name: 'Riz brisé', unit: 'sac de 25 kg', units: 'sacs', icon: '🌾', buy: 9000, sell: 10200, hand: 0, perish: 0, demand: 8 },
   mangue: { id: 'mangue', name: 'Mangues', unit: 'cagette', units: 'cagettes', icon: '🥭', buy: 2500, sell: 3400, hand: 1, perish: 2, demand: 8 },
 };
-export const GOOD_IDS: readonly GoodId[] = ['the', 'riz', 'mangue'];
+export const GOOD_IDS: readonly GoodId[] = ['the', 'riz', 'mangue'];   // append only: the save holds the index
 
 /** The porters' pousse-pousse: its fee for one lot, how many units it takes, how fast it goes (m/s). */
 export const PORTER = { fee: 1500, max: 6, speed: 1.15 };
@@ -40,6 +43,8 @@ export const MAX_LOT = 10;
 export const BUYBACK = 0.7;
 /** Spoiled goods fetch this share of their price at the Comptoir. */
 export const SPOILED = 0.3;
+/** Lots Diallo sells the player per in-game day (a lot cancelled on his forecourt gives its place back). */
+export const LOTS_PER_DAY = 2;
 /** After this many trades sold, Diallo knows the player: better terms on rice. */
 export const TRUST = { trades: 3, discount: { riz: 0.05 } as Partial<Record<GoodId, number>> };
 
@@ -49,6 +54,7 @@ export const PL = {
   mode: 'pl_lot_mode', eta: 'pl_lot_eta',
   trades: 'pl_trades', rev: 'pl_rev_total', profit: 'pl_profit_total', units: 'pl_units_total',
   soldDay: 'pl_sold_day', sold: (g: GoodId) => `pl_sold_${g}`,
+  traderDay: 'pl_trader_day', traderN: 'pl_trader_n',
   met: 'pl_diallo_met', seen: 'pl_diallo_seen_day', trusted: 'pl_diallo_trust',
   last: { seq: 'pl_last_seq', rev: 'pl_last_rev', cost: 'pl_last_cost', fee: 'pl_last_fee', profit: 'pl_last_profit' },
 } as const;
@@ -84,18 +90,22 @@ export const priceOf = (s: GameState, g: GoodId) => Math.round(GOODS[g].buy * (1
 export const spoiled = (l: Lot, day: number) => GOODS[l.good].perish > 0 && day - l.day >= GOODS[l.good].perish;
 
 // ------------------------------------------------------------------ at Diallo's
-export function whyNotBuy(s: GameState, g: GoodId, qty: number): string | null {
+/** Lots Diallo still sells the player today. */
+export const lotsLeft = (s: GameState, day: number) => LOTS_PER_DAY - (c(s, PL.traderDay) === day + 1 ? c(s, PL.traderN) : 0);
+export function whyNotBuy(s: GameState, g: GoodId, qty: number, day = 0): string | null {
   if (lotOf(s)) return 'Tu as déjà un lot en main : vends-le d’abord';
+  if (lotsLeft(s, day) <= 0) return `Diallo a servi ses ${LOTS_PER_DAY} lots pour toi aujourd’hui : reviens demain`;
   if (!Number.isInteger(qty) || qty < 1 || qty > MAX_LOT) return `De 1 à ${MAX_LOT} ${GOODS[g].units}`;
   if (!s.canAfford(priceOf(s, g) * qty)) return 'Pas assez d’argent sur toi';
   return null;
 }
 /** Buy `qty` units of `g` with the player's own money: one debit, the lot numbered, the goods counted. */
 export function buy(s: GameState, g: GoodId, qty: number, day: number): { ok: true; lot: Lot } | { ok: false; why: string } {
-  const why = whyNotBuy(s, g, qty); if (why) return { ok: false, why };
-  const seq = c(s, PL.seq) + 1, cost = priceOf(s, g) * qty;
-  s.addMoney(-cost, `Médina · achat ${GOODS[g].name.toLowerCase()} ×${qty} · lot ${seq}`);
+  const why = whyNotBuy(s, g, qty, day); if (why) return { ok: false, why };
+  const seq = c(s, PL.seq) + 1;
+  const cost = -s.addMoney(-priceOf(s, g) * qty, `Médina · achat ${GOODS[g].name.toLowerCase()} ×${qty} · lot ${seq}`);   // (the wallet was checked: the full price)
   set(s, PL.seq, seq);
+  set(s, PL.traderN, (c(s, PL.traderDay) === day + 1 ? c(s, PL.traderN) : 0) + 1); set(s, PL.traderDay, day + 1);
   const lot: Lot = { seq, good: g, qty, cost, fee: 0, stage: STAGE.bought, day, mode: null, eta: 0 };
   writeLot(s, lot); setGoods(s, g, qty);
   return { ok: true, lot };
@@ -105,9 +115,10 @@ export function cancel(s: GameState): { ok: true; refund: number } | { ok: false
   const l = lotOf(s);
   if (!l) return { ok: false, why: 'Pas de lot' };
   if (l.stage !== STAGE.bought) return { ok: false, why: 'Le lot est parti : Diallo peut te le reprendre à 70 %' };
-  s.addMoney(l.cost, `Médina · achat annulé · lot ${l.seq}`);
+  const refund = s.addMoney(l.cost, `Médina · achat annulé · lot ${l.seq}`);
   writeLot(s, null); setGoods(s, l.good, 0);
-  return { ok: true, refund: l.cost };
+  if (c(s, PL.traderN) > 0) set(s, PL.traderN, c(s, PL.traderN) - 1);
+  return { ok: true, refund };
 }
 /** What each way of carrying the lot allows (`cap`: the units the player's vehicle holds, 0 when there is none at the bay). */
 export function whyNotLoad(s: GameState, mode: Mode, cap = 0): string | null {
@@ -125,8 +136,7 @@ export function load(s: GameState, mode: Mode, o: { cap?: number; playedMs?: num
   const why = whyNotLoad(s, mode, o.cap ?? 0); if (why) return { ok: false, why };
   const l = lotOf(s)!;
   if (mode === 'porter') {
-    s.addMoney(-PORTER.fee, `Pousse-pousse · lot ${l.seq}`);
-    l.fee = PORTER.fee; l.stage = STAGE.porter; l.eta = Math.round((o.playedMs ?? 0) + ((o.metres ?? 200) / PORTER.speed) * 1000);
+    l.fee = -s.addMoney(-PORTER.fee, `Pousse-pousse · lot ${l.seq}`); l.stage = STAGE.porter; l.eta = Math.round((o.playedMs ?? 0) + ((o.metres ?? 200) / PORTER.speed) * 1000);
   } else l.stage = STAGE.carried;
   l.mode = mode;
   writeLot(s, l);
@@ -137,8 +147,7 @@ export function buyBack(s: GameState): { ok: true; paid: number; lost: number } 
   const l = lotOf(s); if (!l) return { ok: false, why: 'Pas de lot' };
   if (l.stage === STAGE.bought) return { ok: false, why: 'Le lot n’est pas parti : annule-le' };
   if (l.stage === STAGE.porter) return { ok: false, why: 'Le lot est avec le pousse-pousse, au Comptoir' };
-  const paid = Math.round(l.cost * BUYBACK);
-  s.addMoney(paid, `Médina · lot ${l.seq} repris par Diallo`);
+  const paid = s.addMoney(Math.round(l.cost * BUYBACK), `Médina · lot ${l.seq} repris par Diallo`);
   writeLot(s, null); setGoods(s, l.good, 0);
   return { ok: true, paid, lost: l.cost + l.fee - paid };
 }
@@ -174,7 +183,7 @@ export function sell(s: GameState, day: number, there: boolean, playedMs = 0): {
   const why = whyNotSell(s, day, there, playedMs); if (why) return { ok: false, why };
   const l = lotOf(s)!, r = quote(s, day)!;
   if (r.units <= 0) return { ok: false, why: 'Rien à vendre aujourd’hui' };
-  s.addMoney(r.revenue, `Plateau · vente ${GOODS[l.good].name.toLowerCase()} ×${r.units} · lot ${l.seq}`);
+  r.revenue = s.addMoney(r.revenue, `Plateau · vente ${GOODS[l.good].name.toLowerCase()} ×${r.units} · lot ${l.seq}`); r.profit = r.revenue - r.cost - r.fee;
   if (c(s, PL.soldDay) !== day + 1) { for (const g of GOOD_IDS) set(s, PL.sold(g), 0); set(s, PL.soldDay, day + 1); }
   set(s, PL.sold(l.good), c(s, PL.sold(l.good)) + r.units);
   set(s, PL.rev, c(s, PL.rev) + r.revenue); set(s, PL.profit, c(s, PL.profit) + r.profit); set(s, PL.units, c(s, PL.units) + r.units);
