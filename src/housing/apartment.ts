@@ -28,8 +28,8 @@ import { inner, passage, wallPieces, type Fixture, type FloorPlan, type Opening,
  * - No ceiling: the camera looks down from above (Interior.open). A wall between the camera and the player opens a soft round hole around them
  *   (the shell's materials, `HOLE`): nothing more is drawn and nothing is allocated per frame.
  *
- * Draw calls: one mesh per material (tiles and faience, the chambre's wood, the walls, the fittings and trims, the lamps, the daylight) and one per
- * moving door leaf: 9 for the F2 (tests/apartment.test.ts holds it to ≤ 14).
+ * Draw calls: one mesh per material (the tiled floors, the chambre's wood, the faience, the walls, the fittings and trims, the lamps, the daylight)
+ * and one per moving door leaf: 10 for the F2 (tests/apartment.test.ts holds it to ≤ 14).
  */
 
 const Y = 0.1;                                   // the floor's top (the player's feet indoors: main.ts)
@@ -96,14 +96,16 @@ function withHole<M extends THREE.Material>(m: M): M {
   return m;
 }
 
-type Mats = { tiles: THREE.Material; wood: THREE.Material; wall: THREE.Material; plain: THREE.Material; leaf: THREE.Material; glow: THREE.MeshLambertMaterial; sky: THREE.MeshBasicMaterial };
+type Mats = { floor: THREE.Material; tiles: THREE.Material; wood: THREE.Material; wall: THREE.Material; plain: THREE.Material; leaf: THREE.Material; glow: THREE.MeshLambertMaterial; sky: THREE.MeshBasicMaterial };
 let mats: Mats | null = null;
 function materials(): Mats {
   if (mats) return mats;
   const lam = () => new THREE.MeshLambertMaterial({ vertexColors: true });
   mats = {
-    tiles: withHole(addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32)),         // the tiled floors, and the faience of the kitchen and the bathroom
-    wood: addGrain(lam(), 0.2, 1, false, generatedTexture('wood'), 1),                    // the chambre's floor (never under the hole)
+    // the floors are never cut: no hole (a shader that may discard is shaded before the depth test), drawn after the rest (`renderOrder`)
+    floor: addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32),
+    wood: addGrain(lam(), 0.2, 1, false, generatedTexture('wood'), 1),                    // the chambre's floor
+    tiles: withHole(addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32)),         // the faience of the kitchen and the bathroom
     wall: withHole(addGrain(lam(), 0.4, 1, false, plasterTexture(), 2)),
     plain: withHole(addGrain(lam(), 0.5, 2)),
     leaf: withHole(addGrain(lam(), 0.25, 2)),
@@ -178,6 +180,17 @@ function less(a: number, b: number, holes: [number, number][], min = 0.05): [num
   return out.filter(([u, v]) => v - u >= min);
 }
 
+type Face = 'px' | 'nx' | 'py' | 'pz' | 'nz';
+const FACE: Record<Face, number> = { px: 0, nx: 1, py: 2, pz: 4, nz: 5 };   // BoxGeometry's groups: +x, −x, +y, −y, +z, −z
+/** A box (base at y = 0) with only the faces that can be seen: a wall's halves meet inside it and its bands sit on one another, and a face never
+ *  seen still costs its pixels (the shell's shaders may discard, so nothing behind is skipped before shading). */
+function partBox(w: number, h: number, d: number, keep: readonly Face[]): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d), src = g.index!.array, idx: number[] = [];
+  for (const k of keep) for (let i = 0; i < 6; i++) idx.push(src[FACE[k] * 6 + i]);
+  g.setIndex(idx); g.translate(0, h / 2, 0);
+  return g;
+}
+
 /** What the shell keeps per door (the leaf's pivot, its angles, how open it is, the collider it has once fully open). */
 interface Door { o: Opening; pivot: THREE.Group; base: number; theta: number; k: number; away: number; open: Rect; col: Collider; cx: number; cz: number }
 /** A solid box of the shell in world metres, for the debug's line-of-sight test. */
@@ -191,7 +204,7 @@ const PARK = 1e6;   // where an inactive collider waits (never near anyone)
 export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number, hub: string, F: Finish, upgrades: readonly string[] = []): HomeInterior {
   const M = materials(), H = p.wallH, painted = upgrades.includes('peinture');
   const group = new THREE.Group(); group.name = `home:${h.id}`;
-  const tiles = new Batch(), wood = new Batch(), wall = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();
+  const floor = new Batch(), tiles = new Batch(), wood = new Batch(), wall = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();
   const colliders: Collider[] = [], solids: Solid[] = [], blocks: Rect[] = [];
   const W = (x: number) => ox + x, Z = (z: number) => oz + z;
   const room = (id: string) => p.rooms.find(r => r.id === id)!;
@@ -203,34 +216,49 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     if (r.x1 - r.x0 < EPS || r.z1 - r.z0 < EPS || y1 - y0 < EPS) return;
     b.box(r.x1 - r.x0, y1 - y0, r.z1 - r.z0, W((r.x0 + r.x1) / 2), Y + y0, Z((r.z0 + r.z1) / 2), c);
   };
+  /** The same with only some faces (see `partBox`). */
+  const pbox = (b: Batch, r: Rect, y0: number, y1: number, c: number, keep: readonly Face[]) => {
+    if (r.x1 - r.x0 < EPS || r.z1 - r.z0 < EPS || y1 - y0 < EPS) return;
+    b.geometry(partBox(r.x1 - r.x0, y1 - y0, r.z1 - r.z0, keep), c, W((r.x0 + r.x1) / 2), Y + y0, Z((r.z0 + r.z1) / 2));
+  };
   const solid = (r: Rect, y0: number, y1: number, isWall: boolean) => solids.push({ x0: W(r.x0), x1: W(r.x1), z0: Z(r.z0), z1: Z(r.z1), y0: Y + y0, y1: Y + y1, wall: isWall });
 
   // ---------------------------------------------------------------- walls
   /**
    * One stretch of wall on a line (`axis`, at `at`, half thickness `t`), from a to b along it and y0 to y1 above the floor. Each face is its own
    * half of the wall, in the colours of the room it faces (split where the rooms change), with the dado rail and the skirting proud of it; the
-   * outside face in the façade's colour.
+   * outside face in the façade's colour. A half has its face, its two ends and, where nothing sits on it (a window's sill), its top: never the
+   * face inside the wall nor a top under the band above or the cap.
    */
   const run = (axis: 'x' | 'z', at: number, t: number, a: number, b: number, y0: number, y1: number) => {
     if (b - a < EPS || y1 - y0 < EPS) return;
     for (const s of [-1, 1] as const) {
+      const face: Face = axis === 'x' ? (s > 0 ? 'pz' : 'nz') : (s > 0 ? 'px' : 'nx'), ends: Face[] = axis === 'x' ? ['px', 'nx'] : ['pz', 'nz'];
+      const sides = (top: boolean): Face[] => top ? [face, ...ends, 'py'] : [face, ...ends];
+      // the stretches facing one room (or the outside): split where the room on this side changes, never inside one room's face (a seam shows)
       const cuts = [a, b];
       for (const r of p.rooms) for (const e of axis === 'x' ? [r.box.x0, r.box.x1] : [r.box.z0, r.box.z1]) if (e > a + EPS && e < b - EPS) cuts.push(e);
       cuts.sort((u, v) => u - v);
+      const spans: { u0: number; u1: number; r: Room | null }[] = [];
       for (let i = 0; i + 1 < cuts.length; i++) {
         const u0 = cuts[i], u1 = cuts[i + 1]; if (u1 - u0 < EPS) continue;
-        const mid = (u0 + u1) / 2, off = s * (t + 0.02);
-        const r = axis === 'x' ? roomIn(mid, at + off) : roomIn(at + off, mid);
-        const half = lineRect(axis, at, u0, u1, 0, s * t);
-        if (!r) { rbox(wall, half, y0, y1, EXTERIOR); continue; }
-        const L = looks.get(r.id)!;
-        if (y0 < DADO) rbox(L.faience ? tiles : wall, half, y0, Math.min(y1, DADO), L.lower);
-        if (y1 > DADO) rbox(wall, half, Math.max(y0, DADO), y1, L.upper);
-        // the dado rail and the skirting, only along the room's own face (not inside the walls it meets)
+        const mid = (u0 + u1) / 2, off = s * (t + 0.02), r = axis === 'x' ? roomIn(mid, at + off) : roomIn(at + off, mid), last = spans[spans.length - 1];
+        if (last && last.r === r) last.u1 = u1; else spans.push({ u0, u1, r });
+      }
+      const outside = isOuter(p, axis, at);
+      for (const { u0, u1, r } of spans) {
+        const free = y1 < H - EPS;                                                         // the band's top is seen (no cap, no band on it)
+        // the façade runs to the corners and closes them; a room's face stops at the room's own face (the rest is inside the walls it meets, where its
+        // end would lie on their faces and flicker)
+        if (!r) { if (outside) pbox(wall, lineRect(axis, at, u0, u1, 0, s * t), y0, y1, EXTERIOR, sides(free)); continue; }
         const ri = inners.find(q => q.r === r)!.i, [f0, f1] = axis === 'x' ? [ri.x0, ri.x1] : [ri.z0, ri.z1], v0 = Math.max(u0, f0), v1 = Math.min(u1, f1);
         if (v1 - v0 < EPS) continue;
-        if (y0 < DADO - 0.02 && y1 > DADO + 0.02) rbox(plain, lineRect(axis, at, v0, v1, s * t, s * (t + 0.012)), DADO - 0.02, DADO + 0.02, L.faience ? 0xe2ddd2 : F.trim);
-        if (y0 < EPS) rbox(plain, lineRect(axis, at, v0, v1, s * t, s * (t + 0.015)), 0, L.faience ? 0.08 : 0.1, L.faience ? 0xd2cbbf : F.trim);
+        const half = lineRect(axis, at, v0, v1, 0, s * t), L = looks.get(r.id)!;
+        if (y0 < DADO) pbox(L.faience ? tiles : wall, half, y0, Math.min(y1, DADO), L.lower, sides(free && y1 <= DADO));
+        if (y1 > DADO) pbox(wall, half, Math.max(y0, DADO), y1, L.upper, sides(free));
+        // the dado rail and the skirting, proud of the face
+        if (y0 < DADO - 0.02 && y1 > DADO + 0.02) pbox(plain, lineRect(axis, at, v0, v1, s * t, s * (t + 0.012)), DADO - 0.02, DADO + 0.02, L.faience ? 0xe2ddd2 : F.trim, sides(true));
+        if (y0 < EPS) pbox(plain, lineRect(axis, at, v0, v1, s * t, s * (t + 0.015)), 0, L.faience ? 0.08 : 0.1, L.faience ? 0xd2cbbf : F.trim, sides(true));
       }
     }
   };
@@ -255,9 +283,10 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   }
 
   // ---------------------------------------------------------------- floors
-  const outerFloor: Rect = { x0: -p.w / 2 - 1.4, x1: p.w / 2 + 1.4, z0: -p.d / 2 - 1.4, z1: p.d / 2 + 1.4 };
-  rbox(plain, outerFloor, -0.12, -0.04, 0x625c55);                                   // the building's slab round the home, below its floors
-  for (const r of p.rooms) rbox(r.floor === 'wood' ? wood : tiles, r.box, -0.1, 0, looks.get(r.id)!.floor);
+  // the building's slab round the home: a ring outside its walls only (nothing drawn under the floors, where it would only cost pixels)
+  const hw = p.w / 2 + p.outWall / 2, hd = p.d / 2 + p.outWall / 2, rim = 1.2;
+  for (const r of [{ x0: -hw - rim, x1: hw + rim, z0: -hd - rim, z1: -hd }, { x0: -hw - rim, x1: hw + rim, z0: hd, z1: hd + rim }, { x0: -hw - rim, x1: -hw, z0: -hd, z1: hd }, { x0: hw, x1: hw + rim, z0: -hd, z1: hd }]) rbox(plain, r, -0.12, 0, 0x625c55);
+  for (const r of p.rooms) (r.floor === 'wood' ? wood : floor).flat(r.box.x1 - r.box.x0, r.box.z1 - r.box.z0, W((r.box.x0 + r.box.x1) / 2), Y, Z((r.box.z0 + r.box.z1) / 2), looks.get(r.id)!.floor);
 
   // ---------------------------------------------------------------- openings: lintels, frames, thresholds, leaves
   const doors: Door[] = [];
@@ -542,8 +571,10 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
 
   // ---------------------------------------------------------------- meshes (one per material)
   const glowMesh = glow.build(M.glow, false, false);
-  for (const [b, m, recv] of [[wood, M.wood, true], [tiles, M.tiles, true], [wall, M.wall, true], [plain, M.plain, true], [sky, M.sky, false]] as [Batch, THREE.Material, boolean][]) {
-    const mesh = b.build(m, recv, false); if (mesh) group.add(mesh);
+  for (const [b, m, recv, last] of [[floor, M.floor, true, true], [wood, M.wood, true, true], [tiles, M.tiles, true, false], [wall, M.wall, true, false], [plain, M.plain, true, false], [sky, M.sky, false, false]] as [Batch, THREE.Material, boolean, boolean][]) {
+    const mesh = b.build(m, recv, false); if (!mesh) continue;
+    if (last) mesh.renderOrder = 1;                                                       // the floors after what stands on them: hidden pixels are skipped
+    group.add(mesh);
   }
   if (glowMesh) group.add(glowMesh);
 

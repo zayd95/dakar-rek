@@ -183,7 +183,7 @@ describe('the F2 of the Résidence Jàmm, built from its floor plan (LD2.0-C)', 
     let meshes = 0, tris = 0;
     h.int.group.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { meshes++; tris += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; } });
     expect(meshes).toBeLessThanOrEqual(14);
-    expect(meshes).toBe(6 + P.openings.filter(o => o.kind === 'door').length);
+    expect(meshes).toBe(7 + P.openings.filter(o => o.kind === 'door').length);
     expect(tris).toBeLessThan(30_000);
     // nothing of the shell casts a shadow (the sun barely comes in; the shadow pass would double the calls)
     h.int.group.traverse(o => { if ((o as THREE.Mesh).isMesh) expect((o as THREE.Mesh).castShadow).toBe(false); });
