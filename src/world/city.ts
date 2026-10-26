@@ -314,18 +314,41 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   c.pool(cx + 11, cz - 1, 8); c.pool(cx - 11, cz - 1, 8);
 }
 
+/** How `pirogue()` is built; its existing callers pass none of it and get the hull they always had. */
+export interface PirogueOpts {
+  /** Sections along the hull (12): fewer for a far one (the island of Ngor's beach) or on Low. */
+  segments?: number;
+  /**
+   * Built true (the Embarcadère de Ngor's pirogues, src/world/ngor.ts and src/world/boats.ts): each plank's two faces on vertices of their own with
+   * their own normals (sharing them, the faces' normals cancel to rounding noise and the paint shades in random speckles), a floor that follows the
+   * bottom's rise to either end (the flat plank pokes out under them) and thwarts as wide as the hull where they sit.
+   */
+  trued?: boolean;
+  /** The floor plank, the thwarts and the stern box (true); false leaves the painted hull and its two end posts, for a boat fitted out by its caller. */
+  fittings?: boolean;
+}
+
 /** Open, tapered wooden hull with raised ends (thwarts, motor box at the +z stern), merged into `b` (also used by src/venues). */
-export function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08) {
+export function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08, o: PirogueOpts = {}) {
   const palettes = [[0x236baa, 0xe3bd3a, 0xd74b38], [0x287c63, 0xd74b38, 0xf2dfa1], [0xdfa736, 0x246899, 0x2f8567]];
-  const colors = palettes[variant % palettes.length], scale = length / 10;
+  const colors = palettes[variant % palettes.length], scale = length / 10, n = o.segments ?? 12;
+  // section t (0 the bow, 1 the stern): the hull's half-width at the gunwale, and the rise of its bottom toward either end
+  const half = (t: number) => (0.13 + Math.sin(t * Math.PI) * 0.94) * scale, rise = (t: number) => Math.pow(Math.abs(t - 0.5) * 2, 3) * 0.65 * scale;
   const hull = (low: number, high: number, color: number) => {
     const positions: number[] = [], indexes: number[] = [];
-    for (let k = 0; k <= 12; k++) {
-      const t = k / 12, width = (0.13 + Math.sin(t * Math.PI) * 0.94) * scale;
-      const lift = Math.pow(Math.abs(t - 0.5) * 2, 3) * 0.65 * scale;
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, width = half(t);
+      const lift = rise(t);
       for (const side of [-1, 1]) for (const f of [low, high]) positions.push(side * width * (0.45 + f * 0.55), lift + f * 0.8 * scale, (t - 0.5) * length);
     }
-    for (let k = 0; k < 12; k++) for (const offset of [0, 2]) {
+    const face = (flip: boolean) => {
+      const idx: number[] = [];
+      for (let k = 0; k < n; k++) for (const offset of [0, 2]) { const a = k * 4 + offset, d = a + 4; idx.push(...(flip ? [d, a + 1, a, d, d + 1, a + 1] : [a, a + 1, d, a + 1, d + 1, d])); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+      b.geometry(geo, color, x, y, z, yaw);
+    };
+    if (o.trued) { face(false); face(true); return; }
+    for (let k = 0; k < n; k++) for (const offset of [0, 2]) {
       const a = k * 4 + offset, d = a + 4;
       indexes.push(a, a + 1, d, a + 1, d + 1, d, d, a + 1, a, d, d + 1, a + 1); // both sides of the thin plank
     }
@@ -334,8 +357,21 @@ export function pirogue(b: Batch, x: number, z: number, length: number, yaw: num
   };
   hull(0, 0.62, colors[0]); hull(0.62, 0.79, colors[1]); hull(0.79, 1, colors[2]);
   const point = (xx: number, zz: number) => ({ x: x + Math.cos(yaw) * xx + Math.sin(yaw) * zz, z: z - Math.sin(yaw) * xx + Math.cos(yaw) * zz });
-  const p = point(0, 0); b.box(0.8 * scale, 0.08 * scale, length * 0.8, p.x, y + 0.12 * scale, p.z, WOOD, yaw);
-  for (const t of [-0.25, 0, 0.25]) { const q = point(0, length * t); b.box(1.6 * scale, 0.09 * scale, 0.38 * scale, q.x, y + 0.6 * scale, q.z, WOOD, yaw); }
+  const fit = o.fittings ?? true;
+  const inner = (t: number, h: number) => half(t) * (0.45 + 0.55 * Math.max(0, Math.min(1, (h - rise(t)) / (0.8 * scale))));   // inside, h above the keel line
+  const p = point(0, 0);
+  if (fit && !o.trued) b.box(0.8 * scale, 0.08 * scale, length * 0.8, p.x, y + 0.12 * scale, p.z, WOOD, yaw);
+  if (fit && o.trued) {
+    const pos: number[] = [], idx: number[] = [], f = 0.2 * scale;
+    for (let k = 1; k < n; k++) {
+      const t = k / n, yy = rise(t) + f, w = inner(t, yy) - 0.01, zz = (t - 0.5) * length;
+      pos.push(-w, yy, zz, w, yy, zz);
+      if (k > 1) { const a = (k - 2) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    }
+    const floor = new THREE.BufferGeometry(); floor.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); floor.setIndex(idx); floor.computeVertexNormals();
+    b.geometry(floor, WOOD, x, y, z, yaw);
+  }
+  if (fit) for (const t of [-0.25, 0, 0.25]) { const q = point(0, length * t); b.box(o.trued ? 2 * inner(t + 0.5, 0.6 * scale) - 0.03 : 1.6 * scale, 0.09 * scale, 0.38 * scale, q.x, y + 0.6 * scale, q.z, WOOD, yaw); }
   for (const t of [-0.5, 0.5]) { const q = point(0, length * t); b.box(0.25 * scale, 1.45 * scale, 0.35 * scale, q.x, y + 0.2 * scale, q.z, colors[2], yaw); }
-  const stern = point(0, length * 0.46); b.box(0.4 * scale, 0.55 * scale, 0.55 * scale, stern.x, y + 0.65 * scale, stern.z, DARK, yaw);
+  if (fit) { const stern = point(0, length * 0.46); b.box(0.4 * scale, 0.55 * scale, 0.55 * scale, stern.x, y + 0.65 * scale, stern.z, DARK, yaw); }
 }
