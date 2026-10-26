@@ -25,7 +25,7 @@ export const CAST: CastMember[] = [
   { female: true, id: 'fatou', name: 'Fatou', title: 'gargote Chez Fatou', role: 'vendor', hub: 'plateau', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xc2417f, bottom: 0xc2417f, skin: 0x8a5a3a, long: true } },
   { id: 'moussa', name: 'Moussa', title: 'coach sportif', role: 'coach', hub: 'corniche', anchor: 'gym', ox: 5, oz: 3, outfit: { top: 0xd9482b, bottom: 0x2b2b33, skin: 0x5b3420 } },
   { female: true, id: 'aida', name: 'Aïda', title: 'étudiante, café Touba', role: 'vendor', hub: 'corniche', anchor: 'cafe', ox: 4, oz: 0, outfit: { top: 0x2f8fd1, bottom: 0x2b3a55, skin: 0x7a4a2c } },
-  { id: 'ousmane', name: 'Ousmane', title: 'chef de quai', role: 'employer', hub: 'almadies', anchor: 'port', ox: 4, oz: 1, outfit: { top: 0xe7b82f, bottom: 0x2b3a55, skin: 0x4e2e1c, hat: 0x1e6fd9 } },
+  { id: 'ousmane', name: 'Ousmane', title: 'chef de l’embarcadère', role: 'employer', hub: 'almadies', anchor: 'port', ox: 4, oz: 1, outfit: { top: 0xe7b82f, bottom: 0x2b3a55, skin: 0x4e2e1c, hat: 0x1e6fd9 } },
   { female: true, id: 'khady', name: 'Khady', title: 'gérante du Pointe', role: 'employer', hub: 'almadies', anchor: 'restaurant', ox: 4, oz: 0, outfit: { top: 0xf3f0ea, bottom: 0x0c4a6e, skin: 0x6b3f25 } },
   // Added with the NPC life lane (8 Oct 2026). Places already exist in src/world/city.ts.
   { id: 'mamadou', name: 'Mamadou Diallo', title: 'Boutique Diallo', role: 'vendor', hub: 'pikine', anchor: 'city:boutique', ox: -0.09, oz: -2.17, outfit: { top: 0x27407a, bottom: 0x27407a, skin: 0x6b3f25, long: true, hat: 0xf2f2ec } },

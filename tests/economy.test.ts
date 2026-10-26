@@ -195,20 +195,18 @@ describe('a close one reacts (Ibou) and the next step', () => {
 
 describe('work hours', () => {
   const job = (place: string, id: string) => ACTIONS[place].find(a => a.id === id)!;
-  it('helping someone is only offered while they are there (garage, quay, Sandaga stall, morning pirogue)', () => {
+  it('helping someone is only offered while they are there (garage, Sandaga stall)', () => {
     const { s } = fresh();
     s.data.needs.energie = 100;
-    for (const [place, id, open, closed] of [['garage', 'meca', 10, 22], ['port', 'pecheurs', 10, 3], ['market', 'vendre', 10, 20], ['port', 'pirogue', 6, 15]] as const) {
+    for (const [place, id, open, closed] of [['garage', 'meca', 10, 22], ['market', 'vendre', 10, 20]] as const) {
       s.hour = () => open; expect(job(place, id).requires!(s)).toBeNull();
       s.hour = () => closed; expect(job(place, id).requires!(s)).toBeTruthy();
     }
     s.hour = () => 10; s.data.needs.energie = 5;
     expect(job('garage', 'meca').requires!(s)).toBe('Trop fatigué');
   });
-  it('a trusted fisher still finds work on the quay once the morning pirogue has left', () => {
-    const { s } = fresh();
-    s.data.flags.push('ousmane_trust');
-    s.hour = () => 8; expect(job('port', 'pecheurs').visible!(s)).toBe(false);
-    s.hour = () => 15; expect(job('port', 'pecheurs').visible!(s)).toBe(true);
+  it('the Almadies\' quay offers no fishing any more: it is the Embarcadère de Ngor, whose crossings leave from the pier\'s end (docs/TRAVERSEE.md)', () => {
+    expect(ACTIONS.port.length).toBeGreaterThan(0);
+    for (const a of ACTIONS.port) { expect(a.gain ?? 0).toBe(0); expect(a.steps ?? []).toEqual([]); expect(a.label).not.toMatch(/pêche|pêcheurs|pirogue du matin/i); }
   });
 });

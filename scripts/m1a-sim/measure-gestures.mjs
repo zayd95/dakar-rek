@@ -15,6 +15,16 @@ await page.goto(`${base}?debug`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
 const d = (fn, arg) => page.evaluate(fn, arg);
 
+/** A venue's place (src/venues): stand at its anchor, the action button runs the offer of the hour (Soumbédioune's trip). */
+const startAtVenue = async (type, anchor) => {
+  const v = await d(t => window.__dakar.venues?.().find(x => x.type === t) ?? null, type), a = v?.anchors.find(x => x.id === anchor);
+  if (!a) return false;
+  await d(p => window.__dakar.place(p.x, p.z, -Math.PI / 2), a);
+  await page.waitForFunction(id => window.__dakar.focus()?.id === id, `${v.id}:${anchor}`, T).catch(() => {});
+  await d(() => window.__dakar.act());
+  await page.waitForFunction(() => window.__dakar.gesture(), null, T).catch(() => {});
+  return !!(await d(() => window.__dakar.gesture()));
+};
 const startAt = async (frag, action) => {
   const it = (await d(() => window.__dakar.interactables())).find(i => i.id.includes(frag));
   if (!it) return false;
@@ -29,14 +39,15 @@ const startAt = async (frag, action) => {
   return true;
 };
 
-/** Plays the whole shift (every gesture part) like a person; returns the gesture-clock seconds and the rounds played. */
-const play = () => d(() => new Promise(resolve => {
+/** Plays the whole shift (every gesture part) like a person; returns the gesture-clock seconds and the rounds played. `only`: the gesture alone (a trip's
+ *  haul: the boat's way back after it is not the gesture's time). */
+const play = (only = false) => d(only => new Promise(resolve => {
   const rnd = (a, b) => a + Math.random() * (b - a);
   let gameT = 0, last = performance.now(), start = null, key = '', due = null, aimed = false, rounds = 0;
   const loop = () => {
     const now = performance.now(); const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const g = window.__dakar.gesture();
-    if (!g) { if (start !== null && !window.__dakar.activity()) return resolve({ secs: +(gameT - start).toFixed(2), rounds }); if (start !== null) gameT += dt; return requestAnimationFrame(loop); }
+    if (!g) { if (start !== null && (only || !window.__dakar.activity())) return resolve({ secs: +(gameT - start).toFixed(2), rounds }); if (start !== null) gameT += dt; return requestAnimationFrame(loop); }
     gameT += dt; if (start === null) start = gameT - dt;
     if (g.pause) { key = ''; due = null; return requestAnimationFrame(loop); }
     const k = `${g.kind}:${g.label}:${g.round}:${g.results.length}`;
@@ -55,14 +66,15 @@ const play = () => d(() => new Promise(resolve => {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-}));
+}), only);
 
 const SHIFTS = [
   { id: 'meca', hub: 'pikine', frag: ':garage:', action: 'Aider le mécanicien', pay: 2000 },
   { id: 'roue', hub: 'pikine', frag: ':garage:', action: 'Changer une roue', pay: 1500 },
   { id: 'vendre', hub: 'plateau', frag: ':market', action: 'Tenir l’étal', pay: 2500 },
-  { id: 'pecheurs', hub: 'almadies', frag: ':port', action: 'Aider les pêcheurs', pay: 3500 },
-  { id: 'pirogue', hub: 'almadies', frag: ':port', action: 'Pirogue du matin', pay: 4500 },
+  // the haul of the net moved from the Almadies' quay (now the Embarcadère de Ngor, docs/TRAVERSEE.md) to Soumbédioune's pirogue trip: the same
+  // timing gesture, G.haul(4); it pays fish (4 to 6 by the hour), not money, so the row gives the catch and no pay factor
+  { id: 'filet', hub: 'corniche', venue: 'beach', anchor: 'pirogue', action: 'Partir avec les pêcheurs', pay: 0 },
 ];
 const out = [];
 for (const sh of SHIFTS) {
@@ -71,17 +83,19 @@ for (const sh of SHIFTS) {
   const res = [];
   for (let i = 0; i < TRIALS; i++) {
     await d(() => { const s = window.__dakar.state; s.data.wallet = 0; s.data.needs.energie = 95; s.data.needs.faim = 90; });
-    if (!(await startAt(sh.frag, sh.action))) { console.log(sh.id, 'not available here, skipped'); break; }
-    const r = await play();
+    const fish0 = await d(() => window.__dakar.inventory?.().find(i => i.id === 'poisson')?.count ?? 0);
+    if (!(await (sh.venue ? startAtVenue(sh.venue, sh.anchor) : startAt(sh.frag, sh.action)))) { console.log(sh.id, 'not available here, skipped'); break; }
+    const r = await play(!!sh.venue);
     await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
-    const paid = await d(() => window.__dakar.state.wallet);
-    res.push({ ...r, paid, factor: +(paid / sh.pay).toFixed(2) });
+    if (sh.venue) await d(() => window.__dakar.stand?.());
+    const paid = await d(() => window.__dakar.state.wallet), fish = (await d(() => window.__dakar.inventory?.().find(i => i.id === 'poisson')?.count ?? 0)) - fish0;
+    res.push({ ...r, paid, factor: sh.pay ? +(paid / sh.pay).toFixed(2) : 0, ...(sh.venue ? { fish } : {}) });
   }
   if (!res.length) continue;
   const mean = k => +(res.reduce((t, r) => t + r[k], 0) / res.length).toFixed(2);
-  const row = { shift: sh.id, trials: res.length, secs: mean('secs'), min: Math.min(...res.map(r => r.secs)), max: Math.max(...res.map(r => r.secs)), rounds: mean('rounds'), payFactor: mean('factor') };
+  const row = { shift: sh.id, trials: res.length, secs: mean('secs'), min: Math.min(...res.map(r => r.secs)), max: Math.max(...res.map(r => r.secs)), rounds: mean('rounds'), payFactor: sh.pay ? mean('factor') : null, ...(sh.venue ? { fish: mean('fish') } : {}) };
   out.push(row); console.log(JSON.stringify(row), JSON.stringify(res.map(r => [r.secs, r.factor])));
 }
 console.log('\nSUMMARY (gesture-clock seconds per shift, human-like bot):');
-for (const r of out) console.log(r.shift.padEnd(10), String(r.secs).padStart(6), 's  (min', r.min, 'max', r.max, ') rounds', r.rounds, ' pay factor', r.payFactor);
+for (const r of out) console.log(r.shift.padEnd(10), String(r.secs).padStart(6), 's  (min', r.min, 'max', r.max, ') rounds', r.rounds, r.fish !== undefined ? ' fish' : ' pay factor', r.fish ?? r.payFactor);
 await browser.close();
