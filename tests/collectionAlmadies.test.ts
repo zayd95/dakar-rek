@@ -27,8 +27,8 @@ const TABLE: Row[] = [
   ['bibliotheque_noyer', 'Bibliothèque éclairée en noyer', 2_200_000, 'shelf', 'sejour', 'lxCabinet:premium'],
   ['bibliotheque_bronze', 'Étagère ouverte noir et bronze', 1_300_000, 'shelf', 'sejour', 'lxAccent:better'],
   // dining
-  ['salle_manger_ronde', 'Table ronde en marbre et quatre chaises', 6_500_000, 'dining', 'sejour', 'lxTableSet:premium'],
-  ['salle_manger_noyer', 'Table en noyer et quatre chaises', 3_600_000, 'dining', 'sejour', 'lxTableSet:better'],
+  ['salle_manger_ronde', 'Table ronde en marbre et quatre chaises', 6_500_000, 'dining', 'manger', 'lxTableSet:premium'],
+  ['salle_manger_noyer', 'Table en noyer et quatre chaises', 3_600_000, 'dining', 'manger', 'lxTableSet:better'],
   // the bedroom
   ['lit_capitonne_noir', 'Lit en cuir noir capitonné', 5_800_000, 'bed', 'chambre', 'lxBed:premium'],
   ['lit_lin_greige', 'Lit tapissier en lin grège', 4_900_000, 'bed', 'chambre', 'lxBed:better'],
@@ -41,7 +41,7 @@ const TABLE: Row[] = [
   ['dressing_bronze', 'Dressing quatre portes, poignées bronze', 4_200_000, 'wardrobe', 'chambre', 'lxChest:premium'],
   ['coiffeuse_ronde', 'Coiffeuse, miroir rond et tabouret', 1_500_000, 'mirror', 'chambre', 'lxAccent:premium'],
   // the office
-  ['bureau_caisson', 'Bureau à caisson et chaise tapissée', 2_600_000, 'desk', 'sejour', 'lxTableSet:basic'],
+  ['bureau_caisson', 'Bureau à caisson et chaise tapissée', 2_600_000, 'desk', 'bureau', 'lxTableSet:basic'],
   // light and decoration
   ['lustre_couronne', 'Lustre couronne de cristal', 6_000_000, 'lamp', 'any', 'lxLight:premium'],
   ['lampadaire_champignon', 'Lampadaire champignon', 480_000, 'lamp', 'any', 'lxLight:basic'],
@@ -189,7 +189,8 @@ describe('Collection Almadies: in the F2', () => {
     for (const [id, , , , room] of TABLE) {
       const a = autoPlace(F2, spec(id), [])!;
       expect(a, id).not.toBeNull(); expect(whyNot(F2, spec(id), a, []), id).toBeNull();
-      if (room !== 'any') expect(roomOf(F2, a)?.id, id).toBe(room);
+      // a room of its kind, else the séjour (the F2 has no dining room or study: LD2.0-D's TYPE_ROOM falls back there)
+      if (room !== 'any') expect(roomOf(F2, a)?.id, id).toBe(F2_JAMM.rooms.some(r => r.id === room) ? room : 'sejour');
     }
   });
 
