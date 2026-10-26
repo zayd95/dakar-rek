@@ -37,11 +37,27 @@ try {
     await d(() => window.__dakar.act()); await page.waitForTimeout(600);
     check(`${hub}: the menu lists the dishes with prices`, await d(() => /−/.test(document.querySelector('#modal.on')?.textContent ?? '')));
     await page.screenshot({ path: `${out}/${hub}-menu.png` });
-    const w0 = await d(() => window.__dakar.state.wallet), n0 = await d(() => window.__dakar.state.data.needs.faim);
+    const w0 = await d(() => window.__dakar.state.wallet), t0 = await d(() => window.__dakar.state.data.counters.terrasse ?? 0);
     await d(() => window.__dakar.state.data.needs.faim = 20);
-    await page.locator('#modal.on .item').first().click(); await page.waitForTimeout(500);
-    const w1 = await d(() => window.__dakar.state.wallet), n1 = await d(() => window.__dakar.state.data.needs.faim);
-    check(`${hub}: ordering pays once and feeds (${w0} → ${w1} F, faim 20 → ${n1})`, w1 === w0 - info.menu[0][1] && n1 > 20);
+    await page.locator('#modal.on .item').first().click();
+    // the order is a real activity: paid once at the start, prepared, then the guest walks to a table, sits, and eats at the table
+    await page.waitForFunction(() => window.__dakar.activity()?.id, null, T);
+    const w1 = await d(() => window.__dakar.state.wallet);
+    check(`${hub}: ordering pays once at the start (${w0} → ${w1} F)`, w1 === w0 - info.menu[0][1]);
+    check(`${hub}: not fed yet while it is prepared`, (await d(() => window.__dakar.state.data.needs.faim)) <= 21);
+    await page.waitForFunction(() => /mange|bois/i.test(window.__dakar.activity()?.step ?? ''), null, T);
+    const seat = await d(() => { const s = window.__dakar.pos(); return { x: s.x, z: s.z }; });
+    const meal = await page.waitForFunction(() => window.__dakar.meal(), null, T).then(h => h.jsonValue());
+    check(`${hub}: seated at a table with the plate on it (a table top, within reach of the seat)`, meal.y >= 0.45 && Math.hypot(meal.x - seat.x, meal.z - seat.z) < 1.6, JSON.stringify([seat, meal]));
+    await page.screenshot({ path: `${out}/${hub}-eating.png` });
+    await page.waitForFunction(() => !window.__dakar.activity(), null, T);
+    const n1 = await d(() => window.__dakar.state.data.needs.faim), w2 = await d(() => window.__dakar.state.wallet);
+    check(`${hub}: the meal feeds (faim 20 → ${n1}) and was not charged twice (${w2} F)`, n1 > 20 && w2 === w1);
+    check(`${hub}: the terrace meal is counted once`, (await d(() => window.__dakar.state.data.counters.terrasse ?? 0)) === t0 + 1);
+    // finishing: « Se lever » from the table
+    const fs = await d(() => window.__dakar.focus());
+    check(`${hub}: the table offers « Se lever »`, !!fs && JSON.stringify(fs).includes('Se lever'), JSON.stringify(fs)?.slice(0, 160));
+    await d(() => window.__dakar.act()); await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T); await page.waitForTimeout(700);
     // leave
     await d(i => window.__dakar.place(i.door.x * 0 + 3200 + 60 * ['plateau', 'corniche', 'almadies'].indexOf(i.hub) + 5, 4.9, Math.PI), info); await page.waitForTimeout(1000);
     const fo = await d(() => window.__dakar.focus());

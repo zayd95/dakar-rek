@@ -9,6 +9,7 @@ import { Batch, signTexture } from '../world/batch';
 import { ENTER } from '../world/content';
 import { rng } from '../core/rng';
 import { signPanel } from '../economy/citeJamm';
+import { order } from '../activity/primitives';
 
 /**
  * Rooftop restaurants and lounges (Plateau, Corniche, Ngor): a stair door in the facade of a tall building of the hub, and
@@ -17,31 +18,31 @@ import { signPanel } from '../economy/citeJamm';
  * neither a gargote nor a maïga: a place to sit and be seen. Names and menus are invented; juices and food only.
  * Local frame: 16 × 11 m deck, the stairs in the south parapet, the bar along the north one.
  */
-interface Dish { name: string; icon: string; price: number; faim: number; moral: number; social?: number }
+interface Dish { name: string; icon: string; price: number; faim: number; moral: number; social?: number; /** The plate or glass shown on the table (src/game/meals.ts). */ prop: string }
 interface Def { id: string; name: string; sign: string; kind: 'restaurant' | 'lounge'; view: 'city' | 'sea'; ref: { x: number; z: number }; deck: number; accent: number; menu: Dish[]; blurb: string }
 export const ROOFTOPS: Partial<Record<HubId, Def>> = {
   plateau: {
     id: 'plateau', name: 'Toit Baobab', sign: 'TOIT BAOBAB · RESTAURANT', kind: 'restaurant', view: 'city', ref: { x: 0, z: 0 }, deck: 0xd9c19a, accent: 0x2f7d4f,
     blurb: 'Restaurant sur le toit, au-dessus de la ville',
     menu: [
-      { name: 'Thiéboudiène', icon: '🍚', price: 4500, faim: 60, moral: 5 }, { name: 'Yassa poulet', icon: '🍗', price: 4000, faim: 52, moral: 5 },
-      { name: 'Dibi grillé', icon: '🥩', price: 3500, faim: 44, moral: 4 }, { name: 'Jus de bissap glacé', icon: '🍹', price: 800, faim: 6, moral: 4, social: 2 },
+      { name: 'Thiéboudiène', icon: '🍚', price: 4500, faim: 60, moral: 5, prop: 'ceebu' }, { name: 'Yassa poulet', icon: '🍗', price: 4000, faim: 52, moral: 5, prop: 'yassa' },
+      { name: 'Dibi grillé', icon: '🥩', price: 3500, faim: 44, moral: 4, prop: 'dibi' }, { name: 'Jus de bissap glacé', icon: '🍹', price: 800, faim: 6, moral: 4, social: 2, prop: 'bissap' },
     ],
   },
   corniche: {
     id: 'corniche', name: 'Sunset Lounge', sign: 'SUNSET LOUNGE · TERRASSE', kind: 'lounge', view: 'sea', ref: { x: 0, z: 0 }, deck: 0xcfb08a, accent: 0xd9762b,
     blurb: 'Lounge sur le toit, face à l’océan',
     menu: [
-      { name: 'Mocktail bissap-menthe', icon: '🍹', price: 2500, faim: 5, moral: 9, social: 3 }, { name: 'Jus de gingembre', icon: '🧃', price: 1000, faim: 6, moral: 4 },
-      { name: 'Brochettes', icon: '🍢', price: 3000, faim: 36, moral: 4 }, { name: 'Poisson grillé', icon: '🐟', price: 5000, faim: 58, moral: 6 },
+      { name: 'Mocktail bissap-menthe', icon: '🍹', price: 2500, faim: 5, moral: 9, social: 3, prop: 'bissap' }, { name: 'Jus de gingembre', icon: '🧃', price: 1000, faim: 6, moral: 4, prop: 'jus' },
+      { name: 'Brochettes', icon: '🍢', price: 3000, faim: 36, moral: 4, prop: 'brochettes' }, { name: 'Poisson grillé', icon: '🐟', price: 5000, faim: 58, moral: 6, prop: 'poisson' },
     ],
   },
   almadies: {
     id: 'almadies', name: 'Terrasse de Ngor', sign: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', kind: 'lounge', view: 'sea', ref: { x: -30, z: -120 }, deck: 0xe0c9a4, accent: 0x1f7aa6,
     blurb: 'Restaurant et lounge sur le toit, vue sur l’île de Ngor',
     menu: [
-      { name: 'Poisson braisé', icon: '🐟', price: 6000, faim: 62, moral: 7 }, { name: 'Jus de bouye', icon: '🥤', price: 1200, faim: 8, moral: 5 },
-      { name: 'Salade de mangue', icon: '🥗', price: 2800, faim: 28, moral: 4 }, { name: 'Café Touba', icon: '☕', price: 500, faim: 2, moral: 4, social: 2 },
+      { name: 'Poisson braisé', icon: '🐟', price: 6000, faim: 62, moral: 7, prop: 'poisson' }, { name: 'Jus de bouye', icon: '🥤', price: 1200, faim: 8, moral: 5, prop: 'jus' },
+      { name: 'Salade de mangue', icon: '🥗', price: 2800, faim: 28, moral: 4, prop: 'plate' }, { name: 'Café Touba', icon: '☕', price: 500, faim: 2, moral: 4, social: 2, prop: 'drink' },
     ],
   },
 };
@@ -168,17 +169,33 @@ function buildTerrace(def: Def, ox: number, oz: number, hub: string, doorX: numb
 }
 const money = (n: number) => `${n.toLocaleString('fr-FR').replace(/[  ]/g, ' ')} F`;
 
-function openMenu(ctx: GameCtx, def: Def) {
+/** What the bar serves, as the ordinary `order` activity: pay once at the start, the dish is prepared, the guest sits at the nearest table, eats or drinks, and the needs come at the last bite. */
+export function dishActivity(def: Def, d: Dish, at: { x: number; z: number }) {
+  const drink = d.faim < 10;
+  const a = order({
+    id: `${def.id}:rooftop:${d.name}`, label: `${def.name} : ${d.name}`, icon: d.icon, price: d.price, prep: 3, eat: drink ? 4 : 7, drink, prop: d.prop,
+    needs: { faim: d.faim, moral: d.moral, ...(d.social ? { social: d.social } : {}) },
+    seat: { near: at, r: 16, rank: s => (s.table ? 0 : 100) + Math.hypot(s.x - at.x, s.z - at.z) },     // a table seat first (the plate is set on the table), the stools last
+  });
+  const last = a.steps[a.steps.length - 1];
+  last.effects = { ...last.effects, counters: { ...last.effects?.counters, terrasse: 1 } };
+  return a;
+}
+
+function openMenu(ctx: GameCtx, def: Def, at: { x: number; z: number }) {
   const s = ctx.state;
   ctx.menu(def.name, `${def.blurb} · ton argent : ${money(s.wallet)}`, def.menu.map(d => ({
     icon: d.icon, label: d.name, right: '−' + money(d.price), detail: s.wallet < d.price ? 'Pas assez d’argent' : undefined, disabled: s.wallet < d.price,
     onPick: () => {
       if (s.wallet < d.price) return;
-      s.addMoney(-d.price, `${def.name} : ${d.name}`); s.adjust({ faim: d.faim, moral: d.moral, ...(d.social ? { social: d.social } : {}) }); s.count('terrasse');
-      ctx.toast(`${d.icon} ${d.name} — bon appétit`); ctx.save(); ctx.hud.closeModal();
+      ctx.hud.closeModal();
+      ctx.activities.start(dishActivity(def, d, at), { place: def.name });
     },
   })));
 }
+
+/** The terrace the player is on, for the modules that stand people in it (M4). */
+export const rooftopHere = () => built ? { def: built.def, doorId: built.door.id, bar: built.bar, ox: ROOM_X + Object.keys(ROOFTOPS).indexOf(built.def.id) * STEP, group: built.int.group } : null;
 
 export const RooftopModule: GameModule = {
   name: 'rooftop',
@@ -187,7 +204,7 @@ export const RooftopModule: GameModule = {
     ctx.interactions.add({ name: 'rooftop', collect: (space, _x, _z, out: Target[]) => {
       const b = built; if (!b || space !== b.door.id) return;
       out.push({ id: `${b.door.id}:bar`, name: 'Le bar', kind: 'counter', space, x: b.bar.x, z: b.bar.z, radius: 2.2, bias: 1.6,
-        affordances: () => [{ id: 'commander', verb: 'browse', label: 'Commander', icon: b.def.menu[0].icon, detail: b.def.blurb, run: () => openMenu(ctx, b.def) }] });
+        affordances: () => [{ id: 'commander', verb: 'browse', label: 'Commander', icon: b.def.menu[0].icon, detail: b.def.blurb, run: () => openMenu(ctx, b.def, b.bar) }] });
     } });
   },
   hubLoaded(ctx, hub) {
