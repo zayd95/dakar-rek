@@ -218,11 +218,11 @@ export const ROUTINES: Routine[] = [
   {
     id: 'ousmane', hub: 'almadies',
     slots: [
-      S(0, 5, abs(66.4, -90, 'chez lui', { yaw: PI / 2 }), 'home'),
-      S(5, 12, P('port', 'au port de pêche', { ox: 4, oz: 1 }), 'work'),
+      S(0, 6, abs(66.4, -90, 'chez lui', { yaw: PI / 2 }), 'home'),
+      S(6, 12, P('port', 'à l’embarcadère de Ngor : il loue ses bateaux pour l’île', { ox: 4, oz: 1 }), 'work'),
       S(12, 14, P('restaurant', 'au Pointe : il livre le poisson à Khady', { ox: 1.5, oz: 0.5 }), 'chat'),
-      S(14, 18, P('port', 'au port de pêche', { ox: 4, oz: 1 }), 'work'),
-      S(18, 21, P('city:square', 'place des voisins, il regarde les dames', { ox: -21.5, oz: -2.5, yaw: PI, sit: true, stool: true }), 'chat'),
+      S(14, 19, P('port', 'à l’embarcadère de Ngor : les dernières traversées', { ox: 4, oz: 1 }), 'work'),
+      S(19, 21, P('city:square', 'place des voisins, il regarde les dames', { ox: -21.5, oz: -2.5, yaw: PI, sit: true, stool: true }), 'chat'),
       S(21, 24, abs(66.4, -90, 'chez lui', { yaw: PI / 2 }), 'home'),
     ],
   },

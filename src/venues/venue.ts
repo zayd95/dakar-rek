@@ -15,8 +15,13 @@ export interface Venue {
   spaceChanged?(space: string): void;
   /** The venue's own presence / interaction space while the player is in it (a club's terrace), else null. */
   space?(): string | null;
-  /** An in-world activity frames the view itself this frame (the grill, the dance floor): true when it set the camera. */
-  camera?(dt: number): boolean;
+  /** An in-world activity frames the view itself this frame (the grill, the dance floor, a crossing): true when it set the camera. `drag`: the player's
+   *  drag of this frame, for the venues that let the view be turned. */
+  camera?(dt: number, drag?: { yaw: number; pitch: number }): boolean;
+  /** The venue holds the player now (a crossing out at sea): updated every frame wherever the camera is, never as a far venue. */
+  active?(): boolean;
+  /** Where a save made now resumes the player (a crossing: the pier, never out at sea), or null (src/game/modules.ts `safePlace`). */
+  safePlace?(): { x: number; z: number; yaw: number } | null;
   dispose(): void;
   debug(): Record<string, unknown>;
 }

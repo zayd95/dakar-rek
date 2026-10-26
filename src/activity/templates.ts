@@ -1,10 +1,15 @@
 import type { Anchor, PlaceSpec } from './places';
 import * as P from './primitives';
-import type { ActivitySpec, SeatPick, Step } from './types';
+import type { ActivitySpec, Effects, SeatPick, Step } from './types';
 import type { Needs } from '../core/types';
 import type { Seat } from '../interact/seats';
 import { apprentiLine, comeLine, haggler, hostSays, price, tasteLine, waitLine } from '../i18n/lines';
 import { G } from './gestures';
+import { BOAT_KINDS, type BoatKind } from '../sea/traverseeSite';
+import { nightReason, type Leg } from '../sea/traverseeRules';
+import { ECONOMY } from '../economy/config';
+
+const TRAVERSEE_HOURS = ECONOMY.traversee.hours, TRAVERSEE_BUSY = ECONOMY.traversee.busy;
 
 /**
  * Place recipes: each kind of place in Dakar is a composition of the same primitives. A builder (street block,
@@ -263,6 +268,74 @@ export function fishingBeach(b: Base & { boat?: string }, h: PlaceHooks = {}): P
       ...opt(h.converse, P.talk({ id: 'mareyeuse', label: 'Discuter des prix', line: hostSays('mareyeuse'), then: () => h.converse!('mareyeuse') })),
     ],
   } };
+}
+
+/**
+ * Steps of a crossing to the island of Ngor and back (docs/TRAVERSEE.md), in order; the venue (src/venues/embarcadere.ts) moves the boat and its
+ * customers along them and says when each one is over. Labels are unique: the venue reads the step it is on by its label.
+ */
+export const CROSSING_STEPS = {
+  start: 'Ousmane largue les amarres', helm: 'Tu prends la barre', board: 'Les passagers embarquent', out: 'Cap sur l’île de Ngor',
+  land: 'Débarquement sur l’île', boardBack: 'Embarquement pour le retour', back: 'Retour à l’embarcadère', landBack: 'Débarquement au ponton',
+} as const;
+export type CrossingStage = keyof typeof CROSSING_STEPS;
+/** The stage a step label stands for. */
+export const crossingStage = (label: string): CrossingStage | null => (Object.keys(CROSSING_STEPS) as CrossingStage[]).find(k => CROSSING_STEPS[k] === label) ?? null;
+
+/** The venue's side of a crossing (src/venues/embarcadere.ts). */
+export interface CrossingHooks {
+  /** The helm's seat of this boat: the step that boards it seats the player there from the pier's end, as a vehicle's seat. */
+  helm(kind: BoatKind): string;
+  /** The venue's word that this stage is over (the runner waits on it: the passengers seated, the boat moored…). */
+  over(kind: BoatKind, stage: CrossingStage): boolean;
+  /** About how long a stage lasts (s), for the progress bar. */
+  seconds(kind: BoatKind, stage: CrossingStage): number;
+  /** What a leg pays once its passengers have stepped off: money (fares − Ousmane's share) with its wallet line, counters, needs. Read then. */
+  pay(kind: BoatKind, leg: Leg): Effects;
+  /** The leg has just been paid (the venue thanks, logs it). */
+  paid?(kind: BoatKind, leg: Leg): void;
+  /** Why this boat cannot leave now, or null; its line in the choice (passengers, fare, share). */
+  why(kind: BoatKind): string | null;
+  detail(kind: BoatKind): string;
+  /** What is said as the boarding starts (« Nanu dem ! »). */
+  call?(kind: BoatKind): string;
+  /** Open the choice at the pier's end. */
+  choose(): void;
+  /** The line of the place's own offer (who waits, the hours). */
+  summary?(): string;
+}
+
+/**
+ * Embarcadère de Ngor (la traversée, docs/TRAVERSEE.md): at the pier's end one offer opens the choice of the crossing, by pirogue or by chaloupe
+ * (fare, passengers waiting, Ousmane's share; the chaloupe closed until Ousmane trusts the player with it). A crossing is a round trip of
+ * `ride` steps the venue plays out — the player at the helm, the customers aboard, across to the island's jetty, the customers off and the leg
+ * paid (the step's own effects: never twice), the return customers, back to the pontoon and that leg paid. Open 7 h–19 h, busier 9–12 h and 16–18 h.
+ * The crossings are in `offers.barre` (no anchor of their own: the choice starts them).
+ */
+export function embarcadere(b: Base, h: PlaceHooks & { crossing: CrossingHooks }): PlaceSpec {
+  const at = anchors(b.anchors), c = h.crossing;
+  const trip = (kind: BoatKind): ActivitySpec => {
+    const step = (stage: CrossingStage, more: Partial<Step> = {}): Step => ({ label: CROSSING_STEPS[stage], primitive: 'ride', seconds: c.seconds(kind, stage), until: () => c.over(kind, stage), ...more });
+    /** A landing: the leg is paid when its passengers are off, by the step's effects (read from the venue at that moment). */
+    const landing = (stage: CrossingStage, leg: Leg): Step => Object.defineProperty(step(stage, { then: () => c.paid?.(kind, leg) }), 'effects', { get: () => c.pay(kind, leg), enumerable: true, configurable: true });
+    return live({
+      id: `traversee_${kind}`, primitive: 'ride', label: kind === 'pirogue' ? 'Traversée en pirogue' : 'Traversée en chaloupe', icon: kind === 'pirogue' ? '🛶' : '🚤',
+      requires: () => c.why(kind),
+      steps: [
+        { label: CROSSING_STEPS.start, primitive: 'ride', seconds: 0.5 },
+        { label: CROSSING_STEPS.helm, primitive: 'ride', seat: c.helm(kind), seconds: 0.7 },
+        step('board', { line: () => c.call?.(kind) ?? '' }), step('out'), landing('land', 'aller'),
+        step('boardBack'), step('back'), landing('landBack', 'retour'),
+      ],
+    }, () => c.detail(kind));
+  };
+  return {
+    id: b.id, name: b.name, space: b.space, type: 'traversee', hours: [TRAVERSEE_HOURS[0], TRAVERSEE_HOURS[1]], closedWhy: nightReason, chat: true,
+    peaks: TRAVERSEE_BUSY.map(([x, y]) => [x, y] as [number, number]), anchors: [at('quai')], offers: {
+      quai: [live(P.ride({ id: 'traversees', label: 'Traversées', icon: '⛵', then: () => c.choose() }), () => c.summary?.())],
+      barre: BOAT_KINDS.map(trip),
+    },
+  };
 }
 
 /** A club night runs from the evening to the morning: the hours before noon belong to the night before. */
