@@ -157,7 +157,7 @@ class Craft {
     this.pitch = Math.sin(t * 1.6 + 0.7) * k.pitch * amp;
     const g = this.m.group;
     g.position.set(this.x, S.seaY + this.heave, this.z); g.rotation.set(this.pitch, this.yaw, this.roll);
-    const wake = this.m.wake.material as THREE.MeshBasicMaterial, want = this.v > 0.6 && !this.arrived ? clamp(0.12 + 0.48 * (this.v / this.cruise), 0, 0.6) : 0;
+    const wake = this.m.wake.material as THREE.MeshBasicMaterial, want = this.v > 0.6 && !this.arrived ? clamp(0.1 + 0.32 * (this.v / this.cruise), 0, 0.42) : 0;   // soft: on a phone, close behind the stern, more read as white planks
     wake.opacity += (want - wake.opacity) * Math.min(1, dt * 2.5); wake.visible = wake.opacity > 0.01;
     g.updateMatrixWorld();
     // the helm rides with the boat: the player's body is set on it every frame (src/main.ts)

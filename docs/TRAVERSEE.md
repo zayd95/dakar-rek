@@ -78,6 +78,32 @@ What changes with them:
 - **Reload in the middle of a crossing:** the player is put back on the pier at the anchor, and the boats are back at their moorings. Nothing is paid for the unfinished leg, and counters stay as they were.
 - **Debug:** `window.__dakar.traversee()` returns what a check needs: the phase, the boat and its pose, the customers (state, seated or not, where), the legs paid with their amounts, the counters, and why a choice is closed.
 
+### As built (beyond the contract)
+- **The boat not in use** waits on the pontoon's west side, at x = 28 − 0.35 − beam/2 with z and yaw as at the quay mooring. The boats swap during the cut to black that starts a crossing.
+- **Turning room:**
+  - The return turns the boat round east of the island's mooring (x 39…49, z −296…−286) and east of the quay's (sweeping to z −165).
+  - Nothing static stands there: the island's rocks and the beach pirogues keep clear.
+- **The island's ground:** `ngorGroundY(x, z)` (`src/world/ngor.ts`). The customers who land walk up the island's sand on it.
+- **Timings:** a pirogue round trip takes about 91 game-seconds headless.
+  - Boarding ≈ 18 s;
+  - out ≈ 26 s, which includes easing in and out;
+  - landing ≈ 4 s;
+  - boarding back ≈ 6 s;
+  - back ≈ 33 s, which includes both turns;
+  - landing ≈ 3 s.
+  - The chaloupe goes out in about 20 s.
+- **« Arrêter » or a reload in the middle of a crossing:** both put the player on the pier at (31.1, −153) facing the sea, through the venues' `safePlace()`. A player seated out at sea is never saved, so the hub's bounds never clamp them onto the beach.
+- **The VTC points of the Almadies (9, all real places):**
+  - The `port` point is now « Embarcadère de Ngor ».
+  - The duplicate `embarcadere` point became « La Vague · plage de Ngor ».
+  - « Résidence des Almadies », which was no place in the game, became « Villa avec piscine · Almadies ».
+- **The minimap** shows the embarcadère as transport.
+- **Shared framework additions:** all optional, unused by other venues.
+  - `PlaceSpec.closedWhy` (the reason a closed place shows);
+  - `Venue.camera(dt, drag)`, `active()` and `safePlace()`.
+- **The gesture measurement** (`scripts/m1a-sim/measure-gestures.mjs`, `scripts/check-perform.mjs`) moved from the quay's haul to Soumbédioune's net, which pays fish rather than money.
+- **The optional « Garde le cap » gesture is not built.**
+
 ## Lanes (at most two implementation agents; one integration owner)
 | Lane | Owns | Delivers |
 |---|---|---|
