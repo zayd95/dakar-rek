@@ -303,7 +303,9 @@ try {
   await B.waitForTimeout(1500);
   check('away from the place: no `here`', (await B.evaluate(() => window.__stub.log.here.length)) === 0);
   await B.evaluate(p => window.__dakar.place(p.x + 2, p.z + 2, 0), sq);
-  await B.waitForTimeout(2600);
+  // the meetup is checked a few times a second; on a slow software renderer (two pages, one of them drawing a home inside) the first `here`
+  // can come after 2.6 s, so wait for it (up to 15 s) rather than for a fixed time, then make sure no second one follows
+  await B.waitForFunction(() => window.__stub.log.here.length > 0, null, { timeout: 15000, polling: 200 }).catch(() => {});
   const here1 = await B.evaluate(() => [...window.__stub.log.here]);
   await B.waitForTimeout(3000);
   const here2 = await B.evaluate(() => [...window.__stub.log.here]);
