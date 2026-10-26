@@ -66,7 +66,7 @@ It is not a delivery job:
 ## Rules (anti-exploit)
 
 - **A lot in hand:** one at a time, numbered (`pl_lot_seq`). Its number is in every ledger line.
-- **Paying:** all money goes through the existing `GameState.addMoney` (one ledger line each). There is no other wallet and no other stock: the goods are counted in the existing player `inventory`.
+- **Paying:** all money goes through the existing `GameState.addMoney` (one ledger line each). There is no other wallet and no other stock: the goods are counted in the existing player `inventory` (`pl_the`, `pl_riz`, `pl_mangue`).
 - **Selling:** only while the lot is loaded or delivered. The stage becomes `sold` in the same step as the credit, then the save is written. A retry, a double tap or a reload never pays twice.
 - **Cancelling:**
   - Before the lot leaves the forecourt, « Annuler » refunds it fully.

@@ -627,6 +627,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     solidC(px, pz, 1.5, 2.4, 0.9);
     people.push({ x: -71.0, z: L.z0 + 4.6, yaw: Math.PI / 2, clip: 'Idle' }, { x: -70.9, z: cz + 5.6, yaw: -2.4, clip: 'Talk' });
     loadingBay(GROSSISTE.bay);
+    interactables.push({ id: GROSSISTE.id, name: GROSSISTE.name, kind: 'actions', x: GROSSISTE.dock.x, z: GROSSISTE.dock.z, radius: 0.1, actions: [] });   // the place (map, walking marker); Oumar Diallo is src/districts/trade.ts
   };
   /**
    * M2: the Comptoir Sall, the Plateau buyer. A four-storey trading house in the formal Plateau style, its street face behind an arcade (pillars at the
@@ -652,6 +653,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     solid(71.4, L.z0 + 2, 72.5, L.z0 + 4.2, 0.7); solid(71.6, L.z1 - 3.3, 72.3, L.z1 - 2.7, 1.2);
     people.push({ x: 71.2, z: L.z1 - 5, yaw: -Math.PI / 2, clip: 'Idle' });
     loadingBay(COMPTOIR.bay);
+    interactables.push({ id: COMPTOIR.id, name: COMPTOIR.name, kind: 'actions', x: COMPTOIR.dock.x, z: COMPTOIR.dock.z, radius: 0.1, actions: [] });
   };
 
   const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
