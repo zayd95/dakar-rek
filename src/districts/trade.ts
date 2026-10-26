@@ -36,6 +36,8 @@ const LINES = {
   sallNone: 'Le Comptoir Sall achète en gros : thé, riz, mangues. Les grossistes de la Médina en ont, chez Diallo par exemple.',
   sallWait: 'Le pousse-pousse n’est pas encore arrivé. Il vient à pied de la Médina.',
 };
+/** The porter walks this far right of the street's centre line: the kerb strip, beside the cars' lane (m). */
+const KERB = 5.2;
 /** A vehicle parked in a bay may load or unload within this margin of it (m). */
 const BAY_MARGIN = 2.5;
 
@@ -104,7 +106,11 @@ function porterPose(l: Lot, playedMs: number): { x: number; z: number; yaw: numb
   let left = gone;
   for (let i = 1; i < porterPath.points.length; i++) {
     const a = porterPath.points[i - 1], b = porterPath.points[i], seg = Math.hypot(b.x - a.x, b.z - a.z);
-    if (left <= seg) { const t = seg ? left / seg : 0; return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, yaw: Math.atan2(b.x - a.x, b.z - a.z), moving: true }; }
+    if (left <= seg) {
+      // along the kerb on his right, out of the cars' lane (the route is the streets' centre lines); the right of a heading is (−cos, sin)
+      const t = seg ? left / seg : 0, yaw = Math.atan2(b.x - a.x, b.z - a.z), off = i === 1 || i === porterPath.points.length - 1 ? 0 : KERB;
+      return { x: a.x + (b.x - a.x) * t - Math.cos(yaw) * off, z: a.z + (b.z - a.z) * t + Math.sin(yaw) * off, yaw, moving: true };
+    }
     left -= seg;
   }
   return null;
