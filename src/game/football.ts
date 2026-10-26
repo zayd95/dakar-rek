@@ -695,10 +695,9 @@ class Football implements GameModule {
     const card = {
       icon: res === 'win' ? '🏆' : res === 'draw' ? '🤝' : '⚽', title: resultTitle(me.team, score), sub: `Partie de foot · Corniche · tu jouais avec les ${KITS[me.team].name}`,
       rows: [
+        // the player's own match first: a card on a phone held upright shows its first rows
+        { k: 'Toi', v: `${me.goals} but${me.goals > 1 ? 's' : ''} · ${me.passes} passe${me.passes > 1 ? 's' : ''} · ${me.shots} tir${me.shots > 1 ? 's' : ''}` },
         { k: 'Score', v: `${KITS[me.team].name} ${score[me.team]} – ${score[other]} ${KITS[other].name}`, tone: res === 'win' ? 'up' : res === 'loss' ? 'down' : undefined },
-        { k: 'Tes buts', v: `${me.goals}` },
-        { k: 'Tes passes', v: `${me.passes}` },
-        { k: 'Tes tirs', v: `${me.shots}` },
         { k: 'Tes matchs', v: `${c[FT.matches] ?? 0} joué${(c[FT.matches] ?? 0) > 1 ? 's' : ''} · ${c[FT.wins] ?? 0} gagné${(c[FT.wins] ?? 0) > 1 ? 's' : ''}` },
       ],
       next: ['Rejouer, ou souffler au bord du terrain avec les habitués.'],
