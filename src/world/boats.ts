@@ -86,13 +86,13 @@ function buildPirogue(b: Batch, lite: boolean): Fitted {
   b.box(0.06, 0.06, 0.66, 0.6, 0.94, 3.6, 0x1d1f22, 0.62);                       // tiller
   b.box(0.22, 0.34, 0.36, -0.12, P_KEEL + pLift(0.885) + P_FLOOR, 3.85, 0xe8b923); // the fuel jerrycan behind the helm
   if (!lite) {
-    for (const z of [-1.6, 1.0]) b.blob(0.12, -0.86, 0.32, z, 0xe8662a, 1.7, 0);     // fenders on the west side, the one against the quay
+    for (const z of [-1.6, 1.0]) b.blob(0.12, -0.86, 0.32, z, 0xe8662a, 1.7, 0);     // fenders on the west side
     b.box(0.04, 0.85, 0.04, 0, 1.38, -4.95, 0xe9e4d8);                              // a pennant on the bow post, Senegal's colours
     [0x1f8a4c, 0xf2c318, 0xd23a2b].forEach((c, i) => b.box(0.02, 0.28, 0.14, 0, 1.92, -4.88 + i * 0.14, c));
   }
   const seats = thwarts.flatMap((z, k) => [-1, 1].map((s, j) => ({ id: `p${k * 2 + j}`, x: s * 0.36, y: P_SEAT, z, yaw: SEAT_YAW })));
-  // the step: the west gunwale just forward of the first thwart, where the bow, run up on the sand, still stands in the shallows (knee-deep at most)
-  const step = { x: -pWidth(0.2), z: -3 };
+  // the step: the west gunwale forward of the first thwart, where the bow, run up on the sand, still stands in the shallows (ankle- to knee-deep)
+  const step = { x: -pWidth(0.16), z: -3.4 };
   return { helm: { id: 'helm', x: 0.12, y: P_HELM, z: 3.2, yaw: SEAT_YAW }, seats, beam: 2 * pWidth(0.5), step };
 }
 
@@ -173,7 +173,7 @@ function buildChaloupe(b: Batch, lite: boolean): Fitted {
   [0x1f8a4c, 0xf2c318, 0xd23a2b].forEach((c, i) => b.box(0.015, 0.3, 0.15, -0.95, T.ys + 0.86, T.z - 0.08 + 0.09 + i * 0.15, c));
   if (!lite) {
     // the canopy over the benches (not on Low): four posts on the gunwales and a trapezoid of blue canvas, narrower forward as the hull is, its
-    // valance trimmed yellow; white fenders on the west side, the one against the quay
+    // valance trimmed yellow; white fenders on the west side
     const both = (rows: V3[][], c: number) => { b.geometry(grid(rows, false), c, 0, 0, 0); b.geometry(grid(rows, true), c, 0, 0, 0); };
     const TOP = 2.1, ends = [-1.75, 1.3].map(z => ({ z, s: secAtZ(z) })).map(({ z, s }) => ({ z, x: s.hw - 0.045, y: s.ys }));
     for (const e of ends) for (const sx of [-1, 1]) b.box(0.05, TOP - e.y, 0.05, sx * e.x, e.y, e.z, 0xc8ccd0);

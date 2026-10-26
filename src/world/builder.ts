@@ -1077,7 +1077,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
         addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
         plain.box(0.2, 3.4, 0.2, cx - 3, B, bz + 1, 0x555555); plain.box(0.2, 3.4, 0.2, cx + 3, B, bz + 1, 0x555555);
-        interactables.push({ id: `${id}:port`, name: 'Embarcadère de Ngor', kind: 'actions', x: cx, z: bz + 4, radius: 5, actions: ACTIONS.port, description: 'Les traversées vers l’île de Ngor partent du bout de la jetée, de 7 h à 19 h.' });
+        interactables.push({ id: `${id}:port`, name: 'Embarcadère de Ngor', kind: 'actions', x: cx, z: bz + 4, radius: 5, actions: ACTIONS.port, description: 'Les pirogues et la chaloupe partent de la plage, à côté de la jetée, pour l’île de Ngor, de 7 h à 19 h.' });
         break;
       }
       case 'arena': {

@@ -174,6 +174,8 @@ describe('the Embarcadère de Ngor: the quay, the pontoon, the island and the ba
       for (const c of q.colliders) {
         for (const r of [{ ...S.pier, x0: S.pier.x0 - 0.5, x1: S.pier.x1 + 0.5 }, S.pontoon, S.beach.clear, way]) expect(overlaps(c, r), JSON.stringify(c)).toBe(false);
         expect(c.z1).toBeLessThanOrEqual(-128); expect(c.z0).toBeGreaterThan(S.shoreZ);   // on the sand
+        for (const w of S.beach.waiting) expect(inBox(c, w.x, w.z, 2), `${JSON.stringify(c)} by ${JSON.stringify(w)}`).toBe(false);
+        expect(overlaps(c, { x0: 40, x1: 57, z0: S.shoreZ, z1: -149 }), JSON.stringify(c)).toBe(false);   // the line from the waiting spots down to the water
       }
     }
   });
