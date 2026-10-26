@@ -19,6 +19,7 @@ import { TRAVERSEE_HUB, TRAVERSEE_SITE } from '../sea/traverseeSite';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
+import { VILLA_SITE, buildVillaCompound } from './villaCompound';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -332,6 +333,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const x0 = blockMin(i) + a * (LS + 2), z0 = blockMin(j) + b * (LS + 2);
     return { x0, z0, x1: x0 + LS, z1: z0 + LS, cx: x0 + LS / 2, cz: z0 + LS / 2 };
   };
+  /** LD2.0-D: the flagship villa's lot (Almadies, block (1,1) lot 3), built by src/world/villaCompound.ts after the streets are dressed. */
+  const villaLot = id === VILLA_SITE.hub ? lotRect(VILLA_SITE.i, VILLA_SITE.j, VILLA_SITE.lot % 2, VILLA_SITE.lot >> 1) : null;
+  const inVilla = (x: number, z: number) => !!villaLot && x > villaLot.x0 && x < villaLot.x1 && z > villaLot.z0 && z < villaLot.z1;
   const solid = (x0: number, z0: number, x1: number, z1: number, h: number) => colliders.push({ x0, z0, x1, z1, h });
   const solidC = (cx: number, cz: number, w: number, d: number, h: number) => solid(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2, h);
 
@@ -463,6 +467,42 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     for (const s of [-1.45, 1.45]) plain.box(0.45, h + 0.4, 0.5, x + (nz ? s : 0), G - 0.02, z + (nx ? s : 0), 0xe9e1cf, rot);
   };
 
+  /** The Almadies' generic villa on its lot: a two-storey house set back, a terrace, a pool behind, the wall and its gate, palms and bougainvillea. */
+  const genericVilla = (L: ReturnType<typeof lotRect>, faces: [number, number][]) => {
+    const w = 15 + R() * 3, d = 11 + R() * 2, fl = 2, h = fl * 3.2;
+    const col = pick(sp.palette, R);
+    fac.facade(w, h, d, L.cx, G - 0.02, L.cz + 3, col);
+    plain.box(w + 0.6, 0.3, d + 0.6, L.cx, G + h - 0.02, L.cz + 3, 0xdadada);
+    plain.box(w + 0.1, 0.6, d + 0.1, L.cx, G - 0.02, L.cz + 3, 0xb9b2a4);
+    plain.box(w * 0.5, 0.25, 2.2, L.cx - w * 0.2, G + 3.2, L.cz + 3 - d / 2 - 1.1, 0xe8e4dc); // terrace slab
+    for (let k = 0; k < 6; k++) plain.box(0.06, 0.9, 0.06, L.cx - w * 0.45 + k * (w * 0.5 / 5), G + 3.45, L.cz + 3 - d / 2 - 2.15, 0x333333);
+    plain.box(w * 0.5, 0.06, 0.08, L.cx - w * 0.2, G + 4.35, L.cz + 3 - d / 2 - 2.15, 0x333333);
+    glass.box(w - 2, 1.6, 0.1, L.cx, G + 1.0, L.cz + 3 - d / 2 - 0.06, 0x2f5f86);
+    plain.box(8.6, 0.1, 5.1, L.cx + 3, G, L.cz - 6.5, 0xe8e4dc);                    // pool deck
+    water.box(8, 0.06, 4.5, L.cx + 3, G + 0.05, L.cz - 6.5, 0x35b0de);              // pool
+    wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xf0ece0, 2.2);
+    gate(L.cx, faces[1][1] < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, faces[1][1], 2.4);
+    // bougainvillea spilling over the wall
+    for (let k = 0; k < (lite ? 0 : 4); k++) {
+      const t = R(), side = R() < 0.5;
+      const x = side ? L.x0 + 0.3 + t * (LS - 0.6) : (R() < 0.5 ? L.x0 + 0.3 : L.x1 - 0.3), z = side ? (R() < 0.5 ? L.z0 + 0.3 : L.z1 - 0.3) : L.z0 + 0.3 + t * (LS - 0.6);
+      leaves.blob(0.9 + R() * 0.5, x, G + 2.3, z, pick([0xc2307a, 0xd94a8c, 0xa8256a, 0x3f7a35], R), 0.7, 0);
+    }
+    solidC(L.cx, L.cz + 3, w, d, h);
+    palm(L.x0 + 2.5, L.z0 + 2.5, 0.9); palm(L.x1 - 2.5, L.z0 + 3, 0.9);
+    roofClutter(L.cx, L.cz + 3, w, d, G + h + 0.28);
+  };
+  /**
+   * A dry run (LD2.0-D, the flagship villa's lot): the builder draws as usual, its random numbers included, then nothing of it is kept but its
+   * colliders, as ghosts while the streets are dressed (as `dress` does for a composed site).
+   */
+  const dryRun = (place: () => void) => {
+    const bs = [plain, fac, glass, water, leaves, metal, trunks, blocks, tin], marks = bs.map(b => b.mark()), n = colliders.length, nc = canopies.length;
+    place();
+    bs.forEach((b, i) => b.rollback(marks[i]));
+    canopies.splice(nc);
+    for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
+  };
   const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
@@ -523,28 +563,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       return;
     }
     if (sp.style === 'villa') {
-      const w = 15 + R() * 3, d = 11 + R() * 2, fl = 2, h = fl * 3.2;
-      const col = pick(sp.palette, R);
-      fac.facade(w, h, d, L.cx, G - 0.02, L.cz + 3, col);
-      plain.box(w + 0.6, 0.3, d + 0.6, L.cx, G + h - 0.02, L.cz + 3, 0xdadada);
-      plain.box(w + 0.1, 0.6, d + 0.1, L.cx, G - 0.02, L.cz + 3, 0xb9b2a4);
-      plain.box(w * 0.5, 0.25, 2.2, L.cx - w * 0.2, G + 3.2, L.cz + 3 - d / 2 - 1.1, 0xe8e4dc); // terrace slab
-      for (let k = 0; k < 6; k++) plain.box(0.06, 0.9, 0.06, L.cx - w * 0.45 + k * (w * 0.5 / 5), G + 3.45, L.cz + 3 - d / 2 - 2.15, 0x333333);
-      plain.box(w * 0.5, 0.06, 0.08, L.cx - w * 0.2, G + 4.35, L.cz + 3 - d / 2 - 2.15, 0x333333);
-      glass.box(w - 2, 1.6, 0.1, L.cx, G + 1.0, L.cz + 3 - d / 2 - 0.06, 0x2f5f86);
-      plain.box(8.6, 0.1, 5.1, L.cx + 3, G, L.cz - 6.5, 0xe8e4dc);                    // pool deck
-      water.box(8, 0.06, 4.5, L.cx + 3, G + 0.05, L.cz - 6.5, 0x35b0de);              // pool
-      wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xf0ece0, 2.2);
-      gate(L.cx, faces[1][1] < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, faces[1][1], 2.4);
-      // bougainvillea spilling over the wall
-      for (let k = 0; k < (lite ? 0 : 4); k++) {
-        const t = R(), side = R() < 0.5;
-        const x = side ? L.x0 + 0.3 + t * (LS - 0.6) : (R() < 0.5 ? L.x0 + 0.3 : L.x1 - 0.3), z = side ? (R() < 0.5 ? L.z0 + 0.3 : L.z1 - 0.3) : L.z0 + 0.3 + t * (LS - 0.6);
-        leaves.blob(0.9 + R() * 0.5, x, G + 2.3, z, pick([0xc2307a, 0xd94a8c, 0xa8256a, 0x3f7a35], R), 0.7, 0);
-      }
-      solidC(L.cx, L.cz + 3, w, d, h);
-      palm(L.x0 + 2.5, L.z0 + 2.5, 0.9); palm(L.x1 - 2.5, L.z0 + 3, 0.9);
-      roofClutter(L.cx, L.cz + 3, w, d, G + h + 0.28);
+      // LD2.0-D: the flagship villa's lot (src/world/villaCompound.ts) draws the generic villa's random numbers unseen (a dry run), so every other lot
+      // and the street dressing stay exactly where they were (tests/villaCompound.test.ts); its colliders stand as ghosts while the streets are dressed
+      if (villaLot && L.x0 === villaLot.x0 && L.z0 === villaLot.z0) { dryRun(() => genericVilla(L, faces)); return; }
+      genericVilla(L, faces);
       return;
     }
     // Plateau (after Habib's aerial photo): a few towers among 3–7 storey blocks, some low blocks under red tile roofs
@@ -682,7 +704,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
    * collider as a ghost exactly as before, so every later tree, palm and stall of the hub stays where it was.
    */
   const dress = (x: number, z: number, place: () => void) => {
-    if (!inSite(x, z) && !kept(x, z)) { place(); return; }
+    if (!inSite(x, z) && !kept(x, z) && !inVilla(x, z)) { place(); return; }
     const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
     place();
     [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
@@ -1331,6 +1353,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
 
   yield;
+  // LD2.0-D: the flagship villa's compound on its lot, now that every random number of the street is drawn (its own draw none)
+  if (villaLot) {
+    const v = buildVillaCompound({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool });
+    group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
+  }
   for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
