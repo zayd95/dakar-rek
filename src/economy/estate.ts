@@ -538,7 +538,7 @@ class Estate {
     items.push({ icon: '💬', label: 'Sous-louer la chambre', detail: 'Il faudra d’abord en parler à la famille (bientôt)', disabled: true, onPick: () => {} });
   }
   private benefit(sp: AssetSpec): string {
-    if (sp.kind === 'home') { const h = sp as HomeSpec; return `${h.home.w * h.home.d | 0} m² à meubler${h.home.level === 'room' ? '' : ', cuisine et douche'} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
+    if (sp.kind === 'home') { const h = sp as HomeSpec, plan = planFor(h.id); return `${h.home.w * h.home.d | 0} m² à meubler${h.home.level === 'room' ? '' : plan ? ` : ${plan.rooms.filter(r => r.kind !== 'degagement').map(r => r.name.toLowerCase()).join(', ')}` : ', cuisine et douche'} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
     if (sp.kind === 'land') return `Loué à un maraîcher : +${fcfa(sp.income ?? 0)} / h`;
     if (sp.kind === 'billboard') return `Loué aux annonceurs : +${fcfa(sp.income ?? 0)} / h, ou ta pub`;
     return sp.what;
