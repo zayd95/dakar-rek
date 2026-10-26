@@ -24,6 +24,9 @@ const PX = {
   stripes0: [280, 352, 64, 64], stripes1: [344, 352, 64, 64], towel: [408, 352, 48, 64], grille: [456, 352, 48, 64],
   mwave: [280, 416, 64, 32], calabash: [344, 416, 64, 64], led: [408, 416, 16, 16],
   // ---- the catalogue's second round, comfort lane (K-C): its rects here, inside x 0…255, y 480…767
+  // two wax prints of our own, buttoned velvet and leather, a Senegalese leather pouf's embossed side and top, an ivory brocade, tan leather, brass nailheads
+  waxA: [0, 480, 64, 64], waxB: [64, 480, 64, 64], velvetTuft: [128, 480, 64, 64], leatherTuft: [192, 480, 64, 64],
+  poufSide: [0, 544, 128, 48], poufTop: [128, 544, 64, 64], brocade: [192, 544, 64, 64], leatherTan: [0, 608, 64, 64], nailFront: [64, 608, 32, 64],
   //
   // (the comfort lane's rects above, the decoration lane's below)
   //
@@ -163,6 +166,86 @@ function drawHomeAtlas(c: C2, g: C2) {
     c.fillStyle = '#5a3416'; for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) { const cx = x + 8 + i * 16, cy = y + 16 + j * 16; c.beginPath(); c.moveTo(cx, cy - 3); c.lineTo(cx + 3, cy + 2); c.lineTo(cx - 3, cy + 2); c.fill(); } }
   { const [x, y] = P('led'); c.fillStyle = '#ffffff'; c.fillRect(x, y, 16, 16); g.fillStyle = '#fff6e0'; g.fillRect(x, y, 16, 16); }
   // ---- the catalogue's second round, comfort lane (K-C): its drawing here
+  {
+    // each paint stays inside its own rect (no bleeding into a neighbour's)
+    const within = (k: FurnKey, draw: (x: number, y: number, w: number, h: number) => void) => { const [x, y, w, h] = PX[k]; c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); draw(x, y, w, h); c.restore(); };
+    const disc = (cx: number, cy: number, r: number, col: string) => { c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); };
+    // wax « feuilles »: ochre almonds edged in white on indigo, orange hearts, white dots
+    within('waxA', (x, y) => {
+      c.fillStyle = '#1f3f8a'; c.fillRect(x, y, 64, 64);
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) {
+        const cx = x + 8 + i * 16, cy = y + 8 + j * 16, a = (i + j) % 2 ? 0.75 : -0.75;
+        c.fillStyle = '#f2a81d'; c.beginPath(); c.ellipse(cx, cy, 7.2, 3.8, a, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#f6f1e4'; c.lineWidth = 1; c.stroke();
+        disc(cx, cy, 1.9, '#e0512b');
+      }
+      for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) disc(x + i * 16, y + j * 16, 1.6, '#f6f1e4');
+    });
+    // wax « disques »: concentric yellow, red and cream rings on emerald, yellow diamonds between
+    within('waxB', (x, y) => {
+      c.fillStyle = '#127a4c'; c.fillRect(x, y, 64, 64);
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
+        const cx = x + 16 + i * 32, cy = y + 16 + j * 32;
+        [[13, '#f4c20d'], [10.5, '#d9322b'], [8, '#f6f1e4'], [5.5, '#f4c20d'], [3, '#1a1a1a']].forEach(([r, col]) => disc(cx, cy, r as number, col as string));
+      }
+      for (let j = 0; j <= 2; j++) for (let i = 0; i <= 2; i++) diamond(c, x + i * 32, y + j * 32, 4, 4, '#f4c20d');
+    });
+    // buttoned (capitonné) upholstery: puffed diamonds between creases, a button at each crossing
+    const tufted = (k: FurnKey, base: [string, string], puff: string, crease: string, button: string, rim: string) => within(k, (x, y) => {
+      const gr = c.createLinearGradient(x, y, x + 64, y + 64); gr.addColorStop(0, base[0]); gr.addColorStop(1, base[1]); c.fillStyle = gr; c.fillRect(x, y, 64, 64);
+      for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) if ((i + j) % 2) {
+        const cx = x + i * 16, cy = y + j * 16, rg = c.createRadialGradient(cx - 2, cy - 3, 1, cx, cy, 13);
+        rg.addColorStop(0, puff); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.fillRect(cx - 16, cy - 16, 32, 32);
+      }
+      c.strokeStyle = crease; c.lineWidth = 1.6;
+      for (let m = -2; m <= 2; m++) { c.beginPath(); c.moveTo(x + 32 * m, y); c.lineTo(x + 32 * m + 64, y + 64); c.stroke(); c.beginPath(); c.moveTo(x + 32 * m, y + 64); c.lineTo(x + 32 * m + 64, y); c.stroke(); }
+      for (let j = 0; j <= 4; j++) for (let i = 0; i <= 4; i++) if (!((i + j) % 2)) { disc(x + i * 16, y + j * 16, 3, rim); disc(x + i * 16, y + j * 16, 2.2, button); disc(x + i * 16 - 0.7, y + j * 16 - 0.8, 0.8, 'rgba(255,255,255,0.7)'); }
+    });
+    tufted('velvetTuft', ['#6c1020', '#962033'], 'rgba(196,64,86,0.85)', '#40070f', '#e8c46a', '#7a5a1a');
+    tufted('leatherTuft', ['#93501f', '#b0652c'], 'rgba(214,142,82,0.9)', '#55290c', '#6a3814', '#4a240a');
+    // tan leather: a mottled grain, a soft sheen, a welt stitched round the edge
+    within('leatherTan', (x, y) => {
+      c.fillStyle = '#ad642d'; c.fillRect(x, y, 64, 64);
+      for (let k = 0; k < 90; k++) { c.fillStyle = k % 3 ? 'rgba(90,40,12,0.18)' : 'rgba(230,170,110,0.2)'; c.fillRect(x + ((k * 37) % 64), y + ((k * 53) % 64), 2, 1.5); }
+      const gr = c.createLinearGradient(x, y, x + 64, y + 64); gr.addColorStop(0, 'rgba(255,230,190,0.22)'); gr.addColorStop(0.5, 'rgba(255,230,190,0)'); gr.addColorStop(1, 'rgba(60,25,5,0.18)'); c.fillStyle = gr; c.fillRect(x, y, 64, 64);
+      c.strokeStyle = '#6a3412'; c.lineWidth = 1.2; c.strokeRect(x + 3.5, y + 3.5, 57, 57);
+      c.fillStyle = '#e6c08a'; for (let k = 6; k < 60; k += 4) { c.fillRect(x + k, y + 5.5, 2, 1); c.fillRect(x + k, y + 57.5, 2, 1); c.fillRect(x + 5.5, y + k, 1, 2); c.fillRect(x + 57.5, y + k, 1, 2); }
+    });
+    // an armchair's arm front: tan leather and a row of brass nailheads round it
+    within('nailFront', (x, y) => {
+      c.fillStyle = '#a65d29'; c.fillRect(x, y, 32, 64); c.fillStyle = 'rgba(255,225,180,0.18)'; c.fillRect(x + 8, y + 8, 16, 48);
+      for (let k = 5; k < 60; k += 5) { disc(x + 4, y + k, 1.6, '#e2c26a'); disc(x + 28, y + k, 1.6, '#e2c26a'); }
+      for (let k = 9; k < 26; k += 5) { disc(x + k, y + 4, 1.6, '#e2c26a'); disc(x + k, y + 60, 1.6, '#e2c26a'); }
+    });
+    // a Senegalese leather pouf's side: stitched tan leather above and below, an embossed band of red and green triangles between dark bands
+    within('poufSide', (x, y) => {
+      c.fillStyle = '#c4874a'; c.fillRect(x, y, 128, 48);
+      c.fillStyle = '#5a2e14'; c.fillRect(x, y + 7, 128, 3); c.fillRect(x, y + 38, 128, 3);
+      c.fillStyle = '#d6a062'; c.fillRect(x, y + 10, 128, 28);
+      for (let k = 0; k < 4; k++) {
+        const bx = x + k * 32;
+        c.fillStyle = '#a8321f'; c.beginPath(); c.moveTo(bx + 2, y + 35); c.lineTo(bx + 16, y + 13); c.lineTo(bx + 30, y + 35); c.fill();
+        c.fillStyle = '#3d6b3a'; c.beginPath(); c.moveTo(bx + 18, y + 13); c.lineTo(bx + 32, y + 13); c.lineTo(bx + 25, y + 24); c.fill(); c.beginPath(); c.moveTo(bx, y + 13); c.lineTo(bx + 14, y + 13); c.lineTo(bx + 7, y + 24); c.fill();
+        diamond(c, bx + 16, y + 28, 4, 5, '#5a2e14'); diamond(c, bx + 16, y + 28, 2, 2.5, '#f2d16b');
+        c.strokeStyle = 'rgba(255,236,200,0.55)'; c.lineWidth = 1; c.beginPath(); c.moveTo(bx + 3, y + 34); c.lineTo(bx + 16, y + 14); c.stroke();
+      }
+      c.fillStyle = '#5a2e14'; for (let k = 0; k < 128; k += 5) { c.fillRect(x + k, y + 3, 3, 1); c.fillRect(x + k, y + 44, 3, 1); }
+    });
+    // its top: a stitched rosette, a crown of red and green points round a dark star
+    within('poufTop', (x, y) => {
+      const cx = x + 32, cy = y + 32; c.fillStyle = '#c4874a'; c.fillRect(x, y, 64, 64);
+      disc(cx, cy, 30, '#b97b40'); c.strokeStyle = '#5a2e14'; c.lineWidth = 1; c.setLineDash([3, 2]); c.beginPath(); c.arc(cx, cy, 27, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, b2 = a + Math.PI / 12; c.fillStyle = k % 2 ? '#3d6b3a' : '#a8321f'; c.beginPath(); c.moveTo(cx + Math.cos(a - 0.22) * 14, cy + Math.sin(a - 0.22) * 14); c.lineTo(cx + Math.cos(b2 - 0.26) * 24, cy + Math.sin(b2 - 0.26) * 24); c.lineTo(cx + Math.cos(a + 0.22) * 14, cy + Math.sin(a + 0.22) * 14); c.fill(); }
+      c.fillStyle = '#5a2e14'; c.beginPath(); for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8, r = k % 2 ? 6 : 13; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } c.closePath(); c.fill();
+      disc(cx, cy, 4, '#a8321f'); disc(cx, cy, 1.6, '#f2d16b');
+    });
+    // an ivory bazin brocade with gold scrolls (the canopy bed's spread)
+    within('brocade', (x, y) => {
+      c.fillStyle = '#f1e6cc'; c.fillRect(x, y, 64, 64); c.strokeStyle = '#c9a043'; c.lineWidth = 1.6;
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { const cx = x + 16 + i * 32, cy = y + 16 + j * 32; c.beginPath(); c.ellipse(cx, cy, 11, 6, 0.7, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(cx, cy, 5, 11, -0.5, 0, Math.PI * 2); c.stroke(); disc(cx, cy, 2, '#c9a043'); }
+      for (let j = 0; j <= 2; j++) for (let i = 0; i <= 2; i++) diamond(c, x + i * 32, y + j * 32, 3.5, 3.5, '#d9b85a');
+    });
+  }
   //
   // (the comfort lane's drawing above, the decoration lane's below)
   //

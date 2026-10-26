@@ -155,7 +155,7 @@ describe('sleeping at home: lying along the bed, up beside it afterwards', () =>
   installFurnitureKit();                                             // the catalogue's seat heights follow the kit models
   const beds = FURNITURE_SPECS.filter(f => f.type === 'bed');
   it('every catalogue bed is a lying place along it, hips at the middle, head toward the pillow (−z)', () => {
-    expect(beds.map(b => b.id)).toEqual(['matelas_sol', 'lit_bois', 'lit_king']);
+    expect(beds.map(b => b.id)).toEqual(['matelas_sol', 'lit_bois', 'lit_king', 'lit_moustiquaire', 'lit_baldaquin_bois', 'lit_baldaquin']);   // the canopy beds of the catalogue's second round too
     for (const b of beds) {
       expect(b.seats).toHaveLength(1);
       const st = b.seats![0];
