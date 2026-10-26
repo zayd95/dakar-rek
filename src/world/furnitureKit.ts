@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { KitBuilder, paintAtlas, type Paint, type Rect } from './kitGeometry';
+import { KitBuilder, paintAtlas, type Paint, type Rect, type V3 } from './kitGeometry';
 import { FW, FH, FUV, FPLAIN, drawFurnitureAtlas } from './furnitureAtlas';
 import { floorSeatTop, type Seat, type SeatKind } from '../interact/seats';
 import type { Clip } from '../actors/humanoid';
@@ -22,8 +22,18 @@ export type Tier = 'basic' | 'better' | 'premium';
 export const TIERS: readonly Tier[] = ['basic', 'better', 'premium'];
 export type FurnitureType =
   | 'bed' | 'sofa' | 'armchair' | 'plasticChair' | 'woodenChair' | 'table' | 'lowTable' | 'desk' | 'tv' | 'wardrobe'
-  | 'shower' | 'kitchen' | 'fan' | 'rug' | 'lamp' | 'shelf' | 'mirror' | 'attaya' | 'prayerMat';
-export const FURNITURE_TYPES: readonly FurnitureType[] = ['bed', 'sofa', 'armchair', 'plasticChair', 'woodenChair', 'table', 'lowTable', 'desk', 'tv', 'wardrobe', 'shower', 'kitchen', 'fan', 'rug', 'lamp', 'shelf', 'mirror', 'attaya', 'prayerMat'];
+  | 'shower' | 'kitchen' | 'fan' | 'rug' | 'lamp' | 'shelf' | 'mirror' | 'attaya' | 'prayerMat' | HomeType;
+/**
+ * LD2.0-C « Walkable Homes », the furnishing upgrade (docs/ld2/LD2_C.md): dining sets, a kitchen table, appliances that suit a kitchen with built-in
+ * fittings, bathroom pieces, floor and hanging lamps, bedside tables, dressers and wardrobes, pictures, a TV wall unit, music, plants, and outdoor and
+ * poolside furniture. `bathMirror`, `towelRail` and `wallArt` hang on a wall, `pendant` from the ceiling (src/economy/catalog.ts `mount`).
+ */
+export type HomeType =
+  | 'dining' | 'kitchenTable' | 'microwave' | 'waterDispenser' | 'cooker' | 'vanity' | 'bathMirror' | 'towelRail' | 'floorLamp' | 'pendant'
+  | 'bedside' | 'dresser' | 'closet' | 'wallArt' | 'tvWall' | 'audio' | 'plant' | 'lounger' | 'parasol' | 'gardenSet';
+export const HOME_TYPES: readonly HomeType[] = ['dining', 'kitchenTable', 'microwave', 'waterDispenser', 'cooker', 'vanity', 'bathMirror', 'towelRail', 'floorLamp', 'pendant',
+  'bedside', 'dresser', 'closet', 'wallArt', 'tvWall', 'audio', 'plant', 'lounger', 'parasol', 'gardenSet'];
+export const FURNITURE_TYPES: readonly FurnitureType[] = ['bed', 'sofa', 'armchair', 'plasticChair', 'woodenChair', 'table', 'lowTable', 'desk', 'tv', 'wardrobe', 'shower', 'kitchen', 'fan', 'rug', 'lamp', 'shelf', 'mirror', 'attaya', 'prayerMat', ...HOME_TYPES];
 export type FurnitureId = `${FurnitureType}:${Tier}`;
 export const FURNITURE_IDS: readonly FurnitureId[] = FURNITURE_TYPES.flatMap(t => TIERS.map(r => `${t}:${r}` as FurnitureId));
 
@@ -79,6 +89,26 @@ export const FURNITURE_NAME: Record<FurnitureType, [string, string, string]> = {
   mirror: ['Petit miroir', 'Miroir encadré', 'Grand miroir sur pied'],
   attaya: ['Attaya au fourneau', 'Attaya au gaz', 'Grand service à attaya'],
   prayerMat: ['Tapis de prière simple', 'Tapis de prière tissé', 'Tapis de prière en velours'],
+  dining: ['Table et quatre chaises en plastique', 'Salle à manger en bois', 'Salle à manger en marbre'],
+  kitchenTable: ['Table de cuisine et tabourets', 'Table de cuisine en bois', 'Bar de cuisine'],
+  microwave: ['Micro-ondes sur desserte', 'Micro-ondes sur meuble', 'Colonne four et micro-ondes'],
+  waterDispenser: ['Canari sur son support', 'Fontaine à eau', 'Fontaine inox'],
+  cooker: ['Réchaud à gaz et marmite', 'Cuisinière à gaz', 'Piano de cuisson et hotte'],
+  vanity: ['Lavabo sur colonne', 'Meuble vasque en bois', 'Double vasque en marbre'],
+  bathMirror: ['Miroir rond', 'Armoire de toilette', 'Miroir lumineux'],
+  towelRail: ['Porte-serviettes', 'Porte-serviettes en bois', 'Sèche-serviettes chromé'],
+  floorLamp: ['Lampadaire à abat-jour', 'Lampadaire trépied', 'Lampadaire arc'],
+  pendant: ['Suspension en osier', 'Suspension calebasse', 'Lustre doré'],
+  bedside: ['Petite table et sa lampe', 'Table de chevet', 'Chevet sculpté'],
+  dresser: ['Commode', 'Coiffeuse', 'Coiffeuse à triple miroir'],
+  closet: ['Penderie ouverte', 'Armoire trois portes', 'Dressing'],
+  wallArt: ['Affiche encadrée', 'Peintures sous-verre', 'Grande toile'],
+  tvWall: ['Télé sur étagère', 'Meuble télé et étagères', 'Mur télé sculpté'],
+  audio: ['Radiocassette', 'Chaîne hi-fi', 'Enceintes et platine'],
+  plant: ['Plante en pot', 'Palmier d’intérieur', 'Jardinière de bougainvilliers'],
+  lounger: ['Transat en toile', 'Bain de soleil tressé', 'Bain de soleil en teck'],
+  parasol: ['Parasol de plage', 'Parasol en bois', 'Parasol déporté'],
+  gardenSet: ['Salon de jardin en plastique', 'Salon de jardin en fer forgé', 'Salon de jardin en teck'],
 };
 
 // ------------------------------------------------------------------------------------------------------------ materials
@@ -164,7 +194,846 @@ function attayaCircle(z0: number, top: number, cushion: (x: number, z: number) =
 const perTier = (f: (t: Tier) => Maker): Record<Tier, Maker> => ({ basic: f('basic'), better: f('better'), premium: f('premium') });
 const dimC = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
+// ============================================================================================================ LD2.0-C: the furnishing upgrade
+const K = {
+  teak: 0x9a6a3c, teakDark: 0x7a4f2a, iron: 0x26262a, clay: 0xb5653a, clayDark: 0x8f4a28, leaf: 0x3f7a35, leaf2: 0x4c8a3c, leaf3: 0x2f6b2e,
+  bloom: 0xd94a8c, bloom2: 0xe86aa6, steel: 0xc4c8cc, lacquer: 0xf1ece2, walnut: 0x5a3a22, granite: 0x55565a, taupe: 0xa89a86, ecru: 0xefe6d2,
+  teal: 0x3f7f86, water: 0x6fb6e0, sky: 0x7fb0d8, towel: 0xf6f4ee,
+};
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
+/** Builds `draw` (drawn at the origin, facing +z) at (x, z), turned by `yaw` (0: facing +z). */
+const placedAt = (b: KitBuilder, x: number, z: number, yaw: number, draw: () => void, y = 0) => b.at(x, y, z, yaw, draw);
+/** The seat of a chair of a set standing at (x, z) and facing `yaw`, its own seat `local` m in front of its centre. */
+const setSeat = (id: string, x: number, z: number, yaw: number, top: number, kind: SeatKind = 'chair', local = 0.03): FurnitureSeat =>
+  seatOf(id, r3(x + Math.sin(yaw) * local), r3(z + Math.cos(yaw) * local), top, kind, r3(yaw));
+/** Chairs of a set: [x, z, yaw] each, drawn by `draw`; returns their seats. */
+function chairsAt(b: KitBuilder, spots: readonly (readonly [number, number, number])[], top: number, draw: (i: number) => void, kind: SeatKind = 'chair', local = 0.03): FurnitureSeat[] {
+  return spots.map(([x, z, yaw], i) => { placedAt(b, x, z, yaw, () => draw(i)); return setSeat(`s${i}`, x, z, yaw, top, kind, local); });
+}
+
+/** Wooden dining chair with a wax cushion (seat top 0.54): x ±0.23, z −0.25 … 0.22. */
+function woodChair(b: KitBuilder) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.04, 0.45, 0.04, sx * 0.19, 0, sz * 0.18, C.varnish);
+  for (const sx of [-1, 1]) b.box(0.03, 0.03, 0.34, sx * 0.19, 0.16, 0, C.varnish);
+  b.slab(0.46, 0.04, 0.44, 0, 0.45, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+  b.slab(0.42, 0.05, 0.4, 0, 0.49, 0.01, W, topRect(FUV.wax1));
+  b.at(0, 0.49, -0.19, 0, () => {
+    for (const sx of [-1, 1]) b.box(0.04, 0.5, 0.04, sx * 0.19, 0, 0, C.varnish);
+    b.box(0.42, 0.09, 0.03, 0, 0.41, 0, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } }); b.box(0.42, 0.05, 0.025, 0, 0.24, 0, C.varnishLight);
+  }, -0.08);
+}
+/** Upholstered dining chair, velvet and carved wood (seat top 0.52): x ±0.26, z −0.29 … 0.25. */
+function velvetChair(b: KitBuilder) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { b.box(0.05, 0.4, 0.05, sx * 0.2, 0.02, sz * 0.2, C.dark); b.box(0.065, 0.02, 0.065, sx * 0.2, 0, sz * 0.2, C.gold); }
+  b.slab(0.5, 0.05, 0.5, 0, 0.42, 0, C.dark, { pz: { rect: FUV.carved, paint: C.dark } });
+  b.slab(0.46, 0.06, 0.46, 0, 0.46, 0.01, 0x9a2234, topRect(FUV.velvet));
+  b.at(0, 0.47, -0.21, 0, () => {
+    b.box(0.48, 0.64, 0.05, 0, 0, 0, C.dark, { pz: { rect: FUV.carved, paint: 0x6a3e22 } });
+    b.box(0.38, 0.48, 0.03, 0, 0.08, 0.035, 0x9a2234, { pz: { rect: FUV.velvet } });
+    b.box(0.52, 0.06, 0.07, 0, 0.62, 0, C.gold, { pz: { rect: FUV.gold } });
+  }, -0.06);
+}
+/** Round plastic stool (seat top 0.47): r 0.16. */
+function plasticStool(b: KitBuilder, col: number) {
+  b.cyl('y', 0.15, 0.15, 0.04, 0, 0.45, 0, col, 12);
+  for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; b.beam([Math.sin(a) * 0.1, 0.43, Math.cos(a) * 0.1], [Math.sin(a) * 0.14, 0.01, Math.cos(a) * 0.14], 0.035, 0.035, col); }
+  b.cyl('y', 0.11, 0.11, 0.015, 0, 0.18, 0, col, 10);
+}
+/** Square wooden stool with a woven top (seat top 0.48): ±0.17. */
+function woodStool(b: KitBuilder) {
+  legs4(b, 0.3, 0.3, 0.44, 0.035, C.varnish);
+  for (const s of [-1, 1]) { b.box(0.26, 0.025, 0.025, 0, 0.14, s * 0.13, C.varnish); b.box(0.025, 0.025, 0.26, s * 0.13, 0.14, 0, C.varnish); }
+  b.slab(0.34, 0.04, 0.34, 0, 0.44, 0, C.varnish, { py: { rect: FUV.rattan } });
+}
+/** Bar stool, chrome and leather, with a low back on its −z side (seat top 0.77): r 0.2. */
+function barStool(b: KitBuilder) {
+  b.cyl('y', 0.2, 0.2, 0.02, 0, 0.01, 0, C.chrome, 14);
+  b.cyl('y', 0.025, 0.025, 0.68, 0, 0.36, 0, C.chrome, 8);
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, c = (k + 1) * Math.PI / 4; b.beam([Math.sin(a) * 0.16, 0.32, Math.cos(a) * 0.16], [Math.sin(c) * 0.16, 0.32, Math.cos(c) * 0.16], 0.015, 0.015, C.chrome); }
+  for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) b.beam([0, 0.32, 0], [Math.sin(a) * 0.16, 0.32, Math.cos(a) * 0.16], 0.012, 0.012, C.chrome);
+  b.cyl('y', 0.19, 0.18, 0.07, 0, 0.735, 0, C.black, 14, { neg: true, pos: FUV.leather });
+  b.beam([-0.12, 0.77, -0.13], [-0.12, 0.88, -0.15], 0.02, 0.02, C.chrome); b.beam([0.12, 0.77, -0.13], [0.12, 0.88, -0.15], 0.02, 0.02, C.chrome);
+  b.box(0.32, 0.1, 0.04, 0, 0.86, -0.16, C.black, { pz: { rect: FUV.leather } });
+}
+/** Iron garden chair with a green cushion (seat top 0.49): x ±0.24, z −0.25 … 0.23. */
+function ironChair(b: KitBuilder) {
+  for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; b.beam([Math.sin(a) * 0.15, 0.44, Math.cos(a) * 0.15], [Math.sin(a) * 0.2, 0.012, Math.cos(a) * 0.2], 0.025, 0.025, K.iron); }
+  b.cyl('y', 0.21, 0.21, 0.025, 0, 0.44, 0, K.iron, 14);
+  b.cyl('y', 0.2, 0.2, 0.04, 0, 0.465, 0.01, 0x3f7a35, 14, { neg: false, pos: FUV.fabric });
+  const hoop = (t: number): V3 => [Math.sin(t) * 0.2, 0.47 + Math.cos(t) * 0.4, -0.15 - Math.cos(t) * 0.05];
+  for (let k = 0; k < 6; k++) { const t0 = -Math.PI / 2 + k * Math.PI / 6; b.beam(hoop(t0), hoop(t0 + Math.PI / 6), 0.022, 0.022, K.iron); }
+  for (const x of [-0.1, 0, 0.1]) b.beam([x, 0.47, -0.15], hoop(Math.asin(x / 0.2)), 0.015, 0.015, K.iron);
+}
+/** Teak garden armchair with a cream cushion (seat top 0.46): x ±0.3, z −0.3 … 0.3. */
+function teakChair(b: KitBuilder) {
+  for (const sx of [-1, 1]) {
+    b.box(0.05, 0.62, 0.05, sx * 0.26, 0, 0.25, K.teak); b.box(0.05, 0.42, 0.05, sx * 0.26, 0, -0.22, K.teak);
+    b.box(0.08, 0.03, 0.6, sx * 0.26, 0.62, 0.0, K.teak, { py: { rect: FUV.wood, paint: K.teak } });
+    b.box(0.04, 0.04, 0.44, sx * 0.26, 0.12, 0.02, K.teakDark);
+  }
+  b.slab(0.48, 0.04, 0.5, 0, 0.36, 0.02, K.teak);
+  b.slab(0.46, 0.08, 0.46, 0, 0.4, 0.03, K.ecru, { py: { rect: FUV.fabric, paint: K.ecru } });
+  b.at(0, 0.38, -0.22, 0, () => { for (const sx of [-1, 1]) b.box(0.05, 0.46, 0.04, sx * 0.24, 0, 0, K.teak); for (let k = 0; k < 4; k++) b.box(0.46, 0.06, 0.025, 0, 0.12 + k * 0.1, 0, K.teak); b.box(0.42, 0.34, 0.06, 0, 0.12, 0.05, K.ecru, { pz: { rect: FUV.fabric, paint: K.ecru } }); }, -0.12);
+}
+/** A garment on its hanger, hanging from a rail at height `top`, across it (along z): `len` long, `w` wide, printed with `rect`. */
+function garment(b: KitBuilder, x: number, top: number, z: number, len: number, rect: Rect, w = 0.4) {
+  b.beam([x, top - 0.05, z - w / 2 + 0.02], [x, top + 0.005, z], 0.008, 0.008, C.chrome); b.beam([x, top + 0.005, z], [x, top - 0.05, z + w / 2 - 0.02], 0.008, 0.008, C.chrome);
+  b.box(0.045, len, w, x, top - 0.05 - len, z, W, { px: { rect }, nx: { rect }, pz: { rect }, nz: { rect } });
+}
+/** A round canopy of `n` panels from its apex down to a rim of radius `r` at `rim`: alternate panels in `c1` and `c2`, both faces, ribs below. */
+function canopy(b: KitBuilder, rim: number, apex: number, r: number, n: number, c1: number, c2: number, ribs: number) {
+  for (let k = 0; k < n; k++) {
+    const a0 = k * Math.PI * 2 / n, a1 = (k + 1) * Math.PI * 2 / n, c = k % 2 ? c2 : c1;
+    const A: V3 = [0, apex, 0], P: V3 = [Math.sin(a0) * r, rim, Math.cos(a0) * r], Q: V3 = [Math.sin(a1) * r, rim, Math.cos(a1) * r];
+    b.toward([A, P, Q], [0, 1, 0], c); b.toward([A, Q, P], [0, -1, 0], dimC(c, 0.78));
+    b.beam([0, apex - 0.3, 0], [P[0] * 0.96, rim - 0.015, P[2] * 0.96], 0.016, 0.016, ribs);
+  }
+}
+
+const HOME_MAKERS: Record<HomeType, Record<Tier, Maker>> = {
+  // -------------------------------------------------------------------------------------------------- dining sets: a table and its chairs
+  dining: {
+    basic: b => {
+      legs4(b, 1.0, 0.6, 0.7, 0.05, C.raw); b.box(0.96, 0.08, 0.56, 0, 0.62, 0, C.rawDark);
+      b.slab(1.1, 0.03, 0.7, 0, 0.7, 0, W, { py: { rect: FUV.cloth }, pz: { rect: FUV.cloth }, nz: { rect: FUV.cloth }, px: { rect: FUV.cloth }, nx: { rect: FUV.cloth } });
+      b.cyl('y', 0.06, 0.07, 0.2, -0.22, 0.83, -0.05, 0x2a8fd1, 8); b.cyl('y', 0.05, 0.05, 0.02, -0.22, 0.94, -0.05, 0x2a8fd1, 8);
+      for (const [x, z] of [[0.12, 0.1], [0.24, 0.06], [0.2, -0.12]]) b.cyl('y', 0.03, 0.025, 0.08, x, 0.77, z, 0xe8f4ff, 6);
+      const seats = chairsAt(b, [[-0.28, -0.5, 0], [0.28, -0.5, 0], [-0.28, 0.5, Math.PI], [0.28, 0.5, Math.PI]], 0.45, i => plasticChair(b, i < 2 ? C.white : C.bluePl, false));
+      return { footprint: { w: 1.12, d: 1.6, h: 0.97 }, placement: 'free', seats, use: sitUse(seats[0], 'eat', 'Manger à table') };
+    },
+    better: b => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { b.cyl('y', 0.035, 0.045, 0.34, sx * 0.6, 0.17, sz * 0.33, C.varnish, 8); b.cyl('y', 0.045, 0.03, 0.36, sx * 0.6, 0.52, sz * 0.33, C.varnish, 8); }
+      b.box(1.26, 0.1, 0.72, 0, 0.6, 0, C.varnish);
+      b.slab(1.4, 0.045, 0.85, 0, 0.7, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.slab(0.9, 0.006, 0.34, 0, 0.745, 0, W, topRect(FUV.wax2));
+      b.cyl('y', 0.15, 0.1, 0.08, 0, 0.791, 0, C.white, 10); for (const [x, z, c] of [[-0.05, 0.02, 0xf2a03a], [0.05, -0.03, 0x6fbf6a], [0.0, 0.05, 0xd9322b]]) b.blob(0.045, x, 0.86, z, c);
+      const seats = chairsAt(b, [[-0.36, -0.6, 0], [0.36, -0.6, 0], [-0.36, 0.6, Math.PI], [0.36, 0.6, Math.PI]], 0.54, () => woodChair(b));
+      return { footprint: { w: 1.42, d: 1.72, h: 1.02 }, placement: 'free', seats, use: sitUse(seats[0], 'eat', 'Manger à table') };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) {
+        b.cyl('y', 0.07, 0.11, 0.6, sx * 0.55, 0.38, 0, C.dark, 8, { neg: true, pos: true, side: FUV.carved });
+        b.box(0.14, 0.08, 0.72, sx * 0.55, 0, 0, C.dark); b.box(0.5, 0.08, 0.14, sx * 0.55, 0, 0, C.dark);
+        for (const [dx, dz] of [[0, 0.34], [0, -0.34], [0.23, 0], [-0.23, 0]]) b.box(0.08, 0.02, 0.08, sx * 0.55 + dx, 0.08, dz, C.gold);
+        b.box(0.22, 0.04, 0.22, sx * 0.55, 0.66, 0, C.gold);
+      }
+      b.beam([-0.55, 0.25, 0], [0.55, 0.25, 0], 0.05, 0.05, C.gold);
+      b.slab(1.9, 0.05, 0.95, 0, 0.7, 0, W, { py: { rect: FUV.marble } });
+      b.cuboid(-0.95, 0.95, 0.69, 0.75, 0.465, 0.478, C.gold, { bottom: true }); b.cuboid(-0.95, 0.95, 0.69, 0.75, -0.478, -0.465, C.gold, { bottom: true });
+      b.cyl('y', 0.16, 0.09, 0.09, 0, 0.795, 0, C.gold, 12); for (const [x, z, c] of [[-0.05, 0.02, 0xd9322b], [0.06, -0.03, 0xf2a03a], [0.0, 0.06, 0x6fbf6a], [0.02, -0.06, 0xf4c20d]]) b.blob(0.045, x, 0.87, z, c);
+      for (const sx of [-1, 1]) { b.cyl('y', 0.045, 0.03, 0.22, sx * 0.45, 0.86, 0, C.gold, 8); b.cyl('y', 0.016, 0.016, 0.1, sx * 0.45, 1.02, 0, C.cream, 6); }
+      const seats = chairsAt(b, [[-0.62, -0.66, 0], [0, -0.66, 0], [0.62, -0.66, 0], [-0.62, 0.66, Math.PI], [0, 0.66, Math.PI], [0.62, 0.66, Math.PI]], 0.52, () => velvetChair(b));
+      return { footprint: { w: 1.92, d: 1.92, h: 1.18 }, placement: 'free', seats, use: sitUse(seats[0], 'eat', 'Manger à table') };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- kitchen table, its stools on the room side (+z)
+  kitchenTable: {
+    basic: b => {
+      const tz = -0.2;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.03, 0.72, 0.03, sx * 0.37, 0, tz + sz * 0.24, C.chrome);
+      b.slab(0.8, 0.03, 0.55, 0, 0.72, tz, 0xe8e4d8, { py: { paint: 0xf4f1e8 } });
+      b.cuboid(-0.4, 0.4, 0.715, 0.755, tz + 0.275, tz + 0.285, 0xd9322b, { bottom: true });
+      b.cyl('y', 0.045, 0.05, 0.2, -0.26, 0.85, tz - 0.12, C.redPl, 8); b.cyl('y', 0.03, 0.03, 0.03, -0.26, 0.965, tz - 0.12, C.white, 8);
+      b.cyl('y', 0.08, 0.05, 0.05, 0.02, 0.775, tz + 0.02, C.white, 10); b.box(0.3, 0.05, 0.07, 0.2, 0.75, tz - 0.1, 0xd9a35a);
+      const seats = chairsAt(b, [[-0.2, 0.28, Math.PI], [0.2, 0.28, Math.PI]], 0.47, i => plasticStool(b, i ? C.bluePl : C.redPl), 'stool', 0);
+      return { footprint: { w: 0.82, d: 0.96, h: 1.0 }, placement: 'wall', seats, use: sitUse(seats[0], 'eat', 'Manger un morceau') };
+    },
+    better: b => {
+      const tz = -0.2;
+      legs4(b, 0.94, 0.54, 0.72, 0.05, C.varnish, 0, tz); b.box(0.9, 0.1, 0.5, 0, 0.62, tz, C.varnish);
+      b.box(0.34, 0.07, 0.012, 0, 0.635, tz + 0.256, C.varnishLight); b.box(0.06, 0.02, 0.02, 0, 0.66, tz + 0.266, C.gold);
+      b.slab(1.0, 0.04, 0.6, 0, 0.72, tz, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.cyl('y', 0.13, 0.09, 0.07, -0.25, 0.795, tz - 0.05, C.white, 10); for (const [x, z, c] of [[-0.27, -0.05, 0xf2a03a], [-0.22, -0.02, 0x6fbf6a]]) b.blob(0.04, x, 0.85, tz + z, c);
+      b.cyl('y', 0.07, 0.08, 0.12, 0.22, 0.82, tz - 0.08, C.enamel, 10); b.beam([0.29, 0.82, tz - 0.08], [0.36, 0.88, tz - 0.08], 0.02, 0.02, C.enamel);
+      const seats = chairsAt(b, [[-0.24, 0.31, Math.PI], [0.24, 0.31, Math.PI]], 0.48, () => woodStool(b), 'stool', 0);
+      return { footprint: { w: 1.0, d: 1.0, h: 0.91 }, placement: 'wall', seats, use: sitUse(seats[0], 'eat', 'Manger un morceau') };
+    },
+    premium: b => {
+      const tz = -0.25, w = 1.1;
+      for (const sx of [-1, 1]) b.box(0.05, 1.0, 0.5, sx * (w / 2 - 0.025), 0, tz, W, { px: { rect: FUV.marble }, nx: { rect: FUV.marble }, pz: { rect: FUV.marble } });
+      b.slab(w, 0.04, 0.5, 0, 1.0, tz, W, { py: { rect: FUV.marble }, pz: { rect: FUV.marble } });
+      b.box(w - 0.1, 0.6, 0.03, 0, 0.4, tz - 0.2, 0x3a3a3c);
+      b.beam([-0.5, 0.26, tz + 0.2], [0.5, 0.26, tz + 0.2], 0.025, 0.025, C.chrome);
+      b.cyl('y', 0.14, 0.08, 0.06, -0.3, 1.07, tz, C.chrome, 12); for (const [x, z, c] of [[-0.32, 0.0, 0xf2a03a], [-0.27, 0.03, 0xd9322b], [-0.3, -0.03, 0x6fbf6a]]) b.blob(0.04, x, 1.12, tz + z, c);
+      b.box(0.18, 0.3, 0.22, 0.32, 1.04, tz - 0.06, 0x2a2a2c); b.box(0.1, 0.08, 0.05, 0.32, 1.06, tz + 0.07, C.chrome);   // a coffee machine
+      const seats = chairsAt(b, [[-0.27, 0.28, Math.PI], [0.27, 0.28, Math.PI]], 0.77, () => barStool(b), 'stool', 0);
+      return { footprint: { w: 1.12, d: 1.0, h: 1.36 }, placement: 'wall', seats, use: sitUse(seats[0], 'eat', 'Manger un morceau') };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- a microwave on its trolley, its cabinet, or an oven column
+  microwave: {
+    basic: b => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { b.box(0.025, 0.82, 0.025, sx * 0.26, 0.03, sz * 0.18, C.chrome); b.cyl('x', 0.025, 0.025, 0.02, sx * 0.26, 0.025, sz * 0.18, C.black, 8); }
+      b.slab(0.55, 0.02, 0.4, 0, 0.16, 0, 0x8a8e93); b.slab(0.56, 0.025, 0.41, 0, 0.82, 0, 0x8a8e93);
+      b.box(0.48, 0.28, 0.34, 0, 0.845, -0.02, C.white);
+      b.box(0.47, 0.26, 0.006, 0, 0.855, 0.153, W, { pz: { rect: FUV.mwave } });
+      b.box(0.02, 0.18, 0.025, 0.1, 0.895, 0.165, C.grey);
+      b.cyl('y', 0.15, 0.12, 0.1, -0.1, 0.23, 0, C.redPl, 10); b.box(0.14, 0.22, 0.12, 0.16, 0.18, 0.02, 0xe8d8b0);
+      return { footprint: { w: 0.56, d: 0.42, h: 1.13 }, placement: 'wall', use: standUse(0.42, 'use', 'Réchauffer un plat', 0.5) };
+    },
+    better: b => {
+      b.box(0.56, 0.06, 0.4, 0, 0, -0.01, C.dark);
+      b.box(0.6, 0.78, 0.44, 0, 0.06, 0, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.006, 0.7, 0.005, 0, 0.1, 0.2225, C.dark); for (const sx of [-1, 1]) b.box(0.02, 0.12, 0.025, sx * 0.05, 0.6, 0.232, C.gold);
+      b.slab(0.62, 0.03, 0.46, 0, 0.84, 0, W, { py: { rect: FUV.marble } });
+      b.box(0.5, 0.29, 0.36, 0, 0.87, -0.03, C.white, { py: { paint: 0xf4f4f0 } });
+      b.box(0.49, 0.27, 0.006, 0, 0.88, 0.153, W, { pz: { rect: FUV.mwave } });
+      b.box(0.02, 0.18, 0.025, 0.105, 0.925, 0.165, C.grey);
+      return { footprint: { w: 0.62, d: 0.5, h: 1.17 }, placement: 'wall', use: standUse(0.5, 'use', 'Réchauffer un plat', 0.5) };
+    },
+    premium: b => {
+      const w = 0.62, z0 = -0.02, f = 0.28 + z0;
+      b.box(w - 0.04, 0.08, 0.5, 0, 0, z0 - 0.02, C.black);
+      b.box(w, 2.0, 0.56, 0, 0.08, z0, C.white);
+      for (const [y, h] of [[0.1, 0.2], [0.32, 0.2]]) { b.box(w - 0.04, h, 0.02, 0, y, f + 0.01, 0xf4f2ec); b.box(0.3, 0.015, 0.025, 0, y + h - 0.045, f + 0.032, C.chrome); }
+      b.box(w - 0.04, 0.58, 0.02, 0, 0.56, f + 0.01, 0x1c1c1e); b.box(w - 0.14, 0.3, 0.005, 0, 0.64, f + 0.022, W, { pz: { rect: FUV.mwave } });
+      b.box(0.42, 0.02, 0.03, 0, 1.04, f + 0.035, C.chrome);
+      for (let k = 0; k < 4; k++) b.cyl('z', 0.018, 0.018, 0.02, -0.21 + k * 0.06, 1.1, f + 0.03, C.chrome, 10);
+      b.box(0.12, 0.035, 0.005, 0.16, 1.085, f + 0.022, W, { pz: { rect: FUV.led } });
+      b.box(w - 0.04, 0.36, 0.02, 0, 1.18, f + 0.01, 0x2a2a2c); b.box(w - 0.12, 0.3, 0.005, 0, 1.21, f + 0.022, W, { pz: { rect: FUV.mwave } });
+      b.box(w - 0.04, 0.48, 0.02, 0, 1.58, f + 0.01, 0xf4f2ec); b.box(0.02, 0.2, 0.025, 0.22, 1.62, f + 0.032, C.chrome);
+      return { footprint: { w: 0.62, d: 0.62, h: 2.08 }, placement: 'wall', use: standUse(0.62, 'use', 'Réchauffer un plat', 0.5) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- water: the canari, a dispenser and its bottle, a steel one
+  waterDispenser: {
+    basic: b => {
+      legs4(b, 0.34, 0.34, 0.3, 0.04, C.raw); for (const s of [-1, 1]) b.box(0.3, 0.03, 0.03, 0, 0.1, s * 0.15, C.rawDark);
+      b.slab(0.4, 0.03, 0.4, 0, 0.3, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      b.cyl('y', 0.11, 0.17, 0.12, 0, 0.39, 0, K.clay, 10, { neg: false, pos: false }); b.cyl('y', 0.17, 0.19, 0.12, 0, 0.51, 0, K.clay, 10, { neg: false, pos: false });
+      b.cyl('y', 0.19, 0.13, 0.13, 0, 0.635, 0, K.clayDark, 10, { neg: false, pos: false }); b.cyl('y', 0.13, 0.12, 0.04, 0, 0.72, 0, K.clay, 10, { neg: false, pos: false });
+      b.cyl('y', 0.135, 0.135, 0.02, 0, 0.75, 0, C.raw, 10); b.blob(0.02, 0, 0.77, 0, C.rawDark);
+      b.cyl('y', 0.035, 0.035, 0.06, 0.07, 0.79, 0.03, C.alu, 8);
+      return { footprint: { w: 0.4, d: 0.4, h: 0.83 }, placement: 'free', use: standUse(0.4, 'drink', 'Boire de l’eau fraîche', 0.45) };
+    },
+    better: (b, g) => {
+      const z0 = -0.04;
+      b.box(0.3, 0.96, 0.3, 0, 0, z0, C.white);
+      b.box(0.22, 0.26, 0.012, 0, 0.56, z0 + 0.156, 0x3a3a3c); b.box(0.18, 0.025, 0.08, 0, 0.56, z0 + 0.18, C.grey);
+      b.box(0.035, 0.05, 0.05, -0.05, 0.75, z0 + 0.185, 0x2f6fb3); b.box(0.035, 0.05, 0.05, 0.05, 0.75, z0 + 0.185, 0xd9322b);
+      b.box(0.22, 0.32, 0.008, 0, 0.1, z0 + 0.154, 0xf4f4f0); b.box(0.08, 0.015, 0.02, 0, 0.38, z0 + 0.162, C.grey);
+      b.cyl('y', 0.12, 0.12, 0.04, 0, 0.98, z0, C.grey, 12);
+      g.cyl('y', 0.05, 0.13, 0.1, 0, 1.05, z0, K.water, 12); g.cyl('y', 0.13, 0.13, 0.3, 0, 1.25, z0, K.water, 12); g.cyl('y', 0.13, 0.11, 0.04, 0, 1.42, z0, K.water, 12);
+      return { footprint: { w: 0.32, d: 0.38, h: 1.45 }, placement: 'wall', use: standUse(0.38, 'drink', 'Boire de l’eau fraîche', 0.45) };
+    },
+    premium: (b, g) => {
+      const z0 = -0.03, f = z0 + 0.16;
+      b.box(0.32, 1.02, 0.32, 0, 0, z0, K.steel);
+      b.box(0.27, 0.42, 0.012, 0, 0.5, f + 0.006, C.black);
+      b.box(0.12, 0.04, 0.005, 0, 0.85, f + 0.014, W, { pz: { rect: FUV.led } });
+      for (const [x, c] of [[-0.08, 0xd9322b], [0, 0x2f6fb3], [0.08, 0xf2f2ee]] as const) b.box(0.03, 0.05, 0.045, x, 0.7, f + 0.03, c);
+      b.box(0.24, 0.02, 0.07, 0, 0.52, f + 0.035, C.grey);
+      b.box(0.28, 0.4, 0.008, 0, 0.06, f + 0.004, K.steel, { pz: { paint: 0xd8dcdf } }); b.box(0.015, 0.3, 0.02, 0.11, 0.1, f + 0.018, C.chrome);
+      for (let k = 0; k < 5; k++) b.box(0.006, 0.18, 0.004, -0.16, 0.6 + k * 0.0, z0 - 0.1 + k * 0.05, C.grey);
+      for (let k = 0; k < 5; k++) b.box(0.006, 0.18, 0.004, 0.16, 0.6, z0 - 0.1 + k * 0.05, C.grey);
+      for (let k = 0; k < 3; k++) b.cyl('z', 0.01, 0.01, 0.01, -0.08 + k * 0.08, 0.79, f + 0.017, [0xd9322b, 0x2f6fb3, 0x7dffb0][k], 8);
+      b.cyl('y', 0.16, 0.16, 0.02, 0, 0.01, z0, C.chrome, 16, { neg: false, pos: true });
+      b.slab(0.28, 0.02, 0.26, 0, 1.02, z0, C.chrome);
+      for (const x of [-0.08, 0.0]) g.cyl('y', 0.035, 0.03, 0.1, x, 1.09, z0 - 0.02, 0xe8f4ff, 8);
+      g.cyl('y', 0.06, 0.06, 0.16, 0.08, 1.12, z0 + 0.02, 0xbfe0ea, 10); g.cyl('y', 0.06, 0.025, 0.06, 0.08, 1.23, z0 + 0.02, 0xbfe0ea, 10);
+      return { footprint: { w: 0.34, d: 0.4, h: 1.27 }, placement: 'wall', use: standUse(0.4, 'drink', 'Boire de l’eau fraîche', 0.45) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- cooking: a gas ring and its pot, a gas cooker, a range and its hood
+  cooker: {
+    basic: b => {
+      legs4(b, 0.74, 0.44, 0.45, 0.04, C.raw); b.slab(0.78, 0.03, 0.48, 0, 0.45, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      b.slab(0.34, 0.02, 0.4, -0.19, 0.12, 0, C.rawDark);
+      b.cyl('y', 0.12, 0.13, 0.05, -0.15, 0.505, 0, 0x333333, 10);
+      b.cyl('y', 0.17, 0.15, 0.22, -0.15, 0.64, 0, C.alu, 12); b.cyl('y', 0.175, 0.175, 0.015, -0.15, 0.757, 0, 0x9aa0a6, 12); b.blob(0.025, -0.15, 0.78, 0, 0x333333);
+      for (const s of [-1, 1]) b.box(0.05, 0.02, 0.03, -0.15 + s * 0.19, 0.7, 0, C.alu);
+      b.cyl('y', 0.08, 0.09, 0.13, 0.2, 0.545, 0.05, C.enamel, 10); b.cyl('y', 0.03, 0.05, 0.03, 0.2, 0.625, 0.05, C.enamel, 8); b.beam([0.27, 0.56, 0.05], [0.34, 0.62, 0.05], 0.022, 0.022, C.enamel);
+      b.cyl('y', 0.12, 0.12, 0.34, 0.2, 0.17, 0.02, C.butane, 12); b.cyl('y', 0.04, 0.05, 0.06, 0.2, 0.37, 0.02, C.chrome, 8);
+      b.cyl('y', 0.14, 0.11, 0.08, -0.19, 0.18, 0.02, C.redPl, 12); for (let k = 0; k < 4; k++) b.blob(0.035, -0.23 + (k % 2) * 0.07, 0.24, -0.02 + Math.floor(k / 2) * 0.07, 0xb24a6a);
+      return { footprint: { w: 0.8, d: 0.5, h: 0.81 }, placement: 'wall', use: standUse(0.5, 'use', 'Cuisiner', 0.5) };
+    },
+    better: b => {
+      const w = 0.6, d = 0.6, f = d / 2 - 0.02;
+      b.box(w, 0.86, d - 0.04, 0, 0, -0.02, C.white);
+      b.box(w, 0.02, d - 0.04, 0, 0.86, -0.02, 0x2a2a2c);
+      for (const z of [-0.16, 0.11]) b.box(0.54, 0.004, 0.25, 0, 0.88, z, W, topRect(FUV.hob));
+      b.box(w, 0.14, 0.03, 0, 0.86, -d / 2 + 0.005, C.white);
+      b.box(0.52, 0.48, 0.02, 0, 0.12, f + 0.01, 0xe9e9e4); b.box(0.38, 0.24, 0.005, 0, 0.26, f + 0.022, 0x1c1c1e);
+      b.box(0.44, 0.02, 0.03, 0, 0.64, f + 0.03, C.chrome);
+      for (let k = 0; k < 5; k++) b.cyl('z', 0.022, 0.022, 0.025, -0.2 + k * 0.1, 0.77, f + 0.0125, C.black, 8);
+      b.cyl('y', 0.11, 0.1, 0.15, -0.14, 0.955, 0.11, C.chrome, 12); b.cyl('y', 0.112, 0.112, 0.012, -0.14, 1.036, 0.11, 0x9aa0a6, 12);
+      return { footprint: { w: 0.6, d: 0.66, h: 1.05 }, placement: 'wall', use: standUse(0.66, 'use', 'Cuisiner', 0.5) };
+    },
+    premium: b => {
+      const w = 0.9, d = 0.62, f = d / 2 - 0.02;
+      b.box(w - 0.02, 0.08, d - 0.08, 0, 0, -0.03, C.black);
+      b.box(w, 0.8, d - 0.04, 0, 0.08, -0.02, K.steel);
+      b.box(w, 0.03, d - 0.04, 0, 0.88, -0.02, 0x1c1c1e);
+      for (const [x, z] of [[-0.22, -0.15], [0.22, -0.15], [-0.22, 0.12]] as const) b.box(0.4, 0.004, 0.25, x, 0.91, z, W, topRect(FUV.hob));
+      b.cyl('y', 0.1, 0.1, 0.012, 0.22, 0.916, 0.12, 0x333333, 12); b.cyl('y', 0.05, 0.05, 0.01, 0.22, 0.927, 0.12, 0x6a6e73, 10);
+      for (const z of [-0.15, 0.12]) b.beam([-0.43, 0.925, z], [0.43, 0.925, z], 0.012, 0.012, 0x2a2a2c);
+      b.box(0.5, 0.5, 0.02, -0.18, 0.15, f + 0.01, K.steel, { pz: { paint: 0xd8dcdf } }); b.box(0.36, 0.26, 0.005, -0.18, 0.27, f + 0.022, 0x1c1c1e); b.box(0.42, 0.02, 0.03, -0.18, 0.67, f + 0.035, C.chrome);
+      b.box(0.32, 0.5, 0.02, 0.27, 0.15, f + 0.01, K.steel, { pz: { paint: 0xd8dcdf } }); b.box(0.2, 0.26, 0.005, 0.27, 0.27, f + 0.022, 0x1c1c1e); b.box(0.24, 0.02, 0.03, 0.27, 0.67, f + 0.035, C.chrome);
+      for (let k = 0; k < 6; k++) b.cyl('z', 0.024, 0.024, 0.03, -0.35 + k * 0.14, 0.78, f + 0.015, C.black, 8);
+      b.cyl('y', 0.12, 0.11, 0.17, -0.22, 1.0, -0.15, C.chrome, 12); b.cyl('y', 0.13, 0.13, 0.015, -0.22, 1.092, -0.15, 0x2a2a2c, 12);
+      b.cyl('y', 0.13, 0.11, 0.05, 0.22, 0.95, 0.12, 0x2a2a2c, 12); b.beam([0.35, 0.95, 0.12], [0.48 - 0.04, 0.96, 0.12], 0.03, 0.02, 0x2a2a2c);
+      b.box(w, 0.1, 0.5, 0, 1.62, -0.06, K.steel, { bottom: true, ny: { rect: FUV.bulb } });
+      b.box(0.32, 0.5, 0.26, 0, 1.72, -0.18, K.steel);
+      return { footprint: { w: 0.92, d: 0.66, h: 2.24 }, placement: 'wall', use: standUse(0.66, 'use', 'Cuisiner', 0.5) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- bathroom: a basin on its column, a vanity, a double vanity
+  vanity: {
+    basic: b => {
+      b.cyl('y', 0.1, 0.07, 0.68, 0, 0.34, -0.06, C.white, 12);
+      b.box(0.54, 0.16, 0.4, 0, 0.68, -0.02, C.white);
+      b.box(0.42, 0.004, 0.26, 0, 0.84, 0.0, W, topRect(FUV.sink));
+      b.beam([0, 0.84, -0.18], [0, 0.97, -0.18], 0.03, 0.03, C.chrome); b.beam([0, 0.97, -0.18], [0, 0.95, -0.08], 0.025, 0.025, C.chrome);
+      b.box(0.08, 0.025, 0.05, 0.19, 0.84, -0.15, 0xd98ab0);
+      return { footprint: { w: 0.56, d: 0.44, h: 0.99 }, placement: 'wall', use: standUse(0.44, 'wash', 'Se rafraîchir', 0.45) };
+    },
+    better: b => {
+      const w = 0.7, d = 0.46, f = d / 2 - 0.02;
+      b.box(w - 0.04, 0.08, d - 0.08, 0, 0, -0.03, C.dark);
+      b.box(w, 0.72, d - 0.04, 0, 0.08, -0.02, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.006, 0.66, 0.005, 0, 0.11, f + 0.0025, C.dark); for (const sx of [-1, 1]) b.box(0.02, 0.12, 0.025, sx * 0.05, 0.6, f + 0.012, C.gold);
+      b.slab(w + 0.02, 0.04, d + 0.02, 0, 0.8, 0, W, { py: { rect: FUV.marble } });
+      b.box(0.44, 0.004, 0.28, 0, 0.84, 0.02, W, topRect(FUV.sink));
+      b.beam([0, 0.84, -0.17], [0, 0.98, -0.17], 0.03, 0.03, C.chrome); b.beam([0, 0.98, -0.17], [0, 0.96, -0.07], 0.025, 0.025, C.chrome); b.box(0.05, 0.02, 0.03, 0.06, 0.95, -0.17, C.chrome);
+      b.cyl('y', 0.035, 0.03, 0.1, -0.26, 0.89, -0.15, 0x8fd0c0, 8); for (let k = 0; k < 2; k++) b.beam([-0.27 + k * 0.02, 0.9, -0.15], [-0.28 + k * 0.04, 0.99, -0.14], 0.01, 0.01, [0xd9322b, 0x2f6fb3][k]);
+      b.box(0.08, 0.025, 0.05, 0.26, 0.84, -0.14, 0xf4c20d);
+      return { footprint: { w: 0.72, d: 0.48, h: 1.02 }, placement: 'wall', use: standUse(0.48, 'wash', 'Se rafraîchir', 0.45) };
+    },
+    premium: b => {
+      const w = 1.2, d = 0.52, f = d / 2 - 0.05;
+      b.box(w, 0.42, d - 0.06, 0, 0.4, -0.03, K.walnut, { pz: { rect: FUV.wood, paint: 0x7a5232 } });
+      b.box(w - 0.04, 0.006, 0.005, 0, 0.61, f + 0.0025, C.darker); b.box(0.006, 0.4, 0.005, 0, 0.41, f + 0.0025, C.darker);
+      for (const sx of [-1, 1]) for (const y of [0.53, 0.74]) b.box(0.26, 0.015, 0.02, sx * 0.3, y, f + 0.01, C.gold);
+      b.slab(w + 0.02, 0.05, d, 0, 0.82, 0, W, { py: { rect: FUV.marble }, pz: { rect: FUV.marble } });
+      for (const sx of [-1, 1]) {
+        b.cyl('y', 0.16, 0.2, 0.13, sx * 0.3, 0.935, 0.03, C.white, 14, { neg: false, pos: FUV.sink });
+        b.beam([sx * 0.3, 0.87, -0.2], [sx * 0.3, 1.12, -0.2], 0.03, 0.03, C.chrome); b.beam([sx * 0.3, 1.12, -0.2], [sx * 0.3, 1.1, -0.08], 0.025, 0.025, C.chrome);
+        b.box(0.03, 0.4, 0.03, sx * 0.56, 0, -0.03, C.chrome);
+      }
+      b.cyl('y', 0.035, 0.035, 0.16, 0, 0.95, -0.17, 0xd8d2c8, 8); b.cyl('y', 0.008, 0.008, 0.05, 0, 1.055, -0.17, C.chrome, 4);
+      b.slab(w - 0.06, 0.025, 0.4, 0, 0.12, -0.03, K.walnut);
+      for (const [x, c] of [[-0.36, K.towel], [-0.2, K.sky], [-0.04, K.towel]] as const) b.cyl('x', 0.06, 0.06, 0.14, x, 0.205, 0.0, c, 10, { neg: true, pos: true, side: FUV.towel });
+      b.cyl('y', 0.13, 0.11, 0.16, 0.3, 0.225, -0.02, 0xb98a52, 12, { neg: true, pos: false, side: FUV.rattan });
+      return { footprint: { w: 1.22, d: 0.54, h: 1.16 }, placement: 'wall', use: standUse(0.54, 'wash', 'Se rafraîchir', 0.45) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- bathroom mirrors, on the wall
+  bathMirror: {
+    basic: b => {
+      b.cyl('z', 0.26, 0.26, 0.03, 0, 1.55, -0.015, 0xb98a52, 20, { neg: true, pos: true, side: FUV.rattan });
+      b.cyl('z', 0.22, 0.22, 0.006, 0, 1.55, 0.003, W, 20, { neg: false, pos: FUV.mirror });
+      return { footprint: { w: 0.52, d: 0.06, h: 1.81 }, placement: 'wall', use: standUse(0.06, 'use', 'Se préparer', 0.6) };
+    },
+    better: b => {
+      const z0 = -0.075;
+      b.box(0.6, 0.66, 0.13, 0, 1.16, z0 + 0.065, C.white);
+      b.box(0.56, 0.62, 0.006, 0, 1.18, z0 + 0.133, W, { pz: { rect: FUV.mirror } });
+      b.box(0.012, 0.1, 0.012, 0.24, 1.46, z0 + 0.142, C.chrome);
+      b.box(0.5, 0.05, 0.08, 0, 1.82, z0 + 0.06, C.chrome, { ny: { rect: FUV.bulb }, pz: { rect: FUV.bulb } });
+      b.slab(0.5, 0.02, 0.12, 0, 1.08, z0 + 0.06, C.white);
+      b.cyl('y', 0.035, 0.03, 0.1, -0.12, 1.15, z0 + 0.07, 0x8fd0c0, 8); for (let k = 0; k < 2; k++) b.beam([-0.13 + k * 0.02, 1.15, z0 + 0.07], [-0.14 + k * 0.04, 1.24, z0 + 0.08], 0.01, 0.01, [0xd9322b, 0x2f6fb3][k]);
+      b.box(0.06, 0.12, 0.05, 0.12, 1.1, z0 + 0.07, 0xf2f2ec);
+      return { footprint: { w: 0.6, d: 0.15, h: 1.88 }, placement: 'wall', use: standUse(0.15, 'use', 'Se préparer', 0.6) };
+    },
+    premium: (b, g) => {
+      const z0 = -0.07;
+      b.box(0.9, 0.8, 0.03, 0, 1.1, z0 + 0.015, 0x2a2a2c);
+      b.box(0.84, 0.74, 0.005, 0, 1.13, z0 + 0.0325, W, { pz: { rect: FUV.mirror } });
+      b.box(0.86, 0.02, 0.008, 0, 1.86, z0 + 0.034, W, { pz: { rect: FUV.led }, py: { rect: FUV.led } }); b.box(0.86, 0.02, 0.008, 0, 1.115, z0 + 0.034, W, { pz: { rect: FUV.led } });
+      for (const sx of [-1, 1]) b.box(0.02, 0.74, 0.008, sx * 0.43, 1.125, z0 + 0.034, W, { pz: { rect: FUV.led } });
+      g.slab(0.7, 0.012, 0.11, 0, 1.0, z0 + 0.065, 0xd8eef4);
+      for (const sx of [-1, 1]) b.box(0.02, 0.04, 0.1, sx * 0.3, 0.97, z0 + 0.06, C.chrome);
+      for (let k = 0; k < 4; k++) { const h = [0.16, 0.1, 0.13, 0.08][k]; b.cyl('y', 0.025, 0.03, h, -0.22 + k * 0.13, 1.012 + h / 2, z0 + 0.065, [0xf2f2ec, 0xd98ab0, 0x8fd0c0, C.gold][k], 8); }
+      return { footprint: { w: 0.92, d: 0.14, h: 1.92 }, placement: 'wall', use: standUse(0.14, 'use', 'Se préparer', 0.6) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- towel rails, on the wall
+  towelRail: {
+    basic: b => {
+      const z0 = -0.05;
+      for (const sx of [-1, 1]) b.box(0.03, 0.05, 0.07, sx * 0.26, 0.975, z0 + 0.035, C.chrome);
+      b.cyl('x', 0.012, 0.012, 0.56, 0, 1.0, z0 + 0.06, C.chrome, 8);
+      b.box(0.4, 0.4, 0.006, -0.02, 0.6, z0 + 0.075, W, { pz: { rect: FUV.towel } }); b.box(0.4, 0.36, 0.006, -0.02, 0.64, z0 + 0.045, W, { nz: { rect: FUV.towel } });
+      b.cyl('x', 0.018, 0.018, 0.4, -0.02, 1.003, z0 + 0.06, K.towel, 8);
+      return { footprint: { w: 0.58, d: 0.1, h: 1.04 }, placement: 'wall', use: standUse(0.1, 'use', 'Prendre une serviette', 0.5) };
+    },
+    better: b => {
+      const z0 = -0.1;
+      b.box(0.62, 0.32, 0.02, 0, 1.18, z0 + 0.01, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      for (const sx of [-1, 1]) { b.box(0.03, 0.12, 0.17, sx * 0.29, 1.4, z0 + 0.105, C.varnish); b.box(0.03, 0.22, 0.15, sx * 0.29, 1.12, z0 + 0.095, C.varnish); }
+      b.slab(0.62, 0.025, 0.2, 0, 1.52, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.24, 0.07, 0.16, -0.15, 1.545, 0.0, K.towel, { pz: { rect: FUV.towel }, px: { rect: FUV.towel } }); b.box(0.24, 0.06, 0.16, 0.15, 1.545, 0.0, K.sky);
+      for (const y of [1.16, 1.3]) b.cyl('x', 0.015, 0.015, 0.56, 0, y, z0 + 0.15, C.varnish, 8);
+      b.box(0.36, 0.38, 0.006, 0.05, 0.78, z0 + 0.168, W, { pz: { rect: FUV.towel } }); b.box(0.36, 0.34, 0.006, 0.05, 0.82, z0 + 0.132, W, { nz: { rect: FUV.towel } });
+      b.cyl('x', 0.02, 0.02, 0.36, 0.05, 1.163, z0 + 0.15, K.towel, 8);
+      return { footprint: { w: 0.62, d: 0.2, h: 1.6 }, placement: 'wall', use: standUse(0.2, 'use', 'Prendre une serviette', 0.5) };
+    },
+    premium: b => {
+      const z0 = -0.05, zr = z0 + 0.06;
+      for (const sx of [-1, 1]) { b.cyl('y', 0.016, 0.016, 1.2, sx * 0.25, 1.05, zr, C.chrome, 8); for (const y of [0.55, 1.55]) b.box(0.03, 0.03, 0.06, sx * 0.25, y, z0 + 0.03, C.chrome); }
+      for (let k = 0; k < 9; k++) b.cyl('x', 0.011, 0.011, 0.5, 0, 0.5 + k * 0.14, zr, C.chrome, 6);
+      b.box(0.36, 0.36, 0.006, 0, 1.0, zr + 0.018, W, { pz: { rect: FUV.towel } }); b.box(0.36, 0.32, 0.006, 0, 1.04, zr - 0.018, W, { nz: { rect: FUV.towel } });
+      b.cyl('x', 0.02, 0.02, 0.36, 0, 1.36, zr, K.towel, 8);
+      b.box(0.22, 0.2, 0.005, -0.1, 0.52, zr + 0.016, K.sky); b.cyl('x', 0.018, 0.018, 0.22, -0.1, 0.72, zr, K.sky, 8);
+      b.cyl('x', 0.025, 0.025, 0.04, 0.29, 0.6, zr, C.white, 8);
+      return { footprint: { w: 0.62, d: 0.1, h: 1.67 }, placement: 'wall', use: standUse(0.1, 'use', 'Prendre une serviette', 0.5) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- floor lamps
+  floorLamp: {
+    basic: b => {
+      b.cyl('y', 0.18, 0.2, 0.04, 0, 0.02, 0, C.varnish, 14);
+      b.cyl('y', 0.018, 0.018, 1.4, 0, 0.74, 0, C.varnish, 6);
+      b.cyl('y', 0.04, 0.04, 0.06, 0, 1.44, 0, C.gold, 8);
+      b.cyl('y', 0.21, 0.19, 0.3, 0, 1.58, 0, W, 14, { neg: FUV.bulb, pos: false, side: FUV.shade });
+      return { footprint: { w: 0.44, d: 0.44, h: 1.74 }, placement: 'free', use: standUse(0.44, 'use', 'Allumer la lampe', 0.45) };
+    },
+    better: b => {
+      const top = 1.3;
+      for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3 + Math.PI / 6; b.beam([0, top, 0], [Math.sin(a) * 0.24, 0.016, Math.cos(a) * 0.24], 0.03, 0.03, C.varnish); }
+      b.cyl('y', 0.035, 0.035, 0.1, 0, top + 0.02, 0, C.dark, 8);
+      b.cyl('y', 0.26, 0.15, 0.32, 0, top + 0.2, 0, W, 16, { neg: FUV.bulb, pos: false, side: FUV.shade });
+      b.beam([0, top - 0.05, 0], [0.1, 0.4, -0.08], 0.008, 0.008, C.black);
+      return { footprint: { w: 0.56, d: 0.56, h: 1.67 }, placement: 'free', use: standUse(0.56, 'use', 'Allumer la lampe', 0.45) };
+    },
+    premium: b => {
+      const bz = -0.36, sz = 0.34;
+      const m = { rect: FUV.marble };
+      b.box(0.3, 0.24, 0.3, 0, 0, bz, W, { pz: m, nz: m, px: m, nx: m, py: m });
+      const P0: V3 = [0, 0.24, bz], P1: V3 = [0, 2.35, bz + 0.05], P2: V3 = [0, 1.84, sz];
+      const pt = (t: number): V3 => [0, (1 - t) ** 2 * P0[1] + 2 * (1 - t) * t * P1[1] + t * t * P2[1], (1 - t) ** 2 * P0[2] + 2 * (1 - t) * t * P1[2] + t * t * P2[2]];
+      for (let k = 0; k < 10; k++) b.beam(pt(k / 10), pt((k + 1) / 10), 0.024, 0.024, C.chrome);
+      b.cyl('y', 0.22, 0.06, 0.2, 0, 1.72, sz, C.chrome, 16, { neg: FUV.bulb, pos: true });
+      return { footprint: { w: 0.44, d: 1.12, h: 1.98 }, placement: 'free', use: standUse(1.12, 'use', 'Allumer la lampe', 0.45) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- hanging lamps, from the ceiling (2.8 m)
+  pendant: {
+    basic: b => {
+      b.cyl('y', 0.06, 0.06, 0.03, 0, 2.785, 0, C.white, 10);
+      b.cyl('y', 0.006, 0.006, 0.36, 0, 2.59, 0, C.black, 4);
+      b.cyl('y', 0.24, 0.07, 0.24, 0, 2.3, 0, W, 16, { neg: FUV.bulb, pos: FUV.rattan, side: FUV.rattan });
+      return { footprint: { w: 0.5, d: 0.5, h: 2.8 }, placement: 'free', use: standUse(0.5, 'use', 'Allumer la lumière', 0.5) };
+    },
+    better: b => {
+      b.cyl('y', 0.06, 0.06, 0.03, 0, 2.785, 0, C.white, 10);
+      b.cyl('y', 0.006, 0.006, 0.33, 0, 2.605, 0, C.black, 4);
+      b.cyl('y', 0.28, 0.25, 0.08, 0, 2.14, 0, W, 16, { neg: FUV.bulb, pos: false, side: FUV.calabash });
+      b.cyl('y', 0.25, 0.17, 0.1, 0, 2.23, 0, W, 16, { neg: false, pos: false, side: FUV.calabash });
+      b.cyl('y', 0.17, 0.05, 0.1, 0, 2.33, 0, W, 16, { neg: false, pos: true, capPaint: 0xc99a55, side: FUV.calabash });
+      b.cyl('y', 0.04, 0.03, 0.06, 0, 2.41, 0, C.gold, 8);
+      return { footprint: { w: 0.58, d: 0.58, h: 2.8 }, placement: 'free', use: standUse(0.58, 'use', 'Allumer la lumière', 0.5) };
+    },
+    premium: (b, g) => {
+      b.cyl('y', 0.07, 0.07, 0.03, 0, 2.785, 0, C.gold, 10);
+      b.cyl('y', 0.012, 0.012, 0.42, 0, 2.56, 0, C.gold, 6);
+      b.cyl('y', 0.06, 0.1, 0.16, 0, 2.27, 0, C.gold, 10); b.blob(0.07, 0, 2.15, 0, C.gold, [1, 0.8, 1], 1);
+      for (let k = 0; k < 6; k++) {
+        const a = k * Math.PI / 3, c = (k + 1) * Math.PI / 3, x = Math.sin(a) * 0.34, z = Math.cos(a) * 0.34;
+        b.beam([0, 2.2, 0], [x, 2.12, z], 0.02, 0.02, C.gold);
+        b.beam([x, 2.1, z], [Math.sin(c) * 0.34, 2.1, Math.cos(c) * 0.34], 0.018, 0.018, C.gold);
+        b.cyl('y', 0.035, 0.025, 0.04, x, 2.14, z, C.gold, 8);
+        b.cyl('y', 0.014, 0.014, 0.08, x, 2.2, z, W, 6, { neg: false, pos: FUV.bulb, side: FUV.bulb });
+        g.blob(0.022, Math.sin(a + 0.5) * 0.3, 2.02, Math.cos(a + 0.5) * 0.3, 0xe8f4ff, [0.8, 1.4, 0.8]);
+      }
+      g.blob(0.04, 0, 2.0, 0, 0xe8f4ff, [1, 1.5, 1], 1);
+      return { footprint: { w: 0.8, d: 0.8, h: 2.8 }, placement: 'free', use: standUse(0.8, 'use', 'Allumer la lumière', 0.5) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- bedside tables and their lamps
+  bedside: {
+    basic: b => {
+      legs4(b, 0.3, 0.3, 0.4, 0.035, C.raw); b.slab(0.34, 0.03, 0.34, 0, 0.4, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      b.slab(0.28, 0.02, 0.28, 0, 0.12, 0, C.rawDark); b.slab(0.2, 0.04, 0.16, 0, 0.14, 0.02, W, topRect(FUV.wax0));
+      b.box(0.12, 0.18, 0.12, 0, 0.43, 0, C.white, { pz: { rect: FUV.bulb }, nz: { rect: FUV.bulb } }); b.slab(0.14, 0.03, 0.14, 0, 0.61, 0, 0xd9322b);
+      b.beam([-0.05, 0.64, 0], [0, 0.71, 0], 0.015, 0.015, 0x333333); b.beam([0.05, 0.64, 0], [0, 0.71, 0], 0.015, 0.015, 0x333333);
+      return { footprint: { w: 0.34, d: 0.34, h: 0.73 }, placement: 'free', use: standUse(0.34, 'use', 'Allumer la lampe', 0.45) };
+    },
+    better: b => {
+      legs4(b, 0.42, 0.36, 0.12, 0.04, C.varnish);
+      b.box(0.46, 0.42, 0.4, 0, 0.12, 0, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight }, px: { rect: FUV.wood, paint: C.varnish }, nx: { rect: FUV.wood, paint: C.varnish } });
+      b.box(0.38, 0.16, 0.01, 0, 0.36, 0.205, C.varnishLight); b.box(0.04, 0.03, 0.025, 0, 0.43, 0.215, C.gold);
+      b.box(0.38, 0.17, 0.01, 0, 0.15, 0.2, C.darker);
+      b.box(0.24, 0.06, 0.16, -0.04, 0.16, 0.1, W, { pz: { rect: FUV.books } });
+      b.slab(0.48, 0.03, 0.42, 0, 0.54, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.cyl('y', 0.06, 0.07, 0.14, 0.1, 0.64, -0.05, 0xd9cfb8, 10); b.cyl('y', 0.012, 0.012, 0.12, 0.1, 0.77, -0.05, C.gold, 6);
+      b.cyl('y', 0.13, 0.1, 0.18, 0.1, 0.9, -0.05, W, 12, { neg: FUV.bulb, pos: false, side: FUV.shade });
+      b.box(0.18, 0.03, 0.13, -0.12, 0.57, 0.05, 0x8a1c1c);
+      return { footprint: { w: 0.48, d: 0.46, h: 0.99 }, placement: 'free', use: standUse(0.46, 'use', 'Allumer la lampe', 0.45) };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.06, 0.08, 0.06, sx * 0.21, 0, sz * 0.16, C.gold);
+      b.box(0.5, 0.52, 0.4, 0, 0.08, 0, C.darker, { pz: { rect: FUV.carved, paint: C.dark }, px: { rect: FUV.carved, paint: C.dark }, nx: { rect: FUV.carved, paint: C.dark } });
+      b.box(0.46, 0.006, 0.005, 0, 0.34, 0.2025, C.gold); for (const y of [0.2, 0.46]) b.box(0.14, 0.02, 0.025, 0, y, 0.21, C.gold);
+      b.slab(0.52, 0.03, 0.42, 0, 0.6, 0, W, { py: { rect: FUV.marble } });
+      b.cyl('y', 0.08, 0.05, 0.05, 0.1, 0.655, -0.05, C.gold, 12); b.cyl('y', 0.015, 0.02, 0.2, 0.1, 0.78, -0.05, C.gold, 6); b.blob(0.05, 0.1, 0.72, -0.05, C.gold, [1, 1.2, 1], 1);
+      b.cyl('y', 0.15, 0.1, 0.2, 0.1, 0.96, -0.05, W, 14, { neg: FUV.bulb, pos: false, side: FUV.shade }); b.cyl('y', 0.152, 0.152, 0.015, 0.1, 0.86, -0.05, C.gold, 14, { neg: false, pos: false });
+      b.cyl('y', 0.03, 0.05, 0.12, -0.14, 0.69, 0.06, 0x1f5aa8, 8); b.blob(0.04, -0.14, 0.78, 0.06, 0xd94a8c);
+      return { footprint: { w: 0.52, d: 0.45, h: 1.07 }, placement: 'free', use: standUse(0.45, 'use', 'Allumer la lampe', 0.45) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- chests and dressing tables
+  dresser: {
+    basic: b => {
+      legs4(b, 0.76, 0.38, 0.1, 0.05, C.rawDark);
+      b.box(0.8, 0.75, 0.42, 0, 0.1, -0.015, K.teal);
+      for (let k = 0; k < 3; k++) { const y = 0.13 + k * 0.24; b.box(0.74, 0.21, 0.012, 0, y, 0.201, 0x5aa0a6); for (const sx of [-1, 1]) b.cyl('z', 0.02, 0.02, 0.025, sx * 0.2, y + 0.105, 0.219, C.gold, 8); }
+      b.slab(0.82, 0.03, 0.44, 0, 0.85, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      b.box(0.14, 0.22, 0.02, -0.25, 0.88, -0.1, C.raw); b.box(0.11, 0.17, 0.004, -0.25, 0.905, -0.088, W, { pz: { rect: FUV.mirror } });
+      b.cyl('y', 0.11, 0.09, 0.12, 0.22, 0.94, 0.0, W, 12, { neg: true, pos: false, side: FUV.rattan });
+      b.cyl('y', 0.025, 0.03, 0.1, 0.0, 0.93, 0.06, 0xd98ab0, 8);
+      return { footprint: { w: 0.82, d: 0.47, h: 1.1 }, placement: 'wall', use: standUse(0.47, 'use', 'Se changer', 0.55) };
+    },
+    better: b => {
+      const d = 0.46;
+      for (const sx of [-1, 1]) {
+        b.box(0.3, 0.72, 0.42, sx * 0.35, 0, -0.01, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+        for (let k = 0; k < 3; k++) { b.box(0.27, 0.005, 0.005, sx * 0.35, 0.24 * k + 0.24, 0.2, C.dark); b.box(0.06, 0.02, 0.02, sx * 0.35, 0.24 * k + 0.12, 0.205, C.gold); }
+      }
+      b.slab(1.0, 0.035, d, 0, 0.72, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.66, 0.78, 0.03, 0, 0.755, -d / 2 + 0.035, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.54, 0.66, 0.005, 0, 0.815, -d / 2 + 0.053, W, { pz: { rect: FUV.mirror } });
+      for (let k = 0; k < 3; k++) b.cyl('y', 0.025, 0.03, 0.08 + k * 0.02, -0.12 + k * 0.08, 0.795 + k * 0.01, -0.08, [0xd98ab0, 0xf4c20d, 0x8fd0c0][k], 8);
+      b.cyl('y', 0.16, 0.16, 0.04, 0, 0.36, 0.04, C.varnish, 12); b.cyl('y', 0.15, 0.15, 0.06, 0, 0.41, 0.04, 0x9a2234, 12, { neg: false, pos: FUV.velvet });
+      for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; b.box(0.03, 0.34, 0.03, Math.sin(a) * 0.11, 0, 0.04 + Math.cos(a) * 0.11, C.varnish); }
+      return { footprint: { w: 1.0, d: 0.46, h: 1.54 }, placement: 'wall', use: standUse(0.46, 'use', 'Se préparer', 0.55) };
+    },
+    premium: b => {
+      const d = 0.5;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.beam([sx * 0.52, 0.62, sz * 0.18], [sx * 0.56, 0.012, sz * 0.21], 0.05, 0.05, W);
+      b.box(1.16, 0.16, 0.44, 0, 0.6, -0.01, W, { pz: { rect: FUV.carved, paint: 0xf2ece0 } });
+      for (const sx of [-1, 1]) b.box(0.12, 0.025, 0.02, sx * 0.3, 0.67, 0.22, C.gold);
+      b.slab(1.2, 0.04, d, 0, 0.76, 0, W, { py: { rect: FUV.marble }, pz: { paint: C.gold } });
+      b.box(0.5, 0.86, 0.04, 0, 0.8, -d / 2 + 0.04, C.gold, { pz: { rect: FUV.carved, paint: C.gold } }); b.box(0.42, 0.74, 0.005, 0, 0.85, -d / 2 + 0.062, W, { pz: { rect: FUV.mirror } });
+      b.box(0.3, 0.14, 0.04, 0, 1.66, -d / 2 + 0.04, C.gold, { pz: { rect: FUV.gold } });
+      for (const sx of [-1, 1]) b.at(sx * 0.25, 0.82, -d / 2 + 0.04, -sx * 0.55, () => { b.box(0.3, 0.72, 0.03, sx * 0.15, 0, 0, C.gold, { pz: { rect: FUV.carved, paint: C.gold } }); b.box(0.24, 0.62, 0.005, sx * 0.15, 0.05, 0.018, W, { pz: { rect: FUV.mirror } }); });
+      for (let k = 0; k < 4; k++) b.cyl('y', 0.025, 0.035, 0.1 + (k % 2) * 0.04, -0.33 + k * 0.08, 0.85 + (k % 2) * 0.02, -0.06, [0xd98ab0, C.gold, 0x8fd0c0, 0x9a2234][k], 8);
+      b.cyl('y', 0.17, 0.17, 0.06, 0, 0.4, 0.06, C.gold, 14, { neg: true, pos: false }); b.cyl('y', 0.16, 0.16, 0.08, 0, 0.47, 0.06, 0x9a2234, 14, { neg: false, pos: FUV.velvet });
+      for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; b.beam([Math.sin(a) * 0.12, 0.38, 0.06 + Math.cos(a) * 0.12], [Math.sin(a) * 0.14, 0.012, 0.06 + Math.cos(a) * 0.14], 0.03, 0.03, C.gold); }
+      return { footprint: { w: 1.2, d: 0.52, h: 1.8 }, placement: 'wall', use: standUse(0.52, 'use', 'Se préparer', 0.55) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- wardrobes: an open rail, a three-door wardrobe, a dressing
+  closet: {
+    basic: b => {
+      for (const sx of [-1, 1]) { b.box(0.03, 1.62, 0.03, sx * 0.47, 0.02, 0, C.chrome); b.box(0.04, 0.03, 0.46, sx * 0.47, 0, 0, C.chrome); }
+      b.cyl('x', 0.016, 0.016, 0.98, 0, 1.62, 0, C.chrome, 8);
+      b.slab(0.9, 0.02, 0.4, 0, 0.12, 0, 0x8a8e93);
+      const prints = [FUV.wax0, FUV.wax1, FUV.cloth, FUV.wax2, FUV.canvas, FUV.wax1];
+      prints.forEach((r, k) => garment(b, -0.35 + k * 0.14, 1.62, 0, [0.95, 1.05, 0.7, 1.1, 0.75, 0.9][k], r, 0.38));
+      for (let k = 0; k < 3; k++) b.box(0.12, 0.08, 0.22, -0.25 + k * 0.25, 0.14, 0.02, [0x3a2418, C.black, 0xc8322a][k]);
+      return { footprint: { w: 1.0, d: 0.5, h: 1.72 }, placement: 'wall', use: standUse(0.5, 'use', 'Se changer', 0.6) };
+    },
+    better: b => {
+      const w = 1.5, d = 0.6, f = d / 2 - 0.02;
+      b.box(w - 0.04, 0.08, d - 0.08, 0, 0, -0.03, C.dark);
+      b.box(w, 1.86, d - 0.04, 0, 0.08, -0.02, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      for (const x of [-0.25, 0.25]) b.box(0.006, 1.8, 0.005, x, 0.11, f + 0.0025, C.dark);
+      b.box(0.42, 1.5, 0.004, 0, 0.25, f + 0.004, W, { pz: { rect: FUV.mirror } });
+      for (const x of [-0.29, 0.29, -0.21, 0.21]) b.box(0.02, 0.16, 0.025, x, 0.95, f + 0.012, C.gold);
+      b.slab(w + 0.04, 0.08, d, 0, 1.94, -0.01, C.varnish);
+      b.box(0.5, 0.14, 0.4, 0.3, 2.02, -0.05, 0x1f5aa8); b.box(0.06, 0.02, 0.1, 0.3, 2.16, -0.05, C.black);
+      return { footprint: { w: 1.54, d: 0.62, h: 2.18 }, placement: 'wall', use: standUse(0.62, 'use', 'Se changer', 0.65) };
+    },
+    premium: b => {
+      const w = 2.2, d = 0.62, back = -d / 2, f = d / 2 - 0.02, L = K.lacquer;
+      b.box(w, 0.08, d - 0.06, 0, 0, -0.03, 0x8a8478);
+      for (const x of [-1.09, -0.36, 0.36, 1.09]) b.box(0.03, 2.08, d - 0.02, x, 0.08, -0.01, L);
+      b.box(w, 2.08, 0.02, 0, 0.08, back + 0.01, 0xd8cfbf);
+      b.slab(w, 0.08, d, 0, 2.16, 0, L);
+      b.box(w - 0.04, 0.02, 0.02, 0, 2.13, f - 0.01, W, { ny: { rect: FUV.led } });
+      for (const x of [-0.905, -0.545]) { b.box(0.34, 2.0, 0.02, x, 0.12, f, L, { pz: { rect: FUV.mirror } }); b.box(0.015, 0.9, 0.02, x + (x < -0.7 ? 0.15 : -0.15), 0.6, f + 0.02, C.gold); }
+      for (let k = 0; k < 3; k++) { const y = 0.1 + k * 0.17; b.box(0.68, 0.15, 0.02, 0, y, f, L); b.box(0.24, 0.015, 0.02, 0, y + 0.1, f + 0.02, C.gold); }
+      for (let s = 0; s < 4; s++) {
+        const y = 0.66 + s * 0.36; b.slab(0.7, 0.02, d - 0.04, 0, y, -0.01, L);
+        for (let k = 0; k < 3; k++) b.box(0.18, 0.05 + (k % 2) * 0.03, 0.3, -0.22 + k * 0.22, y + 0.02, 0.0, [0xd9322b, 0x1f5aa8, 0xf2e6c8, 0x2e8b4c, 0xf4c20d, 0x8a1c1c][(s + k * 2) % 6], { py: { rect: [FUV.wax0, FUV.cloth, FUV.wax1][k], paint: W } });
+      }
+      b.cyl('x', 0.015, 0.015, 0.7, 0.725, 1.9, -0.02, C.gold, 8);
+      [FUV.wax2, FUV.wax0, FUV.cloth, FUV.wax1, FUV.velvet].forEach((r, k) => garment(b, 0.45 + k * 0.13, 1.9, -0.02, [1.2, 1.3, 0.9, 1.25, 1.0][k], r, 0.42));
+      b.at(0.725, 0.12, 0.0, 0, () => { b.box(0.68, 0.02, 0.4, 0, 0, 0, L); for (let k = 0; k < 4; k++) b.box(0.1, 0.07, 0.22, -0.24 + k * 0.16, 0.02, 0.0, [C.black, 0xc9a043, 0x8a1c1c, 0xf2f2ec][k]); }, 0.25);
+      return { footprint: { w: 2.2, d: 0.64, h: 2.24 }, placement: 'wall', use: standUse(0.64, 'use', 'Se changer', 0.65) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- pictures, on the wall
+  wallArt: {
+    basic: b => {
+      const z0 = -0.02;
+      b.box(0.5, 0.7, 0.008, 0, 1.25, z0 + 0.004, C.white);
+      b.box(0.44, 0.64, 0.004, 0, 1.28, z0 + 0.012, W, { pz: { rect: FUV.art0 } });
+      b.box(0.52, 0.03, 0.02, 0, 1.94, z0 + 0.01, C.black); b.box(0.52, 0.03, 0.02, 0, 1.24, z0 + 0.01, C.black);
+      for (const sx of [-1, 1]) b.box(0.03, 0.73, 0.02, sx * 0.245, 1.24, z0 + 0.01, C.black);
+      return { footprint: { w: 0.52, d: 0.04, h: 1.97 }, placement: 'wall', use: standUse(0.04, 'inspect', 'Regarder le tableau', 0.8) };
+    },
+    better: b => {
+      const z0 = -0.02, flip: Rect = [FUV.art1[2], FUV.art1[1], FUV.art1[0], FUV.art1[3]];
+      for (const [x, y, r] of [[-0.2, 1.3, FUV.art1], [0.2, 1.38, flip]] as const) {
+        const w = 0.34, h = 0.46;
+        b.box(w - 0.04, h - 0.04, 0.004, x, y + 0.02, z0 + 0.012, W, { pz: { rect: r } });
+        b.box(w, 0.03, 0.022, x, y + h - 0.03, z0 + 0.011, 0xd9322b); b.box(w, 0.03, 0.022, x, y, z0 + 0.011, 0xd9322b);
+        for (const sx of [-1, 1]) b.box(0.03, h - 0.06, 0.022, x + sx * (w / 2 - 0.015), y + 0.03, z0 + 0.011, 0x1a9d54);
+      }
+      return { footprint: { w: 0.76, d: 0.04, h: 1.86 }, placement: 'wall', use: standUse(0.04, 'inspect', 'Regarder les sous-verre', 0.8) };
+    },
+    premium: b => {
+      const z0 = -0.08, gd = { rect: FUV.gold };
+      b.box(1.36, 0.88, 0.03, 0, 1.03, z0 + 0.015, W, { pz: { rect: FUV.art2 } });
+      b.box(1.46, 0.06, 0.06, 0, 1.91, z0 + 0.03, C.gold, { pz: gd, py: gd }); b.box(1.46, 0.06, 0.06, 0, 0.97, z0 + 0.03, C.gold, { pz: gd });
+      for (const sx of [-1, 1]) b.box(0.06, 0.88, 0.06, sx * 0.7, 1.03, z0 + 0.03, C.gold, { pz: gd });
+      for (const sx of [-1, 1]) b.beam([sx * 0.2, 1.97, z0 + 0.03], [sx * 0.2, 2.02, z0 + 0.115], 0.015, 0.015, C.gold);
+      b.cyl('x', 0.022, 0.022, 0.56, 0, 2.025, z0 + 0.12, C.gold, 8); b.box(0.5, 0.006, 0.02, 0, 1.998, z0 + 0.12, W, { ny: { rect: FUV.bulb } });
+      return { footprint: { w: 1.46, d: 0.16, h: 2.06 }, placement: 'wall', use: standUse(0.16, 'inspect', 'Regarder le tableau', 1.0) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- TV wall units
+  tvWall: {
+    basic: b => {
+      for (const x of [-0.5, 0.5]) { b.box(0.2, 0.19, 0.3, x, 0, 0, C.cement); b.box(0.2, 0.19, 0.3, x, 0.22, 0, C.cement); }
+      b.slab(1.3, 0.03, 0.36, 0, 0.19, 0, C.raw); b.slab(1.3, 0.03, 0.36, 0, 0.41, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } });
+      b.box(0.26, 0.02, 0.16, 0, 0.44, -0.04, C.black); b.box(0.04, 0.08, 0.04, 0, 0.46, -0.05, C.black);
+      b.box(0.82, 0.5, 0.05, 0, 0.5, -0.05, C.black); b.box(0.77, 0.45, 0.006, 0, 0.525, -0.022, W, { pz: { rect: FUV.flat } });
+      b.box(0.24, 0.05, 0.18, 0.0, 0.22, 0.0, 0x2a2a2c); b.box(0.02, 0.01, 0.005, 0.08, 0.25, 0.092, 0x7dffb0);
+      for (const sx of [-1, 1]) b.box(0.12, 0.2, 0.14, sx * 0.56, 0.44, -0.03, 0x2a2a2c, { pz: { rect: FUV.grille } });
+      return { footprint: { w: 1.32, d: 0.36, h: 1.0 }, placement: 'wall', use: standUse(0.36, 'use', 'Regarder la télé', 1.8) };
+    },
+    better: b => {
+      const f = 0.21;
+      b.box(1.16, 0.08, 0.38, 0, 0, -0.01, C.dark);
+      b.box(1.2, 0.36, 0.42, 0, 0.08, 0, C.varnish, { pz: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.36, 0.22, 0.006, 0, 0.15, f + 0.003, C.darker); b.box(0.26, 0.05, 0.04, 0, 0.18, f - 0.01, 0x2a2a2c); b.box(0.02, 0.01, 0.005, 0.09, 0.2, f + 0.012, 0x7dffb0);
+      for (const sx of [-1, 1]) { b.box(0.36, 0.006, 0.005, sx * 0.39, 0.27, f + 0.003, C.dark); for (const y of [0.17, 0.33]) b.box(0.12, 0.015, 0.02, sx * 0.39, y, f + 0.01, C.gold); }
+      b.slab(1.24, 0.03, 0.44, 0, 0.44, 0, C.varnish, { py: { rect: FUV.wood, paint: C.varnishLight } });
+      b.box(0.3, 0.02, 0.18, 0, 0.47, -0.06, C.black); b.box(0.05, 0.08, 0.04, 0, 0.49, -0.08, C.black);
+      b.box(1.12, 0.66, 0.05, 0, 0.53, -0.08, 0x111112); b.box(1.06, 0.6, 0.006, 0, 0.56, -0.052, W, { pz: { rect: FUV.flat } });
+      for (const sx of [-1, 1]) {
+        const x = sx * 0.76;
+        for (const s of [-1, 1]) b.box(0.02, 1.6, 0.32, x + s * 0.13, 0, -0.06, C.varnish);
+        b.box(0.26, 1.6, 0.01, x, 0, -0.215, C.dark);
+        for (let k = 0; k < 5; k++) b.slab(0.26, 0.02, 0.3, x, k * 0.39 + (k === 4 ? 0.0 : 0.0), -0.06, C.varnish);
+        for (let k = 1; k < 4; k++) b.box(0.2 - (k % 2) * 0.07, 0.26, 0.2, x - (k % 2) * 0.03, k * 0.39 + 0.02, -0.08, W, { pz: { rect: FUV.books } });
+        b.cyl('y', 0.04, 0.06, 0.2, x + 0.04, 1.4, -0.06, sx > 0 ? 0x1f5aa8 : 0xc9a043, 8);
+      }
+      return { footprint: { w: 1.8, d: 0.46, h: 1.62 }, placement: 'wall', use: standUse(0.46, 'use', 'Regarder la télé', 2.0) };
+    },
+    premium: b => {
+      const w = 2.4, f = 0.21;
+      b.box(w - 0.04, 0.05, 0.4, 0, 0, -0.01, C.gold);
+      b.box(w, 0.4, 0.42, 0, 0.05, 0, C.darker, { pz: { rect: FUV.carved, paint: C.dark } });
+      for (const x of [-0.6, 0, 0.6]) b.box(0.006, 0.38, 0.005, x, 0.06, f + 0.003, C.gold);
+      for (const x of [-0.9, -0.3, 0.3, 0.9]) b.box(0.14, 0.02, 0.02, x, 0.36, f + 0.01, C.gold);
+      b.slab(w, 0.03, 0.44, 0, 0.45, 0, C.dark, { py: { rect: FUV.wood, paint: 0x5a3a22 } });
+      b.box(1.6, 1.3, 0.04, 0, 0.48, -0.2, C.dark, { pz: { rect: FUV.carved, paint: 0x6a3e22 } });
+      b.box(1.6, 0.3, 0.03, 0, 1.78, -0.2, C.gold, { pz: { rect: FUV.carved, paint: C.gold } });
+      b.box(1.44, 0.82, 0.04, 0, 0.78, -0.16, 0x0d0d0f); b.box(1.38, 0.76, 0.006, 0, 0.81, -0.137, W, { pz: { rect: FUV.flat } });
+      b.box(0.9, 0.07, 0.1, 0, 0.48, 0.06, 0x1c1c1e, { pz: { rect: FUV.grille } });
+      for (const sx of [-1, 1]) { b.box(0.38, 1.6, 0.36, sx * 1.0, 0.48, -0.03, C.darker, { pz: { rect: FUV.vitrine } }); b.box(0.03, 0.1, 0.03, sx * 0.85, 1.2, 0.165, C.gold); }
+      b.slab(w, 0.06, 0.4, 0, 2.08, -0.02, C.dark, { ny: { rect: FUV.led } });
+      return { footprint: { w: 2.4, d: 0.46, h: 2.15 }, placement: 'wall', use: standUse(0.46, 'use', 'Regarder la télé', 2.4) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- music: a radio-cassette on its shelf, a hi-fi, tower speakers and a turntable
+  audio: {
+    basic: b => {
+      legs4(b, 0.56, 0.3, 0.4, 0.04, C.raw); b.slab(0.6, 0.03, 0.34, 0, 0.4, 0, C.raw, { py: { rect: FUV.wood, paint: C.raw } }); b.slab(0.52, 0.02, 0.28, 0, 0.1, 0, C.rawDark);
+      for (let k = 0; k < 3; k++) b.box(0.11, 0.02, 0.07, -0.12 + k * 0.02, 0.12 + k * 0.02, 0.02, [0x1f3f78, 0xd9322b, 0xf2f2ec][k]);
+      b.box(0.42, 0.2, 0.13, 0, 0.43, -0.02, 0x2b2b33);
+      for (const sx of [-1, 1]) b.cyl('z', 0.065, 0.065, 0.012, sx * 0.13, 0.52, 0.051, 0x2a2a2c, 14, { neg: false, pos: FUV.grille });
+      b.box(0.1, 0.08, 0.006, 0, 0.46, 0.048, 0x111111); b.box(0.12, 0.03, 0.006, 0, 0.585, 0.048, 0xf4c20d);
+      b.beam([-0.15, 0.63, -0.02], [-0.12, 0.69, -0.02], 0.02, 0.02, 0x2b2b33); b.beam([-0.12, 0.69, -0.02], [0.12, 0.69, -0.02], 0.02, 0.02, 0x2b2b33); b.beam([0.12, 0.69, -0.02], [0.15, 0.63, -0.02], 0.02, 0.02, 0x2b2b33);
+      b.beam([0.18, 0.63, -0.06], [0.08, 0.95, -0.1], 0.008, 0.008, C.chrome);
+      return { footprint: { w: 0.6, d: 0.34, h: 0.96 }, placement: 'wall', use: standUse(0.34, 'use', 'Écouter la radio', 0.6) };
+    },
+    better: b => {
+      legs4(b, 0.86, 0.34, 0.06, 0.04, C.dark);
+      b.box(0.9, 0.36, 0.38, 0, 0.06, 0, C.dark, { px: { rect: FUV.wood, paint: C.dark }, nx: { rect: FUV.wood, paint: C.dark } });
+      b.box(0.84, 0.3, 0.008, 0, 0.09, 0.19, 0x1c1410); b.box(0.5, 0.2, 0.02, -0.12, 0.1, 0.18, W, { pz: { rect: FUV.books } });
+      b.slab(0.9, 0.03, 0.4, 0, 0.42, 0, C.dark, { py: { rect: FUV.wood, paint: C.varnish } });
+      b.box(0.36, 0.1, 0.28, 0, 0.45, 0, C.black); b.box(0.12, 0.025, 0.005, -0.06, 0.5, 0.142, W, { pz: { rect: FUV.led } });
+      for (const x of [0.06, 0.12]) b.cyl('z', 0.022, 0.022, 0.02, x, 0.5, 0.15, C.chrome, 8);
+      b.box(0.36, 0.07, 0.26, 0, 0.55, 0, 0x2a2a2c); b.box(0.2, 0.01, 0.005, -0.04, 0.585, 0.132, C.black);
+      for (const sx of [-1, 1]) {
+        b.box(0.2, 0.3, 0.24, sx * 0.34, 0.45, 0, K.walnut, { pz: { rect: FUV.grille } });
+        b.cyl('z', 0.06, 0.06, 0.01, sx * 0.34, 0.55, 0.125, 0x1c1c1e, 12); b.cyl('z', 0.025, 0.025, 0.01, sx * 0.34, 0.68, 0.125, 0x1c1c1e, 10);
+      }
+      return { footprint: { w: 0.9, d: 0.4, h: 0.76 }, placement: 'wall', use: standUse(0.4, 'use', 'Écouter de la musique', 0.6) };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) {
+        const x = sx * 0.57;
+        for (const dx of [-0.09, 0.09]) for (const dz of [-0.12, 0.12]) b.cyl('y', 0.005, 0.02, 0.03, x + dx, 0.015, dz, C.gold, 6);
+        b.box(0.26, 1.06, 0.34, x, 0.03, 0, K.walnut, { pz: { rect: FUV.grille }, px: { rect: FUV.wood, paint: K.walnut }, nx: { rect: FUV.wood, paint: K.walnut } });
+        b.cyl('z', 0.035, 0.035, 0.012, x, 0.97, 0.176, 0x1c1c1e, 10);
+        for (const y of [0.5, 0.76]) { b.cyl('z', 0.095, 0.095, 0.008, x, y, 0.174, C.chrome, 14, { neg: false, pos: true }); b.cyl('z', 0.08, 0.08, 0.012, x, y, 0.178, 0x1c1c1e, 14, { neg: false, pos: true }); }
+      }
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.04, 0.06, 0.04, sx * 0.33, 0, sz * 0.16, C.gold);
+      b.box(0.76, 0.34, 0.4, 0, 0.06, 0, 0x111111);
+      b.box(0.7, 0.26, 0.006, 0, 0.1, 0.2, 0x050505);
+      b.box(0.6, 0.12, 0.3, 0, 0.12, 0.04, K.steel); for (const sx of [-1, 1]) b.box(0.12, 0.06, 0.005, sx * 0.13, 0.15, 0.191, W, { pz: { rect: FUV.bulb } });
+      for (const x of [-0.26, 0.26]) b.cyl('z', 0.025, 0.025, 0.02, x, 0.17, 0.2, C.black, 8);
+      b.box(0.46, 0.08, 0.36, 0, 0.4, 0, K.walnut);
+      b.cyl('y', 0.15, 0.15, 0.02, -0.04, 0.49, 0, C.black, 18); b.cyl('y', 0.045, 0.045, 0.004, -0.04, 0.502, 0, 0xd9322b, 10);
+      b.cyl('y', 0.02, 0.02, 0.03, 0.17, 0.495, -0.12, C.chrome, 8); b.beam([0.17, 0.51, -0.12], [0.07, 0.52, 0.06], 0.012, 0.012, C.chrome);
+      return { footprint: { w: 1.4, d: 0.44, h: 1.1 }, placement: 'wall', use: standUse(0.44, 'use', 'Écouter de la musique', 0.6) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- plants: a pot plant, an indoor palm, a carved planter of bougainvillea
+  plant: {
+    basic: b => {
+      b.cyl('y', 0.12, 0.16, 0.26, 0, 0.13, 0, K.clay, 12); b.cyl('y', 0.17, 0.17, 0.04, 0, 0.28, 0, K.clayDark, 12); b.cyl('y', 0.15, 0.15, 0.01, 0, 0.295, 0, 0x4a3426, 12);
+      for (let k = 0; k < 6; k++) { const a = k * 1.05; b.blob(0.1, Math.sin(a) * 0.08, 0.45 + (k % 3) * 0.08, Math.cos(a) * 0.08, [K.leaf, K.leaf2, K.leaf3][k % 3], [1.2, 0.6, 1.2]); }
+      for (let k = 0; k < 5; k++) { const a = k * 1.26 + 0.3; b.beam([0, 0.3, 0], [Math.sin(a) * 0.15, 0.72 + (k % 2) * 0.08, Math.cos(a) * 0.15], 0.035, 0.008, K.leaf2); }
+      b.blob(0.08, 0, 0.7, 0, K.leaf);
+      return { footprint: { w: 0.4, d: 0.4, h: 0.84 }, placement: 'free', use: standUse(0.4, 'use', 'Arroser la plante', 0.5) };
+    },
+    better: b => {
+      // an areca palm: stems from a woven basket, each frond rising then arching out and down, its leaflets in a shallow V
+      b.cyl('y', 0.2, 0.25, 0.36, 0, 0.18, 0, W, 14, { neg: true, pos: false, side: FUV.rattan }); b.cyl('y', 0.22, 0.22, 0.01, 0, 0.33, 0, 0x4a3426, 12);
+      const frond: [number, number][] = [[0.02, 0.36], [0.09, 0.95], [0.2, 1.3], [0.28, 1.2]];
+      for (let k = 0; k < 7; k++) {
+        const a = k * Math.PI * 2 / 7 + 0.3, ca = Math.cos(a), sa = Math.sin(a), sc = 0.85 + (k % 3) * 0.08, col = [K.leaf, K.leaf2, K.leaf3][k % 3];
+        const pt = (i: number): V3 => [sa * frond[i][0] * sc, 0.36 + (frond[i][1] - 0.36) * sc, ca * frond[i][0] * sc];
+        b.beam(pt(0), pt(1), 0.022, 0.022, 0x8a7a3a); b.beam(pt(1), pt(2), 0.016, 0.016, 0x6b7a3a);
+        for (let i = 1; i < 3; i++) {
+          const A = pt(i), B = pt(i + 1), hw = 0.085 - (i - 1) * 0.015, dr = 0.05, sx = ca * hw, sz = -sa * hw;
+          for (const s of [1, -1]) {
+            const q: V3[] = [A, B, [B[0] + s * sx, B[1] - dr, B[2] + s * sz], [A[0] + s * sx, A[1] - dr, A[2] + s * sz]];
+            b.toward(q, [0, 1, 0], col); b.toward(q, [0, -1, 0], dimC(col, 0.75));
+          }
+        }
+      }
+      return { footprint: { w: 0.6, d: 0.6, h: 1.32 }, placement: 'free', use: standUse(0.6, 'use', 'Arroser la plante', 0.5) };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.06, 0.06, 0.06, sx * 0.45, 0, sz * 0.16, C.gold);
+      const cv = { rect: FUV.carved, paint: C.dark };
+      b.box(0.96, 0.4, 0.38, 0, 0.06, 0, C.darker, { pz: cv, nz: cv, px: cv, nx: cv });
+      b.slab(1.0, 0.04, 0.42, 0, 0.46, 0, C.dark); b.box(0.92, 0.01, 0.34, 0, 0.5, 0, 0x4a3426);
+      for (let k = 0; k < 7; k++) b.blob(0.13, -0.38 + k * 0.127, 0.62 + (k % 2) * 0.06, ((k % 3) - 1) * 0.05, [0x4f8f3e, 0x5c9a44, 0x3f7a35][k % 3], [1, 0.8, 0.9]);
+      for (let k = 0; k < 16; k++) b.blob(0.05, -0.43 + k * 0.057, 0.7 + ((k * 37) % 7) * 0.035, (((k * 13) % 5) - 2) * 0.05, [0xec5fa8, 0xf47cc0, 0xd94a9c][k % 3]);
+      for (const [x0, x1] of [[-0.3, -0.38], [0.05, 0.12], [0.32, 0.4]]) { b.beam([x0, 0.55, 0], [x1, 0.9, 0.03], 0.02, 0.02, 0x6b4a2e); b.blob(0.06, x1, 0.93, 0.03, 0xf47cc0); }
+      return { footprint: { w: 1.0, d: 0.42, h: 1.0 }, placement: 'wall', use: standUse(0.42, 'use', 'Arroser les fleurs', 0.5) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- loungers: a deck chair, a woven chaise longue, a teak sun lounger
+  lounger: {
+    basic: b => {
+      for (const sx of [-1, 1]) {
+        b.beam([sx * 0.27, 0.015, 0.05], [sx * 0.27, 0.95, -0.55], 0.04, 0.03, C.raw);
+        b.beam([sx * 0.25, 0.015, 0.56], [sx * 0.25, 0.45, 0.3], 0.04, 0.03, C.raw);
+        b.beam([sx * 0.29, 0.015, -0.56], [sx * 0.29, 0.42, -0.2], 0.04, 0.03, C.rawDark);
+        b.beam([sx * 0.285, 0.47, 0.3], [sx * 0.285, 0.5, -0.18], 0.05, 0.025, C.raw);
+      }
+      b.cyl('x', 0.02, 0.02, 0.56, 0, 0.93, -0.52, C.raw, 8); b.cyl('x', 0.02, 0.02, 0.52, 0, 0.44, 0.3, C.raw, 8); b.cyl('x', 0.018, 0.018, 0.6, 0, 0.42, -0.2, C.rawDark, 8);
+      const s0: V3 = [0, 0.92, -0.5], s1: V3 = [0, 0.26, 0.0], s2: V3 = [0, 0.43, 0.29], hw = 0.23;
+      const band = (a: V3, c: V3, v0: number, v1: number) => {
+        const R = FUV.stripes0, u0 = R[0], u1 = R[2], va = R[1] + (R[3] - R[1]) * v0, vb = R[1] + (R[3] - R[1]) * v1;
+        b.toward([[-hw, a[1], a[2]], [hw, a[1], a[2]], [hw, c[1], c[2]], [-hw, c[1], c[2]]], [0, 1, 0.3], W, [[u0, va], [u1, va], [u1, vb], [u0, vb]]);
+        b.toward([[-hw, a[1] - 0.005, a[2]], [hw, a[1] - 0.005, a[2]], [hw, c[1] - 0.005, c[2]], [-hw, c[1] - 0.005, c[2]]], [0, -1, -0.3], 0xb8b0a0);
+      };
+      band(s0, s1, 1, 0.3); band(s1, s2, 0.3, 0);
+      const s = seatOf('s0', 0, 0.05, 0.3, 'chair');
+      return { footprint: { w: 0.62, d: 1.22, h: 0.97 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'Se détendre') };
+    },
+    better: b => {
+      const r = { rect: FUV.rattan };
+      for (const sx of [-1, 1]) for (const z of [-0.8, 0.8]) b.box(0.05, 0.1, 0.05, sx * 0.3, 0, z, C.dark);
+      b.box(0.68, 0.18, 1.86, 0, 0.1, 0.02, W, { px: r, nx: r, pz: r, nz: r, py: r });
+      b.at(0, 0.28, -0.38, 0, () => { b.box(0.66, 0.08, 0.6, 0, 0, -0.3, W, { py: r, px: r, nx: r, nz: r, pz: r }); b.slab(0.6, 0.07, 0.52, 0, 0.08, -0.29, K.ecru, { py: { rect: FUV.fabric, paint: K.ecru } }); b.cyl('x', 0.07, 0.07, 0.5, 0, 0.2, -0.46, C.cream, 10); }, 0.6);
+      b.slab(0.6, 0.07, 1.26, 0, 0.28, 0.27, K.ecru, { py: { rect: FUV.fabric, paint: K.ecru } });
+      const s = seatOf('s0', 0, 0.15, 0.35, 'bed', 0, 'Lie');
+      return { footprint: { w: 0.7, d: 1.9, h: 0.86 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'Se détendre') };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) {
+        b.box(0.04, 0.09, 1.9, sx * 0.34, 0.2, 0.02, K.teak);
+        b.box(0.05, 0.2, 0.05, sx * 0.34, 0, 0.88, K.teak);
+        b.cyl('x', 0.09, 0.09, 0.04, sx * 0.34, 0.09, -0.84, K.teakDark, 12);
+      }
+      for (let k = 0; k < 12; k++) b.box(0.66, 0.025, 0.07, 0, 0.27, -0.13 + k * 0.088, K.teak, { py: { rect: FUV.wood, paint: K.teak } });
+      b.at(0, 0.29, -0.2, 0, () => {
+        for (const sx of [-1, 1]) b.box(0.04, 0.05, 0.72, sx * 0.32, 0, -0.36, K.teak);
+        for (let k = 0; k < 7; k++) b.box(0.6, 0.02, 0.07, 0, 0.03, -0.06 - k * 0.1, K.teak);
+        b.slab(0.62, 0.09, 0.62, 0, 0.05, -0.34, C.cream, { py: { rect: FUV.fabric, paint: C.cream } });
+      }, 0.62);
+      b.slab(0.62, 0.1, 1.06, 0, 0.29, 0.38, C.cream, { py: { rect: FUV.fabric, paint: C.cream } });
+      b.cyl('x', 0.05, 0.05, 0.5, 0, 0.44, -0.12, K.sky, 10, { neg: true, pos: true, side: FUV.towel });
+      const s = seatOf('s0', 0, 0.25, 0.39, 'bed', 0, 'Lie');
+      return { footprint: { w: 0.76, d: 1.96, h: 0.93 }, placement: 'free', seats: [s], use: sitUse(s, 'sit', 'Se détendre') };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- parasols
+  parasol: {
+    basic: b => {
+      b.cyl('y', 0.22, 0.24, 0.1, 0, 0.05, 0, C.white, 14);
+      b.cyl('y', 0.02, 0.02, 2.2, 0, 1.15, 0, C.white, 6);
+      canopy(b, 1.95, 2.25, 0.8, 8, 0xd9322b, 0xf6f1e4, C.white);
+      b.blob(0.035, 0, 2.27, 0, C.white);
+      return { footprint: { w: 1.6, d: 1.6, h: 2.31 }, placement: 'free', use: standUse(1.6, 'use', 'Se mettre à l’ombre', 0.3) };
+    },
+    better: b => {
+      b.box(0.9, 0.08, 0.1, 0, 0, 0, C.varnish); b.box(0.1, 0.08, 0.9, 0, 0, 0, C.varnish);
+      b.cyl('y', 0.03, 0.03, 2.35, 0, 1.255, 0, C.varnish, 8); b.box(0.06, 0.1, 0.06, 0, 1.2, 0.035, C.chrome);
+      canopy(b, 2.05, 2.43, 1.0, 8, K.ecru, dimC(K.ecru, 0.94), C.varnish);
+      for (let k = 0; k < 8; k++) {
+        const a0 = k * Math.PI / 4, a1 = (k + 1) * Math.PI / 4, m = (a0 + a1) / 2, P: V3 = [Math.sin(a0) * 1.0, 2.05, Math.cos(a0) * 1.0], Q: V3 = [Math.sin(a1) * 1.0, 2.05, Math.cos(a1) * 1.0];
+        b.toward([P, Q, [Q[0], 1.93, Q[2]], [P[0], 1.93, P[2]]], [Math.sin(m), 0, Math.cos(m)], 0xc9a46a);
+        b.toward([P, Q, [Q[0], 1.93, Q[2]], [P[0], 1.93, P[2]]], [-Math.sin(m), 0, -Math.cos(m)], 0xb8945a);
+      }
+      b.blob(0.045, 0, 2.45, 0, C.varnish);
+      return { footprint: { w: 2.0, d: 2.0, h: 2.5 }, placement: 'free', use: standUse(2.0, 'use', 'Se mettre à l’ombre', 0.3) };
+    },
+    premium: b => {
+      b.box(0.7, 0.12, 0.7, 0, 0, -0.7, K.granite); for (const sx of [-1, 1]) b.box(0.3, 0.06, 0.3, sx * 0.17, 0.12, -0.7, 0x6a6b70);
+      b.box(0.08, 2.1, 0.08, 0, 0.12, -0.7, 0x3a3a3c); b.box(0.1, 0.06, 0.06, 0.07, 1.1, -0.7, C.chrome);
+      const arm: V3[] = [[0, 2.2, -0.7], [0, 2.42, -0.5], [0, 2.52, -0.25], [0, 2.55, 0]];
+      for (let k = 0; k < 3; k++) b.beam(arm[k], arm[k + 1], 0.06, 0.06, 0x3a3a3c);
+      const apex = 2.62, rim = 2.3, h = 1.1, T = 0x9a8c78;
+      const corners: V3[] = [[-h, rim, -h], [h, rim, -h], [h, rim, h], [-h, rim, h]];
+      corners.forEach((p, k) => {
+        const q = corners[(k + 1) % 4], c = k % 2 ? K.taupe : T;
+        b.toward([[0, apex, 0], p, q], [0, 1, 0], c); b.toward([[0, apex, 0], q, p], [0, -1, 0], dimC(c, 0.8));
+        b.beam([0, apex - 0.06, 0], [p[0] * 0.97, rim - 0.02, p[2] * 0.97], 0.02, 0.02, 0x3a3a3c);
+        const out: V3 = [(p[0] + q[0]) / 2, 0, (p[2] + q[2]) / 2], lo = rim - 0.12;
+        b.toward([p, q, [q[0], lo, q[2]], [p[0], lo, p[2]]], out, c); b.toward([p, q, [q[0], lo, q[2]], [p[0], lo, p[2]]], [-out[0], 0, -out[2]], dimC(c, 0.8));
+        b.box(0.05, 0.02, 0.05, p[0] * 0.5, (apex + rim) / 2 - 0.03, p[2] * 0.5, 0x3a3a3c, { ny: { rect: FUV.bulb } });
+      });
+      b.cyl('y', 0.06, 0.06, 0.12, 0, apex - 0.12, 0, 0x3a3a3c, 12);
+      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, A: V3 = [0, apex + 0.08, 0]; b.toward([A, [Math.sin(a) * 0.16, apex - 0.01, Math.cos(a) * 0.16], [Math.sin(a + Math.PI / 2) * 0.16, apex - 0.01, Math.cos(a + Math.PI / 2) * 0.16]], [0, 1, 0], K.taupe); }
+      b.blob(0.03, 0, apex + 0.09, 0, 0x3a3a3c);
+      return { footprint: { w: 2.2, d: 2.2, h: 2.74 }, placement: 'free', use: standUse(2.2, 'use', 'Se mettre à l’ombre', 0.3) };
+    },
+  },
+  // -------------------------------------------------------------------------------------------------- garden sets: a table and four chairs (the teak one under its parasol)
+  gardenSet: {
+    basic: b => {
+      b.cyl('y', 0.42, 0.42, 0.03, 0, 0.705, 0, C.white, 18); b.cyl('y', 0.025, 0.025, 0.004, 0, 0.722, 0, 0x555555, 8);
+      for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; b.beam([Math.sin(a) * 0.28, 0.69, Math.cos(a) * 0.28], [Math.sin(a) * 0.34, 0.015, Math.cos(a) * 0.34], 0.05, 0.03, C.white); }
+      b.cyl('y', 0.035, 0.04, 0.24, 0.12, 0.84, -0.08, 0x2e8b4c, 8); for (const [x, z] of [[-0.12, 0.1], [-0.02, 0.16]]) b.cyl('y', 0.03, 0.025, 0.08, x, 0.76, z, 0xe8f4ff, 6);
+      const seats = chairsAt(b, [[0, -0.62, 0], [0.62, 0, -Math.PI / 2], [0, 0.62, Math.PI], [-0.62, 0, Math.PI / 2]], 0.45, () => plasticChair(b, C.white, true));
+      return { footprint: { w: 1.82, d: 1.82, h: 0.96 }, placement: 'free', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+    better: b => {
+      b.cyl('y', 0.4, 0.4, 0.025, 0, 0.7125, 0, W, 18, { neg: true, pos: FUV.tiles }); b.cyl('y', 0.41, 0.41, 0.03, 0, 0.7, 0, K.iron, 18, { neg: false, pos: false });
+      b.cyl('y', 0.03, 0.03, 0.6, 0, 0.4, 0, K.iron, 8);
+      for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3; b.beam([0, 0.16, 0], [Math.sin(a) * 0.3, 0.015, Math.cos(a) * 0.3], 0.03, 0.03, K.iron); b.beam([Math.sin(a) * 0.3, 0.015, Math.cos(a) * 0.3], [Math.sin(a) * 0.34, 0.07, Math.cos(a) * 0.34], 0.025, 0.025, K.iron); }
+      b.cyl('y', 0.07, 0.05, 0.12, 0.1, 0.785, 0.05, 0x9a2234, 8); b.blob(0.06, 0.1, 0.88, 0.05, K.bloom);
+      const seats = chairsAt(b, [[0, -0.62, 0], [0.62, 0, -Math.PI / 2], [0, 0.62, Math.PI], [-0.62, 0, Math.PI / 2]], 0.49, () => ironChair(b));
+      return { footprint: { w: 1.72, d: 1.72, h: 0.92 }, placement: 'free', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+    premium: b => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.06, 0.7, 0.06, sx * 0.62, 0, sz * 0.36, K.teak);
+      for (const s of [-1, 1]) { b.box(1.3, 0.06, 0.04, 0, 0.64, s * 0.38, K.teak); b.box(0.04, 0.06, 0.76, s * 0.64, 0.64, 0, K.teak); }
+      for (let k = 0; k < 8; k++) b.box(1.4, 0.025, 0.09, 0, 0.7, -0.37 + k * 0.106, K.teak, { py: { rect: FUV.wood, paint: K.teak } });
+      b.cyl('y', 0.022, 0.022, 2.42, 0, 1.21, 0, C.white, 8);
+      canopy(b, 2.1, 2.45, 1.05, 8, K.ecru, dimC(K.ecru, 0.92), C.white);
+      b.blob(0.04, 0, 2.47, 0, C.white);
+      const seats = chairsAt(b, [[-0.35, -0.72, 0], [0.35, -0.72, 0], [-0.35, 0.72, Math.PI], [0.35, 0.72, Math.PI]], 0.48, () => teakChair(b));
+      return { footprint: { w: 2.1, d: 2.1, h: 2.52 }, placement: 'free', seats, use: sitUse(seats[0], 'sit', 'S’asseoir') };
+    },
+  },
+};
+
 const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
+  ...HOME_MAKERS,
   // -------------------------------------------------------------------------------------------------- bed
   bed: {
     basic: b => {

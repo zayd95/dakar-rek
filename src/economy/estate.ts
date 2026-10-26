@@ -26,11 +26,11 @@ import {
 } from './catalog';
 import { CATALOGUE, cannotBuy as cannotBuyFurniture, deliverFurniture, furnitureById, hasGoodMattress, piecesOf } from './furniture';
 import { furnitureModel } from './furnitureModels';
-import { installFurnitureKit } from './furnitureKitAdapter';
+import { KIT_PIECES, installFurnitureKit } from './furnitureKitAdapter';
 import { buildHomeInterior } from './homeInterior';
-import { planFor } from '../housing/plan';
+import { planFor, reachable } from '../housing/plan';
 import { roomCentre } from '../housing/apartment';
-import { footprint, homeOrigin, toHome, yawOf } from './placement';
+import { footprint, homeOrigin, layoutOf, planRooms, roomKindOf, roomOf, toHome, whyNot, yawOf } from './placement';
 import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
 import { Batch, signTexture } from '../world/batch';
 import { BLK, HALF, PITCH, ROAD } from '../world/builder';
@@ -66,13 +66,17 @@ const SELLER_LINES = [
   'Pape, vendeur : « Un réchaud, et tu cuisines chez toi pour moins cher qu’à la gargote. »',
   'Pape, vendeur : « Jërëjëf ! Ba beneen yoon, inch’Allah. »',
 ];
+/** Keur Meubles' shelves (the catalogue's categories), by the room a piece is for. Since LD2.0-C: dining, bathroom, appliances, pictures, outdoor. */
 const ROOMS: { id: string; label: string; what: string; types: FurnitureType[] }[] = [
-  { id: 'salon', label: 'Salon', what: 'Canapés, fauteuils, chaises et tables', types: ['sofa', 'chair', 'table'] },
-  { id: 'chambre', label: 'Chambre', what: 'Lits, literie et rangements', types: ['bed', 'mattress', 'wardrobe'] },
-  { id: 'cuisine', label: 'Cuisine', what: 'Réchaud, cuisinière, cuisine équipée', types: ['kitchen'] },
+  { id: 'salon', label: 'Salon', what: 'Canapés, fauteuils, chaises, tables et bibliothèques', types: ['sofa', 'chair', 'table', 'shelf'] },
+  { id: 'manger', label: 'Salle à manger', what: 'Tables et leurs chaises, du plastique au marbre', types: ['dining'] },
+  { id: 'chambre', label: 'Chambre', what: 'Lits, literie, armoires, commodes et coiffeuses', types: ['bed', 'mattress', 'wardrobe'] },
+  { id: 'cuisine', label: 'Cuisine', what: 'Réchaud, cuisinières, table de cuisine, micro-ondes, fontaines', types: ['kitchen', 'appliance'] },
+  { id: 'bain', label: 'Salle de bain', what: 'Lavabos et vasques, miroirs, porte-serviettes', types: ['bath'] },
   { id: 'bureau', label: 'Bureau', what: 'Travailler chez toi, une fois par heure en ville', types: ['desk'] },
-  { id: 'loisirs', label: 'Télé et musique', what: 'Télés, radios, chaînes hi-fi', types: ['tv', 'radio'] },
-  { id: 'deco', label: 'Déco', what: 'Tapis, miroirs, plantes et lampes', types: ['rug', 'mirror', 'plant', 'lamp'] },
+  { id: 'loisirs', label: 'Télé et musique', what: 'Télés, meubles télé, radios, chaînes hi-fi', types: ['tv', 'radio'] },
+  { id: 'deco', label: 'Lumière et déco', what: 'Lampes, suspensions, tableaux, tapis, miroirs et plantes', types: ['lamp', 'decor', 'rug', 'mirror', 'plant'] },
+  { id: 'jardin', label: 'Jardin et piscine', what: 'Transats, parasols, salons de jardin · pour la villa, ou près de la fenêtre', types: ['outdoor'] },
 ];
 
 /** A piece standing in a home view: the player's own (its asset) or a visited host's (from the snapshot). */
@@ -247,7 +251,7 @@ class Estate {
     this.upgradeDressing(v, vis ? vis.upgrades : held?.upgrades ?? []);
     // colliders: the shell's, then every piece standing (rugs are walked on)
     v.int.colliders.length = 0; v.int.colliders.push(...v.base);
-    for (const f of want) { const fs = furnitureSpec(f.spec)!; if (fs.flat) continue; const r = footprint(fs, f.at); v.int.colliders.push({ x0: v.ox + r.x0, z0: v.oz + r.z0, x1: v.ox + r.x1, z1: v.oz + r.z1, h: 1 }); }
+    for (const f of want) { const fs = furnitureSpec(f.spec)!; if (fs.flat || fs.mount) continue; const r = footprint(fs, f.at); v.int.colliders.push({ x0: v.ox + r.x0, z0: v.oz + r.z0, x1: v.ox + r.x1, z1: v.oz + r.z1, h: 1 }); }   // rugs are walked on, hung pieces walked under
     // seats: unchanged ones stay (with whoever sits there), the others are replaced; a guest sits only with « use », never on a bed
     const seats: Seat[] = [];
     for (const f of want) (furnitureSpec(f.spec)!.seats ?? []).forEach((st, k) => {
@@ -613,7 +617,8 @@ class Estate {
     rows.push(['Il te restera', this.left(f.price ?? 0)]);
     this.confirm(`Acheter : ${f.name}`, rows, 'Acheter', '−' + fcfa(f.price ?? 0), cannotBuyFurniture(s, f.id), () => {
       const piece = deliverFurniture(s, f.id);
-      if (piece) this.done(`${f.name} ✓  −${fcfa(f.price ?? 0)} · ${f.fixed ? 'sur ton lit' : piece.at ? 'livré et installé chez toi' : 'livré, rangé (plus de place)'}`, back);
+      const room = piece?.at ? roomOf(layoutOf(homeSpec(currentHome(s).spec)!), piece.at) : null;
+      if (piece) this.done(`${f.name} ✓  −${fcfa(f.price ?? 0)} · ${f.fixed ? 'sur ton lit' : piece.at ? (room ? `livré et installé · ${room.name}` : 'livré et installé chez toi') : 'livré, rangé (plus de place)'}`, back);
     }, back);
   }
   private talkSeller() { this.ctx.toast(SELLER_LINES[this.talkN++ % SELLER_LINES.length]); this.s.adjust({ social: 2 }); }
@@ -663,7 +668,12 @@ class Estate {
           : a.how === 'rented' ? 'Loué par toi · domicile principal, rendre les clés' : 'À toi · domicile principal, louer, vendre' })),
       { icon: '🔑', label: 'Tous mes biens', onPick: () => this.openAssets() },
     ];
-    const list = all.map(f => `${furnitureSpec(f.spec)!.emoji} ${esc(furnitureSpec(f.spec)!.name)}${f.at || furnitureSpec(f.spec)!.fixed ? '' : ' (rangé)'}`).join(' · ');
+    const name = (f: AssetState) => `${furnitureSpec(f.spec)!.emoji} ${esc(furnitureSpec(f.spec)!.name)}${f.at || furnitureSpec(f.spec)!.fixed ? '' : ' (rangé)'}`;
+    // a home built from a floor plan lists its furniture room by room (from where each piece stands)
+    const L = homeSpec(h.spec) ? layoutOf(homeSpec(h.spec)!) : null, rooms = L ? planRooms(L) : [];
+    const byRoom = rooms.map(r => [r.name, all.filter(f => f.at && roomOf(L!, f.at)?.id === r.id)] as const).filter(([, l]) => l.length);
+    const rest = rooms.length ? all.filter(f => !f.at || !rooms.some(r => roomOf(L!, f.at!)?.id === r.id)) : all;
+    const list = [...byRoom.map(([n, l]) => `<b>${esc(n)}</b> : ${l.map(name).join(' · ')}`), ...(rest.length ? [`${rooms.length && byRoom.length ? '<b>Ailleurs</b> : ' : ''}${rest.map(name).join(' · ')}`] : [])].join('<br>');
     this.open(sp.name.split(' · ')[0], `Domicile principal · ${sp.where ?? ''} · ${all.length} meuble${all.length > 1 ? 's' : ''} (${placed} installés)`, items,
       `<div class="kv">${all.length ? list : 'Pas encore de meubles : Keur Meubles (Cité Jàmm, en face) livre chez toi.'}${comfortOf(h) ? `<br>Confort : +${comfortOf(h)} énergie au réveil` : ''}</div>`);
   }
@@ -687,8 +697,23 @@ class Estate {
         look: (set?: Partial<{ yaw: number; pitch: number; zoom: number }>) => self.editor.cameraLook(set), screenOf: (uid?: string) => self.editor.screenOf(uid),
         open: () => { const v = this.ownViewInside(); return v ? self.editor.open(v) : false; }, close: () => self.editor.close(), info: () => self.editor.info(),
         select: (uid: string) => self.editor.select(uid), move: (dx: number, dz: number) => self.editor.move(dx, dz), moveTo: (x: number, z: number) => self.editor.moveTo(x, z), rotate: () => self.editor.rotate(), put: () => self.editor.put(), stash: () => self.editor.stash(),
+        /** LD2.0-C: frame a room of a plan home (null: the whole home), and where the camera looks (world). */
+        room: (id: string | null) => self.editor.chooseRoom(id), target: () => self.editor.target(),
       },
       legacyItem: (id: string) => furnitureById(id)?.name ?? null,
+      /** LD2.0-C: the home the player lives in, piece by piece against its rules (checks): its room, why it could not stand there (null: it can), and whether every room is reachable. */
+      homeRules: () => {
+        const h = currentHome(self.s), L = layoutOf(homeSpec(h.spec)!), placed = furnitureIn(self.s, h.uid).filter(f => f.at && !furnitureSpec(f.spec)?.fixed);
+        const all = placed.map(f => ({ uid: f.uid, spec: furnitureSpec(f.spec)!, at: f.at! }));
+        return {
+          home: h.spec, plan: L.plan?.id ?? null,
+          pieces: all.map(p => ({ uid: p.uid, spec: p.spec.id, at: p.at, room: roomOf(L, p.at)?.id ?? null, why: whyNot(L, p.spec, p.at, all.filter(o => o.uid !== p.uid)) })),
+          stored: furnitureIn(self.s, h.uid).filter(f => !f.at && !furnitureSpec(f.spec)?.fixed).map(f => f.spec),
+          reachable: L.plan ? reachable(L.plan, all.filter(p => !p.spec.flat && !p.spec.mount).map(p => footprint(p.spec, p.at))) : null,
+        };
+      },
+      /** LD2.0-C: the furniture catalogue as sold (checks, the catalogue sheet): its kit model, its room, how it is hung. */
+      furnitureList: () => CATALOGUE.map(f => ({ id: f.id, name: f.name, price: f.price ?? 0, grade: f.grade, type: f.type, kit: KIT_PIECES[f.id] ?? null, room: roomKindOf(f), mount: f.mount ?? null, w: f.w, d: f.d })),
       /** The hub's Dibi (venues module): does it offer « Parler affaires », and open that sheet. */
       dibiBusiness: () => {
         const p = this.ctx.places.all().find(x => x.type === 'dibi'); if (!p) return null;

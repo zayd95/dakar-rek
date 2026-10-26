@@ -1,5 +1,6 @@
 import type { HubId, Needs } from '../core/types';
 import type { SeatKind } from '../interact/seats';
+import type { RoomKind } from '../housing/plan';
 import { STARTER_HOME } from '../core/save';
 import { ECONOMY } from './config';
 
@@ -132,10 +133,12 @@ export const AIRCRAFT: AssetSpec[] = [
 // ------------------------------------------------------------------ furniture: basic / better / premium
 export type Grade = 'basic' | 'better' | 'premium';
 export const GRADE_LABEL: Record<Grade, string> = { basic: 'Simple', better: 'Confort', premium: 'Prestige' };
-export type FurnitureType = 'chair' | 'sofa' | 'bed' | 'table' | 'tv' | 'radio' | 'rug' | 'mirror' | 'plant' | 'lamp' | 'wardrobe' | 'mattress' | 'desk' | 'kitchen';
+export type FurnitureType = 'chair' | 'sofa' | 'bed' | 'table' | 'tv' | 'radio' | 'rug' | 'mirror' | 'plant' | 'lamp' | 'wardrobe' | 'mattress' | 'desk' | 'kitchen'
+  | 'dining' | 'appliance' | 'bath' | 'decor' | 'shelf' | 'outdoor';
 export const TYPE_LABEL: Record<FurnitureType, string> = {
   chair: 'Chaises et fauteuils', sofa: 'Canapés', bed: 'Lits', table: 'Tables', tv: 'Télés', radio: 'Musique', rug: 'Tapis', mirror: 'Miroirs',
   plant: 'Plantes', lamp: 'Lampes', wardrobe: 'Rangements', mattress: 'Literie', desk: 'Bureaux', kitchen: 'Cuisine',
+  dining: 'Salles à manger', appliance: 'Électroménager', bath: 'Salle de bain', decor: 'Tableaux', shelf: 'Bibliothèques', outdoor: 'Jardin et piscine',
 };
 /** A place on a piece: `top` is the surface height; `clip` the pose held there (default Sit; beds: Lie, along the bed). */
 export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: 'Lie' }
@@ -171,6 +174,16 @@ export interface FurnitureSpec extends AssetSpec {
   fixed?: 'bed';
   /** Where it is sold: the quincaillerie stall (Pikine), Keur Meubles (Cité Jàmm) or both. */
   shop: 'quincaillerie' | 'keur_meubles' | 'both';
+  /**
+   * The room it goes to first in a home built from a floor plan (src/housing/plan.ts; src/economy/placement.ts autoPlace), when not its type's
+   * (placement.ts TYPE_ROOM). 'any': the séjour first, else wherever it fits. Not saved: a piece's room is where it stands.
+   */
+  room?: RoomKind | 'any';
+  /**
+   * Off the floor: hung on a wall (pictures, a bathroom mirror, a towel rail; its back flush with the wall) or from the ceiling (hanging lamps).
+   * It takes no floor space: floor pieces stand under it and people walk under it; it only avoids other pieces hung the same way.
+   */
+  mount?: 'wall' | 'ceiling';
 }
 
 const F = (x: Omit<FurnitureSpec, 'kind' | 'shop'> & { shop?: FurnitureSpec['shop'] }): FurnitureSpec => ({ shop: 'keur_meubles', ...x, kind: 'furniture' });
@@ -179,6 +192,20 @@ const sofaSeats = (n: number, len: number, top: number): FurnitureSeat[] =>
   Array.from({ length: n }, (_, i) => ({ x: n === 1 ? 0 : (i / (n - 1) - 0.5) * (len - 0.7), z: 0.08, top, yaw: 0, kind: 'sofa' as SeatKind }));
 /** Lying along the bed: hips at the middle of the mattress, head on the pillow (−z), feet toward +z (`w` kept for the footprint). */
 const bedSeat = (_w: number, top: number): FurnitureSeat[] => [{ x: 0, z: 0.02, top, yaw: 0, kind: 'bed', clip: 'Lie' }];
+const PI = Math.PI;
+/** Chairs of a set (a dining table's, a garden table's): [x, z, yaw] each, all at seat height `top`. */
+const setOf = (spots: readonly (readonly [number, number, number])[], top: number, kind: SeatKind = 'chair'): FurnitureSeat[] => spots.map(([x, z, yaw]) => ({ x, z, top, yaw, kind }));
+/** Four chairs round a table, `r` from its centre, each facing it. */
+const ringOf = (r: number, top: number) => setOf([[0, -r, 0], [r, 0, -PI / 2], [0, r, PI], [-r, 0, PI / 2]], top);
+const ataya = (moral: number, social: number): FurnitureUse => ({ id: 'ataya', label: 'Préparer l’ataya', seconds: 5, needs: { moral, social }, counter: 'ataya' });
+const breakfast = (faim: number, moral: number, price: number): FurnitureUse => ({ id: 'petitdej', label: 'Prendre le petit-déjeuner', seconds: 4, needs: { faim, moral }, counter: 'meals', price, sit: true });
+const reheat = (faim: number, moral: number, price: number): FurnitureUse => ({ id: 'rechauffer', label: 'Réchauffer un plat', seconds: 3, needs: moral ? { faim, moral } : { faim }, counter: 'meals', price });
+const drink = (energie: number, moral: number): FurnitureUse => ({ id: 'boire', label: 'Boire de l’eau fraîche', seconds: 2, needs: { energie, moral } });
+const fan = (energie: number, moral: number): FurnitureUse => ({ id: 'ventilo', label: 'Se mettre au ventilateur', seconds: 3, needs: { energie, moral } });
+const freshen = (hygiene: number, moral: number): FurnitureUse => ({ id: 'rafraichir', label: 'Se rafraîchir', seconds: 2, needs: { hygiene, moral } });
+const prepare = (hygiene: number, moral: number): FurnitureUse => ({ id: 'preparer', label: 'Se préparer', seconds: 2, needs: { hygiene, moral }, counter: 'preparer', spot: [0, 0.6] });
+const change = (hygiene: number, moral: number): FurnitureUse => ({ id: 'changer', label: 'Se changer', seconds: 2, needs: { hygiene, moral } });
+const lounge = (energie: number, moral: number): FurnitureUse => ({ id: 'detente', label: 'Se détendre', seconds: 4, needs: { energie, moral }, sit: true });
 const L = ECONOMY.furniture;
 /** The starter pieces (first economy lane): same ids, prices and effects, sold at the quincaillerie and at Keur Meubles. */
 export const STARTER_FURNITURE = ['miroir', 'tapis', 'chaises', 'radio', 'matelas', 'tele'];
@@ -269,6 +296,91 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
     use: { id: 'changer', label: 'Se changer', seconds: 2, needs: { hygiene: 8, moral: 6 } } }),
   F({ id: 'dressing', type: 'wardrobe', grade: 'premium', emoji: '👔', name: 'Dressing', what: 'Penderies, tiroirs et miroirs', price: 800_000, w: 2.2, d: 0.65,
     use: { id: 'changer', label: 'Se changer', seconds: 2, needs: { hygiene: 10, moral: 10 } } }),
+  // ---------------------------------------------------------------- LD2.0-C, the furnishing upgrade (docs/ld2/LD2_C.md): ids new and stable
+  // dining sets: a table and its chairs (the séjour)
+  F({ id: 'salle_manger_simple', type: 'dining', grade: 'basic', emoji: '🍽️', name: 'Table et quatre chaises', what: 'Table en bois, toile cirée et quatre chaises en plastique : « Préparer l’ataya »', price: 32_000, w: 1.12, d: 1.6,
+    seats: setOf([[-0.28, -0.47, 0], [0.28, -0.47, 0], [-0.28, 0.47, PI], [0.28, 0.47, PI]], 0.55), use: ataya(7, 4) }),
+  F({ id: 'salle_manger_bois', type: 'dining', grade: 'better', emoji: '🍽️', name: 'Salle à manger en bois', what: 'Table vernie et quatre chaises aux coussins en wax : « Préparer l’ataya »', price: 175_000, w: 1.42, d: 1.72,
+    seats: setOf([[-0.36, -0.57, 0], [0.36, -0.57, 0], [-0.36, 0.57, PI], [0.36, 0.57, PI]], 0.64), use: ataya(9, 5) }),
+  F({ id: 'salle_manger_marbre', type: 'dining', grade: 'premium', emoji: '🍽️', name: 'Salle à manger en marbre', what: 'Plateau de marbre sur pieds sculptés, six chaises de velours : « Préparer l’ataya »', price: 1_250_000, w: 1.92, d: 1.92,
+    seats: setOf([[-0.62, -0.63, 0], [0, -0.63, 0], [0.62, -0.63, 0], [-0.62, 0.63, PI], [0, 0.63, PI], [0.62, 0.63, PI]], 0.62), use: ataya(12, 6) }),
+  // kitchen: a table and its stools, cookers (the cuisine; the F2's own counter, sink, stove and fridge are built in)
+  F({ id: 'table_cuisine', type: 'kitchen', grade: 'basic', emoji: '🥖', name: 'Table de cuisine et tabourets', what: 'Formica et deux tabourets : « Prendre le petit-déjeuner » (250 F, faim +20)', price: 16_000, w: 0.82, d: 0.96,
+    seats: setOf([[-0.2, 0.28, PI], [0.2, 0.28, PI]], 0.57, 'stool'), use: breakfast(20, 3, 250) }),
+  F({ id: 'table_cuisine_bois', type: 'kitchen', grade: 'better', emoji: '🥖', name: 'Table de cuisine en bois', what: 'Bois verni, un tiroir, deux tabourets cannés : « Prendre le petit-déjeuner » (300 F, faim +25)', price: 55_000, w: 1.0, d: 1.0,
+    seats: setOf([[-0.24, 0.31, PI], [0.24, 0.31, PI]], 0.58, 'stool'), use: breakfast(25, 4, 300) }),
+  F({ id: 'bar_cuisine', type: 'kitchen', grade: 'premium', emoji: '☕', name: 'Bar de cuisine et tabourets hauts', what: 'Plateau de marbre, tabourets chromés, machine à café : « Prendre le petit-déjeuner »', price: 260_000, w: 1.12, d: 1.0,
+    seats: setOf([[-0.27, 0.28, PI], [0.27, 0.28, PI]], 0.87, 'stool'), use: breakfast(30, 6, 350) }),
+  F({ id: 'gaziniere', type: 'kitchen', grade: 'better', emoji: '🍳', name: 'Cuisinière à gaz quatre feux', what: 'Four et quatre feux : « Cuisiner un repas » (500 F, faim +55)', price: 145_000, w: 0.6, d: 0.66,
+    use: { id: 'cuisiner', label: 'Cuisiner un repas', seconds: 6, needs: { faim: 55, moral: 6 }, counter: 'meals', price: 500 } }),
+  F({ id: 'piano_cuisson', type: 'kitchen', grade: 'premium', emoji: '🍲', name: 'Piano de cuisson et sa hotte', what: 'Cinq feux, deux fours, hotte inox : « Cuisiner un repas » (600 F, faim +70)', price: 980_000, w: 0.92, d: 0.66,
+    use: { id: 'cuisiner', label: 'Cuisiner un repas', seconds: 6, needs: { faim: 70, moral: 10 }, counter: 'meals', price: 600 } }),
+  // appliances: microwaves, water, fans
+  F({ id: 'micro_ondes_desserte', type: 'appliance', grade: 'basic', emoji: '♨️', name: 'Micro-ondes sur desserte', what: 'Sur sa desserte à roulettes : « Réchauffer un plat » (300 F, faim +30)', price: 45_000, w: 0.56, d: 0.42, use: reheat(30, 0, 300) }),
+  F({ id: 'micro_ondes', type: 'appliance', grade: 'better', emoji: '♨️', name: 'Micro-ondes sur meuble', what: 'Sur un meuble en bois à deux portes : « Réchauffer un plat » (300 F, faim +35)', price: 95_000, w: 0.62, d: 0.5, use: reheat(35, 2, 300) }),
+  F({ id: 'colonne_four', type: 'appliance', grade: 'premium', emoji: '♨️', name: 'Colonne four et micro-ondes', what: 'Four, micro-ondes, tiroirs et placard : « Réchauffer un plat » (350 F, faim +45)', price: 520_000, w: 0.62, d: 0.62, use: reheat(45, 5, 350) }),
+  F({ id: 'canari', type: 'appliance', grade: 'basic', emoji: '🏺', name: 'Canari et son support', what: 'L’eau reste fraîche dans la terre cuite : « Boire de l’eau fraîche »', price: 5_500, w: 0.4, d: 0.4, use: drink(3, 3) }),
+  F({ id: 'fontaine_eau', type: 'appliance', grade: 'better', emoji: '🚰', name: 'Fontaine à eau', what: 'Eau fraîche et eau chaude, sa bonbonne : « Boire de l’eau fraîche »', price: 65_000, w: 0.32, d: 0.38, use: drink(4, 4) }),
+  F({ id: 'fontaine_inox', type: 'appliance', grade: 'premium', emoji: '🚰', name: 'Fontaine inox', what: 'Inox, trois robinets, bonbonne cachée : « Boire de l’eau fraîche »', price: 280_000, w: 0.34, d: 0.4, use: drink(5, 6) }),
+  F({ id: 'ventilateur', type: 'appliance', grade: 'basic', emoji: '🌀', name: 'Petit ventilateur', what: '« Se mettre au ventilateur » : un peu de fraîcheur', price: 7_500, w: 0.32, d: 0.28, room: 'chambre', use: fan(3, 3) }),
+  F({ id: 'ventilo_pied', type: 'appliance', grade: 'better', emoji: '🌀', name: 'Ventilateur sur pied', what: 'Grand, sur pied : « Se mettre au ventilateur »', price: 22_000, w: 0.5, d: 0.5, room: 'chambre', use: fan(5, 4) }),
+  F({ id: 'ventilo_colonne', type: 'appliance', grade: 'premium', emoji: '🌀', name: 'Ventilateur colonne', what: 'Colonne silencieuse et télécommande : « Se mettre au ventilateur »', price: 95_000, w: 0.4, d: 0.4, room: 'chambre', use: fan(7, 6) }),
+  // bathroom (the salle de bain; the F2's shower, WC and basin are built in): basins, mirrors and towel rails on the wall
+  F({ id: 'lavabo_colonne', type: 'bath', grade: 'basic', emoji: '🚿', name: 'Lavabo sur colonne', what: 'Un lavabo de plus : « Se rafraîchir »', price: 25_000, w: 0.56, d: 0.44, use: freshen(12, 2) }),
+  F({ id: 'meuble_vasque', type: 'bath', grade: 'better', emoji: '🚿', name: 'Meuble vasque en bois', what: 'Vasque, robinet mitigeur et rangements : « Se rafraîchir »', price: 130_000, w: 0.72, d: 0.48, use: freshen(16, 4) }),
+  F({ id: 'vasque_marbre', type: 'bath', grade: 'premium', emoji: '🚿', name: 'Double vasque en marbre', what: 'Deux vasques sur marbre, meuble suspendu en noyer : « Se rafraîchir »', price: 720_000, w: 1.22, d: 0.54, use: freshen(20, 6) }),
+  F({ id: 'miroir_sdb', type: 'bath', grade: 'basic', emoji: '🪞', name: 'Miroir rond', what: 'Cadre en rotin, accroché au mur : « Se préparer »', price: 4_500, w: 0.52, d: 0.06, mount: 'wall', use: prepare(8, 4) }),
+  F({ id: 'armoire_toilette', type: 'bath', grade: 'better', emoji: '🪞', name: 'Armoire de toilette', what: 'Porte miroir, éclairage et tablette, au mur : « Se préparer »', price: 45_000, w: 0.6, d: 0.15, mount: 'wall', use: prepare(12, 6) }),
+  F({ id: 'miroir_lumineux', type: 'bath', grade: 'premium', emoji: '🪞', name: 'Miroir lumineux', what: 'Grand miroir éclairé et tablette en verre, au mur : « Se préparer »', price: 220_000, w: 0.92, d: 0.14, mount: 'wall', use: prepare(16, 10) }),
+  F({ id: 'porte_serviettes', type: 'bath', grade: 'basic', emoji: '🧺', name: 'Porte-serviettes', what: 'Une barre chromée et sa serviette, au mur', price: 3_500, w: 0.58, d: 0.1, mount: 'wall' }),
+  F({ id: 'porte_serviettes_bois', type: 'bath', grade: 'better', emoji: '🧺', name: 'Porte-serviettes en bois', what: 'Deux barres et une étagère de serviettes pliées, au mur', price: 24_000, w: 0.62, d: 0.2, mount: 'wall' }),
+  F({ id: 'seche_serviettes', type: 'bath', grade: 'premium', emoji: '🧺', name: 'Sèche-serviettes chromé', what: 'Échelle chromée chauffante, au mur', price: 160_000, w: 0.62, d: 0.1, mount: 'wall' }),
+  // lighting: floor lamps, hanging lamps (from the ceiling), bedside tables and their lamps
+  F({ id: 'lampadaire_trepied', type: 'lamp', grade: 'better', emoji: '💡', name: 'Lampadaire trépied', what: 'Trois pieds en bois, grand abat-jour', price: 48_000, w: 0.56, d: 0.56 }),
+  F({ id: 'lampadaire_arc', type: 'lamp', grade: 'premium', emoji: '💡', name: 'Lampadaire arc', what: 'Socle de marbre, arc chromé au-dessus du canapé', price: 390_000, w: 0.44, d: 1.12 }),
+  F({ id: 'suspension_osier', type: 'lamp', grade: 'basic', emoji: '🏮', name: 'Suspension en osier', what: 'Un abat-jour tressé, au plafond', price: 9_000, w: 0.5, d: 0.5, mount: 'ceiling' }),
+  F({ id: 'suspension_calebasse', type: 'lamp', grade: 'better', emoji: '🏮', name: 'Suspension calebasse', what: 'Une calebasse gravée à la main, au plafond', price: 35_000, w: 0.58, d: 0.58, mount: 'ceiling' }),
+  F({ id: 'lustre', type: 'lamp', grade: 'premium', emoji: '🕯️', name: 'Lustre doré', what: 'Six bougies et des pampilles, au plafond', price: 560_000, w: 0.8, d: 0.8, mount: 'ceiling' }),
+  F({ id: 'chevet_bois', type: 'lamp', grade: 'better', emoji: '🛏️', name: 'Table de chevet et sa lampe', what: 'Un tiroir, une niche et une lampe à abat-jour', price: 32_000, w: 0.48, d: 0.46, room: 'chambre' }),
+  F({ id: 'chevet_sculpte', type: 'lamp', grade: 'premium', emoji: '🛏️', name: 'Chevet sculpté et lampe dorée', what: 'Bois sculpté, dessus de marbre, lampe dorée', price: 240_000, w: 0.52, d: 0.45, room: 'chambre' }),
+  // bedroom storage and a dressing table
+  F({ id: 'commode', type: 'wardrobe', grade: 'basic', emoji: '🗄️', name: 'Commode à trois tiroirs', what: 'Bois peint, trois tiroirs : « Se changer »', price: 30_000, w: 0.82, d: 0.47, use: change(5, 4) }),
+  F({ id: 'penderie', type: 'wardrobe', grade: 'basic', emoji: '👗', name: 'Penderie ouverte', what: 'Une barre pour les boubous, une étagère à chaussures : « Se changer »', price: 14_000, w: 1.0, d: 0.5, use: change(5, 3) }),
+  F({ id: 'armoire_3portes', type: 'wardrobe', grade: 'better', emoji: '🚪', name: 'Armoire trois portes', what: 'Trois portes dont un miroir : « Se changer »', price: 260_000, w: 1.54, d: 0.62, use: change(9, 7) }),
+  F({ id: 'coiffeuse_doree', type: 'mirror', grade: 'premium', emoji: '🪞', name: 'Coiffeuse à triple miroir', what: 'Laquée et dorée, triple miroir, tabouret de velours : « Se préparer »', price: 450_000, w: 1.2, d: 0.52, room: 'chambre',
+    use: { id: 'preparer', label: 'Se préparer', seconds: 2, needs: { hygiene: 18, moral: 12 }, counter: 'preparer' } }),
+  // pictures, on the wall
+  F({ id: 'affiche', type: 'decor', grade: 'basic', emoji: '🖼️', name: 'Affiche encadrée', what: 'Un baobab au coucher du soleil, cadre noir', price: 5_000, w: 0.52, d: 0.04, mount: 'wall' }),
+  F({ id: 'sous_verre', type: 'decor', grade: 'better', emoji: '🖼️', name: 'Peintures sous-verre', what: 'Deux sous-verre peints à la main, cadres de couleur', price: 38_000, w: 0.76, d: 0.04, mount: 'wall' }),
+  F({ id: 'toile_artiste', type: 'decor', grade: 'premium', emoji: '🖼️', name: 'Grande toile d’artiste', what: 'Des pirogues au soir, cadre doré et sa lampe', price: 480_000, w: 1.46, d: 0.16, mount: 'wall' }),
+  // televisions on their wall units
+  F({ id: 'tele_etagere', type: 'tv', grade: 'basic', emoji: '📺', name: 'Télé sur étagère', what: 'Écran plat, décodeur et petites enceintes : « Regarder la télé »', price: 55_000, w: 1.32, d: 0.36,
+    use: { id: 'tele', label: 'Regarder la télé', seconds: 4, needs: { moral: 10, energie: 3 }, counter: 'tele', spot: [0, 1.5] } }),
+  F({ id: 'meuble_tv', type: 'tv', grade: 'better', emoji: '📺', name: 'Meuble télé et étagères', what: 'Grand écran, meuble à tiroirs, deux colonnes de livres : « Regarder la télé »', price: 320_000, w: 1.8, d: 0.46,
+    use: { id: 'tele', label: 'Regarder la télé', seconds: 4, needs: { moral: 15, energie: 3 }, counter: 'tele', spot: [0, 1.8] } }),
+  F({ id: 'mur_tv', type: 'tv', grade: 'premium', emoji: '📺', name: 'Mur télé en bois sculpté', what: 'Très grand écran, barre de son, vitrines et lumière : « Regarder la télé »', price: 1_800_000, w: 2.4, d: 0.46,
+    use: { id: 'tele', label: 'Regarder un film', seconds: 5, needs: { moral: 20, energie: 4, social: 2 }, counter: 'tele', spot: [0, 2.0] } }),
+  // bookshelves (the kit's shelves)
+  F({ id: 'etagere', type: 'shelf', grade: 'basic', emoji: '📚', name: 'Étagère en planches', what: 'Planches sur parpaings, la radio et les livres', price: 8_000, w: 1.04, d: 0.26 }),
+  F({ id: 'bibliotheque', type: 'shelf', grade: 'better', emoji: '📚', name: 'Bibliothèque', what: '« Prendre un livre » : un peu de moral', price: 70_000, w: 0.9, d: 0.32, use: { id: 'lire', label: 'Prendre un livre', seconds: 4, needs: { moral: 6 } } }),
+  F({ id: 'vitrine', type: 'shelf', grade: 'premium', emoji: '🏺', name: 'Vitrine de salon', what: 'Verres à thé et assiettes de fête : « Sortir les beaux verres »', price: 520_000, w: 1.08, d: 0.48,
+    use: { id: 'verres', label: 'Sortir les beaux verres', seconds: 3, needs: { moral: 8, social: 3 } } }),
+  // outdoor and poolside: for the houses and villas to come; in the F2, in the séjour by the window
+  F({ id: 'transat', type: 'outdoor', grade: 'basic', emoji: '🏖️', name: 'Transat en toile', what: 'Bois et toile rayée : « Se détendre »', price: 15_000, w: 0.62, d: 1.22,
+    seats: [{ x: 0, z: 0.05, top: 0.4, yaw: 0, kind: 'chair' }], use: lounge(6, 6) }),
+  F({ id: 'bain_soleil', type: 'outdoor', grade: 'better', emoji: '🏖️', name: 'Bain de soleil tressé', what: 'Résine tressée et coussins : « Se détendre »', price: 110_000, w: 0.7, d: 1.9,
+    seats: [{ x: 0, z: 0.15, top: 0.45, yaw: 0, kind: 'bed', clip: 'Lie' }], use: lounge(8, 9) }),
+  F({ id: 'bain_soleil_teck', type: 'outdoor', grade: 'premium', emoji: '🏖️', name: 'Bain de soleil en teck', what: 'Teck massif, matelas épais, roulettes : « Se détendre »', price: 460_000, w: 0.76, d: 1.96,
+    seats: [{ x: 0, z: 0.25, top: 0.49, yaw: 0, kind: 'bed', clip: 'Lie' }], use: lounge(10, 12) }),
+  F({ id: 'parasol', type: 'outdoor', grade: 'basic', emoji: '⛱️', name: 'Parasol de plage', what: 'Toile rayée rouge et blanche, pied lesté', price: 12_000, w: 1.6, d: 1.6 }),
+  F({ id: 'parasol_bois', type: 'outdoor', grade: 'better', emoji: '⛱️', name: 'Parasol en bois', what: 'Mât en bois, toile écrue à lambrequins', price: 85_000, w: 2.0, d: 2.0 }),
+  F({ id: 'parasol_deporte', type: 'outdoor', grade: 'premium', emoji: '⛱️', name: 'Parasol déporté', what: 'Grand carré sur un mât déporté, socle de granit, éclairé', price: 420_000, w: 2.2, d: 2.2 }),
+  F({ id: 'salon_jardin', type: 'outdoor', grade: 'basic', emoji: '🪑', name: 'Salon de jardin en plastique', what: 'Table ronde et quatre fauteuils : « Préparer l’ataya »', price: 24_000, w: 1.82, d: 1.82,
+    seats: ringOf(0.59, 0.55), use: ataya(6, 4) }),
+  F({ id: 'salon_fer_forge', type: 'outdoor', grade: 'better', emoji: '🪑', name: 'Salon de jardin en fer forgé', what: 'Table en mosaïque, quatre chaises à coussins : « Préparer l’ataya »', price: 150_000, w: 1.72, d: 1.72,
+    seats: ringOf(0.59, 0.59), use: ataya(8, 5) }),
+  F({ id: 'salon_teck', type: 'outdoor', grade: 'premium', emoji: '🪑', name: 'Salon de jardin en teck', what: 'Table en teck, quatre fauteuils et leur parasol : « Préparer l’ataya »', price: 780_000, w: 2.1, d: 2.1,
+    seats: setOf([[-0.35, -0.69, 0], [0.35, -0.69, 0], [-0.35, 0.69, PI], [0.35, 0.69, PI]], 0.58), use: ataya(10, 6) }),
 ];
 
 // ------------------------------------------------------------------ a supporter's colours (the arena's stall « Couleurs du Géew »)
