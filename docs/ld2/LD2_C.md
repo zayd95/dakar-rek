@@ -194,7 +194,7 @@ The old F2 (one open room, the traversée build) and the walkable F2, each with 
 
 - **The budget holds:** at most 23 draw calls and 24k triangles, furnished, against 60 and 80k. The shell alone is 10 draw calls and 7 432 triangles (`check-apartment-walk`, budget 14).
 - **The walkable F2 is slower than the old room in the software renderer**, by about 10–40 % a frame (measured again after the window fix).
-  - The renderer alone in the séjour takes about 116 ms.
+  - The renderer alone in the séjour took about 116 ms (this breakdown was measured just before the window fix, which removed 48 triangles).
   - It drops to 71 ms with the shell's walls, faience, fittings, doors, lamps and windows hidden (its floors kept), and to 55 ms with the whole home hidden.
   - The full-height walls cover far more of the screen than the old low walls, and every wall pixel is lit.
   - The see-through hole (a shader that may discard) accounts for about 12 % of the frame (102 ms without it). The shadow pass is negligible.
