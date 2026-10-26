@@ -201,6 +201,16 @@ export interface Player {
   dive: { x: number; z: number; h: number; t: number; T: number } | null;
   /** Seconds on the ball as the controller (a long solo run looks for a pass). */
   held: number;
+  /**
+   * M3 « Join the match » (docs/districts/M3-CORNICHE.md): the player on the pitch. Placed every frame from the player's own body (`setHuman`),
+   * never steered, never pushed, never the one who takes a kick-off, a restart or fetches the ball; touches the ball when it is at the foot (a
+   * dribble while running, a trap standing) and passes or shoots when asked (`humanAsk`) — every touch through the match's own contacts.
+   */
+  human: boolean;
+  /** The human's pass or shot asked for, waiting for the ball at the foot until `until` (match s); its power (0–1). */
+  ask: { kind: 'pass' | 'shot'; power: number; until: number } | null;
+  /** The human's next automatic touch, not before (match s). */
+  touchAt: number;
 }
 
 export type Phase = 'kickoff' | 'play' | 'goal' | 'fetch' | 'restart';
@@ -235,7 +245,13 @@ const SHAPES: Record<number, readonly (readonly [number, number])[]> = {
 const PATH_N = 60, PATH_DT = 1 / 20;
 const ACC = 7, DEC = 10;
 
-export interface PlayerSpec { id: number; team: 0 | 1; keeper?: boolean; x?: number; z?: number; yaw?: number; foot?: 1 | -1; pace?: number; skill?: number }
+export interface PlayerSpec { id: number; team: 0 | 1; keeper?: boolean; x?: number; z?: number; yaw?: number; foot?: 1 | -1; pace?: number; skill?: number; human?: boolean }
+/** M3: how far from the human's contact point the ball may be for a touch (m: a little more than an NPC's planned REACH, the human's steering is the thumb's). */
+export const HUMAN_REACH = 0.6;
+/** M3: the human's dribbling touches: at most one per this many seconds; how long a pass or shot asked for waits for the ball (s). */
+export const HUMAN_TOUCH_GAP = 0.26, HUMAN_ASK_HOLD = 1.2;
+/** M3: the human's shot: speed (m/s) and lift (m/s up) from no power to full. */
+export const HUMAN_SHOT = { v0: 12, v1: 24, h0: 0.5, h1: 3.2 } as const;
 
 export class Match {
   readonly ball: Ball = newBall();
@@ -271,6 +287,7 @@ export class Match {
       pace: s.pace ?? (s.keeper ? 4.8 : 5.3 + r() * 1.1), skill: s.skill ?? 0.45 + r() * 0.45,
       tx: s.x ?? 0, tz: s.z ?? 0, ts: 0, look: null, kick: null, think: r() * 0.3, plan: null, cheer: 0,
       ti: 99, ix: 0, iz: 0, sx: s.x ?? 0, sz: s.z ?? 0, supT: 0, dive: null, held: 0,
+      human: !!s.human, ask: null, touchAt: 0,
     };
     this.players.push(p); this.byId.set(p.id, p);
     return p;
@@ -333,7 +350,9 @@ export class Match {
     for (const p of this.players) this.decide(p, dt);
     for (const p of this.players) this.move(p, dt);
     this.separate();
-    this.contacts();
+    let humanTouched = false;
+    for (const p of this.players) if (p.human && !humanTouched) humanTouched = this.humanTick(p);
+    this.contacts(humanTouched);
   }
 
   private ballEvent(e: BallEvent) {
@@ -387,15 +406,15 @@ export class Match {
   }
   /** The kick-off taker: the field player furthest up (the shape's last). */
   private pickTaker(team: 0 | 1) {
-    const field = this.team(team).filter(p => !p.keeper);
-    const list = field.length ? field : this.team(team);
+    const field = this.team(team).filter(p => !p.keeper && !p.human);
+    const list = field.length ? field : this.team(team).filter(p => !p.human);
     let best = -1, bx = -Infinity;
     for (const p of list) { const x = this.base(p).x * this.dir(team); if (x > bx) { bx = x; best = p.id; } }
     return best;
   }
   private nearest(team: 0 | 1, x: number, z: number, field = false) {
     let best = -1, bd = Infinity;
-    for (const p of this.players) if (p.team === team && (!field || !p.keeper || this.team(team).length === 1)) { const d = hyp(p.x - x, p.z - z); if (d < bd) { bd = d; best = p.id; } }
+    for (const p of this.players) if (p.team === team && !p.human && (!field || !p.keeper || this.team(team).length === 1)) { const d = hyp(p.x - x, p.z - z); if (d < bd) { bd = d; best = p.id; } }
     return best;
   }
 
@@ -459,7 +478,7 @@ export class Match {
     const own = -this.dir(team) * PITCH.hx, b = this.ball;
     const keeperZone = Math.abs(b.x - own) < 7 && Math.abs(b.z) < 7;
     for (const p of this.players) {
-      if (p.team !== team || (p.keeper && !keeperZone && this.team(team).length > 2)) continue;
+      if (p.team !== team || p.human || (p.keeper && !keeperZone && this.team(team).length > 2)) continue;
       if (!best || p.ti < best.ti) best = p;
     }
     return best;
@@ -482,6 +501,7 @@ export class Match {
       p.kick.after -= dt;
       if (p.kick.after <= 0) p.kick = null;
     }
+    if (p.human) return;                                                 // the player's own thumb decides
     p.look = null;
     switch (this.phase) {
       case 'goal': return this.celebrate(p);
@@ -839,6 +859,80 @@ export class Match {
     p.look = Math.atan2(b.x - p.x, b.z - p.z);
   }
 
+  // ------------------------------------------------------------------ the human (M3)
+
+  /** The player's body this frame (pitch space; its velocity and facing): the match reads it, never moves it. */
+  setHuman(id: number, x: number, z: number, vx: number, vz: number, yaw: number) {
+    const p = this.byId.get(id); if (!p || !p.human) return;
+    p.x = x; p.z = z; p.vx = vx; p.vz = vz; p.yaw = wrap(yaw); p.tx = x; p.tz = z; p.ts = 0;
+  }
+  /** A pass or a shot asked for (the action button, « Frappe » released): played as soon as the ball is at the foot, for HUMAN_ASK_HOLD s. */
+  humanAsk(id: number, kind: 'pass' | 'shot', power = 0) {
+    const p = this.byId.get(id); if (!p || !p.human) return false;
+    p.ask = { kind, power: clamp(power, 0, 1), until: this.t + HUMAN_ASK_HOLD };
+    return true;
+  }
+  /** Whether the ball is at the human's foot now (the action button offers « Passer » / « Tirer »). */
+  humanInReach(id: number, margin = 0.5) {
+    const p = this.byId.get(id), b = this.ball; if (!p) return false;
+    const cp = Match.contactPoint(p.x, p.z, p.yaw, p.foot, V2);
+    return !b.net && b.h <= FOOT_H && hyp(b.x - cp.x, b.z - cp.z) <= HUMAN_REACH + margin;
+  }
+  /** The teammate a pass from the human goes to: ahead of the facing (within about 70°), the nearest best; null: none. */
+  humanReceiver(p: Player): Player | null {
+    const b = this.ball, fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    let best: Player | null = null, score = Infinity;
+    for (const q of this.players) {
+      if (q === p || q.team !== p.team) continue;
+      const dx = q.x - b.x, dz = q.z - b.z, d = hyp(dx, dz);
+      if (d < 2.5 || d > 30) continue;
+      const cos = (dx * fx + dz * fz) / d;
+      if (cos < 0.35) continue;
+      const sc = d * (2 - cos) + (q.keeper ? 6 : 0);
+      if (sc < score) { score = sc; best = q; }
+    }
+    return best;
+  }
+
+  /** The human's touch this frame, if the ball is at the foot: the pass or shot asked for, else a dribble (running) or a trap (standing). */
+  private humanTick(p: Player): boolean {
+    const b = this.ball;
+    if (p.ask && this.t > p.ask.until) p.ask = null;
+    if (!this.free(p) || b.net || b.h > FOOT_H) return false;
+    if (this.phase === 'goal' || this.phase === 'fetch') return false;
+    if ((this.phase === 'kickoff' || this.phase === 'restart') && this.taker !== p.id) return false;   // set pieces are the NPCs' to take
+    const cp = Match.contactPoint(p.x, p.z, p.yaw, p.foot, V2), reach = hyp(b.x - cp.x, b.z - cp.z);
+    if (reach > HUMAN_REACH) return false;
+    const v = hyp(p.vx, p.vz), bs = ballSpeed(b), fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    let kind: KickKind, dx: number, dz: number, speed: number, lift = 0, to = -1;
+    if (p.ask?.kind === 'shot') {
+      const gx = this.dir(p.team) * PITCH.hx, A = aimAt(b.x, b.z, p.yaw, gx);
+      kind = 'shot'; dx = A.x; dz = A.z;
+      speed = HUMAN_SHOT.v0 + (HUMAN_SHOT.v1 - HUMAN_SHOT.v0) * p.ask.power; lift = HUMAN_SHOT.h0 + (HUMAN_SHOT.h1 - HUMAN_SHOT.h0) * p.ask.power * p.ask.power;
+    } else if (p.ask?.kind === 'pass') {
+      const q = this.humanReceiver(p);
+      kind = 'pass';
+      if (q) {
+        const D0 = hyp(q.x - b.x, q.z - b.z), lead = Math.min(1.2, D0 / 9);
+        const tx = clamp(q.x + q.vx * lead * 0.5, -PITCH.hx + 0.8, PITCH.hx - 0.8), tz = clamp(q.z + q.vz * lead * 0.5, -PITCH.hz + 0.8, PITCH.hz - 0.8);
+        const D = hyp(tx - b.x, tz - b.z) || 1;
+        dx = (tx - b.x) / D; dz = (tz - b.z) / D; speed = Math.min(16, passSpeed(D, 2.5 + 0.1 * D)); to = q.id;
+      } else { dx = fx; dz = fz; speed = 9; }
+    } else if (v > 0.9 && this.t >= p.touchAt) {
+      // running into the ball: a touch ahead, at the runner's pace
+      kind = 'touch'; dx = p.vx / v; dz = p.vz / v; speed = clamp(v + 1.3, 2.2, 6.5);
+    } else if (v <= 0.9 && bs > 2) {
+      // standing in its way: it is stopped at the foot
+      kind = 'trap'; dx = fx; dz = fz; speed = 0.5;
+    } else return false;
+    p.ask = null; p.touchAt = this.t + HUMAN_TOUCH_GAP;
+    const k: Kick = { kind, side: p.foot, left: 0, swing: 0, after: AFTER[kind], dx, dz, speed, lift, to, bx: b.x, bz: b.z, bh: b.h, yaw: p.yaw, lat: 0, hands: false, hit: -1, log: -1 };
+    p.kick = k;
+    this.contact(p, k, reach);
+    for (const q of this.players) if (q !== p && q.kick && q.kick.hit < 0) q.kick = null;     // the ball is gone from where they planned to meet it
+    return true;
+  }
+
   // ------------------------------------------------------------------ planning a contact
 
   private planShot(p: Player, tz: number): boolean {
@@ -937,6 +1031,7 @@ export class Match {
   // ------------------------------------------------------------------ moving
 
   private move(p: Player, dt: number) {
+    if (p.human) return;                                                 // placed from the player's body (setHuman)
     const k = p.kick;
     if (k && k.hit < 0) {
       // steered onto the contact: the body where it must be when the ball gets there
@@ -976,7 +1071,7 @@ export class Match {
     for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
       const a = L[i], b = L[j], dx = b.x - a.x, dz = b.z - a.z, d = hyp(dx, dz), m = 0.7;
       if (d >= m) continue;
-      const ka = a.kick && a.kick.hit < 0 ? 0 : 1, kb = b.kick && b.kick.hit < 0 ? 0 : 1;
+      const ka = (a.kick && a.kick.hit < 0) || a.human ? 0 : 1, kb = (b.kick && b.kick.hit < 0) || b.human ? 0 : 1;
       if (!ka && !kb) continue;
       const ux = d > 1e-4 ? dx / d : 1, uz = d > 1e-4 ? dz / d : 0, push = (m - d) / (ka + kb);
       a.x -= ux * push * ka; a.z -= uz * push * ka; b.x += ux * push * kb; b.z += uz * push * kb;
@@ -986,9 +1081,8 @@ export class Match {
   // ------------------------------------------------------------------ contacts
 
   /** The contacts due this frame: the ball within reach of the contact point, else nothing happens. */
-  private contacts() {
+  private contacts(done = false) {
     const b = this.ball;
-    let done = false;
     for (const p of this.players) {
       const k = p.kick;
       if (!k || k.hit >= 0 || k.left > 1e-6) continue;
@@ -1055,6 +1149,16 @@ export class Match {
 }
 
 const V0 = { x: 0, z: 0, h: 0 }, V1 = { x: 0, z: 0, h: 0 }, V2 = { x: 0, z: 0 };
+/** The human's shot along `yaw` from (bx, bz) toward the goal line at x = gx: aimed inside the posts when it would just miss (within 4 m). */
+function aimAt(bx: number, bz: number, yaw: number, gx: number) {
+  let dx = Math.sin(yaw), dz = Math.cos(yaw);
+  const end = Math.sign(gx);
+  if (dx * end > 0.05) {
+    const t = (gx - bx) / dx, z = bz + dz * t, lim = PITCH.post - 0.45;
+    if (t > 0.5 && t < 34 && Math.abs(z) <= PITCH.post + 4) { const az = clamp(z, -lim, lim), ax = gx - bx, l = hyp(ax, az - bz); dx = ax / l; dz = (az - bz) / l; }
+  }
+  return { x: dx, z: dz };
+}
 const TOUCH_T = [0.2, 0.28, 0.36, 0.46, 0.58, 0.72, 0.9];
 const TRAP_T = [0.22, 0.3, 0.4, 0.52, 0.66, 0.82, 1.0, 1.2];
 const PASS_T = [0.32, 0.4, 0.5, 0.62, 0.76];

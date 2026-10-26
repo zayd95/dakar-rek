@@ -9,6 +9,10 @@ import { AFTER, BALL_R, Match, PITCH, ballSpeed, type Ball, type ContactRec, typ
 import { HOLD_FULL, KICK_REACH, KickBall, type GoalNote } from './kickabout';
 import type { Target } from '../interact/types';
 import type { BallRelay } from '../multiplayer/protocol';
+import type { MenuItem } from '../ui/sheet';
+import { hourStamp, recordVisit } from '../social/memory';
+import { Relations, PLAYER } from '../social/relations';
+import { ATAYA_LINE, FT, REGULARS, afterLine, joinLine, matchOver, meet, recognise, recordMatch, resultTitle, startMatch, type RegularId, type Result } from '../districts/matchRules';
 import './kickabout.css';
 
 /**
@@ -31,8 +35,14 @@ import './kickabout.css';
  *   « Ballon » anyone may dribble, pass (the action button, E: to the nearest other player ahead, else a straight kick) and
  *   shoot (« Frappe » held, F held: the power), shared with the room (last touch owns it). During an NPC match the player
  *   watches: the kickabout waits, and the room's ball states are only kept (the last one) until it is back.
+ * - Joining the match (M3 « Join the match », docs/districts/M3-CORNICHE.md): at the touchline during an NPC match, « Rejoindre le match »
+ *   puts the player into it (footballSim.ts `human`): the stick runs, the ball at the foot is dribbled, « Passer » / « Tirer » and the held
+ *   « Frappe » play it. A short match (first to 3, four minutes at most), then the result, a rematch or not, a word and an ataya with the
+ *   regulars (Babou plays on the player's side, Khadim captains the other), who remember the player on a later day (src/districts/matchRules.ts).
  */
 const NEAR = 60, NEAR_OUT = 66, TRACK_N = 512;
+/** M3: the player's id in the match; how far off the grass they may stray before they have left it (m); the ataya's length (s). */
+const HUMAN = 1_000_000, LEAVE_AT = 6, ATAYA_S = 22;
 /** Top of the pitch's grass (world y, src/world/builder.ts `pitch`), the footballers' feet on it, the street's. */
 const GRASS = 0.16, FEET = 0.155, STREET = 0.1;
 const TEAM_MAX = 5;
@@ -146,6 +156,17 @@ class Football implements GameModule {
   private peerCount = 0;
   private kbTarget: Target | null = null;
   private kbLog: { t: number; what: string; detail?: unknown }[] = [];
+  // ---- M3: the player in the match, the regulars
+  /** The player's match (null: not playing): their team, the match's number in the save, its time, their goals and touches. */
+  private me: { team: 0 | 1; seq: number; t: number; goals: number; touches: number; passes: number; shots: number } | null = null;
+  /** The regulars among the footballers now (their faces fixed: the player knows them again), and who each person is. */
+  private regs = new Map<RegularId, Entry>();
+  private regOf = new WeakMap<AmbientPerson, RegularId>();
+  /** A regular off the pitch, at the touchline with the player (the ataya after the match), until (match s). */
+  private bench: { e: Entry; until: number; x: number; z: number } | null = null;
+  private joinT: Target | null = null; private ballT: Target | null = null; private regT = new Map<RegularId, Target>();
+  /** Checks: what was said, the cards shown, the results, the recognitions, the matches joined and left. */
+  private m3 = { said: [] as string[], cards: [] as { title: string; rows: string[] }[], results: [] as Result[], recognised: 0, joined: 0, left: 0, finished: 0 };
   /** The checks: the simulated ball's last TRACK_N frames (shared time ms, x, z of pitch space), a ring with no allocation. */
   private track = new Float64Array(TRACK_N * 3); private trackI = 0;
 
@@ -153,6 +174,7 @@ class Football implements GameModule {
     this.ctx = ctx;
     ctx.ballNet.listen(m => this.onBall(m));
     ctx.interactions.add({ name: 'kickabout', collect: (space, x, z, out) => { const t = this.kbFocus(space, x, z); if (t) out.push(t); } });
+    ctx.interactions.add({ name: 'football:match', collect: (space, x, z, out) => this.matchFocus(space, x, z, out) });
     this.makeShotButton();
   }
 
@@ -163,6 +185,7 @@ class Football implements GameModule {
     const sp = hubLayout(hub.id).specials.find(s => s.kind === 'pitch');
     this.pitch = sp ? { x: sp.x, z: sp.z } : null;
     this.match = null; this.ball = null; this.kbOn = false; this.pending = null; this.kb.place(); this.hasP = false; this.hold = -1; this.showShot(false);
+    this.me = null; this.regs.clear(); this.bench = null;
     if (!sp) return;
     this.match = new Match(0x5eed + Math.floor(ctx.day()));
     const g = new THREE.Group(); g.name = 'football';
@@ -180,10 +203,12 @@ class Football implements GameModule {
     if (!on) { if (this.near) this.release(); return; }
     this.near = true;
     if ((this.syncT -= dt) <= 0) { this.syncT = 0.25; this.sync(); }
-    if (!this.active) { this.kickabout(ctx, dt); return; }
+    if (!this.active) { if (this.me) this.leave('La partie s’arrête : il n’y a plus assez de joueurs.'); this.kickabout(ctx, dt); return; }
     if (this.kbOn) this.kbOff();
+    if (this.me) this.humanFrame(ctx, dt);
     m.step(dt);
     this.events();
+    if (this.me && matchOver(m.score, this.me.t) && (m.phase !== 'goal' || m.phaseT > 2.6)) this.finish();
     this.place(dt);
   }
 
@@ -195,6 +220,8 @@ class Football implements GameModule {
 
   /** Far away (or inside, or a scene): the people are the ambient life's again, the ball rests where it is. */
   private release() {
+    if (this.me) this.leave('Tu as quitté le terrain : la partie n’est pas comptée.');
+    this.bench = null; this.regs.clear();
     const m = this.match!;
     for (const e of this.entries.values()) { if (e.person.drive === e.drive) e.person.drive = null; m.remove(e.id); }
     for (const f of this.fans.values()) if (f.person.drive === f.drive) f.person.drive = null;
@@ -208,18 +235,24 @@ class Football implements GameModule {
     const m = this.match!, list = ambientLife.people((s, a) => s.tags.includes('pitch') && (a.pose === 'roam' || a.id.startsWith('regarder-foot')), this.buf);
     const playing = new Set<AmbientPerson>(), watching = new Set<AmbientPerson>();
     for (const p of list) if (p.state === 'do') (p.act!.pose === 'roam' ? playing : watching).add(p);
-    for (const [p, e] of this.entries) if (!playing.has(p)) { if (p.drive === e.drive) p.drive = null; if (e.team >= 0) m.remove(e.id); this.entries.delete(p); }
+    for (const [p, e] of this.entries) if (!playing.has(p)) {
+      if (p.drive === e.drive) p.drive = null; if (e.team >= 0) m.remove(e.id); this.entries.delete(p);
+      const r = this.regOf.get(p); if (r && this.regs.get(r) === e) this.regs.delete(r);
+      if (this.bench?.e === e) this.bench = null;
+    }
     for (const p of playing) if (!this.entries.has(p)) this.join(p);
     for (const [p, f] of this.fans) if (!watching.has(p)) { if (p.drive === f.drive) p.drive = null; this.fans.delete(p); }
     for (const p of watching) if (!this.fans.has(p)) {
       const drive: AmbientDrive = { move: false, hold: null, speed: 0, overlay: null, look: null, every: false, prio: 1 };
       p.drive = drive; this.fans.set(p, { person: p, drive, cheer: 0 });
     }
+    if (this.bench && this.match && this.match.t > this.bench.until) this.bench = null;   // back on: the next balance puts him on a team
     this.balance();
     const n0 = this.count(0), n1 = this.count(1), was = this.active;
     this.active = n0 >= 2 && n1 >= 2;
     for (const e of this.entries.values()) e.person.drive = this.active ? e.drive : null;
     if (this.ball) this.ball.visible = true;                                   // the match's ball, or the kickabout's
+    if (this.active) this.regulars();
     if (this.active && !was) {
       if (!this.started) { m.reset(0); this.started = true; }
       // the match picks up where the people are
@@ -230,7 +263,8 @@ class Football implements GameModule {
     }
   }
 
-  private count(team: 0 | 1) { let n = 0; for (const e of this.entries.values()) if (e.team === team) n++; return n; }
+  /** Players on a team: its footballers, and the player when they play for it (M3). */
+  private count(team: 0 | 1) { let n = this.me?.team === team ? 1 : 0; for (const e of this.entries.values()) if (e.team === team) n++; return n; }
 
   private join(person: AmbientPerson) {
     let id = this.ids.get(person);
@@ -255,7 +289,7 @@ class Football implements GameModule {
   /** Teams of at most 5, never two apart; a keeper in a team of 3 or more (the one nearest his goal). */
   private balance() {
     const m = this.match!;
-    for (const e of this.entries.values()) if (e.team < 0) {
+    for (const e of this.entries.values()) if (e.team < 0 && e !== this.bench?.e) {
       const n0 = this.count(0), n1 = this.count(1);
       if (Math.min(n0, n1) < TEAM_MAX) this.onTeam(e, n0 <= n1 ? 0 : 1);
     }
@@ -299,6 +333,16 @@ class Football implements GameModule {
     let wait = 0;
     for (const e of this.entries.values()) {
       const a = e.person, d = e.drive;
+      if (e === this.bench?.e) {
+        // the ataya: at the touchline with the player, talking
+        const B = this.bench, dx = B.x - a.x, dz = B.z - a.z, dd = Math.hypot(dx, dz), step = Math.min(dd, 2.4 * dt);
+        if (dd > 0.05) { a.x += (dx / dd) * step; a.z += (dz / dd) * step; }
+        d.speed = dd > 0.1 ? 2.4 : 0;
+        const me = this.ctx.player.pos, face = dd > 0.4 ? Math.atan2(dx, dz) : Math.atan2(me.x - a.x, me.z - a.z);
+        a.yaw += clamp(Math.atan2(Math.sin(face - a.yaw), Math.cos(face - a.yaw)), -5 * dt, 5 * dt);
+        a.y = STREET; d.hold = dd < 0.3 ? 'Talk' : null; d.overlay = null; d.every = false;
+        continue;
+      }
       if (e.team < 0) {
         // waiting to come on: by the halfway line, beyond the touchline
         const tx = pt.x - 1.5 + 1.1 * wait++, tz = pt.z - PITCH.hz - 3.4, dx = tx - a.x, dz = tz - a.z, dd = Math.hypot(dx, dz);
@@ -489,16 +533,203 @@ class Football implements GameModule {
   private events() {
     const m = this.match!, ctx = this.ctx;
     for (const ev of m.events) {
-      if (ev.kind === 'contact' && ev.rec) this.contactNow = { id: ev.rec.who, kind: ev.rec.kind, frame: m.frame };
+      if (ev.kind === 'contact' && ev.rec) {
+        this.contactNow = { id: ev.rec.who, kind: ev.rec.kind, frame: m.frame };
+        if (this.me && ev.rec.who === HUMAN) { this.me.touches++; if (ev.rec.kind === 'pass') this.me.passes++; if (ev.rec.kind === 'shot') this.me.shots++; }
+      }
       if (ev.kind === 'kickoff') this.kickoffs.push({ t: +m.t.toFixed(2), dist: +(ev.detail ?? 0) });
       if (ev.kind === 'goal' && ev.team !== undefined) {
         this.goals.push({ t: m.t, team: ev.team, scorer: ev.who ?? -1, score: [m.score[0], m.score[1]] });
         for (const f of this.fans.values()) f.cheer = 5 + Math.random() * 1.5;            // the touchline is up for a few seconds
         const p = ctx.player.pos, pt = this.pitch!;
-        if (ctx.mode() === 'play' && Math.hypot(p.x - pt.x, p.z - pt.z) < 45) ctx.toast(`But des ${KITS[ev.team].name} ! ${KITS[0].name} ${m.score[0]} – ${m.score[1]} ${KITS[1].name}`);
+        if (this.me && ev.who === HUMAN && ev.detail !== 'own') {
+          this.me.goals++;
+          ctx.toast(`⚽ But ! ${this.me.goals > 1 ? `Ton ${this.me.goals}e but` : 'Ton premier but'} · ${KITS[0].name} ${m.score[0]} – ${m.score[1]} ${KITS[1].name}`);
+          const body = ctx.player.body();
+          if (body && !ctx.player.seated()) { body.hold = 'Celebrate'; this.celebrate = 2.4; }
+        } else if (ctx.mode() === 'play' && Math.hypot(p.x - pt.x, p.z - pt.z) < 45) ctx.toast(`But des ${KITS[ev.team].name} ! ${KITS[0].name} ${m.score[0]} – ${m.score[1]} ${KITS[1].name}`);
       }
     }
     m.events.length = 0;
+  }
+
+  // ------------------------------------------------------------------ M3: the player in the match
+  /** The regulars among the footballers: Babou on the team the player would join, Khadim on the other; their own faces, the kit over them. */
+  private regulars() {
+    const mine: 0 | 1 = this.me?.team ?? (this.count(0) <= this.count(1) ? 0 : 1);
+    for (const [id, want] of [['babou', mine], ['khadim', (1 - mine) as 0 | 1]] as const) {
+      const cur = this.regs.get(id);
+      if (cur && this.entries.has(cur.person) && (cur.team === want || cur === this.bench?.e)) continue;
+      if (cur) this.regs.delete(id);
+      const e = [...this.entries.values()].find(x => x.team === want && !x.keeper && !this.regOf.get(x.person));
+      if (!e) continue;
+      this.regs.set(id, e); this.regOf.set(e.person, id);
+      this.own.set(e.person, { ...REGULARS[id].look }); this.kit.delete(e.person); this.dress(e);
+    }
+    // a later day: Babou knows the player again (once a day, near the pitch)
+    const ctx = this.ctx, o = this.regs.get('babou');
+    if (o && !this.me && this.edgeDist(ctx.player.pos.x, ctx.player.pos.z) < 14) {
+      const line = recognise(ctx.state, REGULARS.babou, ctx.day());
+      if (line) { this.m3.recognised++; this.speak('babou', line); this.visit('babou', 1); ctx.save(); }
+    }
+  }
+  private speak(id: RegularId, line: string) { const R = REGULARS[id]; this.ctx.toast(`${R.name} · ${R.role} : ${line}`); this.m3.said.push(`${R.name}: ${line}`); }
+  private visit(id: RegularId, rel: number) { const ctx = this.ctx; recordVisit(ctx.state, `foot_${id}`, hourStamp(ctx.day(), ctx.hour())); if (rel) new Relations(ctx.state.data).change(PLAYER, `foot_${id}`, rel); }
+
+  /** The action button at the pitch: « Rejoindre le match » at the touchline; the ball at the foot in a match; a regular at the ataya. */
+  private matchFocus(space: string, x: number, z: number, out: Target[]) {
+    const pt = this.pitch, m = this.match, ctx = this.ctx;
+    if (!pt || !m || space !== 'street' || ctx.player.seated() || !this.near) return;
+    if (this.me) {
+      if (!m.humanInReach(HUMAN, 0.9)) return;
+      const t = this.ballT ?? (this.ballT = {
+        id: 'football:ball', name: 'Ballon', kind: 'spot', space: 'street', x: 0, z: 0, y: 0.6, radius: 3, bias: -1,
+        affordances: () => {
+          const p = this.match?.get(HUMAN), q = p ? this.match!.humanReceiver(p) : null;
+          const name = q ? ([...this.regs].find(([, e]) => e.id === q.id)?.[0] ?? null) : null;
+          return [
+            { id: 'pass', verb: 'use' as const, label: 'Passer', icon: '⚽', detail: q ? `À ${name ? REGULARS[name].name : 'ton coéquipier'}` : 'Droit devant', run: () => { this.match?.humanAsk(HUMAN, 'pass'); } },
+            { id: 'shot', verb: 'use' as const, label: 'Tirer', icon: '🥅', detail: 'Maintiens « Frappe » pour doser', run: () => { this.match?.humanAsk(HUMAN, 'shot', 0.6); } },
+          ];
+        },
+      });
+      t.x = pt.x + m.ball.x; t.z = pt.z + m.ball.z;
+      out.push(t);
+      return;
+    }
+    if (this.bench) {
+      const id = this.regOf.get(this.bench.e.person), a = this.bench.e.person;
+      if (id && Math.hypot(a.x - x, a.z - z) < 4) {
+        const t = this.regT.get(id) ?? { id: `football:${id}`, name: REGULARS[id].name, kind: 'person', space: 'street', x: 0, y: 1.9, z: 0, radius: 2.5, bias: 0.3,
+          affordances: () => [{ id: 'ataya', verb: 'talk' as const, label: `L’ataya avec ${REGULARS[id].name}`, icon: '🍵', run: () => this.ataya(id) }] } as Target;
+        this.regT.set(id, t); t.x = a.x; t.z = a.z; out.push(t);
+      }
+    }
+    if (this.active && !this.bench && this.edgeDist(x, z) < 4) {                                // (the ataya first: no « Rejoindre » meanwhile)
+      const t = this.joinT ?? (this.joinT = { id: 'football:join', name: 'Partie de foot', kind: 'spot', space: 'street', x: 0, y: 1, z: 0, radius: 6, bias: 0.2,
+        affordances: () => [{ id: 'join', verb: 'use' as const, label: 'Rejoindre le match', icon: '⚽', detail: 'Premier à 3 buts', run: () => this.offer() }] });
+      t.x = x; t.z = z; out.push(t);
+    }
+  }
+
+  /** The offer: who the player plays with, the short match's rules; « Jouer » or not. */
+  private offer() {
+    const ctx = this.ctx, team: 0 | 1 = this.count(0) <= this.count(1) ? 0 : 1;
+    const o = this.regs.get('babou'), met = (ctx.state.data.counters[FT.met('babou')] ?? 0) > 0;
+    if (o) this.speak('babou', joinLine(REGULARS.babou, met));
+    const items: MenuItem[] = [
+      { icon: '⚽', label: 'Jouer', detail: `Avec les ${KITS[team].name}${o ? ', Babou' : ''} · premier à 3 buts, 4 minutes au plus`, onPick: () => { this.done(); this.startMatch(team); } },
+      { icon: '👀', label: 'Pas maintenant', detail: 'Regarder depuis le bord du terrain', onPick: () => this.done() },
+    ];
+    ctx.menu('Partie de foot · Corniche', 'Les habitués jouent tous les soirs. Il manque quelqu’un.', items);
+  }
+  private done() { this.ctx.hud.closeModal(); this.ctx.setMode('play'); }
+
+  /** Into the match: the player on a team, 0–0, the others kick off; the regulars met. */
+  private startMatch(team: 0 | 1) {
+    const ctx = this.ctx, m = this.match!, pt = this.pitch!;
+    if (!this.active || this.me) return;
+    // a full side: one of its footballers (never a regular, never the keeper) waits at the touchline while the player plays in his place
+    if (this.count(team) >= TEAM_MAX) {
+      const sub = [...this.entries.values()].reverse().find(e => e.team === team && !e.keeper && !this.regOf.get(e.person));
+      if (sub) { m.remove(sub.id); sub.team = -1; }
+    }
+    m.add({ id: HUMAN, team, human: true, x: ctx.player.pos.x - pt.x, z: ctx.player.pos.z - pt.z, yaw: ctx.player.facing() });
+    this.me = { team, seq: startMatch(ctx.state), t: 0, goals: 0, touches: 0, passes: 0, shots: 0 };
+    this.bench = null; this.m3.joined++;
+    m.reset((1 - team) as 0 | 1);
+    this.regulars();
+    for (const id of this.regs.keys()) { meet(ctx.state, id, ctx.day()); this.visit(id, 0); }
+    const l = this.regs.get('khadim'); if (l) this.speak('khadim', joinLine(REGULARS.khadim, (ctx.state.data.counters[FT.matches] ?? 0) > 0));
+    ctx.toast(`Tu joues avec les ${KITS[team].name} · premier à 3 buts`);
+    ctx.save();
+  }
+
+  /** The player's body into the match, the held « Frappe » (struck on release). */
+  private humanFrame(ctx: GameCtx, dt: number) {
+    const m = this.match!, pt = this.pitch!, me = this.me!;
+    const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
+    if (ctx.mode() !== 'play' || ctx.player.seated() || this.edgeDist(ctx.player.pos.x, ctx.player.pos.z) > LEAVE_AT) {
+      this.leave('Tu as quitté le terrain : la partie n’est pas comptée.'); return;
+    }
+    if (this.hasP && dt > 0) {
+      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * 12);
+      if (Math.hypot(vx, vz) > 12) { this.pvx = this.pvz = 0; } else { this.pvx += (vx - this.pvx) * k; this.pvz += (vz - this.pvz) * k; }
+    }
+    this.px = x; this.pz = z; this.hasP = true;
+    m.setHuman(HUMAN, x, z, this.pvx, this.pvz, ctx.player.facing());
+    const held = this.btnHeld || ctx.input.keys.has('KeyF'), close = m.humanInReach(HUMAN, 1.4);
+    if (held && this.hold < 0 && close) this.hold = 0;
+    if (this.hold >= 0) {
+      if (held) this.hold += dt;
+      else { m.humanAsk(HUMAN, 'shot', Math.min(1, this.hold / HOLD_FULL)); this.hold = -1; }
+    }
+    this.showShot(close || this.hold >= 0);
+    if (this.celebrate > 0) {
+      this.celebrate -= dt;
+      const body = ctx.player.body();
+      if (this.celebrate <= 0 || Math.hypot(this.pvx, this.pvz) > 0.8) { if (body?.hold === 'Celebrate') body.hold = null; this.celebrate = 0; }
+    }
+    me.t += dt;
+  }
+
+  /** The player leaves before the end: nothing recorded, the NPCs play on. */
+  private leave(why: string) {
+    const m = this.match;
+    if (m) m.remove(HUMAN);
+    this.me = null; this.hold = -1; this.showShot(false); this.m3.left++;
+    this.ctx.toast(why);
+  }
+
+  /** The end: the result recorded once, the card, the regulars' words; rematch, the ataya, or off. */
+  private finish() {
+    const ctx = this.ctx, m = this.match!, me = this.me!, score: [number, number] = [m.score[0], m.score[1]];
+    m.remove(HUMAN); this.me = null; this.hold = -1; this.showShot(false); this.m3.finished++;
+    const res = recordMatch(ctx.state, { seq: me.seq, team: me.team, score, myGoals: me.goals, day: ctx.day() }) ?? 'draw';
+    this.m3.results.push(res);
+    for (const id of this.regs.keys()) this.visit(id, id === 'babou' ? 1 : res === 'win' ? 1 : 0);
+    ctx.save();
+    const c = ctx.state.data.counters, other = (1 - me.team) as 0 | 1;
+    const card = {
+      icon: res === 'win' ? '🏆' : res === 'draw' ? '🤝' : '⚽', title: resultTitle(me.team, score), sub: `Partie de foot · Corniche · tu jouais avec les ${KITS[me.team].name}`,
+      rows: [
+        { k: 'Score', v: `${KITS[me.team].name} ${score[me.team]} – ${score[other]} ${KITS[other].name}`, tone: res === 'win' ? 'up' : res === 'loss' ? 'down' : undefined },
+        { k: 'Tes buts', v: `${me.goals}` },
+        { k: 'Tes passes', v: `${me.passes}` },
+        { k: 'Tes tirs', v: `${me.shots}` },
+        { k: 'Tes matchs', v: `${c[FT.matches] ?? 0} joué${(c[FT.matches] ?? 0) > 1 ? 's' : ''} · ${c[FT.wins] ?? 0} gagné${(c[FT.wins] ?? 0) > 1 ? 's' : ''}` },
+      ],
+      next: ['Rejouer, ou souffler au bord du terrain avec les habitués.'],
+    };
+    ctx.hud.boutCard(card);
+    this.m3.cards.push({ title: card.title, rows: card.rows.map(r => `${r.k}: ${r.v}`) });
+    for (const id of ['babou', 'khadim'] as const) if (this.regs.has(id)) this.speak(id, afterLine(REGULARS[id], res, me.goals));
+    const team = me.team;
+    ctx.menu(resultTitle(team, score), 'La partie est finie. Les habitués restent sur le terrain.', [
+      { icon: '🔁', label: 'Rejouer', detail: 'Une autre partie, tout de suite', onPick: () => { this.done(); this.startMatch(this.count(0) <= this.count(1) ? 0 : 1); } },
+      ...(this.regs.has('babou') ? [{ icon: '🍵', label: 'L’ataya avec Babou', detail: 'Au bord du terrain', onPick: () => { this.done(); this.toBench('babou'); } }] : []),
+      { icon: '👋', label: 'Partir', detail: 'Les autres jouent encore', onPick: () => this.done() },
+    ]);
+  }
+
+  /** A regular comes off to the touchline next to the player (the ataya); he goes back on after ATAYA_S s. */
+  private toBench(id: RegularId) {
+    const e = this.regs.get(id), m = this.match!, pt = this.pitch!, p = this.ctx.player.pos;
+    if (!e) return;
+    if (e.team >= 0) m.remove(e.id);
+    e.team = -1;
+    // a spot off the grass on the street's side of the pitch (the touchline open to the Corniche's street), level with the player
+    const x = clamp(p.x, pt.x - PITCH.hx + 2, pt.x + PITCH.hx - 2), z = pt.z - (PITCH.ez + 1.6);
+    this.bench = { e, until: m.t + ATAYA_S, x, z };
+    this.ctx.toast(`${REGULARS[id].name} t’attend au bord du terrain, côté rue, avec l’ataya.`);
+  }
+  /** The ataya itself: two lines, a glass, the regular remembers it. */
+  private ataya(id: RegularId) {
+    const ctx = this.ctx;
+    ctx.toast(ATAYA_LINE); this.m3.said.push(ATAYA_LINE);
+    ctx.state.data.counters[FT.ataya] = (ctx.state.data.counters[FT.ataya] ?? 0) + 1;
+    this.visit(id, 1); ctx.save();
+    if (this.bench) this.bench.until = Math.min(this.bench.until, this.match!.t + 6);
   }
 
   // ------------------------------------------------------------------ the gestures: the foot to the ball
@@ -592,6 +823,19 @@ class Football implements GameModule {
   debug(): Record<string, unknown> {
     return {
       football: () => this.info(),
+      /** M3: the player's match (null: not playing), the regulars (who, their team), what was said, the cards, the results. */
+      match3: () => {
+        const m = this.match, pt = this.pitch; if (!m || !pt) return null;
+        const me = this.me, p = m.get(HUMAN);
+        return { me: me ? { ...me, t: +me.t.toFixed(1), x: p ? +(pt.x + p.x).toFixed(2) : null, z: p ? +(pt.z + p.z).toFixed(2) : null, inReach: m.humanInReach(HUMAN, 0.9) } : null,
+          score: [...m.score], phase: m.phase, active: this.active, teams: [this.count(0), this.count(1)],
+          regulars: Object.fromEntries([...this.regs].map(([id, e]) => [id, { team: e.team, x: +e.person.x.toFixed(2), z: +e.person.z.toFixed(2), bench: e === this.bench?.e }])),
+          bench: !!this.bench, benchAt: this.bench ? { x: +this.bench.x.toFixed(2), z: +this.bench.z.toFixed(2) } : null, said: [...this.m3.said], cards: this.m3.cards.map(c => ({ ...c })), results: [...this.m3.results], recognised: this.m3.recognised,
+          joined: this.m3.joined, left: this.m3.left, finished: this.m3.finished,
+          counters: Object.fromEntries(Object.entries(this.ctx.state.data.counters).filter(([k]) => k.startsWith('ft_'))),
+          ball: { x: +(pt.x + m.ball.x).toFixed(2), z: +(pt.z + m.ball.z).toFixed(2), h: +m.ball.h.toFixed(2), speed: +ballSpeed(m.ball).toFixed(2) },
+          mine: m.log.filter(c => c.who === HUMAN).slice(-12).map(c => ({ kind: c.kind, t: c.t, to: c.to })) };
+      },
       /** The kickabout: on, the ball (world and pitch space), who owns it, the receiver ahead, this session's goals, counts. */
       kickabout: () => {
         const pt = this.pitch, kb = this.kb, b = kb.ball; if (!pt) return null;
