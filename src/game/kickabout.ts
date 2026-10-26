@@ -3,9 +3,10 @@
  * (« Ballon ») waits on the grass for whoever walks by. Pure numbers (no Three.js, no DOM; tests/kickabout.test.ts);
  * src/game/football.ts draws it with the match's own ball mesh and reads the player's controls.
  *
- * - Dribbling: walking into the ball gives it small touches ahead of the feet (the player catches it up); standing in its
- *   way stops it (the body pushes it out). The ball itself is the NPC match's (footballSim.ts `stepBall`): friction,
- *   bounces, posts, crossbar, the net, the curb.
+ * - Close control: the match's own touch model (footballSim.ts `planTouch`, shared with the player in the NPC match): touches play
+ *   the ball ahead of the body along its facing, faster while it turns, and a ball that arrives or runs on past the feet is trapped.
+ *   Nothing is attached: between touches the ball rolls by itself. The ball itself is the NPC match's (footballSim.ts `stepBall`):
+ *   friction, bounces, posts, crossbar, the net, the curb.
  * - Kicking: a pass rolls the ball to a point (another player's feet, a little ahead of them) at a speed that arrives
  *   there still rolling; a shot is struck along the facing — power from the hold time — aimed between the posts when
  *   the goal is roughly ahead (aim help: within SHOT_HELP metres of a post).
@@ -14,11 +15,11 @@
  *   before; a state is taken only from a newer touch (or the owner's own updates of the same touch; ties go to the
  *   smaller id), extrapolated by its age with the same physics, the drawn ball easing over the difference.
  */
-import { BALL_R, PITCH, passSpeed, stepBall, newBall, type Ball, type BallEvent } from './footballSim';
+import { BALL_R, PITCH, passSpeed, planTouch, stepBall, newBall, type Ball, type BallEvent } from './footballSim';
 import type { BallRelay, BallWire } from '../multiplayer/protocol';
 
-/** Body radius the ball keeps out of (m); how often a dribbling touch may come (s); its speed over the runner's (m/s). */
-export const DRIBBLE = { body: 0.36, cool: 0.25, lead: 0.7, max: 9, maxH: 0.55 } as const;
+/** Body radius the ball keeps out of (m) and the height above which the body does not touch it. How and how often it is touched: footballSim.ts `CONTROL`. */
+export const DRIBBLE = { body: 0.36, maxH: 0.55 } as const;
 /** How far from the body the ball can be kicked (m) and how high (its centre). */
 export const KICK_REACH = 1.6, KICK_H = 1.1;
 /** Shot speed (m/s) and lift (m/s up) from no power to full power; a straight kick without a receiver. */
@@ -81,7 +82,8 @@ export class KickBall {
   stats = { touches: 0, kicks: 0, sent: 0, received: 0, taken: 0, dropped: 0, claims: 0, goals: 0, resets: 0 };
   /** The shared time (ms) the ball's state is at (0: unknown), and whether a received state set it since the last frame. */
   at = 0; fresh = false;
-  private cool = 0;
+  /** Seconds since the body last touched the ball, and its facing then (the control model's cadence). */
+  private since = 1; private tface = 0;
   /** Where the ball was at the start of its last move (pitch space): a slow frame's ball is caught on its way. */
   private lx = 0; private lz = 0;
   /** After a kick, the kicker's body lets the ball go (s). */
@@ -131,12 +133,12 @@ export class KickBall {
   }
 
   /**
-   * The player at (px, pz) moving at (vx, vz) against the ball (pitch space): a touch ahead when running into it, a push
-   * out of the body otherwise. True when the ball was touched (then claimed).
+   * The player at (px, pz), facing `facing`, moving at (vx, vz) against the ball (pitch space): the control model's touch (a touch ahead, a
+   * turn, a trap: footballSim.ts `planTouch`), and the body keeps the ball out of itself. True when the ball was touched (then claimed).
    */
-  dribble(px: number, pz: number, vx: number, vz: number, dt: number, self: string, now: number): boolean {
+  dribble(px: number, pz: number, vx: number, vz: number, dt: number, self: string, now: number, facing = Math.atan2(vx, vz)): boolean {
     const b = this.ball;
-    this.cool -= dt; this.free -= dt;
+    this.since += dt; this.free -= dt;
     if (b.h > DRIBBLE.maxH || b.net || this.free > 0) return false;
     const R = DRIBBLE.body + BALL_R;
     // the ball's move since the last frame entering the body (a slow frame, a fast ball): met where it entered
@@ -148,23 +150,23 @@ export class KickBall {
     }
     this.lx = b.x; this.lz = b.z;
     const dx = b.x - px, dz = b.z - pz, d = hyp(dx, dz);
-    if (d > R + 1e-3) return false;
-    const sp = hyp(vx, vz);
     let touched = false;
-    if (sp > 0.6) {
-      const ux = vx / sp, uz = vz / sp, ahead = d > 1e-6 ? (dx * ux + dz * uz) / d : 1;
-      if (ahead > 0.2 && this.cool <= 0) {
-        const v = Math.min(DRIBBLE.max, sp + DRIBBLE.lead);
-        b.x = px + ux * R; b.z = pz + uz * R; b.vx = ux * v; b.vz = uz * v; b.vh = 0; b.h = BALL_R;
-        this.cool = DRIBBLE.cool; touched = true;
+    {
+      const t = planTouch({ x: px, z: pz, facing, vx, vz }, b, this.since, Math.abs(Math.atan2(Math.sin(facing - this.tface), Math.cos(facing - this.tface))));
+      if (t) {
+        const sp = t.speed;
+        b.vx = t.dx * sp; b.vz = t.dz * sp; b.vh = 0; b.h = BALL_R;
+        if (d < R) { b.x = px + (d > 1e-6 ? dx / d : t.dx) * R; b.z = pz + (d > 1e-6 ? dz / d : t.dz) * R; }   // never inside the body
+        touched = true; this.since = 0; this.tface = facing;                // (only a played touch restarts the cadence; the body's push-out below does not)
       }
     }
-    if (!touched) {
+    if (!touched && d <= R + 1e-3) {
+      // the body is no ghost: a ball against it is pushed out (and a fast one stopped by it) even when no touch is due
       const nx = d > 1e-6 ? dx / d : 1, nz = d > 1e-6 ? dz / d : 0;
       b.x = px + nx * R; b.z = pz + nz * R;
       const closing = (vx - b.vx) * nx + (vz - b.vz) * nz;
       if (closing > 0) { b.vx += nx * closing * 1.1; b.vz += nz * closing * 1.1; touched = closing > 0.4; }
-      else { const inward = -(b.vx * nx + b.vz * nz); if (inward > 0.3) { b.vx = (b.vx + nx * inward) * 0.3; b.vz = (b.vz + nz * inward) * 0.3; touched = true; } }  // stopped by the body
+      else { const inward = -(b.vx * nx + b.vz * nz); if (inward > 0.3) { b.vx = (b.vx + nx * inward) * 0.3; b.vz = (b.vz + nz * inward) * 0.3; touched = true; } }
     }
     if (touched) { this.stats.touches++; this.claim(self, now); }
     return touched;

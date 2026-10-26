@@ -210,7 +210,10 @@ export interface Player {
   /** The human's pass or shot asked for, waiting for the ball at the foot until `until` (match s); its power (0–1). */
   ask: { kind: 'pass' | 'shot'; power: number; until: number } | null;
   /** The human's next automatic touch, not before (match s). */
-  touchAt: number;
+  /** The match time of the last touch, and until when the foot leaves the ball alone after a kick (the control model's cadence is `planTouch`'s). */
+  touchedAt: number; restUntil: number;
+  /** The facing at the last touch. */
+  touchFace: number;
 }
 
 export type Phase = 'kickoff' | 'play' | 'goal' | 'fetch' | 'restart';
@@ -246,13 +249,80 @@ const PATH_N = 60, PATH_DT = 1 / 20;
 const ACC = 7, DEC = 10;
 
 export interface PlayerSpec { id: number; team: 0 | 1; keeper?: boolean; x?: number; z?: number; yaw?: number; foot?: 1 | -1; pace?: number; skill?: number; human?: boolean }
-/** M3: how far from the human's contact point the ball may be for a touch (m: a little more than an NPC's planned REACH, the human's steering is the thumb's). */
-export const HUMAN_REACH = 0.6;
-/** M3: a pass or shot the player asked for plays the ball this far from the foot (m): the same button as the kickabout's, which strikes within 1.6 m of the body, so a press with the ball just ahead is never lost. */
-export const HUMAN_ASK_REACH = 1.0;
+/**
+ * The player's close control: ONE touch model for the kickabout (kickabout.ts `dribble`) and for the player in the match (`humanTick`).
+ *
+ * The ball is never attached to the player. It is played in discrete touches and rolls on its own (`stepBall`) between them, so a dribbled ball
+ * is sometimes at the foot and sometimes a step ahead, and a pass or a shot leaves it entirely.
+ * - **Dribbling** (the body moves): a touch plays the ball to a point just ahead of where the body will be in CONTROL.tau seconds, along the body's
+ *   FACING. (The facing is what the thumb steers; the pace follows it, src/core/turn.ts.) The touch's speed is the one that brings the ball there
+ *   rolling under ROLL, so the ball is neither left behind nor kicked away. The faster the body, the further ahead and the more often.
+ * - **Turning:** while the body turns fast the touches come every CONTROL.gapTurn s, each along the facing it has by then, so the ball is dragged round
+ *   the foot with the body. A ball that is behind or beside the body (after a sharp turn) is cut round the side of the foot to the front, never through it.
+ * - **Standing:** a ball that arrives (a pass, a loose ball) or that was playing on past the foot is trapped: each trap takes CONTROL.trap of its pace and,
+ *   when it is far from the foot, draws it in to rest just ahead of it. A ball at rest is left alone.
+ * Cadence and reach are properties of the model, not of the caller: both callers only supply the body's motion and when the last touch was.
+ */
+/** The body's velocity the model reads is the frame's, smoothed with this rate (1/s): quick enough that a stop is seen as a stop within a few frames. */
+export const VEL_SMOOTH = 30;
+export const CONTROL = { reach: 1.05, trapReach: 1.4, foot: 0.34, moving: 0.6, lead: 0.55, rest: 0.6, trap: 0.25, trapGap: 0.12, drift: 0.55, turned: 0.5, level: 0.1, gapDrift: 0.05, gapMin: 0.22, gapMax: 0.45 } as const;
+/** The body this frame (pitch space): its facing and its velocity. */
+export interface BodyMotion { x: number; z: number; facing: number; vx: number; vz: number }
+export interface TouchPlan { kind: 'touch' | 'trap'; dx: number; dz: number; speed: number }
+const PLAN: TouchPlan = { kind: 'touch', dx: 0, dz: 0, speed: 0 };
+/**
+ * The touch the body at `m` makes of the ball `b` now, or null: the ball is out of reach (CONTROL.reach from the foot, CONTROL.foot ahead of the body: so
+ * more reach in front than behind), in the net, too high, at rest while the body stands, or no touch is due yet. `since` is the time since the body's
+ * last touch (s) and `turned` how far its facing has swung since then (rad). A touch is due at the cadence of the pace (CONTROL.gapMin…gapMax: faster,
+ * more often), or at once (CONTROL.gapDrift) when the body has turned CONTROL.turned, the ball has drifted CONTROL.drift m from the foot, or the ball is level
+ * with the body or behind it (CONTROL.level): a turn, a change of pace, a bump. The plan is reused: read it at once.
+ */
+export function planTouch(m: BodyMotion, b: Ball, since: number, turned = 0): TouchPlan | null {
+  if (b.net || b.h > FOOT_H) return null;
+  const fx = Math.sin(m.facing), fz = Math.cos(m.facing), P = PLAN;
+  const foot = hyp(b.x - (m.x + fx * CONTROL.foot), b.z - (m.z + fz * CONTROL.foot));
+  const sp = hyp(m.vx, m.vz), bs = hyp(b.vx, b.vz);
+  if (foot > (sp < CONTROL.moving ? CONTROL.trapReach : CONTROL.reach)) return null;       // (a standing player can take a step or lunge: a longer reach to stop a ball)
+  if (sp < CONTROL.moving) {
+    if (bs < 0.5 || since < CONTROL.trapGap) return null;
+    // standing: the ball's pace is taken off, and a ball more than CONTROL.rest + 0.25 m from the foot is drawn in to rest just ahead of it
+    let dx = b.vx / bs, dz = b.vz / bs, speed = bs * CONTROL.trap;
+    const ex = m.x + fx * CONTROL.rest - b.x, ez = m.z + fz * CONTROL.rest - b.z, e = hyp(ex, ez);
+    if (e > 0.25) {
+      dx += ex / e; dz += ez / e;
+      const l = hyp(dx, dz);
+      if (l < 1e-3) { dx = ex / e; dz = ez / e; } else { dx /= l; dz /= l; }
+      speed = Math.max(speed, Math.min(e * 2.5, 1.5));
+    }
+    P.kind = 'trap'; P.dx = dx; P.dz = dz; P.speed = speed;
+    return P;
+  }
+  const gap = clamp(0.5 - 0.045 * sp, CONTROL.gapMin, CONTROL.gapMax);
+  const rx = b.x - m.x, rz = b.z - m.z, ahead = rx * fx + rz * fz, lat = rx * fz - rz * fx;
+  if (since < gap && !(since >= CONTROL.gapDrift && (foot >= CONTROL.drift || turned > CONTROL.turned || ahead <= CONTROL.level))) return null;
+  // the ball is played to where it should be at the NEXT touch: CONTROL.lead ahead of where the body will be by then, so it stays at the same distance
+  let tx: number, tz: number;
+  if (ahead > CONTROL.level) { tx = m.x + fx * (sp * gap + CONTROL.lead); tz = m.z + fz * (sp * gap + CONTROL.lead); }
+  else {
+    // behind or level with the body (after a turn): cut it round the side of the foot to the front, never through the body
+    // forward along the side it is on, never in toward the body (that path is through it): once it is ahead the straight touch below brings it in
+    const side = lat >= 0 ? 1 : -1, fwd = sp * gap * 0.5 + CONTROL.lead + 0.6, out = side * Math.max(Math.abs(lat), 0.5);
+    tx = m.x + fz * out + fx * fwd; tz = m.z - fx * out + fz * fwd;
+  }
+  let dx = tx - b.x, dz = tz - b.z; const D = hyp(dx, dz);
+  if (D < 0.05) { dx = fx; dz = fz; } else { dx /= D; dz /= D; }
+  P.kind = 'touch'; P.dx = dx; P.dz = dz;
+  P.speed = clamp((D + 0.5 * ROLL * gap * gap) / gap, 1, 9);
+  if (ahead <= CONTROL.level) P.speed = clamp(Math.max(P.speed, sp + 1.5), 1, 9);        // clear of the body quickly
+  return P;
+}
+/** M3: how far from the human's contact point the ball may be for a touch (m): the control model's reach. */
+export const HUMAN_REACH = CONTROL.reach;
+/** M3: a pass or shot the player asked for plays the ball this far from the foot (m): more than the control model's reach, and like the kickabout's button, which strikes within 1.6 m of the body, so a press with the ball just ahead is never lost. */
+export const HUMAN_ASK_REACH = 1.3;
 /** M3: how far ahead a dribbled ball still counts as the player's (m): their buttons stay up. */
 export const HUMAN_KEEP = 3;
-/** M3: the human's dribbling touches: at most one per this many seconds; how long a pass or shot asked for waits for the ball (s). */
+/** M3: after a pass or a shot the foot leaves the ball alone for this many seconds; how long a pass or shot asked for waits for the ball (s). */
 export const HUMAN_TOUCH_GAP = 0.26, HUMAN_ASK_HOLD = 1.2;
 /** M3: the human's shot: speed (m/s) and lift (m/s up) from no power to full. */
 export const HUMAN_SHOT = { v0: 12, v1: 24, h0: 0.5, h1: 3.2 } as const;
@@ -291,7 +361,7 @@ export class Match {
       pace: s.pace ?? (s.keeper ? 4.8 : 5.3 + r() * 1.1), skill: s.skill ?? 0.45 + r() * 0.45,
       tx: s.x ?? 0, tz: s.z ?? 0, ts: 0, look: null, kick: null, think: r() * 0.3, plan: null, cheer: 0,
       ti: 99, ix: 0, iz: 0, sx: s.x ?? 0, sz: s.z ?? 0, supT: 0, dive: null, held: 0,
-      human: !!s.human, ask: null, touchAt: 0,
+      human: !!s.human, ask: null, touchedAt: -1, restUntil: 0, touchFace: 0,
     };
     this.players.push(p); this.byId.set(p.id, p);
     return p;
@@ -910,13 +980,13 @@ export class Match {
   private humanTick(p: Player): boolean {
     const b = this.ball;
     if (p.ask && this.t > p.ask.until) p.ask = null;
-    if (!this.free(p) || b.net || b.h > FOOT_H) return false;
+    if (b.net || b.h > FOOT_H) return false;                 // (not `free(p)`: that is an NPC's kick animation, and the human's rest after a pass or a shot is `restUntil`)
     if (this.phase === 'goal' || this.phase === 'fetch') return false;
     if ((this.phase === 'kickoff' || this.phase === 'restart') && this.taker !== p.id) return false;   // set pieces are the NPCs' to take
     const cp = Match.contactPoint(p.x, p.z, p.yaw, p.foot, V2), reach = hyp(b.x - cp.x, b.z - cp.z);
-    if (reach > (p.ask ? HUMAN_ASK_REACH : HUMAN_REACH)) return false;
-    const v = hyp(p.vx, p.vz), bs = ballSpeed(b), fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
-    let kind: KickKind, dx: number, dz: number, speed: number, lift = 0, to = -1;
+    if (p.ask && reach > HUMAN_ASK_REACH) return false;                 // (an asked kick's reach; the control model has its own)
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    let kind: KickKind, dx: number, dz: number, speed: number, lift = 0, to = -1, rest = 0;
     if (p.ask?.kind === 'shot') {
       const gx = this.dir(p.team) * PITCH.hx, A = aimAt(b.x, b.z, p.yaw, gx);
       kind = 'shot'; dx = A.x; dz = A.z;
@@ -930,14 +1000,14 @@ export class Match {
         const D = hyp(tx - b.x, tz - b.z) || 1;
         dx = (tx - b.x) / D; dz = (tz - b.z) / D; speed = Math.min(16, passSpeed(D, 2.5 + 0.1 * D)); to = q.id;
       } else { dx = fx; dz = fz; speed = 9; }
-    } else if (v > 0.9 && this.t >= p.touchAt) {
-      // running into the ball: a touch ahead, at the runner's pace
-      kind = 'touch'; dx = p.vx / v; dz = p.vz / v; speed = clamp(v + 1.3, 2.2, 6.5);
-    } else if (v <= 0.9 && bs > 2) {
-      // standing in its way: it is stopped at the foot
-      kind = 'trap'; dx = fx; dz = fz; speed = 0.5;
-    } else return false;
-    p.ask = null; p.touchAt = this.t + HUMAN_TOUCH_GAP;
+    } else {
+      // no kick asked for: the control model (a dribbling touch, a turn, a trap), at its own cadence
+      const plan = this.t >= p.restUntil ? planTouch({ x: p.x, z: p.z, facing: p.yaw, vx: p.vx, vz: p.vz }, b, this.t - p.touchedAt, Math.abs(wrap(p.yaw - p.touchFace))) : null;
+      if (!plan) return false;
+      kind = plan.kind; dx = plan.dx; dz = plan.dz; speed = plan.speed;
+    }
+    if (kind === 'pass' || kind === 'shot') rest = HUMAN_TOUCH_GAP;
+    p.ask = null; p.touchedAt = this.t; p.touchFace = p.yaw; p.restUntil = this.t + rest;
     const k: Kick = { kind, side: p.foot, left: 0, swing: 0, after: AFTER[kind], dx, dz, speed, lift, to, bx: b.x, bz: b.z, bh: b.h, yaw: p.yaw, lat: 0, hands: false, hit: -1, log: -1 };
     p.kick = k;
     this.contact(p, k, reach);
