@@ -344,7 +344,10 @@ function moduleSpace(): string | null { if (!ctxReady) return null; for (const m
 
 const sunDir = new THREE.Vector3();
 const NIGHT_SKY = new THREE.Color(0x6474a6);
+/** The hour the last frame was lit for (an interior's per-frame update reads it: src/world/interiors.ts Interior.update). */
+let litHour = 12;
 function updateLighting(hour: number) {
+  litHour = hour;
   const d = daylight(hour), night = 1 - clamp(d * 3.2, 0, 1);
   const low = 1 - clamp((d - 0.05) / 0.4, 0, 1);              // 1 near sunrise/sunset, 0 at midday
   // Sun path: rises in the east (+x), sets over the ocean (-x), leaning south (+z) so facades get raking light.
@@ -1685,6 +1688,7 @@ function frameStep(now: number, dt: number, draw = true) {
     } else speed = 0;
     state.tick(dt * 1000);
   }
+  inside?.int.update?.(dt, pos, camera, litHour);                        // a home with a floor plan: its doors, the see-through hole, the room light
   if (!lambScene) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
@@ -1845,6 +1849,8 @@ if (DEBUG) {
     approach: () => approach ? { seat: approach.seat.id, leg: approach.i, legs: approach.path.length, settle: +approach.settle.toFixed(2), x: +pos.x.toFixed(2), z: +pos.z.toFixed(2) } : null,
     lying: () => (seated && seatClip(seated) === 'Lie' ? 1 : 0),
     roomGeometry: () => inside ? { colliders: inside.int.colliders, bounds: inside.int.bounds } : null,
+    /** LD2.0-C: the home with a floor plan the player is in (src/housing/apartment.ts): its plan, the room, the doors, the light, the hole; null elsewhere. */
+    home: () => (inside?.int.describe?.() ?? null),
     seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant, table: s.table ?? null })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
     /** Debug: « S'asseoir » as the player does it (walks round the furniture to the seat first). */

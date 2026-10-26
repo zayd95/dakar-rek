@@ -28,6 +28,8 @@ import { CATALOGUE, cannotBuy as cannotBuyFurniture, deliverFurniture, furniture
 import { furnitureModel } from './furnitureModels';
 import { installFurnitureKit } from './furnitureKitAdapter';
 import { buildHomeInterior } from './homeInterior';
+import { planFor } from '../housing/plan';
+import { roomCentre } from '../housing/apartment';
 import { footprint, homeOrigin, toHome, yawOf } from './placement';
 import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
 import { Batch, signTexture } from '../world/batch';
@@ -279,7 +281,9 @@ class Estate {
       const net = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 1.05, 1.5, 12, 1, true), mat); net.position.set(v.ox - 1.9, 1.6, v.oz - 0.55); g.add(net);
     }
     const solid = (w: number, h: number, d: number, x: number, y: number, z: number, c: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); g.add(m); };
-    if (has('ventilo')) { solid(0.06, 0.4, 0.06, v.ox + 1.5, H - 0.2, v.oz + 0.5, 0x333333); for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.9), new THREE.MeshLambertMaterial({ color: 0xe8e8e8 })); b.position.set(v.ox + 1.5 + Math.sin(k * 2.094) * 0.45, H - 0.38, v.oz + 0.5 + Math.cos(k * 2.094) * 0.45); b.rotation.y = k * 2.094; g.add(b); } }
+    // the ceiling fan: in the middle of the séjour of a home with a floor plan (between its two lamps), else where it always hung
+    const plan = planFor(v.spec.id), fan = (plan && roomCentre(plan, 'sejour')) || { x: 1.5, z: 0.5 };
+    if (has('ventilo')) { solid(0.06, 0.4, 0.06, v.ox + fan.x, H - 0.2, v.oz + fan.z, 0x333333); for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.9), new THREE.MeshLambertMaterial({ color: 0xe8e8e8 })); b.position.set(v.ox + fan.x + Math.sin(k * 2.094) * 0.45, H - 0.38, v.oz + fan.z + Math.cos(k * 2.094) * 0.45); b.rotation.y = k * 2.094; g.add(b); } }
     if (has('clim') || has('domotique')) solid(1.0, 0.32, 0.22, v.ox - L.w / 2 + 1.6, H - 0.55, v.oz - L.d / 2 + 0.12, 0xf2f2ee);
     if (has('domotique')) { const strip = new THREE.Mesh(new THREE.BoxGeometry(L.w - 0.6, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xfff1d0 })); strip.position.set(v.ox, H - 0.08, v.oz - L.d / 2 + 0.06); g.add(strip); }
     if (has('jardin')) for (let k = 0; k < 4; k++) { const p = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), new THREE.MeshLambertMaterial({ color: k % 2 ? 0xd94a8c : 0x3f7a35 })); p.position.set(v.ox - L.w / 2 + 2 + k * 2.2, 0.55, v.oz - L.d / 2 + 0.5); g.add(p); }
