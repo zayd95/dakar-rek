@@ -218,6 +218,28 @@ export const ECONOMY = {
     /** How long CityRoom keeps an account's answer to « may this guest be in this home? » (ms). */
     visitCacheMs: 30_000,
   },
+  /**
+   * La traversée (docs/TRAVERSEE.md, src/sea/traverseeRules.ts): the Embarcadère de Ngor's crossings to the island, by pirogue or by chaloupe. Fares per
+   * person and per leg, paid once on arrival; Ousmane owns the boats and keeps his share of each leg's fares (less once he trusts the player:
+   * `ousmane_trust`). The chaloupe carries fewer customers who pay better, faster and smoother, once Ousmane has seen the player take the pirogue
+   * across `chaloupeAfter` times. Customers: [quiet hours, busy hours] going across; a range coming back. Speeds in m/s on the water. Game money only.
+   */
+  traversee: {
+    /** City hours when crossings leave [from, to). */
+    hours: [7, 19] as readonly [number, number],
+    /** The busy hours: the boats fill up (and the place's peaks for the city's life). */
+    busy: [[9, 12], [16, 18]] as readonly (readonly [number, number])[],
+    boats: {
+      pirogue: { fare: 1000, out: [3, 4] as readonly [number, number], back: [1, 3] as readonly [number, number], speed: 5.5 },
+      chaloupe: { fare: 2500, out: [2, 3] as readonly [number, number], back: [1, 2] as readonly [number, number], speed: 7.5 },
+    },
+    /** Ousmane's share of a leg's fares; with his trust. */
+    share: 0.4, shareTrusted: 0.3,
+    /** Completed pirogue round trips before Ousmane hands over his chaloupe. */
+    chaloupeAfter: 3,
+    /** A round trip at the helm: a little tiring, the sea air lifts the mood. Below this energy the player is too tired to go. */
+    needs: { energie: -8, moral: 4 }, minEnergy: 8,
+  },
   /** Wallet history kept in the save. */
   ledgerMax: 100,
 } as const;
