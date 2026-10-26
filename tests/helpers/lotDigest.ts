@@ -16,10 +16,12 @@ const fnv = (s: string) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i
 const origBuild = Batch.prototype.build;
 const touches = (b: Rect, r: Rect) => b.x1 > r.x0 && b.x0 < r.x1 && b.z1 > r.z0 && b.z0 < r.z1;
 
-export async function digestHub(build: () => HubWorld | Promise<HubWorld>, lot: Rect, margin = 0.3): Promise<HubDigest> {
+/** `skip`: batches built while it holds are the excluded module's own (e.g. a model drawn about its own origin, then moved onto the lot). */
+export async function digestHub(build: () => HubWorld | Promise<HubWorld>, lot: Rect, margin = 0.3, skip: () => boolean = () => false): Promise<HubDigest> {
   const R: Rect = { x0: lot.x0 - margin, x1: lot.x1 + margin, z0: lot.z0 - margin, z1: lot.z1 + margin };
   const calls: string[][] = [];
   const spy = vi.spyOn(Batch.prototype, 'build').mockImplementation(function (this: Batch, ...args: unknown[]) {
+    if (skip()) return origBuild.apply(this, args as [THREE.Material, boolean?, boolean?]);
     const geos = (this as unknown as { geos: THREE.BufferGeometry[] }).geos, keys: string[] = [];
     for (const g of geos) {
       const p = g.attributes.position as THREE.BufferAttribute, b = new THREE.Box3().setFromBufferAttribute(p);

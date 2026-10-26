@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { stubCanvas } from './hubstub';
@@ -17,6 +17,13 @@ import type { Collider, HubWorld } from '../src/world/types';
  * street tree, a palm, a stall) would move what comes after it and change the digest.
  */
 stubCanvas();
+// The villa's facade (lane V-S, src/housing/villaFacade.ts) is drawn about its own origin, then moved onto the lot: its batches belong to the lot, not to
+// the rest of the Almadies, so the digest leaves out whatever is built while it runs.
+const facade = vi.hoisted(() => ({ depth: 0 }));
+vi.mock('../src/housing/villaFacade', async importOriginal => {
+  const m = await importOriginal<typeof import('../src/housing/villaFacade')>();
+  return { ...m, buildVillaFacade: (...a: Parameters<typeof m.buildVillaFacade>) => { facade.depth++; try { return m.buildVillaFacade(...a); } finally { facade.depth--; } } };
+});
 const fixture = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/almadiesOutsideVilla.json'))) as { base: string; lot: { x0: number; x1: number; z0: number; z1: number }; full: HubDigest; lite: HubDigest };
 const hubs: Partial<Record<'full' | 'lite', HubWorld>> = {};
 const build = async (q: 'full' | 'lite') => { const { buildHub } = await import('../src/world/builder'); return (hubs[q] ??= buildHub('almadies', q === 'lite')); };
@@ -35,7 +42,7 @@ describe('the villa\'s lot in the generator', () => {
 
   for (const q of ['full', 'lite'] as const) it(`(${q}) leaves every other lot, street tree, palm, stall, collider, seat and person of the Almadies exactly as the contract commit drew them`, async () => {
     let hub: HubWorld | null = null;
-    const now = await digestHub(async () => (hub = await build(q)), LOT_RECT);
+    const now = await digestHub(async () => (hub = await build(q)), LOT_RECT, 0.3, () => facade.depth > 0);
     hubs[q] = hub!;
     const was = fixture[q];
     expect(now.batches.map(b => b.n)).toEqual(was.batches.map(b => b.n));
