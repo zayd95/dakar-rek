@@ -1,14 +1,15 @@
 import { type SiteBuilder } from './contract';
-import { balcony, door, glazing, parapet, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, garageDoor, hedge, lantern, lawn, lightGuard, lounger, lv, mark, palmAt, palmSmall, pave, plaque, pool, pot, shrub, slats, stones, win } from './villas.kit';
+import { balcony, door, glazing, slabEdge, solidBox, volume } from './parts';
+import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, garageDoor, hedge, lantern, lawn, lightGuard, lv, mark, palmAt, palmSmall, pave, plaque, poolGarden, pot, roofKit, shrub, slats, stones, tones, wallDress, win } from './villas.kit';
 
 /**
  * Villa 2, « Arcades »: a portico of square piers and deep lintels along the front, the sand-coloured house behind it, the upper floor opening on a long
  * balcony over the arcade, a garage door in its last bay, a roof terrace behind a solid parapet and a small tower at the corner capped in steps.
  */
 export const arcade: SiteBuilder = o => {
-  const k = ctx(o), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k), acc = p.accent;
-  boundary(k, { h: 2.2 }); mark(k, 'boundary');
+  const k = ctx(o), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k), acc = p.accent, tn = tones(k);
+  boundary(k, { h: 2.2, bloom: [-1.0, 8.6] }); mark(k, 'boundary');
+  wallDress(k, { plinth: true, band: { col: acc, y: 1.7, h: 0.14 }, pilasters: [-9.4, -6.2, 0.2, 3.0] }); mark(k, 'wall');
   const M = R(-7.8, 7.6, -4.4, 3.6), A = R(-8.1, 7.9, 3.6, 6.3), px = [-7.4, -4.5, -1.6, 1.3, 4.2, 7.1], zp = 5.95;
   // ---- the masses: the ground floor in the sand render, the upper floor in the ivory, the roof slab with its parapet
   volume(d, M, GROUND, F1 - T_SLAB, p.render2);
@@ -19,10 +20,11 @@ export const arcade: SiteBuilder = o => {
   if (n === 3) { volume(d, top, F2, Ft - T_SLAB, p.render); slabEdge(d, top, Ft, T_SLAB, 0.45); }
   mark(k, 'masses');
   // ---- the arcade: square piers and a deep lintel beam under the balcony's slab
-  for (const x of px) { volume(d, R(x - 0.26, x + 0.26, zp - 0.26, zp + 0.26), GROUND, F1 - 1.0, p.stone); d.box(d.plain, 0.62, 0.1, 0.62, x, F1 - 1.1, zp, p.stoneDark); }
+  for (const x of px) volume(d, R(x - 0.26, x + 0.26, zp - 0.26, zp + 0.26), GROUND, F1 - 1.0, p.stone);
   volume(d, R(px[0] - 0.4, px[5] + 0.4, zp - 0.3, zp + 0.3), F1 - 1.0, F1 - T_SLAB, p.stone);
   volume(d, R(px[0] - 0.4, px[5] + 0.4, zp - 0.3, zp + 0.3), F1 - 1.0, F1 - 0.88, acc);
-  pave(k, R(-8.0, 7.8, 3.6, 6.1), d.c.fore);
+  pave(k, R(-8.0, 7.8, 3.6, 6.1), tn.fore, 2);
+  if (!lite) for (const i of [0, 2, 4]) d.box(d.bulbs, 0.4, 0.05, 0.25, (px[i] + px[i + 1]) / 2, F1 - T_SLAB - 0.04, 4.9, d.c.bulb);       // downlights in the gallery's soffit
   mark(k, 'arcade');
   // ---- the ground floor behind the arcade: the portal door, the salon's glazing, the garage door in the last bay
   door(d, { face: 'street', x: -3.05, z: M.z1, portal: true, steps: false });
@@ -44,35 +46,43 @@ export const arcade: SiteBuilder = o => {
   win(k, { face: 'left', at: M.x0, u0: -2.4, u1: 1.6, y0: GROUND + 0.9, y1: F1 - 1.3 });
   mark(k, 'back and sides');
   // ---- the roof terrace behind its parapet, the belvedere on posts, the tower at the corner capped in steps
-  const rt = n === 2 ? M : R(M.x0, M.x1, top.z1 + 0.1, M.z1);
-  parapet(d, R(M.x0 - 0.2, M.x1 + 0.2, M.z0 - 0.2, M.z1 + 0.2), F2, { h: 1.0, col: p.slab });
-  void rt;
+  const pr = R(M.x0 - 0.2, M.x1 + 0.2, M.z0 - 0.2, M.z1 + 0.2), pt = 0.16, pc = (a: number, b: number) => (a + b) / 2;
+  const run = (x0: number, z0: number, x1: number, z1: number) => d.box(d.plain, Math.max(pt, x1 - x0), 1.0, Math.max(pt, z1 - z0), pc(x0, x1), F2, pc(z0, z1), p.slab);
+  run(pr.x0, pr.z1 - pt, pr.x1, pr.z1);                                                       // the roof's parapet: solid, in the slab's white
+  run(pr.x0, n === 2 ? pr.z0 : top.z1, pr.x0 + pt, pr.z1); run(pr.x1 - pt, n === 2 ? pr.z0 : top.z1, pr.x1, pr.z1);
+  if (n === 2) run(pr.x0, pr.z0, pr.x1, pr.z0 + pt);
   const tw = R(-7.6, -4.6, 0.9, 3.6), tt = Ft + 3.3;
   volume(d, tw, F2, tt, p.render2); volume(d, R(tw.x0 - 0.05, tw.x1 + 0.05, tw.z0 - 0.05, tw.z1 + 0.05), tt - 0.65, tt - 0.35, acc);
   slabEdge(d, tw, tt, 0.2, 0.3, p.slab); slabEdge(d, R(tw.x0 + 0.5, tw.x1 - 0.5, tw.z0 + 0.5, tw.z1 - 0.5), tt + 0.25, 0.25, 0.1, acc);
   for (const y of n === 3 ? [F2, Ft] : [F2]) {
-    glazing(d, { face: 'street', at: tw.z1, u0: -6.7, u1: -5.5, y0: y + 0.7, y1: y + 2.5, mullions: 0 });
-    if (!lite || y === F2) glazing(d, { face: 'right', at: tw.x1, u0: 1.6, u1: 2.8, y0: y + 0.7, y1: y + 2.5, mullions: 0 });
+    win(k, { face: 'street', at: tw.z1, u0: -6.7, u1: -5.5, y0: y + 0.7, y1: y + 2.5 });
+    if (!lite || y === F2) win(k, { face: 'right', at: tw.x1, u0: 1.6, u1: 2.8, y0: y + 0.7, y1: y + 2.5 });
   }
-  if (n === 2) slats(k, R(1.6, 5.8, -3.6, -0.2), F2 + 0.02, { h: 2.4, pitch: 0.6 }); else slats(k, R(0.6, 5.0, 0.2, 3.2), F2 + 0.02, { h: 2.4, pitch: 0.6 });
-  if (!lite) { d.box(d.plain, 1.3, 0.4, 0.5, 5.9, F2, 2.6, p.stone); d.box(d.plain, 1.3, 0.1, 0.5, 5.9, F2 + 0.4, 2.6, p.accent); }
+  if (n === 3) {                                                                                      // the third storey's own windows, front and back
+    win(k, { face: 'street', at: top.z1, u0: 0.4, u1: 6.6, y0: F2 + 0.5, y1: Ft - 0.8, sill: true });
+    win(k, { face: 'back', at: top.z0, u0: -6.4, u1: 1.0, y0: F2 + 0.5, y1: Ft - 0.8 });
+  }
+  const pg = n === 2 ? R(1.6, 5.8, -3.6, -0.2) : R(0.6, 5.0, 0.2, 3.2);
+  slats(k, pg, F2 + 0.02, { h: 2.4, pitch: 0.7 });
+  d.flat(d.plain, pg.x1 - pg.x0, pg.z1 - pg.z0, (pg.x0 + pg.x1) / 2, F2 + 0.035, (pg.z0 + pg.z1) / 2, p.wood);
+  if (n === 2) roofKit(k, -3.0, -2.6, F2 + 0.02);
+  bloomWall(k, 'left', -1.0, 2.2);
   mark(k, 'roof and tower');
   // ---- the forecourt: the wall's portal, the number, the path to the arcade, lawn, planters, the drive to the garage
   door(d, { face: 'street', x: -3.05, z: 10.7, portal: true, steps: false });
   plaque(k, o.site.number, k.g0 - 0.3, 1.5, 11.14);
-  pave(k, R(-3.7, -2.4, 6.4, 10.4), d.c.stone);
-  pave(k, R(3.4, 9.8, 6.4, 10.4), d.c.drive);
+  pave(k, R(-3.7, -2.4, 6.4, 10.4), tn.path, 2);
+  pave(k, R(3.4, 9.8, 6.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -4.0, 6.5, 10.4)); lawn(k, R(-1.8, 3.2, 6.6, 10.4));
   stones(k, -3.05, 6.7, -3.05, 9.9, 3, p.stone);
   lantern(k, -5.8, 6.9); lantern(k, -0.4, 6.9);
-  pot(k, -8.4, 6.6, 1.3, 0.8, 0.65, true); pot(k, 1.1, 7.0, 1.2, 0.7, 0.55, true);
+  pot(k, 1.1, 7.0, 1.2, 0.7, 0.55, true);
   if (!lite) hedge(k, -10.3, 9.5, -4.6, 9.5, 0.7);
-  palmAt(k, -8.8, 8.8, 1.05, 0.7);
+  palmAt(k, -9.3, 4.9, 1.05, 0.7);
   mark(k, 'forecourt');
   // ---- the back garden: the pool, the loungers, the palm
-  pave(k, R(-10.4, 10.4, -10.4, -4.6), d.c.deck);
-  pool(k, R(-6.4, 1.6, -9.0, -6.2));
-  for (const x of [4.4, 5.5, 6.6]) lounger(k, x, -8.0);
+  pave(k, R(-10.4, 10.4, -10.4, -4.6), tn.deck);
+  poolGarden(k, { deck: R(-10.4, 10.4, -10.4, -5.7), pool: R(-6.4, 1.6, -9.2, -6.6), loungers: [[4.6, -8.2], [5.9, -8.2]] });
   palmSmall(k, 8.8, -9.6, 1.0, 0.6);
   shrub(k, -9.2, -9.4, 0.7);
   mark(k, 'back garden');

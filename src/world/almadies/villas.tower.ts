@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, louvres, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, garageDoor, hedge, lantern, lawn, lightGuard, lounger, lv, mark, palmAt, palmSmall, pave, plaque, pool, rail, slats, stones, win } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, garageDoor, hedge, lantern, lawn, lightGuard, lv, mark, palmAt, palmSmall, pave, plaque, poolGarden, rail, slats, stones, wallDress, win } from './villas.kit';
 
 /**
  * Villa 4, « La Tour »: a stair tower in vertical oak slats rising a storey above the house, stacked and staggered balconies on the street face, the
@@ -8,7 +8,8 @@ import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, garageDoor, hedge, lantern,
  */
 export const tower: SiteBuilder = o => {
   const k = ctx(o), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), Tt = lv(n + 1) + 0.25, gd = lightGuard(k);
-  boundary(k, { h: 2.2 }); mark(k, 'boundary');
+  boundary(k, { h: 2.2, bloom: [-8.2, 1.6] }); mark(k, 'boundary');
+  wallDress(k, { plinth: true, panels: [{ x0: -10.3, x1: -5.9, col: p.stone }, { x0: -1.8, x1: 4.3, col: p.wood, joints: 5 }] }); mark(k, 'wall');
   const H = R(-5.6, 8.4, -5.4, 3.0), T = R(-9.6, -5.6, -0.4, 3.8);
   // ---- the house: a travertine ground floor, the upper floors in the render, a thin roof; the tower beside it
   volume(d, H, GROUND, F1 - T_SLAB, p.stone);
@@ -67,9 +68,9 @@ export const tower: SiteBuilder = o => {
   mark(k, 'forecourt');
   // ---- the back: the pool, loungers, a palm
   pave(k, R(-10.4, 10.4, -10.4, -5.6), d.c.deck);
-  pool(k, R(-5.0, 4.6, -9.4, -6.8));
-  for (const x of [5.6, 6.7, 7.8]) lounger(k, x, -8.4);
+  poolGarden(k, { deck: R(-10.4, 10.4, -10.4, -6.6), pool: R(-5.0, 4.6, -9.6, -7.5), loungers: [[5.9, -9.0], [7.1, -9.0]] });
   palmSmall(k, -8.8, -9.2, 1.1, 0.8);
+  bloomWall(k, 'left', -2.0, 2.2); if (n === 2) bloomWall(k, 'back', 2.0, 2.2);
   mark(k, 'back garden');
   // ---- solid
   solidBox(d, H, Ft + 0.35); solidBox(d, R(T.x0, T.x1, T.z0, T.z1), Tt);

@@ -1,14 +1,15 @@
 import { type SiteBuilder } from './contract';
-import { door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, garageDoor, lantern, lawn, lv, mark, pave, plaque, post, pot, rail, shrub, slats, tree, win } from './villas.kit';
+import { balcony, door, glazing, solidBox, volume } from './parts';
+import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, garageDoor, hedge, lantern, lawn, lightGuard, lv, mark, pave, plaque, post, pot, rail, shrub, slats, tree, wallDress, win } from './villas.kit';
 
 /**
  * House 2, « Maison en L »: an L of two wings under deep thin flat roofs, a stone plinth and a travertine ground floor, a covered loggia in the L's corner
  * with a terrace and a timber pergola over it, a garage with a green roof, a small garden.
  */
 export const ell: SiteBuilder = o => {
-  const k = ctx(o, { gateW: 3.4 }), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n);
+  const k = ctx(o, { gateW: 3.4 }), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k);
   boundary(k, { h: 1.9, front: 'low' }); mark(k, 'boundary');
+  wallDress(k, { plinth: 0.3, panels: [{ x0: -3.4, x1: 2.4, y0: 0.2, y1: 0.85, col: p.stone }] }, 1.0);
   const A = R(-9.6, 3.0, 0.6, 5.6), B = R(-9.6, -3.6, -6.6, 0.6), Gar = R(3.0, 9.6, 0.6, 5.6), V = R(-3.6, 3.0, -6.2, 0.6);
   // ---- the wings on their plinth (the ground floor of the street wing in travertine), the garage, the two deep roofs, the loggia's terrace slab
   for (const r of [A, B]) volume(d, R(r.x0 - 0.06, r.x1 + 0.06, r.z0 - 0.06, r.z1 + 0.06), GROUND, GROUND + 0.5, p.stoneDark);
@@ -30,15 +31,15 @@ export const ell: SiteBuilder = o => {
   eave(k, R(-7.8, -5.0, A.z1, A.z1 + 1.1), GROUND + 3.0, 0.18, { l: 0, r: 0, f: 0, b: 0 });
   win(k, { face: 'street', at: A.z1, u0: -4.3, u1: -1.1, y0: GROUND + 0.9, y1: F1 - 0.8, sill: true });
   glazing(d, { face: 'street', at: A.z1, u0: -9.0, u1: -0.6, y0: F1 + 0.12, y1: F2 - 0.7, mullions: 3 });
-  rail(k, -9.1, A.z1 + 0.12, -0.5, A.z1 + 0.12, F1);
-  if (n === 3) glazing(d, { face: 'street', at: A.z1, u0: -9.0, u1: -2.6, y0: F2 + 0.12, y1: Ft - 0.7, mullions: 2 });
+  balcony(gd, { face: 'street', at: A.z1, u0: -9.2, u1: -0.4, y: F1, depth: 1.2 });
+  if (n === 3) { win(k, { face: 'street', at: A.z1, u0: -9.0, u1: -2.6, y0: F2 + 0.4, y1: Ft - 0.8 }); win(k, { face: 'back', at: A.z0, u0: -3.0, u1: 2.4, y0: F2 + 0.4, y1: Ft - 0.8 }); }
   garageDoor(k, 6.5, Gar.z1, 2.8, 2.3);
   // ---- the loggia's glazing, the back wing and the sides
   glazing(d, { face: 'back', at: A.z0, u0: -3.2, u1: 2.6, y0: GROUND + 0.6, y1: F1 - 0.7, mullions: 2 });
   win(k, { face: 'back', at: A.z0, u0: -3.0, u1: 2.4, y0: F1 + 0.5, y1: F2 - 0.8 });
   win(k, { face: 'right', at: B.x1, u0: -5.8, u1: -1.2, y0: GROUND + 0.9, y1: F1 - 0.8 }); win(k, { face: 'right', at: B.x1, u0: -5.8, u1: -1.2, y0: F1 + 0.5, y1: F2 - 0.8 });
   win(k, { face: 'back', at: B.z0, u0: -8.6, u1: -4.4, y0: GROUND + 0.9, y1: F1 - 0.8, sill: true }); win(k, { face: 'back', at: B.z0, u0: -8.6, u1: -4.4, y0: F1 + 0.5, y1: F2 - 0.7, sill: true });
-  win(k, { face: 'left', at: A.x0, u0: 1.8, u1: 4.2, y0: GROUND + 0.9, y1: F1 - 0.8 }); win(k, { face: 'left', at: A.x0, u0: 1.8, u1: 4.2, y0: F1 + 0.5, y1: F2 - 0.8 });
+  win(k, { face: 'left', at: A.x0, u0: 1.8, u1: 4.2, y0: F1 + 0.5, y1: F2 - 0.8 });
   mark(k, 'faces');
   // ---- the garden: the foot gate, the path, lawn, a tree, a lantern, planters; the drive to the garage
   footGate(k, -6.4);
@@ -48,8 +49,9 @@ export const ell: SiteBuilder = o => {
   lawn(k, R(-10.4, -7.2, 7.0, 10.4)); lawn(k, R(-5.6, 3.2, 7.0, 10.4)); lawn(k, R(-10.4, -9.4, 5.6, 7.0));
   tree(k, -8.8, 8.4, 0.95);
   lantern(k, -2.8, 6.6);
-  pot(k, 0.6, 6.2, 1.4, 0.6, 0.5, true);
-  shrub(k, 2.0, 8.6, 0.6);
+  hedge(k, -5.4, 9.9, 2.6, 9.9, 0.6);
+  if (n === 2) pot(k, 0.6, 6.2, 1.4, 0.6, 0.5, true);
+  if (n === 2) shrub(k, 2.0, 8.6, 0.6);
   pave(k, R(-10.4, 10.4, -10.4, -6.8), d.c.deck);
   lawn(k, R(-10.0, -1.0, -10.0, -7.4)); lawn(k, R(4.0, 10.0, -10.0, 0.0));
   mark(k, 'garden');

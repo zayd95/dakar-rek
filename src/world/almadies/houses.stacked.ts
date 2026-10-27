@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, hedge, lantern, lawn, lightGuard, lv, mark, pave, plaque, pot, post, rail, roofKit, shrub, slats, stones, tree, win } from './villas.kit';
+import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, hedge, lantern, lawn, lightGuard, lv, mark, pave, plaque, pot, post, rail, roofKit, shrub, slats, stones, tree, wallDress, win } from './villas.kit';
 
 /**
  * House 1, « Maison empilée »: two boxes stacked and offset (the white upper one slides forward over the entry and out over the carport), a big street
@@ -9,6 +9,7 @@ import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, hedge, lantern, lawn,
 export const stacked: SiteBuilder = o => {
   const k = ctx(o, { gateW: 3.4 }), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k);
   boundary(k, { h: 1.9, front: 'low' }); mark(k, 'boundary');
+  wallDress(k, { plinth: 0.3, panels: [{ x0: -2.6, x1: 3.6, y0: 0.2, y1: 0.85, col: p.wood, joints: 4 }] }, 1.0);
   const G = R(-9.4, -0.2, -4.4, 3.8), U = R(-7.2, 2.6, -4.4, 6.0);
   volume(d, G, GROUND, F1 - T_SLAB, p.render2);
   volume(d, R(-6.4, -2.6, G.z1, G.z1 + 0.07), GROUND, F1 - T_SLAB - 0.2, p.stone);                  // the entry's travertine wall
@@ -30,7 +31,7 @@ export const stacked: SiteBuilder = o => {
   win(k, { face: 'street', at: G.z1, u0: -2.2, u1: -0.7, y0: GROUND + 0.5, y1: F1 - 0.8 });
   glazing(d, { face: 'street', at: U.z1, u0: -6.7, u1: 2.0, y0: F1 + 0.12, y1: F2 - 0.7, mullions: 3 });
   balcony(gd, { face: 'street', at: U.z1, u0: -6.9, u1: 2.4, y: F1, depth: 1.9 });
-  if (n === 3) glazing(d, { face: 'street', at: T.z1, u0: -6.7, u1: -1.2, y0: F2 + 0.12, y1: Ft - 0.7, mullions: 1 });
+  if (n === 3) { glazing(d, { face: 'street', at: T.z1, u0: -6.7, u1: -1.2, y0: F2 + 0.12, y1: Ft - 0.7, mullions: 1 }); win(k, { face: 'back', at: T.z0, u0: -6.2, u1: -1.6, y0: F2 + 0.5, y1: Ft - 0.9 }); }
   // the back and the sides
   win(k, { face: 'back', at: G.z0, u0: -8.4, u1: -1.6, y0: GROUND + 0.4, y1: F1 - 0.8, sill: true });
   win(k, { face: 'back', at: U.z0, u0: -6.2, u1: 1.4, y0: F1 + 0.5, y1: F2 - 0.9 });

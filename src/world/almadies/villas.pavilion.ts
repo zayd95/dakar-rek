@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lounger, lv, mark, palmAt, palmSmall, parasol, pave, plaque, pool, post, rail, shrub, slats, stones, win } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, mark, palmAt, palmSmall, pave, plaque, poolGarden, post, rail, shrub, slats, stones, tones, wallDress, win } from './villas.kit';
 
 /**
  * Villa 3, « Pavillons »: two pavilions under deep thin flat roofs, the tall living pavilion and the low suite-and-garage pavilion, joined by a glazed link
@@ -8,7 +8,8 @@ import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, eave, garageDoor, lantern, 
  */
 export const pavilion: SiteBuilder = o => {
   const k = ctx(o), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), gd = lightGuard(k), nb = n - 1;     // B has one storey fewer than A
-  boundary(k, { h: 2.2 }); mark(k, 'boundary');
+  boundary(k, { h: 2.2, bloom: [-6.6, 3.4] }); mark(k, 'boundary');
+  wallDress(k, { plinth: 0.4, panels: [{ x0: -10.3, x1: -3.2, col: p.wood, joints: 7 }, { x0: 1.4, x1: 4.6, col: p.stone }] }); mark(k, 'wall');
   const A = R(-10.0, -2.8, -6.4, 4.2), L = R(-2.8, 0.4, -1.5, 3.0), B = R(0.4, 9.4, -5.0, 2.0), fa = lv(n), fb = lv(nb), lt = F1 - 0.4;
   // ---- the pavilions: A in the render with a stone end wall, B with a timber face, the link a glass box; each under a deep thin roof
   volume(d, A, GROUND, fa - T_SLAB, p.render);
@@ -63,13 +64,14 @@ export const pavilion: SiteBuilder = o => {
   palmAt(k, -8.8, 9.0, 1.0, 0.5);
   mark(k, 'forecourt');
   // ---- the back: the long pool, the pergola and loungers on the terrace, palms
-  pave(k, R(-10.4, 10.4, -10.4, -5.6), d.c.deck);
-  pool(k, R(-9.2, 2.6, -9.6, -7.0));
-  slats(k, R(3.4, 8.8, -9.6, -6.0), GROUND, { h: 2.6, pitch: 0.8 });
-  for (const x of [4.8, 6.4]) lounger(k, x, -8.0);
-  palmSmall(k, -9.6, -10.0, 1.1, 0.9); palmSmall(k, 3.0, -10.0, 0.95, 0.2);
+  pave(k, R(-10.4, 10.4, -10.4, -5.6), tones(k).deck);
+  const raise = 0.45, yd = GROUND + raise;
+  poolGarden(k, { deck: R(-10.4, 10.4, -10.4, -7.3), pool: R(-9.2, 2.6, -9.9, -8.0), loungers: [[4.8, -9.0], [6.4, -9.0]], raise });
+  slats(k, R(3.4, 8.8, -10.1, -6.0), yd, { h: 2.6, pitch: 0.8 });
+  palmSmall(k, -9.6, -10.1, 1.1, 0.9); palmSmall(k, 3.0, -10.1, 0.95, 0.2);
+  bloomWall(k, 'left', 0.5, 2.2); if (n === 2) bloomWall(k, 'back', 5.0, 2.2);
   mark(k, 'back garden');
   // ---- solid
   solidBox(d, A, fa + 0.35); solidBox(d, B, fb + 0.35); solidBox(d, L, lt);
-  void parasol; void post; void shrub;
+  void post; void shrub;
 };
