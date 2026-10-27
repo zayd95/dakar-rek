@@ -15,6 +15,8 @@ import { rideHooks, type OwnedVehicleModule } from '../transport/ownedModule';
 import { Batch } from '../world/batch';
 import { buildHelicopter } from '../world/helicopter';
 import { GATE_FREE, gateFor, gateWants, stepGate, type VillaHold } from './gate';
+import { ENTRANCE_FREE, entranceWants, stepEntrance } from './gate';
+import { slideGate, swingEntrance } from '../world/villaCompound';
 import { BAYS_HUB, freeBay, inYard, parkWhy } from './bays';
 import { VillaSwim } from './swim';
 import { VillaReception } from './reception';
@@ -81,6 +83,7 @@ class VillaModule implements GameModule {
     const g = hub.id === VILLA_HUB ? hub.group.getObjectByName('villa-compound') : null;
     const mesh = g?.getObjectByName('villa-gate'), col = g?.userData.gate as Collider | undefined;
     if (g && mesh && col) this.gate = { mesh, col, travel: g.userData.gateTravel as number, k: 0, solid: hub.colliders.includes(col), x1: col.x1 };
+    this.door = this.findDoor(g ?? null, hub);
   }
 
   // ------------------------------------------------------------------------------------------------ who
@@ -109,6 +112,7 @@ class VillaModule implements GameModule {
   update(_ctx: GameCtx, dt: number) {
     const allowed = gateFor(this.hold(), this.invitedNow(dt));
     this.stepGate(dt, allowed);
+    this.stepDoor(dt, allowed);
     this.swim.update(dt);
     const own = this.inOwnVilla();
     this.room.visible = own;
@@ -127,12 +131,36 @@ class VillaModule implements GameModule {
     if (g.k === 0 && k > 0) this.log.opened++;
     if (k === 0 && g.k > 0) this.log.shut++;
     g.k = k;
-    g.mesh.position.x = -g.travel * k;
+    slideGate(g.mesh, g.travel, k);                                         // (telescopic: its two halves, src/world/villaCompound.ts)
     // the box covers what the panel still shuts of the opening; out of the colliders once the way is free
     g.col.x1 = Math.max(g.col.x0 + 0.05, g.x1 - g.travel * k);
     const free = k >= GATE_FREE;
     if (free && g.solid) { const i = hub.colliders.indexOf(g.col); if (i >= 0) hub.colliders.splice(i, 1); g.solid = false; }
     else if (!free && !g.solid) { hub.colliders.push(g.col); g.solid = true; }
+  }
+
+  // ------------------------------------------------------------------------------------------------ LD2.0-D round 2 (lane R2-E): the main entrance
+  /**
+   * The main entrance's pivoting door (src/world/villaCompound.ts draws it): swung open and shut by its rule (src/villa/gate.ts `entranceWants`, for
+   * the gate's people), its box in the hub's colliders following the leaf: the shut door's while it is shut or swinging, the open leaf's once open.
+   */
+  private door: { mesh: THREE.Object3D; shut: Collider; open: Collider; k: number; solid: Collider | null } | null = null;
+  readonly doorLog = { opened: 0, shut: 0 };
+  private findDoor(g: THREE.Object3D | null, hub: HubWorld) {
+    const mesh = g?.getObjectByName('villa-entrance-door'), e = g?.userData.entrance as { shut: Collider; open: Collider } | undefined;
+    return mesh && e ? { mesh, shut: e.shut, open: e.open, k: 0, solid: hub.colliders.includes(e.shut) ? e.shut : null } : null;
+  }
+  private stepDoor(dt: number, allowed: boolean) {
+    const d = this.door, hub = this.hub; if (!d || !hub) return;
+    const ctx = this.ctx, p = ctx.player.pos, q = this.sense;
+    q.px = p.x - LOT.cx; q.pz = p.z - LOT.cz; q.driving = ctx.player.seated()?.kind === 'vehicle'; q.allowed = allowed;
+    const k = stepEntrance(d.k, !ctx.inside() && entranceWants(q, d.k), dt);
+    if (k === d.k) return;
+    if (d.k === 0 && k > 0) this.doorLog.opened++;
+    if (k === 0 && d.k > 0) this.doorLog.shut++;
+    d.k = k; swingEntrance(d.mesh, k);
+    const want = k >= ENTRANCE_FREE ? d.open : d.shut;
+    if (d.solid !== want) { const i = d.solid ? hub.colliders.indexOf(d.solid) : -1; if (i >= 0) hub.colliders.splice(i, 1); hub.colliders.push(want); d.solid = want; }
   }
 
   // ------------------------------------------------------------------------------------------------ the bays
@@ -223,6 +251,8 @@ class VillaModule implements GameModule {
         tiered: () => self.tiered(),
         gate: () => (self.gate ? { k: self.gate.k, solid: self.gate.solid, collider: { ...self.gate.col }, panelX: self.gate.mesh.position.x } : null),
         bays: () => BAYS_HUB.map(b => ({ ...b })),
+        /** Round 2: the main entrance's door: how open (0…1), which of its boxes is solid, the leaf's angle, how often it opened and shut. */
+        entrance: () => (self.door ? { k: self.door.k, solid: self.door.solid === self.door.shut ? 'shut' : self.door.solid === self.door.open ? 'open' : null, collider: self.door.solid ? { ...self.door.solid } : null, angle: self.door.mesh.rotation.y, log: { ...self.doorLog } } : null),
         park: () => self.park(),
         parkOffer: () => { const m = OWNED_VEHICLES.find(v => v.ridden); const a = m ? self.parkOffer(m) : null; return a ? { label: a.label, disabled: a.disabled ?? null } : null; },
         swim: { info: () => self.swim.info(), start: () => self.swim.start(), stop: () => self.swim.stop(), basin: (on = true) => self.debugBasin(on) },
