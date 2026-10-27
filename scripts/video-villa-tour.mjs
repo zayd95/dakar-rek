@@ -3,7 +3,7 @@
 // a thumb held on the joystick (real touches, re-aimed each frame), the action button for « Entrer chez toi », « Se baigner », « Sortir de l'eau » and
 // « Regarder l'hélicoptère ». The scene is set with debug hooks: the villa bought, the « Collection Almadies » laid out as lane V-S's layout
 // (src/housing/villaLayout.ts), the Lamane Sport in its bay.
-// The tour: the street and the gate → the front door → the salon → the pool deck and a swim → the dining room → up to the first floor → the master suite →
+// The tour: the street and the main entrance (round 2) → up the path to the front door → the salon → the pool deck and a free swim → the dining room → up to the first floor → the master suite →
 // up to the roof terrace → the helicopter.
 // Usage: node scripts/video-villa-tour.mjs <baseUrl> <out.mp4> [hour=10.5]   (a static build of the game, served)
 import { chromium } from 'playwright';
@@ -18,6 +18,8 @@ const src = fs.readFileSync(new URL('../src/housing/villaLayout.ts', import.meta
 const LAYOUT = new Function(`return ${src.slice(src.indexOf('= [', src.indexOf('VILLA_ALMADIES_LAYOUT')) + 2, src.lastIndexOf('];') + 1)}`)();
 const LOT = { cx: -18, cz: -18 }, P = (x, z) => ({ x: LOT.cx + x, z: LOT.cz + z });
 const GATE = { x0: 1.5, x1: 6.5, z: 11 }, GC = P((GATE.x0 + GATE.x1) / 2, GATE.z), DOOR = P(-3, 4.9);
+// round 2: the main entrance for people (src/housing/villa.ts ENTRANCE), the way through beside its open leaf
+const EX = -3 + 0.15, FRONT = P(EX, 11 + 1.7), THROUGH = P(EX, 11 - 0.9), PATH = P(EX, 8.2);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -49,7 +51,7 @@ try {
   await page.waitForFunction(() => window.__dakar.suv.info().owned && window.__dakar.suv.info().here, null, { timeout: 30000 }).catch(() => {});
   const bays = await d(() => window.__dakar.villa.bays()), bay = bays[1] ?? bays[0];     // the bay on the right: the way from the gate to the door passes the left one
   if (bay) await d(b => window.__dakar.suv.place(b.x, b.z, b.yaw), bay);
-  await d(([x, z, h]) => { const D = window.__dakar; D.place(x, z, Math.PI); D.setHour(h); }, [GC.x + 0.4, 4.5, +hourArg]);
+  await d(([x, z, h]) => { const D = window.__dakar; D.place(x, z, Math.PI); D.setHour(h); }, [FRONT.x + 0.3, 4.5, +hourArg]);
   await page.waitForTimeout(3000);
 
   // ------------------------------------------------------------------ the recording: paused, a frame at a time
@@ -124,6 +126,20 @@ try {
     if (!way) console.log(`no way planned to ${target[0].toFixed(1)},${target[1].toFixed(1)}`);
     await walk(way ?? [target], { mid: 0.3, ...opts });
   };
+  /** Swims through the points (the pool's plan x, z: src/villa/swim.ts info), the thumb on the stick aimed at each as the camera turns. */
+  const swim = async (pts, { tol = 0.6, max = 30 * FPS } = {}) => {
+    await t.down(3, joy.x, joy.y);
+    let k = 0, n = 0;
+    while (k < pts.length && n++ < max) {
+      const i = await d(() => ({ ...window.__dakar.villa.swim.info(), cam: window.__dakar.pos().cam })), [x, z] = pts[k];
+      if (Math.hypot(x - i.x, z - i.z) < tol) { k++; continue; }
+      const a = wrap(Math.atan2(x - i.x, z - i.z) - i.cam);
+      await t.move(3, joy.x - Math.sin(a) * 45, joy.y - Math.cos(a) * 45, 1);
+      await step(1);
+    }
+    await t.up(3);
+    console.log(`swim: ${k}/${pts.length} points, ${n} frames`);
+  };
   /** The action button, as a thumb would press it, when the focused action matches. */
   const act = async (re, wait = 3 * FPS) => {
     for (let i = 0; i < wait; i++) { if (new RegExp(re).test((await d(() => window.__dakar.focus()?.primary ?? '')))) { await t.tap('#act'); return true; } await step(1); }
@@ -131,7 +147,9 @@ try {
   };
   // the street, the gate sliding open, the front yard, the front door
   await step(FPS);
-  await walk([[GC.x, GC.z + 3.6], [GC.x, GC.z - 2.4], [DOOR.x + 1.2, DOOR.z + 1.4], [DOOR.x, DOOR.z + 0.3]], { push: 0.6 });
+  await walk([[FRONT.x, FRONT.z]], { push: 0.6 });
+  for (let i = 0; i < 2 * FPS && (await d(() => window.__dakar.villa.entrance()?.solid)) !== 'open'; i++) await step(1);   // the door swings open for her
+  await walk([[THROUGH.x, THROUGH.z], [PATH.x, PATH.z], [DOOR.x, DOOR.z + 0.3]], { push: 0.6, mid: 0.35 });
   const entered = await act('Entrer chez toi');
   for (let i = 0; i < 6 * FPS && !(await d(() => !!window.__dakar.home() && window.__dakar.pos().mode === 'play')); i++) await step(1);
   await step(FPS);
@@ -140,7 +158,9 @@ try {
   await go(H(-3, -1.5)); await step(Math.round(1.5 * FPS));
   await go(H(-4.5, -5.6)); await go(H(-1.0, -5.6));
   const swam = await act('Se baigner');
-  await step(5 * FPS);
+  for (let i = 0; i < 2 * FPS && (await d(() => window.__dakar.villa.swim.info().state)) !== 'tread'; i++) await step(1);
+  await swim([[2.6, -7.9], [-4.6, -7.9], [-1.2, -6.8]]);                                        // free in the water: to the far end, back, toward the deck
+  await step(2 * FPS);                                                                          // treading water
   await act('Sortir de l.eau', FPS);
   for (let i = 0; i < 6 * FPS && (await d(() => window.__dakar.villa.swim.info().swimming)); i++) await step(1);
   await step(FPS);
