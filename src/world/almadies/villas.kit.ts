@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
 import { E, GROUND, STOREY, type GateSide, type SiteDraw } from './contract';
-import { gateX, palm, perimeter, siteRng, type Face, type PlanRect } from './parts';
+import { gateX, palm, perimeter, roadEdges, siteRng, type Face, type PlanRect } from './parts';
 
 /**
  * LD2.0-E, lane E-V: the pieces the houses' and the villas' designs share, written on the district's parts (parts.ts) and nothing else.
@@ -56,44 +56,49 @@ export function ctx(o: SiteDraw, opt: { gateW?: number } = {}): Ctx {
   const flip = o.site.gate === 'left', gate = o.site.gate === 'centre' ? 'centre' : 'right', gx = gateX(o.w, gate), gateW = opt.gateW ?? 4.4;
   return { d: flip ? mirrored(o) : o, o, flip, gate, gx, g0: gx - gateW / 2, g1: gx + gateW / 2, gateW, n: Math.max(2, Math.min(3, o.site.storeys)), lite: o.lite, rng, j: a => (rng() * 2 - 1) * a };
 }
-/** The boundary: the shared `perimeter` in the design's arrangement. */
-export function boundary(k: Ctx, o: Parameters<typeof perimeter>[1] & { bloom?: number[] } = {}) {
-  const { d } = k, { bloom, ...po } = o;
-  // The shared perimeter, drawn through a view of the draw that says `lite`: the same walls, pillars, lanterns, gate leaf and colliders, without its two
-  // costly extras, the slats on the gate's inside face (hidden behind the leaf from the street: 200 triangles) and the random bougainvillea (up to 240).
-  // The design draws their visible equivalents itself: slats on the leaf's street face, clusters of bougainvillea where it wants them.
-  const view = Object.create(d) as SiteDraw; view.lite = true;
-  const span = perimeter(view, { gate: k.gate, gateW: k.gateW, ...po });
-  const h = po.h ?? 2.4, front = po.front ?? 'wall';
-  if (po.gate !== 'none' && front !== 'open') gateSlats(k, span);
-  if (bloom && front === 'wall') bougainvillea(k, bloom, h);
-  return span;
+/**
+ * The boundary: the shared `perimeter` in the design's arrangement. Since LD2.0-E opened onto the street it is a see-through railing on a low plinth along
+ * the street and the road-side edge(s) (`roadEdges`), a wall (`h`) between neighbours, a bar gate (shut and solid) and, at `entries`, walk-in openings.
+ */
+export function boundary(k: Ctx, o: Parameters<typeof perimeter>[1] = {}) { return perimeter(k.d, { gate: k.gate, gateW: k.gateW, ...o }); }
+/** Which of the design's side edges is a road (the railing) and which a neighbour's wall, in the design's arrangement. */
+export const roadSide = (k: Ctx) => { const e = roadEdges(k.d); return { left: e.left, right: e.right, back: e.back }; };
+/**
+ * A walk-in entry in the street railing in front of a front door at plan x: `[{ x, w }]`, or none when the car gate stands right there (a centre gate
+ * leaves no room for it). Pass it to `boundary` as `entries`.
+ */
+export function entry(k: Ctx, x: number, w = 1.8): { x: number; w: number }[] {
+  return Math.abs(x - k.gx) < k.gateW / 2 + w / 2 + 1.2 ? [] : [{ x, w }];
 }
-/** Slats on the car gate's street face: wood on the dark leaf (every 0.4 m; the low preset every 0.8). */
-function gateSlats(k: Ctx, g: { x0: number; x1: number }) {
-  const { d } = k, w = g.x1 - g.x0, n = Math.max(2, Math.round(w / (k.lite ? 0.8 : 0.4))), z = E - 0.3 - 0.12 + 0.07, parts: [number, number, number, number, number, number, number][] = [];
-  for (let i = 0; i <= n; i++) parts.push([0.07, 2.0, 0.05, g.x0 + 0.15 + ((w - 0.3) * i) / n, GROUND + 0.1, z, d.p.wood]);
-  d.joined(d.plain, parts);
-  d.box(d.plain, w - 0.1, 0.1, 0.08, (g.x0 + g.x1) / 2, GROUND + 2.15, z - 0.01, d.p.frame);
+/** The house number: on the left pier of the walk-in entry when there is one (where a walker reads it), else on the car gate's left pillar. */
+export function houseNumber(k: Ctx, text: string, ent: { x: number; w: number }[]) {
+  if (ent.length) plaque(k, text, ent[0].x - ent[0].w / 2 - 0.2, 1.05, E + 0.08, { w: 0.32, h: 0.2 });
+  else plaque(k, text, k.g0 - 0.3, 1.5, 11.14);
+}
+/** A short stone-paved walk from the pavement (the street edge) to the door's step: a flat quad on the paving batch, `w` wide, centred on x, to z1. */
+export function walk(k: Ctx, x: number, z1: number, w = 1.5, layer = 2) { pave(k, { x0: x - w / 2, x1: x + w / 2, z0: z1, z1: E - 0.3 }, tones(k).path, layer); }
+/** A bench by the entry (two boxes: a seat in the palette's wood on a stone base), facing the street's side; `x`, `z` its centre. */
+export function bench(k: Ctx, x: number, z: number, w = 1.6) {
+  const { d } = k;
+  d.box(d.plain, w, 0.38, 0.4, x, GROUND, z, d.p.stone);
+  d.box(d.plain, w + 0.1, 0.07, 0.46, x, GROUND + 0.38, z, d.p.wood);
+  d.solid(x - w / 2, z - 0.25, x + w / 2, z + 0.25, 0.5);
 }
 /** The bougainvillea's two magentas (the flagship's, src/world/villaCompound.ts): the palette's accent colours the planters, not the wall's flowers. */
 const BOUG = [0xc2307a, 0xd94a8c] as const;
-/** Bougainvillea on a side or the back wall's top (cushion and two flowering clusters), `at` along the wall, spilling outward. */
+/** Bougainvillea on a neighbour's wall (a side or the back; a road side is a railing, so nothing is drawn there): a cushion and two flowering clusters, `at` along the wall. */
 export function bloomWall(k: Ctx, wall: 'left' | 'right' | 'back', at: number, h = 2.4) {
+  if (roadEdges(k.d)[wall]) return;                                                    // a road side is a railing now: nothing to climb
   const { d } = k, ex = d.w / 2 - 0.15, eb = d.depth - E - 0.15, r = 0.7;
   const pos = (t: number, out = 0) => wall === 'back' ? [at + t, -eb - out] as const : [(wall === 'left' ? -ex : ex) + (wall === 'left' ? -out : out), at + t] as const;
   const [cx, cz] = pos(0); d.blob(d.leaves, r, cx, h - 0.12, cz, d.c.hedge, 0.45, 0);
   for (const [t, dy, c] of [[-0.35, 0.12, BOUG[0]], [0.4, 0.18, BOUG[1]]] as const) { if (k.lite && t > 0) continue; const [x, z] = pos(t * r); d.blob(d.leaves, r * 0.5, x, h + dy, z, c, 0.75, 0); }
 }
-/** Bougainvillea over the street wall's top at the given x: a cushion of leaves and three flowering clusters, the villa's (parts.perimeter's own, at chosen places). */
-export function bougainvillea(k: Ctx, xs: number[], h = 2.4) {
-  const { d } = k, s = E - 0.15;
-  xs.forEach((x, i) => {
-    if (k.lite && i % 2) return;
-    const r = 0.62 + (i % 3) * 0.1;
-    d.blob(d.leaves, r, x, h - 0.12, s, d.c.hedge, 0.45, 0);
-    for (const [t, dy] of [[-0.45, 0.1], [0.1, 0.2], [0.55, 0.08]] as const) d.blob(d.leaves, r * 0.5, x + t * r, h + dy, s, (i + Math.round(t * 4)) % 3 ? BOUG[0] : BOUG[1], 0.75, 0);
-  });
+/** Bougainvillea over the flagship's magenta on a few blobs, on the street railing's top at x (spilling over its rail; the hedge's own flowers). */
+export function bloomRail(k: Ctx, x: number) {
+  const { d } = k, s = E - 0.15, h = 1.32 + GROUND, r = 0.5;
+  d.blob(d.leaves, r, x, h - 0.1, s, d.c.hedge, 0.5, 0);
+  for (const [t, dy, c] of [[-0.4, 0.1, BOUG[0]], [0.35, 0.18, BOUG[1]]] as const) { if (k.lite && t > 0) continue; d.blob(d.leaves, r * 0.55, x + t * r, h + dy, s, c, 0.75, 0); }
 }
 /** A palm, in the site's own draw (its fronds turn with the frame). */
 export function palmAt(k: Ctx, x: number, z: number, sc = 1, turn = 0) { palm(k.o, k.flip ? -x : x, z, sc, k.flip ? -turn : turn); }
@@ -232,7 +237,7 @@ export function poolGarden(k: Ctx, o: { pool: PlanRect; deck: PlanRect; raise?: 
 /** One run of frameless glass guard (1.05 m) with its bronze rail, from (x0, z0) to (x1, z1) along an axis, standing on `y`. */
 export function rail(k: Ctx, x0: number, z0: number, x1: number, z1: number, y: number, h = 1.05) {
   const { d } = k, along = Math.abs(x1 - x0) >= Math.abs(z1 - z0), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, l = along ? Math.abs(x1 - x0) : Math.abs(z1 - z0);
-  d.box(d.plain, along ? l : 0.05, h, along ? 0.05 : l, cx, y, cz, guardGlass(d.p.glass));
+  d.box(d.glassDark, along ? l : 0.05, h, along ? 0.05 : l, cx, y, cz, guardGlass(d.p.glass));
   d.box(d.plain, along ? l + 0.04 : 0.07, 0.05, along ? 0.07 : l + 0.04, cx, y + h, cz, d.p.frame);
 }
 /** A slim bronze post from the ground (or `y0`) up to `y1`. */
@@ -246,11 +251,10 @@ export function guardGlass(c: number): number {
   const m = (a: number, b: number) => Math.round(a + (b - a) * 0.72);
   return (m((c >> 16) & 255, 0xc4) << 16) | (m((c >> 8) & 255, 0xdc) << 8) | m(c & 255, 0xe6);
 }
-/** The draw with its glass lightened, for the shared balcony and parapet (their guard is `p.glass`). */
+/** The draw with its glass lightened, for the shared balcony (its guard is `p.glass`, in the dark-glass batch: it never glows at night). */
 export function lightGuard(k: Ctx): SiteDraw {
   const g = Object.create(k.d) as SiteDraw;
   g.p = { ...k.d.p, glass: guardGlass(k.d.p.glass) };
-  g.glass = k.d.plain;                                              // (the guards must not glow with the windows at night: they go in the plain batch)
   return g;
 }
 // ------------------------------------------------------------------------------------------------ cheaper pergolas, slatted slabs, garage doors
@@ -279,18 +283,6 @@ export function eave(k: Ctx, r: PlanRect, y: number, thick = T_SLAB, ov: { l?: n
   const { d } = k, x0 = r.x0 - (ov.l ?? 0.4), x1 = r.x1 + (ov.r ?? 0.4), z0 = r.z0 - (ov.b ?? 0.4), z1 = r.z1 + (ov.f ?? 0.4);
   d.slab(d.plain, x1 - x0, thick, z1 - z0, (x0 + x1) / 2, y - thick / 2, (z0 + z1) / 2, col ?? d.p.slab);
 }
-/** A pedestrian gate in a low street wall: two stone piers with their lights and a shut slatted leaf between them (visual: the wall's solid runs across it). */
-export function footGate(k: Ctx, x: number, w = 1.1) {
-  const { d } = k, z = E - 0.3 / 2 + 0.02;
-  for (const s of [-1, 1]) {
-    d.box(d.plain, 0.4, 1.65, 0.42, x + s * (w / 2 + 0.2), GROUND, z, d.p.stone);
-    d.box(d.plain, 0.5, 0.08, 0.5, x + s * (w / 2 + 0.2), GROUND + 1.65, z, d.p.stoneDark);
-    if (!k.lite) d.box(d.bulbs, 0.16, 0.18, 0.16, x + s * (w / 2 + 0.2), GROUND + 1.73, z, d.c.bulb);
-  }
-  d.box(d.metal, w, 1.3, 0.06, x, GROUND, z - 0.08, d.p.frame);
-  if (!k.lite) d.box(d.plain, w - 0.2, 0.2, 0.04, x, GROUND + 0.9, z + 0.0, d.p.wood);
-}
-
 // ------------------------------------------------------------------------------------------------ a cheaper window
 /**
  * A window on a face of a mass: a dark pane in a frame box behind it (two boxes: 20 triangles; the shared `glazing` is 50 and more), for the secondary
@@ -301,7 +293,8 @@ export function win(k: Ctx, o: { face: Face; at: number; u0: number; u1: number;
   const at = (u: number, off: number) => ax === 'x' ? [u, o.at + s * off] as const : [o.at + s * off, u] as const;
   const [fx, fz] = at(c, 0.025), [gx, gz] = at(c, 0.05);
   d.box(d.plain, ax === 'x' ? len + 2 * fr : 0.05, h + 2 * fr, ax === 'x' ? 0.05 : len + 2 * fr, fx, o.y0 - fr, fz, d.p.frame);
-  d.box(d.glass, ax === 'x' ? len : 0.04, h, ax === 'x' ? 0.04 : len, gx, o.y0, gz, d.p.glass);
+  const lit = (Math.abs(Math.round(gx * 7.3 + gz * 5.1 + o.y0 * 3.1)) % 4) !== 0;                // about three panes in four are lit at night, as the shared glazing's
+  d.box(lit ? d.glass : d.glassDark, ax === 'x' ? len : 0.04, h, ax === 'x' ? 0.04 : len, gx, o.y0, gz, d.p.glass);
   if (o.sill && !k.lite) { const [sx, sz] = at(c, 0.1); d.box(d.plain, ax === 'x' ? len + 0.3 : 0.2, 0.06, ax === 'x' ? 0.2 : len + 0.3, sx, o.y0 - fr - 0.06, sz, d.p.stone); }
 }
 /** The roof's plant, light: a tank, two solar panels and an air conditioner (≈ 70 triangles). */
@@ -322,32 +315,4 @@ export function palmSmall(k: Ctx, x: number, z: number, sc = 1, turn = 0) {
   d.canopies.push({ x: top.x, z: top.z, r: 3.2 * sc, y0: ty - 0.8 * sc, y1: ty + 0.3 * sc });
   d.solid(x - 0.25, z - 0.25, x + 0.25, z + 0.25, 3);
   d.light(x + 0.4, z + 0.4, 2.1, 0.17);
-}
-
-// ------------------------------------------------------------------------------------------------ the street wall's dressing
-/**
- * What the street wall shows on its outer face (the pavement's side; every piece 6 cm proud of the lot's edge, a box or two): a stone plinth along the
- * base either side of the gate, a coloured band under the coping, panels (stone, oak with its joints, render) and pilasters. The wall is the
- * first thing a walker sees, so each design dresses it differently.
- */
-export interface WallDress {
-  plinth?: boolean | number;
-  band?: { col: number; y?: number; h?: number };
-  panels?: { x0: number; x1: number; y0?: number; y1?: number; col: number; joints?: number; jointCol?: number }[];
-  pilasters?: number[];
-}
-export function wallDress(k: Ctx, o: WallDress, wallH = 2.2) {
-  const { d } = k, z = E + 0.03, xl = -d.w / 2 + 0.3, left = k.g0 - 0.65, right = k.g1 + 0.65, xr = d.w / 2 - 0.3;
-  if (o.plinth) {
-    const h = typeof o.plinth === 'number' ? o.plinth : 0.5;
-    for (const [a, b] of [[xl, left], [right, xr]] as const) if (b - a > 0.3) d.box(d.plain, b - a, h, 0.06, (a + b) / 2, GROUND - 0.02, z, d.p.stoneDark);
-  }
-  if (o.band) { const h = o.band.h ?? 0.16, y = o.band.y ?? wallH - 0.5; for (const [a, b] of [[xl, left], [right, xr]] as const) if (b - a > 0.3) d.box(d.plain, b - a, h, 0.06, (a + b) / 2, y, z, o.band.col); }
-  for (const pn of o.panels ?? []) {
-    const y0 = pn.y0 ?? 0.55, y1 = pn.y1 ?? wallH - 0.25, w = pn.x1 - pn.x0, cx = (pn.x0 + pn.x1) / 2;
-    d.box(d.plain, w, y1 - y0, 0.06, cx, y0, z, pn.col);
-    const j = k.lite ? 0 : pn.joints ?? 0;
-    for (let i = 1; i <= j; i++) d.box(d.plain, 0.035, y1 - y0 - 0.1, 0.075, pn.x0 + (w * i) / (j + 1), y0 + 0.05, z, pn.jointCol ?? d.p.frame);
-  }
-  for (const x of o.pilasters ?? []) { d.box(d.plain, 0.5, wallH + 0.1 - GROUND, 0.12, x, GROUND - 0.02, E + 0.05, d.p.stone); d.box(d.plain, 0.6, 0.08, 0.2, x, wallH + 0.08, E + 0.07, d.p.stoneDark); }
 }

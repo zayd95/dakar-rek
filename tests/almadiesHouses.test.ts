@@ -1,26 +1,26 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { GRID, PALETTES, STOREY, TRI_CAP, type Site } from '../src/world/almadies/contract';
+import { E, GRID, PALETTES, STOREY, TRI_CAP, type Site } from '../src/world/almadies/contract';
 import { gateX } from '../src/world/almadies/parts';
 import { variantsFor } from '../src/world/almadies/district';
 import { guardGlass } from '../src/world/almadies/villas.kit';
 import type { Batch } from '../src/world/batch';
 import { drawSite } from './helpers/siteCost';
-import { PAL, colliderInPlan, coloursOf, panesPerStorey, siteWith, silhouette, toPlan } from './helpers/designChecks';
+import { PAL, colliderInPlan, coloursOf, panesPerStorey, siteWith, silhouette, toPlan, walkToDoor } from './helpers/designChecks';
 
 /**
  * LD2.0-E lane E-V: the three houses (src/world/almadies/houses.ts): compact two-storey homes behind a low wall, each its own silhouette, with a real
  * front door, a glass-guarded balcony or terrace on the street, a carport or garage, a small garden. For every design, on 2 and 3 storeys, both facings,
  * mirrored or not, the three gate sides and every palette.
  */
-const calls = vi.hoisted(() => ({ doors: [] as { face: string; hub: { x: number; z: number } }[], balconies: [] as { face: string; y: number }[], perimeter: [] as { gate?: string; front?: string }[] }));
+const calls = vi.hoisted(() => ({ doors: [] as { face: string; hub: { x: number; z: number } }[], balconies: [] as { face: string; y: number }[], perimeter: [] as { gate?: string; front?: string; entries: { hub: { x: number; z: number }; w: number }[] }[] }));
 vi.mock('../src/world/almadies/parts', async importOriginal => {
   const m = await importOriginal<typeof import('../src/world/almadies/parts')>();
   return {
     ...m,
     door: (d: Parameters<typeof m.door>[0], o: Parameters<typeof m.door>[1]) => { calls.doors.push({ face: o.face, hub: d.f.p(o.x, o.z) }); return m.door(d, o); },
     balcony: (d: Parameters<typeof m.balcony>[0], o: Parameters<typeof m.balcony>[1]) => { calls.balconies.push({ face: o.face, y: o.y }); return m.balcony(d, o); },
-    perimeter: (d: Parameters<typeof m.perimeter>[0], o: Parameters<typeof m.perimeter>[1] = {}) => { calls.perimeter.push({ gate: o.gate, front: o.front }); return m.perimeter(d, o); },
+    perimeter: (d: Parameters<typeof m.perimeter>[0], o: Parameters<typeof m.perimeter>[1] = {}) => { calls.perimeter.push({ gate: o.gate, front: o.front, entries: (o.entries ?? []).map(e => ({ hub: d.f.p(e.x, E - 0.15), w: e.w })) }); return m.perimeter(d, o); },
   };
 });
 const HOUSES = variantsFor('house', 'S');
@@ -56,7 +56,8 @@ describe('the house designs', () => {
         expect(lite.tris, `lite ${lite.tris} / ${r.tris}`).toBeLessThanOrEqual(r.tris * 0.9);
         expect(r.signs).toHaveLength(0);
         expect(r.group).toBeUndefined();
-        expect(perimeter).toEqual([{ gate: gate === 'centre' ? 'centre' : 'right', front: 'low' }]);   // the shared boundary once: a low street wall, the gate in the design's arrangement
+        expect(perimeter).toHaveLength(1);                                                            // the shared boundary once: a railing on the street (the default front), the gate in the design's arrangement
+        expect(perimeter[0].gate).toBe(gate === 'centre' ? 'centre' : 'right'); expect(perimeter[0].front).toBeUndefined();
         expect(Math.max(...r.colliders.map(c => c.h))).toBeGreaterThanOrEqual(storeys * STOREY * 0.9);
         const g = r.colliders.map(c => colliderInPlan(r.draw, c)).filter(c => Math.abs(c.h - 2.3) < 1e-6);
         expect(g).toHaveLength(1);
@@ -73,14 +74,14 @@ describe('the house designs', () => {
         expect(street.some(p => p.z < 8 && p.z > 2), 'the door stands in the house\'s front, not on the wall').toBe(true);
         const panes = panesPerStorey(r.kit.batches, STOREY);
         for (let st = 0; st < storeys; st++) expect(panes[st] ?? 0, `panes on storey ${st} (${panes.join(',')})`).toBeGreaterThanOrEqual(2);
-        // a glass guard facing the street at an upper floor: a pale guard box spanning at least 2.4 m across the street side, over the first floor
+        // a glass guard facing the street at an upper floor: a pale guard box (dark-glass batch) spanning at least 2.4 m across the street side, over the first floor
         const guard = guardGlass(PALETTES[s.palette].glass);
-        const guards = boxesInPlan(r, 'plain').filter(b => Math.abs(b[6] - guard) < 0x030303 || near(new Set([b[6]]), guard, 2));
+        const guards = boxesInPlan(r, 'glassDark').filter(b => Math.abs(b[6] - guard) < 0x030303 || near(new Set([b[6]]), guard, 2));
         expect(guards.some(b => b[1] - b[0] >= 2.4 && b[2] > 0 && b[4] >= 3), 'a glass guard across the street side, at the first floor or above').toBe(true);
         // covered parking on the gate's side: a slab above head height, at least 2.5 × 3 m, over the drive's side
         const slabs = boxesInPlan(r, 'plain').filter(b => b[5] - b[4] <= 0.45 && b[4] >= 2.4 && b[4] <= 3.9 && b[1] - b[0] >= 2.5 && b[3] - b[2] >= 3 && Math.sign((b[0] + b[1]) / 2) === sg);
         expect(slabs.length, 'a carport slab or a garage roof on the gate side').toBeGreaterThanOrEqual(1);
-        expect(r.kit.batches.metal.count, 'the gate and the garage or foot gate').toBeGreaterThanOrEqual(2);
+        expect(r.kit.batches.metal.count, 'the bar gate (and the garage door)').toBeGreaterThanOrEqual(1);
         expect(r.kit.batches.leaves.count, 'planting').toBeGreaterThanOrEqual(3);
         expect(r.kit.batches.bulbs.count, 'lights').toBeGreaterThanOrEqual(5);
         expect(r.kit.batches.pave.count, 'a drive and a path').toBeGreaterThanOrEqual(2);
@@ -93,6 +94,26 @@ describe('the house designs', () => {
         max = Math.max(max, drawSite(s, v).tris);
       }
       expect(max).toBeLessThanOrEqual(TRI_CAP.house.S!);
+    });
+    it('is open to the street: a walk-in opening in the railing in front of the front door, a clear path from the pavement to its step, the car gate shut', () => {
+      for (const storeys of [2, 3]) for (const gate of ['right', 'left'] as const) for (const [facing, mirror] of [['south', false], ['north', true], ['south', true], ['north', false]] as const) {
+        const s = siteWith('house', { gate, mirror, facing, storeys }), { r, doors, perimeter } = draw(v, s), label = `${storeys} storeys, gate ${gate}, ${facing}${mirror ? ' mirrored' : ''}`;
+        expect(perimeter[0].entries, label).toHaveLength(1);
+        const op = toPlan(r.draw, perimeter[0].entries[0].hub), w = perimeter[0].entries[0].w;
+        const door = doors.filter(d => d.face === 'street').map(d => toPlan(r.draw, d.hub)).find(p => p.z < 9)!;
+        expect(Math.abs(op.x - door.x), `${label}: the opening is in line with the door`).toBeLessThan(0.3);
+        const { reached, crossing } = walkToDoor(r.draw, { x: op.x, z: E + 1.2 }, { x: door.x, z: door.z + 0.9 });
+        expect(reached, `${label}: a body walks from the pavement to the door's step`).toBe(true);
+        expect(crossing.length, `${label}: the opening is open`).toBeGreaterThan(0);
+        for (const x of crossing) expect(Math.abs(x - op.x), `${label}: crossing at ${x}`).toBeLessThanOrEqual(w / 2);
+      }
+    });
+    it('and without an opening (a centre gate leaves no room for one) nobody walks in', () => {
+      const s = siteWith('house', { gate: 'centre', storeys: 2 }), { r, doors, perimeter } = draw(v, s);
+      if (perimeter[0].entries.length) return;
+      const door = doors.filter(d => d.face === 'street').map(d => toPlan(r.draw, d.hub)).find(p => p.z < 9)!;
+      const w = walkToDoor(r.draw, { x: door.x, z: E + 1.2 }, { x: door.x, z: door.z + 0.9 });
+      expect(w.reached).toBe(false); expect(w.crossing).toHaveLength(0);
     });
     it('wears any palette: its render, slab, stone, wood and frame colours come from the site\'s palette, never hard-coded', () => {
       const seen = PAL.map(p => ({ p, cols: coloursOf(drawSite(siteWith('house', { palette: p, storeys: 2 }), v).kit.batches), pal: PALETTES[p] }));

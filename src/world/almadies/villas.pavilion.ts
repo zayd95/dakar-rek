@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, plaque, poolGarden, pot, rail, slats, stones, tones, wallDress, win, edgeLight } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, bench } from './villas.kit';
 
 /**
  * Villa 3, « Pavillons »: two pavilions under deep thin flat roofs, the tall living pavilion and the low suite-and-garage pavilion, joined by a glazed link
@@ -8,8 +8,8 @@ import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, eave, garageDoor
  */
 export const pavilion: SiteBuilder = o => {
   const k = ctx(o), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), gd = lightGuard(k), tn = tones(k), nb = n - 1;     // B has one storey fewer than A
-  boundary(k, { h: 2.2, bloom: [-6.6 + k.j(1.2), 3.4 + k.j(0.8)] });
-  wallDress(k, { plinth: 0.4, panels: [{ x0: -10.3, x1: -3.2, col: p.wood, joints: 7 }, { x0: 1.4, x1: 4.6, col: p.stone }] });
+  const ent = entry(k, -1.2, 2.0);
+  boundary(k, { h: 2.2, entries: ent });
   const A = R(-10.0, -2.8, -6.4, 4.2), L = R(-2.8, 0.4, -1.5, 3.0), B = R(0.4, 9.4, -5.0, 2.0), fa = lv(n), fb = lv(nb), lt = F1 - 0.4;
   // ---- the pavilions: A in the render with a stone end wall, B with a timber face, the link a glass box; each under a deep thin roof
   volume(d, A, GROUND, fa - T_SLAB, p.render);
@@ -47,16 +47,16 @@ export const pavilion: SiteBuilder = o => {
   deckFlat(k, B, fb, p.wood);
   slats(k, R(2.6, 7.6, -3.4, 0.2), fb, { h: 2.5, pitch: 0.8 });
   // ---- the forecourt: the wall's portal and the number, the water mirror with its stepping slabs, lawn, lanterns
-  door(d, { face: 'street', x: -1.2, z: 10.7, portal: true, steps: false });
-  plaque(k, o.site.number, k.g0 - 0.3, 1.5, 11.14);
+  houseNumber(k, o.site.number, ent);
+  bloomRail(k, -4.8 + k.j(0.5));
   const wm = R(-9.4, 0.4, 5.7, 7.1);
   d.box(d.plain, wm.x1 - wm.x0 + 0.5, 0.18, 0.25, (wm.x0 + wm.x1) / 2, GROUND, wm.z1 + 0.125, d.c.rim); d.box(d.plain, wm.x1 - wm.x0 + 0.5, 0.18, 0.25, (wm.x0 + wm.x1) / 2, GROUND, wm.z0 - 0.125, d.c.rim);
   d.box(d.plain, 0.25, 0.18, wm.z1 - wm.z0, wm.x0 - 0.125, GROUND, (wm.z0 + wm.z1) / 2, d.c.rim); d.box(d.plain, 0.25, 0.18, wm.z1 - wm.z0, wm.x1 + 0.125, GROUND, (wm.z0 + wm.z1) / 2, d.c.rim);
   d.flat(d.water, wm.x1 - wm.x0, wm.z1 - wm.z0, (wm.x0 + wm.x1) / 2, GROUND + 0.1, (wm.z0 + wm.z1) / 2, d.c.water);
-  pave(k, R(-1.9, -0.5, 3.0, 10.4), tn.path, 2); d.box(d.plain, 1.5, 0.22, wm.z1 - wm.z0 + 0.5, -1.2, GROUND, (wm.z0 + wm.z1) / 2, d.p.stone);
+  walk(k, -1.2, 3.6, 1.4); d.box(d.plain, 1.5, 0.22, wm.z1 - wm.z0 + 0.5, -1.2, GROUND, (wm.z0 + wm.z1) / 2, d.p.stone);
   pave(k, R(2.8, 9.8, 2.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -2.4, 7.6, 10.4)); lawn(k, R(-10.4, -2.8, 4.6, 5.4)); lawn(k, R(0.0, 2.6, 3.0, 5.4));
-  stones(k, -1.2, 8.0, -1.2, 10.0, 2, p.stone);
+  bench(k, -3.4, 9.5);
   if (n === 2) lantern(k, 1.0, 4.4);
   if (n === 2) pot(k, -9.0, 8.2, 1.2, 0.7, 0.6, true);
   palmAt(k, -8.8 + k.j(0.5), 9.0 + k.j(0.5), 1.0 + k.j(0.08), 0.5 + k.j(0.9));

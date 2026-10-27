@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, garageDoor, hedge, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, plaque, poolGarden, pot, roofKit, shrub, slats, stones, tones, wallDress, win } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, roofKit, shrub, slats, tones, win, entry, walk, bench } from './villas.kit';
 
 /**
  * Villa 2, « Arcades »: a portico of square piers and deep lintels along the front, the sand-coloured house behind it, the upper floor opening on a long
@@ -8,8 +8,8 @@ import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, garageDoor, hedge, lantern
  */
 export const arcade: SiteBuilder = o => {
   const k = ctx(o), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k), acc = p.accent, tn = tones(k);
-  boundary(k, { h: 2.2, bloom: [-1.0 + k.j(1), 8.6 + k.j(0.4)] });
-  wallDress(k, { plinth: true, band: { col: acc, y: 1.7, h: 0.14 }, pilasters: [-9.4, -6.2, 0.2, 3.0] });
+  const ent = entry(k, -3.05, 2.0);
+  boundary(k, { h: 2.2, entries: ent });
   const M = R(-7.8, 7.6, -4.4, 3.6), A = R(-8.1, 7.9, 3.6, 6.3), px = [-7.4, -4.5, -1.6, 1.3, 4.2, 7.1], zp = 5.95;
   // ---- the masses: the ground floor in the sand render, the upper floor in the ivory, the roof slab with its parapet
   volume(d, M, GROUND, F1 - T_SLAB, p.render2);
@@ -64,15 +64,14 @@ export const arcade: SiteBuilder = o => {
   if (n === 2) roofKit(k, -3.0, -2.6, F2 + 0.02);
   bloomWall(k, 'left', -1.0, 2.2);
   // ---- the forecourt: the wall's portal, the number, the path to the arcade, lawn, planters, the drive to the garage
-  door(d, { face: 'street', x: -3.05, z: 10.7, portal: true, steps: false });
-  plaque(k, o.site.number, k.g0 - 0.3, 1.5, 11.14);
-  pave(k, R(-3.7, -2.4, 6.4, 10.4), tn.path, 2);
+  houseNumber(k, o.site.number, ent);
+  bloomRail(k, -6.6 + k.j(0.5));
+  walk(k, -3.05, 6.1, 1.6);
   pave(k, R(3.4, 9.8, 6.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -4.0, 6.5, 10.4)); lawn(k, R(-1.8, 3.2, 6.6, 10.4));
-  stones(k, -3.05, 6.7, -3.05, 9.9, 3, p.stone);
+  bench(k, -0.9, 9.5);
   lantern(k, -5.8, 6.9); lantern(k, -0.4, 6.9);
   pot(k, 1.1, 7.0, 1.2, 0.7, 0.55, true);
-  if (!lite) hedge(k, -10.3, 9.5, -4.6, 9.5, 0.7);
   palmAt(k, -9.3 + k.j(0.3), 4.9 + k.j(0.8), 1.05 + k.j(0.08), 0.7 + k.j(0.9));
   // ---- the back garden: the pool, the loungers, the palm
   pave(k, R(-10.4, 10.4, -10.4, -4.6), tn.deck);
@@ -81,5 +80,5 @@ export const arcade: SiteBuilder = o => {
   shrub(k, -9.2, -9.4, 0.7);
   // ---- solid
   solidBox(d, M, Ft + 0.4);
-  solidBox(d, R(-8.0, 7.8, 5.6, 6.3), F1);
+  for (const x of px) solidBox(d, R(x - 0.26, x + 0.26, zp - 0.26, zp + 0.26), F1);                      // the piers; the bays stay open to the door
 };
