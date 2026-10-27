@@ -1,13 +1,13 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, garageDoor, hedge, lantern, lawn, lightGuard, lv, pave, plaque, post, pot, rail, shrub, slats, tree, wallDress, win, edgeLight } from './villas.kit';
+import { GROUND, R, T_SLAB, boundary, ctx, eave, footGate, garageDoor, hedge, lantern, lawn, lightGuard, lv, pave, plaque, post, pot, rail, shrub, slats, tones, tree, wallDress, win, edgeLight } from './villas.kit';
 
 /**
  * House 2, « Maison en L »: an L of two wings under deep thin flat roofs, a stone plinth and a travertine ground floor, a covered loggia in the L's corner
  * with a terrace and a timber pergola over it, a garage with a green roof, a small garden.
  */
 export const ell: SiteBuilder = o => {
-  const k = ctx(o, { gateW: 3.4 }), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k);
+  const k = ctx(o, { gateW: 3.4 }), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), gd = lightGuard(k), tn = tones(k);
   boundary(k, { h: 1.9, front: 'low' });
   wallDress(k, { plinth: 0.3, panels: [{ x0: -3.4, x1: 2.4, y0: 0.2, y1: 0.85, col: p.stone }] }, 1.0);
   const A = R(-9.6, 3.0, 0.6, 5.6), B = R(-9.6, -3.6, -6.6, 0.6), Gar = R(3.0, 9.6, 0.6, 5.6), V = R(-3.6, 3.0, -6.2, 0.6);
@@ -43,15 +43,15 @@ export const ell: SiteBuilder = o => {
   // ---- the garden: the foot gate, the path, lawn, a tree, a lantern, planters; the drive to the garage
   footGate(k, -6.4);
   plaque(k, o.site.number, k.g0 - 0.3, 1.1, 11.14, { w: 0.4, h: 0.22 });
-  pave(k, R(-7.0, -5.8, 5.6, 10.4), d.c.stone);
-  pave(k, R(3.4, 9.8, 5.4, 10.4), d.c.drive);
+  pave(k, R(-7.0, -5.8, 5.6, 10.4), tn.path, 2);
+  pave(k, R(3.4, 9.8, 5.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -7.2, 7.0, 10.4)); lawn(k, R(-5.6, 3.2, 7.0, 10.4)); lawn(k, R(-10.4, -9.4, 5.6, 7.0));
   tree(k, -8.8 + k.j(0.5), 8.4 + k.j(0.4), 0.95 + k.j(0.1));
   lantern(k, -2.8, 6.6);
   hedge(k, -5.4, 9.9, 2.6, 9.9, 0.6);
   if (n === 2) pot(k, 0.6, 6.2, 1.4, 0.6, 0.5, true);
   if (n === 2) shrub(k, 2.0, 8.6, 0.6);
-  pave(k, R(-10.4, 10.4, -10.4, -6.8), d.c.deck);
+  pave(k, R(-10.4, 10.4, -10.4, -6.8), tn.deck);
   lawn(k, R(-10.0, -1.0, -10.0, -7.4)); lawn(k, R(4.0, 10.0, -10.0, 0.0));
   solidBox(d, A, Ft + 0.3); solidBox(d, B, Ft + 0.3); solidBox(d, Gar, F1 - 0.3);
 };

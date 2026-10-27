@@ -1,13 +1,13 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, plaque, poolGarden, post, pot, rail, shrub, slats, stones, tones, wallDress, win, edgeLight } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, plaque, poolGarden, pot, rail, slats, stones, tones, wallDress, win, edgeLight } from './villas.kit';
 
 /**
  * Villa 3, « Pavillons »: two pavilions under deep thin flat roofs, the tall living pavilion and the low suite-and-garage pavilion, joined by a glazed link
  * that holds the front door; a long water mirror before them, a long pool and a tropical pergola behind.
  */
 export const pavilion: SiteBuilder = o => {
-  const k = ctx(o), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), gd = lightGuard(k), nb = n - 1;     // B has one storey fewer than A
+  const k = ctx(o), { d, n } = k, p = d.p, F1 = lv(1), F2 = lv(2), gd = lightGuard(k), tn = tones(k), nb = n - 1;     // B has one storey fewer than A
   boundary(k, { h: 2.2, bloom: [-6.6 + k.j(1.2), 3.4 + k.j(0.8)] });
   wallDress(k, { plinth: 0.4, panels: [{ x0: -10.3, x1: -3.2, col: p.wood, joints: 7 }, { x0: 1.4, x1: 4.6, col: p.stone }] });
   const A = R(-10.0, -2.8, -6.4, 4.2), L = R(-2.8, 0.4, -1.5, 3.0), B = R(0.4, 9.4, -5.0, 2.0), fa = lv(n), fb = lv(nb), lt = F1 - 0.4;
@@ -42,10 +42,9 @@ export const pavilion: SiteBuilder = o => {
   win(k, { face: 'right', at: A.x1, u0: -4.6, u1: 2.8, y0: GROUND + 0.1, y1: F1 - 0.75 });
   win(k, { face: 'right', at: B.x1, u0: -3.4, u1: 0.4, y0: GROUND + 0.5, y1: fb - 1.0 });
   for (let s = 1; s < n; s++) win(k, { face: 'left', at: A.x0, u0: -3.0, u1: 1.6, y0: lv(s) + 0.5, y1: lv(s + 1) - 0.9 });
-  // ---- B's roof terrace under its timber pergola (n = 2), A's roof
-  const bt = n === 2 ? B : R(B.x0, B.x1, B.z0, B.z1);
-  rail(k, bt.x0 - 0.2, bt.z1 + 0.5, bt.x1 + 0.6, bt.z1 + 0.5, fb); rail(k, bt.x1 + 0.6, bt.z0 - 0.7, bt.x1 + 0.6, bt.z1 + 0.5, fb);
-  deckFlat(k, R(B.x0, B.x1, B.z0, B.z1), fb, p.wood);
+  // ---- B's roof terrace under its timber pergola
+  rail(k, B.x0 - 0.2, B.z1 + 0.5, B.x1 + 0.6, B.z1 + 0.5, fb); rail(k, B.x1 + 0.6, B.z0 - 0.7, B.x1 + 0.6, B.z1 + 0.5, fb);
+  deckFlat(k, B, fb, p.wood);
   slats(k, R(2.6, 7.6, -3.4, 0.2), fb, { h: 2.5, pitch: 0.8 });
   // ---- the forecourt: the wall's portal and the number, the water mirror with its stepping slabs, lawn, lanterns
   door(d, { face: 'street', x: -1.2, z: 10.7, portal: true, steps: false });
@@ -54,15 +53,15 @@ export const pavilion: SiteBuilder = o => {
   d.box(d.plain, wm.x1 - wm.x0 + 0.5, 0.18, 0.25, (wm.x0 + wm.x1) / 2, GROUND, wm.z1 + 0.125, d.c.rim); d.box(d.plain, wm.x1 - wm.x0 + 0.5, 0.18, 0.25, (wm.x0 + wm.x1) / 2, GROUND, wm.z0 - 0.125, d.c.rim);
   d.box(d.plain, 0.25, 0.18, wm.z1 - wm.z0, wm.x0 - 0.125, GROUND, (wm.z0 + wm.z1) / 2, d.c.rim); d.box(d.plain, 0.25, 0.18, wm.z1 - wm.z0, wm.x1 + 0.125, GROUND, (wm.z0 + wm.z1) / 2, d.c.rim);
   d.flat(d.water, wm.x1 - wm.x0, wm.z1 - wm.z0, (wm.x0 + wm.x1) / 2, GROUND + 0.1, (wm.z0 + wm.z1) / 2, d.c.water);
-  pave(k, R(-1.9, -0.5, 3.0, 10.4), d.c.stone); d.box(d.plain, 1.5, 0.22, wm.z1 - wm.z0 + 0.5, -1.2, GROUND, (wm.z0 + wm.z1) / 2, d.p.stone);
-  pave(k, R(2.8, 9.8, 2.4, 10.4), d.c.drive);
+  pave(k, R(-1.9, -0.5, 3.0, 10.4), tn.path, 2); d.box(d.plain, 1.5, 0.22, wm.z1 - wm.z0 + 0.5, -1.2, GROUND, (wm.z0 + wm.z1) / 2, d.p.stone);
+  pave(k, R(2.8, 9.8, 2.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -2.4, 7.6, 10.4)); lawn(k, R(-10.4, -2.8, 4.6, 5.4)); lawn(k, R(0.0, 2.6, 3.0, 5.4));
   stones(k, -1.2, 8.0, -1.2, 10.0, 2, p.stone);
   if (n === 2) lantern(k, 1.0, 4.4);
   if (n === 2) pot(k, -9.0, 8.2, 1.2, 0.7, 0.6, true);
   palmAt(k, -8.8 + k.j(0.5), 9.0 + k.j(0.5), 1.0 + k.j(0.08), 0.5 + k.j(0.9));
   // ---- the back: the long pool, the pergola and loungers on the terrace, palms
-  pave(k, R(-10.4, 10.4, -10.4, -5.6), tones(k).deck);
+  pave(k, R(-10.4, 10.4, -10.4, -5.6), tn.deck);
   const raise = 0.45, yd = GROUND + raise;
   poolGarden(k, { deck: R(-10.4, 10.4, -10.4, -7.3), pool: R(-9.2, 2.6, -9.9, -8.0), loungers: [[4.8, -9.0], [6.4, -9.0]], raise });
   slats(k, R(3.4, 8.8, -10.1, -6.0), yd, { h: 2.6, pitch: 0.8 });
@@ -70,5 +69,4 @@ export const pavilion: SiteBuilder = o => {
   bloomWall(k, 'left', 0.5, 2.2); if (n === 2) bloomWall(k, 'back', 5.0, 2.2);
   // ---- solid
   solidBox(d, A, fa + 0.35); solidBox(d, B, fb + 0.35); solidBox(d, L, lt);
-  void post; void shrub;
 };

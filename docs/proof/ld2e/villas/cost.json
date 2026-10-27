@@ -1,5 +1,5 @@
 {
- "at": "2026-10-27T13:57:31.797Z",
+ "at": "2026-10-27T14:01:01.358Z",
  "cost": {
   "house-m1": {
    "name": "Maison empilée",
@@ -9,7 +9,7 @@
     "front": 142,
     "street": 152,
     "back": 145,
-    "night": 92
+    "night": 91
    },
    "medium": {
     "calls": 7,
