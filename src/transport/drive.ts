@@ -118,3 +118,15 @@ export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: numb
   s.speed = -s.speed * 0.15;                                    // a small bounce back
   return true;
 }
+
+/** The longest stretch (m) a vehicle moves between two looks at what is in its way: a car at 200 km/h covers 5 m in a slow frame, more than a wall is thick. */
+export const MAX_STEP = 0.5;
+/**
+ * `driveStep` in as many equal steps as the speed needs to keep each under MAX_STEP (at most 12 per call). It stops at the first contact: the rest of the frame is
+ * dropped rather than bouncing again and again in one frame. Slow vehicles (a step under MAX_STEP) run exactly one `driveStep`, as before.
+ */
+export function driveSteps(s: DriveState, inp: DriveInput, d: DriveSpec, dt: number, blocked: Blocked): boolean {
+  const n = Math.min(12, Math.max(1, Math.ceil((Math.abs(s.speed) * dt) / MAX_STEP))), h = dt / n;
+  for (let i = 0; i < n; i++) if (driveStep(s, inp, d, h, blocked)) return true;
+  return false;
+}

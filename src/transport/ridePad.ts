@@ -15,10 +15,11 @@ export const STEER_REACH = 56;
  * then the wheel follows the finger, a little finer near the middle (a gentle curve), full lock at the end of the stroke.
  */
 export const rockerSteer = (u: number) => { const m = Math.min(1, Math.abs(u)), k = Math.max(0, (m - 0.06) / 0.94); return k === 0 ? 0 : Math.sign(u) * k ** 1.15; };
-/** The throttle asked by a toe at `f` down the gas pedal (0 the heel … 1 the toe): from 0.35, and from BOOST_AT the toe is on the floor. */
-export const gasPressure = (f: number) => 0.35 + 0.65 * Math.max(0, Math.min(1, f));
-/** The toe on the floor (a throttle from this up) for this long (s) opens the boosted speed range. */
-export const BOOST_AT = 0.9, BOOST_HOLD = 0.6;
+/** The throttle asked by a toe at `f` down the gas pedal (0 the heel … 1 the toe): a gentle 0.35 at the top edge (creeping in a bay), full from the middle of the pedal down. */
+export const FULL_AT = 0.4;
+export const gasPressure = (f: number) => Math.min(1, 0.35 + 0.65 * (Math.max(0, Math.min(1, f)) / FULL_AT));
+/** Full throttle (the thumb from the middle of the pedal down) held this long (s) opens the boosted speed range: the longer the foot stays down, the faster the car goes. */
+export const BOOST_AT = 0.97, BOOST_HOLD = 0.8;
 export interface PadOptions {
   /** A car: bigger buttons. */
   car?: boolean;
@@ -47,7 +48,7 @@ export const ridePad = {
   get steer() { return padSteer; },
   /** Throttle asked for by the gas pedal, smoothed (0 … 1). */
   get gasAmount() { return gasSm; },
-  /** The toe is down to the floor and has stayed there a moment: the boosted speed range opens. */
+  /** The foot has stayed down at full throttle a moment: the boosted speed range opens. */
   get boostOn() { return this.gas && gasHeld > BOOST_HOLD; },
   /** One frame of the pad's smoothing (the pad's owner only): the wheel and the throttle follow the thumbs, never in a step. */
   tick(by: Owner, dt: number) {

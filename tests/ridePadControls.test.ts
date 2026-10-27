@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { BOOST_AT, STEER_REACH, gasPressure, rockerSteer } from '../src/transport/ridePad';
+import { terangaSpec, rafetSpec, lamaneSpec, gaindeSpec } from '../src/transport/modelCars';
+import { berlineSpec } from '../src/transport/premiumCars';
+import { BOOST_AT, FULL_AT, STEER_REACH, gasPressure, rockerSteer } from '../src/transport/ridePad';
 import { DriveControls } from '../src/transport/controls';
 import type { DriveSpec } from '../src/transport/spec';
 
@@ -17,10 +19,19 @@ describe('the steering rocker and the pedals', () => {
     expect(rockerSteer(-0.4)).toBeCloseTo(-rockerSteer(0.4));
     expect(STEER_REACH).toBeLessThan(89);                                                  // a stroke well inside the pad's half width
   });
-  it('gives throttle by the toe: from 0.35 at the heel, the floor opens the boosted range', () => {
+  it('gives throttle by the toe: a gentle 0.35 at the top edge, full from the middle of the pedal down (where, held, the boosted range opens)', () => {
     expect(gasPressure(0)).toBeCloseTo(0.35); expect(gasPressure(1)).toBe(1); expect(gasPressure(2)).toBe(1); expect(gasPressure(-1)).toBeCloseTo(0.35);
-    expect(gasPressure(0.5)).toBeLessThan(BOOST_AT);                                      // half-way: cruising, no boost
-    expect(gasPressure(0.9)).toBeGreaterThanOrEqual(BOOST_AT);
+    expect(gasPressure(0.3)).toBeLessThan(BOOST_AT); expect(gasPressure(0.2)).toBeLessThan(gasPressure(0.3));                                      // the upper part of the pedal: controlled, no boost
+    expect(gasPressure(FULL_AT)).toBeGreaterThanOrEqual(BOOST_AT);                        // the thumb on the middle of the pedal is full throttle, not half
+    expect(gasPressure(0.75)).toBeGreaterThanOrEqual(BOOST_AT);
+    let prev = 0; for (let f = 0; f <= 1; f += 0.05) { const g = gasPressure(f); expect(g).toBeGreaterThanOrEqual(prev); prev = g; }
+  });
+  it('a thumb on the middle of the pedal reaches the full cruising speed, and the boosted range goes well past it (a car up to about 200 km/h)', () => {
+    const c = new DriveControls(), full = c.update(0.016, { fwd: gasPressure(0.55), steer: 0, boost: false, brake: false }, 0, SPEC, true).target ?? 0;
+    expect(full).toBeCloseTo(SPEC.maxSpeed);
+    const best = Math.max(...[terangaSpec(), rafetSpec(), lamaneSpec(), gaindeSpec(), berlineSpec()].map(s => (s.drive!.boostSpeed ?? 0) * 3.6));
+    expect(best).toBeGreaterThan(190); expect(best).toBeLessThanOrEqual(205);
+    for (const s of [terangaSpec(), rafetSpec(), lamaneSpec(), gaindeSpec(), berlineSpec()]) expect((s.drive!.boostSpeed ?? 0) * 3.6).toBeGreaterThan(150);
   });
   it('a gas pedal alone sets a car off and a heavier toe goes faster; lifting it coasts to a stop', () => {
     const c = new DriveControls(), at = (fwd: number) => c.update(0.016, { fwd, steer: 0, boost: false, brake: false }, 0, SPEC, true).target ?? 0;

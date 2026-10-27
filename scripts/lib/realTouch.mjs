@@ -52,11 +52,11 @@ export async function padRig(page, t) {
         if (!on) { await t.down(id, b.cx, b.cy); on = true; await t.move(id, x, b.cy, 3); } else await t.move(id, x, b.cy, 1);
       };
     },
-    /** A finger on the gas pedal: off, on at the heel's half (cruising: no boost), `boost` true (the toe on the floor) or a number (how far down the pedal, 0 heel … 1 toe). Call it again as the wish changes. */
+    /** A finger on the gas pedal: off, on in the pedal's upper part (cruising, no boost), `boost` true (the toe on the floor) or a number (how far down the pedal, 0 top … 1 toe; from 0.4 down it is full throttle and, held, opens the boost). Call it again as the wish changes. */
     gas(id) {
       let on = false, f = 0;
       return async (want, boost = false) => {
-        const nf = typeof boost === 'number' ? boost : boost ? 0.97 : 0.8;
+        const nf = typeof boost === 'number' ? boost : boost ? 0.97 : 0.25;
         if (!want) { if (on) { await t.up(id); on = false; } return; }
         if (!on) { await t.down(id, b.gx, b.gtop + nf * b.gh); on = true; f = nf; } else if (nf !== f) { await t.move(id, b.gx, b.gtop + nf * b.gh, 1); f = nf; }
       };

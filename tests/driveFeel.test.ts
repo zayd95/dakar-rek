@@ -19,14 +19,14 @@ describe('how the player drives, as the city sees it', () => {
   it('says « fast » once, after a stretch above the line, and not for a burst', () => {
     const f = new DriveFeel();
     expect(run(f, FAST + 1, FAST_FOR - 0.5).map(e => e.kind)).toEqual([]);
-    expect(ramp(f, FAST + 1, 8, 1.2).map(e => e.kind)).toEqual([]);                      // the burst is over
+    expect(ramp(f, FAST + 1, 8, 3).map(e => e.kind)).toEqual([]);                      // the burst is over
     expect(run(f, FAST + 1, FAST_FOR + 0.3).map(e => e.kind)).toEqual(['fast']);
     expect(run(f, FAST + 1, 5).map(e => e.kind)).toEqual([]);                            // still fast: said once
   });
   it('says it again only after the speed has come back down for a while', () => {
     const f = new DriveFeel();
     run(f, FAST + 2, FAST_FOR + 0.5);
-    ramp(f, FAST + 2, 6, 2); run(f, 6, CALM_AFTER + 0.5);
+    ramp(f, FAST + 2, 6, 4); run(f, 6, CALM_AFTER + 0.5);
     expect(run(f, FAST + 2, FAST_FOR + 0.5).map(e => e.kind)).toEqual(['fast']);
   });
   it('very fast goes first and covers fast', () => {

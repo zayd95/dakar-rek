@@ -22,7 +22,7 @@ describe('the street and the car', () => {
     expect(assess(car(0.3), { x: 2.4, z: 2 }).level).toBe('none');
   });
   it('a fast pass at a distance is noticed', () => {
-    expect(assess(car(20), { x: 5, z: 8 }).level).toBe('notice');
+    expect(assess(car(24), { x: 5, z: 8 }).level).toBe('notice');
     expect(assess(car(8), { x: 5, z: 8 }).level).toBe('none');
   });
   it('follows the car’s heading: the same people, the car turned a quarter', () => {

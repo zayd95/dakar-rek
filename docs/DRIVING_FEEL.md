@@ -4,12 +4,15 @@ After the owner's play-test (27 Oct): « Replace the joystick with a Pad for eas
 
 ## The pad (`src/transport/ridePad.ts`, `ridePad.css`)
 - **Steering pad** under the left thumb (`#steerpad`), a joystick laid on its side: a wide pill with an arrow at each end and a knob. The thumb lands anywhere on it and **slides** left or right, never pressing a side: the wheel follows how far it has slid from where it landed (56 px is full lock, a small dead zone, a gentle curve; `rockerSteer`), the knob follows the wheel, and lifting the thumb brings it back to the middle. The wheel follows smoothly (`tick`).
-- **Pedals** under the right thumb, upright, ribbed and **without words**: the green accelerator (the lower the toe on the pedal, the more throttle: from 0.35 at the heel; with the toe on the floor for 0.6 s the boosted range opens; a light fills the pedal from the toe up) and the red brake, a little shorter (a car held at a standstill still backs up, as before).
+- **Pedals** under the right thumb, upright, ribbed and **without words**: the green accelerator and the red brake, a little shorter (a car held at a standstill still backs up, as before). The accelerator: the top edge is a gentle throttle (0.35, for creeping into a bay); **from 40 % of the pedal down it is full throttle** (the cruising speed, 68 km/h), and held there for 0.8 s the boosted range opens, so the longer the foot stays down the faster the car goes. (First version: a thumb on the middle of the pedal was only half throttle, about 36 km/h, and the boost needed the last 10 % of the pedal: the car felt stuck at 0–40 km/h.)
 - The joystick is hidden and not read while driving (`ownedModule`: `fwd` from the pedal, `steer` from the pad). The camera is not dragged by a thumb on the pad. Desktop keys unchanged.
 - The Klaxon button is shown on the pad now (it was hidden for screen space): the passengers and the street answer it.
 
+## Speed: up to about 200 km/h
+The ordinary cruising speed is unchanged (19 m/s, 68 km/h). The boosted top speed, opened by the held accelerator, is now: Teranga 166 km/h, Rafet 176, Lamane 162, Gaïndé 184, the new saloon (Prestige) 198, the older sedan 151, the Jakarta motorbike 130. The top is reached in well under 40 s (tests/drive.substep.test.ts); the wheel turns less sharply the faster the car goes (the tyres' grip: a bend at 160 km/h needs the brake). Each frame is cut into steps of at most half a metre (`driveSteps`, `src/transport/drive.ts`) so a fast car in a slow frame cannot jump through a thin wall. The road ahead streams in 340 m round the car (6 s at 200 km/h). The passenger's and the street's thresholds follow: « fast » is above 76 km/h, « very fast » above 119 km/h.
+
 ## What the drive tells the city (`src/transport/driveFeel.ts`)
-The driven vehicle reports each frame; listeners get `fast` (above 15.5 m/s ≈ 56 km/h for 1.8 s), `veryFast` (22 m/s), `hardBrake` (one per braking), `crawl`, `smooth` (26 s without any of it), `crash` and `bump` (from the contact model), `honk`.
+The driven vehicle reports each frame; listeners get `fast` (above 21 m/s ≈ 76 km/h for 1.8 s), `veryFast` (33 m/s ≈ 119 km/h), `hardBrake` (one per braking), `crawl`, `smooth` (26 s without any of it), `crash` and `bump` (from the contact model), `honk`.
 
 ## The passenger (`src/transport/vtcBanter.ts`, played by `vtc.ts`)
 - A temper by the passenger's seed and the hour: **calm**, **hurried** (the rush hours make calm and chatty ones hurried), **nervous**, **chatty**.

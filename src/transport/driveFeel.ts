@@ -3,9 +3,9 @@
  * (`crash`, `bump`); this turns them into the events the people around react to. The passenger of a ride (src/transport/vtcBanter.ts) says « Dawalal ndank » when the car is fast, and the
  * street (src/crowd/streetReact.ts) steps back and shouts when it passes close. One tracker for the page: the vehicle that is driven reports, anyone may listen.
  *
- * Speeds are m/s: a car cruises at 19 (68 km/h) and, with the toe down, opens up to 29. `FAST` is quick for a town street, `VERY_FAST` is not a speed for it.
+ * Speeds are m/s: a car cruises at 19 (68 km/h) and, with the foot held down, opens up to 45–55 (160–200 km/h). `FAST` (76 km/h) is above the cruising speed, `VERY_FAST` (119 km/h) is not a speed for a town street.
  */
-export const FAST = 15.5, VERY_FAST = 22;
+export const FAST = 21, VERY_FAST = 33;
 /** Seconds above `FAST` / `VERY_FAST` before it counts (a burst is not speeding), and seconds below before it can count again. */
 export const FAST_FOR = 1.8, VERY_FAST_FOR = 0.9, CALM_AFTER = 2.5;
 /** Braking harder than this (m/s²) from at least this speed (m/s) is a hard brake. */

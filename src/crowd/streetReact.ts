@@ -16,7 +16,7 @@ export function assess(car: CarState, p: { x: number; z: number }): Assessment {
   const base = { side, ahead, lateral };
   if (v >= 3.5 && reach < car.hw + 0.7 && ahead > -car.hl && ahead < car.hl + v * 1.05) return { level: 'danger', ...base };      // inside the car's path, within about a second of it
   if (v >= 4.5 && reach < car.hw + 1.7 && ahead > -car.hl - 0.5 && ahead < car.hl + v * 0.85) return { level: 'close', ...base };  // a metre or two from the bodywork
-  if (v >= 14 && reach < 6 && ahead > -3 && ahead < 16) return { level: 'notice', ...base };                                      // fast, and near enough to be heard
+  if (v >= 21 && reach < 6 && ahead > -3 && ahead < 16) return { level: 'notice', ...base };                                      // fast, and near enough to be heard
   if (v >= 0.8 && v <= 4.2 && reach < 3.2 && ahead > -car.hl && ahead < car.hl + 4) return { level: 'thanks', ...base };           // slow, close: the driver is being careful
   return { level: 'none', ...base };
 }

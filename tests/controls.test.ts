@@ -52,11 +52,11 @@ describe('forward: the stick sets the speed, « Accélérer » the boosted range
   });
   it('holding Accélérer raises the top speed clearly above cruising, releasing it returns to cruising smoothly', () => {
     for (const d of [car, berline, suv, jakarta]) {
-      const r = run(d, t => ({ ...idle, fwd: 1, boost: t > 8 && t < 20 }), 30);
+      const r = run(d, t => ({ ...idle, fwd: 1, boost: t > 8 && t < 20 }), 38);
       const atBoost = r.log.find(l => l.t >= 19.9)!.v, atCruise = r.log.find(l => l.t >= 7.9)!.v;
       expect(atBoost).toBeGreaterThan(d.maxSpeed * 1.25); expect(atBoost).toBeLessThanOrEqual(d.boostSpeed! + 0.01);
       expect(atCruise).toBeLessThanOrEqual(d.maxSpeed + 0.01);
-      expect(r.s.speed).toBeLessThan(d.maxSpeed * 1.08);                                            // back near ordinary cruising ten seconds after letting go
+      expect(r.s.speed).toBeLessThan(d.maxSpeed * 1.08);                                            // back near ordinary cruising a good while after letting go (a car at 200 km/h takes longer to come down than one at 100)
     }
   });
   it('the button alone sets a stopped vehicle off, and without any forward push the boost button does nothing at a standstill when braking', () => {
@@ -156,7 +156,7 @@ describe('calibration: a ~1.5 km corridor is a short journey, not a crawl', () =
     for (const [name, d] of [['car', car], ['berline', berline], ['suv', suv], ['jakarta', jakarta]] as const) {
       const c = time(d, false), b = time(d, true);
       expect(c, name).toBeLessThan(90); expect(c, name).toBeGreaterThan(50);
-      expect(b, name).toBeLessThan(c * 0.8); expect(b, name).toBeGreaterThan(40);
+      expect(b, name).toBeLessThan(c * 0.8); expect(b, name).toBeGreaterThan(25);
     }
   });
 });

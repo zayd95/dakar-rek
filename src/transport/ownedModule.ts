@@ -19,7 +19,7 @@ import { mountAudioDiag } from './audioDiag';
 import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
-import { driveStep, newDriveState, stopping, type DriveState } from './drive';
+import { driveSteps, newDriveState, stopping, type DriveState } from './drive';
 import { DriveControls, type DriveCmd } from './controls';
 import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
 import type { AssetState } from '../core/types';
@@ -153,7 +153,7 @@ export interface DealerDef {
   unlisted?: boolean;
 }
 
-const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
+const HINT = '↑ accélérer (Maj : à fond) · ↓ freiner · ← → tourner · H klaxon';
 
 /**
  * An action offered at the wheel by another module, first among the driver's (LD2.0-D: « Garer à la villa », src/villa/villaModule.ts), or null
@@ -476,7 +476,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     transport.obstacles(this.obst, this.def.kit);
     vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
-    const z0 = this.st.z, hit = driveStep(this.st, input, drv, dt, this.blocked);
+    const z0 = this.st.z, hit = driveSteps(this.st, input, drv, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
     if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); if (cf.impact.kind === 'hit') driveFeel.crash(cf.impact.strength, cf.impact.speed); else driveFeel.bump(cf.impact.speed); }   // the people round the car feel it too (src/transport/driveFeel.ts)
