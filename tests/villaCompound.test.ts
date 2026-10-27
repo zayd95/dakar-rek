@@ -5,7 +5,7 @@ import { stubCanvas } from './hubstub';
 import { digestHub, type HubDigest } from './helpers/lotDigest';
 import { BAYS, FRONT_DOOR, GATE, HELIPAD, HOUSE, LOT, POOL, STOREY, WALL_H, onLot } from '../src/housing/villa';
 import { GROUND, LOT_RECT, STRIP_Z, VILLA_SITE } from '../src/world/villaCompound';
-import { BLADE_PARK, BLADES, REGISTRATION, ROTOR_DIAMETER, SKIDS, buildHelicopter } from '../src/world/helicopter';
+import { BLADE_PARK, BLADES, LENGTH, REGISTRATION, ROTOR_DIAMETER, SKIDS, buildHelicopter } from '../src/world/helicopter';
 import type { Collider, HubWorld } from '../src/world/types';
 
 /**
@@ -131,7 +131,7 @@ describe('the helicopter', () => {
     expect(ROTOR_DIAMETER).toBeCloseTo(9.4, 5); expect(BLADES).toBe(3);
     const box = new THREE.Box3().setFromObject(h.group);
     expect(box.min.y).toBeGreaterThanOrEqual(-0.001); expect(box.min.y).toBeLessThan(0.01);   // standing on its skids
-    expect(box.max.z - box.min.z).toBeGreaterThan(8); expect(box.max.z - box.min.z).toBeLessThan(9.5);                   // nose to tail
+    expect(box.max.z - box.min.z).toBeGreaterThan(8); expect(box.max.z - box.min.z).toBeLessThan(9.5); expect(box.max.z - box.min.z).toBeCloseTo(LENGTH, 0);   // nose to tail
     expect(box.max.z).toBeGreaterThan(2.3); expect(box.min.z).toBeLessThan(-5.8);                                       // the nose ahead, the tail behind
     expect(h.footprint.h).toBeGreaterThan(2.9); expect(h.footprint.h).toBeLessThan(3.4);
     // the three blades at 120°, one parked over the tail boom: the others reach ±R·sin 60° across
@@ -143,6 +143,7 @@ describe('the helicopter', () => {
     const env = mats['helicopter-paint'].envMap; expect(env).toBeTruthy();
     for (const m of Object.values(mats)) expect(m.envMap).toBe(env);
     expect((buildHelicopter().group.children[0] as THREE.Mesh).material).toBe(mats['helicopter-paint']);   // shared by every helicopter
+    for (const m of Object.values(mats)) expect(m.userData.shared).toBe(true);                         // so an interior's disposal leaves them
   });
   it('reports its true footprint and extent', () => {
     const box = new THREE.Box3().setFromObject(h.group);

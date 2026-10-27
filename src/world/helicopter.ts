@@ -12,12 +12,12 @@ import * as THREE from 'three';
  *    plates, a swept fin (and its ventral fin with a guard skid), an open two-blade tail rotor on the left of the fin.
  *  - A three-blade main rotor, 9.4 m across: its mast, swashplate, pitch links, hub and blade grips; satin blades with a swept tip and a white band,
  *    drooping a little at rest, parked with one blade over the tail boom (as a parked rotor is tied down) and the others at ±120°.
- *  - Skids on two arched cross tubes, a boarding step at each door; the doors' seams and chrome handles, the antennas, a pitot tube, the navigation
+ *  - Skids on two arched cross tubes, boarding steps on them; the doors' seams and chrome handles, the antennas, a pitot tube, the navigation
  *    lights (red on the left, green on the right, on the stabiliser's end plates), a white tail light, the red anti-collision beacons, a landing light.
  *  - Livery: pearl white over a deep graphite-blue lower body that sweeps up into the tail, a thin gold line between them, black window surrounds;
  *    the registration « 6V-ALM » (6V: Senegal) on the rear fuselage's two sides, the flag of Senegal on the fin.
  *
- * Built for a phone: four meshes (four draw calls) by material, each one merged geometry with vertex colours; about 9 000 triangles. Materials that
+ * Built for a phone: four meshes (four draw calls) by material, each one merged geometry with vertex colours; about 10 200 triangles. Materials that
  * catch the light: a clear-coated metallic paint, glossy tinted glass, polished metal, satin blades and trim, reflecting a tiny procedural sky (an
  * equirectangular gradient made here, turned into the renderer's prefiltered map once and shared by every helicopter). The reflections follow the
  * scene's sky light as it is drawn (its hemisphere light: dim at night, by the moon), and add no light of their own to the diffuse (the scene's own
@@ -414,7 +414,8 @@ function materials() {
   const glass = new THREE.MeshPhysicalMaterial({ name: 'helicopter-glass', vertexColors: true, metalness: 0, roughness: 0.04, reflectivity: 0.85, envMap: env, transparent: true, opacity: 0.7 });
   const metal = new THREE.MeshStandardMaterial({ name: 'helicopter-metal', vertexColors: true, metalness: 0.9, roughness: 0.3, envMap: env });
   const satin = new THREE.MeshStandardMaterial({ name: 'helicopter-satin', vertexColors: true, metalness: 0.15, roughness: 0.55, envMap: env });
-  for (const m of [paint, glass, metal, satin]) m.onBeforeCompile = specularOnly;
+  // shared by every helicopter: an interior's disposal leaves them be (src/world/interiors.ts disposeInterior), no program built again on the next visit
+  for (const m of [paint, glass, metal, satin]) { m.onBeforeCompile = specularOnly; m.userData.shared = true; }
   shared = { paint, glass, metal, satin, base: new Map<THREE.Material, number>([[paint, 1.0], [glass, 1.5], [metal, 1.0], [satin, 0.8]]) };
   return shared;
 }
