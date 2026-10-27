@@ -231,7 +231,13 @@ try {
   if (/Aménager/.test(fa)) await A.t.tap('#act'); else await A.d(() => window.__dakar.placer.open());
   await A.until(() => window.__dakar.placer.info().open && document.querySelector('#placer.on'), null, 30000); await A.wait(700);
   const armchair = (await A.d(() => window.__dakar.placer.info().items)).find(i => i.spec === 'fauteuil_boucle');
-  if (armchair) { await A.d(uid => document.querySelector(`#placer [data-uid="${uid}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' }), armchair.uid); await A.wait(150); await A.tap(`#placer [data-uid="${armchair.uid}"]`); await A.wait(400); }
+  // its chip, as a thumb picks it: the list shows the room the editor opened on (« Toutes les pièces » for the others), and scrolls sideways
+  for (let i = 0; armchair && i < 3 && (await A.d(() => window.__dakar.placer.info().selected)) !== armchair.uid; i++) {
+    if (!(await A.d(uid => !!document.querySelector(`#placer [data-uid="${uid}"]`), armchair.uid))) { await A.tap('#placer [data-a="all"]'); await A.wait(500); }
+    await A.d(uid => document.querySelector(`#placer [data-uid="${uid}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' }), armchair.uid); await A.wait(400);
+    await A.tap(`#placer [data-uid="${armchair.uid}"]`); await A.wait(400);
+  }
+  const chosen = (await A.d(() => window.__dakar.placer.info().selected)) ?? null;
   const before = (await A.d(() => window.__dakar.placer.info())).pending;
   const savedAt = uid => A.d(u => { window.__dakar.save(); return JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).assets.list.find(a => a.uid === u)?.at ?? null; }, uid);
   const save0 = armchair ? await savedAt(armchair.uid) : null;
@@ -243,8 +249,8 @@ try {
   await A.tap('#placer [data-a="done"]'); await A.wait(800);
   perf.furnished = await perfHere(A); await A.shot('08-salon-furnished');
   check('7a. the Collection Almadies delivered and set out by the game in the villa (salon, salle à manger, suite)', delivered.every(([, ok]) => ok) && placed0.length >= PIECES.length, JSON.stringify({ delivered: delivered.filter(([, ok]) => !ok), n: placed0.length }));
-  check('7b. « Aménager »: the bouclé armchair chosen and moved with the editor\'s buttons, « Poser »: saved at its new spot', !!armchair && !why && !!after && !!before && (after.x !== before.x || after.z !== before.z)
-    && !!save0 && !!save1 && (save1.x !== save0.x || save1.z !== save0.z), JSON.stringify({ fa, before, after, why, save0, save1 }));
+  check('7b. « Aménager »: the bouclé armchair chosen and moved with the editor\'s buttons, « Poser »: saved at its new spot', !!armchair && chosen === armchair.uid && !why && !!after && !!before && (after.x !== before.x || after.z !== before.z)
+    && !!save0 && !!save1 && (save1.x !== save0.x || save1.z !== save0.z), JSON.stringify({ fa, chosen: chosen === armchair?.uid, before, after, why, save0, save1 }));
 
   // ------------------------------------------------------------------ 8. invite another player
   await A.d(t => window.__dakar.phone(`messages:${t}`), B.tag); await A.until(t => window.__dakar.phoneInfo().arg === t, B.tag);
