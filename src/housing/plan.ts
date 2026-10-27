@@ -1,5 +1,6 @@
 import { VILLA_PLAN } from './villaPlan';
 import { MAISON_PLAN } from './maisonPlan';
+import { RESIDENCE_PLAN } from './residencePlan';
 
 /**
  * LD2.0-C « Walkable Homes » (docs/ld2/LD2_C.md): the contract between the home's shell (its rooms, walls, doors, windows and built-in fittings,
@@ -83,8 +84,22 @@ export interface Level { id: string; name: string; y: number; dx: number }
 export interface Stair { id: string; from: string; to: string; box: Rect; up: Side; steps: number; well?: Rect }
 /** LD2.0-D: a mark painted on a floor and kept clear of furniture (a helipad: an H in a circle). */
 export interface Mark { id: string; kind: 'helipad'; room: string; x: number; z: number; r: number; /** The parked aircraft's heading (its nose: +z at 0). */ yaw?: number }
+/**
+ * The identity of a plan's inside (docs/kits/HOMES.md): the colours a hub gives the same plan. Anything left out keeps the finish of the home's level
+ * (src/economy/homeInterior.ts) or the premium look of a plan on levels (src/housing/apartment.ts). `kinds` overrides one kind of room: its walls above
+ * the dado (`upper`), the dado or the whole wall when it has none (`lower`), the floor's tint (`floor`). A home bought « peinture neuve » is repainted over it.
+ */
+export interface PlanLook {
+  /** The walls of the living rooms, halls and corridors above the dado, and the dado. */
+  wall?: number; dado?: number;
+  kinds?: Partial<Record<RoomKind, { upper?: number; lower?: number; floor?: number }>>;
+  /** The street door's and the interior doors' leaves, and the trims (standard finish; the premium finish keeps its walnut and bronze). */
+  door?: number; trim?: number;
+}
 export interface FloorPlan {
   id: string;
+  /** The identity (colours) this plan wears: see `PlanLook`. */
+  look?: PlanLook;
   /** The home's box: x from −w/2 to w/2, z from −d/2 to d/2 (or `box`). */
   w: number; d: number;
   /** Walls' height; inside and outside walls' thickness. */
@@ -111,6 +126,8 @@ export interface FloorPlan {
   gate?: { x0: number; x1: number };
   /** The depth (m) of the front yard between the house's street wall and the lot's wall: default the lot is as deep as it is wide (the villa's). */
   yard?: number;
+  /** A floor of a tower, not a house on a lot: the shell draws no lawn, path, wall or palm round it. */
+  noLot?: boolean;
 }
 /**
  * The F2 of the Résidence Jàmm (catalogue `appart_jamm`): 9 m by 7 m, 63 m². The street door opens into the entrance hall; the hall opens into the
@@ -166,8 +183,13 @@ export const F2_JAMM: FloorPlan = {
 };
 
 /** The homes built from a floor plan (by catalogue id). The others keep their one open room (src/economy/homeInterior.ts). LD2.0-D: the villa. */
-export const PLANS: Readonly<Record<string, FloorPlan>> = { appart_jamm: F2_JAMM, maison_cite: MAISON_PLAN, villa_almadies: VILLA_PLAN };
+export const PLANS: Readonly<Record<string, FloorPlan>> = { appart_jamm: F2_JAMM, maison_cite: MAISON_PLAN, villa_almadies: VILLA_PLAN, residence_ngor: RESIDENCE_PLAN };
 export const planFor = (homeId: string): FloorPlan | null => PLANS[homeId] ?? null;
+/**
+ * Adds (or replaces) the plan of a home built from a template (src/housing/kit/): a hub that lists a home made of a template registers its plan under the
+ * home's catalogue id before the catalogue is read (the shell, the editor and the placement rules all go by `planFor`).
+ */
+export function registerPlan(homeId: string, plan: FloorPlan): void { (PLANS as Record<string, FloorPlan>)[homeId] = plan; }
 
 // ------------------------------------------------------------------------------------------------ geometry
 const EPS = 1e-6;

@@ -77,7 +77,7 @@ describe('placement', () => {
   it('the F2 and the family house follow their floor plans; the other homes keep their open room', () => {
     expect(layoutOf(homeSpec('appart_jamm')!).plan?.id).toBe('f2_jamm');
     expect(layoutOf(homeSpec('maison_cite')!).plan?.id).toBe('maison_cite');
-    expect(layoutOf(homeSpec('residence_ngor')!).plan).toBeUndefined();
+    expect(layoutOf(homeSpec('residence_ngor')!).plan?.id).toBe('residence_ngor');
     expect(layoutOf(homeSpec(STARTER_HOME)!).plan).toBeUndefined();
   });
   it('a quarter turn swaps width and depth; points rotate like three.js', () => {

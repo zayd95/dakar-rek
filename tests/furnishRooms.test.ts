@@ -29,7 +29,8 @@ describe('the F2 is furnished by room (its floor plan)', () => {
   it('the F2 is a plan home; its rooms are the editor\'s chips (the short hall left out)', () => {
     expect(F2.plan).toBe(F2_JAMM);
     expect(planRooms(F2).map(r => r.name)).toEqual(['Entrée', 'Séjour', 'Cuisine', 'Chambre', 'Salle de bain']);
-    expect(planRooms(layoutOf(homeSpec('residence_ngor')!))).toEqual([]);
+    expect(planRooms(openPlan('residence', 18, 12))).toEqual([]);   // an open room has no room chips (the starter room, and the rules' own checks)
+    expect(planRooms(layoutOf(homeSpec('residence_ngor')!)).map(r => r.name)).toEqual(expect.arrayContaining(['Salon de réception', 'Cuisine', 'Suite parentale']));   // the Ngor residence is a plan home
     expect(planRooms(layoutOf(homeSpec('maison_cite')!)).map(r => r.name)).toEqual(expect.arrayContaining(['Grand salon', 'Cuisine', 'Chambre 2']));   // the family house is a plan home too
   });
 
@@ -154,8 +155,8 @@ describe('the F2 is furnished by room (its floor plan)', () => {
     for (const p of placed) expect(roomAt(F2_JAMM, p.at.x, p.at.z), p.spec.id).not.toBeNull();
   });
 
-  it('the other homes keep today\'s rules (LD2.0-D: the Almadies villa has its plan now, tests/villaFurnish.test.ts; the Ngor residence keeps its room)', () => {
-    const open = openPlan('apartment', 8, 6.5), residence = layoutOf(homeSpec('residence_ngor')!);
+  it('an open room keeps today\'s rules (« Ma chambre » and the rules\' own checks: every other home has its plan now, tests/villaFurnish.test.ts and the kit\'s)', () => {
+    const open = openPlan('apartment', 8, 6.5), residence = openPlan('residence', 18, 12);
     expect(whyNot(open, spec('canape_wax'), at(3.5, 0), [])).toBe('Contre le mur');
     expect(whyNot(open, spec('canape_wax'), at(0, 1), [])).toBeNull();
     expect(residence.plan).toBeUndefined();

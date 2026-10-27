@@ -1,19 +1,14 @@
-import * as THREE from 'three';
-import { Batch } from '../world/batch';
-import { addGrain } from '../world/grain';
-import { floorTileTexture, plasterTexture, generatedTexture } from '../world/textures';
+import type * as THREE from 'three';
 import type { Interior } from '../world/interiors';
-import type { Collider, Interactable } from '../world/types';
 import type { HomeLevel, HomeSpec } from './catalog';
-import { openPlan, partitions } from './placement';
 import { planFor } from '../housing/plan';
 import { buildApartment } from '../housing/apartment';
 
 /**
- * Interiors of the homes above the starter room (apartment, house, villa, luxury residence): one open room in the plan of
- * `openPlan` (src/economy/placement.ts) — kitchen counter along the west wall, shower corner in the north-east, door in
- * the south wall — finished according to the level (walls, floor, windows, height). Empty: the player furnishes it.
- * Built off the street grid like every interior and entered through the home's street door (src/economy/estate.ts).
+ * Interiors of the homes above the starter room (apartment, house, villa, luxury residence): each is built from its floor plan (src/housing/plan.ts, the kit of
+ * src/housing/kit) by the shell of src/housing/apartment.ts, finished by the level (`FINISH`: the standard finish) and by the plan's identity (`FloorPlan.look`).
+ * Empty: the player furnishes it. Built off the street grid like every interior and entered through the home's street door (src/economy/estate.ts).
+ * (Until 27 Oct the others were one open room with a counter and a shower: no home but « Ma chambre » is one now.)
  */
 export interface Finish { lower: number; upper: number; h: number; door: number; trim: number; glass: boolean; kitchen: number; top: number }
 const FINISH: Record<Exclude<HomeLevel, 'room'>, Finish> = {
@@ -22,23 +17,6 @@ const FINISH: Record<Exclude<HomeLevel, 'room'>, Finish> = {
   villa: { lower: 0xeee9df, upper: 0xf7f5f0, h: 3.3, door: 0x6e4426, trim: 0xc9bfae, glass: true, kitchen: 0xf2f0ec, top: 0x2b2b2e },
   residence: { lower: 0xe6dfd2, upper: 0xfaf8f3, h: 3.4, door: 0x3a2416, trim: 0xc9a14a, glass: true, kitchen: 0x2b2b2e, top: 0xf1efe9 },
 };
-
-let mats: Record<string, THREE.Material> | null = null;
-function materials() {
-  if (mats) return mats;
-  const lam = () => new THREE.MeshLambertMaterial({ vertexColors: true });
-  mats = {
-    tiles: addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32),
-    wood: addGrain(lam(), 0.2, 1, false, generatedTexture('wood'), 1),
-    marble: addGrain(lam(), 0.15, 1, false, generatedTexture('terrazzo'), 1.5),
-    wall: addGrain(lam(), 0.4, 1, false, plasterTexture(), 2),
-    plain: addGrain(lam(), 0.5, 2),
-    glow: new THREE.MeshBasicMaterial({ vertexColors: true }),
-    sky: new THREE.MeshBasicMaterial({ color: 0xbfe3f5 }),
-  };
-  for (const m of Object.values(mats)) m.userData.shared = true;
-  return mats;
-}
 
 /** `spots`: where the kitchen and the shower are used from (world x, z; LD2.0-D: `y`, the height of their level's floor above the ground floor's). */
 export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z: number; y?: number }; shower: { x: number; z: number; y?: number } }; ceiling: THREE.Object3D[] }
@@ -50,89 +28,11 @@ export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z:
 export function buildHomeInterior(h: HomeSpec, ox: number, oz: number, hub: string, upgrades: readonly string[] = []): HomeInterior {
   const level = h.home.level === 'room' ? 'apartment' : h.home.level;
   const base = FINISH[level];
-  const F = upgrades.includes('peinture') ? { ...base, lower: 0x7fb7c9, upper: 0xfbf3e2, trim: 0x2f6f86 } : base;
-  const plan = planFor(h.id);
-  if (plan) return buildApartment(plan, h, ox, oz, hub, F, upgrades);
-  const M = materials(), L = openPlan(level, h.home.w, h.home.d);
-  const W = L.w, D = L.d, H = F.h;
-  const x0 = ox - W / 2, x1 = ox + W / 2, z0 = oz - D / 2, z1 = oz + D / 2;
-  const group = new THREE.Group();
-  const floor = new Batch(), wall = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();
-  const colliders: Collider[] = [];
-  const interactables: Interactable[] = [];
-  const ceiling: THREE.Object3D[] = [];
-
-  // floor and walls (two-tone with a dado line), door in the south wall
-  floor.box(W, 0.1, D, ox, 0, oz, h.home.floor === 'marble' ? 0xf4f1ea : h.home.floor === 'wood' ? 0xb07a4a : 0xf2f0ec);
-  const side = (w: number, d: number, x: number, z: number) => {
-    wall.box(w, 1.2, d, x, 0.1, z, F.lower); wall.box(w, H - 1.2, d, x, 1.3, z, F.upper);
-    plain.box(w + (d > w ? 0.02 : 0), 0.04, d + (w > d ? 0.02 : 0), x, 1.28, z, F.trim);
-  };
-  const doorX = ox + L.doorX;
-  side(W, 0.2, ox, z0 - 0.1); side(0.2, D, x0 - 0.1, oz); side(0.2, D, x1 + 0.1, oz);
-  side(doorX - 0.6 - x0, 0.2, (x0 + doorX - 0.6) / 2, z1 + 0.1); side(x1 - doorX - 0.6, 0.2, (doorX + 0.6 + x1) / 2, z1 + 0.1);
-  wall.box(1.2, H - 2.2, 0.2, doorX, 2.3, z1 + 0.1, F.upper);
-  plain.box(1.2, 2.2, 0.06, doorX, 0.1, z1 + 0.18, F.door); plain.box(0.1, 0.06, 0.1, doorX - 0.45, 1.1, z1 + 0.12, 0xd4b24a);
-  colliders.push({ x0: x0 - 1, z0: z0 - 1, x1: x1 + 1, z1: z0, h: H }, { x0: x0 - 1, z0, x1: x0, z1: z1 + 1, h: H }, { x0: x1, z0, x1: x1 + 1, z1: z1 + 1, h: H }, { x0: x0 - 1, z0: z1, x1: x1 + 1, z1: z1 + 1, h: H });
-  plain.box(W, 0.12, 0.08, ox, 0.1, z0 + 0.04, F.trim); plain.box(0.08, 0.12, D, x0 + 0.04, 0.1, oz, F.trim); plain.box(0.08, 0.12, D, x1 - 0.04, 0.1, oz, F.trim);
-  // no ceiling: the camera looks down into the room (Interior.open)
-
-  // the F2's two bedrooms: waist-high partition walls (a cutaway: the camera looks down into them) with a doorway each, and a divider between them
-  const PT = partitions(level, W, D);
-  for (const r of PT.walls) { wall.box(r.x1 - r.x0, 1.4, r.z1 - r.z0, ox + (r.x0 + r.x1) / 2, 0.1, oz + (r.z0 + r.z1) / 2, F.lower); colliders.push({ x0: ox + r.x0, z0: oz + r.z0, x1: ox + r.x1, z1: oz + r.z1, h: H }); }
-  for (const g of PT.gaps) {
-    const gx = ox + (g.x0 + g.x1) / 2, gz = oz + PT.row;
-    plain.box(0.08, 1.5, 0.2, gx - (g.x1 - g.x0) / 2, 0.1, gz, F.trim); plain.box(0.08, 1.5, 0.2, gx + (g.x1 - g.x0) / 2, 0.1, gz, F.trim);
-  }
-  PT.rooms.forEach((r, i) => { const cx = ox + (r.x0 + r.x1) / 2;          // a little curtain and a lamp so each room reads as a bedroom
-    plain.box(0.5, 1.5, 0.04, cx + 0.5, 1.0, z0 + 0.12, i ? 0x6a8fd8 : 0xc2417f); });
-
-  // windows on the north wall: louvred shutters, or tall glass for the villa and the residence (daylight behind)
-  const nWin = Math.max(1, Math.floor((W - 3) / 3));
-  for (let k = 0; k < nWin; k++) {
-    const x = ox - W / 2 + 1.2 + (k + 0.5) * ((W - 3.6) / nWin);
-    if (F.glass) {
-      sky.box(2.2, H - 0.9, 0.02, x, 0.5, z0 + 0.01, 0xffffff);
-      for (const dx of [-1.1, 0, 1.1]) plain.box(0.06, H - 0.9, 0.08, x + dx, 0.5, z0 + 0.04, F.trim);
-      plain.box(2.3, 0.08, 0.1, x, H - 0.4, z0 + 0.05, F.trim);
-    } else {
-      sky.box(1.2, 1.1, 0.02, x, 1.3, z0 + 0.01, 0xffffff);
-      for (let s = 0; s < 7; s++) plain.box(1.2, 0.07, 0.12, x, 1.35 + s * 0.15, z0 + 0.06, 0x2f6fb3);
-      plain.box(1.4, 0.06, 0.18, x, 1.24, z0 + 0.08, 0xd9cbb3);
-      plain.box(0.5, 1.5, 0.04, x - 0.75, 1.0, z0 + 0.15, level === 'house' ? 0x1a9d54 : 0xc2417f);
-    }
-  }
-  // kitchen counter (west wall, north end): stove, sink, a fridge at the end
-  const kz = -D / 2 + Math.min(2.6, D * 0.36), kx = x0 + 0.3, kLen = kz + D / 2;
-  plain.box(0.6, 0.88, kLen - 0.7, kx, 0.1, oz - D / 2 + (kLen - 0.7) / 2 + 0.7, F.kitchen);
-  plain.box(0.64, 0.04, kLen - 0.7, kx, 0.98, oz - D / 2 + (kLen - 0.7) / 2 + 0.7, F.top);
-  plain.box(0.66, 1.8, 0.66, kx, 0.1, z0 + 0.35, 0xeeeeee); glow.box(0.02, 0.5, 0.02, kx + 0.34, 1.0, z0 + 0.6, 0xd8ecf4);   // fridge
-  for (let r = 0; r < 2; r++) plain.cyl(0.11, 0.11, 0.02, kx + 0.05, 1.02, oz + kz - 0.45 - r * 0.35, 0x222222, 12);
-  plain.box(0.4, 0.06, 0.5, kx + 0.02, 0.97, oz - D / 2 + 1.2, 0xb8bcc0);                                    // sink
-  plain.cyl(0.02, 0.02, 0.3, kx - 0.18, 1.0, oz - D / 2 + 1.2, 0x9aa0a6, 6);
-  colliders.push({ x0, z0, x1: x0 + 0.6, z1: oz + kz, h: 1.2 });
-  // shower corner (north-east): tiles, a tray, the shower head and a curtain
-  const sx0 = x1 - 1.2, sz1 = z0 + 1.2;
-  plain.box(1.2, 0.04, 1.2, sx0 + 0.6, 0.1, z0 + 0.6, 0xbfd9e6);
-  plain.box(1.2, 2.0, 0.02, sx0 + 0.6, 0.1, z0 + 0.01, 0xcfe4ee); plain.box(0.02, 2.0, 1.2, x1 - 0.01, 0.1, z0 + 0.6, 0xcfe4ee);
-  plain.cyl(0.02, 0.02, 0.5, x1 - 0.2, 1.9, z0 + 0.2, 0x9aa0a6, 6); plain.cyl(0.1, 0.06, 0.05, x1 - 0.3, 2.05, z0 + 0.3, 0xb8bcc0, 10);
-  plain.box(0.02, 1.9, 1.2, sx0, 0.3, z0 + 0.6, level === 'apartment' ? 0xf4c20d : 0xe8e8e8); plain.box(0.7, 1.9, 0.02, sx0 + 0.35, 0.3, sz1, level === 'apartment' ? 0xf4c20d : 0xe8e8e8);
-  colliders.push({ x0: sx0, z0, x1, z1: sz1, h: 2 });
-  // a little life on the walls: framed pictures (blank on purpose: no real people) and a clock
-  for (const [x, c] of [[ox - 0.6, 0x7a5a3c], [ox + 0.6, 0x3d4a5c]] as const) { plain.box(0.6, 0.45, 0.03, x, 1.7, z1 - 0.02, c); plain.box(0.5, 0.35, 0.01, x, 1.75, z1 - 0.04, 0xd9d2c4); }
-  plain.cyl(0.18, 0.18, 0.03, x0 + 0.02, 2.0, oz + 1.2, 0xf2f2ec, 16, [0, 0, Math.PI / 2]);
-
-  const floorMat = h.home.floor === 'marble' ? M.marble : h.home.floor === 'wood' ? M.wood : M.tiles;
-  for (const [b, m, cast] of [[floor, floorMat, false], [wall, M.wall, false], [plain, M.plain, true], [glow, M.glow, false], [sky, M.sky, false]] as [Batch, THREE.Material, boolean][]) {
-    const mesh = b.build(m, true, cast); if (mesh) group.add(mesh);
-  }
-  interactables.push({ id: `${hub}:in:door:${h.id}`, name: 'Sortir', kind: 'actions', x: doorX, z: z1 - 0.6, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] });
-  const int: Interior = {
-    kind: 'home', name: h.name, group, colliders, interactables, seats: [], open: true,
-    bounds: { x0: x0 + 0.3, x1: x1 - 0.3, z0: z0 + 0.3, z1: z1 - 0.3 },
-    cameraBox: { x0: x0 + 0.15, x1: x1 - 0.15, z0: z0 + 0.15, z1: z1 - 0.15 },
-    spawn: { x: doorX - 0.6, z: z1 - 1.3, yaw: Math.PI + 0.35 },
-    light: new THREE.Vector3(ox, H - 0.35, oz), lightColor: 0xffd9a0,
-  };
-  return { int, spots: { kitchen: { x: x0 + 1.05, z: oz - D / 2 + kLen / 2 + 0.2 }, shower: { x: x1 - 0.6, z: sz1 + 0.5 } }, ceiling };
+  const plan = planFor(h.id), ov = plan?.look;
+  // the hub's identity over the level's finish (a plan's `look`, docs/kits/HOMES.md); a repainted home keeps its own paint over it
+  const own: Finish = ov ? { ...base, lower: ov.dado ?? base.lower, upper: ov.wall ?? base.upper, door: ov.door ?? base.door, trim: ov.trim ?? base.trim } : base;
+  const F = upgrades.includes('peinture') ? { ...own, lower: 0x7fb7c9, upper: 0xfbf3e2, trim: 0x2f6f86 } : own;
+  // no home but « Ma chambre » (src/interact/interiors.ts) is one open room: a home without a floor plan is a mistake of the catalogue, not a smaller home
+  if (!plan) throw new Error(`the home ${h.id} has no floor plan (src/housing/plan.ts PLANS, or registerPlan: a template of src/housing/kit)`);
+  return buildApartment(plan, h, ox, oz, hub, F, upgrades);
 }
