@@ -1,0 +1,20 @@
+import { chromium } from 'playwright';
+import { realTouch, boardVehicle, padRig } from '../scripts/lib/realTouch.mjs';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+await ctx.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); } catch {} });
+const page = await ctx.newPage(); const d = (f, a) => page.evaluate(f, a);
+await page.goto('http://127.0.0.1:4700/?debug&touch&heure=11&argent=4500000');
+await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.teranga, null, { timeout: 200000 });
+const t = await realTouch(page);
+await page.waitForFunction(() => window.__dakar.teranga.info().floor.length > 0, null, { timeout: 200000 });
+await d(() => window.__dakar.teranga.own());
+await page.waitForFunction(() => window.__dakar.teranga.info().owned && window.__dakar.teranga.info().here, null, { timeout: 200000 });
+await d(() => window.__dakar.teranga.place(-112, 3.2, Math.PI / 2)); await d(() => window.__dakar.place(-112, 0.6, 0)); await page.waitForTimeout(800);
+await boardVehicle(page, t, 'teranga'); await page.waitForTimeout(800);
+await d(() => window.__dakar.teranga.place(-112, 3.2, Math.PI / 2)); await page.waitForTimeout(500);
+console.log(JSON.stringify(await d(() => { const g = document.querySelector('#ridepad .rp-gas').getBoundingClientRect(); return { top: g.top, h: g.height, left: g.left, w: g.width }; })));
+const R = await padRig(page, t), gasP = R.gas(5);
+await gasP(true, 0.55);
+for (let i = 0; i < 14; i++) { await page.waitForTimeout(1000); console.log(JSON.stringify(await d(() => { const a = window.__dakar.teranga.at(); return { v: +a.speed.toFixed(1), x: +a.x.toFixed(0), p: document.querySelector('#ridepad .rp-gas').style.getPropertyValue('--p') }; }))); }
+await browser.close();

@@ -1,0 +1,342 @@
+{
+ "at": "2026-10-27T15:13:03.061Z",
+ "cost": {
+  "house-m1": {
+   "name": "Maison empilée",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 130,
+    "street": 133,
+    "night": 86
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 1504
+   },
+   "info": {
+    "colliders": 13,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 8,
+    "tris": 1180
+   },
+   "glbBytes": 128168
+  },
+  "house-m2": {
+   "name": "Maison en L",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 123,
+    "street": 125,
+    "night": 82
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 1570
+   },
+   "info": {
+    "colliders": 11,
+    "signs": 0,
+    "tallest": 7.199999999999999
+   },
+   "low": {
+    "calls": 8,
+    "tris": 1304
+   },
+   "glbBytes": 131852
+  },
+  "house-m3": {
+   "name": "Maison à gradins",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 148,
+    "street": 153,
+    "night": 90
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 1578
+   },
+   "info": {
+    "colliders": 12,
+    "signs": 0,
+    "tallest": 9.7
+   },
+   "low": {
+    "calls": 8,
+    "tris": 1278
+   },
+   "glbBytes": 131776
+  },
+  "villa-c1": {
+   "name": "Villa Porte-à-faux",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 158,
+    "street": 174,
+    "night": 103
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 2558
+   },
+   "info": {
+    "colliders": 17,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 9,
+    "tris": 2092
+   },
+   "glbBytes": 210124
+  },
+  "villa-c2": {
+   "name": "Villa des Arcades",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 196,
+    "street": 198,
+    "night": 123
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 2480
+   },
+   "info": {
+    "colliders": 19,
+    "signs": 0,
+    "tallest": 10.7
+   },
+   "low": {
+    "calls": 9,
+    "tris": 2038
+   },
+   "glbBytes": 206016
+  },
+  "villa-c3": {
+   "name": "Villa des Pavillons",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 144,
+    "street": 135,
+    "night": 96
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 2482
+   },
+   "info": {
+    "colliders": 16,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 9,
+    "tris": 2016
+   },
+   "glbBytes": 206260
+  },
+  "villa-c4": {
+   "name": "Villa de la Tour",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 232,
+    "street": 258,
+    "night": 145
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 2592
+   },
+   "info": {
+    "colliders": 13,
+    "signs": 0,
+    "tallest": 13.95
+   },
+   "low": {
+    "calls": 9,
+    "tris": 2068
+   },
+   "glbBytes": 212636
+  },
+  "hotel-boutique": {
+   "name": "Hôtel boutique, façade de balcons",
+   "kind": "hotel",
+   "size": "M",
+   "views": {
+    "front": 251,
+    "street": 378,
+    "night": 168
+   },
+   "medium": {
+    "calls": 10,
+    "tris": 5020
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 1,
+    "tallest": 17.299999999999997
+   },
+   "low": {
+    "calls": 10,
+    "tris": 3558
+   },
+   "glbBytes": 420064
+  },
+  "hotel-tower": {
+   "name": "Hôtel tour sur son podium",
+   "kind": "hotel",
+   "size": "M",
+   "views": {
+    "front": 318,
+    "street": 377,
+    "night": 213
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 5158
+   },
+   "info": {
+    "colliders": 23,
+    "signs": 1,
+    "tallest": 27.900000000000002
+   },
+   "low": {
+    "calls": 9,
+    "tris": 3806
+   },
+   "glbBytes": 430420
+  },
+  "hotel-resort": {
+   "name": "Resort autour de la cour de la piscine",
+   "kind": "hotel",
+   "size": "L",
+   "views": {
+    "front": 215,
+    "street": 239,
+    "night": 136
+   },
+   "medium": {
+    "calls": 10,
+    "tris": 8648
+   },
+   "info": {
+    "colliders": 29,
+    "signs": 1,
+    "tallest": 17.6
+   },
+   "low": {
+    "calls": 10,
+    "tris": 6564
+   },
+   "glbBytes": 711080
+  },
+  "residence-ngor": {
+   "name": "Résidence de Ngor",
+   "kind": "residence",
+   "size": "S",
+   "views": {
+    "front": 280,
+    "street": 315,
+    "night": 187
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 3112
+   },
+   "info": {
+    "colliders": 15,
+    "signs": 1,
+    "tallest": 15.2
+   },
+   "low": {
+    "calls": 9,
+    "tris": 2138
+   },
+   "glbBytes": 250884
+  },
+  "residence-stack": {
+   "name": "Balcons décalés sur pilotis",
+   "kind": "residence",
+   "size": "M",
+   "views": {
+    "front": 299,
+    "street": 149,
+    "night": 200
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 4772
+   },
+   "info": {
+    "colliders": 37,
+    "signs": 1,
+    "tallest": 21.9
+   },
+   "low": {
+    "calls": 8,
+    "tris": 3118
+   },
+   "glbBytes": 381780
+  },
+  "residence-screen": {
+   "name": "Brise-soleil sur loggias",
+   "kind": "residence",
+   "size": "M",
+   "views": {
+    "front": 341,
+    "street": 146,
+    "night": 217
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 4686
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 1,
+    "tallest": 20.9
+   },
+   "low": {
+    "calls": 8,
+    "tris": 3344
+   },
+   "glbBytes": 376580
+  },
+  "residence-courtyard": {
+   "name": "Cour-jardin à portail",
+   "kind": "residence",
+   "size": "L",
+   "views": {
+    "front": 326,
+    "street": 128,
+    "night": 213
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 7776
+   },
+   "info": {
+    "colliders": 28,
+    "signs": 1,
+    "tallest": 20.3
+   },
+   "low": {
+    "calls": 9,
+    "tris": 5518
+   },
+   "glbBytes": 612736
+  }
+ },
+ "errors": []
+}
