@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { door, glazing, louvres, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lv, pave, houseNumber, rail, roofKit, slats, stones, tones, tree, win, edgeLight, entry, walk } from './villas.kit';
+import { GROUND, R, T_SLAB, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lv, pave, houseNumber, rail, roofKit, slats, stones, tones, tree, win, edgeLight, entry, walk, car, scoot, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * House 3, « Maison à gradins »: three masses stepping back from the street, each with a terrace on the one below behind a glass guard and planters,
@@ -52,7 +52,10 @@ export const terraces: SiteBuilder = o => {
   stones(k, -6.8, 8.0, -6.8, 8.0, 1);
   pave(k, R(-10.4, 10.4, -10.4, -5.4), tn.deck);
   lawn(k, R(-10.0, 0.0, -10.0, -6.0));
+  car(k, 4.8, 7.8, Math.PI);                                                                       // a sedan before the garage, clear of the gate's apron
+  scoot(k, -8.4, 6.4, 0);                                                                          // a scooter on the lawn, left of the door
   solidBox(d, G, F1 + 0.2); solidBox(d, Gar, F1 + 0.2); solidBox(d, U1, F2 + 0.3);
   if (n === 3) solidBox(d, U2, Ft + 0.3);
   solidBox(d, c0, top + 2.8);
+  return { life: lifeOut(k, { people: [who(-2.6, 3.9, 0, 'Talk', LOOKS.woman, F1)] }) };                  // a resident on the first terrace
 };

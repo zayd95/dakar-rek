@@ -1,28 +1,28 @@
 {
- "at": "2026-10-27T14:37:39.858Z",
+ "at": "2026-10-27T22:19:24.349Z",
  "cost": {
   "house-m1": {
    "name": "Maison empilée",
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 136,
-    "street": 133,
-    "back": 142,
-    "night": 90
+    "front": 132,
+    "street": 132,
+    "back": 141,
+    "night": 87
    },
    "medium": {
-    "calls": 8,
-    "tris": 1336
+    "calls": 10,
+    "tris": 2060
    },
    "info": {
-    "colliders": 13,
+    "colliders": 15,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
-    "calls": 8,
-    "tris": 1094
+    "calls": 10,
+    "tris": 1736
    }
   },
   "house-m2": {
@@ -30,23 +30,23 @@
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 127,
+    "front": 126,
     "street": 125,
-    "back": 145,
+    "back": 151,
     "night": 83
    },
    "medium": {
-    "calls": 8,
-    "tris": 1402
+    "calls": 9,
+    "tris": 1918
    },
    "info": {
-    "colliders": 11,
+    "colliders": 13,
     "signs": 0,
     "tallest": 7.199999999999999
    },
    "low": {
-    "calls": 8,
-    "tris": 1218
+    "calls": 9,
+    "tris": 1652
    }
   },
   "house-m3": {
@@ -54,23 +54,23 @@
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 147,
-    "street": 146,
-    "back": 137,
-    "night": 91
+    "front": 152,
+    "street": 154,
+    "back": 139,
+    "night": 93
    },
    "medium": {
-    "calls": 8,
-    "tris": 1410
+    "calls": 9,
+    "tris": 1926
    },
    "info": {
-    "colliders": 12,
+    "colliders": 14,
     "signs": 0,
     "tallest": 9.7
    },
    "low": {
-    "calls": 8,
-    "tris": 1192
+    "calls": 9,
+    "tris": 1626
    }
   },
   "villa-c1": {
@@ -78,23 +78,23 @@
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 163,
-    "street": 178,
-    "back": 143,
-    "night": 106
+    "front": 160,
+    "street": 175,
+    "back": 136,
+    "night": 104
    },
    "medium": {
-    "calls": 9,
-    "tris": 2390
+    "calls": 11,
+    "tris": 3064
    },
    "info": {
-    "colliders": 17,
+    "colliders": 18,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
-    "calls": 9,
-    "tris": 2006
+    "calls": 11,
+    "tris": 2598
    }
   },
   "villa-c2": {
@@ -102,23 +102,23 @@
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 170,
-    "street": 179,
-    "back": 144,
-    "night": 110
+    "front": 194,
+    "street": 196,
+    "back": 163,
+    "night": 123
    },
    "medium": {
-    "calls": 9,
-    "tris": 2244
+    "calls": 11,
+    "tris": 2986
    },
    "info": {
-    "colliders": 19,
+    "colliders": 20,
     "signs": 0,
-    "tallest": 7.3
+    "tallest": 10.7
    },
    "low": {
-    "calls": 9,
-    "tris": 1914
+    "calls": 11,
+    "tris": 2544
    }
   },
   "villa-c3": {
@@ -126,23 +126,23 @@
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 151,
-    "street": 142,
-    "back": 149,
-    "night": 101
+    "front": 147,
+    "street": 135,
+    "back": 146,
+    "night": 98
    },
    "medium": {
-    "calls": 9,
-    "tris": 2314
+    "calls": 11,
+    "tris": 3028
    },
    "info": {
-    "colliders": 16,
+    "colliders": 18,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
-    "calls": 9,
-    "tris": 1930
+    "calls": 11,
+    "tris": 2562
    }
   },
   "villa-c4": {
@@ -150,23 +150,23 @@
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 196,
-    "street": 212,
-    "back": 140,
-    "night": 121
+    "front": 237,
+    "street": 261,
+    "back": 151,
+    "night": 148
    },
    "medium": {
-    "calls": 9,
-    "tris": 2392
+    "calls": 11,
+    "tris": 3138
    },
    "info": {
-    "colliders": 14,
+    "colliders": 15,
     "signs": 0,
-    "tallest": 10.549999999999999
+    "tallest": 13.95
    },
    "low": {
-    "calls": 9,
-    "tris": 1940
+    "calls": 11,
+    "tris": 2614
    }
   }
  },

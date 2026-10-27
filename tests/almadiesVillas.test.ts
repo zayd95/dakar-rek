@@ -1,29 +1,34 @@
 import { describe, expect, it, vi } from 'vitest';
-import { E, GRID, PALETTES, STOREY, TRI_CAP, type Site } from '../src/world/almadies/contract';
+import { E, GRID, LIFE_CAP, PALETTES, STOREY, TRI_CAP, type Site } from '../src/world/almadies/contract';
+import { lifeInHub } from '../src/world/almadies/district';
 import { gateX } from '../src/world/almadies/parts';
 import { variantsFor } from '../src/world/almadies/district';
 import { drawSite } from './helpers/siteCost';
-import { PAL, colliderInPlan, coloursOf, paneCount, panesPerStorey, siteWith, silhouette, toPlan, walkToDoor } from './helpers/designChecks';
+import { PAL, colliderInPlan, coloursOf, drawLife, lifeProblems, paneCount, panesPerStorey, siteWith, silhouette, toPlan, walkToDoor } from './helpers/designChecks';
 
 /**
  * LD2.0-E lane E-V: the four villas (src/world/almadies/villas.ts): each reads as its own premium home. For every design, on 2 and 3 storeys, both
  * facings, mirrored or not, the three gate sides and every palette: inside its site, within its budget, a real front door on the street face on the
  * side away from the gate, the car gate where the site says, balconies and glazing on every storey, a pool with water, lanterns, no sign.
  */
-const calls = vi.hoisted(() => ({ doors: [] as { face: string; hub: { x: number; z: number }; w?: number }[], balconies: [] as { face: string; y: number }[], perimeter: [] as { gate?: string; front?: string; entries: { hub: { x: number; z: number }; w: number }[] }[] }));
+const calls = vi.hoisted(() => ({ cars: 0, scooters: 0, benches: 0, doors: [] as { face: string; hub: { x: number; z: number }; w?: number }[], balconies: [] as { face: string; y: number }[], perimeter: [] as { gate?: string; front?: string; entries: { hub: { x: number; z: number }; w: number }[] }[] }));
 vi.mock('../src/world/almadies/parts', async importOriginal => {
   const m = await importOriginal<typeof import('../src/world/almadies/parts')>();
   return {
     ...m,
+    parkedCar: (...a: Parameters<typeof m.parkedCar>) => { calls.cars++; return m.parkedCar(...a); },
+    scooter: (...a: Parameters<typeof m.scooter>) => { calls.scooters++; return m.scooter(...a); },
+    bench: (...a: Parameters<typeof m.bench>) => { calls.benches++; return m.bench(...a); },
     door: (d: Parameters<typeof m.door>[0], o: Parameters<typeof m.door>[1]) => { calls.doors.push({ face: o.face, hub: d.f.p(o.x, o.z), w: o.w }); return m.door(d, o); },
     balcony: (d: Parameters<typeof m.balcony>[0], o: Parameters<typeof m.balcony>[1]) => { calls.balconies.push({ face: o.face, y: o.y }); return m.balcony(d, o); },
     perimeter: (d: Parameters<typeof m.perimeter>[0], o: Parameters<typeof m.perimeter>[1] = {}) => { calls.perimeter.push({ gate: o.gate, front: o.front, entries: (o.entries ?? []).map(e => ({ hub: d.f.p(e.x, E - 0.15), w: e.w })) }); return m.perimeter(d, o); },
   };
 });
 const VILLAS = variantsFor('villa', 'S');
+const gateXOf = (g: 'left' | 'right' | 'centre') => gateX(GRID.lot, g);
 const within = (c: { x0: number; x1: number; z0: number; z1: number }, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
 const near = (set: Set<number>, hex: number, tol = 3) => [...set].some(h => Math.abs((h >> 16) - (hex >> 16)) <= tol && Math.abs(((h >> 8) & 255) - ((hex >> 8) & 255)) <= tol && Math.abs((h & 255) - (hex & 255)) <= tol);
-const draw = (v: (typeof VILLAS)[number], s: Site, lite = false) => { calls.doors.length = calls.balconies.length = calls.perimeter.length = 0; const r = drawSite(s, v, lite); return { r, doors: [...calls.doors], balconies: [...calls.balconies], perimeter: [...calls.perimeter] }; };
+const draw = (v: (typeof VILLAS)[number], s: Site, lite = false) => { calls.doors.length = calls.balconies.length = calls.perimeter.length = 0; calls.cars = calls.scooters = calls.benches = 0; const r = drawSite(s, v, lite); return { r, doors: [...calls.doors], balconies: [...calls.balconies], perimeter: [...calls.perimeter] }; };
 
 describe('the villa designs', () => {
   it('are four, in the registry order the plan asks for, each its own name and silhouette', () => {
@@ -107,6 +112,31 @@ describe('the villa designs', () => {
       const door = doors.filter(d => d.face === 'street').map(d => toPlan(r.draw, d.hub)).find(p => p.z < 9)!;
       const w = walkToDoor(r.draw, { x: door.x, z: E + 1.2 }, { x: door.x, z: door.z + 0.9 });
       expect(w.reached).toBe(false); expect(w.crossing).toHaveLength(0);
+    });
+    it('is lived in: a guard or a gardener at the entry facing the street, a car on the drive, a registered bench, someone on a balcony; every post reachable from the pavement, nothing inside a collider, the gate\'s apron and the door\'s walk clear', () => {
+      for (const storeys of [2, 3]) for (const gate of ['right', 'left'] as const) for (const [facing, mirror] of [['south', false], ['north', true], ['south', true], ['north', false]] as const) {
+        const s = siteWith('villa', { gate, mirror, facing, storeys }), label = `${storeys} storeys, gate ${gate}, ${facing}${mirror ? ' mirrored' : ''}`;
+        calls.cars = calls.scooters = calls.benches = 0; calls.doors.length = calls.perimeter.length = 0;
+        const r = drawLife(s, v), cars = calls.cars, benches = calls.benches, door = calls.doors.filter(d => d.face === 'street').map(d => toPlan(r.draw, d.hub)).find(p => p.z < 9)!, op = toPlan(r.draw, calls.perimeter[0].entries[0].hub);
+        const gx = gateXOf(gate), gt = { x0: gx - 2.2, x1: gx + 2.2 };
+        expect(lifeProblems(r, door, op, gt, LIFE_CAP.villa, STOREY), label).toEqual([]);
+        const people = r.life.people ?? [], seats = r.life.seats ?? [];
+        expect(people.length, `${label}: people`).toBeGreaterThanOrEqual(1); expect(people.length).toBeLessThanOrEqual(LIFE_CAP.villa.people);
+        expect(cars, `${label}: a parked car`).toBeGreaterThanOrEqual(1);
+        expect(benches, `${label}: a bench`).toBeGreaterThanOrEqual(1);
+        expect(seats.length, `${label}: bench seats`).toBeGreaterThanOrEqual(2); expect(seats.every(x => x.kind === 'bench'), `${label}: benches`).toBe(true);
+        // the one at the entry faces the street: a guard or gardener (Idle), inside the railing, turned to the street (plan yaw 0)
+        const g = people.find(p => !p.y)!;
+        expect(g, `${label}: someone at the entry`).toBeTruthy(); expect(g.clip).toBe('Idle'); expect(Math.abs(g.yaw), `${label}: faces the street`).toBeLessThan(1e-6); expect(g.z, `${label}: inside the railing`).toBeLessThan(E - 0.5);
+        expect(people.some(p => p.y && p.y > 3), `${label}: someone on a balcony`).toBe(true);
+        // it reaches the hub whole
+        const hub = lifeInHub(r.draw, r.life); expect(hub.people).toHaveLength(people.length); expect(hub.seats).toHaveLength(seats.length);
+      }
+    });
+    it('puts the same life out each time, in the budget, lighter on the low preset', () => {
+      const s = siteWith('villa', { storeys: 3, gate: 'left', mirror: true }), a = drawLife(s, v), b = drawLife(s, v), lo = drawLife(s, v, true);
+      expect(b.life).toEqual(a.life); expect(b.tris).toBe(a.tris); expect(a.tris).toBeLessThanOrEqual(TRI_CAP.villa.S!);
+      expect(lo.tris).toBeLessThanOrEqual(a.tris * 0.9);
     });
     it('wears any palette: its render, slab, stone, wood and frame colours come from the site\'s palette, never hard-coded', () => {
       const seen = PAL.map(p => ({ p, cols: coloursOf(drawSite(siteWith('villa', { palette: p, storeys: 2 }), v).kit.batches), pal: PALETTES[p] }));
