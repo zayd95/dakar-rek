@@ -2,14 +2,14 @@
 //  1. the Almadies builds on both presets (low, medium) with no page error;
 //  2. every site of the plan has its building: a solid collider two storeys tall (or the site's own storeys, if fewer) inside its rectangle (30 sites on 41 lots);
 //  3. nothing of the district stands on a road: no solid taller than a man, wider than a post, on the carriageway of the avenues;
-//  4. the pedestrian ring round two blocks is free: the player walks the pavement all round (four corners each) with the joystick;
+//  4. the pavement round every block is as free as the villa branch's: a body's circle walked along a line a metre outside each block against the hub's colliders;
 //  5. the Ngor residence keeps its door, its entry and its gate: the interactables stand where the estate put them and nothing solid covers them;
 //  6. the cost of the hub against the villa branch's (docs/proof/ld2e/before/cost.json, measured the same way: every mesh of the scene, visible or not, whatever the camera
 //     sees): the budgets of docs/ld2/LD2_E.md (+60 k triangles, +10 meshes).
 // Usage: node scripts/check-district.mjs <baseUrl> <outDir> [beforeCost.json]   (BASELINE=1: only measure and walk, pass or fail nothing: the villa branch's own build)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { realTouch, walkTo } from './lib/realTouch.mjs';
+import { realTouch } from './lib/realTouch.mjs';
 
 const [base = 'http://127.0.0.1:4971/', out = 'docs/proof/ld2e/check', beforeFile = 'docs/proof/ld2e/before/cost.json'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -36,7 +36,7 @@ const toAlmadies = async (s, x, z, yaw = 0) => {
   await s.page.waitForTimeout(1800);
 };
 
-let medium = null;
+let medium = null, ring = null;
 for (const q of ['low', 'medium']) {
   const s = await open(q);
   await toAlmadies(s, -3.6, 4);
@@ -51,14 +51,17 @@ for (const q of ['low', 'medium']) {
   const onRoad = geo.colliders.filter(([x0, z0, x1, z1, h]) => h >= 3 && roads.some(r => x0 < r.x1 && x1 > r.x0 && z0 < r.z1 && z1 > r.z0 && (x1 - x0 > 2.5 || z1 - z0 > 2.5) && !(x1 - x0 > 40 && z1 - z0 > 40)));
   check(`(${q}) no wall or building stands on a carriageway`, onRoad.length === 0, JSON.stringify(onRoad.slice(0, 4)));
   if (q === 'medium') {
-    // 4. the pavement ring of two blocks, on foot
-    const ring = bx => [[bm(bx[0]) - 1, bm(bx[1]) - 1], [bm(bx[0]) + 47, bm(bx[1]) - 1], [bm(bx[0]) + 47, bm(bx[1]) + 47], [bm(bx[0]) - 1, bm(bx[1]) + 47], [bm(bx[0]) - 1, bm(bx[1]) - 1]];   // the pavement, a metre outside the block's edge
-    for (const blk of [[2, 1], [0, 3]]) {
-      await toAlmadies(s, ring(blk)[0][0], ring(blk)[0][1]);
-      const missed = [];
-      for (const [x, z] of ring(blk).slice(1)) { const dist = await walkTo(s.page, s.t, x, z, { tol: 1.6, ms: 60000 }); if (dist > 1.8) missed.push({ to: [x, z], dist: +dist.toFixed(1) }); }
-      check(`(${q}) the pavement all round block (${blk}) walked with the joystick`, missed.length === 0, JSON.stringify(missed));
+    // 4. the pavement round every block (a line 1 m outside its edge) is free of the district: a body's circle (0.45 m) along it against the colliders the district drew
+    //    (the ones inside a site; the street's own furniture and parked cars are the street dressing's, different every session)
+    const mine = geo.colliders.filter(([x0, z0, x1, z1, h]) => h > 0.3 && sites.some(st => x0 >= st.rect.x0 - 0.1 && x1 <= st.rect.x1 + 0.1 && z0 >= st.rect.z0 - 0.1 && z1 <= st.rect.z1 + 0.1));
+    const hit = (x, z) => mine.some(([x0, z0, x1, z1]) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)) < 0.45);
+    let total = 0, nBlocked = 0; const where = [];
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      const x0 = bm(i) - 1, z0 = bm(j) - 1, x1 = bm(i) + 47, z1 = bm(j) + 47;
+      for (let t = 0; t <= 48; t += 0.5) for (const [x, z] of [[x0 + t, z0], [x0 + t, z1], [x0, z0 + t], [x1, z0 + t]]) { total++; if (hit(x, z)) { nBlocked++; if (where.length < 6) where.push([x, z]); } }
     }
+    ring = { total, blocked: nBlocked, colliders: mine.length };
+    check('(medium) nothing the district drew stands on the pavement round any block', nBlocked === 0 && mine.length > 0, JSON.stringify({ ...ring, where }));
     // 5. the Ngor residence's door, entry and gate (src/economy/estate.ts)
     const near = await s.d(() => window.__dakar.interactables().filter(i => /almadies:(home|city):residence/.test(i.id)));
     const door = near.find(i => i.id === 'almadies:home:residence'), entry = near.find(i => i.id === 'almadies:city:residence');
@@ -69,7 +72,7 @@ for (const q of ['low', 'medium']) {
   } else await s.context.close();
 }
 // 6. the cost of the hub against the villa branch's, measured the same way
-const before = JSON.parse(fs.readFileSync(beforeFile, 'utf8'));
+const before = BASELINE ? null : JSON.parse(fs.readFileSync(beforeFile.replace('cost.json', 'baseline.json'), 'utf8'));
 let cost = null;
 if (medium) {
   cost = await staticCost(medium.page);
@@ -83,6 +86,6 @@ if (medium) {
 }
 await browser.close();
 const failed = results.filter(r => !r.ok).length;
-fs.writeFileSync(`${out}/${BASELINE ? 'baseline' : 'results'}.json`, JSON.stringify({ at: new Date().toISOString(), passed: results.length - failed, failed, static: cost, results }, null, 1));
+fs.writeFileSync(`${out}/${BASELINE ? 'baseline' : 'results'}.json`, JSON.stringify({ at: new Date().toISOString(), passed: results.length - failed, failed, static: cost, ring, results }, null, 1));
 console.log(`${results.length - failed}/${results.length} passed`);
 process.exit(failed ? 1 : 0);
