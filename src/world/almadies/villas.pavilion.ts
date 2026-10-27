@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, bench } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, eave, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, seatBench, car, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * Villa 3, « Pavillons »: two pavilions under deep thin flat roofs, the tall living pavilion and the low suite-and-garage pavilion, joined by a glazed link
@@ -56,7 +56,8 @@ export const pavilion: SiteBuilder = o => {
   walk(k, -1.2, 3.6, 1.4); d.box(d.plain, 1.5, 0.22, wm.z1 - wm.z0 + 0.5, -1.2, GROUND, (wm.z0 + wm.z1) / 2, d.p.stone);
   pave(k, R(2.8, 9.8, 2.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -2.4, 7.6, 10.4)); lawn(k, R(-10.4, -2.8, 4.6, 5.4)); lawn(k, R(0.0, 2.6, 3.0, 5.4));
-  bench(k, -3.4, 9.5);
+  const seats = [...seatBench(k, -3.4, 9.3, 0), ...seatBench(k, -6.0, 8.3, Math.PI)];
+  car(k, 4.0, 5.4, Math.PI);                                                                      // a sedan before the suite pavilion, clear of the garage door and the gate's apron
   if (n === 2) lantern(k, 1.0, 4.4);
   if (n === 2) pot(k, -9.0, 8.2, 1.2, 0.7, 0.6, true);
   palmAt(k, -8.8 + k.j(0.5), 9.0 + k.j(0.5), 1.0 + k.j(0.08), 0.5 + k.j(0.9));
@@ -69,4 +70,5 @@ export const pavilion: SiteBuilder = o => {
   bloomWall(k, 'left', 0.5, 2.2); if (n === 2) bloomWall(k, 'back', 5.0, 2.2);
   // ---- solid
   solidBox(d, A, fa + 0.35); solidBox(d, B, fb + 0.35); solidBox(d, L, lt);
+  return { life: lifeOut(k, { seats, people: [who(k.g0 - 0.8, 9.6, 0, 'Idle', LOOKS.guard), who(-6.4, 5.0, 0, 'Talk', LOOKS.woman, F1)] }) };
 };
