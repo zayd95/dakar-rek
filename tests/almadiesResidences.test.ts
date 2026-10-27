@@ -4,9 +4,9 @@ import { stubCanvas } from './hubstub';
 import { drawSite, testKit, trisOf, type TestKit } from './helpers/siteCost';
 import { colliderInPlan, toPlan } from './helpers/designChecks';
 import { BLK, HALF, PITCH, ROAD } from '../src/world/builder';
-import { E, GROUND, STOREY, TRI_CAP, extentOf, siteFrame, sizeOf, type Site, type SiteDraw } from '../src/world/almadies/contract';
+import { E, GROUND, LIFE_CAP, STOREY, TRI_CAP, extentOf, siteDraw, siteFrame, sizeOf, type Site, type SiteDraw, type SiteLife } from '../src/world/almadies/contract';
 import { SITES } from '../src/world/almadies/plan';
-import { buildDistrict, variantOf, variantsFor } from '../src/world/almadies/district';
+import { buildDistrict, lifeInHub, variantOf, variantsFor } from '../src/world/almadies/district';
 import { VARIANTS } from '../src/world/almadies/residences';
 import { infoOf, lastSections } from '../src/world/almadies/residences.kit';
 import { stackBalconyRuns } from '../src/world/almadies/residences.stack';
@@ -56,28 +56,37 @@ function topQuads(tris: Tri[], y: number, batch = 'plain'): [number, number, num
   return [...m.values()];
 }
 /**
- * Can a body's circle walk from a point on the pavement (plan x, `E + 1.6`) to a plan point inside the site? A breadth-first search on a 0.3 m grid of the
- * plan, a cell blocked when the circle there would touch a collider of the design (anything taller than 0.3 m: the railing, the gate, tables, planters).
+ * Where can a body's circle walk from a point on the pavement (plan x, `E + 1.6`)? A breadth-first search on a 0.3 m grid of the plan, a cell blocked when the circle
+ * there would touch a collider of the design (anything taller than 0.3 m: the railing, the gate, tables, planters, cars, benches). `has(p, tol)`: a free cell reached
+ * within `tol` m of the plan point.
  */
-function reachable(d: SiteDraw, colliders: Collider[], from: { x: number; z: number }, to: { x: number; z: number }): boolean {
+function walkMap(d: SiteDraw, colliders: Collider[], from: { x: number; z: number }) {
   const { w, d: depth } = extentOf(d.site), cs = colliders.filter(c => c.h > 0.3).map(c => { const q = colliderInPlan(d, c); return { x0: q.x - q.w / 2 - R, x1: q.x + q.w / 2 + R, z0: q.z - q.d / 2 - R, z1: q.z + q.d / 2 + R }; });
   const step = 0.3, x0 = -w / 2 - 0.6, z0 = E - depth - 0.6, nx = Math.ceil((w + 1.2) / step), nz = Math.ceil((depth + 0.6 + 3.2) / step);
   const cell = (x: number, z: number) => [Math.floor((x - x0) / step), Math.floor((z - z0) / step)] as const;
   const blocked = (i: number, j: number) => { const x = x0 + (i + 0.5) * step, z = z0 + (j + 0.5) * step; return cs.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1); };
-  const [si, sj] = cell(from.x, from.z), [ti, tj] = cell(to.x, to.z);
-  if (blocked(si, sj) || blocked(ti, tj)) return false;
-  const seen = new Uint8Array(nx * nz), queue = [si + sj * nx]; seen[si + sj * nx] = 1;
-  for (let h = 0; h < queue.length; h++) {
-    const i = queue[h] % nx, j = Math.floor(queue[h] / nx);
-    if (Math.abs(i - ti) <= 1 && Math.abs(j - tj) <= 1) return true;
-    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const a = i + di, b = j + dj;
-      if (a < 0 || b < 0 || a >= nx || b >= nz || seen[a + b * nx] || blocked(a, b)) continue;
-      seen[a + b * nx] = 1; queue.push(a + b * nx);
+  const [si, sj] = cell(from.x, from.z), seen = new Uint8Array(nx * nz);
+  if (!blocked(si, sj)) {
+    const queue = [si + sj * nx]; seen[si + sj * nx] = 1;
+    for (let h = 0; h < queue.length; h++) {
+      const i = queue[h] % nx, j = Math.floor(queue[h] / nx);
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di, b = j + dj;
+        if (a < 0 || b < 0 || a >= nx || b >= nz || seen[a + b * nx] || blocked(a, b)) continue;
+        seen[a + b * nx] = 1; queue.push(a + b * nx);
+      }
     }
   }
-  return false;
+  return { has(p: { x: number; z: number }, tol = 0.35) {
+    const [ci, cj] = cell(p.x, p.z), n = Math.ceil(tol / step) + 1;
+    for (let i = ci - n; i <= ci + n; i++) for (let j = cj - n; j <= cj + n; j++) {
+      if (i < 0 || j < 0 || i >= nx || j >= nz || !seen[i + j * nx]) continue;
+      if (Math.hypot(x0 + (i + 0.5) * step - p.x, z0 + (j + 0.5) * step - p.z) <= tol + step / 2) return true;
+    }
+    return false;
+  } };
 }
+const reachable = (d: SiteDraw, colliders: Collider[], from: { x: number; z: number }, to: { x: number; z: number }) => walkMap(d, colliders, from).has(to);
 
 describe('the registry the plan asks for', () => {
   it('has the S list [ngor], the M list [stack, screen], the L list [courtyard], in that order', () => {
@@ -321,5 +330,131 @@ describe('every residence, every size of tower', () => {
       const v = variantFor(s), a = drawSite({ ...s, palette: pal }, v), b = drawSite(s, v);
       expect(a.tris).toBe(b.tris);
     }
+  });
+});
+
+/**
+ * LD2.0-E round 3 (« several buildings look impressive from a distance but need more life at ground level »): what each residence puts out on its ground floor: café chairs
+ * that are seats (two a table, facing it), customers already seated, a waiter at each café's door, a shopkeeper at each shop's, a doorman at each lobby's, parked cars and
+ * scooters, benches, props on the pavement; every one inside its site, clear of the colliders, reachable from the pavement by a body's circle.
+ */
+describe('life at the ground level', () => {
+  /** Draws a site and returns what it hands the hub: its life, in the plan. */
+  const lifeOf = (s: Site, lite = false) => { const t = testKit(lite), d = siteDraw(t.kit, s), r = variantFor(s).build(d) ?? {}; return { t, d, life: (r.life ?? {}) as Required<SiteLife>, info: infoOf(d) }; };
+  const kindsOf = (s: Site) => LIFE_CAP[s.kind];
+  const sized = (c: { w: number; d: number }, a: number, b: number) => (Math.abs(c.w - a) < 0.05 && Math.abs(c.d - b) < 0.05) || (Math.abs(c.w - b) < 0.05 && Math.abs(c.d - a) < 0.05);
+  const cars = (d: SiteDraw) => d.colliders.map(c => colliderInPlan(d, c)).filter(c => sized(c, 1.78, 4.25) || sized(c, 1.9, 4.7)).length;
+  const scooters = (d: SiteDraw) => d.colliders.map(c => colliderInPlan(d, c)).filter(c => sized(c, 0.6, 1.9)).length;
+  const minGap = (d: SiteDraw, x: number, z: number) => Math.min(...d.colliders.filter(c => c.h > 0.3).map(c => { const q = colliderInPlan(d, c); return Math.hypot(Math.max(Math.abs(x - q.x) - q.w / 2, 0), Math.max(Math.abs(z - q.z) - q.d / 2, 0)); }));
+  const front = (yaw: number) => [Math.sin(yaw), Math.cos(yaw)] as const;
+  const tableChairs = (s: Site) => infoOf(lifeOf(s).d).tables * 2;
+
+  for (const s of residences) describe(s.name!, () => {
+    const L = lifeOf(s), { w, d: depth } = extentOf(s), life = L.life, info = L.info;
+    it('puts out chairs at its café tables (two a table, facing it), customers already seated, within the humanoid and seat caps', () => {
+      const chairs = life.seats.filter(x => x.kind === 'chair'), cap = kindsOf(s);
+      expect(info.tables, 'tables').toBeGreaterThanOrEqual(2); expect(chairs.length).toBe(info.tables * 2);
+      expect(life.seats.length).toBeGreaterThanOrEqual(chairs.length); expect(life.seats.length).toBeLessThanOrEqual(cap.seats);
+      expect(life.people.length).toBeGreaterThanOrEqual(sizeOf(s) === 'L' ? 4 : 3); expect(life.people.length).toBeLessThanOrEqual(cap.people);
+      expect(life.people.filter(p => p.clip === 'Sit').length).toBeGreaterThanOrEqual(2);       // customers or residents sitting down
+      expect(life.people.some(p => p.clip === 'Talk')).toBe(true);                               // a waiter, someone chatting
+      expect(life.people.some(p => p.clip === 'Idle')).toBe(true);                               // a doorman, a shopkeeper
+    });
+    it('keeps every seat and every person inside the site, clear of the colliders, a chair facing its table at the height of a chair', () => {
+      for (const q of [...life.seats, ...life.people]) { expect(Math.abs(q.x), `x ${q.x}`).toBeLessThanOrEqual(w / 2 - 0.3); expect(q.z, `z ${q.z}`).toBeLessThanOrEqual(E - 0.5); expect(q.z, `z ${q.z}`).toBeGreaterThanOrEqual(E - depth + 0.3); }
+      for (const c of life.seats) {
+        if (c.kind === 'bench') { expect(c.top).toBeGreaterThan(0.5); expect(c.top).toBeLessThan(0.62); continue; }
+        expect(c.top).toBeGreaterThan(0.45); expect(c.top).toBeLessThan(0.6);
+        expect(minGap(L.d, c.x, c.z), `chair at ${c.x}, ${c.z}`).toBeGreaterThanOrEqual(0.2);
+        const t = c.table!, dist = Math.hypot(t.x - c.x, t.z - c.z), f = front(c.yaw);
+        expect((f[0] * (t.x - c.x) + f[1] * (t.z - c.z)) / dist, 'the chair faces its table').toBeGreaterThan(0.99);
+        expect(dist).toBeLessThan(0.9); expect(t.y).toBeGreaterThan(0.7); expect(t.y).toBeLessThan(0.95);
+      }
+      for (const p of life.people) if (p.clip !== 'Sit' && !p.y) expect(minGap(L.d, p.x, p.z), `${p.clip} person at ${p.x}, ${p.z}`).toBeGreaterThanOrEqual(0.3);
+      // a seated person is on a seat, facing as it does, their feet 5 cm under the street's
+      for (const p of life.people.filter(q => q.clip === 'Sit')) { const seat = life.seats.find(x => Math.hypot(x.x - p.x, x.z - p.z) < 0.05); expect(seat, `a seat under the sitter at ${p.x}, ${p.z}`).toBeTruthy(); expect(p.yaw).toBeCloseTo(seat!.yaw, 6); expect(p.y).toBeCloseTo(-0.05, 6); }
+      // nobody stands in a walk-in opening
+      for (const e of info.entries) for (const p of life.people) expect(!(Math.abs(p.x - e.x) < e.w / 2 && p.z > E - 1.2), `a person in the opening at x ${e.x}`).toBe(true);
+    });
+    it('can be reached from the pavement by a body\'s circle: the lobby door, every café and shop door, every seat (from behind or the side), every person on the street', () => {
+      const entry = info.entries[0], map = walkMap(L.d, L.d.colliders, { x: entry.x, z: E + 1.6 });
+      for (const door of info.doors) expect(map.has(door.stand), `${door.kind} door at ${door.x}`).toBe(true);
+      for (const c of life.seats) {
+        const f = front(c.yaw), px = f[1], pz = -f[0], at = (a: number, b: number) => ({ x: c.x + f[0] * a + px * b, z: c.z + f[1] * a + pz * b });
+        const spots = c.kind === 'bench' ? [at(0.85, 0), at(-0.85, 0)] : [at(-0.8, 0), at(0, 0.85), at(0, -0.85)];
+        expect(spots.some(q => map.has(q, 0.2)), `${c.kind} at ${c.x}, ${c.z}`).toBe(true);
+      }
+      for (const p of life.people.filter(q => q.y === undefined || q.y < 0)) expect(map.has(p, 1.3), `${p.clip} person at ${p.x}, ${p.z}`).toBe(true);
+    });
+    it('sets out its street life: parked things, props, menu boards, the doorman at the lobby door, a shopkeeper at each shop\'s door, a waiter at each café\'s', () => {
+      const shops = info.units.filter(u => u.kind === 'shop' && u.face === 'street'), cafes = info.units.filter(u => u.kind === 'cafe' && u.face === 'street');
+      expect(info.menus.length).toBeGreaterThanOrEqual(cafes.length);                            // a menu board at each café's awning
+      expect(info.props.length).toBeGreaterThanOrEqual(shops.length);                            // buckets, crates, a newspaper rack at each shop's window
+      const lobby = info.doors.find(q => q.kind === 'lobby')!;
+      expect(life.people.some(p => p.clip === 'Idle' && Math.hypot(p.x - lobby.stand.x, p.z - lobby.stand.z) < 3.2), 'a doorman by the lobby door').toBe(true);
+      for (const door of info.doors.filter(q => q.kind === 'unit')) expect(life.people.some(p => Math.hypot(p.x - door.x, p.z - door.stand.z) < 2.2 && p.clip !== 'Sit'), `somebody at the door at ${door.x}`).toBe(true);
+      for (const m of info.menus) { expect(minGap(L.d, m.x, m.z), 'a menu board is not on a table').toBeGreaterThanOrEqual(0.2); expect(m.z).toBeLessThan(E - 0.8); }
+      expect(cars(L.d) + scooters(L.d)).toBeGreaterThanOrEqual(2);                               // something parked
+    });
+    it('is the same on the low preset (the same seats and people), and from one drawing to the next', () => {
+      const lite = lifeOf(s, true), again = lifeOf(s);
+      expect(JSON.stringify(lite.life)).toBe(JSON.stringify(life)); expect(JSON.stringify(again.life)).toBe(JSON.stringify(life));
+    });
+    it('reaches the hub in the site\'s frame: every seat and person inside the site\'s rectangle, ids by site, the seated on a seat', () => {
+      const h = lifeInHub(L.d, life), r = s.rect;
+      expect(h.seats).toHaveLength(life.seats.length); expect(h.people).toHaveLength(life.people.length);
+      expect(new Set(h.seats.map(x => x.id)).size).toBe(h.seats.length);
+      for (const q of [...h.seats, ...h.people]) { expect(q.x).toBeGreaterThan(r.x0); expect(q.x).toBeLessThan(r.x1); expect(q.z).toBeGreaterThan(r.z0); expect(q.z).toBeLessThan(r.z1); }
+      for (const p of h.people.filter(q => q.clip === 'Sit')) expect(h.seats.some(x => Math.hypot(x.x - p.x, x.z - p.z) < 0.05)).toBe(true);
+      expect(tableChairs(s)).toBe(info.tables * 2);
+    });
+  });
+
+  it('the Ngor residence: a car on its drive nose to the street, a scooter by the lobby, a resident on the bench, someone on the first floor\'s terrace, the lobby\'s doorman; the estate\'s door, entry and board stay free', () => {
+    const L = lifeOf(ngorSite), cs = L.d.colliders.map(c => colliderInPlan(L.d, c)), car = cs.find(c => sized(c, 1.78, 4.25))!;
+    expect(cars(L.d)).toBe(1); expect(scooters(L.d)).toBe(1);
+    expect(car.x).toBeGreaterThan(-1.4); expect(car.x).toBeLessThan(3.4); expect(car.z).toBeGreaterThan(2.6); expect(car.z).toBeLessThan(8);   // on the drive between the gate and the garage
+    expect(L.life.people.some(p => p.y === STOREY && p.clip === 'Idle')).toBe(true);                       // on the first floor's terrace, 3.4 m up
+    expect(L.life.people.filter(p => p.clip === 'Sit')).toHaveLength(3);                                    // two customers and the resident
+    const LOT = (BLK - 2) / 2, BM = (k: number) => -HALF + ROAD + k * PITCH, gate = { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 };
+    const r = drawSite(ngorSite, variantFor(ngorSite));
+    for (const q of [{ x: gate.x, z: gate.z + 1.4 }, { x: gate.x - 2.6, z: gate.z + 2.2 }, { x: gate.x + 2.3, z: gate.z + 0.9 }]) expect(solidAt(r.colliders, q.x, q.z)).toBe(false);
+    const h = lifeInHub(L.d, L.life);
+    for (const q of [...h.seats, ...h.people]) expect(q.z, 'nothing out on the pavement where the estate puts its board').toBeLessThan(ngorSite.rect.z1 - 0.3);
+  });
+  it('the stacked residence: three cars (an SUV among them) and two scooters under the block, a resident on the second floor\'s balcony, a shopkeeper with her props', () => {
+    const L = lifeOf(siteNamed('RÉSIDENCE LES ALIZÉS'));
+    expect(cars(L.d)).toBeGreaterThanOrEqual(3); expect(cars(L.d)).toBeLessThanOrEqual(4); expect(scooters(L.d)).toBe(2);
+    expect(L.d.colliders.map(c => colliderInPlan(L.d, c)).some(c => sized(c, 1.9, 4.7))).toBe(true);
+    for (const c of L.d.colliders.map(c2 => colliderInPlan(L.d, c2)).filter(c2 => sized(c2, 1.78, 4.25) || sized(c2, 1.9, 4.7))) { expect(c.z).toBeLessThan(0); expect(c.z).toBeGreaterThan(-8.2); }   // inside the court, behind the line of the pilotis
+    expect(L.life.people.some(p => p.y === 2 * STOREY && p.clip === 'Talk')).toBe(true);
+  });
+  it('the louvred residences: scooters by the boutique, two shops with their props, a café with its tables', () => {
+    for (const name of ['RÉSIDENCE KËR SALAM', 'RÉSIDENCE LES CORMORANS']) { const L = lifeOf(siteNamed(name)); expect(scooters(L.d)).toBe(2); expect(L.info.props.length).toBe(2); expect(L.info.menus.length).toBe(1); expect(L.life.seats.filter(x => x.kind === 'chair').length).toBe(4); }
+  });
+  it('the courtyard complex: cars along the car gate\'s side court, a bench with a seated resident in the courtyard, a couple talking by the pool, the concierge in the passage', () => {
+    const L = lifeOf(siteNamed('RÉSIDENCE JARDINS DE NGOR')), plan = L.d.colliders.map(c => colliderInPlan(L.d, c));
+    expect(cars(L.d)).toBe(2); expect(scooters(L.d)).toBe(1);
+    for (const c of plan.filter(c2 => sized(c2, 1.78, 4.25) || sized(c2, 1.9, 4.7))) expect(c.x).toBeGreaterThan(19.5);                      // in the east side court
+    const benchSeats = L.life.seats.filter(x => x.kind === 'bench' && x.z < 0);
+    expect(benchSeats.length).toBe(4); expect(benchSeats.every(x => x.z < -3 && x.z > -22 && Math.abs(x.x) < 10)).toBe(true);                  // in the courtyard
+    expect(L.life.people.some(p => p.clip === 'Sit' && benchSeats.some(x => Math.hypot(x.x - p.x, x.z - p.z) < 0.05))).toBe(true);
+    expect(L.life.people.filter(p => p.clip === 'Talk' && p.z < -3).length).toBe(2);
+    expect(L.life.people.some(p => p.clip === 'Idle' && p.x > -3 && p.x < 0 && p.z > 0 && p.z < 6)).toBe(true);                                // the concierge in the passage
+  });
+  it('reaches the real Almadies hub: the seats are in the hub\'s seats (ids by site), the people among its placed people, on both presets', async () => {
+    const { buildHub } = await import('../src/world/builder');
+    for (const lite of [false, true]) {
+      const hub = buildHub('almadies', lite);
+      for (const s of residences) {
+        const L = lifeOf(s, lite), h = lifeInHub(L.d, L.life), mine = hub.seats.filter(x => x.id.startsWith(`${s.id}:seat:`));
+        expect(mine.map(x => x.id), s.name).toEqual(h.seats.map(x => x.id));
+        for (const x of h.seats) expect(mine.some(q => Math.abs(q.x - x.x) < 1e-6 && Math.abs(q.z - x.z) < 1e-6 && q.kind === x.kind && q.top === x.top && q.space === 'street' && q.occupant === null), `${s.name} seat ${x.id}`).toBe(true);
+        for (const p of h.people) expect(hub.people.some(q => Math.abs(q.x - p.x) < 1e-6 && Math.abs(q.z - p.z) < 1e-6 && q.clip === p.clip && q.y === p.y), `${s.name} ${p.clip} at ${p.x}, ${p.z}`).toBe(true);
+      }
+    }
+  }, 120_000);
+  it('every residence stays within its triangle budget with its life, and lighter on the low preset', () => {
+    for (const s of residences) { const r = drawSite(s, variantFor(s)), lite = drawSite(s, variantFor(s), true); expect(r.tris, s.name).toBeLessThanOrEqual(TRI_CAP.residence[sizeOf(s)]!); expect(lite.tris, s.name).toBeLessThanOrEqual(r.tris * 0.9); }
   });
 });
