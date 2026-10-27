@@ -8,7 +8,7 @@
    "room": "entree",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.18,
+   "dist": 0.01,
    "ok": true
   },
   {
@@ -19,7 +19,7 @@
    "room": "entree",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.39,
+   "dist": 0.38,
    "ok": true
   },
   {
@@ -30,7 +30,7 @@
    "room": "bureau",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.16,
+   "dist": 0.09,
    "ok": true
   },
   {
@@ -41,7 +41,7 @@
    "room": "bureau",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.06,
+   "dist": 0.12,
    "ok": true
   },
   {
@@ -52,7 +52,7 @@
    "room": "bureau",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.31,
+   "dist": 0.44,
    "ok": true
   },
   {
@@ -63,7 +63,7 @@
    "room": "bureau",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.3,
+   "dist": 0.15,
    "ok": true
   },
   {
@@ -74,7 +74,7 @@
    "room": "bureau",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.17,
+   "dist": 0.2,
    "ok": true
   },
   {
@@ -85,7 +85,7 @@
    "room": "entree",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.25,
+   "dist": 0.36,
    "ok": true
   },
   {
@@ -96,7 +96,7 @@
    "room": "entree",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.12,
+   "dist": 0.25,
    "ok": true
   },
   {
@@ -107,7 +107,7 @@
    "room": "salon",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.26,
+   "dist": 0.14,
    "ok": true
   },
   {
@@ -118,7 +118,7 @@
    "room": "salon",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.2,
+   "dist": 0.19,
    "ok": true
   },
   {
@@ -140,7 +140,7 @@
    "room": "jardin",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.21,
+   "dist": 0.04,
    "ok": true
   },
   {
@@ -151,7 +151,7 @@
    "room": "jardin",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.08,
+   "dist": 0.26,
    "ok": true
   },
   {
@@ -162,7 +162,7 @@
    "room": "jardin",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.18,
+   "dist": 0.15,
    "ok": true
   },
   {
@@ -173,7 +173,7 @@
    "room": "jardin",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.27,
+   "dist": 0.03,
    "ok": true
   },
   {
@@ -184,7 +184,7 @@
    "room": "manger",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.23,
+   "dist": 0.19,
    "ok": true
   },
   {
@@ -195,7 +195,7 @@
    "room": "manger",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.18,
+   "dist": 0.31,
    "ok": true
   },
   {
@@ -206,7 +206,7 @@
    "room": "cuisine",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.15,
+   "dist": 0.12,
    "ok": true
   },
   {
@@ -217,7 +217,7 @@
    "room": "manger",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.21,
+   "dist": 0.23,
    "ok": true
   },
   {
@@ -228,7 +228,7 @@
    "room": "manger",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.02,
+   "dist": 0.13,
    "ok": true
   },
   {
@@ -239,7 +239,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.32,
+   "dist": 0.13,
    "ok": true
   },
   {
@@ -250,7 +250,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.25,
+   "dist": 0.34,
    "ok": true
   },
   {
@@ -261,7 +261,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.08,
+   "dist": 0.15,
    "ok": true
   },
   {
@@ -272,7 +272,7 @@
    "room": "sde",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.06,
+   "dist": 0.2,
    "ok": true
   },
   {
@@ -283,7 +283,7 @@
    "room": "sde",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.43,
+   "dist": 0.36,
    "ok": true
   },
   {
@@ -294,7 +294,7 @@
    "room": "sde",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.07,
+   "dist": 0.09,
    "ok": true
   },
   {
@@ -305,7 +305,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.17,
+   "dist": 0.2,
    "ok": true
   },
   {
@@ -316,7 +316,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.03,
+   "dist": 0.15,
    "ok": true
   },
   {
@@ -327,7 +327,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.25,
+   "dist": 0.27,
    "ok": true
   },
   {
@@ -338,7 +338,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.27,
+   "dist": 0.11,
    "ok": true
   },
   {
@@ -348,8 +348,8 @@
    ],
    "room": "hall",
    "level": "rdc",
-   "y": 2.11,
-   "dist": 0.21,
+   "y": 2.1,
+   "dist": 0.19,
    "ok": true
   },
   {
@@ -360,7 +360,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.23,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -371,7 +371,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.23,
+   "dist": 0.31,
    "ok": true
   },
   {
@@ -393,7 +393,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.15,
+   "dist": 0.25,
    "ok": true
   },
   {
@@ -404,7 +404,7 @@
    "room": "balcon_rue",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.3,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -415,7 +415,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.23,
+   "dist": 0.17,
    "ok": true
   },
   {
@@ -426,7 +426,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.4,
+   "dist": 0.08,
    "ok": true
   },
   {
@@ -437,7 +437,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.19,
+   "dist": 0.22,
    "ok": true
   },
   {
@@ -448,7 +448,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.16,
+   "dist": 0.23,
    "ok": true
   },
   {
@@ -459,7 +459,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.37,
+   "dist": 0.09,
    "ok": true
   },
   {
@@ -470,7 +470,7 @@
    "room": "balcon_piscine",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.24,
+   "dist": 0.14,
    "ok": true
   },
   {
@@ -481,7 +481,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.21,
+   "dist": 0.26,
    "ok": true
   },
   {
@@ -492,7 +492,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.27,
+   "dist": 0.06,
    "ok": true
   },
   {
@@ -503,7 +503,7 @@
    "room": "dressing",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.36,
+   "dist": 0.23,
    "ok": true
   },
   {
@@ -514,7 +514,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.1,
+   "dist": 0.08,
    "ok": true
   },
   {
@@ -525,7 +525,7 @@
    "room": "suite",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.11,
+   "dist": 0.12,
    "ok": true
   },
   {
@@ -536,7 +536,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.26,
+   "dist": 0.29,
    "ok": true
   },
   {
@@ -547,7 +547,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.15,
+   "dist": 0.16,
    "ok": true
   },
   {
@@ -558,7 +558,7 @@
    "room": "chambre2",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.22,
+   "dist": 0.1,
    "ok": true
   },
   {
@@ -569,7 +569,7 @@
    "room": "chambre2",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.15,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -580,7 +580,7 @@
    "room": "chambre2",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.12,
+   "dist": 0.14,
    "ok": true
   },
   {
@@ -591,7 +591,7 @@
    "room": "salon_familial",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.4,
+   "dist": 0.23,
    "ok": true
   },
   {
@@ -602,7 +602,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.21,
+   "dist": 0.23,
    "ok": true
   },
   {
@@ -613,7 +613,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.16,
+   "dist": 0.17,
    "ok": true
   },
   {
@@ -623,8 +623,8 @@
    ],
    "room": "palier",
    "level": "etage",
-   "y": 5.16,
-   "dist": 0.17,
+   "y": 5.19,
+   "dist": 0.2,
    "ok": true
   },
   {
@@ -635,7 +635,7 @@
    "room": "edicule",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.06,
+   "dist": 0.19,
    "ok": true
   },
   {
@@ -646,7 +646,7 @@
    "room": "edicule",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.39,
+   "dist": 0.25,
    "ok": true
   },
   {
@@ -657,7 +657,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.27,
+   "dist": 0.12,
    "ok": true
   },
   {
@@ -668,7 +668,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.38,
+   "dist": 0.21,
    "ok": true
   },
   {
@@ -679,7 +679,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.33,
+   "dist": 0.18,
    "ok": true
   },
   {
@@ -690,7 +690,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.15,
+   "dist": 0.19,
    "ok": true
   },
   {
@@ -701,7 +701,7 @@
    "room": "terrasse_rue",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.18,
+   "dist": 0.11,
    "ok": true
   },
   {
@@ -712,7 +712,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.4,
+   "dist": 0.14,
    "ok": true
   },
   {
@@ -723,7 +723,7 @@
    "room": "terrasse",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.25,
+   "dist": 0.03,
    "ok": true
   },
   {
@@ -734,7 +734,7 @@
    "room": "edicule",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.33,
+   "dist": 0.27,
    "ok": true
   },
   {
@@ -745,7 +745,7 @@
    "room": "edicule",
    "level": "toit",
    "y": 6.9,
-   "dist": 0.33,
+   "dist": 0.24,
    "ok": true
   },
   {
@@ -755,8 +755,8 @@
    ],
    "room": "palier",
    "level": "etage",
-   "y": 4.5,
-   "dist": 0.18,
+   "y": 4.33,
+   "dist": 0.42,
    "ok": true
   },
   {
@@ -767,7 +767,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.09,
+   "dist": 0.33,
    "ok": true
   },
   {
@@ -778,7 +778,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.18,
+   "dist": 0.41,
    "ok": true
   },
   {
@@ -789,7 +789,7 @@
    "room": "palier",
    "level": "etage",
    "y": 3.5,
-   "dist": 0.16,
+   "dist": 0.17,
    "ok": true
   },
   {
@@ -799,8 +799,8 @@
    ],
    "room": "hall",
    "level": "rdc",
-   "y": 2.71,
-   "dist": 0.38,
+   "y": 2.52,
+   "dist": 0.39,
    "ok": true
   },
   {
@@ -811,7 +811,7 @@
    "room": "hall",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.44,
+   "dist": 0.38,
    "ok": true
   },
   {
@@ -833,7 +833,7 @@
    "room": "manger",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.25,
+   "dist": 0.34,
    "ok": true
   },
   {
@@ -844,7 +844,7 @@
    "room": "salon",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.03,
+   "dist": 0.05,
    "ok": true
   },
   {
@@ -866,13 +866,13 @@
    "room": "entree",
    "level": "rdc",
    "y": 0.1,
-   "dist": 0.23,
+   "dist": 0.28,
    "ok": true
   }
  ],
  "samples": {
-  "n": 628,
-  "closest": 0.2999999999999118,
+  "n": 631,
+  "closest": 0.29999999999993915,
   "rooms": [
    "entree",
    "bureau",
@@ -911,55 +911,55 @@
  "perf": {
   "empty": {
    "rdc": {
-    "calls": 16,
-    "tris": 26364
+    "calls": 21,
+    "tris": 24772
    },
    "etage": {
-    "calls": 26,
-    "tris": 27560
+    "calls": 32,
+    "tris": 25212
    },
    "toit": {
-    "calls": 23,
-    "tris": 21992
+    "calls": 28,
+    "tris": 23332
    }
   },
   "furnished": {
    "rdc": {
-    "calls": 23,
-    "tris": 27052
+    "calls": 20,
+    "tris": 25820
    },
    "etage": {
-    "calls": 29,
-    "tris": 27758
+    "calls": 28,
+    "tris": 26212
    },
    "toit": {
-    "calls": 23,
-    "tris": 21690
+    "calls": 30,
+    "tris": 23310
    }
   },
   "shell": {
    "rdc": {
     "calls": 14,
-    "tris": 10946,
+    "tris": 8916,
     "frame": {
      "calls": 16,
-     "tris": 25876
+     "tris": 23846
     }
    },
    "etage": {
-    "calls": 21,
-    "tris": 11914,
+    "calls": 27,
+    "tris": 9566,
     "frame": {
-     "calls": 26,
-     "tris": 27560
+     "calls": 32,
+     "tris": 25212
     }
    },
    "toit": {
-    "calls": 19,
-    "tris": 6348,
+    "calls": 26,
+    "tris": 7692,
     "frame": {
-     "calls": 21,
-     "tris": 21278
+     "calls": 28,
+     "tris": 22622
     }
    }
   },
@@ -968,91 +968,91 @@
  "pictures": [
   [
    "rdc-salon-day",
-   142059
+   245735
   ],
   [
    "rdc-pool-day",
-   299448
+   225063
   ],
   [
    "rdc-hall-day",
-   312742
+   208333
   ],
   [
    "rdc-cuisine-day",
-   350572
+   192781
   ],
   [
    "etage-salon-day",
-   137934
+   247794
   ],
   [
    "etage-suite-day",
-   313828
+   221832
   ],
   [
    "etage-balcon-day",
-   267235
+   130968
   ],
   [
    "toit-helipad-day",
-   333036
+   195457
   ],
   [
    "toit-terrasse-day",
-   323620
+   262754
   ],
   [
    "rdc-salon-night",
-   138453
+   257443
   ],
   [
    "rdc-pool-night",
-   288036
+   193841
   ],
   [
    "rdc-hall-night",
-   313413
+   212119
   ],
   [
    "rdc-cuisine-night",
-   351975
+   194639
   ],
   [
    "etage-salon-night",
-   379770
+   254172
   ],
   [
    "etage-suite-night",
-   319021
+   231204
   ],
   [
    "etage-balcon-night",
-   272521
+   127062
   ],
   [
    "toit-helipad-night",
-   335102
+   166941
   ],
   [
    "toit-terrasse-night",
-   316644
+   229514
   ],
   [
    "furnished-rdc-salon",
-   370615
+   273208
   ],
   [
    "furnished-etage-suite",
-   302822
+   223877
   ],
   [
    "furnished-rdc-pool",
-   299343
+   219549
   ],
   [
    "editor-etage-suite",
-   259932
+   166725
   ]
  ]
 }

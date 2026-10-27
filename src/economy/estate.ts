@@ -17,7 +17,7 @@ import { ECONOMY } from './config';
 import {
   HOUR_MS, adRunning, assetsOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
   cannotReturnRoom, cannotSell, cannotUpgrade, chargeOf, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding, holds, incomeOf, incomePerHour, moveIn,
-  netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, specOfAsset, upgradeAsset, valueOf,
+  netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, setPlacement, specOfAsset, touchAssets, upgradeAsset, valueOf,
 } from './assets';
 import { STARTER_HOME } from '../core/save';
 import {
@@ -749,6 +749,13 @@ class Estate {
       buyAsset: (id: string) => !!buyAsset(self.s, id), rentAsset: (id: string) => !!rentAsset(self.s, id), moveIn: (id: string) => { const a = holding(self.s, id); return !!a && moveIn(self.s, a.uid, true); },
       letAsset: (id: string, on = true) => { const a = holding(self.s, id); return !!a && setLeased(self.s, a.uid, on); },
       buyPiece: (id: string) => { const p = deliverFurniture(self.s, id); return p ? { uid: p.uid, at: p.at ?? null } : null; },
+      /** LD2.0-D look pass: sets a piece of the home at a spot (plan space) if the home editor's rules allow it there (as « Poser » would): null, or why not. */
+      placeAt: (uid: string, x: number, z: number, rot: number) => {
+        const h = currentHome(self.s), all = furnitureIn(self.s, h.uid), f = all.find(a => a.uid === uid); if (!f) return 'missing';
+        const L = layoutOf(homeSpec(h.spec)!), at = { x, z, rot }, others = all.filter(a => a.at && a.uid !== uid && !furnitureSpec(a.spec)?.fixed).map(a => ({ spec: furnitureSpec(a.spec)!, at: a.at! }));
+        const why = whyNot(L, furnitureSpec(f.spec)!, at, others); if (why) return why;
+        setPlacement(self.s, uid, at); touchAssets(); this.ctx.save(); return null;
+      },
       homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, visit: this.visited(v), ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, model: p.obj.name, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
       placer: {
         look: (set?: Partial<{ yaw: number; pitch: number; zoom: number }>) => self.editor.cameraLook(set), screenOf: (uid?: string) => self.editor.screenOf(uid),

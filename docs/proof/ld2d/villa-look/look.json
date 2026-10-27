@@ -1,0 +1,990 @@
+{
+ "base": "http://127.0.0.1:4963/",
+ "layout": [
+  {
+   "spec": "canape_courbe",
+   "room": "salon",
+   "x": -5.9,
+   "z": -0.72,
+   "rot": 2
+  },
+  {
+   "spec": "tapis_rond_jute",
+   "room": "salon",
+   "x": -5.9,
+   "z": -2.25,
+   "rot": 0
+  },
+  {
+   "spec": "table_basse_marbre_noir",
+   "room": "salon",
+   "x": -5.9,
+   "z": -2.2,
+   "rot": 0
+  },
+  {
+   "spec": "fauteuil_boucle",
+   "room": "salon",
+   "x": -6.9,
+   "z": -3.58,
+   "rot": 0
+  },
+  {
+   "spec": "fauteuil_boucle",
+   "room": "salon",
+   "x": -4.9,
+   "z": -3.58,
+   "rot": 0
+  },
+  {
+   "spec": "gueridon_marbre",
+   "room": "salon",
+   "x": -3.95,
+   "z": -3.6,
+   "rot": 0
+  },
+  {
+   "spec": "lampadaire_champignon",
+   "room": "salon",
+   "x": -7.55,
+   "z": -1.75,
+   "rot": 0
+  },
+  {
+   "spec": "lustre_couronne",
+   "room": "salon",
+   "x": -5.9,
+   "z": -2.25,
+   "rot": 0
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "salon",
+   "x": -7.55,
+   "z": -4.5,
+   "rot": 0
+  },
+  {
+   "spec": "salle_manger_ronde",
+   "room": "manger",
+   "x": 1.6,
+   "z": -2.4,
+   "rot": 0
+  },
+  {
+   "spec": "lustre_couronne",
+   "room": "manger",
+   "x": 1.6,
+   "z": -2.4,
+   "rot": 0
+  },
+  {
+   "spec": "enfilade_bronze",
+   "room": "manger",
+   "x": 4.09,
+   "z": -1.7,
+   "rot": 3
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "manger",
+   "x": -0.55,
+   "z": -0.45,
+   "rot": 0
+  },
+  {
+   "spec": "bureau_caisson",
+   "room": "bureau",
+   "x": -6.4,
+   "z": 0.7,
+   "rot": 0
+  },
+  {
+   "spec": "bibliotheque_bronze",
+   "room": "bureau",
+   "x": -4.86,
+   "z": 2.6,
+   "rot": 3
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "entree",
+   "x": -1.8,
+   "z": 3.4,
+   "rot": 0
+  },
+  {
+   "spec": "lit_capitonne_noir",
+   "room": "suite",
+   "x": 14.3,
+   "z": -1.82,
+   "rot": 2
+  },
+  {
+   "spec": "chevet_greige",
+   "room": "suite",
+   "x": 12.95,
+   "z": -0.88,
+   "rot": 2
+  },
+  {
+   "spec": "chevet_greige",
+   "room": "suite",
+   "x": 15.65,
+   "z": -0.88,
+   "rot": 2
+  },
+  {
+   "spec": "banc_lit",
+   "room": "suite",
+   "x": 14.3,
+   "z": -3.25,
+   "rot": 2
+  },
+  {
+   "spec": "dressing_bronze",
+   "room": "suite",
+   "x": 16.81,
+   "z": -3.8,
+   "rot": 3
+  },
+  {
+   "spec": "miroir_ovale",
+   "room": "suite",
+   "x": 12.15,
+   "z": -4.3,
+   "rot": 1
+  },
+  {
+   "spec": "coiffeuse_ronde",
+   "room": "dressing",
+   "x": 19.1,
+   "z": -1.2,
+   "rot": 3
+  },
+  {
+   "spec": "lit_lin_greige",
+   "room": "chambre2",
+   "x": 20.82,
+   "z": -3.2,
+   "rot": 1
+  },
+  {
+   "spec": "chevet_noyer",
+   "room": "chambre2",
+   "x": 19.92,
+   "z": -4.6,
+   "rot": 1
+  },
+  {
+   "spec": "chiffonnier_noyer",
+   "room": "chambre2",
+   "x": 22.72,
+   "z": -2.5,
+   "rot": 3
+  },
+  {
+   "spec": "commode_six",
+   "room": "chambre3",
+   "x": 13.83,
+   "z": -0.27,
+   "rot": 0
+  },
+  {
+   "spec": "meuble_tv_laque",
+   "room": "salon_familial",
+   "x": 15.9,
+   "z": 1.5,
+   "rot": 1
+  },
+  {
+   "spec": "canape_boucle",
+   "room": "salon_familial",
+   "x": 19,
+   "z": 1.55,
+   "rot": 3
+  },
+  {
+   "spec": "tapis_rond_jute",
+   "room": "salon_familial",
+   "x": 17.4,
+   "z": 1.55,
+   "rot": 0
+  },
+  {
+   "spec": "bibliotheque_noyer",
+   "room": "salon_familial",
+   "x": 18.3,
+   "z": -0.38,
+   "rot": 0
+  },
+  {
+   "spec": "lampadaire_arc_plisse",
+   "room": "salon_familial",
+   "x": 20.1,
+   "z": 2.4,
+   "rot": 3
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "salon_familial",
+   "x": 23,
+   "z": 3.5,
+   "rot": 0
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "jardin",
+   "x": 5.6,
+   "z": -7.8,
+   "rot": 0
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "jardin",
+   "x": 6.6,
+   "z": -7.8,
+   "rot": 0
+  },
+  {
+   "spec": "parasol_deporte",
+   "room": "jardin",
+   "x": 8.6,
+   "z": -9.6,
+   "rot": 0
+  },
+  {
+   "spec": "salon_teck",
+   "room": "terrasse",
+   "x": -17.8,
+   "z": 1.85,
+   "rot": 0
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "terrasse",
+   "x": -26.85,
+   "z": 3.3,
+   "rot": 1
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "terrasse",
+   "x": -26.85,
+   "z": -4.4,
+   "rot": 1
+  }
+ ],
+ "placed": [
+  [
+   "canape_courbe",
+   "salon",
+   null
+  ],
+  [
+   "tapis_rond_jute",
+   "salon",
+   null
+  ],
+  [
+   "table_basse_marbre_noir",
+   "salon",
+   null
+  ],
+  [
+   "fauteuil_boucle",
+   "salon",
+   null
+  ],
+  [
+   "fauteuil_boucle",
+   "salon",
+   null
+  ],
+  [
+   "gueridon_marbre",
+   "salon",
+   null
+  ],
+  [
+   "lampadaire_champignon",
+   "salon",
+   null
+  ],
+  [
+   "lustre_couronne",
+   "salon",
+   null
+  ],
+  [
+   "pot_cannele",
+   "salon",
+   null
+  ],
+  [
+   "salle_manger_ronde",
+   "manger",
+   null
+  ],
+  [
+   "lustre_couronne",
+   "manger",
+   null
+  ],
+  [
+   "enfilade_bronze",
+   "manger",
+   null
+  ],
+  [
+   "pot_cannele",
+   "manger",
+   null
+  ],
+  [
+   "bureau_caisson",
+   "bureau",
+   null
+  ],
+  [
+   "bibliotheque_bronze",
+   "bureau",
+   null
+  ],
+  [
+   "pot_cannele",
+   "entree",
+   null
+  ],
+  [
+   "lit_capitonne_noir",
+   "suite",
+   null
+  ],
+  [
+   "chevet_greige",
+   "suite",
+   null
+  ],
+  [
+   "chevet_greige",
+   "suite",
+   null
+  ],
+  [
+   "banc_lit",
+   "suite",
+   null
+  ],
+  [
+   "dressing_bronze",
+   "suite",
+   null
+  ],
+  [
+   "miroir_ovale",
+   "suite",
+   null
+  ],
+  [
+   "coiffeuse_ronde",
+   "dressing",
+   null
+  ],
+  [
+   "lit_lin_greige",
+   "chambre2",
+   null
+  ],
+  [
+   "chevet_noyer",
+   "chambre2",
+   null
+  ],
+  [
+   "chiffonnier_noyer",
+   "chambre2",
+   null
+  ],
+  [
+   "commode_six",
+   "chambre3",
+   null
+  ],
+  [
+   "meuble_tv_laque",
+   "salon_familial",
+   null
+  ],
+  [
+   "canape_boucle",
+   "salon_familial",
+   null
+  ],
+  [
+   "tapis_rond_jute",
+   "salon_familial",
+   null
+  ],
+  [
+   "bibliotheque_noyer",
+   "salon_familial",
+   null
+  ],
+  [
+   "lampadaire_arc_plisse",
+   "salon_familial",
+   null
+  ],
+  [
+   "pot_cannele",
+   "salon_familial",
+   null
+  ],
+  [
+   "bain_soleil_teck",
+   "jardin",
+   null
+  ],
+  [
+   "bain_soleil_teck",
+   "jardin",
+   null
+  ],
+  [
+   "parasol_deporte",
+   "jardin",
+   null
+  ],
+  [
+   "salon_teck",
+   "terrasse",
+   null
+  ],
+  [
+   "bain_soleil_teck",
+   "terrasse",
+   null
+  ],
+  [
+   "bain_soleil_teck",
+   "terrasse",
+   null
+  ]
+ ],
+ "rules": [
+  {
+   "spec": "canape_courbe",
+   "room": "salon",
+   "at": {
+    "x": -5.9,
+    "z": -0.72,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "tapis_rond_jute",
+   "room": "salon",
+   "at": {
+    "x": -5.9,
+    "z": -2.25,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "table_basse_marbre_noir",
+   "room": "salon",
+   "at": {
+    "x": -5.9,
+    "z": -2.2,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "fauteuil_boucle",
+   "room": "salon",
+   "at": {
+    "x": -6.9,
+    "z": -3.58,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "fauteuil_boucle",
+   "room": "salon",
+   "at": {
+    "x": -4.9,
+    "z": -3.58,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "gueridon_marbre",
+   "room": "salon",
+   "at": {
+    "x": -3.95,
+    "z": -3.6,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lampadaire_champignon",
+   "room": "salon",
+   "at": {
+    "x": -7.55,
+    "z": -1.75,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lustre_couronne",
+   "room": "salon",
+   "at": {
+    "x": -5.9,
+    "z": -2.25,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "salon",
+   "at": {
+    "x": -7.55,
+    "z": -4.5,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "salle_manger_ronde",
+   "room": "manger",
+   "at": {
+    "x": 1.6,
+    "z": -2.4,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lustre_couronne",
+   "room": "manger",
+   "at": {
+    "x": 1.6,
+    "z": -2.4,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "enfilade_bronze",
+   "room": "manger",
+   "at": {
+    "x": 4.09,
+    "z": -1.7,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "manger",
+   "at": {
+    "x": -0.55,
+    "z": -0.45,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bureau_caisson",
+   "room": "bureau",
+   "at": {
+    "x": -6.4,
+    "z": 0.7,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bibliotheque_bronze",
+   "room": "bureau",
+   "at": {
+    "x": -4.86,
+    "z": 2.6,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "entree",
+   "at": {
+    "x": -1.8,
+    "z": 3.4,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lit_capitonne_noir",
+   "room": "suite",
+   "at": {
+    "x": 14.3,
+    "z": -1.82,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "chevet_greige",
+   "room": "suite",
+   "at": {
+    "x": 12.95,
+    "z": -0.88,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "chevet_greige",
+   "room": "suite",
+   "at": {
+    "x": 15.65,
+    "z": -0.88,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "banc_lit",
+   "room": "suite",
+   "at": {
+    "x": 14.3,
+    "z": -3.25,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "dressing_bronze",
+   "room": "suite",
+   "at": {
+    "x": 16.81,
+    "z": -3.8,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "miroir_ovale",
+   "room": "suite",
+   "at": {
+    "x": 12.15,
+    "z": -4.3,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "coiffeuse_ronde",
+   "room": "dressing",
+   "at": {
+    "x": 19.1,
+    "z": -1.2,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "lit_lin_greige",
+   "room": "chambre2",
+   "at": {
+    "x": 20.82,
+    "z": -3.2,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "chevet_noyer",
+   "room": "chambre2",
+   "at": {
+    "x": 19.92,
+    "z": -4.6,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "chiffonnier_noyer",
+   "room": "chambre2",
+   "at": {
+    "x": 22.72,
+    "z": -2.5,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "commode_six",
+   "room": "chambre3",
+   "at": {
+    "x": 13.83,
+    "z": -0.27,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "meuble_tv_laque",
+   "room": "salon_familial",
+   "at": {
+    "x": 15.9,
+    "z": 1.5,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "canape_boucle",
+   "room": "salon_familial",
+   "at": {
+    "x": 19,
+    "z": 1.55,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "tapis_rond_jute",
+   "room": "salon_familial",
+   "at": {
+    "x": 17.4,
+    "z": 1.55,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bibliotheque_noyer",
+   "room": "salon_familial",
+   "at": {
+    "x": 18.3,
+    "z": -0.38,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lampadaire_arc_plisse",
+   "room": "salon_familial",
+   "at": {
+    "x": 20.1,
+    "z": 2.4,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "salon_familial",
+   "at": {
+    "x": 23,
+    "z": 3.5,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "jardin",
+   "at": {
+    "x": 5.6,
+    "z": -7.8,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "jardin",
+   "at": {
+    "x": 6.6,
+    "z": -7.8,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "parasol_deporte",
+   "room": "jardin",
+   "at": {
+    "x": 8.6,
+    "z": -9.6,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "salon_teck",
+   "room": "terrasse",
+   "at": {
+    "x": -17.8,
+    "z": 1.85,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "terrasse",
+   "at": {
+    "x": -26.85,
+    "z": 3.3,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "bain_soleil_teck",
+   "room": "terrasse",
+   "at": {
+    "x": -26.85,
+    "z": -4.4,
+    "rot": 1
+   },
+   "why": null
+  }
+ ],
+ "reachable": {
+  "ok": true,
+  "rooms": [],
+  "openings": []
+ },
+ "perf": {
+  "rdc": {
+   "calls": 33,
+   "tris": 30934
+  },
+  "etage": {
+   "calls": 39,
+   "tris": 30696
+  },
+  "toit": {
+   "calls": 28,
+   "tris": 23538
+  },
+  "street": {
+   "calls": 54,
+   "tris": 114900
+  }
+ },
+ "pictures": [
+  [
+   "salon-day",
+   260407
+  ],
+  [
+   "manger-day",
+   218253
+  ],
+  [
+   "suite-day",
+   240462
+  ],
+  [
+   "salon-familial-day",
+   240035
+  ],
+  [
+   "pool-day",
+   210436
+  ],
+  [
+   "roof-day",
+   261462
+  ],
+  [
+   "salon-night",
+   259055
+  ],
+  [
+   "manger-night",
+   223493
+  ],
+  [
+   "suite-night",
+   247713
+  ],
+  [
+   "salon-familial-night",
+   246807
+  ],
+  [
+   "pool-night",
+   175809
+  ],
+  [
+   "roof-night",
+   232558
+  ],
+  [
+   "facade-street-day",
+   258762
+  ],
+  [
+   "facade-high-day",
+   338893
+  ],
+  [
+   "facade-gate-day",
+   227270
+  ],
+  [
+   "facade-street-night",
+   221663
+  ],
+  [
+   "facade-high-night",
+   303629
+  ],
+  [
+   "facade-gate-night",
+   202293
+  ]
+ ],
+ "results": [
+  {
+   "name": "the 39 pieces bought and delivered",
+   "ok": true
+  },
+  {
+   "name": "each piece set at its spot of the layout, by the editor's rules",
+   "ok": true
+  },
+  {
+   "name": "every piece valid where it stands, each in its room, every room reachable",
+   "ok": true
+  },
+  {
+   "name": "pictures of the furnished villa and of its façade in the street by day and at 21 h, each PNG under 400 kB (18)",
+   "ok": true
+  },
+  {
+   "name": "each level furnished: ≤ 60 draw calls and ≤ 80k triangles (phone page): rdc 33 calls 31k, etage 39 calls 31k, toit 28 calls 24k (the street with the villa: 54 calls 115k)",
+   "ok": true
+  },
+  {
+   "name": "no page errors",
+   "ok": true
+  }
+ ]
+}

@@ -5,7 +5,7 @@ import { homeSpec } from '../src/economy/catalog';
 import { VILLA_PLAN as V } from '../src/housing/villaPlan';
 import { inner, roomAt, stairParts, toPlan, wallPieces, type Rect } from '../src/housing/plan';
 import { inBand, type Collider } from '../src/world/types';
-import { buildVillaFacade } from '../src/housing/villaFacade';
+import { buildVillaFacade, setVillaFacadeNight } from '../src/housing/villaFacade';
 import { STOREY } from '../src/housing/villa';
 
 /**
@@ -58,7 +58,7 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
     expect(d.levels).toEqual([{ id: 'rdc', shell: true, core: true }, { id: 'etage', shell: false, core: false }, { id: 'toit', shell: false, core: false }]);
   });
 
-  it('keeps each level within its draw calls: the shell of a level in view about 12–16 calls, and nothing casts a shadow', () => {
+  it('keeps each level within its draw calls: the shell of a level in view 17–26 calls with what is seen of the levels below (a furnished level ≤ 60), and nothing casts a shadow', () => {
     const h = build();
     const visibleCalls = () => {
       let n = 0, tris = 0;
@@ -72,11 +72,11 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
       per[lv] = visibleCalls();
     }
     console.log('villa shell per level (calls, triangles):', JSON.stringify(per));
-    for (const lv of ['rdc', 'etage', 'toit']) { expect(per[lv].n, lv).toBeLessThanOrEqual(lv === 'rdc' ? 16 : 22); expect(per[lv].tris, lv).toBeLessThan(45_000); }
+    for (const lv of ['rdc', 'etage', 'toit']) { expect(per[lv].n, lv).toBeLessThanOrEqual(lv === 'rdc' ? 18 : 28); expect(per[lv].tris, lv).toBeLessThan(45_000); }
     // the level's own shell, without the parts of the levels below it seen from above
     const own = (name: string) => meshesIn(h.int.group.getObjectByName(name)!);
-    for (const lv of ['rdc', 'etage']) expect(own(`level:${lv}:core`).n + own(`level:${lv}:shell`).n, lv).toBeLessThanOrEqual(18);
-    expect(own('level:toit:shell').n).toBeLessThanOrEqual(10);
+    for (const lv of ['rdc', 'etage']) expect(own(`level:${lv}:core`).n + own(`level:${lv}:shell`).n, lv).toBeLessThanOrEqual(20);
+    expect(own('level:toit:shell').n).toBeLessThanOrEqual(11);
     h.int.group.traverse(o => { if ((o as THREE.Mesh).isMesh && o.name !== 'helicopter') expect((o as THREE.Mesh).castShadow, o.name).toBe(false); });
   });
 
@@ -124,6 +124,14 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
     expect(mid1).toBeGreaterThan(1.5); expect(mid1).toBeLessThan(1.9);
     const mid2 = g(7.15, (f2.foot + f2.head) / 2, STOREY + 1.6);
     expect(mid2).toBeGreaterThan(STOREY + 1.5); expect(mid2).toBeLessThan(STOREY + 1.9);
+  });
+
+  it('says when the player stands outdoors (the pool deck, a balcony, the roof terrace: lit as the outside at night)', () => {
+    const h = build();
+    for (const [x, z, y, out] of [[-3, -1.5, 0, false], [5, -7, 0, true], [-2.4, 4.75, STOREY, true], [-5, -2.5, STOREY, false], [3.6, 3.0, 2 * STOREY, true]] as const) {
+      run(h, at(x, z, y), 0.1);
+      expect(h.int.outdoors!(), `${x},${z} y ${y}`).toBe(out);
+    }
   });
 
   it('a door opens only for the player on its own floor', () => {
@@ -181,15 +189,26 @@ describe('the villa\'s shell on three levels (LD2.0-D)', () => {
     expect(desc(h).room).toBe('entree');
   });
 
-  it('the street façade: drawn from the plan in at most 12 draw calls, its storeys, balconies, parapet and stair head where the plan has them', () => {
+  it('the street façade: drawn from the plan in at most 6 draw calls and 8k triangles, its storeys, cantilevered slabs, balconies, stair head and claustra; lit at night', () => {
     const g = buildVillaFacade(), m = meshesIn(g);
-    expect(m.n).toBeLessThanOrEqual(12);
-    expect(m.tris).toBeLessThan(20_000);
+    expect(m.n).toBeLessThanOrEqual(6);
+    expect(m.tris).toBeLessThan(8_000);
+    expect(g.children.map(c => c.name).sort()).toEqual(['villa-facade:glass', 'villa-facade:glazing', 'villa-facade:lights', 'villa-facade:render', 'villa-facade:stone', 'villa-facade:trim']);
     const box = new THREE.Box3().setFromObject(g);
-    expect(box.min.x).toBeCloseTo(-8.2, 0); expect(box.max.x).toBeCloseTo(8.2, 0);
+    // the roof's slab cantilevered 60 cm past the walls (x ±8.125), a metre toward the street
+    expect(box.min.x).toBeCloseTo(-8.725, 1); expect(box.max.x).toBeCloseTo(8.725, 1);
     expect(box.max.y).toBeGreaterThan(2 * STOREY + 3);                                 // the stair head stands on the roof
     expect(box.max.z).toBeGreaterThan(5.3);                                            // the street balcony
     expect(box.min.z).toBeLessThan(-6.5);                                              // the balcony over the pool deck
+    // the travertine storey and the claustra: stone below the first slab, the tower's slats standing off its street face up past the roof
+    const stone = new THREE.Box3().setFromObject(g.getObjectByName('villa-facade:stone')!);
+    expect(stone.max.y).toBeLessThan(STOREY);
+    // the lights: additive, dark by day, lit at night with the windows' glow
+    const lights = (g.getObjectByName('villa-facade:lights') as THREE.Mesh).material as THREE.MeshBasicMaterial, glaze = (g.getObjectByName('villa-facade:glazing') as THREE.Mesh).material as THREE.MeshLambertMaterial;
+    expect(lights.blending).toBe(THREE.AdditiveBlending);
+    setVillaFacadeNight(0); expect(lights.color.r).toBe(0); expect(glaze.emissiveIntensity).toBe(0);
+    setVillaFacadeNight(1); expect(lights.color.r).toBe(1); expect(glaze.emissiveIntensity).toBeGreaterThan(0.1);
+    setVillaFacadeNight(0);
   });
 
   it('every room of every level has its inside free of the walls it is drawn with', () => {

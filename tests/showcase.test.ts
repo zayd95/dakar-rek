@@ -3,7 +3,8 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { GameState } from '../src/core/state';
 import { SAVE_KEY, clearSave, loadSave, newSave, writeSave } from '../src/core/save';
 import { assetsOf, currentHome, furnitureIn, holding } from '../src/economy/assets';
-import { BAYS, LOT, VILLA_ID } from '../src/housing/villa';
+import { BAYS, LEVELS, LOT, VILLA_ID } from '../src/housing/villa';
+import { furnitureSpec } from '../src/economy/catalog';
 import { parked } from '../src/transport/owned';
 import { SHOWCASE_FURNITURE, SHOWCASE_PREFIX, SHOWCASE_WALLET, ShowcaseStorage, showcaseReady, showcaseSave } from '../src/showcase/save';
 
@@ -66,6 +67,11 @@ describe('the showcase\'s own save', () => {
     const pieces = furnitureIn(s, holding(s, VILLA_ID)!.uid);
     expect(pieces.map(p => p.spec).sort()).toEqual(SHOWCASE_FURNITURE.map(p => p.id).sort());
     expect(pieces.filter(p => !p.at).map(p => p.spec)).toEqual([]);                                     // every one of them set up in the house
+    // …each at the spot lane V-S laid out for it (the « Collection Almadies », src/housing/villaLayout.ts), not moved by the game's settling
+    const at = (p: { at?: { x: number; z: number; rot: number } | null }) => p.at ? `${p.at.x.toFixed(2)},${p.at.z.toFixed(2)},${p.at.rot}` : '-';
+    const want = SHOWCASE_FURNITURE.map(p => `${p.id}@${(p.x + LEVELS.find(l => l.id === p.level)!.dx).toFixed(2)},${p.z.toFixed(2)},${p.rot}`).sort();
+    expect(pieces.map(p => `${p.spec}@${at(p)}`).sort()).toEqual(want);
+    expect(SHOWCASE_FURNITURE.filter(p => furnitureSpec(p.id)?.line === 'almadies').length).toBeGreaterThanOrEqual(30);
     expect(assetsOf(s, 'vehicle').map(a => a.spec)).toEqual(['tout_terrain']);
     expect(parked(d, 'tout_terrain')).toEqual({ asset: 'tout_terrain', hub: 'almadies', x: LOT.cx + BAYS[0].x, z: LOT.cz + BAYS[0].z, yaw: Math.round(BAYS[0].yaw * 1000) / 1000 });
     expect(d.wallet).toBe(SHOWCASE_WALLET); expect(d.hub).toBe('almadies');

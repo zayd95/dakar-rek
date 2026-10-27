@@ -72,16 +72,22 @@ describe('the Almadies villa: the plan (LD2.0-D)', () => {
     expect(V.openings.some(o => o.kind === 'glass' && [o.a, o.b].sort().join() === 'balcon_piscine,suite')).toBe(true);
     expect(V.openings.some(o => o.kind === 'glass' && [o.a, o.b].sort().join() === 'balcon_rue,salon_familial')).toBe(true);
   });
-  it('roof: the terrace with its parapet, the stair head, the helipad with the helicopter on it', () => {
+  it('roof: the terrace behind its glass balustrade, the stair head, the helipad with the helicopter on it, the pergola clear of the rotor', () => {
     expect(roomsOn('toit').map(r => r.kind).sort()).toEqual(['palier', 'terrasse', 'terrasse']);
     const pad = V.marks!.find(m => m.kind === 'helipad')!;
     expect(pad).toMatchObject({ x: HELIPAD.x - 20, z: HELIPAD.z, r: HELIPAD.r, room: 'terrasse' });
     expect(contains(inner(V, room('terrasse')), box(pad.x, pad.z, 2 * pad.r, 2 * pad.r))).toBe(true);
     const heli = V.fixtures.find(f => f.kind === 'heli')!;
     expect(Math.hypot(centre(heli.box).x - pad.x, centre(heli.box).z - pad.z)).toBeLessThan(0.3);
-    const roofEdges = wallPieces(V).filter(w => w.level === 'toit' && w.kind === 'parapet');
+    const roofEdges = wallPieces(V).filter(w => w.level === 'toit' && w.kind === 'railing');
     expect(roofEdges.length).toBeGreaterThan(3);
     expect(roofEdges.every(w => w.h === 1.1)).toBe(true);
+    // the look pass: a pergola on four posts in the terrace's street-side corner, out of the rotor's sweep (7.2 m across) and off the helipad
+    const per = V.pergolas!.find(q => q.room === 'terrasse')!, posts = V.fixtures.filter(f => f.kind === 'post');
+    expect(posts).toHaveLength(4);
+    for (const f of posts) { expect(contains(per.box, f.box)).toBe(true); expect(contains(inner(V, room('terrasse')), f.box)).toBe(true); }
+    expect(per.box.x0).toBeGreaterThan(pad.x + 3.6);
+    expect(per.h).toBeLessThan(2.9);
   });
 
   it('each level\'s rooms tile the house (and the garden, the balconies) with no gap and no overlap', () => {
@@ -126,11 +132,11 @@ describe('the Almadies villa: the plan (LD2.0-D)', () => {
     expect(Math.cos(V.spawn.yaw)).toBeLessThan(-0.9);
   });
 
-  it('walls by what they stand between: the house\'s walls full height, the garden\'s wall, the roof\'s parapet, the balconies\' railings, nothing between two open rooms', () => {
+  it('walls by what they stand between: the house\'s walls full height, the garden\'s wall, glass balustrades on the balconies and the roof, nothing between two open rooms', () => {
     const walls = wallPieces(V);
-    expect(new Set(walls.map(w => w.kind))).toEqual(new Set(['wall', 'garden', 'parapet', 'railing']));
+    expect(new Set(walls.map(w => w.kind))).toEqual(new Set(['wall', 'garden', 'railing']));
     expect(walls.filter(w => w.kind === 'garden').every(w => w.level === 'rdc' && w.h === 2.4)).toBe(true);
-    expect(walls.filter(w => w.kind === 'railing').every(w => w.level === 'etage')).toBe(true);
+    expect(walls.filter(w => w.kind === 'railing').every(w => w.level === 'etage' || w.level === 'toit')).toBe(true);
     expect(walls.filter(w => w.kind === 'wall').every(w => w.h === 3.0)).toBe(true);                  // a 3 m ceiling under a 0.4 m floor
     // the two roof terraces meet with nothing between them: a seam the player walks across
     const s = seams(V);

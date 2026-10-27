@@ -8,6 +8,7 @@ import { inBand, type Collider, type Interactable } from '../world/types';
 import type { HomeSpec } from '../economy/catalog';
 import type { Finish, HomeInterior } from '../economy/homeInterior';
 import { buildHelicopter } from '../world/helicopter';
+import { FINISH_SIZE, oakPlanks, stoneTiles, windowView } from './villaFinish';
 import { GATE, WALL_H } from './villa';
 import {
   edgeHeights, groundAt, halfAt, homeBox, inner, isCovered, levelAtX, levelOfRoom, levelsOf, passage, stairParts, wallPieces,
@@ -45,6 +46,10 @@ import {
  *   stair hall and the outer faces of its walls: `shell`), so the camera above the player always sees the player's level and the frame stays cheap.
  *   The furniture follows the same rule (src/economy/estate.ts tags each piece with its level).
  * - Colliders carry their level's heights (`Collider.y0`); `groundAt` gives main.ts the floor or the flight under the player.
+ * - The look pass (the owner's « modern premium Senegalese villa »): large marble slabs, oak and teak (src/housing/villaFinish.ts); warm white walls,
+ *   one accent wall per main room (oak slats or stone, the plan's `accent`), stone bathrooms, a cove light under the ceiling; travertine outside
+ *   where the plan clads a room; plain openings, bronze frames, walnut doors; tall panes showing the view; frameless glass balustrades; the
+ *   pergola; no lamp hanging (the cove strips and the furniture's lamps and chandeliers light it).
  *
  * Draw calls: one mesh per material (the tiled floors, the chambre's wood, the faience, the walls, the fittings and trims, the lamps, the daylight)
  * and one per moving door leaf: 10 for the F2 (tests/apartment.test.ts holds it to ≤ 14). The villa: per level, the same in two parts (under the
@@ -122,6 +127,11 @@ type Mats = {
   glass: THREE.MeshLambertMaterial; water: THREE.MeshLambertMaterial;
   /** LD2.0-D, the villa: polished terrazzo floors (one material for every hard floor, tinted per room), a finer render on its walls. */
   stone: THREE.Material; render: THREE.Material;
+  /**
+   * LD2.0-D look pass, the villa (src/housing/villaFinish.ts): large marble slabs on its hard floors (`vfloor`) and on its stone walls (`vstone`:
+   * the bathrooms, the stone accent walls, the travertine outside), oak boards on its wood floors and teak decks (`vwood`), the view in its windows.
+   */
+  vfloor: THREE.Material; vwood: THREE.Material; vstone: THREE.Material; view: THREE.MeshBasicMaterial;
 };
 let mats: Mats | null = null;
 function materials(): Mats {
@@ -141,30 +151,43 @@ function materials(): Mats {
     glass: new THREE.MeshLambertMaterial({ color: 0xbfe6f2, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }),
     water: new THREE.MeshLambertMaterial({ color: 0x2fb2d4, emissive: 0x0b7fa8, emissiveIntensity: 0.15, transparent: true, opacity: 0.78, depthWrite: false }),
     stone: addGrain(lam(), 0.08, 1, false, generatedTexture('terrazzo'), 1.8),
-    render: withHole(addGrain(lam(), 0.16, 1, false, plasterTexture(), 3)),
+    // LD2.0-D look pass: a smooth paint (no plaster's blotches), its colours lifted when built (`LIFT`): white that stays white indoors
+    render: withHole(addGrain(lam(), 0.04, 1)),
+    vfloor: addGrain(lam(), 0.05, 1, false, stoneTiles(), FINISH_SIZE),
+    vwood: addGrain(lam(), 0.06, 1, false, oakPlanks(), FINISH_SIZE),
+    vstone: withHole(addGrain(lam(), 0.05, 1, false, stoneTiles(), FINISH_SIZE)),
+    view: withHole(new THREE.MeshBasicMaterial({ map: windowView() })),
   };
   for (const m of Object.values(mats)) m.userData.shared = true;
   return mats;
 }
-const DAY_SKY = new THREE.Color(0xc6e6f6), NIGHT_SKY = new THREE.Color(0x1c2846);
+const DAY_SKY = new THREE.Color(0xc6e6f6), NIGHT_SKY = new THREE.Color(0x1c2846), VIEW_NIGHT = new THREE.Color(0x1a2238);
 
 // ------------------------------------------------------------------------------------------------ colours
 const EXTERIOR = 0xe2d3b8, CAP = 0x8c8174, CHROME = 0xc4c8cc, WHITE = 0xf6f6f3, DADO = 1.2;
 /** LD2.0-D: the villa's façade (a warm white render), the slab bands between its storeys, its coping stones and its dark aluminium. */
 const RENDER = 0xf4efe6, BAND = 0xc9b79a, COPING = 0xe9e0cf, ALU = 0x2e3236, VCAP = 0xbfb3a2, LAWN = 0x7fae55, HEDGE = 0x3f7a35, BLOOM = 0xc8327c;
+/**
+ * LD2.0-D look pass, the villa: its warm white walls, the travertine of its cladding and stone accent walls, the oak of its slatted accent walls and
+ * the dark gap behind the slats, the shadow-gap skirting, the bronze of its door frames and pulls, its walnut doors, the cove light's strip, the teak
+ * of its decks, the pale stone of its bathrooms, the slab edges in the render's white.
+ */
+const VWALL = 0xf6f1e8, TRAVERTINE = 0xe6d5b8, CLAD = 0xe8d9bf, OAK = 0xb08a62, SLATGAP = 0x2a211b, SKIRT = 0x47423c, BRONZE = 0x6b5640, WALNUT = 0x5c3d28,
+  COVE = 0xfff0d2, TEAK = 0xb9977a, PALESTONE = 0xece8e0, SLABEDGE = 0xf3efe8;
 interface Look { lower: number; upper: number; faience: boolean; floor: number }
 function lookOf(r: Room, F: Finish, painted: boolean, villa = false): Look {
   if (villa) {
-    // LD2.0-D: travertine-like stone in the living rooms, pale grey stone in the wet rooms, warm paving outside; white render, an accent per room
-    const floor = r.floor === 'wood' ? 0xa8734a : r.floor === 'stone' ? 0xe0d2b8 : r.kind === 'sdb' ? 0xe4e6e4 : r.kind === 'cuisine' ? 0xd9d6d0 : 0xf3ebdc;
+    // LD2.0-D look pass: large cream marble slabs, oak in the bedrooms, teak decks outdoors, pale stone in the wet rooms; warm white walls (or the
+    // « peinture » upgrade's soft colours) from floor to ceiling, the bathrooms in stone, a stone splashback in the kitchen
+    const floor = r.floor === 'wood' ? 0xc79c6e : r.floor === 'deck' ? TEAK : r.floor === 'stone' ? 0xe0d2b8 : r.kind === 'sdb' ? 0xe9e4da : r.kind === 'cuisine' ? 0xeae3d6 : r.level === 'rdc' ? 0xf4ece0 : 0xf0e8db;
+    const paint = (c: number) => painted ? c : VWALL;
     switch (r.kind) {
-      case 'chambre': return { lower: painted ? 0xa7cbbd : 0xe6d3c2, upper: 0xf7f3ec, faience: false, floor };
-      case 'cuisine': return { lower: 0xf3f1ec, upper: 0xf7f5f0, faience: true, floor };
-      case 'sdb': return { lower: 0xcfdde3, upper: 0xf6f6f3, faience: true, floor };
-      case 'bureau': return { lower: painted ? 0x9fc6b8 : 0xb3bc98, upper: 0xf6f2ea, faience: false, floor };
-      case 'dressing': return { lower: 0xc89f6e, upper: 0xf3ece0, faience: false, floor };
-      case 'manger': return { lower: painted ? 0x7fb7c9 : 0xdcc7a6, upper: 0xf7f3ec, faience: false, floor };
-      default: return { lower: painted ? 0x7fb7c9 : 0xefe8dc, upper: 0xf8f5ef, faience: false, floor };
+      case 'chambre': return { lower: paint(0xd9e2da), upper: paint(0xd9e2da), faience: false, floor };
+      case 'cuisine': return { lower: TRAVERTINE, upper: VWALL, faience: true, floor };
+      case 'sdb': return { lower: PALESTONE, upper: PALESTONE, faience: true, floor };
+      case 'bureau': return { lower: paint(0xdfe3d6), upper: paint(0xdfe3d6), faience: false, floor };
+      case 'manger': return { lower: paint(0xe6ecef), upper: paint(0xe6ecef), faience: false, floor };
+      default: return { lower: paint(0xf1ebe0), upper: paint(0xf1ebe0), faience: false, floor };
     }
   }
   const floor = r.floor === 'wood' ? 0xb07a4a : r.floor === 'marble' ? 0xf4f1ea : r.floor === 'stone' ? 0xd9ccb2 : r.kind === 'sdb' ? 0xdfe8ec : r.kind === 'cuisine' ? 0xebe7df : 0xf2f0ec;
@@ -258,7 +281,7 @@ interface Block { r: Rect; y0: number; y1: number }
 const PARK = 1e6;   // where an inactive collider waits (never near anyone)
 
 /** A part of a level's shell: one batch per material (one draw call each) in its own group, shown or hidden with it. */
-interface Part { floor: Batch; wood: Batch; tiles: Batch; wall: Batch; plain: Batch; glow: Batch; sky: Batch; glass: Batch; water: Batch; g: THREE.Group; li: number; core: boolean }
+interface Part { floor: Batch; wood: Batch; tiles: Batch; wall: Batch; plain: Batch; glow: Batch; sky: Batch; glass: Batch; water: Batch; stone: Batch; g: THREE.Group; li: number; core: boolean }
 
 /**
  * The interior of a home built from its floor plan, at (ox, oz) in the world (off the street grid), in the shape the estate and the editor use
@@ -271,7 +294,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   const mkPart = (li: number, core: boolean): Part => {
     const g = new THREE.Group(); g.name = multi ? `level:${LV[li].id}:${core ? 'core' : 'shell'}` : 'shell'; g.userData.shellPart = true;
     group.add(g);
-    return { floor: new Batch(), wood: new Batch(), tiles: new Batch(), wall: new Batch(), plain: new Batch(), glow: new Batch(), sky: new Batch(), glass: new Batch(), water: new Batch(), g, li, core };
+    return { floor: new Batch(), wood: new Batch(), tiles: new Batch(), wall: new Batch(), plain: new Batch(), glow: new Batch(), sky: new Batch(), glass: new Batch(), water: new Batch(), stone: new Batch(), g, li, core };
   };
   // one level (the F2): one part. Several: per level, what lies under the floor above (`core`) and what is seen from above (`shell`)
   const parts = LV.map((_, li) => { const shell = mkPart(li, false); return { shell, core: multi && li < top ? mkPart(li, true) : shell }; });
@@ -337,12 +360,16 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
           if (!outside) continue;
           // the façade: the house's render, or the accent of the room behind the wall (LD2.0-D: a stone-clad entrance, a wood-clad stair head)
           const mid = (u0 + u1) / 2, back = axis === 'x' ? roomIn(mid, at - s * (t + 0.02)) : roomIn(at - s * (t + 0.02), mid);
-          use(li, false); pbox(S.wall, lineRect(axis, at, u0, u1, 0, s * t), y0, y1, multi ? back?.facade ?? RENDER : EXTERIOR, sides(free));
+          use(li, false);
+          // LD2.0-D look pass: a clad room's outside faces in travertine (the ground floor's storey), the others in the render
+          if (multi && back?.clad === 'stone') pbox(S.stone, lineRect(axis, at, u0, u1, 0, s * t), y0, y1, CLAD, sides(free));
+          else pbox(S.wall, lineRect(axis, at, u0, u1, 0, s * t), y0, y1, multi ? back?.facade ?? RENDER : EXTERIOR, sides(free));
           continue;
         }
         useRoom(r, li);
         const ri = inners.find(q => q.r === r)!.i, [f0, f1] = axis === 'x' ? [ri.x0, ri.x1] : [ri.z0, ri.z1], v0 = Math.max(u0, f0), v1 = Math.min(u1, f1);
         if (v1 - v0 < EPS) continue;
+        if (multi) { villaFace(r, axis, at, t, s, v0, v1, y0, y1, free, face, ends); continue; }
         const half2 = lineRect(axis, at, v0, v1, 0, s * t), L = looks.get(r.id)!;
         if (y0 < DADO) pbox(L.faience ? S.tiles : S.wall, half2, y0, Math.min(y1, DADO), L.lower, sides(free && y1 <= DADO));
         if (y1 > DADO) pbox(S.wall, half2, Math.max(y0, DADO), y1, L.upper, sides(free));
@@ -352,9 +379,37 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
       }
     }
   };
+  /**
+   * LD2.0-D look pass: a face of a villa room's wall: warm white (or the room's paint) from the floor to the ceiling, stone in a bathroom and as the
+   * kitchen's splashback; the room's accent wall: vertical oak slats on a dark ground, or a stone face; a shadow-gap skirting; and a slim strip of
+   * cove light under the ceiling, glowing at night (the glow material).
+   */
+  function villaFace(r: Room, axis: 'x' | 'z', at: number, t: number, s: 1 | -1, v0: number, v1: number, y0: number, y1: number, free: boolean, face: Face, ends: Face[]) {
+    const half2 = lineRect(axis, at, v0, v1, 0, s * t), L = looks.get(r.id)!, side: Side = axis === 'x' ? (s > 0 ? 'n' : 's') : (s > 0 ? 'w' : 'e');
+    const acc = r.accent?.side === side ? r.accent.kind : null, keep = (top2: boolean): Face[] => top2 ? [face, ...ends, 'py'] : [face, ...ends];
+    const proud = acc === 'wood' ? 0.03 : 0;
+    if (acc === 'wood') {
+      pbox(S.wall, half2, y0, y1, SLATGAP, keep(free));
+      // the slats: 4 cm of oak every 9 cm, on one grid along the wall (the stretches round a window or a door line up)
+      for (let c = Math.ceil((v0 + 0.03) / 0.09) * 0.09; c < v1 - 0.03; c += 0.09) {
+        pbox(S.plain, lineRect(axis, at, c - 0.02, c + 0.02, s * t, s * (t + proud)), y0, y1, Math.round(c / 0.09) % 3 === 1 ? 0xa2805c : OAK, keep(free));
+      }
+    } else if (acc === 'stone' || r.kind === 'sdb') pbox(S.stone, half2, y0, y1, acc === 'stone' ? TRAVERTINE : L.lower, keep(free));
+    else {
+      if (L.faience && y0 < DADO) pbox(S.stone, half2, y0, Math.min(y1, DADO), L.lower, keep(free && y1 <= DADO));
+      if (!L.faience || y1 > DADO) pbox(S.wall, half2, L.faience ? Math.max(y0, DADO) : y0, y1, L.upper, keep(free));
+    }
+    if (y0 < EPS && acc !== 'wood' && r.kind !== 'sdb') pbox(S.plain, lineRect(axis, at, v0, v1, s * t, s * (t + 0.006)), 0, 0.06, SKIRT, keep(true));
+    if (y1 > H - EPS && r.kind !== 'sdb') pbox(S.glow, lineRect(axis, at, v0, v1, s * (t + proud), s * (t + proud + 0.02)), H - 0.07, H - 0.04, COVE, keep(true));
+  }
   /** The top of a wall: a dark cap (the plan read from above); LD2.0-D, under the floor above, the slab's edge (a band on the façade). */
   const capOf = (r: Rect, li: number, outer: boolean, covered: boolean) => {
-    if (multi && li < top) { use(li, !outer && covered); rbox(S.wall, r, H, H + slabAbove(li) - 0.005, outer ? BAND : CAPC); }
+    if (multi && li < top) {
+      // the floor above cut through: its faces in the walls' white, a thin dark line on top (the plan read from above)
+      use(li, !outer && covered);
+      pbox(S.wall, r, H, H + slabAbove(li) - 0.015, outer ? SLABEDGE : VWALL, ['px', 'nx', 'pz', 'nz']);
+      rbox(S.plain, r, H + slabAbove(li) - 0.015, H + slabAbove(li) - 0.005, 0x5b544d);
+    }
     else { use(li, covered); rbox(S.wall, r, H, H + 0.02, CAPC); }
   };
   /** Is a wall line between covered rooms only (drawn under the floor above)? */
@@ -389,7 +444,15 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   function edge(pc: WallPiece, li: number, t: number) {
     use(li, false);
     const hgt = edgeH[pc.kind as keyof typeof edgeH];
-    if (pc.kind === 'railing') {
+    if (pc.kind === 'railing' && multi) {
+      // LD2.0-D look pass: frameless glass in a dark base shoe under a slim steel cap; on the roof, a strip of light along the shoe (lit at night)
+      const along = pc.axis === 'x' ? [pc.x0, pc.x1] : [pc.z0, pc.z1], c = (along[0] + along[1]) / 2;
+      const inSide = pc.axis === 'x' ? (roomIn(c, pc.at + 0.3) ? 1 : -1) : (roomIn(pc.at + 0.3, c) ? 1 : -1);
+      rbox(S.plain, lineRect(pc.axis, pc.at, along[0], along[1], -0.045, 0.045), 0, 0.09, 0x34322f);
+      rbox(S.glass, lineRect(pc.axis, pc.at, along[0] + 0.01, along[1] - 0.01, -0.01, 0.01), 0.09, hgt - 0.03, 0xffffff);
+      rbox(S.plain, lineRect(pc.axis, pc.at, along[0], along[1], -0.016, 0.016), hgt - 0.03, hgt, 0xc5c8ca);
+      if (li === top && along[1] - along[0] > 0.6) rbox(S.glow, lineRect(pc.axis, pc.at, along[0] + 0.1, along[1] - 0.1, inSide * 0.045, inSide * 0.06), 0.03, 0.06, COVE);
+    } else if (pc.kind === 'railing') {
       // a low kerb, glass panels between slim posts, a dark handrail
       rbox(S.plain, pc, 0, 0.1, COPING);
       const along = pc.axis === 'x' ? [pc.x0, pc.x1] : [pc.z0, pc.z1], n = Math.max(1, Math.round((along[1] - along[0]) / 1.3));
@@ -435,14 +498,14 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const deck = multi && r.outdoor && li === 0 ? gardenDeck(r) : null;
     for (const q of holes.length ? subtract(r.box, holes) : [r.box]) {
       if (deck) {
-        for (const d of subtract(q, subtract(q, deck))) S.floor.flat(d.x1 - d.x0, d.z1 - d.z0, W((d.x0 + d.x1) / 2), Y, Z((d.z0 + d.z1) / 2), looks.get(r.id)!.floor);
+        for (const d of subtract(q, subtract(q, deck))) (r.floor === 'deck' ? S.wood : S.floor).flat(d.x1 - d.x0, d.z1 - d.z0, W((d.x0 + d.x1) / 2), Y, Z((d.z0 + d.z1) / 2), looks.get(r.id)!.floor);
         for (const g of subtract(q, deck)) S.plain.flat(g.x1 - g.x0, g.z1 - g.z0, W((g.x0 + g.x1) / 2), Y, Z((g.z0 + g.z1) / 2), LAWN);
         continue;
       }
-      (r.floor === 'wood' ? S.wood : S.floor).flat(q.x1 - q.x0, q.z1 - q.z0, W((q.x0 + q.x1) / 2), Y, Z((q.z0 + q.z1) / 2), looks.get(r.id)!.floor);
+      (r.floor === 'wood' || r.floor === 'deck' ? S.wood : S.floor).flat(q.x1 - q.x0, q.z1 - q.z0, W((q.x0 + q.x1) / 2), Y, Z((q.z0 + q.z1) / 2), looks.get(r.id)!.floor);
     }
     // a balcony's slab, seen from the side and from below
-    if (multi && r.outdoor && li > 0) pbox(S.plain, r.box, -slabAbove(li - 1), -0.004, BAND, ['px', 'nx', 'pz', 'nz']);
+    if (multi && r.outdoor && li > 0) pbox(S.plain, r.box, -slabAbove(li - 1), -0.004, SLABEDGE, ['px', 'nx', 'pz', 'nz']);
   }
   if (multi) ground();
   /** The paved part of a garden: round its pool (1.3 m) and along the house's wall (1.5 m), clipped to it. */
@@ -463,7 +526,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const cov = isCovered(p, ra) || (!!rb && isCovered(p, rb)), outer = !rb || !!ra.outdoor || !!rb.outdoor;
     use(li, cov);
     // the head of the opening: an arched one over an arch, a straight lintel over a door
-    if (o.kind === 'arch') {
+    if (o.kind === 'arch' && !multi) {
       const rise = 0.3, spring = o.height - rise, s = new THREE.Shape();
       s.moveTo(-o.width / 2, spring);
       for (let i = 1; i <= 14; i++) { const ang = Math.PI - (i / 14) * Math.PI; s.lineTo((o.width / 2) * Math.cos(ang), spring + rise * Math.sin(ang)); }
@@ -476,17 +539,22 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     } else {
       run(o.axis, at, t, lo, hi, o.height, H, outer, li);
       use(li, cov);
-      // the frame: two jambs and a head on both faces, and the soffit lined (LD2.0-D: dark aluminium round a glazed opening)
-      const fc = o.kind === 'glass' ? ALU : TRIM;
-      for (const e of [lo - FRAME, hi]) rbox(S.plain, lineRect(o.axis, at, e, e + FRAME, -t - PROUD, t + PROUD), 0, o.height + FRAME, fc);
-      rbox(S.plain, lineRect(o.axis, at, lo - FRAME, hi + FRAME, -t - PROUD, t + PROUD), o.height, o.height + FRAME, fc);
+      // the frame: two jambs and a head on both faces, and the soffit lined (LD2.0-D: dark aluminium round a glazed opening; the look pass: a slim
+      // bronze frame round a door, a plain opening between two rooms with no frame at all)
+      if (!(multi && o.kind === 'arch')) {
+        const fc = o.kind === 'glass' ? ALU : multi ? BRONZE : TRIM, fw = multi ? 0.04 : FRAME;
+        for (const e of [lo - fw, hi]) rbox(S.plain, lineRect(o.axis, at, e, e + fw, -t - PROUD, t + PROUD), 0, o.height + fw, fc);
+        rbox(S.plain, lineRect(o.axis, at, lo - fw, hi + fw, -t - PROUD, t + PROUD), o.height, o.height + fw, fc);
+      }
       solid(lineRect(o.axis, at, lo, hi, -t, t), o.height, H, true);
     }
     capOf(P, li, outer, cov);
     use(li, cov);
-    rbox(S.plain, P, 0, 0.008, o.kind === 'glass' ? 0x3a3f44 : 0xcdbfa8);                 // the threshold (a glazed door's track)
+    rbox(S.plain, P, 0, 0.008, o.kind === 'glass' ? 0x3a3f44 : multi ? 0xe2d8c6 : 0xcdbfa8);                 // the threshold (a glazed door's track)
     if (o.kind === 'glass') {
-      // the sliding panels stand open, slid in front of the wall on the open room's side: glass in a slim dark frame
+      // the sliding panels stand open, slid in front of the wall on the open room's side: glass in a slim dark frame (LD2.0-D look pass: in the
+      // villa they slide away into the wall, the opening left clear from floor to ceiling)
+      if (multi) continue;
       const outRoom = rb?.outdoor ? rb : ra.outdoor ? ra : rb, so = outRoom ? sideOf(p, o, outRoom.id) : 1;
       use(li, false);
       const pw = o.width / 2 + 0.05, c0 = hi + 0.02, c1 = hi + 0.02 + pw, off = so * (t + 0.05);
@@ -500,12 +568,20 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     if (o.kind === 'front') {
       // the street door: a closed leaf (painted metal, two panels, a handle and a spy hole), a collider across the doorway, a mat inside
       const s = sideOf(p, o, o.a), lf = lineRect(o.axis, at, lo + 0.01, hi - 0.01, -0.025, 0.025);
-      rbox(S.plain, lf, 0.01, o.height - 0.01, F.door);
-      for (const side of [-1, 1]) {
-        for (const [y0, y1] of [[0.15, 0.95], [1.1, o.height - 0.15]]) rbox(S.plain, lineRect(o.axis, at, lo + 0.12, hi - 0.12, side * 0.025, side * 0.032), y0, y1, new THREE.Color(F.door).multiplyScalar(0.82).getHex());
-        rbox(S.plain, lineRect(o.axis, at, hi - 0.16, hi - 0.1, side * 0.025, side * 0.06), 1.0, 1.04, 0xd4b24a);
+      rbox(S.plain, lf, 0.01, o.height - 0.01, multi ? 0x7a5234 : F.door);
+      if (multi) {
+        // LD2.0-D look pass: a tall flush teak door, its grooves, a long bronze pull on each face
+        for (const side of [-1, 1]) {
+          for (let k = 1; k < 6; k++) { const e = lo + (k / 6) * (hi - lo); rbox(S.plain, lineRect(o.axis, at, e - 0.006, e + 0.006, side * 0.025, side * 0.028), 0.08, o.height - 0.08, 0x5e3d25); }
+          rbox(S.plain, lineRect(o.axis, at, hi - 0.17, hi - 0.14, side * 0.025, side * 0.07), 0.5, 1.75, 0xa88a5a);
+        }
+      } else {
+        for (const side of [-1, 1]) {
+          for (const [y0, y1] of [[0.15, 0.95], [1.1, o.height - 0.15]]) rbox(S.plain, lineRect(o.axis, at, lo + 0.12, hi - 0.12, side * 0.025, side * 0.032), y0, y1, new THREE.Color(F.door).multiplyScalar(0.82).getHex());
+          rbox(S.plain, lineRect(o.axis, at, hi - 0.16, hi - 0.1, side * 0.025, side * 0.06), 1.0, 1.04, 0xd4b24a);
+        }
+        rbox(S.plain, lineRect(o.axis, at, c - 0.02, c + 0.02, s * 0.025, s * 0.035), 1.52, 1.56, 0x222222);
       }
-      rbox(S.plain, lineRect(o.axis, at, c - 0.02, c + 0.02, s * 0.025, s * 0.035), 1.52, 1.56, 0x222222);
       rbox(S.plain, lineRect(o.axis, at, c - 0.42, c + 0.42, s * (t + 0.15), s * (t + 0.7)), 0, 0.015, 0x8a6a3c);
       colliders.push(collide(P, o.height));
       block(P, o.height); solid(P, 0, o.height, false);
@@ -519,9 +595,10 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const pivot = new THREE.Group(); pivot.name = `door:${o.id}`;
     const [px, pz] = o.axis === 'x' ? [hingeAt, at + off] : [at + off, hingeAt];
     pivot.position.set(W(px), Y, Z(pz)); pivot.rotation.y = base;
-    const lb = new Batch(), lw = o.width - 0.02, lh = o.height - 0.02, WOOD = 0x7a4a26, PANEL = 0x6a3e1f;
+    const lb = new Batch(), lw = o.width - 0.02, lh = o.height - 0.02, WOOD = multi ? WALNUT : 0x7a4a26, PANEL = 0x6a3e1f;
     lb.box(lw - 0.01, lh, 0.04, 0.01 + lw / 2, 0.01, 0, WOOD);
     for (const side of [-1, 1]) {
+      if (multi) { lb.box(0.02, 0.5, 0.025, lw - 0.1, 0.78, side * 0.032, 0xa88a5a); continue; }   // LD2.0-D look pass: a flush walnut leaf, a bronze pull
       for (const [y0, y1] of [[0.15, 0.95], [1.1, lh - 0.15]]) lb.box(lw - 0.24, y1 - y0, 0.006, 0.01 + lw / 2, y0, side * 0.022, PANEL);
       lb.box(0.05, 0.05, 0.012, lw - 0.08, 0.98, side * 0.026, CHROME);                  // the rose and the lever
       lb.box(0.13, 0.02, 0.02, lw - 0.12, 1.0, side * 0.04, CHROME);
@@ -544,6 +621,22 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     useRoom(rw, liOf(levelOfRoom(p, rw)));
     // daylight, at the outside face: its room side only, so the camera above the outside of the wall sees the shutters and the room, not a pale slab
     pbox(S.sky, ac(-t + 0.004, -t + 0.012), y0, y1, 0xffffff, [{ n: 'pz', s: 'nz', w: 'px', e: 'nx' }[w.side] as Face]);
+    if (multi) {
+      // LD2.0-D look pass: one tall pane in a slim dark frame (a mullion only in a wide one), the reveal lined, a stone sill under a low window
+      for (const e of [lo, hi - 0.035, ...(w.width > 1.9 ? [(lo + hi) / 2 - 0.0175] : [])]) rbox(S.plain, lineRect(axis, at, e, e + 0.035, into * (-t + 0.012), into * (-t + 0.05)), y0, y1, ALU);
+      for (const y of [y0, y1 - 0.035]) rbox(S.plain, ac(-t + 0.012, -t + 0.05), y, y + 0.035, ALU);
+      if (w.sill > 0.2) rbox(S.plain, lineRect(axis, at, lo - 0.03, hi + 0.03, into * 0.0, into * (t + 0.03)), y0 - 0.03, y0, 0xe6dccb);
+      if (rw.kind === 'chambre') {
+        // sheer linen drawn to either side on a dark rail
+        const top2 = Math.min(y1 + 0.08, H - 0.1);
+        rbox(S.plain, lineRect(axis, at, lo - 0.45, hi + 0.45, into * (t + 0.06), into * (t + 0.08)), top2, top2 + 0.025, ALU);
+        for (const [a0, sgn] of [[lo - 0.42, 1], [hi + 0.42, -1]] as const) for (let k = 0; k < 4; k++) {
+          const e = a0 + sgn * k * 0.1, f = k % 2 ? 0.03 : 0;
+          rbox(S.plain, lineRect(axis, at, Math.min(e, e + sgn * 0.11), Math.max(e, e + sgn * 0.11), into * (t + 0.03 + f), into * (t + 0.055 + f)), 0.02, top2, 0xeee6d8);
+        }
+      }
+      continue;
+    }
     if (F.glass) {
       for (const e of [lo, (lo + hi) / 2 - 0.02, hi - 0.04]) rbox(S.plain, lineRect(axis, at, e, e + 0.04, into * (-t + 0.012), into * (-t + 0.06)), y0, y1, multi ? ALU : TRIM);
       rbox(S.plain, ac(-t + 0.012, -t + 0.06), y0 + w.height * 0.7, y0 + w.height * 0.7 + 0.04, multi ? ALU : TRIM);
@@ -680,9 +773,11 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
         fbox(P, Fr, 0, wd, 0, d, 0, 0.07, WHITE);                                         // the tray, its floor, the drain
         fbox(P, Fr, 0, wd - 0.08, 0.04, d - 0.04, 0.07, 0.072, 0xe2e9ec);
         fcyl(P, Fr, 0, d / 2, 0.04, 0.04, 0.072, 0.003, 0x7a7f84, 10);
-        // faience up to the head on the walls round the tray
-        fbox(S.tiles, Fr, 0, wd, -0.004, 0.006, DADO, 2.1, 0xa8cde0);
-        for (const e of [-1, 1] as const) if (againstWall(f, Fr, e)) fbox(S.tiles, Fr, e * (hw + 0.001), 0.01, 0, d, DADO, 2.1, 0xa8cde0);
+        // faience up to the head on the walls round the tray (LD2.0-D look pass: the villa's bathrooms are stone from floor to ceiling)
+        if (!multi) {
+          fbox(S.tiles, Fr, 0, wd, -0.004, 0.006, DADO, 2.1, 0xa8cde0);
+          for (const e of [-1, 1] as const) if (againstWall(f, Fr, e)) fbox(S.tiles, Fr, e * (hw + 0.001), 0.01, 0, d, DADO, 2.1, 0xa8cde0);
+        }
         // glass on the open side, a curtain on the rail across the front, gathered toward the wall
         const open = againstWall(f, Fr, -1) ? 1 : -1;
         if (!againstWall(f, Fr, open)) {
@@ -690,7 +785,8 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
           fbox(P, Fr, open * (hw - 0.01), 0.03, d - 0.03, d, 0.07, 2.02, CHROME);
         }
         fbox(P, Fr, 0, wd, d - 0.025, d - 0.01, 1.98, 2.0, CHROME);
-        for (let k = 0; k < 4; k++) { const l = -open * (hw - 0.07 - k * 0.07), f2 = k % 2 ? 0.025 : 0; fbox(P, Fr, l, 0.075, d - 0.06 + f2, d - 0.035 + f2, 0.16, 1.97, multi ? 0xf2efe8 : 0xf4c20d); }
+        if (multi) fbox(P, Fr, open * hw * 0.25, wd * 0.5, d - 0.02, d - 0.006, 0.07, 1.98, 0xd3e6ee);           // a fixed glass screen across half the front
+        else for (let k = 0; k < 4; k++) { const l = -open * (hw - 0.07 - k * 0.07), f2 = k % 2 ? 0.025 : 0; fbox(P, Fr, l, 0.075, d - 0.06 + f2, d - 0.035 + f2, 0.16, 1.97, 0xf4c20d); }
         fcyl(P, Fr, -open * 0.12, 0.03, 0.013, 0.013, 1.05, 1.0, CHROME, 8);               // the riser, the mixer, the arm and the head
         fbox(P, Fr, -open * 0.12, 0.16, 0.0, 0.06, 1.0, 1.1, CHROME);
         fbox(P, Fr, -open * 0.12, 0.022, 0.02, 0.3, 2.03, 2.05, CHROME);
@@ -714,6 +810,19 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
         break;
       }
       case 'basin': {
+        if (multi) {
+          // LD2.0-D look pass: a floating walnut vanity, a white top and a stone vessel, a round mirror lit from behind
+          fbox(P, Fr, 0, wd - 0.02, 0, d - 0.02, 0.42, 0.8, WALNUT);
+          fbox(P, Fr, 0, wd, 0, d, 0.8, 0.83, 0xf4f2ee);
+          fcyl(P, Fr, 0, d / 2, 0.17, 0.13, 0.83, 0.13, 0xf7f6f2, 16);
+          fcyl(P, Fr, 0, 0.06, 0.014, 0.014, 0.83, 0.3, 0x2b2b2b, 8);
+          fbox(P, Fr, 0, 0.02, 0.06, 0.2, 1.1, 1.12, 0x2b2b2b);
+          const [mx, mz] = at2(Fr, 0, 0.02);
+          S.glow.cyl(0.33, 0.33, 0.01, W(mx), Y + 1.55, Z(mz), COVE, 24, [Math.PI / 2, Fr.psi, 0]);
+          const [nx, nz] = at2(Fr, 0, 0.035);
+          P.cyl(0.3, 0.3, 0.012, W(nx), Y + 1.55, Z(nz), 0xbfd0d8, 24, [Math.PI / 2, Fr.psi, 0]);
+          break;
+        }
         fcyl(P, Fr, 0, 0.2, 0.07, 0.09, 0, 0.67, WHITE, 12);                               // pedestal, basin, bowl, tap
         fbox(P, Fr, 0, wd - 0.04, 0.02, d, 0.67, f.h, 0xf7f7f5);
         fbox(P, Fr, 0, wd - 0.2, 0.12, d - 0.08, f.h, f.h + 0.002, 0xd6e0e6);
@@ -735,10 +844,16 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
         fcyl(P, Fr, -hw + 0.18, 0.06, 0.02, 0.02, f.h, 0.2, CHROME, 8);
         fbox(P, Fr, -hw + 0.18, 0.03, 0.04, 0.2, f.h + 0.18, f.h + 0.2, CHROME);
         fbox(P, Fr, hw - 0.3, 0.36, d - 0.07, d + 0.02, f.h + 0.004, f.h + 0.06, 0xd8b45a);
-        fbox(S.tiles, Fr, 0, wd, -0.004, 0.006, DADO, 2.0, 0xa8cde0);
+        if (!multi) fbox(S.tiles, Fr, 0, wd, -0.004, 0.006, DADO, 2.0, 0xa8cde0);
         break;
       }
       case 'pool': drawPool(f); break;
+      case 'post': {
+        // LD2.0-D look pass: a pergola's post, dark bronze steel on a small plate
+        fbox(P, Fr, 0, wd - 0.04, 0.02, d - 0.02, 0, f.h, 0x3a332c);
+        fbox(P, Fr, 0, wd, 0, d, 0, 0.02, 0x2c2723);
+        break;
+      }
       case 'heli': break;                                                                       // the helicopter itself, below (src/world/helicopter.ts)
     }
   }
@@ -748,7 +863,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const b = f.box, dp = f.depth ?? 1.4, cw = 0.32, MOSAIC = 0x3aa6c8;
     // the coping, flush with the deck, round the water
     for (const r of [{ x0: b.x0 - cw, x1: b.x1 + cw, z0: b.z0 - cw, z1: b.z0 }, { x0: b.x0 - cw, x1: b.x1 + cw, z0: b.z1, z1: b.z1 + cw }, { x0: b.x0 - cw, x1: b.x0, z0: b.z0, z1: b.z1 }, { x0: b.x1, x1: b.x1 + cw, z0: b.z0, z1: b.z1 }]) {
-      rbox(S.plain, r, -0.02, 0.025, 0xf0e7d6);
+      rbox(S.stone, r, -0.02, 0.025, 0xf2e9d8);
     }
     // the basin's walls (seen from inside) and its floor
     pbox(S.plain, { x0: b.x0, x1: b.x1, z0: b.z0 - 0.02, z1: b.z0 }, -dp, 0, MOSAIC, ['pz']);
@@ -824,6 +939,15 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     }
   }
 
+  // ---------------------------------------------------------------- LD2.0-D look pass: the pergolas (oak slats on two dark beams, on their posts)
+  for (const pg of p.pergolas ?? []) {
+    use(liOf(levelOfRoom(p, room(pg.room))), false);
+    const b = pg.box, y = pg.h;
+    for (const z of [b.z0 + 0.15, b.z1 - 0.15]) rbox(S.plain, { x0: b.x0, x1: b.x1, z0: z - 0.06, z1: z + 0.06 }, y - 0.2, y, 0x3a332c);
+    for (const x of [b.x0 + 0.15, b.x1 - 0.15]) rbox(S.plain, { x0: x - 0.06, x1: x + 0.06, z0: b.z0, z1: b.z1 }, y - 0.2, y - 0.02, 0x3a332c);
+    for (let x = b.x0 + 0.1; x < b.x1 - 0.05; x += 0.2) rbox(S.plain, { x0: x - 0.035, x1: x + 0.035, z0: b.z0 - 0.1, z1: b.z1 + 0.1 }, y, y + 0.12, OAK);
+  }
+
   // ---------------------------------------------------------------- LD2.0-D: the roof's helipad and its helicopter, the lot round the house
   for (const m of p.marks ?? []) {
     const rm = room(m.room); use(liOf(levelOfRoom(p, rm)), false);
@@ -879,6 +1003,15 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     use(li, li < top && multi);
     if (r.outdoor) { lampAt.set(r.id, new THREE.Vector3(W(cx), Y + 2.8, Z(cz))); continue; }
     lampAt.set(r.id, new THREE.Vector3(W(cx), Y + H - 0.6, Z(cz)));
+    // LD2.0-D look pass: no lamp hangs in the villa (its cove strips glow at night, and a chandelier bought for a room never meets a built-in one)
+    if (multi) {
+      useRoom(r, li);
+      if (r.kind === 'sdb' && solidWall(r, 'e', i.z1 - 0.62, i.z1 - 0.18)) {
+        rbox(S.plain, { x0: i.x1 - 0.04, x1: i.x1, z0: i.z1 - 0.62, z1: i.z1 - 0.18 }, 1.38, 1.4, 0xa88a5a);
+        rbox(S.plain, { x0: i.x1 - 0.05, x1: i.x1 - 0.01, z0: i.z1 - 0.58, z1: i.z1 - 0.22 }, 0.9, 1.4, 0xe9e2d4);
+      }
+      continue;
+    }
     for (const lx of long ? [cx - (i.x1 - i.x0) / 4, cx + (i.x1 - i.x0) / 4] : [cx]) {
       S.plain.cyl(0.06, 0.06, 0.025, W(lx), Y + H - 0.025, Z(cz), 0xf2f2ee, 10);                  // the ceiling rose, the cord
       if (r.kind === 'sejour' || r.kind === 'chambre' || r.kind === 'manger') {
@@ -915,8 +1048,9 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   const glows: THREE.Mesh[] = [];
   for (const { shell, core } of parts) for (const part of core === shell ? [shell] : [core, shell]) {
     const glowMesh = part.glow.build(M.glow, false, false);
-    for (const [b, m, recv, last] of [[part.floor, multi ? M.stone : M.floor, true, true], [part.wood, M.wood, true, true], [part.tiles, M.tiles, true, false], [part.wall, multi ? M.render : M.wall, true, false], [part.plain, M.plain, true, false], [part.sky, M.sky, false, false]] as [Batch, THREE.Material, boolean, boolean][]) {
+    for (const [b, m, recv, last] of [[part.floor, multi ? M.vfloor : M.floor, true, true], [part.wood, multi ? M.vwood : M.wood, true, true], [part.tiles, M.tiles, true, false], [part.wall, multi ? M.render : M.wall, true, false], [part.stone, M.vstone, true, false], [part.plain, M.plain, true, false], [part.sky, multi ? M.view : M.sky, false, false]] as [Batch, THREE.Material, boolean, boolean][]) {
       const mesh = b.build(m, recv, false); if (!mesh) continue;
+      if (multi && (m === M.render || m === M.vstone)) lift(mesh, m === M.render ? LIFT : 1.12);
       if (last) mesh.renderOrder = 1;                                                       // the floors after what stands on them: hidden pixels are skipped
       part.g.add(mesh);
     }
@@ -967,7 +1101,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     spawn: { x: W(p.spawn.x), z: Z(p.spawn.z), yaw: p.spawn.yaw },
     light: lampAt.get(firstRoom.id)!.clone(), lightColor: 0xffd9a0,
     holeFocus: null,
-    ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y) } : {}),
+    ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y), outdoors: () => !!roomId && !!room(roomId).outdoor } : {}),
     update(dt, player, camera, hour) {
       const lx = player.x - ox, lz = player.z - oz;
       feet = player.y;
@@ -1006,6 +1140,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
       night = 1 - Math.min(1, Math.max(0, daylight(hour) * 3.2));
       M.glow.emissiveIntensity = 1.15 * night;
       M.sky.color.copy(DAY_SKY).lerp(NIGHT_SKY, night);
+      M.view.color.setScalar(1).lerp(VIEW_NIGHT, night);
       M.water.emissiveIntensity = 0.15 + 0.85 * night;
       cam.copy(camera.position);
     },
@@ -1043,6 +1178,10 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   };
 }
 const grow2 = (r: Rect, m: number): Rect => ({ x0: r.x0 - m, x1: r.x1 + m, z0: r.z0 - m, z1: r.z1 + m });
+/** LD2.0-D look pass: how much the villa's walls are lifted past their vertex colours (the room's light is dim on a wall: white must read white). */
+const LIFT = 1.3;
+/** Multiplies a built mesh's vertex colours (a lift above what a hex colour can say). */
+function lift(m: THREE.Mesh, k: number) { const c = m.geometry.attributes.color as THREE.BufferAttribute; const a = c.array as Float32Array; for (let i = 0; i < a.length; i++) a[i] *= k; }
 
 /** Where the segment a → b enters and leaves a box (its ends shortened by `trim` of its length), or null. */
 function segBox(a: THREE.Vector3, b: THREE.Vector3, s: Solid, trim: number): [THREE.Vector3, THREE.Vector3] | null {

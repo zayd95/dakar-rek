@@ -112,6 +112,14 @@ try {
   for (const [x, z, room, level, door] of legs) {
     let r = await walk(x, z);
     if (r.dist >= 0.45 && r.dist < 1.5) { console.log('  a second push toward', x, z, 'from', r.dist.toFixed(2), 'm'); r = await walk(x, z); }   // a thumb corrects (a slow frame on a shared machine)
+    else if (r.dist >= 1.5) {
+      // stuck far from it: say what the page shows (a sheet over the joystick? the frame rate?), put any sheet away, and walk the leg again once
+      const why = await d(async () => ({ modal: document.querySelector('#modal.on')?.textContent?.slice(0, 80) ?? null, mode: window.__dakar.pos().mode,
+        fps: await new Promise(res => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 1000) requestAnimationFrame(f); else res(n); }; requestAnimationFrame(f); }) }));
+      console.log('  stuck', r.dist.toFixed(2), 'm from', x, z, JSON.stringify(why));
+      if (why.modal) await d(() => document.querySelector('#modal')?.classList.remove('on'));
+      r = await walk(x, z);
+    }
     const doorOk = !door || r.doors.find(q => q.id === door)?.open;
     const ok = r.dist < 0.45 && (!room || r.room === room) && (!level || r.level === level) && doorOk;
     went.push({ to: [x, z], room: r.room, level: r.level, y: +r.y.toFixed(2), dist: +r.dist.toFixed(2), ok });
@@ -182,10 +190,12 @@ try {
   });
   const shell = {};
   for (const [lv, spot] of [['rdc', shots['rdc-salon']], ['etage', shots['etage-salon']], ['toit', shots['toit-terrasse']]]) { await stand(spot); shell[lv] = await shellOf(); }
-  check(`the shell of each level about 12–16 draw calls (with what is seen of the levels below; the helicopter's own on the roof): ${Object.entries(shell).map(([k, v]) => `${k} ${v.calls} calls ${v.tris} tris`).join(', ')}`,
-    Object.values(shell).every(v => v.calls > 0 && v.calls <= 24), JSON.stringify(shell));
+  // (the look pass: a draw call more per part for the stone, the view in the windows; the furnished level's budget, below, is what counts)
+  check(`the shell of each level at most 30 draw calls (with what is seen of the levels below; the helicopter's own on the roof): ${Object.entries(shell).map(([k, v]) => `${k} ${v.calls} calls ${v.tris} tris`).join(', ')}`,
+    Object.values(shell).every(v => v.calls > 0 && v.calls <= 30), JSON.stringify(shell));
   // about ten pieces of furniture, delivered and set up by the game by their kind (across the levels)
-  const ids = ['canape_cuir', 'table_basse', 'tele_plate', 'salle_manger_bois', 'lit_king', 'armoire_bois', 'canape_wax', 'transat', 'parasol', 'plante', 'lampadaire_trepied', 'tapis_soie'];
+  // (the look pass: the « Collection Almadies » and the premium teak, delivered by kind; scripts/shots-villa-look.mjs sets out the whole layout)
+  const ids = ['canape_courbe', 'table_basse_marbre_noir', 'meuble_tv_laque', 'salle_manger_ronde', 'lit_capitonne_noir', 'dressing_bronze', 'canape_boucle', 'bain_soleil_teck', 'parasol_deporte', 'pot_cannele', 'lampadaire_champignon', 'tapis_rond_jute'];
   await d(list => { for (const id of list) window.__dakar.buyPiece(id); }, ids);
   await page.waitForTimeout(1500);
   const placed = await d(() => window.__dakar.homeView().pieces.length);
@@ -204,7 +214,7 @@ try {
   check('a tap on « Étage »: the first floor in view (the cutaway follows the editor), its room chips', up.info.level === 'etage' && up.home.level === 'etage' && up.rooms.includes('Suite') && !up.rooms.includes('Grand salon'), JSON.stringify({ level: up.info.level, home: up.home.level, rooms: up.rooms }));
   await t.tap('#placer-rooms [data-room="suite"]'); await page.waitForTimeout(1200);
   const suite = await d(() => ({ info: window.__dakar.placer.info(), cam: window.__dakar.camera().at }));
-  const bed = suite.info.items.find(f => f.spec === 'lit_king');
+  const bed = suite.info.items.find(f => f.spec === 'lit_capitonne_noir');
   const chipBox = await d(() => { const r = document.getElementById('placer-rooms').getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; });
   check(`the level's room chips fit the phone's width in a few rows (${chipBox.w} × ${chipBox.h} px)`, chipBox.w >= 300 && chipBox.h <= 160, JSON.stringify(chipBox));
   check('the suite chip frames the master suite from above its floor; the bed bought is in it, set up by its kind', suite.info.room === 'suite' && suite.cam[1] > STOREY + 3 && bed?.room === 'suite', JSON.stringify({ room: suite.info.room, cam: suite.cam, bed }));

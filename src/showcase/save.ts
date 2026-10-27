@@ -5,6 +5,7 @@ import { addOwned, holding, moveIn, placedIn, settleFurniture } from '../economy
 import { furnitureSpec, homeSpec, specOf } from '../economy/catalog';
 import { layoutOf, whyNot } from '../economy/placement';
 import { BAYS, FRONT_DOOR, LEVELS, VILLA_ID, onLot, type VillaLevel } from '../housing/villa';
+import { VILLA_ALMADIES_SHOWCASE } from '../housing/villaLayout';
 import { park } from '../transport/owned';
 
 /**
@@ -20,24 +21,12 @@ import { park } from '../transport/owned';
 export const SHOWCASE_PREFIX = 'dakarrek.vitrine/';
 export const SHOWCASE_WALLET = 60_000_000;
 /**
- * THE showcase's furnishing, in one plain list (the integration swaps the catalogue ids for the « Collection Almadies » line): each piece by its catalogue id
- * (src/economy/catalog.ts, today's ids), the villa's level it stands on (src/housing/villa.ts LEVELS) and its place on that level in the house's plan
- * coordinates (x, z: metres from the lot's centre, +z toward the street; rot: quarter turns, 0 faces +z). It is stored unfolded (x + the level's dx,
- * src/housing/villa.ts), as every placement of the villa is. A place the villa's plan refuses (the open-plan house before lane V-S's three levels) is
- * left to the game's own settling (src/economy/assets.ts settleFurniture): the piece goes to a room of its kind.
+ * THE showcase's furnishing: the villa as lane V-S laid it out with the « Collection Almadies » (src/housing/villaLayout.ts, the owner's references), each
+ * piece by its catalogue id, the villa's level it stands on (src/housing/villa.ts LEVELS) and its place on that level in the house's plan coordinates
+ * (x, z: metres from the lot's centre, +z toward the street; rot: quarter turns, 0 faces +z). It is stored unfolded (x + the level's dx), as every placement of
+ * the villa is. A place the plan refuses is left to the game's own settling (src/economy/assets.ts settleFurniture): the piece goes to a room of its kind.
  */
-export const SHOWCASE_FURNITURE: readonly { id: string; level: VillaLevel; x: number; z: number; rot: number }[] = [
-  { id: 'canape_angle_velours', level: 'rdc', x: -5.2, z: -3.6, rot: 0 },
-  { id: 'tapis_soie', level: 'rdc', x: -5.2, z: -1.8, rot: 0 },
-  { id: 'table_basse_sculptee', level: 'rdc', x: -5.2, z: -1.8, rot: 0 },
-  { id: 'mur_tv', level: 'rdc', x: -5.2, z: 0.9, rot: 2 },
-  { id: 'lustre', level: 'rdc', x: -5.2, z: -1.8, rot: 0 },
-  { id: 'salle_manger_marbre', level: 'rdc', x: 1.2, z: -2.6, rot: 0 },
-  { id: 'toile_artiste', level: 'rdc', x: 1.2, z: -4.8, rot: 0 },
-  { id: 'bain_soleil_teck', level: 'rdc', x: 7.2, z: -8.2, rot: 3 },
-  { id: 'parasol_deporte', level: 'rdc', x: 8.8, z: -9.6, rot: 0 },
-  { id: 'lit_baldaquin', level: 'etage', x: -4.5, z: -2.8, rot: 0 },
-];
+export const SHOWCASE_FURNITURE: readonly { id: string; level: VillaLevel; x: number; z: number; rot: number }[] = VILLA_ALMADIES_SHOWCASE;
 
 export class ShowcaseStorage implements Storage {
   constructor(private readonly real: Storage, private readonly prefix = SHOWCASE_PREFIX) {}
