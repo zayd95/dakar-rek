@@ -1700,7 +1700,9 @@ function frameStep(now: number, dt: number, draw = true) {
     } else speed = 0;
     state.tick(dt * 1000);
   }
-  inside?.int.update?.(dt, pos, camera, litHour);                        // a home with a floor plan: its doors, the see-through hole, the room light
+  // a home with a floor plan: its doors, the see-through hole, the room light; a seated player is where their seat puts them (LD2.0-D round 2: the villa's
+  // swim moves its seat through the pool's edge, which a walker may not cross), so the home does not hold them back at its walls
+  inside?.int.update?.(dt, pos, camera, litHour, !!seated);
   if (!lambScene) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }

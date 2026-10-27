@@ -175,7 +175,7 @@ try {
 
   // ------------------------------------------------------------------ 4. the rooftop
   const roof = await tour(A, O, [[-3.6, 0.4, 'salon_familial', 'etage'], [3.6, 2.6, 'salon_familial', 'etage'], [6.2, 2.4, 'palier', 'etage'], [7.15, 1.9, 'palier', 'etage'], [7.15, -0.5],
-    [7.15, -3.4, 'edicule', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [3.6, -3.9, 'terrasse', 'toit'], [0.6, -3.4, 'terrasse', 'toit'], [-1.0, 1.0, 'terrasse', 'toit']]);
+    [7.15, -3.4, 'edicule', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [3.6, -3.9, 'terrasse', 'toit'], [0.6, -3.4, 'terrasse', 'toit'], [-3.4, -3.1, 'terrasse', 'toit']]);   // onto the pad, beside the helicopter (round 2: it lies along the terrace)
   const heli = await A.waitFocus(/Regarder l.hélicoptère/, 15000);
   perf.toit = await perfHere(A); await A.shot('05-rooftop-helicopter');
   let heliSheet = '';

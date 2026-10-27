@@ -442,7 +442,7 @@ export function drawFrontPalms(d: Draw) {
 }
 /**
  * The house on its lot: the façade (lane V-S's, src/housing/villaFacade.ts, drawn from the villa's plan), solid up to its parapet, and the helicopter
- * (src/world/helicopter.ts `buildHelicopter`) on its roof pad (HELIPAD), its nose toward the street.
+ * (src/world/helicopter.ts `buildHelicopter`) on its roof pad (HELIPAD), heading as the pad says (HELIPAD.yaw).
  */
 export function placeHouse(d: Draw, o: CompoundOptions['house'] = {}): { facade: THREE.Object3D; heli: THREE.Object3D | null } {
   const { f } = d, Y = GROUND, roof = o.roof ?? 2 * STOREY;
@@ -454,7 +454,7 @@ export function placeHouse(d: Draw, o: CompoundOptions['house'] = {}): { facade:
   if (o.heli === false) return { facade, heli: null };
   const heli = buildHelicopter(), q = f.p(HELIPAD.x, HELIPAD.z);
   heli.group.position.set(q.x, Y + roof, q.z);
-  if (f.turn) heli.group.rotation.y = f.turn;
+  heli.group.rotation.y = f.rot(HELIPAD.yaw);                                // its heading on the pad (HELIPAD.yaw: along the roof terrace, nose west), in the frame
   return { facade, heli: heli.group };
 }
 /**
