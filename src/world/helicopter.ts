@@ -112,6 +112,7 @@ function grid(P: THREE.Vector3[][], closed: boolean, paint: (i: number, k: numbe
       const tk = V().subVectors(P[i][kb], P[i][ka]), ti = V().subVectors(P[Math.min(I - 1, i + 1)][k], P[Math.max(0, i - 1)][k]);
       const n = V().crossVectors(tk, ti);
       if (n.lengthSq() < 1e-12) n.copy(outward ? outward(P[i][k], i) : V().subVectors(P[i][k], mid));
+      if (n.lengthSq() < 1e-12) n.copy(ti).multiplyScalar(i === 0 ? -1 : 1);       // a row shrunk to a point (a tip): along the rows, outward
       const o = outward ? outward(P[i][k], i) : V().subVectors(P[i][k], mid);
       if (n.dot(o) < 0) n.negate();
       row.push(n.normalize());
@@ -410,7 +411,7 @@ function materials() {
   if (shared) return shared;
   const env = skyMap();
   const paint = new THREE.MeshPhysicalMaterial({ name: 'helicopter-paint', vertexColors: true, metalness: 0.35, roughness: 0.36, clearcoat: 1, clearcoatRoughness: 0.06, envMap: env, side: THREE.DoubleSide });
-  const glass = new THREE.MeshPhysicalMaterial({ name: 'helicopter-glass', vertexColors: true, metalness: 0, roughness: 0.04, reflectivity: 0.85, envMap: env, transparent: true, opacity: 0.8 });
+  const glass = new THREE.MeshPhysicalMaterial({ name: 'helicopter-glass', vertexColors: true, metalness: 0, roughness: 0.04, reflectivity: 0.85, envMap: env, transparent: true, opacity: 0.7 });
   const metal = new THREE.MeshStandardMaterial({ name: 'helicopter-metal', vertexColors: true, metalness: 0.9, roughness: 0.3, envMap: env });
   const satin = new THREE.MeshStandardMaterial({ name: 'helicopter-satin', vertexColors: true, metalness: 0.15, roughness: 0.55, envMap: env });
   for (const m of [paint, glass, metal, satin]) m.onBeforeCompile = specularOnly;

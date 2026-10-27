@@ -22,7 +22,7 @@ const STREET = {
   roof: { p: W(6.5, 12.5, 9.5), t: W(-3.6, 7.6, -1.2) },        // closer, from above the street side
 };
 // on the roof terrace, the game's camera behind the player: [plan x, z, the player's facing]
-const ROOF = { 'terrace-ne': [2.4, -3.7, -1.85], 'terrace-se': [0.4, 2.3, -2.05], 'terrace-sw': [-6.6, 3.0, 2.6] };
+const ROOF = { 'terrace-ne': [1.6, -3.6, -0.94], 'terrace-se': [0.4, 2.3, -2.05], 'terrace-sw': [-6.6, 3.0, 2.6] };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const sizes = [], info = { base, tag };
@@ -82,7 +82,7 @@ try {
   }, H);
   const frames = [];
   for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2, R = 13.5, el = 0.2;
+    const a = (k / 8) * Math.PI * 2 + 0.35, R = 8.6, el = 0.22;
     const cam = { p: [H[0] + Math.sin(a) * R * Math.cos(el), H[1] + 1.3 + R * Math.sin(el), H[2] + Math.cos(a) * R * Math.cos(el)], t: [H[0], H[1] + 1.25, H[2]] };
     await tp.evaluate(c => window.__dakar.cam(c.p, c.t), cam); await tp.waitForTimeout(1300);
     frames.push(await tp.screenshot());
