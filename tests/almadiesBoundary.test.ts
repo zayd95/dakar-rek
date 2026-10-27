@@ -51,6 +51,15 @@ describe('the boundary is open to the street', () => {
     expect(frontOf(s)).toBe('open'); expect(span).toEqual({ x0: 0, x1: 0 });
     expect(d.colliders.filter(c => colliderInPlan(d, c).z > E - 0.5 && colliderInPlan(d, c).d < 0.5)).toHaveLength(0);
   });
+  it('a walk-in entry cuts the railing: no collider across it, piers and a lantern either side, the gate still shut', () => {
+    const s = SITES.find(x => x.kind === 'hotel' && sizeOf(x) === 'M')!, w = s.rect.x1 - s.rect.x0, x0 = s.gate === 'right' ? -w / 4 : w / 4;
+    const a = draw(s), b = draw(s, false, { entries: [{ x: x0, w: 5 }] });
+    const across = b.d.colliders.map(c => colliderInPlan(b.d, c)).filter(c => c.z > E - 0.5 && c.d < 0.5 && c.h <= 1.6 && Math.abs(c.x - x0) < 2.4 + c.w / 2 && c.w > 0.2);
+    expect(across.filter(c => c.x - c.w / 2 < x0 + 2.4 && c.x + c.w / 2 > x0 - 2.4), 'nothing solid across the opening').toHaveLength(0);
+    expect(b.d.colliders.map(c => colliderInPlan(b.d, c)).filter(c => c.h === 2.3)).toHaveLength(1);
+    expect(trisOf(b.t)).toBeGreaterThan(trisOf(a.t) - 200);
+    expect(b.t.batches.bulbs.count).toBeGreaterThan(a.t.batches.bulbs.count);
+  });
   it('the old names ("wall", "low") draw the same railing: the district has no solid wall on a street', () => {
     const s = SITES.find(x => sizeOf(x) === 'S')!, a = draw(s), b = draw(s, false, { front: 'wall' }), c = draw(s, false, { front: 'low' });
     expect(trisOf(b.t)).toBe(trisOf(a.t)); expect(trisOf(c.t)).toBe(trisOf(a.t));

@@ -257,9 +257,10 @@ function fenceRun(d: SiteDraw, x0: number, z0: number, x1: number, z1: number, o
  * inside it). A stone pier with a lantern either side of the gate, and a bar gate (shut: its box is solid; the pavement's door and board outside it stay
  * reachable). `gate`: where the gate stands on the street edge (before mirroring; its width `gateW`), or 'none'. `front`: 'fence' (the default; 'wall' and
  * 'low' are old names for it: the district has no solid wall on a street) or 'open' (the building's own front stands on the line: a shopfront, a lobby).
- * `h` is the neighbours' wall. Returns the gate's span in plan x.
+ * `h` is the neighbours' wall. `entries`: walk-in openings in the street railing (plan x of the centre, width): open ground between two lantern piers, with no
+ * collider across it. Returns the gate's span in plan x.
  */
-export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'; gateW?: number; front?: Front; col?: number; sides?: boolean } = {}): { x0: number; x1: number } {
+export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'; gateW?: number; front?: Front; col?: number; sides?: boolean; entries?: { x: number; w: number }[] } = {}): { x0: number; x1: number } {
   const ex = d.w / 2, eb = d.depth - E, T = 0.3, h = o.h ?? WALL_H, wh = h - GROUND, col = o.col ?? d.c.wall, ci = 0.05, gw = o.gateW ?? 4.4;
   const front = o.front === 'open' ? 'open' as const : 'fence' as const, fh = FENCE.collider;
   fronts.set(d.site, front);
@@ -277,10 +278,18 @@ export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'
   }
   if (road.back) fenceRun(d, -ex, -zb, ex, -zb, [0, -1]); else run(-ex, -zb, ex, -zb);
   if (front !== 'open') {
-    const part = (a: number, b: number) => fenceRun(d, a, s, b, s, [0, 1]);
-    if (gate) { part(-ex, gate.x0); part(gate.x1, ex); } else part(-ex, ex);
-    d.solid(-ex + ci, E - T, gate ? gate.x0 : ex - ci, E - ci, fh);
-    if (gate) d.solid(gate.x1, E - T, ex - ci, E - ci, fh);
+    // the street edge is cut at the car gate and at each walk-in entry (a forecourt, a lobby, a porte-cochère: open ground, two piers, no collider across it)
+    const cuts = [...(gate ? [gate] : []), ...(o.entries ?? []).map(e => ({ x0: e.x - e.w / 2, x1: e.x + e.w / 2 }))].sort((a, b) => a.x0 - b.x0);
+    let at = -ex;
+    for (const c of [...cuts, { x0: ex, x1: ex }]) {
+      const a = at, b = Math.min(c.x0, ex);
+      if (b - a > 0.3) { fenceRun(d, a, s, b, s, [0, 1]); d.solid(a === -ex ? a + ci : a, E - T, b === ex ? b - ci : b, E - ci, fh); }
+      at = Math.max(at, c.x1);
+    }
+    for (const e of o.entries ?? []) for (const sx of [-1, 1]) {
+      const x = e.x + sx * (e.w / 2 + 0.2);
+      d.box(d.plain, 0.4, FENCE.top + 0.35 - GROUND, 0.4, x, GROUND, s, d.p.stone); d.box(d.plain, 0.5, 0.07, 0.5, x, FENCE.top + 0.35, s, d.p.stoneDark); d.box(d.bulbs, 0.16, 0.18, 0.16, x, FENCE.top + 0.42, s, d.c.bulb);
+    }
   }
   const ch = (r: boolean) => r ? fh : h;
   d.solid(ex - T, -eb + ci, ex - ci, E - ci, ch(road.right && o.sides !== false)); d.solid(-ex + ci, -eb + ci, -ex + T, E - ci, ch(road.left && o.sides !== false)); d.solid(-ex + ci, -eb + ci, ex - ci, -eb + T, ch(road.back));
