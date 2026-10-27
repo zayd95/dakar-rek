@@ -206,7 +206,12 @@ export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'
   }
   if (!d.lite && front === 'wall') {                                              // bougainvillea over the street wall, a few clusters
     const rng = siteRng(d, 'bougainvillea');
-    for (let k = 0; k < 3; k++) { const x = -ex + 2 + rng() * (d.w - 4); if (gate && x > gate.x0 - 1 && x < gate.x1 + 1) continue; d.blob(d.leaves, 0.7 + rng() * 0.3, x, h - 0.1, s, k % 2 ? d.c.bloom : d.c.bloom2, 0.75, 0); }
+    for (let k = 0; k < 3; k++) {                                                    // a cushion of leaves and two or three rounder clusters of flowers over it
+      const x = -ex + 2 + rng() * (d.w - 4), r = 0.55 + rng() * 0.3;
+      if (gate && x > gate.x0 - 1.4 && x < gate.x1 + 1.4) continue;
+      d.blob(d.leaves, r, x, h - 0.12, s, d.c.hedge, 0.45, 0);
+      for (const [t, dy] of [[-0.45, 0.1], [0.1, 0.2], [0.55, 0.08]] as const) d.blob(d.leaves, r * 0.5, x + t * r, h + dy, s, (k + Math.round(t * 4)) % 3 ? d.c.bloom : d.c.bloom2, 0.75, 0);
+    }
   }
   return gate ?? { x0: 0, x1: 0 };
 }
