@@ -178,6 +178,34 @@
   - the regression, performance, pictures and the private preview;
   - for the owner (26 Oct): screenshots of the finished villa, a video of the playthrough (the acceptance, recorded and converted to MP4), and the playable private preview.
 
+## Results (27 Oct)
+- **The acceptance** (`scripts/check-ld2d.mjs`, two players on the local Workers runtime, phone pages, real touches): 17/17 on `9fee841` (the game built from `4d74126`: the commits between change the check only).
+  - The journey: Awa buys the villa for 400 000 000 F of game money → the gate slides open for her → « Entrer chez toi » → the ground floor walked with the joystick (entrée, salon, the pool garden, salle à manger, cuisine, hall) → up the first flight (the landing, the salon familial, the master suite) → up to the roof terrace, « Regarder l'hélicoptère » → down to the pool, « Se baigner », « Sortir de l'eau » → the Lamane Sport driven in through the gate, « Garer à la villa » → thirteen pieces of the « Collection Almadies » delivered, the bouclé armchair moved in « Aménager » and placed → « Inviter chez moi » from Messages, Moussa accepts, the gate opens for him, « Entrer chez Awa (invité) », both in the villa, her furniture drawn for him → a reload: the villa hers and her home, every piece where she left it, the car in its bay → no page errors.
+  - Pictures and the run's video: `docs/proof/ld2d/acceptance/`.
+- **Fixed by the acceptance:**
+  - « Regarder l'hélicoptère » lost to the home's own « Commander des meubles » by the pad: the aircraft keeps the player 2 to 3 m from the pad's centre, where its target is (`c9da1d6`).
+  - The check itself: it opens the editor's list (« ☰ ») before picking a piece, moves it toward a spot the editor accepts, and its reload step reads the furniture from the save (`8673218`, `2c54929`, `4d74126`, `9fee841`).
+- **Performance on a phone page** (390 × 844, SwiftShader, quality medium; budget: a furnished level ≤ 60 draw calls and ≤ 80k triangles):
+
+  | Where | Draw calls | Triangles |
+  |---|---|---|
+  | Ground floor | 17 | 24 258 |
+  | First floor | 22 | 24 650 |
+  | Roof terrace | 26 | 23 164 |
+  | Salon furnished (13 pieces) | 23 | 27 714 |
+- **For the owner:**
+  - the pictures (lane V-S's look pass, by day and at 21 h: `docs/proof/ld2d/villa-look/`; the street: `docs/proof/ld2d/street/`; the line: `docs/proof/ld2d/collection/`);
+  - a smooth video tour (`scripts/video-villa-tour.mjs`: the game paused and stepped a 24th of a second a frame, so it plays at 24 frames a second);
+  - the playable private preview: the owner's showcase build (`npm run build:showcase`), a private claude.ai artifact, single-player.
+- **Limitations:**
+  - the furnishing the game sets out by itself can leave a piece where the editor then says « Laisse le passage libre » (13 pieces in the salon, the dining room and the suite);
+  - interiors are nearly as bright at night as by day; flat lighting;
+  - the moucharabieh is slats, not a pattern; the same view in every window; the kitchen and bathrooms are simple;
+  - the reception's guests are the city's simple crowd figures;
+  - the gate moves on each player's screen by its own rule, not synchronised between players;
+  - the Almadies street dressing is drawn anew around the villa (the mall's way in kept open);
+  - not tried on a real iPhone.
+
 ## Not in this slice
 - Helicopter flights, the airport and the jet.
 - Other villas and the Ngor residence keep their open room.
