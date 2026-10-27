@@ -189,7 +189,8 @@ const blockRect = (b: readonly [number, number]) => { const x0 = -HALF + GRID.ro
 export function roadEdges(d: SiteDraw): Record<'left' | 'right' | 'back', boolean> {
   const bb = blockRect(d.site.block), r = d.site.rect, o = d.f.p(0, 0), near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
   const faces = (px: number, pz: number) => { const q = d.f.p(px, pz), dx = q.x - o.x, dz = q.z - o.z; return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? near(r.x1, bb.x1) : near(r.x0, bb.x0)) : (dz > 0 ? near(r.z1, bb.z1) : near(r.z0, bb.z0)); };
-  return { right: faces(1, 0), left: faces(-1, 0), back: faces(0, -1) };
+  const r0 = d.site.roads;
+  return { right: r0?.right ?? faces(1, 0), left: r0?.left ?? faces(-1, 0), back: r0?.back ?? faces(0, -1) };
 }
 /** The railing's heights above the ground: the stone plinth, the top rail, and the collider the fence keeps (a body cannot climb it). */
 const FENCE = { plinth: 0.45, top: 1.32, collider: 1.5 } as const;

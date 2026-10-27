@@ -76,6 +76,8 @@ export interface Site {
   number: string;
   /** Where the car gate stands on the street wall (plan, before mirroring): the middle or toward one end. */
   gate: GateSide;
+  /** Which of the site's side and back edges (plan: left −x, right +x, back −z) run by a road, when the rectangle is not on the hub's grid (the district viewer); the plan's own sites leave it out (`roadEdges` reads the grid). */
+  roads?: Partial<Record<'left' | 'right' | 'back', boolean>>;
 }
 export const sizeOf = (s: Pick<Site, 'lots'>): SiteSize => s.lots.length === 1 ? 'S' : s.lots.length === 2 ? 'M' : 'L';
 /** The site's extent (m): along the street and deep. */

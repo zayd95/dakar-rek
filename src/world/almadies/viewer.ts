@@ -34,13 +34,15 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshL
 
 export interface ShowOptions {
   kind: SiteKind; variant?: string | number; size?: SiteSize; facing?: 'south' | 'north'; mirror?: boolean; palette?: PaletteName; storeys?: number; name?: string; number?: string;
-  gate?: Site['gate']; night?: boolean; lite?: boolean; view?: 'front' | 'street' | 'back' | 'side' | 'aerial' | 'close'; fit?: number;
+  gate?: Site['gate']; roads?: ('left' | 'right' | 'back')[]; night?: boolean; lite?: boolean; view?: 'front' | 'street' | 'back' | 'side' | 'aerial' | 'close'; fit?: number;
 }
 function lighting(night: boolean) {
   scene.background = new THREE.Color(night ? 0x0d1424 : 0xcfe0ea);
   hemi.intensity = night ? 0.25 : 1.1; sun.intensity = night ? 0.15 : 1.9;
   mats.glass.emissiveIntensity = night ? 0.85 : 0.25; mats.glass.emissive.set(night ? 0xffb560 : 0x335577);
 }
+/** The viewer's lot stands off the hub's grid: which of its edges run by a road is said here (default: a lot's road side is its right; two lots both ends; a block three sides). */
+const roads = (o: ShowOptions, size: SiteSize) => { const on = o.roads ?? (size === 'S' ? ['right'] : size === 'M' ? ['left', 'right'] : ['left', 'right', 'back']); return { left: on.includes('left'), right: on.includes('right'), back: on.includes('back') }; };
 function makeSite(o: ShowOptions): Site {
   const size = o.size ?? (variantsFor(o.kind, 'S').length ? 'S' : variantsFor(o.kind, 'M').length ? 'M' : 'L');
   const list = variantsFor(o.kind, size);
@@ -49,7 +51,7 @@ function makeSite(o: ShowOptions): Site {
   // the prototype's lot rect moved to the origin region so the camera maths stay simple: the plan's frame needs only the rect and the facing
   const { w, d } = extentOf(proto), rect = { x0: -w / 2, x1: w / 2, z0: -d / 2, z1: d / 2 };
   return { ...proto, kind: o.kind, variant: idx, rect, facing: o.facing ?? 'south', mirror: o.mirror ?? false, storeys: o.storeys ?? proto.storeys, palette: o.palette ?? proto.palette,
-    name: o.name ?? proto.name ?? (o.kind === 'hotel' || o.kind === 'residence' ? 'HÔTEL DES ALMADIES' : undefined), number: o.number ?? '12', gate: o.gate ?? proto.gate, id: `viewer:${o.kind}:${idx}` };
+    name: o.name ?? proto.name ?? (o.kind === 'hotel' || o.kind === 'residence' ? 'HÔTEL DES ALMADIES' : undefined), number: o.number ?? '12', gate: o.gate ?? proto.gate, id: `viewer:${o.kind}:${idx}`, roads: roads(o, size) };
 }
 function show(o: ShowOptions) {
   if (current) { scene.remove(current); current.traverse(x => { const m = x as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); }); current = null; }

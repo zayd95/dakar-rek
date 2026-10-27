@@ -31,6 +31,19 @@ describe('the road-facing edges', () => {
   });
 });
 
+describe('a site off the grid (the district viewer) says its road sides itself', () => {
+  it('"roads" overrides the grid: the right edge is a railing, the left a wall, on either mirror', () => {
+    const base = SITES.find(x => sizeOf(x) === 'S')!;
+    for (const mirror of [false, true]) {
+      const s: Site = { ...base, rect: { x0: -11, x1: 11, z0: -11, z1: 11 }, mirror, roads: { left: false, right: true, back: false } }, d = siteDraw(testKit().kit, s);
+      expect(roadEdges(d)).toEqual({ left: false, right: true, back: false });
+      perimeter(d, { gate: s.gate });
+      const cs = d.colliders.map(c => colliderInPlan(d, c)).filter(c => c.w < 0.5 && c.d > 4);
+      expect(cs.find(c => c.x > 0)!.h).toBeLessThanOrEqual(1.6); expect(cs.find(c => c.x < 0)!.h).toBeGreaterThan(2);
+    }
+  });
+});
+
 describe('the boundary is open to the street', () => {
   for (const s of SITES) it(`${s.id}: a railing, not a wall, on the street edge and the road-side edges; a wall between neighbours; the gate shut and solid`, () => {
     const { d, span } = draw(s), road = roadEdges(d), cs = d.colliders.map(c => colliderInPlan(d, c));
