@@ -10,8 +10,9 @@
 //   7. the acceptance's own pool step (scripts/check-ld2d.mjs, step 5) with the game running in real time: « Se baigner » at the south edge, in the water
 //      for a few seconds, « Sortir de l'eau », cleaner;
 // all the way: the swimmer's footprint never leaves the water's rectangle, the stroke's pace follows the speed, the camera stays above the deck and never
-// in the basin, and no page error. Pictures of the run: <outDir>/check-*.png.
+// in the basin, and no page error. The results: <outDir>/check-results-<body>.json; pictures of the run: <outDir>/check-<body>-*.png (SHOTS=0: none).
 // Usage: node scripts/check-villa-swim.mjs <baseUrl=http://127.0.0.1:4995/> [outDir=docs/proof/ld2d/r2-swim] [avatar=femme|homme|v4]
+//   (a static build of the game, served: npx vite build --outDir <dir>, then any static server on it)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import sharp from 'sharp';
@@ -22,7 +23,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const DT = 1 / 30;
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const results = [];
-const check = (name, ok, extra = '') => { results.push({ name, ok: !!ok }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, ok && !process.env.VERBOSE ? '' : String(extra).slice(0, 700)); };
+const check = (name, ok, extra = '') => { results.push({ name, ok: !!ok, ...(ok ? {} : { extra: String(extra).slice(0, 700) }) }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, ok && !process.env.VERBOSE ? '' : String(extra).slice(0, 700)); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -35,7 +36,10 @@ await ctx.addInitScript(([avatar]) => {
 const page = await ctx.newPage(); page.setDefaultTimeout(300000);
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 const d = (fn, a) => page.evaluate(fn, a);
+let body = AVATAR;
 const shot = async name => {
+  if (process.env.SHOTS === '0') return;
+  name = `check-${body}-${name.replace(/^check-/, '')}`;
   await d(() => window.__dakar.render());
   let png = await sharp(await page.screenshot()).png({ compressionLevel: 9 }).toBuffer();
   if (png.length > 390_000) png = await sharp(png).png({ palette: true, quality: 88, compressionLevel: 9 }).toBuffer();
@@ -52,7 +56,7 @@ try {
   await page.waitForFunction(() => window.__dakar.home() && window.__dakar.pos().mode === 'play', null, { timeout: 60000 });
   await page.waitForTimeout(1500);
   const G = await d(() => window.__dakar.villa.swim.geometry()), O = G.origin, POOL = G.pool, AREA = G.area, STEPS = G.steps;
-  const body = await d(() => window.__dakar.avatar().body);
+  body = await d(() => window.__dakar.avatar().body);
   console.log(JSON.stringify({ origin: O, body }));
   await d(() => window.__dakar.pause(true));
 
@@ -225,4 +229,5 @@ try {
 }
 const failed = results.filter(r => !r.ok).length;
 console.log(`${results.length - failed}/${results.length} passed`);
+fs.writeFileSync(`${OUT}/check-results-${body}.json`, JSON.stringify({ body, base, passed: results.length - failed, of: results.length, results }, null, 1) + '\n');
 process.exit(failed ? 1 : 0);

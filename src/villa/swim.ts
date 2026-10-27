@@ -25,9 +25,10 @@ import type * as THREE from 'three';
  *  - The animation is the rig's (src/actors/swimStroke.ts): a heads-up breaststroke ('Swim', its pace following the speed: STROKE_LENGTH a cycle) and
  *    treading water ('Tread'), cross-faded (SWIM_FADE) as the swimmer sets off and stops; the body level with the water swimming, upright treading.
  *  - Ripples round the body, a wake of rings left behind while swimming, a splash going in, drips coming out (src/villa/swimWater.ts: two draw calls).
- *  - Out: « Sortir de l'eau » at any time: within CLIMB_REACH of a wall the swimmer turns to it and climbs out onto the deck (hands on the coping, a
+ *  - Out: « Sortir de l'eau » at any time: near a wall (`canClimb`) the swimmer turns to it and climbs out onto the deck (hands on the coping, a
  *    knee up, standing: about a second); farther, they swim to the nearest wall first; by the steps, they walk up them. Swimming into the steps walks
- *    up them too. No timer takes the player out any more.
+ *    up them too. No timer takes the player out any more (SWIM_SECONDS is only what earns the full gains).
+ *  - The home lets the seated swimmer cross the pool's edge, which holds a walker back (Interior.update `placed`, src/housing/apartment.ts).
  *  - Hygiene and moral up, in proportion to the time in the water (a swim of SWIM_SECONDS or more: +22 hygiene, +15 moral; a dip still a quarter).
  * Who may swim: the villa's owner or renter, in their own villa (`maySwim`). The rules are pure (tests/villaLife.test.ts); `VillaSwim` runs them in the
  * game (src/villa/module.ts): the player sits on a locked seat that the swim moves every frame (main.ts places a seated player from their seat), its

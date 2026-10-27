@@ -15,7 +15,7 @@ const TMP = `/tmp/claude-0/r2w/shots-${Date.now()}`;
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
 const DT = 1 / 30;
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
-const STROKE = [[0, 'glisse'], [0.2, 'écart des bras'], [0.4, 'respiration'], [0.58, 'mains sous le menton, talons remontés'], [0.74, 'ciseau des jambes'], [0.88, 'jambes jointes']];
+const STROKE = [[0, 'glisse'], [0.2, 'écart des bras'], [0.4, 'respiration'], [0.58, 'mains sous le menton'], [0.74, 'ciseau des jambes'], [0.88, 'jambes jointes']];
 const TREAD = [[0, 'genou gauche'], [0.25, 'mains écartées'], [0.5, 'genou droit'], [0.75, 'mains devant']];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const errors = [];
@@ -67,8 +67,9 @@ for (const avatar of ['femme', 'homme', 'v4']) {
   // the swimmer heading east in the middle of the basin, held at each key; the camera low in the basin by its north wall, looking across
   const sx = 0.2, sz = -7.15;
   await P.d(([x, z]) => window.__dakar.villa.swim.at(x, z, Math.PI / 2), [sx, sz]); await P.step(20);
-  const cam = () => P.d(([O, x, z]) => window.__dakar.cam([O.x + x, -0.68, O.z - 9.47], [O.x + x, -0.78, O.z + z]), [P.O, sx, sz]);
+  const cam = () => P.d(([O, x, z]) => window.__dakar.cam([O.x + x, -0.42, O.z - 9.47], [O.x + x, -0.46, O.z + z]), [P.O, sx, sz]);
   const files = [], labels = [];
+  await cam(); await grab(P, `${TMP}/warm.png`, null, false);                   // (the first frame after the page's resize is drawn before the camera takes it)
   for (const [clip, keys] of [['Swim', STROKE], ['Tread', TREAD]]) {
     for (const [ph, label] of keys) {
       await P.d(([c, p]) => window.__dakar.villa.swim.hold(c, p), [clip, ph]); await P.step(18); await cam();
@@ -85,7 +86,7 @@ for (const avatar of ['femme', 'homme', 'v4']) {
   // ------------------------------------------------------------------ the same keys from the game's camera (the default body)
   await P.page.setViewportSize({ width: 390, height: 844 }); await P.step(10);
   await P.d(([x, z]) => window.__dakar.villa.swim.at(x, z, Math.PI / 2), [0.5, -7.8]); await P.step(10);
-  await P.d(() => window.__dakar.lookAtPlayer(4, -0.5)); await P.step(30);
+  await P.d(() => window.__dakar.lookAtPlayer(4, 1.1)); await P.step(30);
   const gfiles = [], glabels = [];
   for (const [ph, label] of STROKE) {
     await P.d(p => window.__dakar.villa.swim.hold('Swim', p), ph); await P.step(18);
