@@ -21,6 +21,7 @@ import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
 import { VILLA_SITE, buildVillaCompound } from './villaCompound';
 import { buildDistrict } from './almadies/district';
+import { districtGlassMaterial } from './almadies/night';
 import { siteOfLot } from './almadies/plan';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -1364,8 +1365,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
   // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
   if (id === 'almadies') {
-    const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass, fac, metal, sign: addSign });
+    const panes = new Batch(), dark = new Batch();   // the windows' panes (warm at night) and glass that never glows, each its own mesh
+    const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign });
     group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
+    for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
   }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
   // after (src/game/streetDress.ts) leaves that strip open; given only now, the builder's own dressing and its random draws are as they were

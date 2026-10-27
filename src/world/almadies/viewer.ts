@@ -24,7 +24,7 @@ sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); scene.add(hemi, sun, 
 const lam = (o: THREE.MeshLambertMaterialParameters = {}) => new THREE.MeshLambertMaterial({ vertexColors: true, ...o });
 const mats = {
   plain: addGrain(lam(), 1, 1), pave: addGrain(lam(), 0.5, 1), leaves: addGrain(lam({ flatShading: true }), 0.8, 2.5), trunks: addGrain(lam(), 0.4, 1),
-  water: lam({ emissive: 0x335577, emissiveIntensity: 0.25 }), glass: lam({ emissive: 0x335577, emissiveIntensity: 0.25 }), fac: addGrain(lam(), 0.7, 1),
+  water: lam({ emissive: 0x335577, emissiveIntensity: 0.25 }), glass: lam({ emissive: 0x335577, emissiveIntensity: 0.25 }), glassDark: lam({ emissive: 0x335577, emissiveIntensity: 0.25 }), fac: addGrain(lam(), 0.7, 1),
   metal: addGrain(lam(), 0.3, 1), bulbs: new THREE.MeshBasicMaterial({ vertexColors: true }),
 };
 let current: THREE.Group | null = null, ready = false;
@@ -37,7 +37,7 @@ export interface ShowOptions {
 function lighting(night: boolean) {
   scene.background = new THREE.Color(night ? 0x0d1424 : 0xcfe0ea);
   hemi.intensity = night ? 0.25 : 1.1; sun.intensity = night ? 0.15 : 1.9;
-  mats.glass.emissiveIntensity = night ? 1.0 : 0.25; mats.glass.emissive.set(night ? 0xffb860 : 0x335577);
+  mats.glass.emissiveIntensity = night ? 0.85 : 0.25; mats.glass.emissive.set(night ? 0xffb560 : 0x335577);
 }
 function makeSite(o: ShowOptions): Site {
   const size = o.size ?? (variantsFor(o.kind, 'S').length ? 'S' : variantsFor(o.kind, 'M').length ? 'M' : 'L');
@@ -53,14 +53,14 @@ function show(o: ShowOptions) {
   if (current) { scene.remove(current); current.traverse(x => { const m = x as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); }); current = null; }
   lighting(!!o.night);
   const site = makeSite(o), g = new THREE.Group(); current = g;
-  const batches = { plain: new Batch(), pave: new Batch(), leaves: new Batch(), trunks: new Batch(), water: new Batch(), bulbs: new Batch(), glass: new Batch(), fac: new Batch(), metal: new Batch() };
+  const batches = { plain: new Batch(), pave: new Batch(), leaves: new Batch(), trunks: new Batch(), water: new Batch(), bulbs: new Batch(), glass: new Batch(), glassDark: new Batch(), fac: new Batch(), metal: new Batch() };
   const kit: DistrictKit = { lite: !!o.lite, ...batches, metalMat: mats.metal, pool: () => {}, sign: (text, bg, fg, x, y, z, yaw, w = 6, h = 1.5) => {
     const { width, height } = signCanvasSize(w, h), m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: signTexture(text, bg, fg, width, height), emissive: 0xffffff, emissiveIntensity: o.night ? 0.8 : 0 }));
     m.position.set(x, y, z); m.rotation.y = yaw; g.add(m);
   } };
   const d = siteDraw(kit, site), v = variantsFor(site.kind, sizeOf(site))[site.variant % variantsFor(site.kind, sizeOf(site)).length];
   const res = v.build(d) ?? {};
-  for (const [k, b] of Object.entries(batches)) { const mesh = b.build((mats as Record<string, THREE.Material>)[k], true, k !== 'glass'); if (mesh) g.add(mesh); }
+  for (const [k, b] of Object.entries(batches)) { const mesh = b.build((mats as Record<string, THREE.Material>)[k], true, k !== 'glass' && k !== 'glassDark'); if (mesh) g.add(mesh); }
   if (res.group) g.add(res.group);
   // the road in front, the pavement, a person for scale
   const road = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.05, 14), new THREE.MeshLambertMaterial({ color: 0x50535a }));

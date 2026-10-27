@@ -111,6 +111,7 @@ import { noteWork } from './economy/streakModule';
 import { STREAK, runOf } from './economy/streak';
 import { prayerPresence } from './actors/prayerPoses';
 import { setVillaFacadeNight } from './housing/villaFacade';
+import { setDistrictNight } from './world/almadies/night';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -385,6 +386,7 @@ function updateLighting(hour: number) {
     world.lamps.color.setScalar(lerp(0.45, 1, night));
     world.lampGlow.visible = night > 0.3;
     setVillaFacadeNight(night);                                            // the Almadies villa's façade: its windows, uplights, roof edge (LD2.0-D)
+    setDistrictNight(night);                                               // the Almadies district's windows (LD2.0-E)
     corridors.setNight(night);
     for (const m of world.signs) (m.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
   }

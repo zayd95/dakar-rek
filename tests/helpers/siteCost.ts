@@ -7,7 +7,7 @@ import { siteDraw, type DistrictKit, type Site, type Variant } from '../../src/w
  */
 export interface TestKit { kit: DistrictKit; batches: Record<string, Batch>; signs: { text: string; x: number; y: number; z: number; yaw: number; w: number; h: number }[]; lights: number }
 export function testKit(lite = false): TestKit {
-  const batches = { plain: new Batch(), pave: new Batch(), leaves: new Batch(), trunks: new Batch(), water: new Batch(), bulbs: new Batch(), glass: new Batch(), fac: new Batch(), metal: new Batch() };
+  const batches = { plain: new Batch(), pave: new Batch(), leaves: new Batch(), trunks: new Batch(), water: new Batch(), bulbs: new Batch(), glass: new Batch(), glassDark: new Batch(), fac: new Batch(), metal: new Batch() };
   const t: TestKit = { kit: null as unknown as DistrictKit, batches, signs: [], lights: 0 };
   t.kit = { lite, ...batches, metalMat: new THREE.MeshBasicMaterial(), pool: () => { t.lights++; }, sign: (text, _bg, _fg, x, y, z, yaw, w = 6, h = 1.5) => { t.signs.push({ text, x, y, z, yaw, w, h }); } };
   return t;

@@ -50,7 +50,8 @@ export const PALETTES: Record<PaletteName, SitePalette> = {
 export type SignFn = (text: string, bg: string, fg: string, x: number, y: number, z: number, yaw: number, w?: number, h?: number) => void;
 /** The hub's batches and helpers a site draws into (the villa's kit, plus the glass, the facade batch, the painted metal and the signs). */
 export interface DistrictKit extends CompoundKit {
-  glass: Batch; fac: Batch; metal: Batch; sign: SignFn;
+  /** `glass`: the windows' panes (they glow warm at night: src/world/almadies/night.ts); `glassDark`: glass that never glows (guards, balustrades, a roof's glass). */
+  glass: Batch; glassDark: Batch; fac: Batch; metal: Batch; sign: SignFn;
 }
 
 export type GateSide = 'centre' | 'left' | 'right';
@@ -88,14 +89,14 @@ export function siteFrame(s: Pick<Site, 'rect' | 'facing' | 'mirror'>): Frame {
 
 /** What a site draws on: the villa's `Draw` (frame, palette, `box`, `slab`, `solid`, …) plus the district's batches, the site and its palette. */
 export interface SiteDraw extends Draw {
-  glass: Batch; fac: Batch; metal: Batch; sign: SignFn;
+  glass: Batch; glassDark: Batch; fac: Batch; metal: Batch; sign: SignFn;
   site: Site; p: SitePalette; w: number; depth: number;
 }
 export function siteDraw(kit: DistrictKit, site: Site): SiteDraw {
   const { w, d } = extentOf(site), p = PALETTES[site.palette];
   const palette: Partial<CompoundPalette> = { wall: p.render, coping: p.slab, plinth: p.stoneDark, stone: p.stone, stoneDark: p.stoneDark, teak: p.wood, frame: p.frame, glassDark: p.glass, bronze: p.frame, slab: p.slab, clad: p.stone, deck: p.stone, bloom: p.accent, door: p.wood };
   const base = makeDraw(kit, siteFrame(site), { w, d }, palette);
-  return Object.assign(base, { glass: kit.glass, fac: kit.fac, metal: kit.metal, sign: kit.sign, site, p, w, depth: d });
+  return Object.assign(base, { glass: kit.glass, glassDark: kit.glassDark, fac: kit.fac, metal: kit.metal, sign: kit.sign, site, p, w, depth: d });
 }
 
 /** What a builder hands back (the colliders and canopies are read from the draw itself). */

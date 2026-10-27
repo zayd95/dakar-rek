@@ -43,21 +43,25 @@ export function parapet(d: SiteDraw, r: PlanRect, y: number, o: { h?: number; gl
   const h = o.h ?? PARAPET, t = 0.14, col = o.col ?? d.p.slab, m = mid(r);
   const runs: [number, number, number, number][] = [[m.w, t, m.x, r.z1 - t / 2], [m.w, t, m.x, r.z0 + t / 2], [t, m.dd - 2 * t, r.x0 + t / 2, m.z], [t, m.dd - 2 * t, r.x1 - t / 2, m.z]];
   for (const [w, dd, x, z] of runs) {
-    if (o.glass) { d.box(d.glass, w, h, dd, x, y, z, d.p.glass); d.box(d.plain, w + (w > dd ? 0 : 0.04), 0.05, dd + (w > dd ? 0.04 : 0), x, y + h, z, d.p.frame); }
+    if (o.glass) { d.box(d.glassDark, w, h, dd, x, y, z, d.p.glass); d.box(d.plain, w + (w > dd ? 0 : 0.04), 0.05, dd + (w > dd ? 0.04 : 0), x, y + h, z, d.p.frame); }
     else d.box(d.plain, w, h, dd, x, y, z, col);
   }
 }
 
 // ------------------------------------------------------------------------------------------------ openings and screens
+const litRngs = new WeakMap<SiteDraw, () => number>();
 /**
  * A glazed opening on a face of a mass: `at` is the face's plane (z for the street and back faces, x for the sides), `u0…u1` the span along it, `y0…y1`
  * the height. A dark pane in slim bronze frames, a mullion every 1.6 m or so, the pane 4 cm proud of the render so it reads from the street.
  */
-export function glazing(d: SiteDraw, o: { face: Face; at: number; u0: number; u1: number; y0: number; y1: number; mullions?: number; frame?: number }) {
+export function glazing(d: SiteDraw, o: { face: Face; at: number; u0: number; u1: number; y0: number; y1: number; mullions?: number; frame?: number; lit?: boolean }) {
   const ax = along(o.face), s = out(o.face), len = o.u1 - o.u0, c = (o.u0 + o.u1) / 2, h = o.y1 - o.y0, fr = o.frame ?? d.p.frame, T = 0.05;
   const px = (u: number, off: number) => ax === 'x' ? [u, o.at + s * off] as const : [o.at + s * off, u] as const;
   const [gx, gz] = px(c, T / 2 + 0.01);
-  d.box(d.glass, ax === 'x' ? len : T, h, ax === 'x' ? T : len, gx, o.y0, gz, d.p.glass);
+  // most panes glow warm at night, some stay dark (a room nobody is in): deterministic from the site
+  let lr = litRngs.get(d); if (!lr) litRngs.set(d, lr = siteRng(d, 'lit'));
+  const lit = lr() < 0.72 || o.lit === true;
+  d.box(lit && o.lit !== false ? d.glass : d.glassDark, ax === 'x' ? len : T, h, ax === 'x' ? T : len, gx, o.y0, gz, d.p.glass);
   const n = o.mullions ?? Math.max(0, Math.floor(len / 1.6) - 1), bar = (u: number, y: number, l: number, v: boolean) => {
     const [bx, bz] = px(u, T + 0.02);
     d.box(d.plain, ax === 'x' ? (v ? 0.06 : l) : 0.07, v ? l : 0.06, ax === 'x' ? 0.07 : (v ? 0.06 : l), bx, y, bz, fr);
@@ -93,7 +97,7 @@ export function balcony(d: SiteDraw, o: { face: Face; at: number; u0: number; u1
   // the outer edge (parallel to the face) and the two returns (across it)
   const outer = { q: at(c, dep - 0.04), l: len }, retA = at(o.u0 + 0.04, dep / 2), retB = at(o.u1 - 0.04, dep / 2);
   const gbox = (w: number, dd: number, x: number, z: number) => {
-    if (guard === 'glass') { d.box(d.glass, w, H, dd, x, o.y, z, d.p.glass); d.box(d.plain, w + (w > dd ? 0.02 : 0.05), 0.04, dd + (w > dd ? 0.05 : 0.02), x, o.y + H, z, d.p.frame); }
+    if (guard === 'glass') { d.box(d.glassDark, w, H, dd, x, o.y, z, d.p.glass); d.box(d.plain, w + (w > dd ? 0.02 : 0.05), 0.04, dd + (w > dd ? 0.05 : 0.02), x, o.y + H, z, d.p.frame); }
     else if (guard === 'solid') d.box(d.plain, w, H - 0.1, dd, x, o.y, z, d.p.slab);
     else { d.box(d.plain, w, 0.05, dd, x, o.y + H - 0.05, z, d.p.frame); d.box(d.plain, w, 0.04, dd, x, o.y + 0.12, z, d.p.frame); }
   };
