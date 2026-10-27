@@ -1,7 +1,8 @@
 // LD2.0-E (docs/ld2/LD2_E.md): each design of the Almadies district pictured on its own, in the district viewer (tools/district-viewer/,
 // src/world/almadies/viewer.ts), in a real browser: front, from the street (eye level), back, side, the aerial, a close-up, and the front at night; the cost
 // of each (draw calls, triangles on the medium preset and on the low one). PNG under 400 kB, plus cost.json.
-// Usage: node scripts/shots-district-designs.mjs [outDir=docs/proof/ld2e/designs] [--kind house,villa,hotel,residence] [--only id,id] [--views front,street,...] [--url http://…]
+// Usage: node scripts/shots-district-designs.mjs [outDir=docs/proof/ld2e/designs] [--kind house,villa,hotel,residence] [--only id,id] [--views front,street,...] [--glb dir] [--url http://…]
+//   --glb dir: also saves each design as a GLB file (its colours, no textures) in `dir` (the catalogue: docs/kits/almadies-district/glb).
 //   Builds the viewer with vite (vite.district.config.ts) into a temporary folder and serves it on DISTRICT_PORT (default 4995) unless --url is given.
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
@@ -13,7 +14,7 @@ import sharp from 'sharp';
 
 const args = process.argv.slice(2), flag = k => { const i = args.indexOf(k); return i >= 0 ? args.splice(i, 2)[1] : null; };
 const KINDS = (flag('--kind') ?? 'house,villa,hotel,residence').split(','), ONLY = (flag('--only') ?? '').split(',').filter(Boolean), URL0 = flag('--url');
-const VIEWS = (flag('--views') ?? 'front,street,back,side,aerial,close').split(',');
+const GLBDIR = flag('--glb'), VIEWS = (flag('--views') ?? 'front,street,back,side,aerial,close').split(',');
 const OUT = args[0] || 'docs/proof/ld2e/designs', PORT = Number(process.env.DISTRICT_PORT || 4995);
 fs.mkdirSync(OUT, { recursive: true });
 let server = null, base = URL0;
@@ -46,6 +47,7 @@ for (const v of list) {
   for (const view of VIEWS) { const x = await pic(view, { view }); row.views[view] = x.kB; if (view === 'front') row.medium = x.r.drawn, row.info = { colliders: x.r.colliders, signs: x.r.signs, tallest: x.r.tallest }; }
   const nt = await pic('night', { view: 'front', night: true }); row.views.night = nt.kB;
   row.low = (await page.evaluate(o => window.district.show(o), { ...base, view: 'front', lite: true })).drawn;
+  if (GLBDIR) { fs.mkdirSync(GLBDIR, { recursive: true }); const r = await page.evaluate(o => window.district.glb(o), { ...base, view: 'front' }); fs.writeFileSync(`${GLBDIR}/${v.id}.glb`, Buffer.from(r.base64, 'base64')); row.glbBytes = r.bytes; }
   cost[v.id] = row;
   console.log(`${v.id} (${v.name}): ${row.medium.tris} triangles, ${row.medium.calls} calls (low ${row.low.tris}); ${Object.keys(row.views).length} pictures`);
 }

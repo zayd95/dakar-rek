@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Batch, signTexture, signCanvasSize } from '../batch';
 import { addGrain } from '../grain';
 import { PALETTES, extentOf, siteDraw, sizeOf, type DistrictKit, type PaletteName, type Site, type SiteKind, type SiteSize } from './contract';
@@ -65,10 +67,10 @@ function show(o: ShowOptions) {
   // the road in front, the pavement, a person for scale
   const road = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.05, 14), new THREE.MeshLambertMaterial({ color: 0x50535a }));
   const sz = site.facing === 'south' ? site.rect.z1 + 7 + 2 : site.rect.z0 - 7 - 2;
-  road.position.set(0, -0.01, sz); g.add(road);
-  const kerb = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.12, 2), new THREE.MeshLambertMaterial({ color: 0xe0dccc })); kerb.position.set(0, 0.05, site.facing === 'south' ? site.rect.z1 + 1 : site.rect.z0 - 1); g.add(kerb);
+  road.position.set(0, -0.01, sz); road.userData.scenery = true; g.add(road);
+  const kerb = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.12, 2), new THREE.MeshLambertMaterial({ color: 0xe0dccc })); kerb.position.set(0, 0.05, site.facing === 'south' ? site.rect.z1 + 1 : site.rect.z0 - 1); kerb.userData.scenery = true; g.add(kerb);
   const person = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.75, 8), new THREE.MeshLambertMaterial({ color: 0x4d6b8a }));
-  const q = d.f.p(-3, 12.4); person.position.set(q.x, 0.9, q.z); g.add(person);
+  const q = d.f.p(-3, 12.4); person.position.set(q.x, 0.9, q.z); person.userData.scenery = true; g.add(person);
   g.traverse(x => { const m = x as THREE.Mesh; if (m.isMesh) { m.castShadow = !(m.material as THREE.Material).transparent; m.receiveShadow = true; } });
   scene.add(g);
   // the camera, in the plan's frame: the street is +z of the plan
@@ -92,7 +94,21 @@ function show(o: ShowOptions) {
   ground.visible = true; road.visible = true; kerb.visible = true; person.visible = true; renderer.render(scene, camera);
   return { id: v.id, name: v.name, size: sizeOf(site), drawn, colliders: d.colliders.length, signs: g.children.filter(x => (x as THREE.Mesh).geometry instanceof THREE.PlaneGeometry).length, tallest: Math.max(0, ...d.colliders.map(c => c.h)) };
 }
+/** The design as a GLB (base64), without the road, the kerb and the person: every mesh, its vertices shared, no texture coordinates (a material's shader hooks are exported for their colours). */
+async function glb(o: ShowOptions) {
+  show({ ...o, night: true });
+  const out = current!.clone(true);
+  for (const c of [...out.children]) if (c.userData.scenery) out.remove(c);
+  out.traverse(x => {
+    const m = x as THREE.Mesh; if (!m.isMesh) return;
+    let g = m.geometry.clone(); g.deleteAttribute('uv'); g = mergeVertices(g, 1e-5); m.geometry = g;
+  });
+  const buf = await new GLTFExporter().parseAsync(out, { binary: true, onlyVisible: false }) as ArrayBuffer;
+  let s = ''; const b = new Uint8Array(buf);
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return { base64: btoa(s), bytes: b.length };
+}
 const list = () => (['house', 'villa', 'hotel', 'residence'] as SiteKind[]).flatMap(kind => (['S', 'M', 'L'] as SiteSize[]).flatMap(size => variantsFor(kind, size).map((v, i) => ({ kind, size, id: v.id, name: v.name, index: i }))));
 void PALETTES;
-(window as unknown as { district: unknown }).district = { show, list, get ready() { return ready; } };
+(window as unknown as { district: unknown }).district = { show, glb, list, get ready() { return ready; } };
 ready = true;
