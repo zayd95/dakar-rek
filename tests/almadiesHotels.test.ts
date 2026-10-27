@@ -2,23 +2,51 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { stubCanvas } from './hubstub';
 import { drawSite } from './helpers/siteCost';
-import { E, STOREY, TRI_CAP, extentOf, sizeOf, type GateSide, type Site } from '../src/world/almadies/contract';
+import { E, PALETTES, STOREY, TRI_CAP, sizeOf, type GateSide, type Site, type SiteDraw } from '../src/world/almadies/contract';
 import { SITES } from '../src/world/almadies/plan';
 import { variantOf, variantsFor } from '../src/world/almadies/district';
 import { VARIANTS } from '../src/world/almadies/hotels';
 import { gateX } from '../src/world/almadies/parts';
 import { info } from '../src/world/almadies/hotels.kit';
+import { colliderInPlan } from './helpers/designChecks';
 import type { Collider } from '../src/world/types';
 
 /**
  * LD2.0-E lane E-H: the three hotels (src/world/almadies/hotels.ts) as designs: where the plan puts them, what each says about itself (the name board, a lobby
- * on the street face with its way in kept free, a balcony on every room with a rhythm, the service end on the gate's side, a drop-off kept open), and that
- * each stays in its site, in its budget and lighter on the low preset at the plan's storey counts (4, 5 and 8) in every facing, mirror and gate.
+ * on the street face, a balcony on every room with a rhythm, the service end on the gate's side), how each is part of the street (a see-through railing, an
+ * open walk-in from the pavement to the lobby's door, a café terrace on the pavement side, awnings on the tower's shopfronts, the road-side flanks planted),
+ * and that each stays in its site, in its budget (`TRI_CAP`) and lighter on the low preset at 4, 5, 8 and 9 storeys in every facing, mirror and gate.
  */
 stubCanvas();
 const hotels = SITES.filter(s => s.kind === 'hotel');
 const within = (c: Collider, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
-const at = (cs: Collider[], x: number, z: number) => cs.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
+/**
+ * Can a body's circle (`r`, the district check's 0.45 m) walk from a plan point to another against the colliders? A flood fill on a 0.2 m grid of the plan, from
+ * the pavement (z > E) to a door, over the forecourt and through whatever the railing leaves open.
+ */
+function canWalk(d: SiteDraw, cs: Collider[], from: { x: number; z: number }, to: { x: number; z: number }, r = 0.45): boolean {
+  const step = 0.2, x0 = -d.w / 2, x1 = d.w / 2, z0 = Math.min(from.z, to.z) - 3, z1 = Math.max(from.z, to.z) + 1.5, nx = Math.ceil((x1 - x0) / step), nz = Math.ceil((z1 - z0) / step);
+  const near = cs.filter(c => c.y0 === undefined || c.y0 < 1.5);
+  const blocked = (i: number, j: number) => {
+    const q = d.f.p(x0 + (i + 0.5) * step, z0 + (j + 0.5) * step);
+    return near.some(c => Math.hypot(Math.max(c.x0 - q.x, 0, q.x - c.x1), Math.max(c.z0 - q.z, 0, q.z - c.z1)) < r);
+  };
+  const cell = (p: { x: number; z: number }) => [Math.floor((p.x - x0) / step), Math.floor((p.z - z0) / step)] as const;
+  const [si, sj] = cell(from), [ti, tj] = cell(to), seen = new Uint8Array(nx * nz), stack = [[si, sj]];
+  if (blocked(si, sj) || blocked(ti, tj)) return false;
+  seen[sj * nx + si] = 1;
+  while (stack.length) {
+    const [i, j] = stack.pop()!;
+    if (i === ti && j === tj) return true;
+    for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + a, nj = j + b;
+      if (ni < 0 || nj < 0 || ni >= nx || nj >= nz || seen[nj * nx + ni]) continue;
+      seen[nj * nx + ni] = 1;
+      if (!blocked(ni, nj)) stack.push([ni, nj]);
+    }
+  }
+  return false;
+}
 /** The storeys each design draws (it clamps what the plan asks for). */
 const RANGE: Record<string, [number, number]> = { 'hotel-boutique': [3, 5], 'hotel-tower': [4, 9], 'hotel-resort': [3, 5] };
 const effective = (id: string, n: number) => Math.max(RANGE[id][0], Math.min(RANGE[id][1], n));
@@ -51,10 +79,11 @@ describe('the hotels in the registry and the plan', () => {
 });
 
 for (const { id, plan } of setups) describe(`${id} on ${plan.name}`, () => {
-  const [lo, hi] = RANGE[id];
-  it('stays inside its site, is solid up to its height, in its budget and lighter on the low preset (4, 5 and 8 storeys; every facing, mirror and gate)', () => {
+  it('stays inside its site, is solid up to its height, in its budget and lighter on the low preset (4, 5, 8 and 9 storeys; every facing, mirror and gate)', () => {
     const v = variant(plan), cap = TRI_CAP.hotel[v.size]!;
-    for (const storeys of [4, 5, 8]) for (const gate of ['left', 'centre', 'right'] as GateSide[]) for (const [facing, mirror] of [['south', false], ['north', true]] as const) {
+    // the plan's own facing, mirrored or not (the sites' edges on a road are the plan's); and the other facing at the plan's own storeys (as the district's test turns every design)
+    const orient = (storeys: number) => (storeys === plan.storeys ? [[plan.facing, false], [plan.facing, true], [plan.facing === 'north' ? 'south' : 'north', false], [plan.facing === 'north' ? 'south' : 'north', true]] : [[plan.facing, false], [plan.facing, true]]) as ['north' | 'south', boolean][];
+    for (const storeys of [4, 5, 8, 9]) for (const gate of ['left', 'centre', 'right'] as GateSide[]) for (const [facing, mirror] of orient(storeys)) {
       const s = make(plan, { storeys, gate, facing, mirror }), n = effective(id, storeys), r = drawSite(s, v), lite = drawSite(s, v, true);
       expect(r.colliders.length).toBeGreaterThan(5);
       for (const c of r.colliders) expect(within(c, s.rect), `${storeys} storeys ${gate} ${facing} ${mirror}: ${JSON.stringify(c)}`).toBe(true);
@@ -89,13 +118,12 @@ for (const { id, plan } of setups) describe(`${id} on ${plan.name}`, () => {
       expect(sg.w).toBeGreaterThanOrEqual(6);
     }
   });
-  it('has a lobby on the street face, its way in free from the street, a drop-off kept open', () => {
+  it('has a lobby on the street face and a drop-off kept open (the lane, and the pavement before it)', () => {
     const v = variant(plan);
     for (const [facing, mirror] of [['south', false], ['north', true]] as const) {
       const s = make(plan, { facing, mirror }), r = drawSite(s, v), i = info(r.draw), f = r.draw.f;
       const lobby = i.doors.find(x => x.kind === 'lobby')!;
       expect(lobby).toBeDefined(); expect(lobby.face).toBe('street'); expect(Math.abs(lobby.x)).toBeLessThan(2);
-      for (let z = lobby.z + 0.9; z < E - 0.6; z += 0.4) for (const x of [-0.8, 0, 0.8]) { const q = f.p(x, z); expect(at(r.colliders, q.x, q.z), `plan (${x}, ${z.toFixed(1)})`).toBe(false); }
       const keep = r.keepClear.find(k => k.why.startsWith('hotel_dropoff'))!;
       expect(keep).toBeDefined();
       expect(within({ ...keep, h: 1 }, { x0: s.rect.x0, x1: s.rect.x1, z0: s.rect.z0 - 3.3, z1: s.rect.z1 + 3.3 }), 'the drop-off and the pavement before it').toBe(true);   // (it runs on to the pavement, as the gate\'s apron does)
@@ -104,7 +132,60 @@ for (const { id, plan } of setups) describe(`${id} on ${plan.name}`, () => {
       expect(Math.min(a.z, b.z)).toBeGreaterThanOrEqual(keep.z0 - 0.01); expect(Math.max(a.z, b.z)).toBeLessThanOrEqual(keep.z1 + 0.01);
     }
   });
-  it('keeps its service end and its service door on the gate\'s side, and the gate stands shut on the street wall', () => {
+  it('is open to the street: a see-through railing and an opening 6 to 8 m wide, a body can walk from the pavement through it to the lobby\'s door and the café\'s terrace; the service gate stays shut', () => {
+    const v = variant(plan);
+    for (const gate of ['left', 'centre', 'right'] as GateSide[]) for (const [facing, mirror] of [['south', false], ['north', true], ['north', false]] as const) {
+      const s = make(plan, { gate, facing, mirror }), r = drawSite(s, v), i = info(r.draw), d = r.draw, lobby = i.doors.find(x => x.kind === 'lobby')!, entry = i.entry!;
+      expect(entry.w).toBeGreaterThanOrEqual(6); expect(entry.w).toBeLessThanOrEqual(8);
+      const cs = r.colliders.map(c => colliderInPlan(d, c)), street = cs.filter(c => c.z > E - 0.5 && c.d < 0.5);
+      expect(street.length, 'the street railing').toBeGreaterThan(0);
+      for (const c of street) expect(c.h <= 1.6 || c.h === 2.3, `a railing's height or the gate's, not a wall's: ${JSON.stringify(c)}`).toBe(true);
+      expect(street.filter(c => c.h === 2.3), 'the gate, shut, solid').toHaveLength(1);
+      expect(street.some(c => Math.abs(c.x - entry.x) < entry.w / 2 - 0.1 + c.w / 2 && c.x - c.w / 2 < entry.x + entry.w / 2 - 0.1 && c.x + c.w / 2 > entry.x - entry.w / 2 + 0.1), 'nothing across the opening').toBe(false);
+      const from = { x: entry.x, z: E + 2 }, door = { x: lobby.x, z: lobby.z + 0.8 };
+      expect(canWalk(d, r.colliders, from, door), 'from the pavement to the lobby\'s door').toBe(true);
+      const t = i.terraces[0], tc = { x: (t.x0 + t.x1) / 2, z: (t.z0 + t.z1) / 2 };
+      expect(canWalk(d, r.colliders, from, tc), 'from the pavement to the terrace').toBe(true);
+      // and the test has teeth: a wall across the opening, or a car gate shut in front of the door, stops the same walk
+      const q0 = d.f.p(entry.x - entry.w / 2, E - 0.3), q1 = d.f.p(entry.x + entry.w / 2, E - 0.05), wall: Collider = { x0: Math.min(q0.x, q1.x), x1: Math.max(q0.x, q1.x), z0: Math.min(q0.z, q1.z), z1: Math.max(q0.z, q1.z), h: 1.5 };
+      expect(canWalk(d, [...r.colliders, wall], from, door), 'with the opening shut').toBe(false);
+    }
+  });
+  it('has a café terrace on the street side, beside the way in and away from the service gate: tables with chairs, parasols, strings of lights', () => {
+    const v = variant(plan);
+    for (const [facing, mirror, gate] of [['south', false, 'right'], ['north', true, 'left']] as const) {
+      const s = make(plan, { facing, mirror, gate }), r = drawSite(s, v), i = info(r.draw), t = i.terraces[0], entry = i.entry!;
+      expect(i.terraces.length).toBeGreaterThanOrEqual(1);
+      expect(t.tables).toBeGreaterThanOrEqual(5); expect(t.chairs).toBe(2 * t.tables); expect(t.parasols).toBeGreaterThanOrEqual(2);
+      expect(t.z1, 'on the pavement side, behind the railing').toBeGreaterThan(E - 1.6); expect(t.z1).toBeLessThanOrEqual(E);
+      expect(Math.min(Math.abs(t.x0), Math.abs(t.x1)), 'beside the opening, not across it').toBeGreaterThanOrEqual(entry.w / 2);
+      expect(Math.sign(t.x0 + t.x1), 'on the other side from the service gate').toBe(-i.serviceSide);
+      expect(r.draw.bulbs.count, 'its lights').toBeGreaterThan(20);
+    }
+  });
+  it('turns a considered ground floor to the road on its flanks: planting on both sides', () => {
+    const s = make(plan), r = drawSite(s, variant(plan)), i = info(r.draw), cs = r.colliders.map(c => colliderInPlan(r.draw, c));
+    expect(new Set(i.flanks.map(f => f.side))).toEqual(new Set([-1, 1]));
+    // the road-side edges of the real site are railings (a body sees the lawn and the glass through them), the neighbours\' side a wall
+    const road = new Set<string>(); const sideWalls = cs.filter(c => c.w < 0.5 && c.d > 4);
+    for (const c of sideWalls) if (c.h <= 1.6) road.add(c.x < 0 ? 'left' : 'right');
+    expect([...road].sort()).toEqual(['left', 'right']);
+  });
+  it('lights its windows by night through the district\'s panes and keeps its guards dark: both glass batches are used, the lit ones are the larger part of the windows', () => {
+    const r = drawSite(plan, variant(plan)), lit = r.kit.batches.glass.triangles(), dark = r.kit.batches.glassDark.triangles();
+    expect(lit).toBeGreaterThan(20); expect(dark).toBeGreaterThan(10);
+    expect(lit / (lit + dark), 'the glow\'s share of the glass').toBeGreaterThan(0.3);
+  });
+  if (id === 'hotel-tower') it('has shopfronts at street level on the podium: an awning in the accent colour over each of six bays either side of the lobby, two shop doors, the lobby open', () => {
+    for (const [facing, mirror] of [['north', false], ['north', true]] as const) {
+      const s = make(plan, { facing, mirror }), r = drawSite(s, variant(plan)), i = info(r.draw), accent = PALETTES[plan.palette].accent, lobby = i.doors.find(x => x.kind === 'lobby')!;
+      expect(i.awnings).toHaveLength(6);
+      for (const a of i.awnings) { expect(a.col).toBe(accent); expect(a.z).toBe(lobby.z); expect(Math.min(Math.abs(a.x0), Math.abs(a.x1)), 'clear of the lobby\'s bay').toBeGreaterThanOrEqual(i.entry!.w / 2); expect(a.x1 - a.x0).toBeGreaterThan(3); }
+      expect(new Set(i.awnings.map(a => Math.sign(a.x0 + a.x1)))).toEqual(new Set([-1, 1]));
+      expect(i.doors.filter(x => x.kind === 'shop')).toHaveLength(2);
+    }
+  });
+  it('keeps its service end and its service door on the gate\'s side, and the gate stands shut on the street edge', () => {
     const v = variant(plan);
     for (const gate of ['left', 'right'] as const) for (const [facing, mirror] of [['south', false], ['north', true]] as const) {
       const s = make(plan, { gate, facing, mirror }), r = drawSite(s, v), i = info(r.draw), gx = gateX(r.draw.w, gate), q = r.draw.f.p(gx, E - 0.2);
@@ -143,6 +224,5 @@ for (const { id, plan } of setups) describe(`${id} on ${plan.name}`, () => {
         expect(i.balconies.filter(b => b.face === 'street').length).toBeGreaterThanOrEqual(2);
       }
     }
-    void lo; void hi; void extentOf;
   });
 });

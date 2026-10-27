@@ -1,6 +1,6 @@
-import { E, type SiteDraw, type SiteResult } from './contract';
+import { E, type GateSide, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, railing, uplight, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
+import { ST, Y0, awning, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the tower hotel (46 × 22 m site, a podium of two storeys and a slimmer tower of 2 to 7 more): a deep colonnade of slim columns over a
@@ -11,14 +11,13 @@ import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litB
 export function buildTower(d: SiteDraw): SiteResult {
   const { site: s, p } = d, lite = d.lite, rec = info(d);
   const n = clamp(s.storeys, 4, 9);                                                    // storeys in all: the podium's two, the tower's n − 2
-  const gx = gateX(d.w, s.gate), sg: 1 | -1 = gx < 0 ? -1 : 1, left = -sg, rite = sg;   // the service side: the gate's
+  const gate: GateSide = s.gate === 'centre' ? 'right' : s.gate, gx = gateX(d.w, gate), sg: 1 | -1 = gx < 0 ? -1 : 1, left = -sg, rite = sg;   // the service side: the gate's
   rec.serviceSide = sg;
   const PX = 21.5, zB = -9.6, zP = 3.6, zC = 6.4;                                       // the podium: its width, back wall, glass wall, the columns' line
   const TX = 10, tB = -8.8, tF = -0.8, BD = 2.0;                                        // the tower: half width, back and front walls, the balconies' depth
   const yF = (k: number) => Y0 + k * ST, yP = yF(2), yT = yF(n), yR = yT + 0.1;         // floor k; the podium's roof (the terrace); the tower's top storey's ceiling, the roof slab's top
-  const ex = d.w / 2;
-  perimeter(d, { gate: s.gate, front: 'low' });
-  railing(d, gx);
+  const ex = d.w / 2, span = (sx: number, a: number, b: number) => ({ u0: Math.min(sx * a, sx * b), u1: Math.max(sx * a, sx * b) });
+  perimeter(d, { gate, entries: [{ x: 0, w: 8 }] });                                  // a see-through railing on its plinth; the way in is open ground between two piers
 
   // ------------------------------------------------------------------------------------------------ the podium: a colonnade over glass, two storeys
   const pod = { x0: -PX, x1: PX, z0: zB, z1: zP };
@@ -36,11 +35,23 @@ export function buildTower(d: SiteDraw): SiteResult {
   }
   d.box(d.plain, 8.6, 0.8, 0.5, 0, yP - 1.05, zC, p.slab);                               // the transfer beam over the entrance
   // the glass walls behind: the lobby below, the restaurant above, a loggia before it
-  for (const [y0, y1] of [[Y0 + 0.2, yF(1) - 0.45], [yF(1) + 0.05, yP - 0.5]] as const) { pane(d, 'street', zP, -PX + 0.4, PX - 0.4, y0, y1, { mull: 2.15, rooms: 10, glow: y0 < yF(1) ? 'mixed' : 'lit', warm: true }); }
+  for (const [y0, y1] of [[Y0 + 0.2, yF(1) - 0.45], [yF(1) + 0.05, yP - 0.5]] as const) { pane(d, 'street', zP, -PX + 0.4, PX - 0.4, y0, y1, { mull: 2.15, rooms: 10, glow: 'lit', warm: true }); }   // the ground storey's shopfronts and the lobby, the restaurant above: lit
   guard(d, 'street', zC - 0.12, -PX + 0.25, PX - 0.25, yF(1), 1.0, 0);
   d.flat(d.pave, 2 * PX, zC - zP, 0, Y0 + 0.012, (zC + zP) / 2, mix(p.stone, 0xffffff, 0.3));            // the arcade's floor
   rec.doors.push({ kind: 'lobby', face: 'street', x: 0, z: zP });
-  pendants(d, 'street', zP + 0.04, -PX + 2, PX - 2, Y0 + 3.0, lite ? 6 : 10, 0.45); pendants(d, 'street', zP + 0.04, -PX + 2, PX - 2, yF(1) + 3.0, lite ? 6 : 10, 0.45);
+  pendants(d, 'street', zP + 0.04, -3.4, 3.4, Y0 + 3.0, 4, 0.45); pendants(d, 'street', zP + 0.04, -PX + 2, PX - 2, yF(1) + 3.0, lite ? 6 : 10, 0.45);
+  // the shopfronts either side of the lobby: a café on the restaurant's side, a boutique on the other, an awning in the accent colour over each bay, a door, the lamps of the display
+  for (const sx of [-1, 1]) for (let b = 1; b <= 3; b++) {
+    const xa = sx * (4.3 * b + 0.15), xb = sx * (4.3 * (b + 1) - 0.15), u0 = Math.min(xa, xb), u1 = Math.max(xa, xb);
+    awning(d, u0, u1, zP, Y0 + 2.9, 1.5, p.accent, 0.7);
+    rec.awnings.push({ x0: u0, x1: u1, z: zP, col: p.accent });
+    pendants(d, 'street', zP + 0.04, u0 + 0.5, u1 - 0.5, Y0 + 2.2, 2, 0.4);
+  }
+  for (const sx of [-1, 1]) {                                                            // a shop door in the second bay of each side
+    const c = sx * 10.75;
+    quads(d, d.plain, 'street', zP + 0.07, [{ u0: c - 0.6, u1: c + 0.6, y0: Y0 + 0.2, y1: Y0 + 2.45, c: mix(p.glass, 0x6a5238, 0.55) }, { u0: c - 0.68, u1: c - 0.6, y0: Y0 + 0.2, y1: Y0 + 2.5, c: p.frame }, { u0: c + 0.6, u1: c + 0.68, y0: Y0 + 0.2, y1: Y0 + 2.5, c: p.frame }, { u0: c - 0.68, u1: c + 0.68, y0: Y0 + 2.45, y1: Y0 + 2.53, c: p.frame }, { u0: c - 0.05, u1: c + 0.05, y0: Y0 + 0.9, y1: Y0 + 1.7, c: 0xc9a14b }]);
+    rec.doors.push({ kind: 'shop', face: 'street', x: c, z: zP });
+  }
   for (const sx of [-1, 1]) {                                                            // the lobby's doors, the arcade's wall lights
     quads(d, d.plain, 'street', zP + 0.07, [{ u0: sx * 0.03, u1: sx * 1.45, y0: Y0 + 0.2, y1: Y0 + 2.7, c: mix(p.glass, 0x6a5238, 0.5) }, { u0: sx * 1.5, u1: sx * 1.56, y0: Y0 + 0.2, y1: Y0 + 2.75, c: p.frame }].map(q => ({ ...q, u0: Math.min(q.u0, q.u1), u1: Math.max(q.u0, q.u1) })));
     quads(d, d.plain, 'street', zP + 0.08, [{ u0: Math.min(sx * 0.2, sx * 0.26), u1: Math.max(sx * 0.2, sx * 0.26), y0: Y0 + 0.9, y1: Y0 + 1.7, c: 0xc9a14b }]);
@@ -61,18 +72,18 @@ export function buildTower(d: SiteDraw): SiteResult {
     solidBox(d, pod, yP + 1.0);
     // tables and parasols on the restaurant side, a pergola bar on the gate's, planters between
     const tz = 4.3;
-    for (let k = 0; k < (lite ? 3 : 5); k++) { const x = left * (4.6 + k * 3.6); table(d, x, yP + 0.02, tz); if (k % 2 === 0) parasol(d, x, yP + 0.02, tz, 0xefe8da, 1.5); }
+    for (let k = 0; k < (lite ? 2 : 4); k++) { const x = left * (4.6 + k * 4.2); table(d, x, yP + 0.02, tz); if (k % 2 === 0) parasol(d, x, yP + 0.02, tz, 0xefe8da, 1.5); }
     { const a = Math.min(rite * 13.4, rite * 20.4), b = Math.max(rite * 13.4, rite * 20.4), z0 = 2.8, z1 = 6.0, h = 2.6;
       for (const x of [a + 0.1, b - 0.1]) for (const z of [z0 + 0.1, z1 - 0.1]) d.box(d.plain, 0.16, h, 0.16, x, yP, z, p.frame);
       for (const z of [z0 + 0.1, z1 - 0.1]) d.box(d.plain, b - a, 0.2, 0.2, (a + b) / 2, yP + h, z, p.frame);
       for (let k = 0; k < 6; k++) d.box(d.plain, 0.07, 0.07, z1 - z0, a + 0.3 + k * ((b - a - 0.6) / 5), yP + h + 0.2, (z0 + z1) / 2, p.wood);
       d.box(d.plain, 5.0, 1.05, 0.7, (a + b) / 2, yP, z0 + 0.7, p.stone); d.box(d.plain, 5.2, 0.06, 0.85, (a + b) / 2, yP + 1.05, z0 + 0.72, p.wood);
-      for (let k = 0; k < (lite ? 2 : 4); k++) d.box(d.plain, 0.38, 0.68, 0.38, (a + b) / 2 - 1.8 + k * (lite ? 3.6 : 1.2), yP, z0 + 1.8, p.accent);
+      for (let k = 0; k < (lite ? 2 : 3); k++) d.box(d.plain, 0.38, 0.68, 0.38, (a + b) / 2 - 1.8 + k * (lite ? 3.6 : 1.5), yP, z0 + 1.8, p.accent);
       litBar(d, a + 0.4, b - 0.4, z1 - 0.7, yP + h - 0.02, { d: 0.1 });
     }
     for (const sx of [-1, 1]) {                                                          // a lawn on each side of the tower, a hedge along its back
       d.flat(d.plain, 8.4, 6.6, sx * 15.8, yP + 0.02, -5.2, d.c.lawn);
-      for (let k = 0; k < (lite ? 2 : 4); k++) d.blob(d.leaves, 0.5, sx * (12.6 + k * (lite ? 6.4 : 2.1)), yP + 0.45, -8.6, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
+      for (let k = 0; k < (lite ? 2 : 3); k++) d.blob(d.leaves, 0.5, sx * (12.6 + k * (lite ? 6.4 : 2.8)), yP + 0.45, -8.6, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
     }
     for (const x of [-TX - 3, TX + 3]) planter(d, x, 4.9, 3.0, 0.7, { h: 0.45, bloom: 0xd94a8c });
     for (let k = 0; k < (lite ? 1 : 2); k++) lounger(d, left * (13 + k * 1.7), yP + 0.02, 2.4, 0, p.wood);
@@ -92,11 +103,11 @@ export function buildTower(d: SiteDraw): SiteResult {
     pane(d, 'street', tF, -TX + 0.3, TX - 0.3, y + 0.05, y + (lounge ? 3.0 : 2.7), { mull: 1.65, sky: lounge ? 0.65 : 0.5, rooms: 6, glow: lounge ? 'lit' : 'mixed' });
     guard(d, 'street', tF + BD - 0.1, -TX + 0.2, TX - 0.2, y, 1.05, 2.2);
     // ribbons on the sides and the back
-    for (const sx of [-1, 1]) pane(d, sx > 0 ? 'right' : 'left', sx * TX, tB + 1.0, tF - 1.0, y + 0.6, y + 2.5, { mull: 3.0, rooms: 2 });
-    pane(d, 'back', tB, -TX + 0.5, TX - 0.5, y + 0.6, y + 2.5, { mull: 2.5, rooms: 8 });
+    for (const sx of [-1, 1]) pane(d, sx > 0 ? 'right' : 'left', sx * TX, tB + 1.0, tF - 1.0, y + 0.6, y + 2.5, { mull: 6.0, rooms: 1 });
+    pane(d, 'back', tB, -TX + 0.5, TX - 0.5, y + 0.6, y + 2.5, { mull: 5, rooms: 4 });
   }
   { // the fins: tall white boxes standing off the slabs on a wave of depths, from the terrace to the lounge's sill
-    const top = yF(n - 1), bottom = yP, nf = lite ? 7 : 13;
+    const top = yF(n - 1), bottom = yP, nf = lite ? 7 : 11;
     for (let i = 0; i <= nf; i++) {
       const x = -TX + (2 * TX * i) / nf, dep = 0.5 + 0.75 * (0.5 + 0.5 * Math.sin(i * 0.95 + 0.4));
       d.box(d.plain, 0.26, top - bottom, dep, x, bottom, tF + BD - 0.12 + dep / 2, i % 4 === 2 ? p.render2 : p.slab);
@@ -104,7 +115,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   }
   // the back: the fins' quieter echo, every 2.1 m, and the stair's glass
   { const top = yF(n - 1), bottom = yP;
-    for (let i = 0; i <= (lite ? 4 : 9); i++) { const x = -TX + (2 * TX * i) / (lite ? 4 : 9); d.box(d.plain, 0.18, top - bottom, 0.5, x, bottom, tB - 0.25, i % 2 ? p.slab : p.render2); }
+    for (let i = 0; i <= (lite ? 3 : 6); i++) { const x = -TX + (2 * TX * i) / (lite ? 3 : 6); d.box(d.plain, 0.18, top - bottom, 0.5, x, bottom, tB - 0.25, i % 2 ? p.slab : p.render2); }
   }
   // ------------------------------------------------------------------------------------------------ the crown: a thick lit fascia with the name, the roof lounge under a pergola
   { const fz = tF + BD + 0.5, fh = 1.5, nx = TX + 1.1;
@@ -121,7 +132,7 @@ export function buildTower(d: SiteDraw): SiteResult {
     for (const x of [-px, 0, px]) for (const z of [z0, z1]) d.box(d.plain, 0.16, h, 0.16, x, yR + 0.04, z, p.frame);
     for (const z of [z0, z1]) d.box(d.plain, 2 * px, 0.22, 0.22, 0, yR + 0.04 + h, z, p.frame);
     for (const x of [-px, 0, px]) d.box(d.plain, 0.2, 0.18, z1 - z0, x, yR + 0.04 + h + 0.02, (z0 + z1) / 2, p.frame);
-    for (let k = 0; k <= (lite ? 5 : 10); k++) d.box(d.plain, 0.08, 0.08, z1 - z0 + 0.6, -px + (2 * px * k) / (lite ? 5 : 10), yR + 0.04 + h + 0.2, (z0 + z1) / 2, p.wood);
+    for (let k = 0; k <= (lite ? 4 : 6); k++) d.box(d.plain, 0.08, 0.08, z1 - z0 + 0.6, -px + (2 * px * k) / (lite ? 4 : 6), yR + 0.04 + h + 0.2, (z0 + z1) / 2, p.wood);
     litBar(d, -px + 0.4, px - 0.4, z1 - 0.5, yR + h, { d: 0.1 });
     d.box(d.plain, 6.0, 1.05, 0.7, left * 2.0, yR + 0.04, z0 + 0.9, p.stone); d.box(d.plain, 6.2, 0.06, 0.85, left * 2.0, yR + 1.09, z0 + 0.92, p.wood);
     for (let k = 0; k < (lite ? 2 : 4); k++) d.box(d.plain, 0.38, 0.68, 0.38, left * 2.0 - 2.0 + k * (lite ? 3.8 : 1.3), yR + 0.04, z0 + 1.95, p.accent);
@@ -138,6 +149,13 @@ export function buildTower(d: SiteDraw): SiteResult {
     pane(d, sf, at, -1.0, 1.0, Y0 + 0.4, yF(1) - 0.7, { sky: 0.4 });
     slats(d, sf, at, 0.6, 2.6, yF(1) + 0.3, yP - 0.3, { pitch: 0.24, w: 0.12 });
   }
+  // the road-side flanks (the cross roads run along both ends): a lawn and shrubs under the podium's end walls, a lamp, the glass at the foot of the stair
+  for (const sx of [-1, 1]) {
+    d.flat(d.plain, 1.0, zP - zB, sx * 22.1, Y0 + 0.02, (zB + zP) / 2, d.c.lawn);
+    for (let k = 0; k < (lite ? 2 : 3); k++) d.blob(d.leaves, 0.44, sx * 22.1, Y0 + 0.38, -7.6 + k * 5.0, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
+    bollard(d, sx * 22.1, 2.6);
+    rec.flanks.push({ side: sx as -1 | 1, what: 'planting' });
+  }
   { const at = zB;                                                                      // the back: a service dock, ribbons above it, oak at the corners
     pane(d, 'back', at, -PX + 1, PX - 1, yF(1) + 0.45, yF(1) + 2.3, { mull: 4.3, rooms: 10 });
     for (const sx of [-1, 1]) slats(d, 'back', at, sx * 17.5 - 1.8, sx * 17.5 + 1.8, Y0 + 0.2, yP - 0.6, { pitch: 0.28, w: 0.13 });
@@ -146,16 +164,22 @@ export function buildTower(d: SiteDraw): SiteResult {
     rec.doors.push({ kind: 'service', face: 'back', x: rite * 8, z: at });
   }
 
-  // ------------------------------------------------------------------------------------------------ the forecourt
+  // ------------------------------------------------------------------------------------------------ the forecourt: open to the pavement, the café's terrace beside the way in
   paving(d, { x0: -ex, x1: ex, z0: zC + 0.3, z1: E - 0.3 }, 0xe3d9c3);
-  paving(d, { x0: -6.4, x1: 6.4, z0: 6.9, z1: 9.8 }, 0x6d7075, Y0 + 0.02);
-  rec.dropoff = { x0: -6.4, z0: 6.9, x1: 6.4, z1: 9.8 };
-  for (let x = -5.4; x < 5.5; x += 1.8) paving(d, { x0: x, x1: x + 0.9, z0: 8.28, z1: 8.42 }, 0xf1efe8, Y0 + 0.03);
+  const lane = { x0: -4, z0: 6.9, x1: 4, z1: E - 0.3 };
+  paving(d, lane, 0x6d7075, Y0 + 0.02);                                                                                       // the drop-off lane runs through the opening to the kerb
+  rec.dropoff = lane; rec.entry = { x: 0, w: 8 };
+  for (let z = 7.3; z < E - 0.6; z += 1.0) paving(d, { x0: -0.07, x1: 0.07, z0: z, z1: z + 0.5 }, 0xf1efe8, Y0 + 0.03);
+  paving(d, { x0: -3.9, x1: 3.9, z0: 6.9, z1: 7.05 }, 0xf1efe8, Y0 + 0.03);
   paving(d, { x0: -1.3, x1: 1.3, z0: zC, z1: 6.9 }, p.accent, Y0 + 0.03);
-  for (const x of [-6.9, 6.9]) for (const z of [7.2, 9.5]) bollard(d, x, z);
-  planter(d, left * 11.5, zC + 1.4, 4.4, 0.8, { bloom: 0xd94a8c }); planter(d, left * 17.0, zC + 1.4, 3.2, 0.8);
-  slimPalm(d, left * 9.0, 8.0, 1.1, 0.5); slimPalm(d, left * 20.0, 8.4, 1.0, 1.4); slimPalm(d, rite * 9.4, 8.4, 1.05, 0.2);
-  for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 8.0, k ? 0xf4f1ea : mix(p.accent, 0xffffff, 0.3), 1);
+  { const u = span(left, 6.0, 20.5);
+    rec.terraces.push(terrace(d, { x0: u.u0, x1: u.u1, z0: zC + 0.4, z1: 10.2, rows: [7.9, 9.6], per: [3, 2], deck: mix(p.wood, p.stone, 0.4) }));
+    stringLights(d, left * 6.2, left * 20.3, 8.75, 3.3);
+  }
+  for (const x of [-4.8, 4.8]) bollard(d, x, 7.3);
+  planter(d, rite * 8.4, E - 1.5, 3.0, 0.7, { bloom: 0xd94a8c }); planter(d, rite * 15.0, E - 1.5, 3.4, 0.7);
+  slimPalm(d, left * 21.6, 8.2, 1.0, 1.4); slimPalm(d, rite * 11.4, 8.0, 1.05, 0.2);
+  for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 5.7, E - 1.0, 8.0, k ? 0xf4f1ea : mix(p.accent, 0xffffff, 0.3), 1);
   void courses;
-  return { keepClear: [{ ...d.f.rect(-6.6, zC, 6.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
+  return { keepClear: [{ ...d.f.rect(-4.6, zC, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
 }

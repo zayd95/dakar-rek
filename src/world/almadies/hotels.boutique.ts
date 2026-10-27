@@ -1,6 +1,6 @@
-import { E, type SiteDraw, type SiteResult } from './contract';
+import { E, type GateSide, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, railing, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the boutique hotel (46 × 22 m site, 3 to 5 storeys): a long low front of cantilevered slabs between travertine bookends, a balcony for
@@ -11,14 +11,13 @@ import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litB
 export function buildBoutique(d: SiteDraw): SiteResult {
   const { site: s, p } = d, lite = d.lite, rec = info(d);
   const n = clamp(s.storeys, 3, 5);
-  const gx = gateX(d.w, s.gate), sg: 1 | -1 = gx < 0 ? -1 : 1;                           // the service side: the gate's
+  const gate: GateSide = s.gate === 'centre' ? 'right' : s.gate, gx = gateX(d.w, gate), sg: 1 | -1 = gx < 0 ? -1 : 1;                           // the service side: the gate's
   rec.serviceSide = sg;
   const X = 19.6, zB = -8.4, zF = 2.5, BAL = 1.8, LB = 4.35, ex = d.w / 2;
   const yF = (k: number) => Y0 + k * ST, yRoof = yF(n), yD = yRoof + 0.1;                // floor k's level; the roof slab's underside, its top (the roof deck)
   const row = { x0: -X, x1: X, z0: zB, z1: zF };
   const faceOf = (sx: number) => sx > 0 ? 'right' as const : 'left' as const;
-  perimeter(d, { gate: s.gate, front: 'low' });
-  railing(d, gx);
+  perimeter(d, { gate, entries: [{ x: 0, w: 8 }] });                                  // a see-through railing on its plinth; the way in is open ground between two piers
 
   // ------------------------------------------------------------------------------------------------ the masses
   volume(d, row, Y0, yF(1) - 0.25, p.stone);                                           // the ground storey in travertine
@@ -26,12 +25,11 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   for (let k = 1; k < n; k++) slabEdge(d, row, yF(k), 0.25, 0.22);                     // a thin white slab at every floor, all round
   for (const sx of [-1, 1]) {                                                          // the stone bookends: the end walls, full height, proud of the front
     d.box(d.plain, 0.8, yRoof - Y0, zF + BAL + 0.2 - zB, sx * (X + 0.4), Y0, (zB - 0.1 + zF + BAL + 0.1) / 2, p.stone);
-    courses(d, 'street', zF + BAL + 0.1, Math.min(sx * X, sx * (X + 0.8)), Math.max(sx * X, sx * (X + 0.8)), Y0, yRoof, 0.85, p.stoneDark);
     courses(d, faceOf(sx), sx * (X + 0.8), zB - 0.1, zF + BAL + 0.1, Y0, yRoof, 0.85, p.stoneDark);
     // the side's slot of glass (the stair's landing windows), and an oak panel
     const sf = faceOf(sx), at = sx * (X + 0.8), a = yF(1) + 0.3, b = yRoof - 0.4;
-    pane(d, sf, at, 0.3, 1.5, a, b, { sky: 0.6, glow: 'lit' });
-    quads(d, d.plain, sf, at + sx * 0.06, Array.from({ length: n - 2 }, (_, k) => ({ u0: 0.3, u1: 1.5, y0: yF(k + 2) - 0.3, y1: yF(k + 2) - 0.2, c: p.frame })));
+    pane(d, sf, at, 0.3, 1.5, Y0 + 0.45, b, { sky: 0.6, glow: 'lit' });                                                // the stair's glass from the pavement's level up
+    quads(d, d.plain, sf, at + sx * 0.06, Array.from({ length: n - 1 }, (_, k) => ({ u0: 0.3, u1: 1.5, y0: yF(k + 1) - 0.3, y1: yF(k + 1) - 0.2, c: p.frame })));
     slats(d, sf, at, -7.4, -2.6, a, b, { pitch: 0.28, w: 0.12 });
   }
   // the roof: a deep slab, its lit edge, the glass parapet set in from it
@@ -54,7 +52,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
       bays.forEach(([a, b], i) => {
         const g = sx < 0 ? 3 - i : 6 + i, u = span(sx, a, b), oak = (g + k) % 2 === 1;
         rec.balconies.push({ floor: k, u0: u.u0, u1: u.u1, face: 'street', kind: oak ? 'oak' : 'glass' });
-        if (oak) slats(d, 'street', zF + BAL - 0.06, u.u0 + 0.1, u.u1 - 0.1, y, top, { pitch: 0.225, w: 0.11 });
+        if (oak) slats(d, 'street', zF + BAL - 0.06, u.u0 + 0.1, u.u1 - 0.1, y, top, { pitch: 0.26, w: 0.12 });
         else guard(d, 'street', zF + BAL - 0.05, u.u0 + 0.1, u.u1 - 0.1, y, 1.05, 1.8);
       });
     }
@@ -74,7 +72,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   for (const sx of [-1, 1]) for (const f of [8, 12, 16]) d.box(d.plain, 0.5, yF(1) - 0.25 - Y0, 0.45, sx * f, Y0, zF + 0.2, p.stone);   // travertine pilasters on the grid
   const left = -sg, rite = sg;                                                         // the restaurant on one side, the spa and the staff door on the gate's
   { const u = span(left, LB, X); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 4, glow: 'lit' }); }
-  { const u = span(rite, LB, 12); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 2 }); slats(d, 'street', zF + 0.5, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { pitch: 0.17, w: 0.09 }); }
+  { const u = span(rite, LB, 12); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 2 }); slats(d, 'street', zF + 0.5, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { pitch: 0.24, w: 0.11 }); }
   door(d, { face: 'street', x: rite * 14.2, z: zF + 0.45, w: 1.2, h: 2.4, portal: false });
   rec.doors.push({ kind: 'staff', face: 'street', x: rite * 14.2, z: zF + 0.45 }, { kind: 'lobby', face: 'street', x: 0, z: zF });
   // the lobby: a double-height pane in the stone portal (two piers rising to the roof, a lintel), the doors, a transom, the name on the lintel
@@ -103,12 +101,6 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     for (const sx of [-1, 1]) { d.box(d.plain, 0.26, y - 0.26 - Y0, 0.26, sx * 5.25, Y0, z1 - 0.5, p.stone); d.solid(sx * 5.25 - 0.13, z1 - 0.63, sx * 5.25 + 0.13, z1 - 0.37, 4.6); }
     litBar(d, -4.6, 4.6, z1 - 0.4, y - 0.29, { d: 0.12 }); if (!lite) litBar(d, -4.6, 4.6, (z0 + z1) / 2, y - 0.29, { d: 0.12 });
   }
-  // the restaurant's terrace on the left: a deck, two parasols, three tables
-  { const u = span(left, LB + 1, 18.4), cx = (u.u0 + u.u1) / 2;
-    d.flat(d.plain, u.u1 - u.u0, 3.0, cx, Y0 + 0.03, zF + BAL + 0.8, mix(p.wood, p.stone, 0.35));
-    for (const k of lite ? [1] : [0, 2]) { const x = u.u0 + 2.6 + k * 4.4; parasol(d, x, Y0 + 0.03, zF + BAL + 1.0, 0xefe8da, 1.5); table(d, x, Y0 + 0.03, zF + BAL + 1.0); }
-    if (!lite) table(d, u.u0 + 6.9, Y0 + 0.03, zF + BAL + 1.0);
-  }
 
   // ------------------------------------------------------------------------------------------------ the roof: a pool, a lounge under a cantilevered crown, loungers, a lawn, the stair head
   const deckCol = mix(p.stone, p.slab, 0.35), zFront = zF + BAL + 0.1;
@@ -131,12 +123,12 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     litBar(d, -lx - 0.2, lx + 0.2, 2.85, yT - 0.31, { d: 0.12 });
     for (const sx of [-1, 1]) d.box(d.plain, 0.16, h + 0.35, 0.16, sx * (lx + 0.5), yD, 2.85, p.frame);
     d.flat(d.plain, 2 * lx + 0.6, 2.6, 0, yD + 0.03, 1.9, mix(p.wood, p.stone, 0.3));
-    for (const x of [-3.4, 0, 3.4]) { table(d, x, yD + 0.03, 1.9); }
+    for (const x of [-2.6, 2.6]) { table(d, x, yD + 0.03, 1.9); }
     d.solid(-lx - 0.2, z0 - 0.2, lx + 0.2, z1, yD + h + 0.5);
   }
   { const hx0 = Math.min(rite * 14.6, rite * 19.2), hx1 = Math.max(rite * 14.6, rite * 19.2);                                   // the stair head, in render with an oak panel
     d.box(d.plain, hx1 - hx0, 3.2, 4.0, (hx0 + hx1) / 2, yD, -6.2, p.render); d.slab(d.plain, hx1 - hx0 + 0.6, 0.18, 4.6, (hx0 + hx1) / 2, yD + 3.3, -6.2, p.slab);
-    slats(d, 'street', -4.2, hx0 + 0.5, hx1 - 0.5, yD + 0.2, yD + 3.0, { pitch: 0.2, w: 0.1 });
+    slats(d, 'street', -4.2, hx0 + 0.5, hx1 - 0.5, yD + 0.2, yD + 3.0, { pitch: 0.3, w: 0.14 });
     for (let k = 0; k < (lite ? 2 : 3); k++) lounger(d, rite * (8.4 + k * 1.7), yD + 0.02, 1.2, 0, p.wood);
     if (!lite) parasol(d, rite * 9.2, yD + 0.02, -0.6, 0xefe8da, 1.35);
     planter(d, rite * 12.5, zF + BAL + 0.05, 4.4, 0.55, { h: 0.45 });
@@ -148,7 +140,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     for (let k = 1; k < n; k++) { pane(d, 'back', at, -X + 0.7, X - 0.7, yF(k) + 0.55, yF(k) + 2.55, { mull: mod, rooms: 9 }); }
     for (let m = 0; m < 9; m += 2) {
       if (Math.abs((m + 0.5) * mod + x0 - rite * 12.6) < 3.0) continue;               // the core stands here
-      slats(d, 'back', at - 0.28, x0 + m * mod + 0.2, x0 + (m + 1) * mod - 0.2, yF(1) + 0.1, yRoof - 0.25, { pitch: 0.3, w: 0.14 });
+      slats(d, 'back', at - 0.28, x0 + m * mod + 0.2, x0 + (m + 1) * mod - 0.2, yF(1) + 0.1, yRoof - 0.25, { pitch: 0.4, w: 0.18 });
     }
     const cx0 = Math.min(rite * 10.4, rite * 14.8), cx1 = Math.max(rite * 10.4, rite * 14.8), cz = zB - 1.5;                // the stair core
     d.box(d.plain, cx1 - cx0, yRoof + 3.2 - Y0, 1.5, (cx0 + cx1) / 2, Y0, zB - 0.75, p.render);
@@ -162,15 +154,30 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     for (let k = 0; k < 3; k++) d.blob(d.leaves, 0.5, -X + 2 + k * 5.5, Y0 + 0.4, zB - 1.1, k % 2 ? d.c.hedge : d.c.hedge2, 0.8, 0);
   }
 
-  // ------------------------------------------------------------------------------------------------ the forecourt
+  // ------------------------------------------------------------------------------------------------ the forecourt: open to the pavement, the café's terrace on one side of the way in
+  const lane = { x0: -4, z0: 6.0, x1: 4, z1: E - 0.3 };
   paving(d, { x0: -ex, x1: ex, z0: zF + BAL + 0.05, z1: E - 0.3 }, 0xe3d9c3);
-  paving(d, { x0: -6.2, x1: 6.2, z0: 6.2, z1: 9.5 }, 0x6d7075, Y0 + 0.02);                                                   // the drop-off lane
-  rec.dropoff = { x0: -6.2, z0: 6.2, x1: 6.2, z1: 9.5 };
-  for (let x = -5.4; x < 5.5; x += 1.8) paving(d, { x0: x, x1: x + 0.9, z0: 7.78, z1: 7.92 }, 0xf1efe8, Y0 + 0.03);
-  paving(d, { x0: -1.2, x1: 1.2, z0: zF + BAL + 0.1, z1: 6.2 }, p.accent, Y0 + 0.03);                                         // the carpet from the door
-  planter(d, -7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c }); planter(d, 7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c });
-  for (const x of [-6.6, 6.6]) for (const z of [6.6, 9.3]) bollard(d, x, z);
-  slimPalm(d, left * 12.0, 7.4, 1.05, 0.4); slimPalm(d, left * 20.6, 6.0, 0.95, 1.2); slimPalm(d, rite * 11.0, 7.0, 1.0, 0.9);
-  for (const [k, c] of [mix(p.accent, 0xffffff, 0.4), 0xf4f1ea].entries()) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 7.6, c, 1);
-  return { keepClear: [{ ...d.f.rect(-6.4, zF + BAL, 6.4, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
+  paving(d, lane, 0x6d7075, Y0 + 0.02);                                                                                       // the drop-off lane runs through the opening to the kerb
+  rec.dropoff = lane; rec.entry = { x: 0, w: 8 };
+  for (let z = 6.5; z < E - 0.6; z += 1.0) paving(d, { x0: -0.07, x1: 0.07, z0: z, z1: z + 0.5 }, 0xf1efe8, Y0 + 0.03);
+  paving(d, { x0: -3.9, x1: 3.9, z0: 6.0, z1: 6.15 }, 0xf1efe8, Y0 + 0.03);
+  paving(d, { x0: -1.2, x1: 1.2, z0: zF + BAL + 0.1, z1: 6.0 }, p.accent, Y0 + 0.03);                                         // the carpet from the door
+  { const u = span(left, 6.4, 19.4);
+    rec.terraces.push(terrace(d, { x0: u.u0, x1: u.u1, z0: zF + BAL + 0.3, z1: 9.9, rows: [6.1, 8.5], per: [lite ? 3 : 4, 2], deck: mix(p.wood, p.stone, 0.4) }));
+    stringLights(d, left * 6.6, left * 19.6, 7.3, 3.2);
+    planter(d, left * 20.2, zF + BAL + 0.75, 2.2, 0.6, { bloom: 0xd94a8c });
+  }
+  planter(d, rite * 7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c }); planter(d, rite * 14.0, E - 1.5, 3.4, 0.7);
+  for (const x of [-4.8, 4.8]) bollard(d, x, 6.6);
+  slimPalm(d, left * 21.0, 9.3, 0.95, 1.2); slimPalm(d, rite * 11.0, 7.0, 1.0, 0.9);
+  for (const [k, c] of [mix(p.accent, 0xffffff, 0.4), 0xf4f1ea].entries()) flagPole(d, (k ? 1 : -1) * 5.6, E - 1.0, 7.6, c, 1);
+  // the road-side flanks (the cross roads run along both ends): a lawn and shrubs under the stone end walls, a bench, a lamp, the stair's glass down to the pavement
+  for (const sx of [-1, 1]) {
+    d.flat(d.plain, 1.7, zF + BAL + 0.1 - zB, sx * 21.55, Y0 + 0.02, (zB + zF + BAL + 0.1) / 2, d.c.lawn);
+    for (let k = 0; k < (lite ? 2 : 3); k++) d.blob(d.leaves, 0.5, sx * 21.6, Y0 + 0.4, -6.2 + k * 4.6, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
+    d.box(d.plain, 0.5, 0.45, 1.8, sx * 21.7, Y0, -3.0, p.wood);
+    bollard(d, sx * 21.7, 3.4);
+    rec.flanks.push({ side: sx as -1 | 1, what: 'planting' });
+  }
+  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
 }
