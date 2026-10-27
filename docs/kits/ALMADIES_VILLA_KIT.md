@@ -34,7 +34,7 @@ The kit places nothing in the city: building other lots from it is the next step
   - the façade, 6;
   - the helicopter, 4 (lane R2-H's, by material).
 
-  Everything else joins the district's merged batches. On a phone page (390 × 844, medium) the compound measured 14 draw calls (one more than its meshes: a material drawn in two passes) and 15 288 triangles in a view of the entrance (`docs/proof/ld2d/r2-entrance/cost.json`). The budget is ≤ 25.
+  Everything else joins the district's merged batches. On a phone page (390 × 844, medium) the compound measured 14 draw calls and 15 288 triangles in a view of the entrance (draw calls differ from meshes by view: three.js leaves out what is out of view and draws a double-sided transparent material, the façade's glass, in two passes) (`docs/proof/ld2d/r2-entrance/cost.json`). The budget is ≤ 25.
 
 ## The spec: what each parameter changes
 
