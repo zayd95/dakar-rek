@@ -15,7 +15,7 @@ const box = (cx: number, cz: number, w: number, d: number): Rect => ({ x0: cx - 
 describe('the Cité Jàmm house: a house inside', () => {
   it('is a plan home of the catalogue, on two levels, 12 m by 9 m', () => {
     expect(planFor('maison_cite')).toBe(M);
-    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies']);
+    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor']);
     expect(layoutOf(homeSpec('maison_cite')!).plan).toBe(M);
     expect(M.levels!.map(l => l.id)).toEqual(['rdc', 'etage']);
     expect(M.w).toBe(12); expect(M.d).toBe(9);

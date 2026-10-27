@@ -9,8 +9,8 @@ describe('the F2 of the Résidence Jàmm: a floor plan (LD2.0-C)', () => {
   it('is the apartment\'s plan; the other homes keep their open room (LD2.0-D: but the Almadies villa, on three levels: tests/villaPlan.test.ts)', () => {
     expect(planFor('appart_jamm')).toBe(P);
     expect(planFor('maison_cite')).not.toBeNull();   // the family house has its own plan (tests/maisonPlan.test.ts)
-    expect(planFor('residence_ngor')).toBeNull();
-    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies']);
+    expect(planFor('residence_ngor')).not.toBeNull();   // the Ngor residence too (tests/homeKit.test.ts)
+    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor']);
   });
 
   it('has the rooms the brief asks for, and they tile the home with no gap and no overlap', () => {
