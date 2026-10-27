@@ -61,7 +61,9 @@ class VillaModule implements GameModule {
 
   constructor() {
     this.heliAff = [{ id: 'helico', verb: 'inspect', label: 'Regarder l’hélicoptère', icon: '🚁', run: () => this.heliSheet() }];
-    this.heliTarget = { id: 'villa:helico', name: 'L’hélicoptère', kind: 'spot', space: 'home', x: 0, z: 0, y: 1.6, radius: 4.2, bias: 0.4, affordances: () => this.heliAff };
+    // bias: the aircraft keeps the player 2 to 3 m from the pad's centre, where the target is: it still comes before the home's own « Commander des
+    // meubles », always at the player (src/economy/estate.ts collectSelf, bias 2.6)
+    this.heliTarget = { id: 'villa:helico', name: 'L’hélicoptère', kind: 'spot', space: 'home', x: 0, z: 0, y: 1.6, radius: 4.2, bias: -1.6, affordances: () => this.heliAff };
   }
 
   init(ctx: GameCtx) {
