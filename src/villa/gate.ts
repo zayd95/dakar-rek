@@ -1,4 +1,4 @@
-import { GATE, LOT } from '../housing/villa';
+import { ENTRANCE, GATE, LOT } from '../housing/villa';
 
 /**
  * LD2.0-D lane V-E: the rule of the villa's sliding gate (src/world/villaCompound.ts draws it, src/villa/module.ts moves it). Pure, unit-tested.
@@ -44,3 +44,33 @@ export function gateWants(s: GateSense, open: number): boolean {
 }
 /** The panel's next position (0 shut … 1 open) toward what is wanted, after `dt` seconds. */
 export const stepGate = (k: number, want: boolean, dt: number) => Math.max(0, Math.min(1, k + (want ? 1 : -1) * dt / GATE_SECONDS));
+
+// ------------------------------------------------------------------------------------------------ LD2.0-D round 2 (lane R2-E): the main entrance
+/**
+ * The main entrance for people (ENTRANCE, src/housing/villa.ts; src/world/villaCompound.ts draws it, src/villa/module.ts swings it): a pivoting door
+ * in the street wall, in line with the house's front door. Its rule is the gate's, for people on foot:
+ *  - it opens for the villa's people (`gateFor`: the owner, the renter, a guest whose invitation was accepted) walking up to it from the street;
+ *  - from inside the walls it opens for anyone walking up to it: nobody is ever shut in;
+ *  - once moving it never shuts on someone in its swing (the leaf's sweep, either side of the wall);
+ *  - at the wheel it does nothing (a door for people: the cars have the gate); otherwise it shuts behind, and a stranger finds it shut.
+ * The reaches are a little longer than the leaf's time to swing needs, so a walker (even jogging) finds the way free when he reaches it.
+ */
+export const ENTRANCE_REACH = { street: 5, yard: 4 } as const;
+/** Seconds the leaf takes to swing fully open (or shut). */
+export const ENTRANCE_SECONDS = 0.9;
+/** Open beyond this share (the leaf past 84°, it swings out fast and slows at the end: `entranceAngle`), the way is free: the shut door's box gives way to the open leaf's. */
+export const ENTRANCE_FREE = 0.75;
+/** The leaf's angle (rad) when the door is `k` open (0 shut … 1 open, 90°): quick off the latch, slowing to its stop. */
+export const entranceAngle = (k: number) => (Math.PI / 2) * (1 - (1 - k) * (1 - k));
+/** In the leaf's swing, either side of the wall, with a body's room round it (where a shutting door would close on someone). */
+export const inSwing = (px: number, pz: number) => px > ENTRANCE.x0 - 0.5 && px < ENTRANCE.x1 + 0.5 && pz > ENTRANCE.z - 2.1 && pz < ENTRANCE.z + 0.75;
+/** Whether the main entrance should be open now; `open`: how far it is open now (0 shut … 1). */
+export function entranceWants(s: GateSense, open: number): boolean {
+  const ex = (ENTRANCE.x0 + ENTRANCE.x1) / 2, d = Math.hypot(s.px - ex, s.pz - ENTRANCE.z);
+  if (open > 0 && inSwing(s.px, s.pz)) return true;                          // never on someone
+  if (s.driving) return false;                                              // a door for people
+  if (insideWalls(s.px, s.pz)) return d <= ENTRANCE_REACH.yard;
+  return s.allowed && s.pz > ENTRANCE.z && d <= ENTRANCE_REACH.street;
+}
+/** The leaf's next position (0 shut … 1 open) toward what is wanted, after `dt` seconds. */
+export const stepEntrance = (k: number, want: boolean, dt: number) => Math.max(0, Math.min(1, k + (want ? 1 : -1) * dt / ENTRANCE_SECONDS));

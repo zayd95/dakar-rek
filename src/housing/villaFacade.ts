@@ -44,6 +44,8 @@ function materials() {
   for (const m of Object.values(mats)) m.userData.shared = true;
   return mats;
 }
+/** The façade's materials (shared, never disposed): the villa's other pieces in the same finishes (the main entrance's travertine and teak, src/world/villaCompound.ts). */
+export const villaFacadeMaterials = () => materials();
 /** The night (0 by day … 1 at night, main.ts updateLighting): the windows' warm light, the uplights, the roof's edge, the helipad's lights. */
 export function setVillaFacadeNight(night: number) {
   const M = materials();

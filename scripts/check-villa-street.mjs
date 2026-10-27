@@ -115,7 +115,7 @@ check('the villa bought (400 000 000 F) and made the principal residence', bough
 const g0 = await s.d(() => window.__dakar.villa.gate());
 check('the gate stands shut, solid, before anyone comes', g0 && g0.k === 0 && g0.solid, JSON.stringify(g0));
 // the board by the gate: the listing, no way in from the pavement
-const board = P(GATE.x0 - 2.3, GATE.z + 1.2);
+const board = P(GATE.x1 + 2.3, GATE.z + 1.2);                                            // (round 2: east of the gate, the main entrance west of it: src/economy/estate.ts)
 await walkTo(s.page, s.t, board.x, board.z, { tol: 0.6, ms: 60000 });
 await s.page.waitForTimeout(600);
 const fb = await focus(s);
