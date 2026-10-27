@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import { E, GROUND, STOREY, type SiteDraw } from './contract';
+import type { SitePalette, SiteDraw } from './contract';
 import type { Face } from './parts';
 
 /**
@@ -83,8 +83,6 @@ export class Facade {
     this.inner = { street: 'B', back: 'S', right: 'L', left: 'R' }[face];
     this.ends = this.ax === 'x' ? 'LR' : 'SB';
   }
-  /** A plan point from (u, y, n): n metres out of the face. */
-  P(u: number, y: number, n: number): V3 { return this.ax === 'x' ? [u, y, this.at + this.s * n] : [this.at + this.s * n, y, u]; }
   /** A quad on the face's plane, `n` out of it (faces out). `m`: the heap it goes to (default the plain one). */
   quad(u0: number, u1: number, y0: number, y1: number, n: number, col: number, m: Mesh = this.k.plain) {
     m.vq(this.ax === 'x' ? 'z' : 'x', this.at + this.s * n, u0, u1, y0, y1, this.s, col);
@@ -181,7 +179,7 @@ export let lastSections: [string, number][] = [];
 /** What a design draws with: the site's draw, the palette, and one heap per batch it fills (flushed at the end). */
 export class Kit {
   readonly plain: Mesh; readonly glass: Mesh; readonly leaves: Mesh; readonly bulbs: Mesh;
-  readonly p; readonly lite: boolean;
+  readonly p: SitePalette; readonly lite: boolean;
   constructor(readonly d: SiteDraw) {
     this.plain = new Mesh(d, d.plain); this.glass = new Mesh(d, d.glass); this.leaves = new Mesh(d, d.leaves); this.bulbs = new Mesh(d, d.bulbs);
     this.p = d.p; this.lite = d.lite;
@@ -220,4 +218,3 @@ export function bougainvillea(d: SiteDraw, x: number, z: number, y: number, r = 
   d.blob(d.leaves, r, x, y - 0.12, z, d.c.hedge, 0.45, 0);
   for (const [t, dy] of [[-0.45, 0.1], [0.1, 0.2], [0.55, 0.08]] as const) d.blob(d.leaves, r * 0.5, x + t * r, y + dy, z, (k + Math.round(t * 4)) % 3 ? d.c.bloom : d.c.bloom2, 0.75, 0);
 }
-export { E, GROUND, STOREY };

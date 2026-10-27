@@ -8,6 +8,7 @@ import { SITES } from '../src/world/almadies/plan';
 import { buildDistrict, variantOf, variantsFor } from '../src/world/almadies/district';
 import { perimeter } from '../src/world/almadies/parts';
 import { VARIANTS } from '../src/world/almadies/residences';
+import { lastSections } from '../src/world/almadies/residences.kit';
 import { stackBalconyRuns } from '../src/world/almadies/residences.stack';
 import { LOBBY_BAYS, screenClosed } from '../src/world/almadies/residences.screen';
 import type { Collider } from '../src/world/types';
@@ -231,8 +232,8 @@ describe('every residence, every size of tower', () => {
   }
   it('stays within its triangle budget on the plan\'s own storeys, and the whole set is lighter on the low preset', () => {
     for (const s of residences) {
-      const v = variantFor(s), r = drawSite(s, v), lite = drawSite(s, v, true);
-      expect(r.tris, `${s.name}: ${r.tris}`).toBeLessThanOrEqual(TRI_CAP.residence[sizeOf(s)]!);
+      const v = variantFor(s), r = drawSite(s, v), sections = JSON.stringify(lastSections), lite = drawSite(s, v, true);
+      expect(r.tris, `${s.name}: ${r.tris} (the design's own pieces by section: ${sections})`).toBeLessThanOrEqual(TRI_CAP.residence[sizeOf(s)]!);
       expect(lite.tris, `${s.name}: lite ${lite.tris} / ${r.tris}`).toBeLessThanOrEqual(r.tris * 0.9);
     }
   });
