@@ -96,6 +96,11 @@ export class Facade {
     const a = this.at + this.s * n0, b = this.at + this.s * n1;
     m.vq(this.ax === 'x' ? 'x' : 'z', u, Math.min(a, b), Math.max(a, b), y0, y1, dir, col);
   }
+  /** A horizontal quad (a deck, a roof's finish) at height y between n0 and n1 out of the face, from u0 to u1 along it, facing up. */
+  hq(u0: number, u1: number, n0: number, n1: number, y: number, col: number, m: Mesh = this.k.plain) {
+    const a = this.at + this.s * n0, b = this.at + this.s * n1, lo = Math.min(a, b), hi = Math.max(a, b);
+    if (this.ax === 'x') m.hq(u0, lo, u1, hi, y, true, col); else m.hq(lo, u0, hi, u1, y, true, col);
+  }
   /** A box from n0 to n1 out of the face; `skip`: i (the inner face), e (the two ends), t (top), u (under), or a plan letter. Default: not its inner face nor its underside. */
   box(u0: number, u1: number, y0: number, y1: number, n0: number, n1: number, col: number, skip = 'iu', m: Mesh = this.k.plain) {
     const a = this.at + this.s * n0, b = this.at + this.s * n1, lo = Math.min(a, b), hi = Math.max(a, b);
@@ -121,12 +126,13 @@ export class Facade {
   }
   /** The house number: gilt seven-segment digits (2 triangles a segment) on a dark plaque, `u` its centre along the face, `y` its foot, `n` out of the face. */
   houseNumber(text: string, u: number, y: number, n: number, o: { h?: number; col?: number; plate?: number } = {}) {
-    const { k } = this, h = o.h ?? 0.26, w = h * 0.52, t = h * 0.13, gap = h * 0.4, col = o.col ?? mix(k.p.accent, 0xffffff, 0.2), pitch = w + gap, len = text.length * pitch - gap, u0 = u - len / 2;
+    const { k } = this, h = o.h ?? 0.26, w = h * 0.52, t = h * 0.13, gap = h * 0.4, col = o.col ?? mix(k.p.accent, 0xffe9a8, 0.55), pitch = w + gap, len = text.length * pitch - gap, u0 = u - len / 2;
+    const flip = k.d.f.mirror && this.ax === 'x';                                                         // a mirrored site mirrors its plan: draw the digits reversed so they read right
     this.quad(u0 - 0.1, u0 + len + 0.1, y - 0.1, y + h + 0.1, n, o.plate ?? 0x1c1a18);
     [...text].forEach((ch, i) => {
       const a = u0 + i * pitch, seg = DIGITS[ch] ?? '';
       const S: Record<string, [number, number, number, number]> = { a: [a, a + w, y + h - t, y + h], b: [a + w - t, a + w, y + h / 2, y + h], c: [a + w - t, a + w, y, y + h / 2], d: [a, a + w, y, y + t], e: [a, a + t, y, y + h / 2], f: [a, a + t, y + h / 2, y + h], g: [a, a + w, y + h / 2 - t / 2, y + h / 2 + t / 2] };
-      for (const c of seg) { const [x0, x1, y0, y1] = S[c]; this.quad(x0, x1, y0, y1, n + 0.01, col); }
+      for (const c of seg) { const [x0, x1, y0, y1] = S[c]; if (flip) this.quad(2 * u - x1, 2 * u - x0, y0, y1, n + 0.01, col); else this.quad(x0, x1, y0, y1, n + 0.01, col); }
     });
   }
   /**
@@ -149,6 +155,7 @@ export class Facade {
   balcony(o: { u0: number; u1: number; y: number; depth?: number; guard?: 'glass' | 'solid' | 'bars' | 'none'; col?: number; guardCol?: number; green?: boolean; thick?: number; returns?: [boolean, boolean]; n0?: number }) {
     const { k } = this, dep = o.depth ?? 1.7, th = o.thick ?? 0.24, col = o.col ?? k.p.slab, n0 = o.n0 ?? 0, H = 1.05, gu = o.guard ?? 'glass', [ra, rb] = o.returns ?? [true, true];
     this.box(o.u0, o.u1, o.y - th, o.y, n0, n0 + dep, col, 'i');   // all of it but the inner face (the underside is seen from the street)
+    if (!k.lite) this.hq(o.u0 + 0.08, o.u1 - 0.08, n0 + 0.06, n0 + dep - 0.1, o.y + 0.012, mix(k.p.wood, 0xffffff, 0.12));                    // its oak deck
     if (gu === 'none') return;
     const no = n0 + dep - 0.06;
     if (gu === 'glass') {
