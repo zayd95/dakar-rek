@@ -204,7 +204,8 @@ try {
     const a = Math.atan2(far.x - now.x, far.z - now.z) - now.cam;
     await A.t.move(3, joy.x - Math.sin(a) * 40, joy.y - Math.cos(a) * 40, 2); await A.wait(250);
   }
-  await A.t.up(3); await A.wait(1500);
+  await A.t.up(3);
+  await A.until(() => window.__dakar.villa.swim.info().state === 'tread', null, 8000);     // the stick let go: the swimmer glides to a stop, then treads water
   const sw1 = await A.d(() => window.__dakar.villa.swim.info());
   await A.until(() => window.__dakar.villa.swim.info().t > 4, null, 60000);
   const sw = await A.d(() => ({ i: window.__dakar.villa.swim.info(), y: window.__dakar.pos().y }));
