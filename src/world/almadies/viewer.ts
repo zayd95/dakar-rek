@@ -5,7 +5,7 @@ import { Batch, signTexture, signCanvasSize } from '../batch';
 import { addGrain } from '../grain';
 import { PALETTES, extentOf, siteDraw, sizeOf, type DistrictKit, type PaletteName, type Site, type SiteKind, type SiteSize } from './contract';
 import { SITES } from './plan';
-import { variantOf, variantsFor } from './district';
+import { lifeInHub, variantOf, variantsFor } from './district';
 
 /**
  * LD2.0-E: the district's viewer (tools/district-viewer/index.html, built by scripts/shots-district-designs.mjs). One design on a site of its size on a
@@ -67,6 +67,11 @@ function show(o: ShowOptions) {
   const res = v.build(d) ?? {};
   for (const [k, b] of Object.entries(batches)) { const mesh = b.build((mats as Record<string, THREE.Material>)[k], true, k !== 'glass' && k !== 'glassDark'); if (mesh) g.add(mesh); }
   if (res.group) g.add(res.group);
+  // the people a design places (SiteResult.life): a capsule each, blue standing, orange talking, green seated (the game draws its humanoids there); not counted in the cost
+  if (res.life) for (const p of lifeInHub(d, res.life).people) {
+    const sit = p.clip === 'Sit', m = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, sit ? 0.45 : 1.05, 3, 8), new THREE.MeshLambertMaterial({ color: sit ? 0x6aa84f : p.clip === 'Talk' ? 0xd08a2c : 0x3b6ea5 }));
+    m.position.set(p.x, 0.1 + (p.y ?? 0) + (sit ? 0.55 : 0.8), p.z); m.userData.scenery = true; g.add(m);
+  }
   // the road in front, the pavement, a person for scale
   const road = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.05, 14), new THREE.MeshLambertMaterial({ color: 0x50535a }));
   const sz = site.facing === 'south' ? site.rect.z1 + 7 + 2 : site.rect.z0 - 7 - 2;
