@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, louvres, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, garageDoor, hedge, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, plaque, poolGarden, pot, rail, slats, stones, tones, wallDress, win, edgeLight } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, bench } from './villas.kit';
 
 /**
  * Villa 4, « La Tour »: a stair tower in vertical oak slats rising a storey above the house, stacked and staggered balconies on the street face, the
@@ -8,8 +8,8 @@ import { GROUND, R, T_SLAB, bloomWall, boundary, ctx, deckFlat, garageDoor, hedg
  */
 export const tower: SiteBuilder = o => {
   const k = ctx(o), { d, n, lite } = k, p = d.p, F1 = lv(1), F2 = lv(2), Ft = lv(n), Tt = lv(n + 1) + 0.25, gd = lightGuard(k), tn = tones(k);
-  boundary(k, { h: 2.2, bloom: [-8.2 + k.j(1), 1.6 + k.j(1.2)] });
-  wallDress(k, { plinth: true, panels: [{ x0: -10.3, x1: -5.9, col: p.stone }, { x0: -1.8, x1: 4.3, col: p.wood, joints: 5 }] });
+  const ent = entry(k, -3.9, 2.0);
+  boundary(k, { h: 2.2, entries: ent });
   const H = R(-5.6, 8.4, -5.4, 3.0), T = R(-9.6, -5.6, -0.4, 3.8);
   // ---- the house: a travertine ground floor, the upper floors in the render, a thin roof; the tower beside it
   volume(d, H, GROUND, F1 - T_SLAB, p.stone);
@@ -51,16 +51,15 @@ export const tower: SiteBuilder = o => {
   slats(k, R(0.4, 6.0, -2.2, 1.8), Ft, { h: 2.45, pitch: 0.8 });
   if (!lite) { for (const [x, z, w, dd] of [[1.6, -1.6, 2.6, 0.8], [5.0, -0.2, 0.8, 2.2]] as const) { d.box(d.plain, w, 0.4, dd, x, Ft, z, p.accent); d.box(d.plain, w, 0.4, 0.2, x, Ft + 0.4, z - dd / 2 + 0.1, p.accent); } }
   // ---- the forecourt: the wall's portal and number, the path, lawn, a hedge, lanterns
-  door(d, { face: 'street', x: -3.9, z: 10.7, portal: true, steps: false });
-  plaque(k, o.site.number, k.g0 - 0.3, 1.5, 11.14);
+  houseNumber(k, o.site.number, ent);
+  bloomRail(k, -7.4 + k.j(0.5));
   pave(k, R(-5.6, 3.4, 3.4, 5.2), tn.fore, 1);
   pave(k, R(3.4, 9.8, 3.4, 10.4), tn.drive, 1);
-  pave(k, R(-4.6, -3.2, 4.2, 10.4), tn.path, 2);
+  walk(k, -3.9, 4.6, 1.6);
   lawn(k, R(-10.4, -5.0, 3.0, 10.4)); lawn(k, R(-2.8, 3.2, 5.4, 10.4));
-  stones(k, k.g0 - 1.6, 6.6, -3.3, 8.2, 3);
+  bench(k, -1.7, 9.5);
   lantern(k, -2.6, 5.4);
   if (n === 2) pot(k, -7.6, 5.6, 1.3, 0.7, 0.6, true);
-  if (!lite) hedge(k, -10.3, 9.3, -5.2, 9.3, 0.7);
   palmAt(k, -8.6 + k.j(0.5), 8.0 + k.j(0.6), 1.05 + k.j(0.08), 0.2 + k.j(0.9));
   // ---- the back: the pool, loungers, a palm
   pave(k, R(-10.4, 10.4, -10.4, -5.6), tn.deck);
