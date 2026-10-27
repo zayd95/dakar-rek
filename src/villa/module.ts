@@ -177,6 +177,7 @@ class VillaModule implements GameModule {
     const o = homeOrigin(VILLA_ID)!, p = this.ctx.player.pos;
     if (p.y > STOREY * 2 - 1 && Math.hypot(o.x + HELIPAD.x - x, o.z + HELIPAD.z - z) < HELIPAD.r + 2.5) {   // on the roof terrace, by the pad
       this.heliTarget.x = o.x + HELIPAD.x; this.heliTarget.z = o.z + HELIPAD.z;
+      this.heliTarget.y = p.y + 1.6;                     // the prompt at the roof's height: a target is picked only within its floor's band (src/interact/system.ts)
       out.push(this.heliTarget);
     }
   }
