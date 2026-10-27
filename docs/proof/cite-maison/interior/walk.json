@@ -1,0 +1,953 @@
+{
+ "legs": [
+  {
+   "to": [
+    -1.1,
+    3
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.9,
+    2.5
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.2,
+    2.5
+   ],
+   "room": "chambre",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.5,
+    2.8
+   ],
+   "room": "chambre",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.1,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.2,
+    2.5
+   ],
+   "room": "chambre",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.19,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.9,
+    2.5
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.35,
+   "ok": true
+  },
+  {
+   "to": [
+    -0.5,
+    1.2
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    -0.5,
+    -0.5
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    -0.5,
+    -2.2
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.14,
+   "ok": true
+  },
+  {
+   "to": [
+    -3,
+    -2.2
+   ],
+   "room": "salon",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    -4
+   ],
+   "room": "salon",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.21,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.6,
+    -6
+   ],
+   "room": "cour",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    -1,
+    -8
+   ],
+   "room": "cour",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    0.9,
+    -6
+   ],
+   "room": "cour",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.13,
+   "ok": true
+  },
+  {
+   "to": [
+    0.9,
+    -3.8
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    1.6,
+    -0.5
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.19,
+   "ok": true
+  },
+  {
+   "to": [
+    1.6,
+    1.2
+   ],
+   "room": "cuisine",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    2.6,
+    2.4
+   ],
+   "room": "cuisine",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.04,
+   "ok": true
+  },
+  {
+   "to": [
+    1.6,
+    1.2
+   ],
+   "room": "cuisine",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.18,
+   "ok": true
+  },
+  {
+   "to": [
+    1.6,
+    -0.5
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    2,
+    -3.7
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.34,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    -3.7
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    -3
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    0.9
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.14,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    2.4
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.12,
+   "ok": true
+  },
+  {
+   "to": [
+    4.3,
+    2.4
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.38,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    2.4
+   ],
+   "room": "sde",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.07,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    0.9
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.34,
+   "ok": true
+  },
+  {
+   "to": [
+    5.3,
+    -3
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    -3.3
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.09,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    -1
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 1.5,
+   "dist": 0.14,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    1
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.24,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    2.3
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.14,
+   "ok": true
+  },
+  {
+   "to": [
+    3.4,
+    2.8
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    1.5,
+    2.8
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    3.8
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.32,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    5.2
+   ],
+   "room": "balcon_rue",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    3.8
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.29,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    1.6
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.25,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.2,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.2,
+    1.7
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.15,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.8,
+    3.8
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.37,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.8,
+    5.2
+   ],
+   "room": "balcon_suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    -3.8,
+    3.8
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.24,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.2,
+    1.7
+   ],
+   "room": "suite",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.39,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.2,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.09,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    -1.3
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    -3
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    -1.3
+   ],
+   "room": "chambre2",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.23,
+   "ok": true
+  },
+  {
+   "to": [
+    -4.4,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.7,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.19,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.7,
+    -1.3
+   ],
+   "room": "sdb",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.14,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.7,
+    -2.3
+   ],
+   "room": "sdb",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.17,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.7,
+    -1.3
+   ],
+   "room": "sdb",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.22,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.7,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    1.2,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.05,
+   "ok": true
+  },
+  {
+   "to": [
+    1.2,
+    -1.3
+   ],
+   "room": "chambre3",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.24,
+   "ok": true
+  },
+  {
+   "to": [
+    1.2,
+    -3
+   ],
+   "room": "chambre3",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    1.2,
+    -1.3
+   ],
+   "room": "chambre3",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    1.2,
+    0.1
+   ],
+   "room": "couloir",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.35,
+   "ok": true
+  },
+  {
+   "to": [
+    0.7,
+    1.6
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    1.5,
+    2.8
+   ],
+   "room": "salon_familial",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.16,
+   "ok": true
+  },
+  {
+   "to": [
+    3.4,
+    2.8
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    2.3
+   ],
+   "room": "palier",
+   "level": "etage",
+   "y": 3.5,
+   "dist": 0.44,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    0.5
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 2.45,
+   "dist": 0.24,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    -2
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.29,
+   "dist": 0.28,
+   "ok": true
+  },
+  {
+   "to": [
+    3.9,
+    -3.2
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.2,
+   "ok": true
+  },
+  {
+   "to": [
+    3.6,
+    -3.7
+   ],
+   "room": "hall",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.29,
+   "ok": true
+  },
+  {
+   "to": [
+    2,
+    -3.7
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.36,
+   "ok": true
+  },
+  {
+   "to": [
+    -0.5,
+    -0.5
+   ],
+   "room": "manger",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.27,
+   "ok": true
+  },
+  {
+   "to": [
+    -0.5,
+    1.5
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.31,
+   "ok": true
+  },
+  {
+   "to": [
+    -1.1,
+    3.2
+   ],
+   "room": "entree",
+   "level": "rdc",
+   "y": 0.1,
+   "dist": 0.07,
+   "ok": true
+  }
+ ],
+ "samples": {
+  "n": 490,
+  "closest": 0.2999999999999545,
+  "rooms": [
+   "entree",
+   "chambre",
+   "manger",
+   "salon",
+   "cour",
+   "cuisine",
+   "hall",
+   "sde",
+   "palier",
+   "salon_familial",
+   "balcon_rue",
+   "couloir",
+   "suite",
+   "balcon_suite",
+   "chambre2",
+   "sdb",
+   "chambre3"
+  ],
+  "levels": [
+   "rdc",
+   "etage"
+  ],
+  "doors": {
+   "entree-chambre": 1,
+   "hall-sde": 1,
+   "couloir-chambre2": 1,
+   "couloir-sdb": 1,
+   "couloir-chambre3": 1,
+   "couloir-suite": 1
+  },
+  "maxY": 3.5
+ },
+ "perf": {
+  "shell": {
+   "rdc": {
+    "calls": 16,
+    "tris": 8420
+   },
+   "etage": {
+    "calls": 17,
+    "tris": 6944
+   }
+  },
+  "pieces": 10
+ },
+ "pictures": [
+  [
+   "rdc-entree-day",
+   162670
+  ],
+  [
+   "rdc-salon-day",
+   183154
+  ],
+  [
+   "rdc-cuisine-day",
+   184430
+  ],
+  [
+   "rdc-cour-day",
+   136473
+  ],
+  [
+   "rdc-escalier-day",
+   137357
+  ],
+  [
+   "etage-couloir-day",
+   194907
+  ],
+  [
+   "etage-suite-day",
+   172236
+  ],
+  [
+   "etage-salon-day",
+   189926
+  ],
+  [
+   "etage-balcon-day",
+   179938
+  ],
+  [
+   "rdc-entree-night",
+   167613
+  ],
+  [
+   "rdc-salon-night",
+   187614
+  ],
+  [
+   "rdc-cuisine-night",
+   192357
+  ],
+  [
+   "rdc-cour-night",
+   126970
+  ],
+  [
+   "rdc-escalier-night",
+   140291
+  ],
+  [
+   "etage-couloir-night",
+   203006
+  ],
+  [
+   "etage-suite-night",
+   179225
+  ],
+  [
+   "etage-salon-night",
+   195248
+  ],
+  [
+   "etage-balcon-night",
+   166917
+  ],
+  [
+   "furnished-rdc-salon",
+   196398
+  ],
+  [
+   "furnished-etage-suite",
+   172155
+  ],
+  [
+   "editor-etage",
+   145099
+  ]
+ ]
+}

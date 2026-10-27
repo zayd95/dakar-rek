@@ -73,9 +73,10 @@ describe('placement', () => {
   // a one-room home: the F2's open room from before LD2.0-C (8 × 6.5 m), which the other homes still use; the F2 itself is built from its floor plan
   // now (src/housing/plan.ts), and its rules are tested in tests/furnishRooms.test.ts
   const room = layoutOf(homeSpec(STARTER_HOME)!), appart = openPlan('apartment', 8, 6.5);
-  it('the F2 follows its floor plan; the other homes keep their open room', () => {
+  it('the F2 and the family house follow their floor plans; the other homes keep their open room', () => {
     expect(layoutOf(homeSpec('appart_jamm')!).plan?.id).toBe('f2_jamm');
-    expect(layoutOf(homeSpec('maison_cite')!).plan).toBeUndefined();
+    expect(layoutOf(homeSpec('maison_cite')!).plan?.id).toBe('maison_cite');
+    expect(layoutOf(homeSpec('residence_ngor')!).plan).toBeUndefined();
     expect(layoutOf(homeSpec(STARTER_HOME)!).plan).toBeUndefined();
   });
   it('a quarter turn swaps width and depth; points rotate like three.js', () => {

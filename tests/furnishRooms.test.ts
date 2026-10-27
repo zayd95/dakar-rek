@@ -29,7 +29,8 @@ describe('the F2 is furnished by room (its floor plan)', () => {
   it('the F2 is a plan home; its rooms are the editor\'s chips (the short hall left out)', () => {
     expect(F2.plan).toBe(F2_JAMM);
     expect(planRooms(F2).map(r => r.name)).toEqual(['Entrée', 'Séjour', 'Cuisine', 'Chambre', 'Salle de bain']);
-    expect(planRooms(layoutOf(homeSpec('maison_cite')!))).toEqual([]);
+    expect(planRooms(layoutOf(homeSpec('residence_ngor')!))).toEqual([]);
+    expect(planRooms(layoutOf(homeSpec('maison_cite')!)).map(r => r.name)).toEqual(expect.arrayContaining(['Grand salon', 'Cuisine', 'Chambre 2']));   // the family house is a plan home too
   });
 
   it('a bed fits in the bedroom; refused spots say why, plainly, in French', () => {
