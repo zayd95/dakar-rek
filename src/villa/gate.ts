@@ -63,7 +63,7 @@ export const ENTRANCE_FREE = 0.75;
 /** The leaf's angle (rad) when the door is `k` open (0 shut … 1 open, 90°): quick off the latch, slowing to its stop. */
 export const entranceAngle = (k: number) => (Math.PI / 2) * (1 - (1 - k) * (1 - k));
 /** In the leaf's swing, either side of the wall, with a body's room round it (where a shutting door would close on someone). */
-export const inSwing = (px: number, pz: number) => px > ENTRANCE.x0 - 0.5 && px < ENTRANCE.x1 + 0.5 && pz > ENTRANCE.z - 2 && pz < ENTRANCE.z + 0.75;
+export const inSwing = (px: number, pz: number) => px > ENTRANCE.x0 - 0.5 && px < ENTRANCE.x1 + 0.5 && pz > ENTRANCE.z - 2.1 && pz < ENTRANCE.z + 0.75;
 /** Whether the main entrance should be open now; `open`: how far it is open now (0 shut … 1). */
 export function entranceWants(s: GateSense, open: number): boolean {
   const ex = (ENTRANCE.x0 + ENTRANCE.x1) / 2, d = Math.hypot(s.px - ex, s.pz - ENTRANCE.z);

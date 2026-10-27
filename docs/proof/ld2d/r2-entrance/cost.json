@@ -1,0 +1,13 @@
+{
+ "compound": {
+  "meshes": 11,
+  "calls": 11,
+  "tris": 6628
+ },
+ "entrance": {
+  "calls": 2,
+  "tris": 260,
+  "stoneTris": 80,
+  "doorTris": 180
+ }
+}

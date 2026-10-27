@@ -100,9 +100,11 @@ async function shot(page, file, cam, still = true) {
 // the views pictured, the same before and after (hub coordinates)
 const VIEWS = {
   'street-day': { p: L(1.5, 2.2, 16.5), t: L(-3.6, 2.0, 10) },
-  'street-wide': { p: L(16.5, 5.2, 25.5), t: L(0.5, 3, 4) },
+  'street-wide': { p: L(-0.5, 3.6, 30), t: L(-0.5, 2.6, 9) },
   'above': { p: L(-1, 24, 20), t: L(-1, 0, 4.5) },
-  'walker': { p: L(EX + 2.6, 4.2, 15.2), t: L(EX - 0.6, 0.9, 6.5) },
+  // a walker on his way in, seen from the forecourt: after, on the path to the main entrance; before, from the gate past the bays, behind the car
+  'walker': { p: L(-0.2, 2.6, 4.9), t: L(EX - 0.3, 1.2, 9.5) },
+  'walker-before': { p: L(-1.2, 2.8, 4.9), t: L(2.6, 1.0, 9.6) },
 };
 
 const A = await player('Awa', 2, 'femme', 'g-r2e-awa'), B = await player('Moussa', 4, 'homme', 'g-r2e-moussa');
@@ -128,14 +130,15 @@ try {
   check('the main entrance stands shut and solid before anyone comes; the gate too', d0?.k === 0 && d0.solid === 'shut' && (await A.d(() => window.__dakar.villa.gate().k)) === 0, JSON.stringify(d0));
   await A.trail.start();
   // along the pavement to the door: it swings open before she reaches it
-  const front = P(EX, ENTRANCE.z + 1.7);
-  await walkTo(A.page, A.t, front.x, front.z, { tol: 0.45, ms: 60000 });
+  const front = P(EX, ENTRANCE.z + 1.7), through = P(EX, ENTRANCE.z - 0.9);
+  await walkTo(A.page, A.t, front.x, front.z, { tol: 0.3, ms: 60000 });
   const a1 = await A.d(() => ({ e: window.__dakar.villa.entrance(), p: window.__dakar.pos(), gate: window.__dakar.villa.gate() }));
   check('A1. walking up from the pavement, the door swings open for its owner before she reaches it (the car gate stays shut)', a1.e.k > 0.5 && a1.p.z > LOT.cz + ENTRANCE.z && a1.gate.k === 0, JSON.stringify(a1));
   await A.until(() => window.__dakar.villa.entrance().solid === 'open', null, 5000);
   await shot(A.page, 'after-door-open', { p: L(EX + 2.4, 2.1, 16.2), t: L(EX - 0.4, 1.5, 10.2) });
   // through it, and straight up the path; a picture of her on it
   const mid = P(EX, 8.2);
+  await walkTo(A.page, A.t, through.x, through.z, { tol: 0.35, ms: 60000 });
   await walkTo(A.page, A.t, mid.x, mid.z, { tol: 0.45, ms: 60000 });
   const a2 = await A.d(() => ({ e: window.__dakar.villa.entrance(), p: window.__dakar.pos() }));
   check('A2. she walks through it onto the path, inside the walls', a2.p.z < LOT.cz + 9 && a2.p.x > LOT.cx - 4 && a2.p.x < LOT.cx - 2, JSON.stringify(a2));
@@ -146,7 +149,7 @@ try {
   const atDoor = await A.waitFocus(/Entrer chez toi/);
   check('A3. « Entrer chez toi » at the front door', atDoor, JSON.stringify(await A.focus()));
   const off = trail.filter(([x, z]) => z < LOT.cz + ENTRANCE.z - 0.3 && (x < LOT.cx - 4.05 || x > LOT.cx - 1.95));
-  check(`A4. the way in never touches a bay nor goes behind the car: ${trail.length} steps sampled, all inside the walls on the path (ENTRY_WALK)`, trail.length > 20 && !trail.some(inBay) && off.length === 0, JSON.stringify({ n: trail.length, inBay: trail.filter(inBay).slice(0, 3), off: off.slice(0, 3) }));
+  check(`A4. the way in never touches a bay nor goes behind the car: ${trail.length} positions sampled, those inside the walls all on the path (ENTRY_WALK)`, trail.length > 20 && !trail.some(inBay) && off.length === 0, JSON.stringify({ n: trail.length, inBay: trail.filter(inBay).slice(0, 3), off: off.slice(0, 3) }));
   const shutBehind = await A.until(() => { const e = window.__dakar.villa.entrance(); return e.k === 0 && e.solid === 'shut'; }, null, 15000);
   check('A5. the door shuts behind her, solid again', shutBehind, JSON.stringify(await A.d(() => window.__dakar.villa.entrance())));
   await A.t.tap('#act');
@@ -182,8 +185,9 @@ try {
   check('C0. Awa invites Moussa to her villa from Messages, he accepts', inv?.home?.spec === VILLA, JSON.stringify(inv?.home));
   await B.wait(1600);                                                                     // (the villa reads the invitations once a second)
   await B.trail.start();
-  const c1 = await (async () => { const f = P(EX, ENTRANCE.z + 1.7); await walkTo(B.page, B.t, f.x, f.z, { tol: 0.45, ms: 30000 }); await B.wait(500); return B.d(() => ({ e: window.__dakar.villa.entrance(), p: window.__dakar.pos() })); })();
+  const c1 = await (async () => { await walkTo(B.page, B.t, front.x, front.z, { tol: 0.3, ms: 30000 }); await B.wait(500); return B.d(() => ({ e: window.__dakar.villa.entrance(), p: window.__dakar.pos() })); })();
   check('C1. now the door opens for the invited guest', c1.e.k > 0.5, JSON.stringify(c1));
+  await walkTo(B.page, B.t, through.x, through.z, { tol: 0.35, ms: 60000 });
   await walkTo(B.page, B.t, mid.x, mid.z, { tol: 0.45, ms: 60000 });
   await walkTo(B.page, B.t, door.x, door.z, { tol: 0.4, ms: 60000 });
   const trailB = await B.trail.stop();
@@ -220,25 +224,25 @@ async function camera(url, label) {
   await page.waitForFunction(() => window.__dakar.suv.info().owned && window.__dakar.suv.info().here, null, { timeout: 30000 }).catch(() => {});
   const b1 = await d(() => window.__dakar.villa.bays()[0]);
   await d(b => window.__dakar.suv.place(b.x, b.z, b.yaw), b1);
-  await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [w.x, w.z]); await page.waitForTimeout(1200);
+  await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [w.x, w.z]); await page.waitForTimeout(7000);   // (the seller's word on the keys fades)
   return { ctx, page, d, errors, label };
 }
 async function views(c, walker) {
   const { page, d, label } = c;
   // the walker: after, on the path; before, as the owner walked in: from the gate, past the bays and behind her car
   await d(([x, z, yaw]) => window.__dakar.place(x, z, yaw), walker); await page.waitForTimeout(1500);
-  await shot(page, `${label}-walker`, VIEWS.walker);
+  await shot(page, `${label}-walker`, label === 'before' ? VIEWS['walker-before'] : VIEWS.walker);
   await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [P(-8, 6.5).x, P(-8, 6.5).z]); await page.waitForTimeout(800);
   for (const [hour, tag] of [[10.5, 'day'], [21, '21h']]) {
     await d(h => window.__dakar.setHour(h), hour); await page.waitForTimeout(2500);
-    for (const [name, cam] of Object.entries(VIEWS)) if (name !== 'walker' && !(tag === '21h' && name === 'above')) await shot(page, `${label}-${name.replace('-day', '')}-${tag}`, cam);
+    for (const [name, cam] of Object.entries(VIEWS)) if (!name.startsWith('walker') && !(tag === '21h' && name === 'above')) await shot(page, `${label}-${name.replace('-day', '')}-${tag}`, cam);
   }
   await d(() => window.__dakar.setHour(10.5)); await page.waitForTimeout(1500);
   await shot(page, `${label}-above-day`, VIEWS.above);
 }
 try {
   const c = await camera(BASE, 'after');
-  await views(c, [P(EX, 8.0).x, P(EX, 8.0).z, Math.PI]);
+  await views(c, [P(EX, 8.0).x, P(EX, 8.0).z, 0]);
   // the cost of the compound on this phone page (medium): its group, and the entrance's two meshes, in a view of the entrance
   const cost = await c.d(() => {
     const D = window.__dakar, g = D.three.scene.getObjectByName('villa-compound'); if (!g) return null;
@@ -257,7 +261,7 @@ try {
   await c.ctx.close();
   if (BEFORE) {
     const b = await camera(BEFORE, 'before');
-    await views(b, [P(1.3, 9.4).x, P(1.3, 9.4).z, Math.PI * 1.15]);
+    await views(b, [P(1.4, 9.5).x, P(1.4, 9.5).z, Math.PI * 1.1]);
     await b.ctx.close();
   }
 } catch (e) {

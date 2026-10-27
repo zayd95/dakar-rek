@@ -27,6 +27,11 @@ import { buildHelicopter } from './helicopter';
  *    (HELIPAD, y = 2 × STOREY above the ground).
  *  - The back garden as the interior has it (BACK_GARDEN, POOL): the deck, the pool's coping and water, loungers and a parasol, two palms.
  *
+ * Round 2 (the owner: « save all the assets for the villa »): each piece is a named builder on one drawing context (`makeDraw`: the batches, the
+ * plan's frame, the lot's size, the palette), called in the order they always drew, so `buildVillaCompound(kit)` draws the flagship exactly as before
+ * (tests/villaKit.test.ts) and the Almadies villa kit (src/kits/almadiesVilla.ts) builds them on any lot: drawBoundaryWall, drawCarGate, drawLawns,
+ * drawBays, drawFrontGarden, buildEntrance, drawPalm / drawFrontPalms, placeHouse, drawPoolDeck.
+ *
  * Plan coordinates (src/housing/villa.ts) are metres from the lot's centre, +z toward the street; the hub's ground is y 0.1. Everything static
  * goes into the hub's own merged batches (the kit), so the compound costs the Almadies view no draw call of its own but the gate (1), the facade
  * and the helicopter (2), and the main entrance (2: its travertine, in the facade's stone material, and its door). No random number is drawn here.
@@ -93,7 +98,7 @@ const GATE_H = 2.25, GATE_Z = E - T - 0.12, GATE_DZ = 0.14;
  * The main entrance (round 2): its travertine pillars' width either side of the opening, the portal's top (the wall is WALL_H), the leaf's top (it
  * stands on the threshold), the pivot's offset from the opening's west edge (a pivoting door: the long side swings in, the short one out).
  */
-export const PORTAL = { pillar: 0.55, top: 3.2, depth: 0.7, door: 2.77, sill: 0.17, pivot: 0.25 } as const;
+export const PORTAL = { pillar: 0.55, top: 3.2, depth: 0.7, door: 2.77, sill: 0.17, pivot: 0.15 } as const;
 /** The house number on the portal's lintel. */
 export const HOUSE_NUMBER = '3';
 
@@ -497,7 +502,7 @@ const DIGIT: Record<string, string> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'ab
  *  - a portal of the façade's travertine (its stone material, one draw call with the path) standing 0.8 m above the wall: two pillars proud of the
  *    wall on both faces, the lintel, a darker plinth; the opening lined in dark bronze like the house's front door;
  *  - the door: one pivoting leaf of teak in a bronze edge, grooved like the front door, a long bronze pull on both faces; its own mesh, its origin
- *    on the pivot (a quarter of a metre in from the opening's west edge: the long side swings into the garden, the short one out);
+ *    on the pivot (15 cm in from the opening's west edge: the long side swings into the garden, the short one stays within the wall);
  *  - a slim white canopy capping the portal, its bronze fascia and a line of light in its soffit; the house number in bronze bars on the lintel; an
  *    intercom (camera, lit call button) on the east pillar; a light bar on each pillar's street face; a travertine threshold and apron on the pavement;
  *  - the path: a straight walk of travertine slabs edged in darker stone, from the portal to the forecourt (`path0`), lit by lights set flush in
@@ -585,9 +590,9 @@ export function buildEntrance(d: Draw, o: Partial<EntranceAt> = {}): { stone: TH
   door.geometry.translate(-pv.x, 0, -pv.z); door.geometry.computeBoundingSphere();
   door.position.set(pv.x, 0, pv.z); door.name = 'villa-entrance-door';
   door.userData.swing = f.mirror ? -1 : 1;                                   // (mirrored, the leaf turns the other way to swing into the garden)
-  // its boxes: shut, the opening in the wall's thickness; open (the leaf at 90°, its long side in the garden), a thin box along it, its pulls in
+  // its boxes: shut, the opening in the wall's thickness; open (the leaf at 90°, its long side in the garden), a thin box along it, its pulls a little proud of it (a body is 0.5 m round)
   const shut: Collider = { ...f.rect(ox0, at.z - T, ox1, at.z - 0.05), h: P.door };
-  const open: Collider = { ...f.rect(piv.x - 0.11, piv.z - (lx1 - piv.x) - 0.02, piv.x + 0.11, piv.z + (piv.x - lx0) + 0.02), h: P.door };
+  const open: Collider = { ...f.rect(piv.x - 0.06, piv.z - (lx1 - piv.x) - 0.02, piv.x + 0.06, piv.z + (piv.x - lx0) + 0.02), h: P.door };
   const mesh = stone.build(M.stone, true, true)!; mesh.name = 'villa-entrance';
   const a = f.p(ox0, at.z), b = f.p(ox1, at.z);
   return { stone: mesh, rig: { mesh: door, shut, open, pivot: pv, x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x), z: a.z } };
