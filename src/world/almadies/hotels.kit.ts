@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import { GROUND, STOREY, type SiteDraw } from './contract';
+import { E, GROUND, STOREY, type SiteDraw } from './contract';
 import { siteRng, type Face } from './parts';
 
 /**
@@ -188,15 +188,24 @@ export function info(d: SiteDraw): HotelInfo {
   if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null });
   return i;
 }
-/** (debug) a section boundary: when `globalThis.__hotelProfile` is an array, pushes [name, triangles so far]. */
-export function sect(d: SiteDraw, name: string) {
-  const g = globalThis as unknown as { __hotelProfile?: [string, number][] };
-  if (!g.__hotelProfile) return;
-  g.__hotelProfile.push([name, (['plain', 'pave', 'leaves', 'trunks', 'water', 'bulbs', 'glass', 'glassDark', 'metal'] as const).reduce((n, k) => n + d[k].triangles(), 0)]);
-}
 /** A garden bollard with its lamp (20 triangles) and, by night, its pool of light on the ground (not on the low preset). */
 export function bollard(d: SiteDraw, x: number, z: number) {
   d.box(d.plain, 0.13, 0.62, 0.13, x, Y0, z, d.p.frame);
   d.box(d.bulbs, 0.1, 0.08, 0.14, x, Y0 + 0.5, z, 0xfff1c8);
   if (!d.lite) d.light(x, z, 2.1, 0.175);
+}
+/**
+ * The railing on a low street wall (1 m, `perimeter` with `front: 'low'`): a bronze handrail and a lower rail above it, a post every 2.4 m (two planes back to
+ * back: seen from the street and from the forecourt), the gate's span (`gx` ± 3.2 m: its pillars) left alone. About 100 triangles.
+ */
+export function railing(d: SiteDraw, gx: number, wallTop = 1.0, h = 0.6) {
+  const ex = d.w / 2, z = E - 0.15, runs: [number, number][] = [[-ex + 0.5, gx - 3.2], [gx + 3.2, ex - 0.5]];
+  for (const [a, b] of runs) {
+    if (b - a < 1) continue;
+    d.box(d.metal, b - a, 0.05, 0.06, (a + b) / 2, wallTop + h - 0.05, z, d.p.frame);
+    d.box(d.metal, b - a, 0.04, 0.05, (a + b) / 2, wallTop + 0.18, z, d.p.frame);
+    const n = Math.max(1, Math.round((b - a) / (d.lite ? 4.8 : 2.4))), list: Q[] = [];
+    for (let k = 0; k <= n; k++) { const u = a + ((b - a) * k) / n; list.push({ u0: u - 0.03, u1: u + 0.03, y0: wallTop, y1: wallTop + h, c: d.p.frame }); }
+    quads(d, d.plain, 'street', z + 0.035, list); quads(d, d.plain, 'back', z - 0.035, list);
+  }
 }

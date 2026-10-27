@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the tower hotel (46 × 22 m site, a podium of two storeys and a slimmer tower of 2 to 8 more): a deep colonnade of slim columns over a
@@ -18,6 +18,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   const yF = (k: number) => Y0 + k * ST, yP = yF(2), yT = yF(n), yR = yT + 0.1;         // floor k; the podium's roof (the terrace); the tower's top storey's ceiling, the roof slab's top
   const ex = d.w / 2;
   perimeter(d, { gate: s.gate, front: 'low' });
+  railing(d, gx);
 
   // ------------------------------------------------------------------------------------------------ the podium: a colonnade over glass, two storeys
   const pod = { x0: -PX, x1: PX, z0: zB, z1: zP };
@@ -66,6 +67,10 @@ export function buildTower(d: SiteDraw): SiteResult {
       d.box(d.plain, 5.0, 1.05, 0.7, (a + b) / 2, yP, z0 + 0.7, p.stone); d.box(d.plain, 5.2, 0.06, 0.85, (a + b) / 2, yP + 1.05, z0 + 0.72, p.wood);
       for (let k = 0; k < (lite ? 2 : 4); k++) d.box(d.plain, 0.38, 0.68, 0.38, (a + b) / 2 - 1.8 + k * (lite ? 3.6 : 1.2), yP, z0 + 1.8, p.accent);
       litBar(d, a + 0.4, b - 0.4, z1 - 0.7, yP + h - 0.02, { d: 0.1 });
+    }
+    for (const sx of [-1, 1]) {                                                          // a lawn on each side of the tower, a hedge along its back
+      d.flat(d.plain, 8.4, 6.6, sx * 15.8, yP + 0.02, -5.2, d.c.lawn);
+      for (let k = 0; k < (lite ? 2 : 4); k++) d.blob(d.leaves, 0.5, sx * (12.6 + k * (lite ? 6.4 : 2.1)), yP + 0.45, -8.6, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
     }
     for (const x of [-TX - 3, TX + 3]) planter(d, x, 4.9, 3.0, 0.7, { h: 0.45, bloom: 0xd94a8c });
     for (let k = 0; k < (lite ? 1 : 2); k++) lounger(d, left * (13 + k * 1.7), yP + 0.02, 2.4, 0, p.wood);
@@ -148,7 +153,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   for (const x of [-6.9, 6.9]) for (const z of [7.2, 9.5]) bollard(d, x, z);
   planter(d, left * 11.5, zC + 1.4, 4.4, 0.8, { bloom: 0xd94a8c }); planter(d, left * 17.0, zC + 1.4, 3.2, 0.8);
   slimPalm(d, left * 9.0, 8.0, 1.1, 0.5); slimPalm(d, left * 20.0, 8.4, 1.0, 1.4); slimPalm(d, rite * 9.4, 8.4, 1.05, 0.2);
-  for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 8.0, k ? p.board : p.accent, 1);
+  for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 8.0, k ? 0xf4f1ea : mix(p.accent, 0xffffff, 0.3), 1);
   void courses;
   return { keepClear: [{ ...d.f.rect(-6.6, zC, 6.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
 }

@@ -1,0 +1,87 @@
+{
+ "at": "2026-10-27T13:41:16.108Z",
+ "cost": {
+  "hotel-boutique": {
+   "name": "Hôtel boutique, façade de balcons",
+   "kind": "hotel",
+   "size": "M",
+   "views": {
+    "front": 197,
+    "street": 282,
+    "back": 276,
+    "side": 112,
+    "aerial": 243,
+    "close": 151,
+    "night": 141
+   },
+   "medium": {
+    "calls": 10,
+    "tris": 4446
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 1,
+    "tallest": 17.299999999999997
+   },
+   "low": {
+    "calls": 10,
+    "tris": 2976
+   }
+  },
+  "hotel-tower": {
+   "name": "Hôtel tour sur son podium",
+   "kind": "hotel",
+   "size": "M",
+   "views": {
+    "front": 238,
+    "street": 295,
+    "back": 116,
+    "side": 162,
+    "aerial": 247,
+    "close": 121,
+    "night": 174
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 4450
+   },
+   "info": {
+    "colliders": 23,
+    "signs": 1,
+    "tallest": 27.900000000000002
+   },
+   "low": {
+    "calls": 9,
+    "tris": 3032
+   }
+  },
+  "hotel-resort": {
+   "name": "Resort autour de la cour de la piscine",
+   "kind": "hotel",
+   "size": "L",
+   "views": {
+    "front": 211,
+    "street": 213,
+    "back": 225,
+    "side": 206,
+    "aerial": 306,
+    "close": 123,
+    "night": 129
+   },
+   "medium": {
+    "calls": 10,
+    "tris": 7676
+   },
+   "info": {
+    "colliders": 29,
+    "signs": 1,
+    "tallest": 17.6
+   },
+   "low": {
+    "calls": 10,
+    "tris": 5750
+   }
+  }
+ },
+ "errors": []
+}

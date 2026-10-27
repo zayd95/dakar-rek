@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the boutique hotel (46 × 22 m site, 3 to 5 storeys): a long low front of cantilevered slabs between travertine bookends, a balcony for
@@ -18,6 +18,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   const row = { x0: -X, x1: X, z0: zB, z1: zF };
   const faceOf = (sx: number) => sx > 0 ? 'right' as const : 'left' as const;
   perimeter(d, { gate: s.gate, front: 'low' });
+  railing(d, gx);
 
   // ------------------------------------------------------------------------------------------------ the masses
   volume(d, row, Y0, yF(1) - 0.25, p.stone);                                           // the ground storey in travertine
@@ -168,6 +169,6 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   planter(d, -7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c }); planter(d, 7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c });
   for (const x of [-6.6, 6.6]) for (const z of [6.6, 9.3]) bollard(d, x, z);
   slimPalm(d, left * 12.0, 7.4, 1.05, 0.4); slimPalm(d, left * 20.6, 6.0, 0.95, 1.2); slimPalm(d, rite * 11.0, 7.0, 1.0, 0.9);
-  for (const [k, c] of [p.accent, p.board].entries()) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 7.6, c, 1);
+  for (const [k, c] of [mix(p.accent, 0xffffff, 0.4), 0xf4f1ea].entries()) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 7.6, c, 1);
   return { keepClear: [{ ...d.f.rect(-6.4, zF + BAL, 6.4, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
 }

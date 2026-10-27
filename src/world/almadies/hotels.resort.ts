@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, sect, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the resort (46 × 46 m, the whole block, 3 to 7 storeys): a U of two long wings round a pool court that opens toward the back (the
@@ -19,8 +19,8 @@ export function buildResort(d: SiteDraw): SiteResult {
   const courtFace = (sx: number) => sx < 0 ? 'right' as const : 'left' as const, outerFace = (sx: number) => sx < 0 ? 'left' as const : 'right' as const;
   const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
   perimeter(d, { gate: s.gate, front: 'low', h: 1.6 });
+  railing(d, gx);
 
-  sect(d, 'wings');
   // ------------------------------------------------------------------------------------------------ the wings: three segments stepping down toward the sea
   const segs = [{ z0: -14, z1: FZ0, m: n }, { z0: -23, z1: -14, m: Math.max(2, n - 1) }, { z0: ZB, z1: -23, m: Math.max(2, n - 2) }];
   const pl = (sx: number, z0: number, z1: number) => ({ x0: Math.min(sx * CX, sx * WX), x1: Math.max(sx * CX, sx * WX), z0, z1 });
@@ -84,7 +84,6 @@ export function buildResort(d: SiteDraw): SiteResult {
       }
     });
   }
-  sect(d, 'seaEnds');
   // the sea ends of the wings: a double-height glazed lounge, an oak screen, a roof garden
   for (const sx of [-1, 1]) {
     const g = segs[2], r = pl(sx, g.z0, g.z1), yTop = yF(g.m), x0 = r.x0 + 0.8, x1 = r.x1 - 0.8;
@@ -97,7 +96,6 @@ export function buildResort(d: SiteDraw): SiteResult {
     for (let k = 0; k < 4; k++) d.blob(d.leaves, 0.55, rx - 3.6 + k * 2.4, yTop + 0.5, g.z0 + 1.0, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
   }
 
-  sect(d, 'front');
   // ------------------------------------------------------------------------------------------------ the front: two flanks stepping back, a lobby pavilion under a vast canopy
   for (const sx of [-1, 1]) {
     const r = { x0: Math.min(sx * 8.5, sx * WX), x1: Math.max(sx * 8.5, sx * WX), z0: FZ0, z1: FZ1 }, rx = (r.x0 + r.x1) / 2, yTop = yF(2);
@@ -126,7 +124,6 @@ export function buildResort(d: SiteDraw): SiteResult {
   }
   door(d, { face: 'street', x: rite * 15.4, z: FZ1 + 0.15, w: 1.2, h: 2.4, portal: false });                         // the staff door on the gate's flank
   rec.doors.push({ kind: 'staff', face: 'street', x: rite * 15.4, z: FZ1 + 0.15 });
-  sect(d, 'lobby');
   // the lobby: a glass box two storeys high between stone piers, the canopy its roof
   { const lx = 8.5, yC = yF(2), zL = 6.8, zC = 10.0;
     volume(d, { x0: -lx, x1: lx, z0: FZ0, z1: FZ1 }, Y0, yC - 0.3, p.render2);
@@ -161,7 +158,6 @@ export function buildResort(d: SiteDraw): SiteResult {
     for (let k = 0; k < (lite ? 2 : 4); k++) planter(d, -9 + k * (lite ? 18 : 6), zC - 0.8, 2.6, 0.5, { h: 0.45 });
   }
 
-  sect(d, 'court');
   // ------------------------------------------------------------------------------------------------ the court: the pool, its deck, the bar and the beach club
   { const cz = (FZ0 + ZB) / 2, deck = mix(p.wood, p.slab, 0.45), zD1 = FZ0, zD0 = -34.5;
     d.flat(d.plain, 2 * CX - 0.2, zD1 - zD0, 0, Y0 + 0.02, (zD0 + zD1) / 2, deck);
@@ -196,7 +192,6 @@ export function buildResort(d: SiteDraw): SiteResult {
     void cz;
   }
 
-  sect(d, 'forecourt');
   // ------------------------------------------------------------------------------------------------ the forecourt
   paving(d, { x0: -ex, x1: ex, z0: FZ1 + BAL + 0.05, z1: E - 0.3 }, 0xe3d9c3);
   paving(d, { x0: -11.5, x1: 11.5, z0: 7.4, z1: 10.2 }, 0x6d7075, Y0 + 0.02);
@@ -207,7 +202,6 @@ export function buildResort(d: SiteDraw): SiteResult {
   for (let z = -9; z > -30; z -= 12) for (const x of [-9.6, 9.6]) bollard(d, x, z);                                   // the court's paths
   slimPalm(d, -17.0, 8.0, 1.1, 0.3); slimPalm(d, 17.0, 6.8, 1.05, 0.7);
   planter(d, left * 16.5, 7.4, 4.2, 0.8, { bloom: 0xd94a8c }); planter(d, rite * 16.0, FZ1 + BAL + 0.9, 3.2, 0.8);
-  for (let k = 0; k < 3; k++) flagPole(d, left * (20.2 - k * 1.3), E - 1.1, 7.8, k === 1 ? 0xf4f1ea : p.accent, 1);
-  sect(d, 'end');
+  for (let k = 0; k < 3; k++) flagPole(d, left * (20.2 - k * 1.3), E - 1.1, 7.8, k === 1 ? 0xf4f1ea : mix(p.accent, 0xffffff, 0.2), 1);
   return { keepClear: [{ ...d.f.rect(-12.5, FZ1 + BAL, 12.5, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
 }
