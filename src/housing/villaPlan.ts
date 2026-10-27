@@ -51,7 +51,7 @@ const rooms: Room[] = [
   { id: 'manger', kind: 'manger', name: 'Salle à manger', level: 'rdc', box: box(-1.0, 4.4, H0.z0, 0), floor: 'marble', clad: 'stone', accent: { side: 'e', kind: 'stone' } },
   { id: 'cuisine', kind: 'cuisine', name: 'Cuisine', level: 'rdc', box: box(-1.4, 4.4, 0, H0.z1), floor: 'marble', clad: 'stone' },
   { id: 'bureau', kind: 'bureau', name: 'Bureau', level: 'rdc', box: box(H0.x0, -4.6, 0, H0.z1), floor: 'wood', clad: 'stone', accent: { side: 'n', kind: 'wood' } },
-  { id: 'hall', kind: 'palier', name: 'Hall de l’escalier', level: 'rdc', box: box(4.4, H0.x1, H0.z0, 1.6), floor: 'marble' },
+  { id: 'hall', kind: 'palier', name: 'Hall de l’escalier', level: 'rdc', box: box(4.4, H0.x1, H0.z0, 1.6), floor: 'marble', accent: { side: 'e', kind: 'stone' } },
   { id: 'sde', kind: 'sdb', name: 'Salle d’eau', level: 'rdc', box: box(4.4, H0.x1, 1.6, H0.z1), floor: 'tiles' },
   { id: 'jardin', kind: 'terrasse', name: 'Terrasse de la piscine', short: 'Piscine', level: 'rdc', outdoor: true, edge: 'garden', box: { ...BACK_GARDEN }, floor: 'deck' },
   // ---------------------------------------------------------------- étage

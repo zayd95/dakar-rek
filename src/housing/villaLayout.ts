@@ -5,6 +5,10 @@
  * home editor's own rules (src/economy/placement.ts whyNot) beside the pieces before it, and every room stays reachable (tests/villaFurnish.test.ts);
  * scripts/shots-villa-look.mjs sets it out in the game piece by piece and takes the pictures.
  */
+import type { VillaLevel } from './villa';
+import { VILLA_PLAN } from './villaPlan';
+import { levelAtX } from './plan';
+
 export interface LaidPiece { spec: string; x: number; z: number; rot: 0 | 1 | 2 | 3; room: string }
 export const VILLA_ALMADIES_LAYOUT: readonly LaidPiece[] = [
   // ---------------------------------------------------------------- the grand salon: the curved sofa against the oak slats, facing the pool
@@ -55,3 +59,12 @@ export const VILLA_ALMADIES_LAYOUT: readonly LaidPiece[] = [
   { spec: 'bain_soleil_teck', room: 'terrasse', x: -26.85, z: 3.3, rot: 1 },
   { spec: 'bain_soleil_teck', room: 'terrasse', x: -26.85, z: -4.4, rot: 1 },
 ];
+
+/**
+ * The same list in the shape of the owner's showcase (src/showcase/save.ts SHOWCASE_FURNITURE, lane V-E): each piece by its catalogue id, the
+ * villa's level it stands on and its place on that level in the house's own coordinates (x less the level's dx).
+ */
+export const VILLA_ALMADIES_SHOWCASE: readonly { id: string; level: VillaLevel; x: number; z: number; rot: number }[] = VILLA_ALMADIES_LAYOUT.map(p => {
+  const l = levelAtX(VILLA_PLAN, p.x);
+  return { id: p.spec, level: l.id as VillaLevel, x: +(p.x - l.dx).toFixed(2), z: p.z, rot: p.rot };
+});

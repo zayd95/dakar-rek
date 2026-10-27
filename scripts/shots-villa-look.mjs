@@ -1,6 +1,6 @@
 // LD2.0-D look pass, lane V-S (docs/ld2/LD2_D.md): the Almadies villa furnished with the « Collection Almadies » and pictured on a phone page (390 × 844),
 // by day (10 h) and at 21 h: the grand salon, the dining room, the master suite, the family lounge, the pool deck and the roof terrace, from the game's
-// own camera. The layout is src/housing/villaLayout.ts (one plain list): every piece is bought and delivered by the game, put away with the home
+// own camera; and its façade in the street of Almadies (lane V-E's compound) from free cameras. The layout is src/housing/villaLayout.ts (one plain list): every piece is bought and delivered by the game, put away with the home
 // editor's own hooks, then set at its spot by the editor's rules (`placeAt`: a spot the game refuses stays refused and is reported). Every piece valid
 // where it stands and every room reachable (the game's `homeRules`); the draw calls and triangles of each level furnished (≤ 60 calls, ≤ 80k
 // triangles); no page errors. Pictures in docs/proof/ld2d/villa-look (PNG under 400 kB) with look.json.
@@ -68,8 +68,25 @@ try {
       const o = perf[h.home.level] ??= { calls: 0, tris: 0 }; o.calls = Math.max(o.calls, h.calls); o.tris = Math.max(o.tris, h.tris);
     }
   }
-  check(`pictures of the furnished villa by day and at 21 h, each PNG under 400 kB (${sizes.length})`, sizes.length === 2 * Object.keys(SHOTS).length && sizes.every(([, n]) => n < 400_000), sizes.map(([k, n]) => `${k} ${Math.round(n / 1000)} kB`).join(', '));
-  check(`each level furnished: ≤ 60 draw calls and ≤ 80k triangles (phone page): ${Object.entries(perf).map(([k, v]) => `${k} ${v.calls} calls ${Math.round(v.tris / 1000)}k`).join(', ')}`, Object.values(perf).every(p => p.calls <= 60 && p.tris <= 80_000), JSON.stringify(perf));
+  // ------------------------------------------------------------------ the façade in the street (lane V-E's compound places it on the lot), by free cameras
+  await d(() => window.__dakar.teleport('almadies', -12, -4, Math.PI));
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.pos().mode === 'play' && !window.__dakar.home(), null, { timeout: 120000 });
+  await page.waitForTimeout(2500);
+  const lot = (x, y, z) => [-18 + x, y, -18 + z];
+  const FACADE = { street: { p: [-1.5, 5.2, 7.5], t: [-17.5, 3, -14] }, high: { p: [-4, 13, 2], t: [-18, 3, -20] }, gate: { p: [-12.5, 3.2, -2.5], t: lot(-1.5, 4.6, 0) } };
+  for (const [hour, tag] of [[10.5, 'day'], [21, 'night']]) {
+    await d(h => window.__dakar.setHour(h), hour); await page.waitForTimeout(1200);
+    for (const [name, c] of Object.entries(FACADE)) {
+      await d(c => window.__dakar.cam(c.p, c.t), c); await page.waitForTimeout(1500);
+      await picture(`facade-${name}-${tag}`);
+      const m = await d(() => ({ calls: window.__dakar.drawCalls(), tris: window.__dakar.tris() }));
+      const o = perf.street ??= { calls: 0, tris: 0 }; o.calls = Math.max(o.calls, m.calls); o.tris = Math.max(o.tris, m.tris);
+    }
+  }
+  await d(() => window.__dakar.cam(null));
+  check(`pictures of the furnished villa and of its façade in the street by day and at 21 h, each PNG under 400 kB (${sizes.length})`, sizes.length === 2 * (Object.keys(SHOTS).length + Object.keys(FACADE).length) && sizes.every(([, n]) => n < 400_000), sizes.map(([k, n]) => `${k} ${Math.round(n / 1000)} kB`).join(', '));
+  check(`each level furnished: ≤ 60 draw calls and ≤ 80k triangles (phone page): ${['rdc', 'etage', 'toit'].map(k => `${k} ${perf[k].calls} calls ${Math.round(perf[k].tris / 1000)}k`).join(', ')} (the street with the villa: ${perf.street.calls} calls ${Math.round(perf.street.tris / 1000)}k)`,
+    ['rdc', 'etage', 'toit'].every(k => perf[k].calls <= 60 && perf[k].tris <= 80_000), JSON.stringify(perf));
   check('no page errors', errors.length === 0, errors.join(' | '));
   fs.writeFileSync(`${out}/look.json`, JSON.stringify({ base, layout: LAYOUT, placed, rules: rules.pieces.map(p => ({ spec: p.spec, room: p.room, at: p.at, why: p.why })), reachable: rules.reachable, perf, pictures: sizes, results }, null, 1));
 } finally { await browser.close(); }

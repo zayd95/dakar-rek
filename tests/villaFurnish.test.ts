@@ -11,7 +11,7 @@ import { furnitureIn, normalize } from '../src/economy/assets';
 import { installFurnitureKit } from '../src/economy/furnitureKitAdapter';
 import type { Placement } from '../src/core/types';
 import { STOREY } from '../src/housing/villa';
-import { VILLA_ALMADIES_LAYOUT } from '../src/housing/villaLayout';
+import { VILLA_ALMADIES_LAYOUT, VILLA_ALMADIES_SHOWCASE } from '../src/housing/villaLayout';
 
 /**
  * LD2.0-D lane V-S: furnishing the villa on its three levels (src/economy/placement.ts on the villa's plan): the editor's rooms, the automatic
@@ -202,6 +202,16 @@ describe('the villa furnished with the « Collection Almadies » (the look pass:
     expect(valid(placed)).toBe(true);
     expect(reachable(V, obstaclesOf(placed)).ok).toBe(true);
     for (const p of laid) expect(Math.abs(p.x)).toBeLessThanOrEqual(30);
+  });
+  it('the same list in the showcase\'s shape (a level and the house\'s own x) gives back every placement', () => {
+    expect(VILLA_ALMADIES_SHOWCASE).toHaveLength(laid.length);
+    VILLA_ALMADIES_SHOWCASE.forEach((q, k) => {
+      const dx = V.levels!.find(l => l.id === q.level)!.dx;
+      expect({ spec: q.id, x: +(q.x + dx).toFixed(2), z: q.z, rot: q.rot }).toEqual({ spec: laid[k].spec, x: laid[k].x, z: laid[k].z, rot: laid[k].rot });
+      expect(Math.abs(q.x)).toBeLessThan(11.5);
+    });
+    expect(VILLA_ALMADIES_SHOWCASE.find(q => q.id === 'lit_capitonne_noir')!.level).toBe('etage');
+    expect(VILLA_ALMADIES_SHOWCASE.find(q => q.id === 'salon_teck')!.level).toBe('toit');
   });
   it('the line\'s pieces K-L suggested for each room, the ring chandeliers over the lounge and the dining table, the teak outside', () => {
     const inRoom = (room: string) => laid.filter(p => p.room === room).map(p => p.spec);
