@@ -107,6 +107,11 @@ export interface SiteResult {
   keepClear?: KeepClear[];
   /** Anything with its own materials (kept to a minimum: every mesh is a draw call). */
   group?: THREE.Object3D;
+  /**
+   * Where the hub's rooftop restaurant has its stair door (src/venues/rooftop.ts): a plan point 1.1 m in front of a face that looks to the street (+z), reachable from the pavement.
+   * The venue dresses the door and hangs its sign there; without one it takes the first free side of the nearest tall building, which can be a back yard.
+   */
+  rooftopDoor?: { x: number; z: number };
 }
 export type SiteBuilder = (d: SiteDraw) => SiteResult | void;
 /** One design of a kind: the lane's builder, its name for the catalogue, the site size it fits. */

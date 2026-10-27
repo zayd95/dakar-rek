@@ -1364,10 +1364,12 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
   }
   // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
+  let rooftopDoor: HubWorld['rooftopDoor'];
   if (id === 'almadies') {
     const panes = new Batch(), dark = new Batch();   // the windows' panes (warm at night) and glass that never glows, each its own mesh
     const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign });
     group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
+    rooftopDoor = dist.rooftopDoor;
     for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
   }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
@@ -1424,7 +1426,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor,
     dispose() { disposeGroup(group); },
   };
 }

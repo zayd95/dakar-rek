@@ -72,7 +72,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   for (const sx of [-1, 1]) for (const f of [8, 12, 16]) d.box(d.plain, 0.5, yF(1) - 0.25 - Y0, 0.45, sx * f, Y0, zF + 0.2, p.stone);   // travertine pilasters on the grid
   const left = -sg, rite = sg;                                                         // the restaurant on one side, the spa and the staff door on the gate's
   { const u = span(left, LB, X); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 4, glow: 'lit' }); }
-  { const u = span(rite, LB, 12); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 2 }); slats(d, 'street', zF + 0.5, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { pitch: 0.24, w: 0.11 }); }
+  { const u = span(rite, LB, 8); pane(d, 'street', zF + 0.25, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { mull: 2.0, rooms: 1 }); slats(d, 'street', zF + 0.5, u.u0 + 0.3, u.u1 - 0.3, Y0 + 0.25, Y0 + 2.95, { pitch: 0.24, w: 0.11 }); }
   door(d, { face: 'street', x: rite * 14.2, z: zF + 0.45, w: 1.2, h: 2.4, portal: false });
   rec.doors.push({ kind: 'staff', face: 'street', x: rite * 14.2, z: zF + 0.45 }, { kind: 'lobby', face: 'street', x: 0, z: zF });
   // the lobby: a double-height pane in the stone portal (two piers rising to the roof, a lintel), the doors, a transom, the name on the lintel
@@ -179,5 +179,6 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     bollard(d, sx * 21.7, 3.4);
     rec.flanks.push({ side: sx as -1 | 1, what: 'planting' });
   }
-  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
+  // the stair door of the rooftop restaurant (the Terrasse de Ngor, src/venues/rooftop.ts) on the street face, in the first bay beyond the lobby's portal, between the pilasters at 8 and 12 (the gate's side), under the balconies: seen from the avenue, a few strides from the way in
+  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], rooftopDoor: { x: rite * 10.0, z: zF + 1.1 } };
 }

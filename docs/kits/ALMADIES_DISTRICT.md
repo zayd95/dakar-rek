@@ -43,7 +43,7 @@ All seven: a walk-in opening in the railing in line with the front door and a sh
 ## Hotels (fictional names on lit signs)
 | | Design | Medium / low triangles |
 |---|---|---|
-| ![](almadies-district/hotel-boutique-street.png) | **hotel-boutique · Hôtel boutique, façade de balcons** (2 lots; HÔTEL LE FILAO): a balcony on every room, a lobby under a porte-cochère canopy, a café terrace beside the opening, a rooftop pool and lounge. | 5 020 / 3 558 |
+| ![](almadies-district/hotel-boutique-street.png) | **hotel-boutique · Hôtel boutique, façade de balcons** (2 lots; HÔTEL LE FILAO): a balcony on every room, a lobby under a porte-cochère canopy, a café terrace beside the opening, a rooftop pool and lounge; **the stair door of the rooftop restaurant « Terrasse de Ngor »** (the venue, `src/venues/rooftop.ts`) in the bay beside the lobby's portal, with its lit sign. | 4 982 / 3 536 |
 | ![](almadies-district/hotel-tower-street.png) | **hotel-tower · Hôtel tour sur son podium** (2 lots; HÔTEL OCÉANE, 8 storeys): shopfront bays with awnings and two shop doors at the podium, an open lobby, a restaurant floor, the tower and its crown. | 5 158 / 3 806 |
 | ![](almadies-district/hotel-resort-street.png) | **hotel-resort · Resort autour de la cour de la piscine** (the whole block; HÔTEL BAOBAB AZUR, 5 storeys): a long sea-front block, a pool court, an 8 m drop-off through the railing, a café terrace, garden suites on the road sides. | 8 648 / 6 564 |
 

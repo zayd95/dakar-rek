@@ -193,7 +193,7 @@ export const RooftopModule: GameModule = {
   hubLoaded(ctx, hub) {
     built = null;
     const def = ROOFTOPS[hub.id as HubId]; if (!def) return;
-    const f = findFacade(hub, def.ref); if (!f) return;
+    const f = hub.rooftopDoor ?? findFacade(hub, def.ref); if (!f) return;      // the Almadies' district names its door (the hotel's street face); elsewhere the nearest tall building's first free side
     dressFacade(hub, def, f);
     const idx = Object.keys(ROOFTOPS).indexOf(def.id), ox = ROOM_X + idx * STEP, doorX = ox + 5;
     const door: Interactable = { id: `${hub.id}:rooftop:${def.id}`, name: def.name, kind: 'actions', x: f.x, z: f.z, radius: 3.4, actions: [ENTER], description: def.blurb };

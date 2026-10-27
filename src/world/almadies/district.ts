@@ -27,6 +27,8 @@ export interface District {
   colliders: Collider[]; canopies: Canopy[]; keepClear: KeepClear[];
   /** Per site: what was drawn (for the checks and the catalogue). */
   sites: { id: string; kind: SiteKind; variant: string; colliders: number }[];
+  /** The stair door of the rooftop restaurant, in the hub (the spot in front of the face, the face's outward normal), when a design gave one (`SiteResult.rooftopDoor`). */
+  rooftopDoor?: { x: number; z: number; nx: number; nz: number };
 }
 /** Draws every site; `only` limits the plan (the lanes' viewers and tests draw one site at a time). */
 export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): District {
@@ -40,6 +42,10 @@ export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): Di
     const gx = gateX(d.w, site.gate);
     out.keepClear.push({ ...d.f.rect(gx - 3.2, E, gx + 3.2, E + 3.2), why: `district_gate:${site.id}` }, ...(r.keepClear ?? []));
     if (r.group) group.add(r.group);
+    if (r.rooftopDoor && !out.rooftopDoor) {
+      const o = d.f.p(0, 0), q = d.f.p(r.rooftopDoor.x, r.rooftopDoor.z), n = d.f.p(0, 1);
+      out.rooftopDoor = { x: q.x, z: q.z, nx: Math.round(n.x - o.x), nz: Math.round(n.z - o.z) };
+    }
     out.sites.push({ id: site.id, kind: site.kind, variant: v.id, colliders: d.colliders.length });
   }
   return out;

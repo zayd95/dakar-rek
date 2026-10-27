@@ -2,7 +2,7 @@
  "at": "2026-10-27T15:13:03.061Z",
  "cost": {
   "house-m1": {
-   "name": "Maison empilée",
+   "name": "Maison empil\u00e9e",
    "kind": "house",
    "size": "S",
    "views": {
@@ -50,7 +50,7 @@
    "glbBytes": 131852
   },
   "house-m3": {
-   "name": "Maison à gradins",
+   "name": "Maison \u00e0 gradins",
    "kind": "house",
    "size": "S",
    "views": {
@@ -74,7 +74,7 @@
    "glbBytes": 131776
   },
   "villa-c1": {
-   "name": "Villa Porte-à-faux",
+   "name": "Villa Porte-\u00e0-faux",
    "kind": "villa",
    "size": "S",
    "views": {
@@ -170,17 +170,17 @@
    "glbBytes": 212636
   },
   "hotel-boutique": {
-   "name": "Hôtel boutique, façade de balcons",
+   "name": "H\u00f4tel boutique, fa\u00e7ade de balcons",
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 251,
-    "street": 378,
-    "night": 168
+    "front": 250,
+    "street": 376,
+    "night": 167
    },
    "medium": {
     "calls": 10,
-    "tris": 5020
+    "tris": 4982
    },
    "info": {
     "colliders": 18,
@@ -189,12 +189,12 @@
    },
    "low": {
     "calls": 10,
-    "tris": 3558
+    "tris": 3536
    },
-   "glbBytes": 420064
+   "glbBytes": 417172
   },
   "hotel-tower": {
-   "name": "Hôtel tour sur son podium",
+   "name": "H\u00f4tel tour sur son podium",
    "kind": "hotel",
    "size": "M",
    "views": {
@@ -242,7 +242,7 @@
    "glbBytes": 711080
   },
   "residence-ngor": {
-   "name": "Résidence de Ngor",
+   "name": "R\u00e9sidence de Ngor",
    "kind": "residence",
    "size": "S",
    "views": {
@@ -266,7 +266,7 @@
    "glbBytes": 250884
   },
   "residence-stack": {
-   "name": "Balcons décalés sur pilotis",
+   "name": "Balcons d\u00e9cal\u00e9s sur pilotis",
    "kind": "residence",
    "size": "M",
    "views": {
@@ -314,7 +314,7 @@
    "glbBytes": 376580
   },
   "residence-courtyard": {
-   "name": "Cour-jardin à portail",
+   "name": "Cour-jardin \u00e0 portail",
    "kind": "residence",
    "size": "L",
    "views": {

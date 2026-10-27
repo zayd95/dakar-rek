@@ -4,8 +4,9 @@
 //  3. nothing of the district stands on a road: no solid taller than a man, wider than a post, on the carriageway of the avenues;
 //  4. the pavement round every block is as free as the villa branch's: a body's circle walked along a line a metre outside each block against the hub's colliders;
 //  5. the Ngor residence keeps its door, its entry and its gate: the interactables stand where the estate put them and nothing solid covers them;
-//  6. the cost of the hub against the villa branch's (docs/proof/ld2e/before/cost.json, measured the same way: every mesh of the scene, visible or not, whatever the camera
-//     sees): the budgets of docs/ld2/LD2_E.md (+60 k triangles, +10 meshes).
+//  7. the rooftop restaurant's stair door (« Terrasse de Ngor ») stands on a hotel's street face and a body walks to it from the pavement;
+//  6. the cost of the hub against the villa branch's (docs/proof/ld2e/before/baseline.json, measured the same way: every mesh of the scene, visible or not, whatever the camera
+//     sees, the hub's own group: see staticCost): the budgets of docs/ld2/LD2_E.md (+60 k triangles, +10 meshes).
 // Usage: node scripts/check-district.mjs <baseUrl> <outDir> [beforeCost.json]   (BASELINE=1: only measure and walk, pass or fail nothing: the villa branch's own build)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -19,7 +20,19 @@ const check = (name, ok, detail = '') => { if (BASELINE) ok = true; results.push
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 // the grid (src/world/builder.ts): block k at −113 + 60 k, 46 m, lots 22 m two apart; the roads between at −120, −60, 0, 60
 const bm = k => -113 + 60 * k, lotOf = (i, j, l) => { const x0 = bm(i) + (l % 2) * 24, z0 = bm(j) + (l >> 1) * 24; return { x0, z0, x1: x0 + 22, z1: z0 + 22, i, j, l }; };
-const staticCost = page => page.evaluate(() => { let meshes = 0, tris = 0; window.__dakar.three.scene.traverse(o => { if (o.isMesh && o.geometry && o.visible) { meshes++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } }); return { meshes, tris: Math.round(tris) }; });
+// The hub's own group: the scene's top-level Group of fewer than 400 meshes with the most triangles (the Almadies' merged batches, shop kits, venue doors and signs: 174 meshes
+// on the villa branch). Everything else in the scene moves with the clock, not with the district: the ambient people (203 meshes after a few seconds), the cars, the road
+// chunks and the neighbouring hubs' streaming (a second Group of 1 700-1 800 meshes that varies by ±40 from one run to the next on the same build). This one is the same to the
+// mesh and the triangle on every run of a build.
+const staticCost = page => page.evaluate(() => {
+  let best = { meshes: 0, tris: 0 };
+  for (const c of window.__dakar.three.scene.children) {
+    if (c.type !== 'Group' || c.name) continue;
+    let meshes = 0, tris = 0; c.traverse(o => { if (o.isMesh && o.geometry) { meshes++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } });
+    if (meshes > 20 && meshes < 400 && tris > best.tris) best = { meshes, tris: Math.round(tris) };
+  }
+  return best;
+});
 
 async function open(quality) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -68,6 +81,21 @@ for (const q of ['low', 'medium']) {
     check('(medium) the Ngor residence keeps its door and its entry on the pavement outside its gate', !!door && !!entry && Math.abs(door.x + 42) < 0.5 && door.z > -7.3 && door.z < -5, JSON.stringify(near));
     const covered = geo.colliders.filter(([x0, z0, x1, z1]) => (door ? door.x > x0 - 0.3 && door.x < x1 + 0.3 && door.z > z0 - 0.3 && door.z < z1 + 0.3 : true));
     check('(medium) nothing solid covers the residence\'s door', !!door && covered.length === 0, JSON.stringify(covered.slice(0, 3)));
+    // 7. the rooftop restaurant's stair door (src/venues/rooftop.ts) stands on the street face of the boutique hotel and a body's circle walks to it from the pavement
+    const roof = await s.d(() => window.__dakar.rooftop?.info?.() ?? null);
+    if (roof) {
+      const D = roof.door, hit = (x, z) => geo.colliders.some(([x0, z0, x1, z1, h]) => h > 0.3 && Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)) < 0.45);
+      const ox = D.x - 30, oz = D.z - 18, nx = 300, nz = 190, step = 0.2, cell = (x, z) => [Math.round((x - ox) / step), Math.round((z - oz) / step)], seen = new Uint8Array(nx * nz);
+      const start = [D.x + 9, -115.5], st = cell(...start), q = [st]; seen[st[1] * nx + st[0]] = 1; let reached = false;
+      while (q.length && !reached) {
+        const [i, j] = q.pop();
+        if (Math.hypot(ox + i * step - D.x, oz + j * step - D.z) < 1.6) reached = true;
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ni = i + a, nj = j + b; if (ni < 0 || nj < 0 || ni >= nx || nj >= nz || seen[nj * nx + ni]) continue; seen[nj * nx + ni] = 1; if (!hit(ox + ni * step, oz + nj * step)) q.push([ni, nj]); }
+      }
+      const hotel = sites.find(st2 => /FILAO|0,1/.test(st2.id) || st2.kind === 'hotel' && st2.rect.x0 < D.x && D.x < st2.rect.x1 && st2.rect.z0 < D.z && D.z < st2.rect.z1);
+      check('(medium) the rooftop restaurant\'s door stands on the street face of a hotel of the district, in the front half of its lot, facing the street', !!hotel && roof.facade.nz === -1 && D.z - hotel.rect.z0 < 12, JSON.stringify({ door: D, facade: roof.facade, hotel: hotel?.id }));
+      check('(medium) a body walks from the pavement to the rooftop restaurant\'s door', reached, JSON.stringify({ door: D }));
+    } else check('(medium) the rooftop restaurant has its door', false, 'no rooftop info');
     medium = s;
   } else await s.context.close();
 }
