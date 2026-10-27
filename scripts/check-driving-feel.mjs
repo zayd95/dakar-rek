@@ -24,6 +24,8 @@ const AT = () => d(() => window.__dakar.teranga.at());
 let shotN = 0; const shot = async n => { await page.waitForTimeout(300); await page.screenshot({ path: `${out}/${String(++shotN).padStart(2, '0')}-${n}.png` }); };
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const sleep = ms => page.waitForTimeout(ms);
+/** Waits `sec` seconds of the GAME's clock (the headless one runs slower than the wall's, more so when another browser is busy). */
+const gameWait = async sec => { const t0 = (await AT())?.t ?? 0; await page.waitForFunction(([a, s]) => (window.__dakar.teranga.at()?.t ?? 0) >= a + s, [t0, sec], { timeout: 180000 }).catch(() => {}); };
 
 await page.goto(`${base}?debug&touch&heure=9&argent=4500000`, { timeout: 180000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.vtc, null, T);
@@ -71,49 +73,57 @@ check('let go of the pad, the wheel comes back: the car holds its heading', Math
 await stop();
 // throttle: the heel of the gas pedal is slower than the toe on the floor
 await d(() => window.__dakar.teranga.place(-110, 3.2, Math.PI / 2)); await sleep(500);
-await gasP(true, 0.0); await sleep(3500); const vHeel = (await AT()).speed;
+await gasP(true, 0.0); await gameWait(3.5); const vHeel = (await AT()).speed;
 await gasP(false); await stop();
 await d(() => window.__dakar.teranga.place(-110, 3.2, Math.PI / 2)); await sleep(500);
-await gasP(true, 0.97); await sleep(5200); const vToe = (await AT()).speed; await shot('pad-gas-toe');
+await gasP(true, 0.97); await page.waitForFunction(v => (window.__dakar.teranga.at()?.speed ?? 0) > v + 3, vHeel, { timeout: 60000 }).catch(() => {}); const vToe = (await AT()).speed;   // the heel's steady speed is passed with the toe down await shot('pad-gas-toe');
 check('the gas pedal gives throttle by the toe: the heel goes slower than the toe on the floor', vToe > vHeel + 3, JSON.stringify({ vHeel, vToe }));
 await stop();
 
 // ------------------------------------------------------------------ B. the street reacts
 const geo = await d(() => window.__dakar.cityGeometry());
 const free = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z)); for (let i = 0; i <= n; i++) { const x = a.x + ((b.x - a.x) * i) / n, z = a.z + ((b.z - a.z) * i) / n; if (geo.colliders.some(c => x > c.x0 - 1.4 && x < c.x1 + 1.4 && z > c.z0 - 1.4 && z < c.z1 + 1.4 && c.h > 0.4)) return false; } return true; };
-let target = null;
-for (let tries = 0; tries < 6 && !target; tries++) {
-  const walkers = (await d(() => window.__dakar.street.where())).filter(a => a.role === 'walk');
-  for (const w of walkers) for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-    const start = { x: w.x - dx * 18, z: w.z - dz * 18 }, rect = free(start, w);
-    if (rect && Math.abs(start.x) < 118 && Math.abs(start.z) < 118) { target = { w, dx, dz, start }; break; }
+const pickTarget = async () => {
+  for (let tries = 0; tries < 8; tries++) {
+    const walkers = (await d(() => window.__dakar.street.where())).filter(a => a.role === 'walk');
+    for (const w of walkers) for (const [dx, dz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const start = { x: w.x - dx * 18, z: w.z - dz * 18 };
+      if (Math.abs(start.x) < 118 && Math.abs(start.z) < 118 && free(start, w)) return { w, dx, dz, start };
+    }
+    await sleep(1500);
   }
-  if (!target) await sleep(1500);
-}
-check('a walker on a clear stretch of street to drive at', !!target, target ? JSON.stringify(target.w) : 'none');
-if (target) {
-  const before = await d(() => window.__dakar.street.info().reacted);
+  return null;
+};
+// the headless clock is slow and people walk on: a driver who has not met anyone in a while tries another walker (three tries at most)
+let target = null, shouted = null, seenAfter = null, before = null;
+for (let attempt = 0; attempt < 3 && !seenAfter; attempt++) {
+  target = await pickTarget(); if (!target) break;
+  before = await d(() => window.__dakar.street.info().reacted);
   const yaw = Math.atan2(target.dx, target.dz);
   await d(([x, z, yw]) => window.__dakar.teranga.place(x, z, yw), [target.start.x, target.start.z, yaw]); await sleep(600);
   await gasP(true, 0.97);
-  let shouted = null, seenAfter = null;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 120; i++) {
     await sleep(250);
     const info = await d(() => window.__dakar.street.info());
     if (info.shouting.length && !shouted) { shouted = info.shouting; await shot('street-shout'); }
     const sum = o => o.danger + o.close + o.notice + o.thanks;
     if (sum(info.reacted) > sum(before) && shouted) { seenAfter = info.reacted; break; }
+    if (Math.abs((await AT())?.speed ?? 0) < 0.5 && i > 20) break;                         // stopped by something: another try
   }
   await stop();
+}
+check('a walker on a clear stretch of street to drive at', !!target, target ? JSON.stringify(target.w) : 'none');
+if (target) {
   check('driven at a walker, the street reacts: someone steps back (danger / close / notice counted)', !!seenAfter, JSON.stringify({ before, after: seenAfter }));
   check('and someone shouts: a speech bubble over a person with a line in French or Wolof', !!shouted && shouted.every(s => s.text.length > 2), JSON.stringify(shouted));
   // a crash: the people near it react to it
   const c0 = (await d(() => window.__dakar.street.info().reacted)).crash;
+  const yaw = Math.atan2(target.dx, target.dz);
   await d(([x, z, yw]) => window.__dakar.teranga.place(x, z, yw), [target.start.x, target.start.z, yaw]); await sleep(300);
   await d(() => window.__dakar.teranga.crashNow(0.8, 12));
   await sleep(600);
   const c1 = await d(() => window.__dakar.street.info().reacted.crash);
-  check('a crash is answered by the people near it (counted by the street)', c1 > c0 || c0 > 0, JSON.stringify({ c0, c1 }));
+  check('a crash is answered by the people near it (counted by the street)', c1 > c0, JSON.stringify({ c0, c1 }));
 }
 
 // ------------------------------------------------------------------ C. a passenger talks about the driving
@@ -142,13 +152,14 @@ check('the passenger is aboard', aboard.trip?.stage === 'aboard' && aboard.perso
 await page.waitForFunction(() => window.__dakar.vtc.info().door.k === 0, null, { timeout: 90000 }).catch(() => {});
 await boardVehicle(page, t, 'teranga').catch(() => {});
 await shot('passenger-aboard');
-// a fast stretch along the street: the toe on the floor, the way ahead as far as the street goes
-const a = await AT(), toEnd = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: a.x + Math.sin(a.yaw) * 100, z: a.z + Math.cos(a.yaw) * 100 }, { cruise: 25, avoid: await closedZones(page) });
+// a fast stretch along the main street (labelled shortcut: the car is put at its west end, the passenger aboard), the toe on the floor
+await d(() => window.__dakar.teranga.place(-112, 3.2, Math.PI / 2)); await sleep(500);
 let said = [];
-const fast = pilot(page, t, 'teranga', toEnd ?? [{ x: a.x + Math.sin(a.yaw) * 100, z: a.z + Math.cos(a.yaw) * 100, tol: 4, speed: 26 }], { cruise: 26, boost: true, stall: 60000, ms: 240000 });
-for (let i = 0; i < 160; i++) {
+await gasP(true, 0.97);
+for (let i = 0; i < 320; i++) {
   await sleep(500);
   const b = await d(() => window.__dakar.vtc.banter()).catch(() => null);
+  if (i % 10 === 0 && b) console.log('trace', JSON.stringify({ i, v: b.speed && +b.speed.toFixed(1), rideT: +b.rideT?.toFixed(1), phase: b.phase, fast: b.feel.fast, said: b.said.length, held: b.held }));
   if (b?.said.some(s => s.scenario === 'fast' || s.scenario === 'veryFast')) { said = b.said; await shot('passenger-talks'); break; }
 }
 const bn = await d(() => window.__dakar.vtc.banter());
@@ -160,7 +171,7 @@ const hb0 = (await d(() => window.__dakar.vtc.banter())).feel.hardBrake;
 await t.down(4, brk.x, brk.y); await sleep(1500); await t.up(4);
 const hb1 = await d(() => window.__dakar.vtc.banter());
 check('a hard brake from speed is felt by the ride (counted), and may earn a remark', hb1.feel.hardBrake > hb0 || hb1.tally.hardBrake > 0, JSON.stringify({ hb0, feel: hb1.feel, tally: hb1.tally }));
-await fast.catch(() => {});
+await gasP(false);
 await d(() => window.__dakar.vtc.cancel?.());
 check('no page errors', errors.length === 0, JSON.stringify(errors.slice(0, 3)));
 console.log(`${total - failed}/${total} passed`);

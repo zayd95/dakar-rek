@@ -111,7 +111,9 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
   const R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5), t0 = Date.now();
   let gasOn = false, steerNow = 0;
   const stick = async () => rocker(steerNow);
-  const press = async on => { if (on === gasOn) return; gasOn = on; await gasP(on, boost); };                    // `boost`: the toe on the floor (the boosted range, for a drive at speed)
+  let gasLevel = 0.8;
+  // `boost`: the toe on the floor (the boosted range, for a drive at speed). Creeping to a kerb or into a bay (a limit under 3.2 m/s) is done with the heel, as a driver does: the car does not leap at the pedal.
+  const press = async (on, level = boost ? true : 0.8) => { if (on === gasOn && level === gasLevel) return; gasOn = on; gasLevel = level; await gasP(on, level); };
   const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   let at = null, prev = null, last = null, seen = null;
@@ -139,7 +141,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       steerNow = steer; await stick();
       const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.5 ? 0.4 : 1) * (d < 9 ? 0.7 : 1);
       await brake(at.speed > limit + 1.2);                               // a corner is taken slowly: the brake, then the gas again
-      await press(at.speed < limit);
+      await press(at.speed < limit, boost ? true : limit < 3.2 ? 0 : 0.8);
       await page.waitForTimeout(90);
     }
     prev = { x: w.x, z: w.z };

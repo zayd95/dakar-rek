@@ -109,6 +109,8 @@ export class Banter {
   private lastAny = -99; private lastSame: Partial<Record<Scenario, number>> = {};
   private stoppedFor = 0; private smoothFor = 0;
   private held: { sc: Scenario; until: number } | null = null;
+  /** The remark held back by the pause, if any (debug). */
+  get heldNow() { return this.held ? { ...this.held } : null; }
   /** What the passenger has said (the checks). */
   readonly said: { scenario: Scenario; line: string; at: number }[] = [];
   /** What happened in the ride so far, said or not (it sets the farewell). */

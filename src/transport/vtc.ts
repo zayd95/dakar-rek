@@ -538,7 +538,7 @@ class Vtc implements GameModule {
         accept: (i: number) => { const w = this.ctx.world(); if (!w) return false; const r = vtcRequests(w.id, this.ctx.day(), this.ctx.hour())[i]; return r ? this.accept(r) : false; },
         stops: () => { const t = this.trip; return t ? { pickup: stopOf(t.pickup), dropoff: stopOf(t.dropoff) } : null; },
         /** Checks: what the passenger of the ride in hand has said about the driving, their temper and the ride's tally; and what the drive has been (src/transport/driveFeel.ts). */
-        banter: () => ({ temper: this.banter?.temper ?? null, said: this.banter ? this.banter.said.map(x => ({ ...x })) : [], tally: this.banter ? { ...this.banter.tally } : null, feel: { ...driveFeel.tally }, speed: driveFeel.snap?.speed ?? null }),
+        banter: () => ({ temper: this.banter?.temper ?? null, said: this.banter ? this.banter.said.map(x => ({ ...x })) : [], tally: this.banter ? { ...this.banter.tally } : null, feel: { ...driveFeel.tally }, speed: driveFeel.snap?.speed ?? null, rideT: this.rideT, phase: this.phase, held: this.banter ? this.banter.heldNow : null }),
         cancel: () => this.cancel(),
         /** Checks: the passenger's and the driver's bodies, measured (skinned vertices) in their car's frame, against the car's cabin (src/transport/cabinFit.ts). */
         fit: () => {
