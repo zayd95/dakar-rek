@@ -1,0 +1,18 @@
+05:55:56 boot
+PASS: the beach is a venue of the Almadies, with its anchors and its people {"anchors":9,"present":12,"moment":"day"}
+PASS: « Coco frais · jus » is offered at the stall 
+PASS: coconut water: 500 F paid once, the mood up {"paid":500,"moral":[70.06908561306386,73.53774980376326]}
+PASS: « Lunettes & chapeaux » is offered at the stall 
+PASS: sunglasses: 3 000 F paid once, counted as a purchase {"paid":3000,"achats":1,"lunettes":1}
+PASS: « Transats » is offered by the sun beds 
+PASS: a rented sun bed: the player lies on it (the camera goes to the sea), 500 F paid {"lying":"almadies:ngor:bed:0","wallet":96000}
+PASS: the rest is done: energy and mood up, one rental counted {"energie":[88.42826900000236,99.98650000000006],"transat":1}
+PASS: the embarkation: « Guichet · Île de Ngor » 
+PASS: the guichet answers: the village, the beach, the rooftop restaurant Guichet · Île de NgorLe village aux ruelles de sable, la plage, les restaurants sous les parasols, et « Sunu Toit » pour dîner sur un toit avec vue.🛶Les départ
+PASS: the lookout deck: « Lunette sur l’île » 
+PASS: at the telescope the view goes to the island 
+PASS: the island was looked at once 
+PASS: the day’s card: a purchase, a rest and the island 🏖️Ta première journée à la plage de Ngor🛍️ Tu as fait un achat sur la plage🏖️ Tu t’es reposé sur un transat🔭 Tu as regardé l’îleIl ne reste qu’à la traverse
+PASS: no schema change: only ng_ counters were written by the beach 
+PASS: no JavaScript errors 
+16/16 Ngor beach checks passed
