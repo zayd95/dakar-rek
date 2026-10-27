@@ -14,6 +14,31 @@ float gNoise(vec2 p) {
   return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y);
 }`;
 
+/**
+ * The player's headlights on the street at night (src/transport/headlightPool.ts sets these each frame; strength 0 by day and on foot): every grain
+ * material — the carriageway, its markings, the kerbs and pavements, the walls by the road — is lit by them as by a lamp, its own colour times
+ * the light, so the white markings and the pale kerbs come out of the dark asphalt. No light source, no shadow, no draw call: a few operations per
+ * pixel of these materials, the same uniforms shared by all of them (`HEADLIGHT_UNIFORMS`).
+ */
+export const HEADLIGHT_UNIFORMS = {
+  /** The lamps (world: the middle of the front bumper, at the lamps' height), the heading (x, z unit), the reach (m), the strength (0: off) and colour. */
+  uHlPos: { value: new THREE.Vector3() }, uHlDir: { value: new THREE.Vector2(0, 1) }, uHlReach: { value: 36 }, uHlK: { value: 0 }, uHlColor: { value: new THREE.Color(0xfff0d8) },
+  /** The beam's half width at the bumper (m) and how fast it widens (m per m ahead). */
+  uHlWidth: { value: new THREE.Vector2(1.2, 0.3) },
+};
+const HEADLIGHT_GLSL = /* glsl */ `
+uniform vec3 uHlPos; uniform vec2 uHlDir; uniform float uHlReach; uniform float uHlK; uniform vec3 uHlColor; uniform vec2 uHlWidth;
+float hlBeam(vec3 p, vec3 n) {
+  vec3 d = p - uHlPos;
+  float a = dot(d.xz, uHlDir), l = dot(d.xz, vec2(uHlDir.y, -uHlDir.x)), w = uHlWidth.x + uHlWidth.y * max(a, 0.0);
+  float beam = smoothstep(0.0, 1.5, a) * (1.0 - smoothstep(uHlReach * 0.5, uHlReach, a)) * (1.0 - smoothstep(w * 0.55, w, abs(l)));
+  float fall = 1.0 / (1.0 + a * a / 260.0);
+  vec3 L = normalize(-d);
+  // the road and the pavements (up-facing) take the beam at a grazing angle but still read; a face toward the car takes it fully; nothing above 3 m
+  float face = max(dot(n, L), 0.0), lit = n.y > 0.5 ? max(face, 0.55) : face;
+  return beam * fall * lit * (1.0 - smoothstep(1.6, 3.2, d.y));
+}`;
+
 /** Low quality switches off procedural noise and the world-space detail textures (both per-pixel costs). Read when a hub is built. */
 let noiseOn = true;
 export function setGrainEnabled(on: boolean) { noiseOn = on; }
@@ -34,11 +59,14 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
     shader.uniforms.uDetailSize = { value: detailSize };
     shader.uniforms.uRelief = { value: relief };
     shader.uniforms.uGrainScale = { value: scale };
+    Object.assign(shader.uniforms, HEADLIGHT_UNIFORMS);                           // shared objects: one update a frame lights every grain material
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vGrainPos;\nvarying vec3 vGrainN;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vGrainN = normalize(mat3(modelMatrix) * objectNormal);');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uGrain;\nuniform float uGrainScale;\n' + (detail ? 'uniform sampler2D uDetail;\nuniform float uDetailSize;\nuniform float uRelief;\n' : '') + NOISE)
+      .replace('#include <common>', '#include <common>\nuniform float uGrain;\nuniform float uGrainScale;\n' + (detail ? 'uniform sampler2D uDetail;\nuniform float uDetailSize;\nuniform float uRelief;\n' : '') + NOISE + HEADLIGHT_GLSL)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+      if (uHlK > 0.0) reflectedLight.directDiffuse += diffuseColor.rgb * uHlColor * (uHlK * hlBeam(vGrainPos, normalize(vGrainN)));`)
       .replace('#include <color_fragment>', `#include <color_fragment>
       {
         vec3 gp = vGrainPos * uGrainScale;
@@ -91,6 +119,6 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
     }
   };
   // strength, scale, relief and the texture are uniforms: materials share one program per variant (faster start-up)
-  mat.customProgramCacheKey = () => `grain-${noise}-${windows}-${!!detail}-${bump}`;
+  mat.customProgramCacheKey = () => `grain-hl-${noise}-${windows}-${!!detail}-${bump}`;
   return mat;
 }

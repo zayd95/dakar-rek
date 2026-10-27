@@ -67,6 +67,7 @@ describe('place kinds and names', () => {
     expect(k('pikine:cafe:02', 'Café Touba · Parcelles')).toBe('food');
     expect(k('almadies:city:mall-juice', 'Jus & Go')).toBe('food');
     expect(k('plateau:station', 'Car rapide · changer de quartier')).toBe('transport');
+    expect(k('almadies:port', 'Embarcadère de Ngor')).toBe('transport');
     expect(k('pikine:arena', 'Arène · làmb')).toBe('arena');
     expect(k('pikine:ecurie', 'Écurie Baobab')).toBe('arena');
     expect(k('plateau:venue:mosque:11:salle', 'Salle de prière')).toBe('mosque');

@@ -27,8 +27,11 @@ export const CITY_ACTIONS = {
     { id: 'craft-panier', label: 'Acheter un petit panier tressé', detail: 'Fait main à l’atelier', cost: 1500, needs: { moral: 8 }, seconds: 2 },
   ],
   bank: [
+    // Banque Teranga v1 (src/economy/bankModule.ts): the savings account at the counter, and the conseillère's advice read from the player's real accounts
+    { id: 'compte-ouvrir', label: 'Ouvrir un compte', detail: 'Épargne Teranga · gratuit, ton argent à l’abri', seconds: 0, icon: '🏦', special: 'bank', visible: s => s.data.bank.opened < 0 },
+    { id: 'epargne', label: 'Mon épargne', detail: 'Déposer, retirer, ton objectif', seconds: 0, icon: '🏦', special: 'bank', visible: s => s.data.bank.opened >= 0 },
     { id: 'courrier', label: 'Livrer les dossiers de l’agence', detail: 'Une petite mission rémunérée · +2 100 F', gain: 2100, needs: { energie: -20, faim: -5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
-    { id: 'conseiller', label: 'Parler de son projet au conseiller', detail: 'Une maison, un commerce… on en parle', needs: { social: 10, moral: 5 }, seconds: 3, counter: 'chats' },
+    { id: 'conseiller', label: 'Demander conseil à la conseillère', detail: 'Épargne, projets, crédits : ce qu’elle voit dans tes comptes', needs: { social: 10, moral: 5 }, seconds: 3, counter: 'chats', icon: '💬', special: 'bankAdvice' },
   ],
   mall: [
     { id: 'expo', label: 'Installer les stands d’une exposition', detail: 'Avant l’ouverture · +2 800 F', gain: 2800, needs: { energie: -22, hygiene: -6 }, seconds: 5, counter: 'shifts', requires: energy(22) },

@@ -8,6 +8,7 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "build:online": "tsc --noEmit && vite build --mode online",
+    "build:showcase": "tsc --noEmit && VITE_OWNER_SHOWCASE=1 vite build --config vite.artifact.config.ts",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

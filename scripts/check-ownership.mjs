@@ -219,7 +219,9 @@ let savedJson = null;
   check('the next hour: rents in, the apartment’s rent out (250 F per in-game hour)', led2.some(l => /^Loyer · Appartement F2/.test(l.label) && l.amount <= -250 && l.amount % 1 === 0), `${rentPaid} · ${led2.slice(0, 2).map(l => l.label + ' ' + l.amount).join(' | ')}`);
 
   // phone: « Biens » and the wallet
-  await page.locator('#menuBtn').click(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await settle(page, 600);
+  // since the phone became the life hub (U2), « Biens » is one of the apps: the home's « Apps » destination, then its tile
+  await page.locator('#menuBtn').click(); await settle(page, 400);
+  await page.locator('#phone .hm-dest [data-go="apps"]').click(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await settle(page, 600);
   await page.screenshot({ path: `${out}/desktop-phone-home.png` });
   await page.locator('#phone [data-app="biens"]').click(); await settle(page, 400);
   m = await modal(page);
@@ -232,19 +234,19 @@ let savedJson = null;
   await closeModal(page);
   await D(page, () => window.__dakar.phone('portefeuille')); await settle(page, 400);
   const wtxt = await D(page, () => document.querySelector('#phone .ph-screen').textContent);
-  check('wallet: value of assets, total wealth, income and charges per hour', /Valeur des biens/.test(wtxt) && /Fortune totale/.test(wtxt) && /Loyers et charges/.test(wtxt), wtxt.slice(0, 160));
+  check('wallet: value of assets, total wealth, income and charges per hour', /Valeur de tes biens/.test(wtxt) && /Fortune totale/.test(wtxt) && /Revenus et charges/.test(wtxt) && /Loyers et charges/.test(wtxt), wtxt.slice(0, 400));   // the « Argent » app's wording since LD2.0-A
   await page.screenshot({ path: `${out}/desktop-phone-wallet.png` });
   await D(page, () => window.__dakar.phoneClose());
   // the Dibi (venues module) talks business through the ownership sheet
   const dibi = await D(page, () => window.__dakar.dibiBusiness()); m = await modal(page);
   check('Dibi « Parler affaires » opens the ventures sheet', dibi?.offer && /Affaires/.test(m.title) && m.items.some(t => t.includes('Voir les affaires à acheter')), `${JSON.stringify(dibi)} · ${m.title}`);
   await pick(page, 'Voir les affaires à acheter'); m = await modal(page);
-  check('… and leads to the « Affaires » app', m.items.some(t => /Table de bana-bana/.test(t)), m.items.slice(0, 3).join(' | '));
+  check('… and leads to the « Affaires » app', m.items.some(t => /table à céder|Table de bana-bana/i.test(t)) && m.items.some(t => /Voir toutes les affaires/.test(t)), m.items.slice(0, 3).join(' | '));   // since LD2.0-A the bana-bana table is a physical one « à céder »
   await closeModal(page);
 
   // reload: everything persisted
   const before = await est(page), wb = await wallet(page);
-  await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
+  await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-sv="now"]').click();   // the save card's « Sauvegarder maintenant » (src/ui/saveCard.ts) await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await settle(page, 1200);
   const after = await est(page), ver = await D(page, () => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion);
   check('reload: assets, placements, home and wallet persisted (schema v6)', ver === 6 && JSON.stringify(after.assets) === JSON.stringify(before.assets) && after.home === before.home && (await wallet(page)) >= wb - 300, `${ver} · ${after.assets.length} assets`);
@@ -287,10 +289,12 @@ let savedJson = null;
   await page.waitForFunction(() => document.querySelector('#placer.on'), null, T).catch(() => {});
   if (!(await D(page, () => document.getElementById('placer').classList.contains('open')))) await page.locator('#placer [data-a="more"]').tap();   // the list and the arrows are in the drawer
   await page.locator(`#placer [data-uid="${bed.uid}"]`).tap(); await settle(page, 300);
-  await page.locator('#placer [data-a="right"]').tap(); await page.locator('#placer [data-a="down"]').tap(); await settle(page, 300);
+  // the F2 is walkable since LD2.0-C: the bed is placed against the bedroom's wall, so the arrows move it away from the walls (left, up), and if
+  // the plan refuses that spot the fallback is the middle of the bedroom (the open room's old (0, 1.5) is in front of the séjour's arches now)
+  await page.locator('#placer [data-a="left"]').tap(); await page.locator('#placer [data-a="up"]').tap(); await settle(page, 300);
   let pi = await D(page, () => window.__dakar.placer.info());
   await page.screenshot({ path: `${out}/phone-placement.png` });
-  if (pi.why) { await D(page, () => window.__dakar.placer.moveTo(0, 1.5)); pi = await D(page, () => window.__dakar.placer.info()); }
+  if (pi.why) { await D(page, () => window.__dakar.placer.moveTo(-2.75, -1.75)); pi = await D(page, () => window.__dakar.placer.info()); }
   await page.locator('#placer [data-a="put"]').tap(); await settle(page, 300);
   const bedAt = (await est(page)).assets.find(a => a.uid === bed.uid).at;
   check('phone: the bed moved and saved by touch', !!bedAt && Math.abs(bedAt.x - pi.pending.x) < 1e-6 && Math.abs(bedAt.z - pi.pending.z) < 1e-6, JSON.stringify(bedAt));
@@ -316,7 +320,8 @@ let savedJson = null;
   check('phone: awake, up beside the mattress (no longer lying)', awake.seat === null && awake.clip !== 'Lie' && Math.hypot(awake.pos.x - bp.x, awake.pos.z - bp.z) > 0.7, JSON.stringify({ ...awake, bed: bp }));
   // phone « Biens » by touch
   await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T); await settle(page, 600);
-  await page.locator('#menuBtn').tap(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+  await page.locator('#menuBtn').tap(); await settle(page, 400);
+  await page.locator('#phone .hm-dest [data-go="apps"]').tap(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});   // « Biens » is one of the apps (U2)
   await page.locator('#phone [data-app="biens"]').tap(); await settle(page, 400);
   const m = await modal(page);
   check('phone: « Biens » fits the screen', m.title === 'Biens' && (await D(page, () => { const p = document.querySelector('#modal .panel').getBoundingClientRect(); return p.width <= 390 && p.left >= 0; })), m.items.length);

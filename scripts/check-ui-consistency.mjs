@@ -1,5 +1,5 @@
 // The consistency pass over the surfaces a player touches: the phone's screens (home, Profil, Argent, Travail, Maison, Carte, Réglages, Notifications,
-// Santé, Carnet, Aide) and the HUD's sheets (the Maison app's house sheet, an asset's sheet, the HUD on foot). On each one, measured on the page:
+// Santé, Carnet, Aide, Pistes, Banque, Messages: its list, « Nouveau message », a conversation) and the HUD's sheets (the Maison app's house sheet, an asset's sheet, the HUD on foot). On each one, measured on the page:
 //   – every visible control is at least 44 px tall (Apple's minimum touch target) — a list of the ones under it;
 //   – no visible text under 11 px;
 //   – one family of type (the HUD and the phone share the system stack);
@@ -13,7 +13,8 @@ const [base = 'http://localhost:4601/', out = '/tmp/claude-0/beta/ui'] = process
 fs.mkdirSync(out, { recursive: true });
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail: String(detail).slice(0, 400) }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${String(detail).slice(0, 400)}`); };
-const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide'];
+// Messages (LD2.0-B): the list, « Nouveau message » and a conversation, on the simulated account (`fakeonline`: also Argent's Teranga Money block)
+const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque', 'messages', 'messages:new', 'messages:a11ce0000000a001'];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 try {
@@ -22,7 +23,7 @@ try {
   const page = await ctx.newPage(); page.setDefaultTimeout(300000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   const d = (fn, a) => page.evaluate(fn, a);
-  await page.goto(`${base}?debug&touch&heure=11&argent=2000000`, { timeout: 180000 });
+  await page.goto(`${base}?debug&touch&fakeonline&heure=11&argent=2000000`, { timeout: 180000 });
   await page.waitForFunction(() => window.__dakar?.pos?.().hub && window.__dakar.estate && !document.getElementById('studio'), null, { timeout: 300000 });
   await page.waitForTimeout(2500);
 
@@ -64,9 +65,9 @@ try {
   // the phone's screens
   for (const id of SCREENS) {
     await d(a => window.__dakar.phone(a), id);
-    await page.waitForFunction(a => window.__dakar.phoneInfo().screen === a, id, { timeout: 60000 }).catch(() => {});
+    await page.waitForFunction(a => window.__dakar.phoneInfo().screen === a.split(':')[0], id, { timeout: 60000 }).catch(() => {});
     await page.waitForTimeout(900);
-    await page.screenshot({ path: `${out}/phone-${id}.png` });
+    await page.screenshot({ path: `${out}/phone-${id.replace(/:/g, '-')}.png` });
     judge(`phone ${id}`, await audit('#phone'));
   }
   await d(() => window.__dakar.phoneClose()); await page.waitForTimeout(600);

@@ -116,20 +116,36 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     plain.box(0.3, 0.2, 0.25, BX + 12.9, G + 1.05, BZ + 36.0, 0x2b2b33);                   // till
     solid(12.4, 35.7, 14.6, 36.3, 1.1);
   }
-  // display pieces: [catalogue id, u, v, quarter turns]; the seats of the sofas, armchair, chairs and bed can be tried
+  // display pieces: [catalogue id, u, v, quarter turns], set out room by room (LD2.0-C: the dining set, the kitchen and bathroom corners, the pictures,
+  // the hanging lamps and the outdoor furniture on the forecourt). The seats of the sofas, armchair, chairs, dining set, garden set and bed can be tried.
+  // The way in (u 7.5 … 11.5 from the door to the till) stays free: scripts/check-keur-meubles.mjs walks it.
   const display: [string, number, number, number][] = [
-    ['canape_wax', 5.0, 32.85, 0], ['tapis_soie', 5.0, 34.6, 0], ['table_basse', 5.0, 34.5, 0], ['fauteuil_cuir', 7.6, 33.0, 0],
-    ['lit_bois', 3.45, 38.2, 1], ['tele_plate', 10.0, 32.55, 0], ['bureau_bois', 11.9, 33.0, 0], ['armoire_bois', 14.8, 32.6, 0],
-    ['table_manger', 9.5, 36.6, 0], ['chaise_bois', 9.5, 35.75, 0], ['chaise_bois', 9.5, 37.45, 2], ['cuisiniere', 2.6, 40.2, 1],
-    ['banquette', 5.0, 42.7, 0], ['jardiniere', 11.0, 42.3, 0],
-    ...(lite ? [] : [['lampadaire_laiton', 2.8, 32.8, 0], ['palmier', 15.2, 40.4, 0], ['plante', 2.7, 36.0, 0], ['enceintes', 12.5, 39.8, 3]] as [string, number, number, number][]),
+    // the living room: the sofa on its rug, the coffee table and a velvet pouf, the armchair, the crystal candelabra, the TV unit, the desk, a canvas
+    // above the sofa and carved masks above the desk (the catalogue's second round: the pouf, the candelabra, the masks)
+    ['canape_wax', 5.0, 32.85, 0], ['tapis_soie', 5.0, 34.6, 0], ['table_basse', 5.0, 34.5, 0], ['pouf_velours', 6.4, 34.5, 0], ['fauteuil_cuir', 7.6, 33.0, 0],
+    ['candelabre_cristal', 8.5, 32.65, 0], ['meuble_tv', 10.0, 32.55, 0], ['bureau_bois', 11.9, 33.0, 0], ['armoire_bois', 14.8, 32.6, 0], ['toile_artiste', 5.0, 32.38, 0],
+    ['masques_sculptes', 11.9, 32.345, 0],
+    // the bedroom: the canopy bed with its voiles, its bedside table, a chest of drawers and the sous-verre above it; the reef tank on the east wall
+    ['lit_baldaquin', 3.45, 38.2, 1], ['chevet_bois', 2.51, 36.95, 1], ['commode', 2.52, 34.4, 1], ['sous_verre', 2.32, 34.4, 1], ['aquarium_mer', 15.45, 34.6, 3],
+    // the dining set under a woven hanging lamp
+    ['salle_manger_bois', 9.5, 36.6, 0], ['suspension_osier', 9.5, 36.6, 0],
+    // the kitchen corner: the cooker, a kitchen table and its stools, the microwave and the water dispenser
+    ['cuisiniere', 2.6, 40.2, 1], ['table_cuisine_bois', 4.4, 40.0, 0], ['micro_ondes', 5.65, 40.3, 0], ['fontaine_eau', 6.45, 40.32, 0],
+    // the bathroom corner on the east wall: a vanity, its lit mirror, a heated towel rail
+    ['meuble_vasque', 15.46, 37.7, 3], ['miroir_lumineux', 15.63, 37.7, 3], ['seche_serviettes', 15.65, 38.65, 3],
+    // out front: the bench and the planter, a deck chair, and the garden set under its parasol and a sun lounger on the forecourt
+    ['banquette', 5.0, 42.7, 0], ['jardiniere', 11.0, 42.3, 0], ['transat', 2.9, 43.0, 0], ['salon_teck', 14.4, 43.5, 0], ['bain_soleil', 17.0, 43.4, 0],
+    ['jarre_herbes', 6.25, 42.7, 0], ['lanternes_fer', 2.75, 41.6, 0],
+    ...(lite ? [] : [['lampadaire_laiton', 2.8, 32.8, 0], ['palmier', 15.2, 40.4, 0], ['plante', 2.7, 36.0, 0], ['enceintes', 12.5, 39.8, 3],
+      ['lustre', 5.0, 34.6, 0], ['vitrine', 13.35, 32.55, 0], ['lampadaire_arc', 6.6, 32.9, 3], ['ventilo_pied', 4.0, 36.6, 0], ['canari', 7.05, 40.6, 0]] as [string, number, number, number][]),
   ];
   const models: THREE.Object3D[] = [];
   display.forEach(([id, u, v, rot], n) => {
     const f = furnitureSpec(id); if (!f) return;
     const p = W(u, v), at: Placement = { x: p.x, z: p.z, rot };
-    const g = furnitureModel(f); g.position.set(p.x, G + 0.03, p.z); g.rotation.y = yawOf(at); models.push(g);
-    if (!f.flat) { const r = footprint(f, at); cols.push({ ...r, h: 1.0 }); }
+    const lift = f.mount === 'ceiling' ? 3.72 - 0.03 - 2.8 : 0;                                // a hanging lamp hangs from the showroom's roof
+    const g = furnitureModel(f); g.position.set(p.x, G + 0.03 + lift, p.z); g.rotation.y = yawOf(at); models.push(g);
+    if (!f.flat && !f.mount) { const r = footprint(f, at); cols.push({ ...r, h: 1.0 }); }
     (f.seats ?? []).forEach((s, k) => { const [x, z] = toHome(at, s.x, s.z); seats.push({ id: `pikine:jamm:display:${n}:${k}`, x, z, top: s.top - 0.1 + G + 0.03, yaw: yawOf(at) + s.yaw, kind: s.kind, space: 'street', occupant: null }); });
   });
   for (const m of mergeStatic(models)) hub.group.add(m);

@@ -27,7 +27,9 @@ import { berline, suv } from '../transport/premiumCars';
 import { gainde, ndiayeSales, rafet, sarrSales, teranga } from '../transport/modelCars';
 import { sarrAuto } from '../transport/sarrAuto';
 import { creditClock } from '../economy/creditModule';
+import { bankModule } from '../economy/bankModule';
 import { streak } from '../economy/streakModule';
+import { pistesModule } from '../economy/pistesModule';
 import { navigation } from './navigation';
 import { arrivalSignsModule } from '../world/arrivalSigns';
 import { vtc } from '../transport/vtc';
@@ -44,6 +46,7 @@ import { VenuesModule } from '../venues';
 import { RooftopModule } from '../venues/rooftop';
 import { gareModule } from './gare';
 import { ESTATE_MODULE } from '../economy/estate';
+import { banaModule } from '../economy/banaModule';
 import { shopsModule } from './shops';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
@@ -67,6 +70,9 @@ import { football } from './football';
 import { mermozModule } from '../districts/mermoz';
 import { tradeModule } from '../districts/trade';
 import { almadiesModule } from '../districts/almadies';
+import { VISIT_MODULE } from '../online/visit';
+import { MEETUPS_MODULE } from '../online/meetups';
+import { villaModule } from '../villa/module';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -253,7 +259,8 @@ export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
   wolofModule,
   ESTATE_MODULE,        // before the parked cars (assetKit): the homes' gates and directory entries are places they keep clear of
-  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, creditClock, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  banaModule,           // the player's bana-bana table by the Maïga du marché (src/economy/banaModule.ts): before the street dressing, which keeps off its ground
+  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
@@ -275,4 +282,7 @@ export const MODULES: GameModule[] = [
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)
   signFitModule,        // every painted board repainted at its plane's own proportions after the hub is built (src/game/signFit.ts)
   pikineDnaModule,      // Pikine Street DNA phase 2: the first walk's walls, gates, wires, landmarks, in one draw call (src/game/pikineDna.ts)
+  VISIT_MODULE,         // LD2.0-B: home invitations — the host's snapshot, the guest at the door and inside, read-only; presence `home:<tag>` (src/online/visit.ts)
+  MEETUPS_MODULE,       // LD2.0-B: meetings at real places of the city at a city time — places, « Y aller », being there (src/online/meetups.ts)
+  villaModule,          // LD2.0-D: the flagship villa's life — its gate, « Garer à la villa », the swim, the reception, the helicopter (src/villa/module.ts)
 ];

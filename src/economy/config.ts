@@ -59,6 +59,22 @@ export const ECONOMY = {
     maxCatchUpHours: 24,
   },
   /**
+   * The player's own bana-bana table in Pikine (src/economy/bana.ts), on top of the venture's hourly income (unchanged: « la famille tient la table quand
+   * tu n'es pas là »). Kept by the player: goods bought from the market's wholesaler at `cost`, sold one customer at a time at `price` (`qty`: what a
+   * customer takes, at most what is left). A full table of customers (`clientele.max`) brings ≈ 1 600 F of profit — about one Tiak Tiak delivery — and
+   * the customers come back with PLAYED time only (one every `everyHours` in-game hours, the first `start` come with the table): no farming, nothing offline.
+   */
+  bana: {
+    goods: [
+      { id: 'arachides', name: 'Cornet d’arachides', one: 'un cornet d’arachides', plural: 'cornets d’arachides', icon: '🥜', cost: 50, price: 100, lot: 10, max: 30, qty: [2, 5] },
+      { id: 'recharge', name: 'Carte de recharge 1 000 F', one: 'une carte de recharge', plural: 'cartes de recharge', icon: '📱', cost: 900, price: 1000, lot: 5, max: 10, qty: [1, 2] },
+      { id: 'mouchoirs', name: 'Paquet de mouchoirs', one: 'un paquet de mouchoirs', plural: 'paquets de mouchoirs', icon: '🧻', cost: 60, price: 100, lot: 10, max: 20, qty: [1, 3] },
+    ] as readonly { id: string; name: string; one: string; plural: string; icon: string; cost: number; price: number; lot: number; max: number; qty: readonly [number, number] }[],
+    clientele: { start: 4, max: 12, everyHours: 1 },
+    /** The player is « at the table » within this many metres of it; walking further away closes the session (the till is paid). */
+    reach: 2.6, leave: 6,
+  },
+  /**
    * Variety (« polyvalence »): distinct activity categories practised within the window (played time) raise ACTIVE pay only
    * (shifts, deliveries, services). It is an optional bonus: it never gates a purchase and never touches passive income
    * (ventures, rents).
@@ -149,6 +165,80 @@ export const ECONOMY = {
     classRef: 6_000_000, classExp: 0.3, classMin: 0.3, classMax: 2.2,
     /** The partial repair brings the car back to this condition (« remise en route »), or no lower than where it is. */
     partialTo: 70,
+  },
+  /**
+   * Banque Teranga (src/economy/bank.ts, docs/MONEY.md): the savings account « Épargne Teranga ». Once per player day (SaveData.play.day: the days the
+   * player plays, never the ones that go by while away, never offline), the bank pays interest on the savings carried into that day: the rate and the
+   * daily cap of the highest level the balance has reached. Each level above the first is celebrated once. Small next to work on purpose (a Tiak
+   * delivery pays 1 000–2 400 F) and next to a venture (a bana-bana table at 50 000 F brings 400 F per city hour): saving keeps money safe and moves
+   * toward a goal, it is not a way to get rich.
+   */
+  bank: {
+    levels: [
+      { from: 0, rate: 0.005, cap: 100 },
+      { from: 25_000, rate: 0.01, cap: 250 },
+      { from: 100_000, rate: 0.01, cap: 500 },
+      { from: 500_000, rate: 0.01, cap: 1_000 },
+    ],
+    /** Quick amounts of a deposit or a withdrawal (« Tout » is offered beside them). */
+    chips: [5_000, 10_000, 25_000, 50_000],
+    /** The savings goals offered: these ventures (ECONOMY.business tiers) at the price the player would pay for the next unit. */
+    goalTiers: ['bana', 'kiosque', 'boutique'],
+  },
+  /**
+   * LD2.0-B « Belong Online » (docs/ld2/LD2_B_CONTRACT.md): Teranga Money, the server-held account, and the Messages account around it. The server
+   * (server/social.ts, through src/online/ledgerRules.ts) enforces these and sends the money limits in `welcome`; the device only shows them first.
+   * The server day is the UTC date. Game money only.
+   */
+  online: {
+    /** One operation (a send, a request, a top-up, a withdrawal): 1 … opMax F. */
+    opMax: 250_000,
+    /** Brought in from devices' wallets per server day (top-ups, including a send's top-up part). */
+    fundDayMax: 500_000,
+    /** Sent to other players per server day, and received from them. */
+    sendDayMax: 500_000, receiveDayMax: 1_000_000,
+    /** Largest Teranga Money balance. */
+    balanceMax: 5_000_000,
+    /** Items kept per conversation on the server (the newest), and a page of history (conversation items, money operations). */
+    convMax: 500, page: 50,
+    /** A home snapshot as JSON, at most (characters). */
+    snapshotMax: 12_000,
+    /** How long an invitation stays good (ms of real time) unless revoked; its `until`. */
+    inviteMs: 24 * 3_600_000,
+    /**
+     * A meeting's window around its time (server ms of real time): from 5 real minutes before to 10 after. In city time that is 5 hours before to 10 after
+     * (src/core/clock.ts: 1 city hour = 1 real minute): the city's clock runs fast, players have to cross the city on foot or by car. A meeting
+     * « maintenant » gets its time when it is accepted.
+     */
+    meetEarlyMs: 5 * 60_000, meetLateMs: 10 * 60_000,
+    /** How long a « maintenant » proposal waits for its answer before it is missed (ms of real time: a quarter of a city day). */
+    meetNowOpenMs: 6 * 60_000,
+    /** Furthest ahead a meeting may be set (ms of real time). */
+    meetAheadMs: 7 * 86_400_000,
+    /** How long CityRoom keeps an account's answer to « may this guest be in this home? » (ms). */
+    visitCacheMs: 30_000,
+  },
+  /**
+   * La traversée (docs/TRAVERSEE.md, src/sea/traverseeRules.ts): the Embarcadère de Ngor's crossings to the island, by pirogue or by chaloupe. Fares per
+   * person and per leg, paid once on arrival; Ousmane owns the boats and keeps his share of each leg's fares (less once he trusts the player:
+   * `ousmane_trust`). The chaloupe carries fewer customers who pay better, faster and smoother, once Ousmane has seen the player take the pirogue
+   * across `chaloupeAfter` times. Customers: [quiet hours, busy hours] going across; a range coming back. Speeds in m/s on the water. Game money only.
+   */
+  traversee: {
+    /** City hours when crossings leave [from, to). */
+    hours: [7, 19] as readonly [number, number],
+    /** The busy hours: the boats fill up (and the place's peaks for the city's life). */
+    busy: [[9, 12], [16, 18]] as readonly (readonly [number, number])[],
+    boats: {
+      pirogue: { fare: 1000, out: [3, 4] as readonly [number, number], back: [1, 3] as readonly [number, number], speed: 5.5 },
+      chaloupe: { fare: 2500, out: [2, 3] as readonly [number, number], back: [1, 2] as readonly [number, number], speed: 7.5 },
+    },
+    /** Ousmane's share of a leg's fares; with his trust. */
+    share: 0.4, shareTrusted: 0.3,
+    /** Completed pirogue round trips before Ousmane hands over his chaloupe. */
+    chaloupeAfter: 3,
+    /** A round trip at the helm: a little tiring, the sea air lifts the mood. Below this energy the player is too tired to go. */
+    needs: { energie: -8, moral: 4 }, minEnergy: 8,
   },
   /** Wallet history kept in the save. */
   ledgerMax: 100,

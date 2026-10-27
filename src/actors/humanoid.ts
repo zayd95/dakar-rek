@@ -19,6 +19,19 @@ import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './praye
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
+/**
+ * How closed a studio body's hands are (0 open … 1 fist; the `grip` morph target of the Meshy bodies, which have no finger bones), by clip. The mesh's own
+ * hands are spread wide open; a hand at rest is gently curled (playtest of 24 Oct 2026: « unnatural hands »), a hand holding the wheel or the handlebars
+ * is closed on it, a hand holding something is mostly closed, and the open hands of the prayer stay open.
+ */
+export const HAND_REST = 0.4;
+export function handClosure(clip: string | null): number {
+  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'Drive') return 1;
+  if (clip === 'Grab') return 0.75;
+  if (clip?.startsWith('Pray')) return 0.12;
+  if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
+  return HAND_REST;
+}
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
@@ -55,12 +68,14 @@ const bodies: Partial<Record<BodyId, Template>> = {};
  * the scale it is drawn at; how much higher the hips sit for seated and lying poses (thicker thighs and back than v4's); how much longer
  * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); where its mouth is from the head bone;
  * and how far below the neck socket a scarf must sit to be at its neck (the Meshy chin is lower than v4's: at the socket it covers the mouth).
+ * `idleArms`: standing (the Idle clip), how much more the elbow bends and the upper arm comes forward (degrees). The clip holds the elbow nearly
+ * straight (3°), which v4's mitten arm carries but a Meshy mesh pinches at the elbow: the arm reads as broken (owner's iPhone playtest, 25 Oct).
  */
-export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number }
+export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number; idleArms: { elbow: number; fwd: number } | null }
 export const BODY_FIT: Record<BodyId, BodyFit> = {
-  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0 },
-  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08 },
-  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115 },
+  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0, idleArms: null },
+  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08, idleArms: { elbow: 16, fwd: 4 } },
+  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115, idleArms: { elbow: 16, fwd: 4 } },
 };
 export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
   try {
@@ -516,6 +531,70 @@ export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xfff
   return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
 }
 
+// ---------------------------------------------------------------- the life jacket (la traversée, src/venues/embarcadere.ts)
+/** The orange of the life jackets at Ngor (the owner's photo of the boarding: docs/proof/traversee/references/01-boarding-ngor-beach.jpg). */
+export const VEST_ORANGE = 0xf26a1b;
+/** The garments a vest is cut from, in the order they are looked for on a body; a body with none of them wears it on its skin. */
+const TRUNK = ['Cloth_Tee', 'Cloth_DressTop', 'Cloth_Boubou'];
+/** How far the vest stands out from the garment (m), and how much more at the chest and the back, where a life jacket's floats are. */
+const VEST_PUFF = 0.03, VEST_FLOAT = 0.02;
+const vestGeos = new WeakMap<THREE.BufferGeometry, THREE.BufferGeometry | null>();
+/**
+ * The garment a body wears on its trunk, as a life vest: its own geometry with the trunk's vertices (those skinned to the hips, the spine, the chest and
+ * the shoulders: not the sleeves, the skirt or the collar) pushed out a few centimetres and marked by a `vest` attribute (1 on the trunk, 0 elsewhere,
+ * in between at the edges) that the patched material paints orange. Everything else is the garment's own (its index, its skinning, its morph targets:
+ * the vest fits every body shape and follows the trunk in every clip). The vertices that share a position move together (along their averaged normal,
+ * or outward from the spine where that faces in), so the seams stay closed. One per garment, shared by every body that wears it; null if it has no skin.
+ */
+function vestGeometry(m: THREE.SkinnedMesh): THREE.BufferGeometry | null {
+  const src = m.geometry;
+  if (vestGeos.has(src)) return vestGeos.get(src)!;
+  const pos = src.getAttribute('position'), nor = src.getAttribute('normal'), si = src.getAttribute('skinIndex'), sw = src.getAttribute('skinWeight');
+  if (!pos || !nor || !si || !sw || !m.skeleton) { vestGeos.set(src, null); return null; }
+  const bones = m.skeleton.bones, off = bones.map(b => /^(upper_arm|forearm|hand|thigh|shin|foot|neck|head)/.test(b.name));
+  const hi = bones.findIndex(b => b.name === 'hips'), hipY = hi < 0 ? -Infinity : new THREE.Vector3().setFromMatrixPosition(m.skeleton.boneInverses[hi].clone().invert()).y;
+  const n = pos.count, w = new Float32Array(n), key = (i: number) => `${Math.round(pos.getX(i) * 1e4)},${Math.round(pos.getY(i) * 1e4)},${Math.round(pos.getZ(i) * 1e4)}`;
+  const avg = new Map<string, THREE.Vector3>();
+  for (let i = 0; i < n; i++) {
+    let o = 0; for (let k = 0; k < 4; k++) if (off[si.getComponent(i, k)]) o += sw.getComponent(i, k);
+    w[i] = (1 - Math.min(1, Math.max(0, (o - 0.2) / 0.3))) * Math.min(1, Math.max(0, (pos.getY(i) - hipY + 0.04) / 0.08));   // off the limbs, above the hips
+    const k = key(i), a = avg.get(k) ?? avg.set(k, new THREE.Vector3()).get(k)!;
+    a.x += nor.getX(i); a.y += nor.getY(i); a.z += nor.getZ(i);
+  }
+  const out = new Float32Array(n * 3), d = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), r = Math.hypot(x, z) || 1;
+    d.copy(avg.get(key(i))!).normalize();
+    if (d.x * x + d.z * z < 0.2 * r) d.set(x / r, 0, z / r);                 // a normal facing in (a collar's lip, a fold): outward from the spine instead
+    const k = w[i] * (VEST_PUFF + VEST_FLOAT * Math.abs(d.z));
+    out[i * 3] = x + d.x * k; out[i * 3 + 1] = y + d.y * k; out[i * 3 + 2] = z + d.z * k;
+  }
+  const g = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(src.attributes)) g.setAttribute(name, attr);
+  g.setAttribute('position', new THREE.Float32BufferAttribute(out, 3)); g.setAttribute('vest', new THREE.Float32BufferAttribute(w, 1));
+  g.setIndex(src.index); g.morphAttributes = src.morphAttributes; g.morphTargetsRelative = src.morphTargetsRelative;
+  for (const gr of src.groups) g.addGroup(gr.start, gr.count, gr.materialIndex);
+  g.computeBoundingSphere(); g.computeBoundingBox();
+  vestGeos.set(src, g);
+  return g;
+}
+const VEST_COLOR = { value: new THREE.Color(VEST_ORANGE) };
+/** Materials that know the vest: their shader reads the `vest` attribute (times the body's own `vestOn`) and paints the trunk orange. */
+const vestPatched = new WeakSet<THREE.Material>();
+function patchVest(mat: THREE.Material, on: { value: number }) {
+  if (vestPatched.has(mat)) return;
+  vestPatched.add(mat);
+  mat.onBeforeCompile = shader => {
+    shader.uniforms.vestOn = on; shader.uniforms.vestColor = VEST_COLOR;
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float vest;\nuniform float vestOn;\nvarying float vVest;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvVest = vest * vestOn;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 vestColor;\nvarying float vVest;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix( diffuseColor.rgb, vestColor, step( 0.5, vVest ) );');
+  };
+  mat.customProgramCacheKey = () => 'vest';
+  mat.needsUpdate = true;
+}
+
 /** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
 const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Jog', 'Run']);
 
@@ -592,6 +671,9 @@ export function animLod(x: number, y: number, z: number, k: number, drawn: boole
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
 const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Beard'];
 
+const RELAX_AXIS = new THREE.Vector3(), RELAX_Q = new THREE.Quaternion(), RELAX_R = new THREE.Quaternion();
+const ARM_BONES = ['shoulderL', 'upper_armL', 'forearmL', 'shoulderR', 'upper_armR', 'forearmR'];
+
 export class Humanoid {
   readonly group = new THREE.Group();
   private mixer: THREE.AnimationMixer;
@@ -608,6 +690,8 @@ export class Humanoid {
   private morphed: THREE.Mesh[] = [];
   /** The mesh that carries the 'grip' morph target (the fist for a handlebar, Meshy bodies) and how far it is closed (0–1). */
   private gripMesh: THREE.Mesh | null = null; private gripW = 0;
+  /** Standing arms (BODY_FIT.idleArms): how far the relaxed elbow is eased in (0–1; −1 until the first frame, which takes it at once); the arm bones, found once, with the clip's rotations and the ones set here last frame. */
+  private relaxW = -1; private relax: { bones: THREE.Object3D[]; clip: THREE.Quaternion[]; set: THREE.Quaternion[] } | null = null;
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
@@ -657,6 +741,31 @@ export class Humanoid {
     this.meshy?.setBare(on);
   }
   get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
+  /** The life jacket worn: the garment that carries it and that garment's own geometry, put back when it comes off. */
+  private vest: { mesh: THREE.SkinnedMesh; own: THREE.BufferGeometry } | null = null;
+  private vestU = { value: 0 };
+  /** Whether the life jacket is on. */
+  get vestOn() { return !!this.vest; }
+  /**
+   * An orange life jacket (la traversée: the customers wade out to the pirogue in one), put on and taken off at any time. It is no extra mesh: the
+   * garment worn on the trunk (the tee, the dress's top, the boubou; else the skin) swaps to its vest geometry (vestGeometry: the trunk pushed out, the
+   * sleeves and the skirt as they were) and its material, patched once, paints that part orange. No draw call, no material and nothing at all changes
+   * for a body that never wears one; one that took it off keeps the patched material, which then paints nothing. The vest is skinned as the garment
+   * is: it follows the trunk walking, sitting, standing. A Meshy body (its clothes baked into its shell, its own shader) does not wear one: false.
+   */
+  setVest(on: boolean): boolean {
+    if (!on) { if (this.vest) { this.vest.mesh.geometry = this.vest.own; this.vest = null; } this.vestU.value = 0; return true; }
+    if (this.body !== 'v4') return false;
+    const part = TRUNK.map(k => this.parts.get(k)).find(p => p?.visible) ?? (this.root.getObjectByName('DR_Body') as THREE.Mesh | undefined);
+    const mesh = part as THREE.SkinnedMesh | undefined;
+    if (!mesh?.isSkinnedMesh || Array.isArray(mesh.material)) return false;
+    if (this.vest?.mesh === mesh) return true;
+    const geo = vestGeometry(mesh); if (!geo) return false;
+    this.setVest(false);
+    this.vest = { mesh, own: mesh.geometry }; mesh.geometry = geo;
+    patchVest(mesh.material, this.vestU); this.vestU.value = 1;
+    return true;
+  }
   /** The body drawn: the one asked for when it is loaded, else v4. */
   readonly body: BodyId;
   /** How this body's mesh differs from the rig (BODY_FIT); v4's own is all zeros. */
@@ -709,6 +818,7 @@ export class Humanoid {
 
   /** City clothing. */
   setLook(l: PersonLook) {
+    const vest = this.vestOn; if (vest) this.setVest(false);               // refitted below to what the new look wears on its trunk
     this.clearAccessories();
     this.setSkin(l.skin);
     const vis = ['Cloth_Shoes'];
@@ -725,6 +835,7 @@ export class Humanoid {
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
     if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1).multiplyScalar(this.seatK);
+    if (vest) this.setVest(true);
   }
 
   /** Body shape via morph targets shared by the body and every fitted garment. */
@@ -804,12 +915,40 @@ export class Humanoid {
     this.overlay(this, dt);
   }
 
-  /** The hands close on the grips while the rider has the Ride pose (a morph target: the skeleton has no finger bones), and open again after. */
+  /** How closed the hands are for the clip being played (handClosure: a morph target, the skeleton has no finger bones), eased over 0.3 s. */
   private closeFist(dt: number) {
-    const to = this.clipName === 'Ride' ? 1 : 0;
+    const to = handClosure(this.clipName);
     if (this.gripW === to) return;
     this.gripW = to > this.gripW ? Math.min(to, this.gripW + dt / 0.3) : Math.max(to, this.gripW - dt / 0.3);
     const m = this.gripMesh!; m.morphTargetInfluences![m.morphTargetDictionary!.grip] = this.gripW;
+  }
+
+  /**
+   * Standing (the Idle clip), a Meshy body's elbow relaxes: the forearm bent `idleArms.elbow` more and the upper arm brought `idleArms.fwd` forward, both
+   * about the chest's left-right axis, as the gait turns them once walking (src/actors/gaitRig.ts « arm »), on top of the clip so its breathing
+   * still shows. Eased over 0.25 s, and out as the gait's arms take over (`up`, the gait's weight on the trunk and arms). The mixer writes a bone only
+   * when the clip's value changes (three's PropertyMixer), and Idle's forearm hardly moves: a bone still holding what was set here last frame gets the
+   * clip's value back first, so the turn never adds up. Allocation-free.
+   */
+  private relaxArms(dt: number, up: number) {
+    const want = this.clipName === 'Idle' ? 1 - up : 0;
+    this.relaxW = this.relaxW < 0 ? want : this.relaxW + Math.sign(want - this.relaxW) * Math.min(Math.abs(want - this.relaxW), dt / 0.25);
+    const r = (this.relax ??= ARM_BONES.every(n => this.root.getObjectByName(n))
+      ? { bones: ARM_BONES.map(n => this.root.getObjectByName(n)!), clip: ARM_BONES.map(() => new THREE.Quaternion()), set: ARM_BONES.map(() => new THREE.Quaternion(NaN, NaN, NaN, NaN)) }
+      : { bones: [], clip: [], set: [] });                                      // (a rig without these bones: left as the clip has it)
+    const b = r.bones; if (!b.length) return;
+    for (let i = 0; i < 6; i++) if (b[i].quaternion.equals(r.set[i])) b[i].quaternion.copy(r.clip[i]);   // not posed by the mixer since: the clip's own value
+    if (this.relaxW <= 0) { for (const q of r.set) q.set(NaN, NaN, NaN, NaN); return; }
+    const a = this.fit.idleArms!, k = this.relaxW * (Math.PI / 180);
+    for (let i = 0; i < 6; i += 3) {
+      r.clip[i + 1].copy(b[i + 1].quaternion); r.clip[i + 2].copy(b[i + 2].quaternion);
+      // the chest's x axis in the shoulder's frame (the shoulder hangs off the chest), then in the upper arm's
+      RELAX_AXIS.set(1, 0, 0).applyQuaternion(RELAX_Q.copy(b[i].quaternion).invert());
+      b[i + 1].quaternion.premultiply(RELAX_R.setFromAxisAngle(RELAX_AXIS, -a.fwd * k));
+      RELAX_AXIS.applyQuaternion(RELAX_Q.copy(b[i + 1].quaternion).invert());
+      b[i + 2].quaternion.premultiply(RELAX_R.setFromAxisAngle(RELAX_AXIS, -a.elbow * k));
+      r.set[i + 1].copy(b[i + 1].quaternion); r.set[i + 2].copy(b[i + 2].quaternion);
+    }
   }
 
   private locomote(dt: number, speed: number) {
@@ -857,6 +996,9 @@ export class Humanoid {
       else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
     }
     this.mixer.update(this.lag); this.lag = 0;
+    const gw = this.gait ? this.gaitW * this.gait.stand : 0;
+    if (gw > 0 && this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);   // its rest rotations: the clip's pose, before the standing arms below
+    if (this.fit.idleArms) this.relaxArms(dt, this.gait ? gw * this.gait.m : 0);       // before the pose is kept for the in-between frames
     if (lod === ANIM_LOD.hidden && this.sinceSwitch >= 0.3) this.settled = true;      // (0.3 s: longer than any cross-fade)
     if (lod !== 0) this.savePose();
     const w = this.gait ? this.gaitW * this.gait.stand : 0;
@@ -874,9 +1016,10 @@ export class Humanoid {
     this.mixer.stopAllAction();                                              // (the bones go back to their rest values)
     this.current = null; this.clipName = null; this.hold = null;
     this.gait = null; this.gaitRig = undefined; this.gaitW = 1; this.fullRate = false;     // (the gait's rig takes its rest rotations again at its first use, as a new body's does)
-    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
+    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0; this.relaxW = -1;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
     this.faceOn = true; for (const m of this.face) m.visible = true;
+    this.setVest(false);
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
   }
   /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
@@ -922,7 +1065,7 @@ export class Humanoid {
   }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
-  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.meshy?.dispose(); this.group.removeFromParent(); }
+  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.setVest(false); this.meshy?.dispose(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */

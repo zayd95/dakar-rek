@@ -36,6 +36,25 @@ export interface Interior {
   open?: boolean;
   /** Light colour: warm bulb at home, cool tube in the gargote. */
   lightColor: number;
+  /**
+   * Per frame while the player is inside (main.ts, after the player has moved, before the lighting): a home built from a floor plan
+   * (src/housing/apartment.ts) swings its doors, opens the see-through hole round the player, moves `light` to the room they are in, lights its
+   * lamps by the `hour`. It may put `player` back where it stood the frame before if a slow frame's step went through a wall.
+   */
+  update?(dt: number, player: THREE.Vector3, camera: THREE.Camera, hour: number): void;
+  /** Debug (`__dakar.home()`): what such a home is doing now (its room, its doors, the light, the hole). */
+  describe?(): unknown;
+  /** Where the see-through hole opens instead of round the player (the editor framing a room: a point at chest height in it); null: the player. */
+  holeFocus?: THREE.Vector3 | null;
+  /**
+   * LD2.0-D: a home on several levels (src/housing/apartment.ts, the Almadies villa): the height (m above the ground floor's floor, as the player's
+   * feet less 0.1) of what a body standing at (x, z) walks on, given the height `y` its feet are at now: a level's floor, or a flight of stairs as a
+   * ramp. main.ts puts the player there instead of the fixed floor; absent: the floor (0), as in every other interior.
+   */
+  groundAt?(x: number, z: number, y: number): number;
+  /** LD2.0-D look pass: whether the player stands in an open room of the home (its garden, a terrace, a balcony): at night main.ts lights it as
+   *  the outside (the moon's blue, the room's lamp dimmed) rather than as a room. Absent: never. */
+  outdoors?(): boolean;
 }
 
 const H = 2.9; // ceiling height

@@ -45,10 +45,11 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });
   await press('#phone .hm-dest [data-go="apps"]');
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
-  // A hook app shows exactly when its module registered the hook (economy, NPCs, chat and city merge in over time).
-  const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', affaires: 'openBusiness', maison: 'openHome', biens: 'openAssets', habitants: 'openPeople' };
+  // A hook app shows exactly when its module registered the hook (economy, NPCs, city merge in over time). Messages is no hook app since LD2.0-B: it is
+  // always on the phone, and a build without the online account says there that it needs the connection (scripts/check-messages.mjs, step 10).
+  const HOOK_APPS = { quartier: 'openPlaces', travail: 'openJobs', affaires: 'openBusiness', maison: 'openHome', biens: 'openAssets', habitants: 'openPeople' };
   const hooked = await page.evaluate(names => Object.fromEntries(Object.entries(names).map(([app, hook]) => [app, typeof window.__dakar.phoneHooks[hook] === 'function'])), HOOK_APPS);
-  check(`${label}: hook apps shown only with their module`, Object.entries(hooked).every(([app, on]) => tiles.includes(app) === on) && tiles.includes('reglages'), `${tiles.join(',')} · hooks ${JSON.stringify(hooked)}`);
+  check(`${label}: hook apps shown only with their module; Messages always`, Object.entries(hooked).every(([app, on]) => tiles.includes(app) === on) && tiles.includes('messages') && tiles.includes('reglages'), `${tiles.join(',')} · hooks ${JSON.stringify(hooked)}`);
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-apps.png` });
 
   // Movement is disabled while the phone is open.
@@ -149,15 +150,15 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // Apps from other lanes: tile appears with its hook, closes the phone and hands over.
   await page.evaluate(() => {
     const h = window.__dakar.phoneHooks;
-    window.__realHooks = { openMessages: h.openMessages, ledger: h.ledger, arenaProfile: h.arenaProfile };
-    h.openMessages = () => { window.__msg = (window.__msg ?? 0) + 1; };
+    window.__realHooks = { ledger: h.ledger, arenaProfile: h.arenaProfile };
     h.ledger = () => [{ at: Date.now() - 60000, label: 'Dibi mouton', amount: -2000 }, { at: Date.now(), label: 'Service au garage', amount: 2800 }];
     h.arenaProfile = () => [{ label: 'Catégorie', value: 'Poids léger' }];
   });
   await page.evaluate(() => window.__dakar.phone('apps')); await page.waitForTimeout(400);
   await press('#phone [data-app="messages"]');
-  const handed = await page.evaluate(() => ({ msg: window.__msg, open: window.__dakar.phoneInfo().open, mode: window.__dakar.pos().mode }));
-  check(`${label}: Messages tile closes the phone and calls its hook`, handed.msg === 1 && !handed.open && handed.mode === 'play', JSON.stringify(handed));
+  // LD2.0-B: Messages is a phone screen now (src/ui/phone/apps/messages.ts), no longer a hand-over to the chat panel
+  const handed = await page.evaluate(() => window.__dakar.phoneInfo());
+  check(`${label}: Messages tile opens the Messages screen in the phone`, handed.open && handed.screen === 'messages', JSON.stringify(handed));
   await page.evaluate(() => window.__dakar.phone('portefeuille'));
   const ledger = (await page.locator('#phone .ph-screen').innerText()).replace(/\s/g, ' ');
   await page.evaluate(() => window.__dakar.phone('arene'));

@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import { buildFurniture, furnitureSpec as kitSpec, type FurnitureId } from '../world/furnitureKit';
 import { FURNITURE_SPECS } from './catalog';
 import { setFurnitureKit } from './furnitureModels';
+import { setPieceSpans } from './placement';
 
 /**
  * The 3D asset lane's furniture kit (src/world/furnitureKit.ts) standing in for the catalogue's pieces, through the
  * `setFurnitureKit` seam. Each catalogue piece maps to one kit piece (or several side by side: the starter pair of
  * chairs). The model is squeezed on the floor plane to fit the catalogue footprint (never enlarged; heights untouched),
- * and the piece's seat heights follow the kit model so the sitting pose matches it. Pieces without a fitting kit model
- * (radio and speakers, plants, dressing table, small stove, table lamp, the mattress upgrade) keep the built-in one.
+ * and the piece's seat heights follow the kit model so the sitting pose matches it. Since LD2.0-C every piece of the catalogue has its kit model
+ * (one draw call, a second only for glass): the radio and the speakers, the plants, the dressing table, the small stove, the lamps and the dressing
+ * got theirs then (src/world/furnitureKit.ts HOME_TYPES); furnitureModels.ts's built-in models stay as the fallback when no kit is installed.
  */
 export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> = {
   // the starter room (src/economy/furniture.ts ids)
@@ -23,8 +25,61 @@ export const KIT_PIECES: Record<string, FurnitureId | [FurnitureId, number][]> =
   tele_plate: 'tv:better', home_cinema: 'tv:premium',
   tapis_tisse: 'rug:better', tapis_soie: 'rug:premium', miroir_dore: 'mirror:premium',
   cuisiniere: 'kitchen:better', cuisine_equipee: 'kitchen:premium',
-  lampadaire: 'lamp:better', lampadaire_laiton: 'lamp:premium',
-  armoire_metal: 'wardrobe:basic', armoire_bois: 'wardrobe:better', dressing: 'wardrobe:premium',
+  lampadaire_laiton: 'lamp:premium',
+  armoire_metal: 'wardrobe:basic', armoire_bois: 'wardrobe:better',
+  // LD2.0-C: the pieces still drawn with the built-in models, and the premium pieces that were boxes (speakers, carved planter, dressing)
+  radio: 'audio:basic', chaine_hifi: 'audio:better', enceintes: 'audio:premium',
+  plante: 'plant:basic', palmier: 'plant:better', jardiniere: 'plant:premium',
+  coiffeuse: 'dresser:better', rechaud: 'cooker:basic', lampe: 'bedside:basic', lampadaire: 'floorLamp:basic', dressing: 'closet:premium',
+  matelas: 'bed:better',                                                       // never placed (it improves the home's own bed): drawn only if ever shown
+  // LD2.0-C: the new pieces (src/economy/catalog.ts « the furnishing upgrade »)
+  salle_manger_simple: 'dining:basic', salle_manger_bois: 'dining:better', salle_manger_marbre: 'dining:premium',
+  table_cuisine: 'kitchenTable:basic', table_cuisine_bois: 'kitchenTable:better', bar_cuisine: 'kitchenTable:premium', gaziniere: 'cooker:better', piano_cuisson: 'cooker:premium',
+  micro_ondes_desserte: 'microwave:basic', micro_ondes: 'microwave:better', colonne_four: 'microwave:premium',
+  canari: 'waterDispenser:basic', fontaine_eau: 'waterDispenser:better', fontaine_inox: 'waterDispenser:premium',
+  ventilateur: 'fan:basic', ventilo_pied: 'fan:better', ventilo_colonne: 'fan:premium',
+  lavabo_colonne: 'vanity:basic', meuble_vasque: 'vanity:better', vasque_marbre: 'vanity:premium',
+  miroir_sdb: 'bathMirror:basic', armoire_toilette: 'bathMirror:better', miroir_lumineux: 'bathMirror:premium',
+  porte_serviettes: 'towelRail:basic', porte_serviettes_bois: 'towelRail:better', seche_serviettes: 'towelRail:premium',
+  lampadaire_trepied: 'floorLamp:better', lampadaire_arc: 'floorLamp:premium',
+  suspension_osier: 'pendant:basic', suspension_calebasse: 'pendant:better', lustre: 'pendant:premium',
+  chevet_bois: 'bedside:better', chevet_sculpte: 'bedside:premium',
+  commode: 'dresser:basic', penderie: 'closet:basic', armoire_3portes: 'closet:better', coiffeuse_doree: 'dresser:premium',
+  affiche: 'wallArt:basic', sous_verre: 'wallArt:better', toile_artiste: 'wallArt:premium',
+  tele_etagere: 'tvWall:basic', meuble_tv: 'tvWall:better', mur_tv: 'tvWall:premium',
+  etagere: 'shelf:basic', bibliotheque: 'shelf:better', vitrine: 'shelf:premium',
+  transat: 'lounger:basic', bain_soleil: 'lounger:better', bain_soleil_teck: 'lounger:premium',
+  parasol: 'parasol:basic', parasol_bois: 'parasol:better', parasol_deporte: 'parasol:premium',
+  salon_jardin: 'gardenSet:basic', salon_fer_forge: 'gardenSet:better', salon_teck: 'gardenSet:premium',
+  // ---- the catalogue's second round, comfort lane (K-C): its mappings here
+  pouf_cuir: 'pouf:basic', pouf_wax: 'pouf:better', pouf_velours: 'pouf:premium',
+  banquette_angle: 'cornerSofa:basic', canape_angle: 'cornerSofa:better', canape_angle_velours: 'cornerSofa:premium',
+  lit_moustiquaire: 'canopyBed:basic', lit_baldaquin_bois: 'canopyBed:better', lit_baldaquin: 'canopyBed:premium',
+  console_simple: 'console:basic', console_bois: 'console:better', console_marbre: 'console:premium',
+  fauteuil_velours: 'armchair:premium', chaise_sculptee: 'woodenChair:premium', table_basse_sculptee: 'lowTable:premium', armoire_miroir: 'wardrobe:premium',
+  attaya_gaz: 'attaya:better', attaya_service: 'attaya:premium', tapis_priere_tisse: 'prayerMat:better', tapis_priere_velours: 'prayerMat:premium',
+  //
+  // (the comfort lane's mappings above, the decoration lane's below)
+  //
+  // ---- the catalogue's second round, decoration lane (K-D): its mappings here
+  jarre_herbes: 'floorVase:basic', vase_bouquet: 'floorVase:better', vase_orchidees: 'floorVase:premium',
+  statuette_bois: 'sculpture:basic', sculpture_ebene: 'sculpture:better', bronze_marbre: 'sculpture:premium',
+  paniers_muraux: 'wallDecor:basic', masques_sculptes: 'wallDecor:better', miroir_soleil: 'wallDecor:premium',
+  paravent_raphia: 'screen:basic', paravent_bois: 'screen:better', paravent_laque: 'screen:premium',
+  lanterne_tempete: 'lantern:basic', lanternes_fer: 'lantern:better', candelabre_cristal: 'lantern:premium',
+  bocal_poissons: 'aquarium:basic', aquarium_meuble: 'aquarium:better', aquarium_mer: 'aquarium:premium',
+  // ---- LD2.0-D « Collection Almadies » (lane K-L): each piece of the line on its own kit model (src/world/furnitureKit.ts « Collection Almadies »)
+  canape_boucle: 'lxSofa:basic', canape_meridienne: 'lxSofa:better', canape_courbe: 'lxSofa:premium',
+  banc_lit: 'lxArmchair:basic', fauteuil_noyer: 'lxArmchair:better', fauteuil_boucle: 'lxArmchair:premium',
+  gueridon_marbre: 'lxLowTable:basic', table_basse_noyer: 'lxLowTable:better', table_basse_marbre_noir: 'lxLowTable:premium',
+  bureau_caisson: 'lxTableSet:basic', salle_manger_noyer: 'lxTableSet:better', salle_manger_ronde: 'lxTableSet:premium',
+  lit_noyer: 'lxBed:basic', lit_lin_greige: 'lxBed:better', lit_capitonne_noir: 'lxBed:premium',
+  chevet_noyer: 'lxNightstand:basic', chevet_greige: 'lxNightstand:better',                       // lxNightstand:premium, the OE black nightstand: drawn, not sold yet
+  chiffonnier_noyer: 'lxChest:basic', commode_six: 'lxChest:better', dressing_bronze: 'lxChest:premium',
+  meuble_tv_laque: 'lxCabinet:basic', enfilade_bronze: 'lxCabinet:better', bibliotheque_noyer: 'lxCabinet:premium',
+  lampadaire_champignon: 'lxLight:basic', lampadaire_arc_plisse: 'lxLight:better', lustre_couronne: 'lxLight:premium',
+  tapis_rond_jute: 'lxDecor:basic', pot_cannele: 'lxDecor:better', miroir_ovale: 'lxDecor:premium',
+  bibliotheque_bronze: 'lxAccent:better', coiffeuse_ronde: 'lxAccent:premium',                    // lxAccent:basic, the OE table lamp: drawn, not sold yet
 };
 
 /** Height of the home floor the catalogue's seat tops are measured with (kit seat tops are above the piece's base). */
@@ -41,7 +96,17 @@ export function installFurnitureKit() {
     const top = kitSpec(partsOf(m)[0][0]).seats[0]?.top;
     if (top !== undefined) for (const s of f.seats) s.top = Math.round((top + FLOOR) * 1000) / 1000;
   }
-  setFurnitureKit(id => {
+  // how high each piece's model reaches, for the placement rule « hidden behind a tall piece » (src/economy/placement.ts)
+  const spans = new Map<string, { y0: number; y1: number } | null>();
+  setPieceSpans(f => {
+    if (!spans.has(f.id)) {
+      const g = KIT_PIECES[f.id] ? build(f.id) : null, box = g && new THREE.Box3().setFromObject(g);
+      spans.set(f.id, box && !box.isEmpty() ? { y0: box.min.y, y1: box.max.y } : null);
+    }
+    return spans.get(f.id)!;
+  });
+  setFurnitureKit(id => build(id));
+  function build(id: string): THREE.Group | null {
     const m = KIT_PIECES[id], f = FURNITURE_SPECS.find(x => x.id === id);
     if (!m || !f) return null;
     const inner = new THREE.Group();
@@ -54,5 +119,5 @@ export function installFurnitureKit() {
     inner.scale.set(Math.min(1, f.w / w), 1, Math.min(1, f.d / d));
     const g = new THREE.Group(); g.name = `kit_${id}`; g.add(inner);
     return g;
-  });
+  }
 }

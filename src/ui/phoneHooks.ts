@@ -37,6 +37,16 @@ export const phoneHooks: {
   openCredits?: () => void;
   /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */
   openBusiness?: () => void;
+  /** Opens the phone on an app or screen (main.ts), false when it cannot open now. */
+  openPhone?: (app?: string) => boolean;
+  /** « Mes pistes » (src/economy/pistesModule.ts): the open leads, « Y aller », « Pas maintenant ». */
+  pistes?: () => import('../economy/pistes').Piste[];
+  followPiste?: (id: string) => boolean;
+  dropPiste?: (id: string) => boolean;
+  /** The Banque Teranga savings app (bank module): its presence says the service exists in this build. */
+  openBank?: () => void;
+  /** Where the player's bana-bana table (or the one for sale) stands, for « Y aller » (business module); null when not in this build. */
+  banaPlace?: () => import('../economy/pistes').PlaceRef | null;
   /**
    * Wealth beside the cash, for the wallet (economy module): value of everything owned (homes, land, billboards,
    * ventures, furniture), income and charges per in-game hour, polyvalence line.

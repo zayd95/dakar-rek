@@ -5,8 +5,15 @@ import type { Hud } from '../ui/hud';
 import type { HubId } from '../core/types';
 import './style.css';
 
+/** A drop shorter than this is not shown: a phone closes its socket when the app is put aside, a district change reconnects. */
+const LOST_MS = 15_000;
+/** The pill only tells a player who was with other players this recently that the connection is lost. */
+const COMPANY_MS = 120_000;
+
 export class PresenceUi {
   readonly button = document.createElement('button');
+  /** When the connection went down (0: up or not wanted), when others were last in the room, and the timer that looks again. */
+  private downAt = 0; private companyAt = -Infinity; private wake = 0;
   constructor(private presence: PresenceClient, private hud: Hud, private storage: Storage | null, private hub: () => HubId | null, private onProfile: (profile: Profile) => void, private onOpen: () => void) {
     this.button.id = 'presenceBtn'; this.button.className = 'card'; this.button.type = 'button'; this.button.setAttribute('aria-label', 'Multijoueur et profil');
     this.button.addEventListener('pointerdown', e => e.stopPropagation());
@@ -19,11 +26,21 @@ export class PresenceUi {
       addEventListener('resize', position); position();
     }
   }
+  /**
+   * The pill (« En ligne · 3 joueurs »). A connection being made or made again is quiet: the HUD shows it (`data-lost`) only when it has been down for
+   * LOST_MS and the player was with others — the state is always in Réglages › Jouer en ligne, and solo play never depends on it.
+   */
   update() {
-    const p = this.presence;
+    const p = this.presence, now = Date.now(), down = p.status === 'connecting' || p.status === 'reconnecting';
+    if (p.status === 'online') { this.downAt = 0; if (p.count > 1) this.companyAt = now; }
+    else if (!down) this.downAt = 0;
+    else if (!this.downAt) this.downAt = now;
+    clearTimeout(this.wake);
+    const company = now - this.companyAt <= COMPANY_MS, lost = down && company && now - this.downAt >= LOST_MS;
+    if (down && company && !lost) this.wake = window.setTimeout(() => this.update(), LOST_MS - (now - this.downAt) + 50);
     const label = p.status === 'online' ? `En ligne · ${p.count} ${p.count > 1 ? 'joueurs' : 'joueur'}`
-      : p.status === 'solo' ? 'Mode solo' : p.status === 'offline' ? 'Hors connexion' : p.status === 'reconnecting' ? 'Reconnexion…' : 'Connexion…';
-    this.button.textContent = label; this.button.dataset.state = p.status;
+      : p.status === 'solo' ? 'Mode solo' : p.status === 'offline' ? 'Hors connexion' : lost ? 'Connexion perdue · on réessaie' : p.status === 'reconnecting' ? 'Reconnexion…' : 'Connexion…';
+    this.button.textContent = label; this.button.dataset.state = p.status; this.button.toggleAttribute('data-lost', lost);
     this.button.title = p.room ? `Groupe ${p.room} · Profil et invitation` : 'Profil et connexion';
   }
   private open() {

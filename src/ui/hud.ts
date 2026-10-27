@@ -483,6 +483,25 @@ export class Hud {
     }, ms);
   }
   /**
+   * An offer (« Mes pistes », src/economy/pistesModule.ts): a moment card with one line and up to two buttons (e.g. « Y aller », « Plus tard »). Same rules as a
+   * moment: never modal, never over the middle of the screen or the controls, a tap elsewhere on it or ✕ dismisses it (`onClose`), it leaves by itself.
+   */
+  offer(m: { icon: string; title: string; line: string; actions: { label: string; primary?: boolean; run: () => void }[]; onClose?: () => void }, ms = 12000) {
+    let acted = false;
+    const c = this.momentCard('mo of', m.icon, m.title, tx => {
+      const p = document.createElement('p'); p.className = 'of-line'; p.textContent = m.line; tx.appendChild(p);
+      const row = document.createElement('div'); row.className = 'of-acts';
+      for (const a of m.actions) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = a.primary ? 'of-b on' : 'of-b'; b.textContent = a.label;
+        b.addEventListener('click', () => { acted = true; a.run(); });         // the card's own click then drops it
+        row.appendChild(b);
+      }
+      tx.appendChild(row);
+    }, ms);
+    c.addEventListener('click', () => { if (!acted) m.onClose?.(); });
+    return c;
+  }
+  /**
    * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
    * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
    * « Ensuite » and the next bill or step. Same rules as a moment (tap to dismiss, never over the middle of the screen,

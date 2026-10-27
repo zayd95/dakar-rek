@@ -5,7 +5,7 @@ import { CITY_DAY_MS } from '../core/clock';
 import { ECONOMY } from './config';
 import { specOf, homeSpec, furnitureSpec, VENTURES, type AssetKind, type AssetSpec, type HomeSpec } from './catalog';
 import { practise } from './polyvalence';
-import { autoPlace, layoutOf, type Placed } from './placement';
+import { autoPlace, layoutOf, relayout, type Placed } from './placement';
 
 /**
  * One generic ownership model (docs/LIVING_DAKAR.md, « one property model for every property »): homes, land,
@@ -401,10 +401,25 @@ function takenBack(s: GameState) { if (reclaimRoom(s)) notices.push('Tu n’as p
 /**
  * Stored pieces of a home are set up where they fit (their usual spot first); what does not fit stays stored.
  * Run after a purchase, a move and on load (pieces migrated from an older save are stored until then).
+ * A home built from a floor plan (the F2 since LD2.0-C) is re-checked first: every placed piece still valid stays where it is, the others (an older
+ * save placed them in the F2's old open room) are moved to a room that suits them (src/economy/placement.ts `relayout`), else stored. Never a piece
+ * lost, never a franc charged; the same load twice gives the same layout.
  */
 export function settleFurniture(s: GameState, homeUid: string): number {
   const home = assetByUid(s, homeUid), hs = home && homeSpec(home.spec); if (!hs) return 0;
   const layout = layoutOf(hs as HomeSpec);
+  if (layout.plan) {
+    const list = furnitureIn(s, homeUid).filter(f => !furnitureSpec(f.spec)!.fixed);
+    const next = relayout(layout, list.map(f => ({ spec: furnitureSpec(f.spec)!, at: f.at ?? null })), { placeStored: true });
+    let changed = 0, placed = 0;
+    list.forEach((f, k) => {
+      const a = next[k], b = f.at ?? null;
+      if (a && !b) placed++;
+      if (a?.x !== b?.x || a?.z !== b?.z || a?.rot !== b?.rot) { f.at = a; changed++; }
+    });
+    if (changed) bump();
+    return placed;
+  }
   let placed = 0;
   for (const f of furnitureIn(s, homeUid)) {
     const fs = furnitureSpec(f.spec)!;

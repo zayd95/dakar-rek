@@ -1,0 +1,160 @@
+{
+ "base": "http://127.0.0.1:4611/",
+ "parts": [
+  "almadies",
+  "cockpit",
+  "night"
+ ],
+ "body": {
+  "identity": "homme",
+  "appearance": null,
+  "drawn": null,
+  "body": "meshy_m",
+  "expected": "meshy_m",
+  "stand": null
+ },
+ "failed": 18,
+ "results": [
+  {
+   "name": "teranga: « Vue » with a real finger reaches « Au volant » (portrait)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "teranga portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"teranga-portrait\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.024,\"outShare\":0.009,\"lane\":\"5m:hidden@0.538 6m:hidden@0.516 8m:hidden@0.487 10m:hidden@0.469 12m:hidden@0.457 15m:hidden@0.445 20m:hidden@0.432 30m:hidden@0.42 50m:hidden@0.41 80m:hidden@0.404\",\"eye\":[0.36,1.24,-0.22]}"
+  },
+  {
+   "name": "teranga: « Vue » with a real finger reaches « Au volant » (landscape)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "teranga landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"teranga-landscape\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.051,\"outShare\":0.143,\"lane\":\"5m:hidden@0.577 6m:hidden@0.538 8m:hidden@0.488 10m:hidden@0.457 12m:hidden@0.436 15m:hidden@0.415 20m:hidden@0.393 30m:hidden@0.371 50m:hidden@0.354 80m:hidden@0.344\",\"eye\":[0.36,1.24,-0.22]}"
+  },
+  {
+   "name": "Almadies, the way in from Pikine: nothing of the road's own scenery stands on its carriageway at the mouth (the villa wall across it)",
+   "ok": false,
+   "detail": "{\"meshes\":20,\"n\":48,\"box\":{\"x\":[137.1,137.5],\"z\":[-65.05,-54.95],\"y\":[2.2,2.35]}}"
+  },
+  {
+   "name": "Almadies, the way in from Pikine driven with real fingers: through the mouth into the district, no knock, never held by anything",
+   "ok": true,
+   "detail": "{\"end\":[42.47,-62.06],\"slowest\":{\"speed\":0.86,\"at\":[150.99,-62.57],\"ahead\":null},\"held\":[],\"impacts\":[]}"
+  },
+  {
+   "name": "Almadies, the way in from the Corniche driven with real fingers: down the border street through two junctions, no knock",
+   "ok": true,
+   "detail": "{\"end\":[-58.02,11.23],\"impacts\":[]}"
+  },
+  {
+   "name": "Almadies road events over 60 city days: none on a street at a way in (from Pikine, from the Corniche)",
+   "ok": false,
+   "detail": "{\"events\":83,\"onWays\":[\"checkpoint -60,120|-60,60 (day +2)\",\"panne -60,120|0,120 (day +3)\",\"panne 120,-120|120,-60 (day +4)\",\"bouchon -60,120|0,120 (day +4)\",\"bouchon 120,-120|120,-60 (day +9)\",\"panne -60,120|0,120 (day +13)\",\"travaux 120,-60|120,0 (day +13)\",\"checkpoint 120,-120|120,-60 (day +16)\"]}"
+  },
+  {
+   "name": "gainde portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"gainde-portrait\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.024,\"outShare\":0.002,\"lane\":\"5m:hidden@0.558 6m:hidden@0.532 8m:hidden@0.499 10m:hidden@0.479 12m:hidden@0.465 15m:hidden@0.451 20m:hidden@0.437 30m:hidden@0.423 50m:hidden@0.411 80m:hidden@0.405\",\"eye\":[0.36,1.38,-0.07]}"
+  },
+  {
+   "name": "gainde landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"gainde-landscape\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.051,\"outShare\":0.13,\"lane\":\"5m:hidden@0.612 6m:hidden@0.567 8m:hidden@0.509 10m:hidden@0.473 12m:hidden@0.45 15m:hidden@0.426 20m:hidden@0.401 30m:hidden@0.377 50m:hidden@0.357 80m:hidden@0.346\",\"eye\":[0.36,1.38,-0.07]}"
+  },
+  {
+   "name": "suv portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"suv-portrait\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.024,\"outShare\":0.002,\"lane\":\"5m:hidden@0.563 6m:hidden@0.536 8m:hidden@0.502 10m:hidden@0.481 12m:hidden@0.467 15m:hidden@0.453 20m:hidden@0.438 30m:hidden@0.424 50m:hidden@0.412 80m:hidden@0.405\",\"eye\":[0.36,1.42,-0.05]}"
+  },
+  {
+   "name": "suv landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": false,
+   "detail": "{\"tag\":\"suv-landscape\",\"hidden\":true,\"nearest\":null,\"seenShare\":0,\"dashRow\":0.051,\"outShare\":0.121,\"lane\":\"5m:hidden@0.621 6m:hidden@0.574 8m:hidden@0.514 10m:hidden@0.478 12m:hidden@0.453 15m:hidden@0.428 20m:hidden@0.403 30m:hidden@0.378 50m:hidden@0.358 80m:hidden@0.346\",\"eye\":[0.36,1.42,-0.05]}"
+  },
+  {
+   "name": "berline portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"berline-portrait\",\"hidden\":true,\"nearest\":8,\"seenShare\":1,\"dashRow\":0.509,\"outShare\":0.376,\"lane\":\"5m:hidden@0.539 6m:hidden@0.517 8m:seen@0.487 10m:seen@0.469 12m:seen@0.457 15m:seen@0.445 20m:seen@0.432 30m:seen@0.42 50m:seen@0.41 80m:seen@0.404\",\"eye\":[0.36,1.24,-0.17]}"
+  },
+  {
+   "name": "berline landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"berline-landscape\",\"hidden\":true,\"nearest\":8,\"seenShare\":1,\"dashRow\":0.523,\"outShare\":0.477,\"lane\":\"5m:hidden@0.579 6m:hidden@0.539 8m:seen@0.489 10m:seen@0.457 12m:seen@0.436 15m:seen@0.415 20m:seen@0.393 30m:seen@0.372 50m:seen@0.354 80m:seen@0.344\",\"eye\":[0.36,1.24,-0.17]}"
+  },
+  {
+   "name": "night street 22 h behind the car: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": true,
+   "detail": "{\"place\":\"street\",\"hour\":22,\"view\":\"chase\",\"calls\":186,\"tris\":174559,\"lane\":68,\"edgeLine\":84.1,\"asphalt\":82.9,\"headlights\":null}"
+  },
+  {
+   "name": "night street 22 h at the wheel: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"street\",\"hour\":22,\"view\":\"volant\",\"calls\":173,\"tris\":165232,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "night street 5 h behind the car: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": true,
+   "detail": "{\"place\":\"street\",\"hour\":5,\"view\":\"chase\",\"calls\":177,\"tris\":165459,\"lane\":68,\"edgeLine\":83.6,\"asphalt\":83,\"headlights\":null}"
+  },
+  {
+   "name": "night street 5 h at the wheel: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"street\",\"hour\":5,\"view\":\"volant\",\"calls\":159,\"tris\":153784,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "night road 22 h behind the car: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":22,\"view\":\"chase\",\"calls\":73,\"tris\":52840,\"lane\":9.3,\"edgeLine\":86.9,\"asphalt\":9.3,\"headlights\":null}"
+  },
+  {
+   "name": "night road 22 h behind the car: the edge line reads and stands out of the asphalt (at least 90 / 255 and twice as bright, 10–18 m ahead)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":22,\"view\":\"chase\",\"calls\":73,\"tris\":52840,\"lane\":9.3,\"edgeLine\":86.9,\"asphalt\":9.3,\"headlights\":null}"
+  },
+  {
+   "name": "night road 22 h at the wheel: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":22,\"view\":\"volant\",\"calls\":72,\"tris\":45329,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "night road 22 h at the wheel: the edge line reads and stands out of the asphalt (at least 90 / 255 and twice as bright, 10–18 m ahead)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":22,\"view\":\"volant\",\"calls\":72,\"tris\":45329,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "night road 5 h behind the car: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":5,\"view\":\"chase\",\"calls\":73,\"tris\":51928,\"lane\":9.3,\"edgeLine\":86.9,\"asphalt\":9.3,\"headlights\":null}"
+  },
+  {
+   "name": "night road 5 h behind the car: the edge line reads and stands out of the asphalt (at least 90 / 255 and twice as bright, 10–18 m ahead)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":5,\"view\":\"chase\",\"calls\":73,\"tris\":51928,\"lane\":9.3,\"edgeLine\":86.9,\"asphalt\":9.3,\"headlights\":null}"
+  },
+  {
+   "name": "night road 5 h at the wheel: the lane ahead reads (its mean brightness over 10–22 m at least 45 / 255)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":5,\"view\":\"volant\",\"calls\":71,\"tris\":43731,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "night road 5 h at the wheel: the edge line reads and stands out of the asphalt (at least 90 / 255 and twice as bright, 10–18 m ahead)",
+   "ok": false,
+   "detail": "{\"place\":\"road\",\"hour\":5,\"view\":\"volant\",\"calls\":71,\"tris\":43731,\"lane\":0,\"edgeLine\":0,\"asphalt\":0,\"headlights\":null}"
+  },
+  {
+   "name": "by day the headlights are off",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

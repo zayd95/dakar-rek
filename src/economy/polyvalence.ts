@@ -21,7 +21,7 @@ export const ACTIVITY_INFO: Record<Activity, { label: string; where: string }> =
   service: { label: 'Petits boulots', where: 'Services payés des commerces (appli Travail)' },
   commerce: { label: 'Commerce', where: 'Vendre à Sandaga, acheter un meuble ou une affaire' },
   combat: { label: 'Lutte', where: 'Écurie et arène de Pikine' },
-  peche: { label: 'Pêche', where: 'Soumbédioune (Corniche) et le port de pêche' },
+  peche: { label: 'Pêche', where: 'Soumbédioune (Corniche)' },
   artisanat: { label: 'Artisanat', where: 'Ateliers de Soumbédioune, couture, Garage Modou' },
   social: { label: 'Vie sociale', where: 'Discuter, histoires et moments partagés' },
 };
@@ -32,11 +32,15 @@ export const WINDOW_MS = ECONOMY.polyvalence.windowDays * CITY_DAY_MS;
 /** Paid city actions by id (other paid actions are « petits boulots »). */
 const BY_ID: Record<string, Activity> = {
   vendre: 'commerce',
-  pecheurs: 'peche', pirogue: 'peche', debarquement: 'peche', filets: 'peche', 'poisson-service': 'peche',
+  debarquement: 'peche', filets: 'peche', 'poisson-service': 'peche',
   atelier: 'artisanat', couture: 'artisanat', meca: 'artisanat', meca_conf: 'artisanat',
 };
-/** …then by place (interactable id fragment), so new work added at these places is counted the same way. */
-const BY_PLACE: [string, Activity][] = [[':soumbedioune', 'peche'], [':fish-market', 'peche'], [':port', 'peche'], [':craft', 'artisanat'], [':garage', 'artisanat'], [':market', 'commerce']];
+/**
+ * …then by place (interactable id fragment), so new work added at these places is counted the same way. Fishing is Soumbédioune's only: the
+ * Almadies' quay (`:port`) is the Embarcadère de Ngor, whose crossings are transport (their steps say `category: 'transport'`, which the
+ * variety bonus leaves out like the gare's jobs: their fares are paid as the rules say, src/sea/traverseeRules.ts).
+ */
+const BY_PLACE: [string, Activity][] = [[':soumbedioune', 'peche'], [':fish-market', 'peche'], [':craft', 'artisanat'], [':garage', 'artisanat'], [':market', 'commerce']];
 
 /** Polyvalence category of an activity-framework category (leisure, prayer and travel do not count). */
 export const fromCategory = (c: ActivityCategory | null | undefined): Activity | null =>

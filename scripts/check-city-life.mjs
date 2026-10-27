@@ -90,9 +90,10 @@ try {
     check(`${label}: mall purchase debits once and feeds the player`, (await page.evaluate(() => window.__dakar.state.wallet)) === wallet - 500 && (await page.evaluate(() => window.__dakar.state.data.needs.faim)) > 39);
     if (!touch) {
       await page.evaluate(() => window.__dakar.place(30, 55, Math.PI));
-      // jog (Shift) through the entrance: the default walk is slower, and CI renders a frame every second or so
+      // jog (Shift) through the entrance: the default walk is slower, and CI renders a frame every second or so.
+      // A frame moves the game at most 0.1 s (src/main.ts), so the 8.5 m take ~20 drawn frames: ~50 s on a usual runner, over 60 s on a slow one
       await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
-      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 60000 }); }
+      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 150000 }); }
       finally { await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft'); }
       check('desktop: the mall entrance can be walked through', true);
     }
