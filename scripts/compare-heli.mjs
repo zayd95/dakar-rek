@@ -17,7 +17,8 @@ for (const v of views) {
   const cells = [['before', 'day', 'AVANT · 10 h 30'], ['after', 'day', 'APRÈS · 10 h 30'], ['before', 'night', 'AVANT · 21 h'], ['after', 'night', 'APRÈS · 21 h']];
   const imgs = await Promise.all(cells.map(async ([tag, when, text]) => {
     const f = `${dir}/${tag}/${v}-${when}.png`, m = await sharp(f).metadata();
-    return sharp(f).composite([{ input: label(text, m.width), top: m.height - 34, left: 0 }]).resize({ width: Math.round(m.width * 0.72) }).png().toBuffer();
+    const lab = await sharp(f).composite([{ input: label(text, m.width), top: m.height - 34, left: 0 }]).png().toBuffer();   // (sharp resizes before it composites)
+    return sharp(lab).resize({ width: Math.round(m.width * 0.72) }).png().toBuffer();
   }));
   const m = await sharp(imgs[0]).metadata(), gap = 6;
   await save(`compare-${v}`, sharp({ create: { width: m.width * 4 + gap * 3, height: m.height, channels: 3, background: '#fff' } })

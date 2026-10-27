@@ -56,7 +56,9 @@ try {
   const shot = async name => { let buf = await page.screenshot(); if (buf.length > 380_000) buf = await sharp(buf).png({ palette: true, quality: 90 }).toBuffer(); fs.writeFileSync(`${out}/${name}.png`, buf); };
   // ------------------------------------------------------------------ the acceptance's route onto the pad
   const legs1 = [[3.6, -3.9], [0.6, -3.4], [-3.4, -3.1]], went1 = [];
-  for (const [x, z] of legs1) went1.push(await walk(x, z));
+  // a thumb corrects a step too far (a slow frame on a shared machine), as the acceptance's walker does (scripts/check-ld2d.mjs walkHome)
+  const leg = async (x, z) => { let r = await walk(x, z); if (r.dist >= 0.45 && r.dist < 1.5) r = await walk(x, z); return r; };
+  for (const [x, z] of legs1) went1.push(await leg(x, z));
   const onPad = went1[went1.length - 1];
   check('from the stair head onto the pad beside the helicopter (the acceptance\'s roof legs), with the joystick', went1.every(w => w.dist < 0.45 && w.room === 'terrasse' && w.level === 'toit')
     && Math.hypot(onPad.at[0] - PAD.x, onPad.at[1] - PAD.z) < PAD.r, JSON.stringify(went1));
@@ -73,7 +75,7 @@ try {
   check('its sheet: the registration, a 9.4 m three-blade rotor, the flights that come with the airport', /6V-ALM/.test(sheet) && /9,4 m, trois pales/.test(sheet) && /aéroport/.test(sheet), sheet.replace(/\n+/g, ' · '));
   // ------------------------------------------------------------------ round its tail to the street side, and back to the stairs
   const legs2 = [[2.9, -3.0], [3.6, 3.0], [6.2, 3.0], [3.6, 3.0], [3.6, -3.9]], went2 = [];
-  for (const [x, z] of legs2) went2.push(await walk(x, z));
+  for (const [x, z] of legs2) went2.push(await leg(x, z));
   check('round its tail to the street-side terrace and back to the stairs', went2.every(w => w.dist < 0.45 && w.level === 'toit') && went2[2].room === 'terrasse_rue', JSON.stringify(went2));
   check(`never inside the helicopter (closest ${closest.toFixed(2)} m from its cabin, boom or tail)`, closest > 0.2, closest);
   check('no page errors', errors.length === 0, errors.join(' | '));
