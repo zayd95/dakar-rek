@@ -15,12 +15,13 @@ let ringTex: THREE.CanvasTexture | null = null;
 /** A soft ring on a transparent square (alpha: the ring), made once. */
 function ringTexture() {
   if (ringTex) return ringTex;
-  const n = 64, cv = document.createElement('canvas'); cv.width = cv.height = n;
+  const n = 128, cv = document.createElement('canvas'); cv.width = cv.height = n;
   const g = cv.getContext('2d')!, grad = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
-  grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(0.62, 'rgba(255,255,255,0.05)'); grad.addColorStop(0.82, 'rgba(255,255,255,0.95)');
-  grad.addColorStop(0.9, 'rgba(255,255,255,0.55)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  // a thin crest with a softer trough inside it, nothing in the middle
+  grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(0.68, 'rgba(255,255,255,0)'); grad.addColorStop(0.79, 'rgba(255,255,255,0.22)');
+  grad.addColorStop(0.86, 'rgba(255,255,255,1)'); grad.addColorStop(0.91, 'rgba(255,255,255,0.3)'); grad.addColorStop(0.97, 'rgba(255,255,255,0)');
   g.fillStyle = grad; g.fillRect(0, 0, n, n);
-  ringTex = new THREE.CanvasTexture(cv); ringTex.colorSpace = THREE.SRGBColorSpace;
+  ringTex = new THREE.CanvasTexture(cv); ringTex.colorSpace = THREE.SRGBColorSpace; ringTex.anisotropy = 4;
   return ringTex;
 }
 

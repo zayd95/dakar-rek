@@ -56,8 +56,11 @@ export const TREAD_BELOW = 0.3, LEAN_T = 0.35;
 export const STROKE_LENGTH = 1.1, STROKE_RATE = { min: 0.5, max: 1.25 } as const, TREAD_RATE = 0.62;
 /** The cross-fade between the swim's clips (s). */
 export const SWIM_FADE = 0.4;
-/** Within this distance of a wall (m, from the body's origin) « Sortir de l'eau » climbs out there; farther, the swimmer swims to it first. */
-export const CLIMB_REACH = 1.05;
+/**
+ * « Sortir de l'eau » climbs out over a wall when the body's footprint comes within CLIMB_GAP of it (the hands of a body swimming at it touch it
+ * first) or its origin within CLIMB_REACH; farther, the swimmer swims to it first.
+ */
+export const CLIMB_REACH = 1.05, CLIMB_GAP = 0.45;
 /** Where a swimmer climbing out stands on the deck: this far out of the water (m: the body's radius indoors is 0.3, src/main.ts). */
 export const DECK_OUT = 0.5;
 
@@ -144,13 +147,16 @@ export function stepSwimmer(s: Swimmer, dx: number, dz: number, pace: number, dt
 }
 
 // ------------------------------------------------------------------------------------------------ in and out
-/** Standing at the steps' head (on the deck at the west end, in front of the treads). */
-export const atStepsHead = (px: number, pz: number) => px >= POOL.x0 - 0.85 && px <= POOL.x0 + 0.05 && pz >= STEPS.z0 + 0.05 && pz <= STEPS.z1 - 0.05;
-/** Walking into the pool at the steps' head: the stick (dx, dz in the plan) pushing east, toward the water, within about 50°. */
-export const wantsStepsIn = (px: number, pz: number, dx: number, dz: number) => atStepsHead(px, pz) && dx > 0.64 * Math.hypot(dx, dz) && Math.hypot(dx, dz) > 0;
-/** Swimming into the steps: by them, heading west, the stick pushing west. */
+/** Standing at the steps' head (on the deck at the west end, in front of the treads: a walker is held 0.3 m off the water by the pool's collider). */
+export const atStepsHead = (px: number, pz: number) => px >= POOL.x0 - 0.6 && px <= POOL.x0 + 0.05 && pz >= STEPS.z0 + 0.05 && pz <= STEPS.z1 - 0.05;
+/** Walking into the pool at the steps' head: the stick (dx, dz in the plan) pushing east, toward the water, within 35° (not a walk on round the deck). */
+export const wantsStepsIn = (px: number, pz: number, dx: number, dz: number) => atStepsHead(px, pz) && dx > 0.82 * Math.hypot(dx, dz) && Math.hypot(dx, dz) > 0;
+/**
+ * Swimming into the steps: at them (a body swimming west stops with its origin footprint(1).ahead short of them), in front of them, heading west,
+ * the stick pushing west (within 40°: a push into the corner beside them is not one).
+ */
 export const wantsStepsOut = (s: Pick<Swimmer, 'x' | 'z' | 'yaw'>, dx: number, dz: number) =>
-  s.x < SWIM_AREA.x0 + 1.8 && s.z > STEPS.z0 - 0.3 && s.z < STEPS.z1 + 0.3 && Math.sin(s.yaw) < -0.5 && dx < -0.64 * Math.hypot(dx, dz) && Math.hypot(dx, dz) > 0;
+  s.x < SWIM_AREA.x0 + 1.45 && s.z > STEPS.z0 + 0.2 && s.z < STEPS.z1 - 0.2 && Math.sin(s.yaw) < -0.6 && dx < -0.77 * Math.hypot(dx, dz) && Math.hypot(dx, dz) > 0;
 /** The feet's height (interior y) of someone walking the steps at plan x: the deck, then down a riser a tread, to the pool's floor (through the treads' middles). */
 export const stepsY = (x: number) => DECK_Y - STEP_RISE * clamp((x - (POOL.x0 - STEP_RUN / 2)) / STEP_RUN, 0, 4);
 /** The z a walker keeps on the steps (inside the treads, clear of their ends). */
@@ -167,6 +173,14 @@ export function nearestWall(x: number, z: number): { side: Side; d: number } {
   ds.sort((a, b) => a[1] - b[1]);
   return { side: ds[0][0], d: ds[0][1] };
 }
+/** The wall nearest to the body's origin (`nearestWall`), the origin's distance to it and its footprint's gap to it (0: touching). */
+export function closestWall(s: Pick<Swimmer, 'x' | 'z' | 'yaw' | 'lean'>): { side: Side; gap: number; d: number } {
+  const b = bodyBox(s.x, s.z, s.yaw, s.lean), w = nearestWall(s.x, s.z);
+  const gap = w.side === 'n' ? b.z0 - POOL.z0 : w.side === 's' ? POOL.z1 - b.z1 : POOL.x1 - b.x1;
+  return { side: w.side, gap: Math.max(0, gap), d: w.d };
+}
+/** Near enough a wall to climb out over it now. */
+export const canClimb = (s: Pick<Swimmer, 'x' | 'z' | 'yaw' | 'lean'>) => { const w = closestWall(s); return w.gap <= CLIMB_GAP || w.d <= CLIMB_REACH; };
 /** A point `off` metres out of the water from wall `side` (negative: into it), level with plan point (x, z) along the wall, kept 0.5 m off its corners. */
 export function byWall(side: Side, x: number, z: number, off: number): { x: number; z: number; yaw: number } {
   const w = WALLS[side];
@@ -259,7 +273,7 @@ export class VillaSwim {
     const o = this.where(); if (!o) return;
     if (this.seat) {
       if (this.phase !== 'water' || this.auto) return;
-      const near = nearestWall(this.s.x, this.s.z).d <= CLIMB_REACH || this.byTheSteps();
+      const near = canClimb(this.s) || this.byTheSteps();
       const g = swimGains(this.t);
       this.outAff[0].detail = `${near ? '' : 'Nager jusqu’au bord · '}hygiène +${g.hygiene}, moral +${g.moral}`;
       this.outTarget.x = x; this.outTarget.z = z; out.push(this.outTarget);
@@ -287,9 +301,9 @@ export class VillaSwim {
   stop() {
     if (!this.seat || this.phase !== 'water') return;
     if (this.byTheSteps()) { this.leave('steps-out', this.stepsOut()); return; }
-    const w = nearestWall(this.s.x, this.s.z);
-    if (w.d <= CLIMB_REACH) { this.leave('climb', this.climbOut(w.side)); return; }
-    const p = byWall(w.side, this.s.x, this.s.z, -(CLIMB_REACH - 0.2));
+    const w = closestWall(this.s);
+    if (canClimb(this.s)) { this.leave('climb', this.climbOut(w.side)); return; }
+    const p = byWall(w.side, this.s.x, this.s.z, -0.9);
     this.auto = { x: p.x, z: p.z, side: w.side, t: 0 };
   }
 
@@ -314,7 +328,7 @@ export class VillaSwim {
     if (this.auto) {
       const a = this.auto; a.t += dt;
       dx = a.x - s.x; dz = a.z - s.z; pace = SWIM_PACE;
-      if (Math.hypot(dx, dz) < 0.15 || a.t > 8 || nearestWall(s.x, s.z).d <= CLIMB_REACH - 0.1) { this.auto = null; this.leave('climb', this.climbOut(a.side)); return; }
+      if (Math.hypot(dx, dz) < 0.15 || a.t > 8 || (a.t > 0.3 && canClimb(s))) { this.auto = null; this.leave('climb', this.climbOut(closestWall(s).side)); return; }
     } else if (ctx.mode() === 'play') {
       const m = ctx.input.move(), push = Math.min(1, Math.hypot(m.x, m.y)), yaw = ctx.follow.yaw;
       const keyed = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some(k => ctx.input.keys.has(k));
@@ -337,10 +351,10 @@ export class VillaSwim {
     const w = this.water; if (!w) return;
     const s = this.s, fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), X = (a: number) => this.origin.x + s.x + fx * a, Z = (a: number) => this.origin.z + s.z + fz * a;
     if (s.mode === 'tread' || speed < 0.25) {
-      if ((this.rippleT -= dt) <= 0) { this.rippleT = 0.85; w.ring(X(0.05), Z(0.05), { r0: 0.32, r1: 1.05, life: 1.9, strength: 0.42 }); }
+      if ((this.rippleT -= dt) <= 0) { this.rippleT = 0.85; w.ring(X(0.05), Z(0.05), { r0: 0.32, r1: 1.05, life: 1.9, strength: 0.16 }); }
     } else {
-      if (this.lastPhase < 0.78 && phase >= 0.78) w.ring(X(0.75), Z(0.75), { r0: 0.28, r1: 1.0, life: 1.5, strength: 0.55 });
-      if ((this.wakeT -= dt) <= 0) { this.wakeT = 0.2; w.ring(X(0.5), Z(0.5), { r0: 0.22, r1: 0.6 + 0.35 * speed, life: 1.35, strength: 0.2 + 0.25 * Math.min(1, speed) }); }
+      if (this.lastPhase < 0.78 && phase >= 0.78) w.ring(X(0.75), Z(0.75), { r0: 0.28, r1: 1.0, life: 1.5, strength: 0.2 });
+      if ((this.wakeT -= dt) <= 0) { this.wakeT = 0.2; w.ring(X(0.5), Z(0.5), { r0: 0.22, r1: 0.6 + 0.35 * speed, life: 1.35, strength: 0.06 + 0.09 * Math.min(1, speed) }); }
     }
     this.lastPhase = phase;
   }
@@ -366,13 +380,17 @@ export class VillaSwim {
       { kind: 'settle', to: { x: SWIM_AREA.x0 + footprint(0).behind + 0.25, z, y: this.floatY(), yaw: east }, dur: 0.9, clip: 'Tread' },
     ];
   }
-  /** Over a wall: turned to it, the hands on the coping and a knee up (0.45 s), then up and onto the deck, standing (0.55 s). */
+  /**
+   * Over a wall: turned to it and up to it treading if need be, the hands on the coping and a knee up (0.45 s), then up and onto the deck, standing
+   * (0.55 s).
+   */
   private climbOut(side: Side): Leg[] {
     const s = this.s, k = this.bodyScale(), c = byWall(side, s.x, s.z, 0.12 - CLIMB_HANDS.z * k);
     const deck = freeDeck(side, s.x, s.z, this.deckColliders()) ?? exitPoint(s.x, s.z);
-    const turn = Math.abs(wrap(c.yaw - s.yaw));
+    const turn = Math.abs(wrap(c.yaw - s.yaw)), w = WALLS[side], d = w.along === 'x' ? Math.abs(w.at - s.z) : Math.abs(w.at - s.x);
     const legs: Leg[] = [];
     if (turn > 0.5) legs.push({ kind: 'turn', to: { x: s.x, z: s.z, y: this.floatY(), yaw: c.yaw }, dur: Math.max(0.2, turn / 3.2), clip: 'Tread' });
+    if (d > 0.8) { const p = byWall(side, s.x, s.z, -0.75); legs.push({ kind: 'settle', to: { x: p.x, z: p.z, y: this.floatY(), yaw: c.yaw }, dur: (d - 0.75) / 0.9, clip: 'Tread' }); }
     legs.push({ kind: 'climb', to: { x: c.x, z: c.z, y: COPING_Y + 0.01 - CLIMB_HANDS.y * k, yaw: c.yaw }, dur: 0.45, clip: 'SwimClimb' });
     legs.push({ kind: 'onto', to: { x: deck.x, z: deck.z, y: DECK_Y, yaw: c.yaw }, dur: 0.55, clip: 'Idle' });
     return legs;
@@ -442,12 +460,12 @@ export class VillaSwim {
     if (this.phase === 'in' && !this.wet && L.wet !== undefined && u >= L.wet) {
       this.wet = true;
       const wx = this.origin.x + a.x, wz = this.origin.z + a.z;
-      if (L.kind === 'hop') { this.water?.splash(wx, WATER_Y, wz, 18, 1); this.water?.ring(wx, wz, { r0: 0.3, r1: 1.6, life: 1.6, strength: 0.85 }); }
-      this.water?.ring(wx, wz, { r0: 0.2, r1: 1.0, life: 1.3, strength: 0.6 });
+      if (L.kind === 'hop') { this.water?.splash(wx, WATER_Y, wz, 18, 1); this.water?.ring(wx, wz, { r0: 0.3, r1: 1.6, life: 1.6, strength: 0.5 }); }
+      this.water?.ring(wx, wz, { r0: 0.2, r1: 1.0, life: 1.3, strength: 0.35 });
     }
     if (this.phase === 'in' && this.wet) this.t += dt;
     if (this.wet && (L.kind === 'walk' || L.kind === 'settle') && (this.rippleT -= dt) <= 0 && a.y < WATER_Y - 0.25) {     // wading: rings round the legs
-      this.rippleT = 0.45; this.water?.ring(this.origin.x + a.x, this.origin.z + a.z, { r0: 0.25, r1: 0.9, life: 1.4, strength: 0.35 });
+      this.rippleT = 0.45; this.water?.ring(this.origin.x + a.x, this.origin.z + a.z, { r0: 0.25, r1: 0.9, life: 1.4, strength: 0.18 });
     }
     if (this.phase === 'out' && L.kind === 'onto' && this.legT - dt <= L.dur * 0.3 && this.legT > L.dur * 0.3) this.water?.splash(this.origin.x + a.x, WATER_Y + 0.5, this.origin.z + a.z, 8, 0.25);
     if (u < 1) return;
@@ -539,22 +557,28 @@ export class VillaSwim {
       seat: this.seat ? { x: this.seat.x, z: this.seat.z, top: this.seat.top, yaw: this.seat.yaw } : null, log: JSON.parse(JSON.stringify(this.log)) as VillaSwim['log'],
     };
   }
-  /** Debug and checks (`__dakar.villa.swim`): the numbers, a swimmer put straight in the water, a clip held at a phase (the proof's pictures). */
-  hooks() {
-    return {
-      info: () => this.info(),
-      start: () => this.start(),
-      stop: () => { this.stop(); return this.info().state; },
-      geometry: () => ({ pool: { ...POOL }, steps: { ...STEPS }, area: { ...SWIM_AREA }, origin: this.where(), waterY: WATER_Y, deckY: DECK_Y }),
-      /** In the water at plan (x, z) heading `yaw`, treading (the player on the deck first: a debug move, not a way in). */
-      at: (x: number, z: number, yaw = 0) => {
-        if (!this.seat) { const o = this.where(); if (!o || !this.begin('slide', [{ kind: 'settle', to: { x, z, y: this.floatY(), yaw }, dur: 0.01, clip: 'Tread' }])) return false; }
-        Object.assign(this.s, { x, z, yaw, vx: 0, vz: 0, lean: 0, mode: 'tread' }); holdIn(this.s);
-        this.at = { x: this.s.x, z: this.s.z, y: this.floatY(), yaw: this.s.yaw }; this.place();
-        return true;
-      },
-      /** The clip held at `phase` of its cycle (null: free again). */
-      hold: (clip: Clip | null, phase = 0) => { this.freeze = clip ? { clip, phase } : null; if (!clip) { const b = this.ctx.player.body(); if (b) b.holdRate = 1; } return !!this.seat; },
-    };
+  /** Debug: the pool's numbers in the plan and the hub. */
+  geometry() { return { pool: { ...POOL }, steps: { ...STEPS }, area: { ...SWIM_AREA }, origin: this.where(), waterY: WATER_Y, deckY: DECK_Y }; }
+  /** Debug (the proof's pictures): in the water at plan (x, z) heading `yaw`, treading; a debug move, not a way in. */
+  debugAt(x: number, z: number, yaw = 0) {
+    if (!this.seat && (!this.where() || !this.begin('slide', [{ kind: 'settle', to: { x, z, y: this.floatY(), yaw }, dur: 0.01, clip: 'Tread' }]))) return false;
+    Object.assign(this.s, { x, z, yaw, vx: 0, vz: 0, lean: 0, mode: 'tread' }); holdIn(this.s);
+    this.at = { x: this.s.x, z: this.s.z, y: this.floatY(), yaw: this.s.yaw }; this.from = { ...this.at }; this.place();
+    return true;
   }
+  /** Debug (the proof's pictures): `clip` held at `phase` of its cycle (null: free again). */
+  debugHold(clip: Clip | null, phase = 0) { this.freeze = clip ? { clip, phase } : null; if (!clip) { const b = this.ctx.player.body(); if (b) b.holdRate = 1; } return !!this.seat; }
 }
+
+/**
+ * The swim's debug hooks (`__dakar.villa.swim`, src/villa/module.ts), each reading the swim when called (the hooks are made before the module's init):
+ * info, start (« Se baigner »), stop (« Sortir de l'eau »), geometry, at (straight into the water), hold (a clip held at a phase).
+ */
+export const swimHooks = (swim: () => VillaSwim) => ({
+  info: () => swim().info(),
+  start: () => swim().start(),
+  stop: () => { swim().stop(); return swim().info().state; },
+  geometry: () => swim().geometry(),
+  at: (x: number, z: number, yaw = 0) => swim().debugAt(x, z, yaw),
+  hold: (clip: Clip | null, phase = 0) => swim().debugHold(clip, phase),
+});

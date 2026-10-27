@@ -1102,11 +1102,12 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     light: lampAt.get(firstRoom.id)!.clone(), lightColor: 0xffd9a0,
     holeFocus: null,
     ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y), outdoors: () => !!roomId && !!room(roomId).outdoor } : {}),
-    update(dt, player, camera, hour) {
+    update(dt, player, camera, hour, placed = false) {
       const lx = player.x - ox, lz = player.z - oz;
       feet = player.y;
-      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood
-      if (Number.isFinite(last.x)) {
+      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood (not a player their seat
+      // places: the villa's swim takes them over the pool's edge, src/villa/swim.ts)
+      if (Number.isFinite(last.x) && !placed) {
         const step = Math.hypot(lx - last.x, lz - last.z);
         if (step > 1e-6 && step < SHELL.jump && blocked(last.x, last.z, lx, lz, feet)) { player.x = ox + last.x; player.z = oz + last.z; }
         else { last.x = lx; last.z = lz; }

@@ -16,7 +16,7 @@ import { Batch } from '../world/batch';
 import { buildHelicopter } from '../world/helicopter';
 import { GATE_FREE, gateFor, gateWants, stepGate, type VillaHold } from './gate';
 import { BAYS_HUB, freeBay, inYard, parkWhy } from './bays';
-import { VillaSwim } from './swim';
+import { VillaSwim, swimHooks } from './swim';
 import { VillaReception } from './reception';
 
 /**
@@ -225,7 +225,7 @@ class VillaModule implements GameModule {
         bays: () => BAYS_HUB.map(b => ({ ...b })),
         park: () => self.park(),
         parkOffer: () => { const m = OWNED_VEHICLES.find(v => v.ridden); const a = m ? self.parkOffer(m) : null; return a ? { label: a.label, disabled: a.disabled ?? null } : null; },
-        swim: { ...self.swim.hooks(), basin: (on = true) => self.debugBasin(on) },   // info, start, stop, geometry, at, hold (src/villa/swim.ts)
+        swim: { ...swimHooks(() => self.swim), basin: (on = true) => self.debugBasin(on) },   // info, start, stop, geometry, at, hold (src/villa/swim.ts)
         reception: { info: () => self.reception.info(), ask: () => self.reception.ask() },
         heli: () => ({ inRoof: !!self.heli, sheets: self.log.heli }),
         /** Pictures only: a helicopter standing at (x, y, z) of the district (null removes it). */
