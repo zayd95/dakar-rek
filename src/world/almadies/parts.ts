@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Batch } from '../batch';
 import type { Collider } from '../types';
 import { drawPalm } from '../villaCompound';
-import { E, GRID, GROUND, HALF, PARAPET, WALL_H, type GateSide, type SiteDraw } from './contract';
+import { E, GRID, GROUND, HALF, PARAPET, WALL_H, type GateSide, type PlanSeat, type SiteDraw } from './contract';
 
 /**
  * LD2.0-E: the district's shared pieces, in the site's plan coordinates (metres from its origin, +z toward the street, x along it, y up, the ground at
@@ -306,5 +306,54 @@ export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'
   }
   return gate ?? { x0: 0, x1: 0 };
 }
+// ------------------------------------------------------------------------------------------------ street life: the small things that make a ground floor lived in
+/**
+ * A parked car (LD2.0-E round 3), boxes only: a body, a cabin with its glass, four wheels. About 80 triangles; solid (1.8 × 4.2 m, `suv` 1.9 × 4.6 and taller). `col`: its paint.
+ * It faces along `yaw` (plan: 0 = toward the street, +z; a multiple of π/2: its collider is axis-aligned) and stands on the ground, so it belongs on paving, a forecourt or a drive,
+ * never across a door or a walk.
+ */
+export function parkedCar(d: SiteDraw, x: number, z: number, yaw: number, o: { col?: number; suv?: boolean } = {}) {
+  const suv = !!o.suv, w = suv ? 1.9 : 1.78, l = suv ? 4.7 : 4.25, hb = suv ? 0.9 : 0.72, hc = suv ? 0.62 : 0.5, col = o.col ?? 0xe8e8ea, cl = suv ? 2.9 : 2.2;
+  const at = (a: number, b: number) => [x + Math.sin(yaw) * a + Math.cos(yaw) * b, z + Math.cos(yaw) * a - Math.sin(yaw) * b] as const;       // a along the car's length (front +), b across (its right +)
+  const body = at(0, 0), cab = at(-0.25, 0);
+  d.box(d.plain, w, hb, l, body[0], GROUND + 0.28, body[1], col, yaw);
+  d.box(d.glassDark, w * 0.9, hc, cl, cab[0], GROUND + 0.28 + hb, cab[1], 0x20262c, yaw);
+  d.box(d.plain, w * 0.88, 0.06, cl * 0.9, cab[0], GROUND + 0.28 + hb + hc, cab[1], col, yaw);
+  for (const a of [-1, 1]) for (const b of [-1, 1]) { const q = at(a * l * 0.32, b * (w / 2 - 0.1)); d.box(d.plain, 0.22, 0.6, 0.6, q[0], GROUND, q[1], 0x1a1a1c, yaw); }
+  const r = Math.abs(Math.sin(yaw)) > 0.7 ? { w: l, h: w } : { w, h: l };
+  d.solid(x - r.w / 2, z - r.h / 2, x + r.w / 2, z + r.h / 2, GROUND + 0.28 + hb + hc);
+}
+/** A parked scooter or motorbike: a body, a seat, a fork, two wheels and a headlight, about 70 triangles; solid (0.6 × 1.9 m), against a wall or a railing, never on a walk. */
+export function scooter(d: SiteDraw, x: number, z: number, yaw: number, col = 0xc23b2a) {
+  const at = (a: number, b: number) => [x + Math.sin(yaw) * a + Math.cos(yaw) * b, z + Math.cos(yaw) * a - Math.sin(yaw) * b] as const;
+  const p = (a: number) => at(a, 0);
+  d.box(d.plain, 0.34, 0.34, 1.0, p(0)[0], GROUND + 0.28, p(0)[1], col, yaw);
+  d.box(d.plain, 0.3, 0.1, 0.55, p(-0.35)[0], GROUND + 0.62, p(-0.35)[1], 0x222426, yaw);
+  d.box(d.plain, 0.5, 0.1, 0.1, p(0.62)[0], GROUND + 0.95, p(0.62)[1], 0x222426, yaw);
+  d.box(d.plain, 0.1, 0.62, 0.1, p(0.6)[0], GROUND + 0.3, p(0.6)[1], 0x222426, yaw);
+  d.box(d.plain, 0.1, 0.5, 0.5, p(0.7)[0], GROUND, p(0.7)[1], 0x1a1a1c, yaw); d.box(d.plain, 0.1, 0.5, 0.5, p(-0.72)[0], GROUND, p(-0.72)[1], 0x1a1a1c, yaw);
+  d.box(d.bulbs, 0.14, 0.12, 0.1, p(0.68)[0], GROUND + 0.78, p(0.68)[1], d.c.bulb, yaw);
+  const r = Math.abs(Math.sin(yaw)) > 0.7 ? { w: 1.9, h: 0.6 } : { w: 0.6, h: 1.9 };
+  d.solid(x - r.w / 2, z - r.h / 2, x + r.w / 2, z + r.h / 2, GROUND + 1.0);
+}
+/**
+ * A street bench: a timber seat on two stone ends with a back, about 50 triangles, `n` seats (the first at the left, plan) along its length, the sitters facing `yaw`; the seats are
+ * what the design hands to `SiteLife.seats` (the player and the city's people sit on them). Solid at its ends' height only: a body walks round it.
+ */
+export function bench(d: SiteDraw, x: number, z: number, yaw: number, o: { len?: number; n?: number } = {}): PlanSeat[] {
+  const len = o.len ?? 1.8, n = o.n ?? 2, ax = Math.cos(yaw), az = -Math.sin(yaw), fx = Math.sin(yaw), fz = Math.cos(yaw);       // (ax, az): along the bench; (fx, fz): the way the sitters face
+  const at = (a: number, f: number) => [x + ax * a + fx * f, z + az * a + fz * f] as const;
+  d.box(d.plain, len, 0.06, 0.45, x, GROUND + 0.44, z, d.p.wood, yaw);
+  const back = at(0, -0.22); d.box(d.plain, len, 0.34, 0.05, back[0], GROUND + 0.5, back[1], d.p.wood, yaw);
+  for (const s of [-1, 1]) { const q = at(s * (len / 2 - 0.12), 0); d.box(d.plain, 0.1, 0.44, 0.4, q[0], GROUND, q[1], d.p.stoneDark, yaw); }
+  d.solid(Math.min(...[-1, 1].map(s => at(s * len / 2, 0)[0])) - 0.1, Math.min(...[-1, 1].map(s => at(s * len / 2, 0)[1])) - 0.1, Math.max(...[-1, 1].map(s => at(s * len / 2, 0)[0])) + 0.1, Math.max(...[-1, 1].map(s => at(s * len / 2, 0)[1])) + 0.1, GROUND + 0.5);
+  return Array.from({ length: n }, (_, i) => { const q = at(n === 1 ? 0 : (i / (n - 1) - 0.5) * (len - 0.7), 0.02); return { x: q[0], z: q[1], yaw, kind: 'bench' as const, top: GROUND + 0.47 }; });
+}
+/** A café's A-frame menu board on the pavement: two chalk-green leaves on a timber frame, about 24 triangles; not solid (a body brushes past it). */
+export function menuBoard(d: SiteDraw, x: number, z: number, yaw: number) {
+  for (const s of [-1, 1]) d.box(d.plain, 0.5, 0.85, 0.04, x + Math.sin(yaw) * s * 0.12, GROUND, z + Math.cos(yaw) * s * 0.12, s > 0 ? 0x2d3b34 : d.p.wood, yaw + s * 0.14);
+  d.box(d.plain, 0.46, 0.04, 0.3, x, GROUND + 0.85, z, d.p.wood, yaw);
+}
+
 /** A solid box in the plan (the building's footprint) `h` high. */
 export function solidBox(d: SiteDraw, r: PlanRect, h: number): Collider { return d.solid(r.x0, r.z0, r.x1, r.z1, h); }

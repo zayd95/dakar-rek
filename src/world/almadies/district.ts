@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import type { Canopy, Collider, KeepClear } from '../types';
-import { E, siteDraw, sizeOf, type DistrictKit, type Site, type SiteKind, type SiteSize, type Variant } from './contract';
+import type { Canopy, Collider, HubWorld, KeepClear } from '../types';
+import type { Seat } from '../../interact/seats';
+import { E, LIFE_CAP, siteDraw, sizeOf, type DistrictKit, type Site, type SiteDraw, type SiteKind, type SiteLife, type SiteSize, type Variant } from './contract';
 import { VARIANTS as HOTELS } from './hotels';
 import { VARIANTS as HOUSES } from './houses';
 import { VARIANTS as RESIDENCES } from './residences';
@@ -27,13 +28,15 @@ export interface District {
   colliders: Collider[]; canopies: Canopy[]; keepClear: KeepClear[];
   /** Per site: what was drawn (for the checks and the catalogue). */
   sites: { id: string; kind: SiteKind; variant: string; colliders: number }[];
+  /** The seats and the people the sites put on their ground floors, in the hub (`SiteResult.life`). */
+  seats: Seat[]; people: HubWorld['people'];
   /** The stair door of the rooftop restaurant, in the hub (the spot in front of the face, the face's outward normal), when a design gave one (`SiteResult.rooftopDoor`). */
   rooftopDoor?: { x: number; z: number; nx: number; nz: number };
 }
 /** Draws every site; `only` limits the plan (the lanes' viewers and tests draw one site at a time). */
 export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): District {
   const group = new THREE.Group(); group.name = 'almadies-district';
-  const out: District = { group, colliders: [], canopies: [], keepClear: [], sites: [] };
+  const out: District = { group, colliders: [], canopies: [], keepClear: [], sites: [], seats: [], people: [] };
   for (const site of SITES) {
     if (only && !only(site)) continue;
     const d = siteDraw(kit, site), v = variantOf(site), r = v.build(d) ?? {};
@@ -46,7 +49,22 @@ export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): Di
       const o = d.f.p(0, 0), q = d.f.p(r.rooftopDoor.x, r.rooftopDoor.z), n = d.f.p(0, 1);
       out.rooftopDoor = { x: q.x, z: q.z, nx: Math.round(n.x - o.x), nz: Math.round(n.z - o.z) };
     }
+    if (r.life) { const l = lifeInHub(d, r.life); out.seats.push(...l.seats); out.people.push(...l.people); }
     out.sites.push({ id: site.id, kind: site.kind, variant: v.id, colliders: d.colliders.length });
   }
   return out;
+}
+
+/**
+ * A site's life in the hub: the plan's points through the site's frame, the facing turned the same way (a plan yaw `a` looks along (sin a, cos a) in the plan), the seats named
+ * by site (`<site id>:seat:<n>`, stable between sessions) on the street's space, over the site's cap (`LIFE_CAP`: the rest is dropped).
+ */
+export function lifeInHub(d: SiteDraw, life: SiteLife): { seats: Seat[]; people: HubWorld['people'] } {
+  const o = d.f.p(0, 0), at = (x: number, z: number) => d.f.p(x, z), yaw = (a: number) => { const q = d.f.p(Math.sin(a), Math.cos(a)); return Math.atan2(q.x - o.x, q.z - o.z); }, cap = LIFE_CAP[d.site.kind];
+  const seats = (life.seats ?? []).slice(0, cap.seats).map((s, i): Seat => {
+    const q = at(s.x, s.z), t = s.table ? at(s.table.x, s.table.z) : null;
+    return { id: `${d.site.id}:seat:${i}`, x: q.x, z: q.z, top: s.top, yaw: yaw(s.yaw), kind: s.kind, space: 'street', occupant: null, ...(t ? { table: { x: t.x, y: s.table!.y, z: t.z } } : {}) };
+  });
+  const people = (life.people ?? []).slice(0, cap.people).map(p => { const q = at(p.x, p.z); return { x: q.x, z: q.z, yaw: yaw(p.yaw), clip: p.clip, ...(p.y !== undefined ? { y: p.y } : {}), ...(p.look ? { look: p.look } : {}) }; });
+  return { seats, people };
 }

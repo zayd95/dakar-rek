@@ -1370,6 +1370,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign });
     group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
     rooftopDoor = dist.rooftopDoor;
+    seats.push(...dist.seats); people.push(...dist.people);         // the district's terraces, benches and the people at its doors (LD2.0-E round 3)
     for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
   }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes

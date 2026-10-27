@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
 import type { KeepClear } from '../types';
+import type { PersonLook } from '../../actors/humanoid';
 import { makeDraw, planFrame, type CompoundKit, type CompoundPalette, type Draw, type Facing, type Frame } from '../villaCompound';
 
 /**
@@ -101,6 +102,18 @@ export function siteDraw(kit: DistrictKit, site: Site): SiteDraw {
   return Object.assign(base, { glass: kit.glass, glassDark: kit.glassDark, fac: kit.fac, metal: kit.metal, sign: kit.sign, site, p, w, depth: d });
 }
 
+/**
+ * The life a design puts on its ground floor (LD2.0-E round 3: « several buildings look impressive from a distance but need more life at ground level »). All in the
+ * plan: a SEAT is registered with the hub's seats, where the player may sit and the city's people sit when the hour suits (src/social/ambientSpots.ts takes every free
+ * seat); a PERSON is placed as the hub's builder-placed people are (a doorman, a waiter, a shopkeeper, a guard, someone on a balcony), drawn within the humanoid budget
+ * nearest first. `yaw`: the way they face, in the plan (0 = toward the street, +z; π/2 = toward +x).
+ */
+export interface PlanSeat { x: number; z: number; yaw: number; kind: 'chair' | 'stool' | 'bench'; /** Height of the seat's top above the ground (a chair 0.49 on the 0.1 ground, a bench 0.55). */ top: number; /** The table in front, where a plate or a glass goes (plan x, height, plan z). */ table?: { x: number; y: number; z: number } }
+export interface PlanPerson { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; /** Height of their feet above the ground when it is not the street's (a balcony's floor; a sitter's own: −0.05). */ y?: number; look?: PersonLook }
+export interface SiteLife { seats?: PlanSeat[]; people?: PlanPerson[] }
+/** What a site may put out (the humanoid budget is the game's: the nearest few are drawn, the rest wait): people and seats per site. */
+export const LIFE_CAP: Record<SiteKind, { people: number; seats: number }> = { house: { people: 2, seats: 6 }, villa: { people: 2, seats: 8 }, hotel: { people: 10, seats: 44 }, residence: { people: 8, seats: 32 } };
+
 /** What a builder hands back (the colliders and canopies are read from the draw itself). */
 export interface SiteResult {
   /** Ground the street keeps open (a gate's apron, a porte-cochère); the hub's `keepClear`. */
@@ -112,12 +125,14 @@ export interface SiteResult {
    * The venue dresses the door and hangs its sign there; without one it takes the first free side of the nearest tall building, which can be a back yard.
    */
   rooftopDoor?: { x: number; z: number };
+  /** The seats and the people of the site's ground floor (see `SiteLife`). */
+  life?: SiteLife;
 }
 export type SiteBuilder = (d: SiteDraw) => SiteResult | void;
 /** One design of a kind: the lane's builder, its name for the catalogue, the site size it fits. */
 export interface Variant { id: string; name: string; size: SiteSize; build: SiteBuilder }
 
-/** Triangle budgets per site (medium quality, gross; the low preset draws about 60 %), docs/ld2/LD2_E.md decision 5. They include the open boundary (a railing on a plinth along the street and the road-side edges: about 250 triangles for a 22 m lot's street edge and one road side, 550 for two lots, 900 for a block). */
+/** Triangle budgets per site (medium quality, gross; the low preset draws about 60 %), docs/ld2/LD2_E.md decision 5. They include the open boundary (a railing on a plinth along the street and the road-side edges: about 250 triangles for a 22 m lot's street edge and one road side, 550 for two lots, 900 for a block) and the street life of round 3 (parked cars, scooters, menu boards, benches: about 150 to 700 more). */
 export const TRI_CAP: Record<SiteKind, Partial<Record<SiteSize, number>>> = {
-  house: { S: 1800 }, villa: { S: 2850 }, hotel: { M: 5600, L: 9200 }, residence: { S: 3900, M: 5200, L: 8200 },
+  house: { S: 1950 }, villa: { S: 3050 }, hotel: { M: 6000, L: 9900 }, residence: { S: 4200, M: 5600, L: 8900 },
 };
