@@ -74,3 +74,11 @@ Walk the Almadies from the sea front to the mall: every lot has its new building
 ## Not in this slice
 - Interiors of the hotels and the apartment complexes; buying a room or a suite in them.
 - Other hubs' facades.
+
+
+## Integrated into the combined build (27 Oct, evening)
+The district was merged into `integration/combined-20261027` (M4's hospitality strip, the Plage de Ngor, the modern fronts and the driving feel) on the owner's word « if the Almadies new district identity is done, add it ». What changed to fit:
+- **The strip holds blocks (0,0) and (1,0)** (the restaurants, La Vague, the Terrasse de Ngor, the car parks: `src/world/hospitalityStrip.ts`). The district's sites there (the Baobab Azur resort on (0,0), Le Filao and two villas on (1,0)) are out of the plan (`STRIP_BLOCKS` in `plan.ts`). The boutique hotel Le Filao stands on the sea front at (3,0) lots 0–1, Les Cormorans on its south lots; Les Alizés took Les Cormorans' old place at (3,3). **25 sites on 33 lots**, 13 of the 14 designs in the plan; the resort (`hotel-resort`) stays in the registry with its tests, with no block to stand on (it needs four free lots).
+- **The « street unchanged » proof** (`tests/almadiesDistrict.test.ts`) now digests everything outside the sites and the flagship's lot against the **combined build without the district** (`tests/fixtures/almadiesOutsideDistrict.json`, base label `combined-20261027`; regenerated with `tests/writeDigest.test.ts`). The older fixture `almadiesOutsideVilla.json` is gone, as on this branch.
+- **Cost** (in the game, `scripts/check-district.mjs`, medium, against the combined hub without the district: 1338 meshes, 872 660 triangles): **+35 470 triangles, +7 meshes** (budget +60 k, +10); 12/12.
+- The modern fronts' baked depth is not applied to the district's own batches' sites (they have their own palette); the generic villas the district replaced no longer draw.
