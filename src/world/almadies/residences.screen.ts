@@ -23,8 +23,14 @@ export const screen: SiteBuilder = d => {
   m.box(B.x0, G, B.z0, B.x1, L(1), Zout, p.stone, 'TU');                                                                    // the stone plinth
   m.box(B.x0, L(1), B.z0, B.x1, roof, Zin, p.render, 'TU');                                                                 // the block, behind its loggias
   for (let i = 1; i <= top; i++) k.slab({ x0: B.x0, x1: B.x1, z0: B.z0, z1: Zout }, L(i), { over: 0.3, overS: 0.05, thick: 0.26 });
+  k.roofDeck({ x0: B.x0 - 0.4, x1: B.x1 + 0.4, z0: B.z0 - 0.4, z1: Zout + 1.0 }, roof, 0.45); k.solar(5, -6.0, roof, 4);
+  m.box(-2.6, roof, -7.8, 2.6, roof + 2.7, -4.6, p.render2, 'TU'); k.slab({ x0: -2.6, x1: 2.6, z0: -7.8, z1: -4.6 }, roof + 2.7, { over: 0.25, thick: 0.2 });   // the lift's head
   k.slab({ x0: B.x0, x1: B.x1, z0: B.z0, z1: Zout }, roof, { over: 0.4, overS: 1.0, thick: 0.34 });                          // the roof: a deep visor
   for (let b = 1; b < 9; b++) m.box(bu(b) - 0.15, b >= 3 && b <= 6 ? L(2) : L(1), Zin, bu(b) + 0.15, roof, Zout + 0.04, p.slab, 'BTU');   // the fins between the loggias
+  for (const b of [2, 4, 6]) for (let f = 2; f <= top; f++) {                                                                  // vertical planters up the fins: a tier of foliage on each floor
+    k.leaves.box(bu(b) - 0.17, L(f) + 0.35, Zout + 0.04, bu(b) + 0.17, L(f + 1) - 0.3, Zout + 0.26, (f + b) % 2 ? GREEN.hedge2 : GREEN.moss, 'BTU');
+    if (f % 2 === 0) m.box(bu(b) - 0.2, L(f), Zout + 0.04, bu(b) + 0.2, L(f) + 0.35, Zout + 0.3, p.stone, 'BTU');                                  // its stone pot
+  }
   for (const x of [B.x0, B.x1 - 0.3]) m.box(x, L(1), Zin, x + 0.3, roof, Zout + 0.04, p.slab, 'BTU');                                       // the end fins, closing the end loggias
   d.solid(B.x0, B.z0, B.x1, Zout, roof + 0.4);
   k.sec('masses');
@@ -48,7 +54,6 @@ export const screen: SiteBuilder = d => {
           Fi.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(g) + 0.04, y1: L(g) + 2.74, mull: 1, ledge: false, lean: g > 5 });
           Fo.quad(u0, u1, L(g) + 0.06, L(g) + 1.05, -0.06, GUARD); Fo.box(u0, u1, L(g) + 1.05, L(g) + 1.09, -0.09, -0.03, p.frame, 'iue');
           k.leaves.box(bu(b) + 0.35, L(g), Zout - 0.75, bu(b + 1) - 0.35, L(g) + 0.5, Zout - 0.25, GREEN.hedge2, 'U');
-          if (!lite && (b + g) % 2 === 0) k.leaves.box(bu(b) + 0.35, L(g) + 0.5, Zout - 0.7, bu(b) + 1.2, L(g) + 0.75, Zout - 0.3, GREEN.moss, 'U');
         }
       }
       f = e + 1;
@@ -72,6 +77,7 @@ export const screen: SiteBuilder = d => {
   k.slab({ x0: -2.6, x1: 2.6, z0: LB.z1 - 0.1, z1: LB.z1 + 2.3 }, G + 3.35, { over: 0, thick: 0.2 });                        // the canopy
   for (const x of [-2.4, 2.4]) { k.post(x, LB.z1 + 2.0, 0.18, G, G + 3.15, p.frame, 'UT'); d.solid(x - 0.09, LB.z1 + 1.91, x + 0.09, LB.z1 + 2.09, 3.3); }
   for (const x of [-1.2, 1.2]) k.bulbs.box(x - 0.18, G + 3.15, LB.z1 + 1.0, x + 0.18, G + 3.19, LB.z1 + 1.4, 0xfff1c8, 'T');
+  FL.houseNumber(s.number, 2.15, G + 1.55, 0.08);
   m.box(2.0, G + 1.0, LB.z1 - 0.1, 2.3, G + 1.4, LB.z1 - 0.05, p.frame, 'iU'); k.bulbs.box(2.05, G + 1.3, LB.z1 - 0.05, 2.25, G + 1.34, LB.z1 - 0.03, 0xfff1c8, 'U');   // the intercom
   if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: 0, z: LB.z1 - 0.1 + 0.16, y: lt - 0.72, w: Math.min(11.5, 0.34 * s.name.length), h: 0.9, bg: css(p.board), fg: '#f4e6bd' }); }
   k.sec('lobby');
@@ -99,7 +105,7 @@ export const screen: SiteBuilder = d => {
   const FB = k.facade('back', B.z0);
   for (let f = 1; f <= top; f++) {                                                                                           // a ribbon of glass on each floor, a mullion every bay
     FB.opening({ u0: B.x0 + 0.5, u1: B.x1 - 0.5, y0: L(f) + 0.3, y1: L(f) + 2.5, mull: 0, lean: true });
-    if (!lite) for (let b = 1; b < 9; b++) FB.quad(bu(b) - 0.04, bu(b) + 0.04, L(f) + 0.3, L(f) + 2.5, 0.05, p.frame);
+    if (!lite) for (let b = 1; b < 9; b += 2) FB.quad(bu(b) - 0.04, bu(b) + 0.04, L(f) + 0.3, L(f) + 2.5, 0.05, p.frame);
   }
   k.sec('ends');
 

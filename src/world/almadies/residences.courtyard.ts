@@ -31,6 +31,9 @@ export const courtyard: SiteBuilder = d => {
   const rh = hole(n);
   k.slab({ x0: O.x0, x1: O.x1, z0: rh.z1, z1: O.z1 }, roof, { over: 0.5, overS: 1.0, thick: 0.34 }); k.slab({ x0: O.x0, x1: O.x1, z0: O.z0, z1: rh.z0 }, roof, { over: 0.5, thick: 0.34 });
   k.slab({ x0: O.x0, x1: rh.x0, z0: rh.z0, z1: rh.z1 }, roof, { over: 0.5, overS: 0, thick: 0.34 }); k.slab({ x0: rh.x1, x1: O.x1, z0: rh.z0, z1: rh.z1 }, roof, { over: 0.5, overS: 0, thick: 0.34 });
+  k.roofDeck({ x0: O.x0 - 0.5, x1: O.x1 + 0.5, z0: rh.z1, z1: O.z1 + 1.0 }, roof, 0.45); k.roofDeck({ x0: O.x0 - 0.5, x1: O.x1 + 0.5, z0: O.z0 - 0.5, z1: rh.z0 }, roof, 0.45);
+  k.roofDeck({ x0: O.x0 - 0.5, x1: rh.x0, z0: rh.z0, z1: rh.z1 }, roof, 0.45); k.roofDeck({ x0: rh.x1, x1: O.x1 + 0.5, z0: rh.z0, z1: rh.z1 }, roof, 0.45);
+  k.solar(-8, -29.5, roof, 5); k.solar(-8, -27.5, roof, 5);
   k.sec('masses');
 
   // ------------------------------------------------------------------------------------------------ the street face and the passage
@@ -40,6 +43,12 @@ export const courtyard: SiteBuilder = d => {
     for (let f = o.ground ? 0 : 1; f < n; f++) for (let b = 0; b < bays; b++) {
       const a = u0 + b * bw, y = L(f), g = f === 0;
       if (f === 1 && (b === 2 || b === 3) && o.bal) continue;                                                             // behind the portal
+      if (o.bal && (b === 1 || b === 4) && (f === 2 || f === 3)) {                                                        // two tall oak screens in white frames, either side of the portal
+        if (f === 2) { const a2 = a + 0.3, b2 = a + bw - 0.3, y0 = L(2) + 0.02, y1 = L(4) - 0.34;
+          F.quad(a2, b2, y0, y1, 0.04, p.render2); F.box(a2, a2 + 0.25, y0, y1, 0, 0.22, p.slab); F.box(b2 - 0.25, b2, y0, y1, 0, 0.22, p.slab);
+          F.slats({ u0: a2 + 0.25, u1: b2 - 0.25, y0: y0 + 0.02, y1: y1 - 0.02, pitch: 0.22, w: 0.08, depth: 0.14, n0: 0.06 }); }
+        continue;
+      }
       F.opening({ u0: a + 0.5, u1: a + bw - 0.5, y0: y + (g ? 0.4 : 0.04), y1: y + (g ? 2.7 : 2.74), mull: bw > 4.4 ? 1 : 0, lean: o.lean || f > 5, head: !g });
       if (o.bal && f > 0 && (b + f) % 2 === 0) F.balcony({ u0: a + 0.04, u1: a + bw - 0.04, y, depth: o.depth ?? 1.6, guard: o.guard ?? (f % 2 ? 'glass' : 'solid'), guardCol: p.render, green: true });
     }
@@ -59,6 +68,7 @@ export const courtyard: SiteBuilder = d => {
   const lobby = k.facade('right', PASS.x0);                                                                                     // the lobby's glass door, on the passage's west wall
   lobby.opening({ u0: 0.2, u1: 2.6, y0: G + 0.1, y1: G + 2.7, mull: 1, head: false, ledge: false }); lobby.opening({ u0: 3.0, u1: 3.8, y0: G + 0.9, y1: G + 2.6, mull: 0, head: false, ledge: false, n: 0 });
   k.bulbs.box(PASS.x0 + 0.04, G + 2.9, 1.0, PASS.x0 + 0.2, G + 2.96, 2.0, 0xfff1c8, 'U');
+  FS.houseNumber(s.number, 3.9, G + 1.5, 0.46);
   k.sec('street');
   if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: 0, z: O.z1 + 0.47, y: L(1) + 1.2, w: Math.min(9.0, 0.33 * s.name.length), h: 0.9, bg: css(p.board), fg: '#f4e6bd' }); }
 
@@ -122,6 +132,11 @@ export const courtyard: SiteBuilder = d => {
     d.solid(x - 0.25, z - 0.25, x + 0.25, z + 0.25, 3);
   };
   tree(-8.2, cz + 5, 1.1); tree(8.2, cz - 5, 1.0); if (!lite) tree(-8.0, cz - 6.2, 0.9);
+  for (const [x, z, c] of [[-3.4, PW.z0 - 2.2, 0xf1e6cf], [3.6, PW.z0 - 2.4, p.accent], [0.4, PW.z1 + 2.2, 0xf1e6cf]] as const) {                    // parasols by the pool
+    if (lite && x > 0) continue;
+    d.cyl(d.plain, 0.04, 0.04, 2.3, x, G + 0.05, z, p.frame, 4); d.cyl(d.plain, 0.05, 1.15, 0.38, x, G + 2.0, z, c, 8);
+  }
+  for (let i = 0; i < 6; i++) m.hq(-0.45 + (i % 2) * 0.2, C.z1 - 1.2 - i * 0.55 - 0.2, 0.45 + (i % 2) * 0.2, C.z1 - 1.2 - i * 0.55 + 0.2, G + 0.045, true, mix(p.stone, 0xffffff, 0.5));   // stepping stones from the passage to the pool
   k.sec('pool');
 
   // ------------------------------------------------------------------------------------------------ the roof: pergolas on the street side, plant at the back

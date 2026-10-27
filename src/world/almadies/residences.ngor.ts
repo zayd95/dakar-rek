@@ -33,6 +33,7 @@ export const ngor: SiteBuilder = d => {
   k.slab({ x0: PH.x0, x1: PH.x1, z0: PH.z0, z1: 1.0 }, roof, { over: 0.4, thick: 0.3 });                       // the roof, and its visor over the east half of the terrace
   k.slab({ x0: -2.0, x1: PH.x1, z0: 1.0, z1: 3.1 }, roof, { over: 0.4, thick: 0.3 });
   k.slab({ x0: T.x0, x1: T.x1, z0: T.z0, z1: T.z1 }, roof + 1.5, { over: 0.4, overS: 0.1, thick: 0.22 });      // the tower's own thin roof
+  k.roofDeck({ x0: PH.x0 - 0.4, x1: PH.x1 + 0.4, z0: PH.z0 - 0.4, z1: 1.4 }, roof, 0.35); k.roofDeck({ x0: -2.4, x1: PH.x1 + 0.4, z0: 1.0, z1: 3.5 }, roof, 0.4);
   k.post(-2.0, 3.1 + 0.0, 0.2, L(top), roof - 0.0, p.frame, 'U');                          // the visor's one slim post, at its west corner
 
   // ------------------------------------------------------------------------------------------------ the street face of the main block
@@ -97,6 +98,7 @@ export const ngor: SiteBuilder = d => {
   door(d, { face: 'street', x: 0, z: LB.z1, w: 1.5, h: 2.7, portal: true, steps: true });
   for (const x of [-1.2, 1.2]) k.bulbs.box(x - 0.18, T1 - 0.3, tz - 1.2, x + 0.18, T1 - 0.26, tz - 0.8, 0xfff1c8, 'T');   // downlights in the canopy's soffit
   k.bulbs.box(-0.6, T1 - 0.3, LB.z1 + 0.4, 0.6, T1 - 0.26, LB.z1 + 0.8, 0xfff1c8, 'T');
+  FL.houseNumber(s.number, 2.05, G + 1.55, 0.06);
   m.box(1.9, G + 1.0, LB.z1, 2.2, G + 1.4, LB.z1 + 0.05, p.frame, 'iU'); k.bulbs.box(1.95, G + 1.3, LB.z1 + 0.05, 2.15, G + 1.34, LB.z1 + 0.07, 0xfff1c8, 'U');   // the intercom
 
   // ------------------------------------------------------------------------------------------------ the stair tower's claustra
@@ -131,6 +133,7 @@ export const ngor: SiteBuilder = d => {
   gr(0, 9.2, 2.8, 0.06, 0.06, p.stoneDark); gr(0, 7.6, 2.8, 0.06, 0.06, p.stoneDark);
   const hb = (x0: number, x1: number, z: number, h = 0.55) => k.leaves.box(x0, G, z - 0.3, x1, G + h, z + 0.3, GREEN.hedge2, 'U');
   hb(-10.2, -2.6, 10.1); hb(2.6, 10.2, 10.1);
+  for (const x of [-1.9, 1.9]) { m.box(x - 0.28, G, LB.z1 + 0.3, x + 0.28, G + 0.55, LB.z1 + 0.86, p.stone, 'U'); d.blob(d.leaves, 0.42, x, G + 0.95, LB.z1 + 0.58, GREEN.hedge2, 1, 0); }   // topiary either side of the door
   planter(d, -6.5, 4.0, 5.0, 0.8, { h: 0.5, bloom: mix(p.accent, 0xff7a9a, 0.4) }); planter(d, 5.1, 3.4, 1.8, 0.7, { h: 0.55, hedge: GREEN.hedge2 });
   palm(d, -7.0, 7.5, 1.05, 0.3); palm(d, 7.2, 7.4, 0.95, 1.2);
   for (const x of [-2.2, 2.2]) { m.box(x - 0.07, G, 9.3 - 0.07, x + 0.07, G + 0.7, 9.3 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.3 - 0.08, x + 0.08, G + 0.74, 9.3 + 0.08, 0xfff1c8, 'U'); }

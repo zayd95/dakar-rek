@@ -30,6 +30,7 @@ export const GUARD = 0xcfe4ec;
 /** The leaves the greenery wears (a hedge, a creeper, a planter's shrub). */
 export const GREEN = { hedge: 0x3e6d2e, hedge2: 0x4b7d36, moss: 0x5d8a3a, lawn: 0x6e9e44, lawn2: 0x79aa4c, bloom: 0xc2307a, bloom2: 0xd94a8c };
 
+const DIGITS: Record<string, string> = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg' };
 /** A heap of triangles in plan coordinates (counter-clockwise from outside), flushed into one batch as one merged geometry. */
 export class Mesh {
   private pos: number[] = [];
@@ -118,6 +119,16 @@ export class Facade {
     if (o.head !== false) this.box(o.u0 - 0.06, o.u1 + 0.06, o.y1, o.y1 + 0.1, n, n + 0.16, k.p.slab, 'iute');
     if (o.ledge !== false) this.box(o.u0 - 0.06, o.u1 + 0.06, o.y0 - 0.06, o.y0, n, n + 0.12, k.p.slab, 'iue');
   }
+  /** The house number: gilt seven-segment digits (2 triangles a segment) on a dark plaque, `u` its centre along the face, `y` its foot, `n` out of the face. */
+  houseNumber(text: string, u: number, y: number, n: number, o: { h?: number; col?: number; plate?: number } = {}) {
+    const { k } = this, h = o.h ?? 0.26, w = h * 0.52, t = h * 0.13, gap = h * 0.4, col = o.col ?? mix(k.p.accent, 0xffffff, 0.2), pitch = w + gap, len = text.length * pitch - gap, u0 = u - len / 2;
+    this.quad(u0 - 0.1, u0 + len + 0.1, y - 0.1, y + h + 0.1, n, o.plate ?? 0x1c1a18);
+    [...text].forEach((ch, i) => {
+      const a = u0 + i * pitch, seg = DIGITS[ch] ?? '';
+      const S: Record<string, [number, number, number, number]> = { a: [a, a + w, y + h - t, y + h], b: [a + w - t, a + w, y + h / 2, y + h], c: [a + w - t, a + w, y, y + h / 2], d: [a, a + w, y, y + t], e: [a, a + t, y, y + h / 2], f: [a, a + t, y + h / 2, y + h], g: [a, a + w, y + h / 2 - t / 2, y + h / 2 + t / 2] };
+      for (const c of seg) { const [x0, x1, y0, y1] = S[c]; this.quad(x0, x1, y0, y1, n + 0.01, col); }
+    });
+  }
   /**
    * Vertical slats (an oak claustra, a brise-soleil), `depth` deep from the face's plane at n0: three faces each (6 triangles); a dark backing behind
    * them so the gaps read. A slat every `pitch` m (twice as far apart on the low preset).
@@ -177,6 +188,15 @@ export class Kit {
   slab(r: { x0: number; z0: number; x1: number; z1: number }, y: number, o: { thick?: number; over?: number; col?: number; overS?: number } = {}) {
     const th = o.thick ?? 0.26, ov = o.over ?? 0.35;
     this.plain.box(r.x0 - ov, y - th, r.z0 - ov, r.x1 + ov, y, r.z1 + (o.overS ?? ov), o.col ?? this.p.slab, '');
+  }
+  /** The roof's finish over a slab's top (a shade darker than the white slab, its edge left bare), `inset` m in from the slab's edge. */
+  roofDeck(r: { x0: number; z0: number; x1: number; z1: number }, y: number, inset = 0.4) {
+    this.plain.hq(r.x0 + inset, r.z0 + inset, r.x1 - inset, r.z1 - inset, y + 0.02, true, mix(this.p.roof, 0x000000, 0.1));
+  }
+  /** A row of solar panels on frames over the roof (tilted look: a dark slab and its lighter rim), `n` of them from (x, z) along x. */
+  solar(x: number, z: number, y: number, n: number) {
+    if (this.lite) return;
+    for (let i = 0; i < n; i++) { this.plain.box(x + i * 1.9, y + 0.35, z, x + i * 1.9 + 1.7, y + 0.42, z + 1.0, 0x233044, 'U'); this.plain.box(x + i * 1.9 + 0.1, y, z + 0.1, x + i * 1.9 + 0.2, y + 0.35, z + 0.9, 0xbfc4c8, 'UT'); }
   }
   /** A post (a pilotis, a pergola's, a canopy's): a square column from y0 to y1, four faces. */
   post(x: number, z: number, w: number, y0: number, y1: number, col: number, skip = 'UT') { this.plain.box(x - w / 2, y0, z - w / 2, x + w / 2, y1, z + w / 2, col, skip); }
