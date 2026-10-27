@@ -20,7 +20,7 @@ import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
 import { driveStep, newDriveState, stopping, type DriveState } from './drive';
-import { DriveControls, forwardIntent, type DriveCmd } from './controls';
+import { DriveControls, type DriveCmd } from './controls';
 import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
 import type { AssetState } from '../core/types';
 import { specOf } from '../economy/catalog';
@@ -43,6 +43,7 @@ import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
 import { transport } from './module';
+import { driveFeel } from './driveFeel';
 import type { DriveSpec, VehicleSpec } from './spec';
 
 /**
@@ -447,9 +448,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1), ...(moto ? {} : { radio: () => this.radioNext() }) });
     { const ex = rideHooks.extra?.(this) ?? null; ridePad.extra(this, ex && !ex.disabled ? ex : null); }   // LD2.0-D: « Garer à la villa » on the pad (the action button is hidden while driving)
     // the stick: forward = throttle, left / right = steering, both at once on a diagonal. « Accélérer » (held) opens the boosted speed range, « Frein » brakes and, held at a standstill, backs a car up gently.
-    const keys = ctx.input.keys, joy = ctx.mode() === 'play' ? ctx.input.joy : { x: 0, y: 0 }, pressed = (...c: string[]) => ctx.mode() === 'play' && c.some(k => keys.has(k));
+    // On a phone the joystick is not used: the steering rocker turns the wheel, the gas pedal gives the throttle by how far down the toe is (and, to the floor, the boosted range), the brake pedal brakes.
+    const keys = ctx.input.keys, pressed = (...c: string[]) => ctx.mode() === 'play' && c.some(k => keys.has(k));
+    ridePad.tick(this, dt);
     const cmd: DriveCmd = ridePad.active
-      ? { fwd: forwardIntent(joy.x, joy.y), steer: mv.x, boost: ridePad.gas, brake: ridePad.brake || joy.y < -0.6 }
+      ? { fwd: ridePad.gasAmount, steer: ridePad.steer, boost: ridePad.boostOn, brake: ridePad.brake }
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
     const input = this.leaving ? stopping() : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
@@ -469,13 +472,14 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       if (!this.road.called && this.road.t > SUPERVISED_S) { this.road.called = true; ctx.toast('Le vendeur t’appelle : « Ramenez-la au garage maintenant, s’il vous plaît. »'); }
     }
     ridePad.reversing = this.ctl.showR;
+    if (this.hub && !this.leaving) driveFeel.report({ hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, top: drv.maxSpeed, kind: moto ? 'moto' : 'car' }, dt, ridePad.horn || (ctx.mode() === 'play' && ctx.input.keys.has('KeyH')));
     transport.obstacles(this.obst, this.def.kit);
     vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
     const z0 = this.st.z, hit = driveStep(this.st, input, drv, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
-    if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); }
+    if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); if (cf.impact.kind === 'hit') driveFeel.crash(cf.impact.strength, cf.impact.speed); else driveFeel.bump(cf.impact.speed); }   // the people round the car feel it too (src/transport/driveFeel.ts)
     if (cf.scraping) vehicleAudio.scrape(cf.scrape); else vehicleAudio.scrapeOff();
     if (cf.scraping) this.scrapeFrames++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
@@ -919,6 +923,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         /** Checks: the condition of the player's vehicle, and a hard hit at `speed` (what a crash does). */
         health: () => this.hp(),
         hurt: (speed: number, headOn = true) => this.hurt({ kind: 'hit', speed, strength: Math.min(1, speed / 12), headOn, dir: 1 }),
+        /** Checks: the people round the car feel a crash of that strength (src/transport/driveFeel.ts), without the car being hurt. */
+        crashNow: (strength = 0.8, speed = 12) => driveFeel.crash(strength, speed),
         own: () => this.buy(),
         boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: what would stop this vehicle at (x, z) with radius r (the drive's own test, footprints of the other systems refreshed). */
@@ -1276,7 +1282,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private getOff(normal: boolean) {
     if (this.def.kit !== 'moto') { radio.leave(); document.querySelector('#ridepad .rp-radio')?.classList.remove('on'); }   // never in the street
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
-    this.driving = false; this.leaving = false; ridePad.hide(this);
+    this.driving = false; this.leaving = false; ridePad.hide(this); driveFeel.idle();
     vehicleAudio.stop();
     const door = normal && m.hasDoor && ctx.mode() === 'play';
     if (!door && this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
@@ -1374,7 +1380,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   private clear() {
     const ride = this.carry !== null;                           // crossing into the next district: the ride goes on (engine, pad, camera)
-    if (this.driving) { this.driving = false; if (!ride) { this.cam.end(this.ctx.camera as THREE.PerspectiveCamera); this.upright(); vehicleAudio.stop(); } }
+    if (this.driving) { this.driving = false; if (!ride) { this.cam.end(this.ctx.camera as THREE.PerspectiveCamera); this.upright(); vehicleAudio.stop(); driveFeel.idle(); } }
     this.setSolid(false);
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;

@@ -158,8 +158,8 @@ export class Hud {
       if (!this.input.enabled) return;
       if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
       const t = e.target as HTMLElement;
-      if (t.closest('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev')) return;
-      if (e.clientX < innerWidth * 0.45 && joyId < 0) {
+      if (t.closest('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev,#steerpad')) return;
+      if (e.clientX < innerWidth * 0.45 && joyId < 0 && !document.body.classList.contains('ridepad')) {   // not while driving: the steering rocker (src/transport/ridePad.ts) is under that thumb
         // Floating stick: a finger on the base drives it from its centre; anywhere else in the left zone moves the base under the finger.
         joyId = e.pointerId; joy.style.transform = '';
         const r = joy.getBoundingClientRect(); let cx = r.left + r.width / 2, cy = r.top + r.height / 2;

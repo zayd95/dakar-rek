@@ -28,23 +28,53 @@ export async function realTouch(page) {
   };
 }
 
-/** The joystick's full travel in page pixels (src/ui/hud.ts R): a push of `f` of it is `f` of the stick. */
+/** The joystick's full travel in page pixels (src/ui/hud.ts R): a push of `f` of it is `f` of the stick (walking on foot; a vehicle has the steering rocker and the pedals instead). */
 export const STICK = 50;
 
 /**
- * Drive a vehicle with real fingers, as on a phone (src/transport/ridePad.ts): the LEFT thumb on the joystick gives both the throttle (up) and the steering (sideways), the RIGHT thumb
- * holds « Accélérer » (`boost`) or « Frein » (`brake`: a car held at a standstill backs up; `reverse` is the same hold, kept for the older checks). Holds until `hold()` resolves, then lets go.
- * `fwd` is how far up the stick goes (0…1, default 1 unless braking), `steer` how far sideways (−1 left … 1 right).
+ * The driving pad's parts in page pixels (src/transport/ridePad.ts): the steering rocker under the left thumb (the thumb's place on it sets the wheel: the rim ±1, never less than 0.4 once it is
+ * down, nothing in the middle gap) and the tall gas pedal under the right (the lower the toe, the more throttle; to the floor, the boosted range).
+ */
+export async function padRig(page, t) {
+  const b = await page.evaluate(() => { const r = document.querySelector('#steerpad').getBoundingClientRect(), g = document.querySelector('#ridepad .rp-gas').getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, half: r.width / 2, gx: g.left + g.width / 2, gtop: g.top, gh: g.height }; });
+  return {
+    ...b,
+    /** A finger on the rocker for a wheel of `s` (−1 … 1): lifted for a small one, a half-and-half press for a gentle one, the real place on the rocker for a firm one. Call it again as `s` changes. */
+    rocker(id) {
+      let on = false, tog = 0;
+      return async s => {
+        const a = Math.abs(s), want = a >= 0.4 || (a >= 0.12 && tog++ % 2 === 0);
+        if (!want) { if (on) { await t.up(id); on = false; } return; }
+        const m = Math.max(0.08, Math.min(0.97, (Math.max(0.4, a) - 0.4) / 0.6)), x = b.cx + Math.sign(s) * m * b.half;
+        if (!on) { await t.down(id, x, b.cy); on = true; } else await t.move(id, x, b.cy, 1);
+      };
+    },
+    /** A finger on the gas pedal: off, on at the heel's half (cruising: no boost), `boost` true (the toe on the floor) or a number (how far down the pedal, 0 heel … 1 toe). Call it again as the wish changes. */
+    gas(id) {
+      let on = false, f = 0;
+      return async (want, boost = false) => {
+        const nf = typeof boost === 'number' ? boost : boost ? 0.97 : 0.8;
+        if (!want) { if (on) { await t.up(id); on = false; } return; }
+        if (!on) { await t.down(id, b.gx, b.gtop + nf * b.gh); on = true; f = nf; } else if (nf !== f) { await t.move(id, b.gx, b.gtop + nf * b.gh, 1); f = nf; }
+      };
+    },
+  };
+}
+
+/**
+ * Drive a vehicle with real fingers, as on a phone (src/transport/ridePad.ts): the LEFT thumb on the steering rocker (`steer`: how far, −1 left … 1 right), the RIGHT thumb on a pedal:
+ * « Frein » (`brake`: a car held at a standstill backs up; `reverse` is the same hold, kept for the older checks) or the gas pedal (`fwd` 0…1, default 1 unless braking: how low the toe is;
+ * `boost`: the toe on the floor). Holds until `hold()` resolves, then lets go.
  */
 export async function padDrive(page, t, { steer = 0, fwd, brake = false, reverse = false, boost = false, hold }) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  const braking = brake || reverse, up = fwd ?? (braking ? 0 : 1);
+  const braking = brake || reverse, up = fwd ?? (braking ? 0 : 1), R = await padRig(page, t);
   if (braking) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); }
-  else if (boost) { const g = await t.centre('#ridepad .rp-gas'); await t.down(1, g.x, g.y); }
-  if (up || steer) { const j = await t.centre('#joy'); await t.down(2, j.x, j.y); await t.move(2, j.x + steer * STICK, j.y - up * STICK); }
+  else if (boost || up) { const f = boost ? 0.97 : Math.max(0, Math.min(1, (Math.max(0.35, up * 0.9 + 0.1) - 0.35) / 0.65)); await t.down(1, R.gx, R.gtop + f * R.gh); }
+  const rocker = R.rocker(2); if (steer) await rocker(steer);
   await hold();
   if (fingers_has(t, 1)) await t.up(1);
-  if (up || steer) await t.up(2);
+  if (steer) await rocker(0);
 }
 const fingers_has = (t, id) => t.fingers.has(id);
 
@@ -73,15 +103,14 @@ export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 
  * and steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
  * Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
  */
-export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5 } = {}) {
+export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5, boost = false } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  const j = await t.centre('#joy'), r = STICK, t0 = Date.now();
+  const R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5), t0 = Date.now();
   let gasOn = false, steerNow = 0;
-  const stick = async () => t.move(2, j.x + steerNow * r, j.y - (gasOn ? r : 0), 1);
-  const press = async on => { if (on === gasOn) return; gasOn = on; await stick(); };
+  const stick = async () => rocker(steerNow);
+  const press = async on => { if (on === gasOn) return; gasOn = on; await gasP(on, boost); };                    // `boost`: the toe on the floor (the boosted range, for a drive at speed)
   const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
-  await t.down(2, j.x, j.y);
   let at = null, prev = null, last = null, seen = null;
   points = points.map(p => ({ ...p }));                                     // written in the frame of the district the route starts in; a crossing into the next one (z jumps by a whole street grid) shifts the rest
   for (const w of points) {
@@ -112,7 +141,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
     }
     prev = { x: w.x, z: w.z };
   }
-  await t.up(2); await press(false); await brake(false);
+  steerNow = 0; await stick(); await press(false); await brake(false);
   if (brakeAtEnd) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 60000 }).catch(() => {}); await t.up(1); }
   return at;
 }
@@ -125,12 +154,11 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
  */
 export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 300000, speed = 2.6 } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  const brk = await t.centre('#ridepad .rp-brake'), j = await t.centre('#joy'), r = STICK, t0 = Date.now();
+  const brk = await t.centre('#ridepad .rp-brake'), R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5), t0 = Date.now();
   let reverse = false, gasOn = false, lockNow = 0, at = null, moves = 0, brakeOn = false;
-  const stick = () => t.move(2, j.x + lockNow * r, j.y - (gasOn ? r : 0), 1);
+  const stick = async () => { await rocker(lockNow); await gasP(gasOn); };
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   const stop = async () => { gasOn = false; await stick(); await brake(true); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 30000 }).catch(() => {}); if (!reverse) await brake(false); };
-  await t.down(2, j.x, j.y);
   while (Date.now() - t0 < ms) {
     at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
     const err = Math.atan2(Math.sin(target - at.yaw), Math.cos(target - at.yaw));
@@ -150,7 +178,7 @@ export async function turnAround(page, t, key, target, { area, tol = 0.3, margin
     else { gasOn = Math.abs(at.speed) < speed; await stick(); }
     await page.waitForTimeout(90);
   }
-  gasOn = false; await stick(); await brake(false); await t.up(2); await stop(); await brake(false);
+  gasOn = false; lockNow = 0; await stick(); await brake(false); await stop(); await brake(false);
   return page.evaluate(k => window.__dakar[k].at(), key);
 }
 

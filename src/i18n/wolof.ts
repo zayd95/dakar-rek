@@ -74,6 +74,14 @@ export const LEXICON: readonly Lex[] = [
   // Car rapide: the apprentice and the passengers
   L('Am na place', 'il y a de la place', ['transport']),
   L('Dinaa wàcc', 'je descends', ['transport']),
+  // In the car (the passenger of a ride, the street's reaction: src/transport/vtcBanter.ts, src/crowd/streetReact.ts)
+  L('Dawalal ndank', 'roule doucement', ['transport', 'ask']),
+  L('Dama yakamti', 'je suis pressé', ['transport', 'chat']),
+  L('Bul gaaw', 'ne va pas si vite', ['transport']),
+  L('Dama tiit', 'j’ai peur', ['transport', 'chat']),
+  L('Xoolal', 'regarde', ['transport']),
+  L('Fii rekk', 'juste ici', ['transport', 'chat']),
+  L('Wóoy', 'oh là là', ['chat', 'transport']),
   // Market and bargaining
   L('Ñaata la ?', 'c’est combien ?', ['market', 'ask']),
   L('Wàññi ko tuuti', 'baisse un peu', ['market']),
