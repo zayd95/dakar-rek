@@ -25,7 +25,7 @@
    "ok": true
   },
   {
-   "name": "A4. the way in never touches a bay nor goes behind the car: 1722 positions sampled, those inside the walls all on the path (ENTRY_WALK)",
+   "name": "A4. the way in never touches a bay nor goes behind the car: 716 positions sampled, those inside the walls all on the path (ENTRY_WALK)",
    "ok": true
   },
   {
@@ -65,7 +65,7 @@
    "ok": true
   },
   {
-   "name": "D1. the compound costs at most 25 draw calls, the main entrance 2: {\"compound\":{\"meshes\":11,\"calls\":11,\"tris\":6628},\"entrance\":{\"calls\":2,\"tris\":260,\"stoneTris\":80,\"doorTris\":180}}",
+   "name": "D1. the compound costs at most 25 draw calls, the main entrance 2: {\"compound\":{\"meshes\":13,\"calls\":14,\"tris\":15288},\"entrance\":{\"calls\":2,\"tris\":260,\"stoneTris\":80,\"doorTris\":180}}",
    "ok": true
   },
   {

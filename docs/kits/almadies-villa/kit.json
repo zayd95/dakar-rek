@@ -12,16 +12,16 @@
    },
    "street": "none (the interior, off the street grid)",
    "picture": "plan.png",
-   "meshes": 44,
-   "tris": 19168,
-   "verts": 57504,
+   "meshes": 46,
+   "tris": 27724,
+   "verts": 83172,
    "size": [
     22.48,
-    11.22,
+    11.27,
     22.3
    ],
    "glb": "glb/plan.glb",
-   "glbBytes": 1302516
+   "glbBytes": 1590360
   },
   {
    "id": "facade",
@@ -204,7 +204,7 @@
    "id": "helipad",
    "name": "L’héliport",
    "builder": "src/housing/villaFacade.ts buildVillaFacade (src/housing/villa.ts HELIPAD), cut out of the façade",
-   "what": "On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H, twelve lights round it (green and yellow, lit at night).",
+   "what": "On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H (its uprights along the helicopter), twelve lights round it (green and yellow, lit at night).",
    "params": {
     "helipad": "on the roof or not",
     "HELIPAD": "its centre and radius"
@@ -220,28 +220,29 @@
     6.78
    ],
    "glb": "glb/helipad.glb",
-   "glbBytes": 39556
+   "glbBytes": 39560
   },
   {
    "id": "helicopter",
    "name": "L’hélicoptère",
-   "builder": "src/world/helicopter.ts buildHelicopter (lane R2-H rebuilds it behind the same call)",
-   "what": "The light helicopter parked on the pad, its nose toward the street.",
+   "builder": "src/world/helicopter.ts buildHelicopter (lane R2-H's)",
+   "what": "Lane R2-H's light single-engine helicopter (no maker's model): its sculpted cabin under tinted glazing, a three-blade rotor, skids, a Senegalese registration; parked on the pad along the roof terrace (HELIPAD.yaw).",
    "params": {
-    "helipad": "on its pad or not"
+    "helipad": "on its pad or not",
+    "HELIPAD.yaw": "its heading on the pad"
    },
-   "street": "its own meshes (2 today; R2-H's: at most 4)",
+   "street": "4 draw calls (its own meshes, by material)",
    "picture": "helicopter.png",
-   "meshes": 2,
-   "tris": 1664,
-   "verts": 4992,
+   "meshes": 4,
+   "tris": 10220,
+   "verts": 30660,
    "size": [
-    6.44,
-    2.76,
-    6.45
+    8.19,
+    3.05,
+    8.57
    ],
    "glb": "glb/helicopter.glb",
-   "glbBytes": 73864
+   "glbBytes": 361644
   },
   {
    "id": "furniture",
@@ -268,16 +269,16 @@
  "villa": {
   "picture": "villa-day.png",
   "night": "villa-21h.png",
-  "meshes": 17,
-  "tris": 13694,
-  "verts": 41082,
+  "meshes": 19,
+  "tris": 22250,
+  "verts": 66750,
   "size": [
    25.62,
    10.3,
    25.99
   ],
   "glb": "glb/villa.glb",
-  "glbBytes": 805848
+  "glbBytes": 1093656
  },
  "variant": {
   "spec": {
@@ -302,5 +303,5 @@
   "meshes": 14,
   "tris": 12642
  },
- "glbTotalBytes": 5260728
+ "glbTotalBytes": 6124164
 }

@@ -5,7 +5,7 @@
 Every piece of the flagship villa (`villa_almadies`, the Almadies block (1,1) lot 3) is a named, reusable builder with parameters, so another Almadies lot can be built from it. The kit is `src/kits/almadiesVilla.ts`: a thin layer that names the pieces and parameterises the builders the flagship is drawn with. It does not draw anything its own way.
 - **The street compound's pieces** are `src/world/villaCompound.ts`'s.
 - **The house** is lane V-S's façade and plan: `src/housing/villaFacade.ts`, `villaPlan.ts`, `villaFinish.ts`.
-- **The helicopter** is `src/world/helicopter.ts` `buildHelicopter()`. Lane R2-H rebuilds it behind the same call.
+- **The helicopter** is `src/world/helicopter.ts` `buildHelicopter()`, lane R2-H's (merged here from `integration/ld2-d-20261026` at `ab398f7`).
 - **The furniture** is the game's own models: `src/economy/furnitureModels.ts`, and the kit in `src/world/furnitureKit.ts`.
 
 With the flagship's spec the kit draws the flagship exactly. `tests/villaKit.test.ts` checks every primitive, mesh, collider, canopy, ground kept open and pool of light against `tests/fixtures/villaCompoundOwn.json`, pinned before the kit, at both qualities. The rest of the Almadies is unchanged too: `tests/villaCompound.test.ts`, `tests/helpers/lotDigest.ts`.
@@ -27,14 +27,14 @@ The kit places nothing in the city: building other lots from it is the next step
 | ![The villa by day](almadies-villa/villa-day.png) | ![The villa at 21 h](almadies-villa/villa-21h.png) | ![The villa from the back garden](almadies-villa/villa-back.png) |
 
 - **Builder:** `buildAlmadiesVilla(kit, spec)` draws into a hub's batches, as `src/world/builder.ts` hands them to the flagship. `buildAlmadiesVillaSolo(spec)` draws on its own, for the viewer and the GLB.
-- **On its own:** 17 meshes, 13 694 triangles; `glb/villa.glb` (787 kB).
-- **In the street:** it costs the district 11 draw calls of its own:
+- **On its own:** 19 meshes, 22 250 triangles; `glb/villa.glb` (1.04 MB).
+- **In the street:** it has 13 meshes of its own:
   - the car gate, 1;
   - the main entrance, 2;
   - the façade, 6;
-  - the helicopter, 2 today (R2-H's: at most 4).
+  - the helicopter, 4 (lane R2-H's, by material).
 
-  Everything else joins the district's merged batches. On a phone page (390 × 844, medium) the compound measured 11 calls and 6 628 triangles in a view of the entrance (`docs/proof/ld2d/r2-entrance/cost.json`). The budget is ≤ 25.
+  Everything else joins the district's merged batches. On a phone page (390 × 844, medium) the compound measured 14 draw calls (one more than its meshes: a material drawn in two passes) and 15 288 triangles in a view of the entrance (`docs/proof/ld2d/r2-entrance/cost.json`). The budget is ≤ 25.
 
 ## The spec: what each parameter changes
 
@@ -63,7 +63,7 @@ Each piece is built on its own at the plan's origin: the lot's centre, the stree
 
 | Piece | Builder | Meshes | Triangles | In the street | GLB |
 |---|---|---|---|---|---|
-| [Le plan (trois niveaux)](#plan) | `src/housing/villaPlan.ts VILLA_PLAN, built by src/economy/homeInterior.ts buildHomeInterior` | 44 | 19 168 | none (the interior, off the street grid) | `glb/plan.glb` (1.24 MB) |
+| [Le plan (trois niveaux)](#plan) | `src/housing/villaPlan.ts VILLA_PLAN, built by src/economy/homeInterior.ts buildHomeInterior` | 46 | 27 724 | none (the interior, off the street grid) | `glb/plan.glb` (1.52 MB) |
 | [La façade et ses finitions](#facade) | `src/housing/villaFacade.ts buildVillaFacade` | 6 | 4 328 | 6 draw calls (render, travertine, trims, glazing, glass, lights) | `glb/facade.glb` (281 kB) |
 | [Le mur d’enceinte](#wall) | `src/world/villaCompound.ts drawBoundaryWall` | 3 | 4 470 | 0 (the district's merged batches) | `glb/wall.glb` (153 kB) |
 | [Le portail coulissant (voitures)](#cargate) | `src/world/villaCompound.ts drawCarGate` | 2 | 370 | 1 draw call (its own mesh) | `glb/carGate.glb` (51 kB) |
@@ -73,7 +73,7 @@ Each piece is built on its own at the plan's origin: the lot's centre, the stree
 | [La piscine et sa terrasse](#pooldeck) | `src/world/villaCompound.ts drawPoolDeck` | 4 | 1 060 | 0 (the district's merged batches) | `glb/poolDeck.glb` (94 kB) |
 | [La pergola du toit](#pergola) | `src/housing/villaFacade.ts buildVillaFacade` | 1 | 240 | part of the façade's trims (no draw call of its own) | `glb/pergola.glb` (20 kB) |
 | [L’héliport](#helipad) | `src/housing/villaFacade.ts buildVillaFacade` | 2 | 846 | part of the façade's trims and lights (no draw call of its own) | `glb/helipad.glb` (39 kB) |
-| [L’hélicoptère](#helicopter) | `src/world/helicopter.ts buildHelicopter` | 2 | 1 664 | its own meshes (2 today; R2-H's: at most 4) | `glb/helicopter.glb` (72 kB) |
+| [L’hélicoptère](#helicopter) | `src/world/helicopter.ts buildHelicopter` | 4 | 10 220 | 4 draw calls (its own meshes, by material) | `glb/helicopter.glb` (353 kB) |
 | [L’ameublement (Collection Almadies)](#furniture) | `src/housing/villaLayout.ts VILLA_ALMADIES_LAYOUT` | 41 | 22 136 | none (inside; each piece its own model) | `glb/furniture.glb` (2.17 MB) |
 
 ### <a id="plan"></a>Le plan (trois niveaux) (`plan`)
@@ -86,8 +86,8 @@ Each piece is built on its own at the plan's origin: the lot's centre, the stree
 - **What it is:** The floor plan both the interior and the façade are drawn from: the ground floor (entrée, grand salon, salle à manger, cuisine, bureau, hall, salle d’eau, the back garden and its pool), the first floor (salon familial, suite parentale with dressing and bath, two bedrooms, bathroom, two balconies), the roof terrace (helipad, pergola, stair head); two straight flights. Its 3D form is the interior shell.
 - **Parameters:**
   - `plan`: a FloorPlan (src/housing/plan.ts, version 2 with levels): rooms, openings, windows, fixtures, stairs, pergolas, marks.
-- **Cost:** 44 meshes and 19 168 triangles on its own; in the street, none (the interior, off the street grid).
-- **File:** `glb/plan.glb` (1.24 MB).
+- **Cost:** 46 meshes and 27 724 triangles on its own; in the street, none (the interior, off the street grid).
+- **File:** `glb/plan.glb` (1.52 MB).
 
 ### <a id="facade"></a>La façade et ses finitions (`facade`)
 
@@ -191,7 +191,7 @@ Each piece is built on its own at the plan's origin: the lot's centre, the stree
 ![L’héliport](almadies-villa/helipad.png)
 
 - **Builder:** src/housing/villaFacade.ts buildVillaFacade (src/housing/villa.ts HELIPAD), cut out of the façade.
-- **What it is:** On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H, twelve lights round it (green and yellow, lit at night).
+- **What it is:** On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H (its uprights along the helicopter), twelve lights round it (green and yellow, lit at night).
 - **Parameters:**
   - `helipad`: on the roof or not;
   - `HELIPAD`: its centre and radius.
@@ -202,12 +202,13 @@ Each piece is built on its own at the plan's origin: the lot's centre, the stree
 
 ![L’hélicoptère](almadies-villa/helicopter.png)
 
-- **Builder:** src/world/helicopter.ts buildHelicopter (lane R2-H rebuilds it behind the same call).
-- **What it is:** The light helicopter parked on the pad, its nose toward the street.
+- **Builder:** src/world/helicopter.ts buildHelicopter (lane R2-H's).
+- **What it is:** Lane R2-H's light single-engine helicopter (no maker's model): its sculpted cabin under tinted glazing, a three-blade rotor, skids, a Senegalese registration; parked on the pad along the roof terrace (HELIPAD.yaw).
 - **Parameters:**
-  - `helipad`: on its pad or not.
-- **Cost:** 2 meshes and 1 664 triangles on its own; in the street, its own meshes (2 today; R2-H's: at most 4).
-- **File:** `glb/helicopter.glb` (72 kB).
+  - `helipad`: on its pad or not;
+  - `HELIPAD.yaw`: its heading on the pad.
+- **Cost:** 4 meshes and 10 220 triangles on its own; in the street, 4 draw calls (its own meshes, by material).
+- **File:** `glb/helicopter.glb` (353 kB).
 
 ### <a id="furniture"></a>L’ameublement (Collection Almadies) (`furniture`)
 
@@ -266,7 +267,7 @@ The villa's own finishes (`src/housing/villaFinish.ts`) are drawn in code and sa
   - the interior's and the furniture's textures embedded.
 
   The game's own shader touches are not in the files: the grain and the travertine and oak detail maps (`src/world/grain.ts`). A material is exported for its colours. The façade's night lights (additive in the game) are exported lit.
-- **The total is 5.02 MB**, against a limit of about 10 MB.
+- **The total is 5.84 MB**, against a limit of about 10 MB.
 - **To make them again** (in the browser, through Playwright: three's GLTFExporter needs FileReader):
   - `node scripts/export-villa-kit.mjs` makes all the pieces, the whole villa and the variant;
   - `node scripts/export-villa-kit.mjs --only helicopter,villa,variant` makes only these, for example once lane R2-H's helicopter is merged (the villa's file holds it too). The other pieces' numbers are kept from `kit.json`.

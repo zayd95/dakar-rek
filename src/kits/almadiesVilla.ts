@@ -291,16 +291,16 @@ export const ALMADIES_VILLA_PIECES: readonly KitPiece[] = [
   },
   {
     id: 'helipad', name: 'L’héliport', builder: 'src/housing/villaFacade.ts buildVillaFacade (src/housing/villa.ts HELIPAD), cut out of the façade',
-    what: 'On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H, twelve lights round it (green and yellow, lit at night).',
+    what: 'On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H (its uprights along the helicopter), twelve lights round it (green and yellow, lit at night).',
     params: { helipad: 'on the roof or not', 'HELIPAD': 'its centre and radius' },
     street: 'part of the façade\'s trims and lights (no draw call of its own)',
     build: () => cutFacade('helipad', onPad),
   },
   {
-    id: 'helicopter', name: 'L’hélicoptère', builder: 'src/world/helicopter.ts buildHelicopter (lane R2-H rebuilds it behind the same call)',
-    what: 'The light helicopter parked on the pad, its nose toward the street.',
-    params: { helipad: 'on its pad or not' },
-    street: 'its own meshes (2 today; R2-H\'s: at most 4)',
+    id: 'helicopter', name: 'L’hélicoptère', builder: 'src/world/helicopter.ts buildHelicopter (lane R2-H\'s)',
+    what: 'Lane R2-H\'s light single-engine helicopter (no maker\'s model): its sculpted cabin under tinted glazing, a three-blade rotor, skids, a Senegalese registration; parked on the pad along the roof terrace (HELIPAD.yaw).',
+    params: { helipad: 'on its pad or not', 'HELIPAD.yaw': 'its heading on the pad' },
+    street: '4 draw calls (its own meshes, by material)',
     build: () => buildHelicopter().group,
   },
   {
