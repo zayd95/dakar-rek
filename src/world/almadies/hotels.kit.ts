@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
 import { GROUND, STOREY, type SiteDraw } from './contract';
-import type { Face } from './parts';
+import { siteRng, type Face } from './parts';
 
 /**
  * LD2.0-E lane E-H: what the three hotels share beyond the district's parts (src/world/almadies/parts.ts): thin facade planes (a pane, a slat screen, a guard,
@@ -52,13 +52,22 @@ export function quads(d: SiteDraw, b: Batch, face: Face, at: number, list: Q[]) 
 
 /** The glass's colours, bottom and top: the dark pane of the palette reflecting a little sky toward its top (the villa's panes do the same). */
 export const glassCols = (d: SiteDraw, k = 0.5) => ({ lo: mix(d.p.glass, 0x6f8ea2, k * 0.25), hi: mix(d.p.glass, 0xa4c4d6, k) });
+const glowRngs = new WeakMap<SiteDraw, () => number>();
 /**
- * A glazed opening on a face: a pane of reflecting glass `at` the plane + 4 cm, in slim frames (head, sill, jambs, a mullion every `mull` m) 2 cm proud of it.
- * 2 triangles for the glass, 2 per bar.
+ * A glazed opening on a face: panes of reflecting glass `at` the plane + 3 cm, in slim frames (head, sill, jambs, a mullion every `mull` m) 4 cm proud of it.
+ * The opening is `rooms` rooms side by side (default one): at night each room's pane glows warm (`d.glass`: the hub's windows) or, now and then, stays dark
+ * (`d.glassDark`) as the district's own glazing does (`glow`: 'lit' always, 'dark' never, 'mixed' the default, about three in four); `warm`: a hall's glass, warm
+ * below and the sky above. Two triangles a room, two a bar.
  */
-export function pane(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, o: { mull?: number; frame?: number; sky?: number; head?: boolean; sill?: boolean } = {}) {
-  const s = sign(face), g = glassCols(d, o.sky ?? 0.5), fr = o.frame ?? d.p.frame, T = 0.05;
-  quads(d, d.glass, face, at + s * 0.03, [{ u0, u1, y0, y1, c: g.lo, c2: g.hi }]);
+export function pane(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, o: { mull?: number; frame?: number; sky?: number; head?: boolean; sill?: boolean; rooms?: number; glow?: 'lit' | 'dark' | 'mixed'; warm?: boolean } = {}) {
+  const s = sign(face), g = o.warm ? { lo: mix(d.p.glass, 0x7a5a3a, 0.5), hi: mix(d.p.glass, 0xa4c4d6, 0.7) } : glassCols(d, o.sky ?? 0.5), fr = o.frame ?? d.p.frame, T = 0.05, rooms = Math.max(1, o.rooms ?? 1), glow = o.glow ?? 'mixed';
+  let rng = glowRngs.get(d); if (!rng) glowRngs.set(d, rng = siteRng(d, 'glow'));
+  const on: Q[] = [], off: Q[] = [];
+  for (let k = 0; k < rooms; k++) {
+    const q = { u0: u0 + ((u1 - u0) * k) / rooms, u1: u0 + ((u1 - u0) * (k + 1)) / rooms, y0, y1, c: g.lo, c2: g.hi }, r = rng();
+    (glow === 'lit' || (glow === 'mixed' && r < 0.72) ? on : off).push(q);
+  }
+  quads(d, d.glass, face, at + s * 0.04, on); quads(d, d.glassDark, face, at + s * 0.04, off);
   const bars: Q[] = [];
   if (o.head !== false) bars.push({ u0, u1, y0: y1 - 0.07, y1, c: fr });
   if (o.sill !== false) bars.push({ u0, u1, y0, y1: y0 + 0.07, c: fr });
@@ -66,54 +75,36 @@ export function pane(d: SiteDraw, face: Face, at: number, u0: number, u1: number
   if (o.mull) { const n = Math.max(1, Math.round((u1 - u0) / o.mull)), m = d.lite ? Math.ceil(n / 2) : n; for (let k = 1; k < m; k++) { const u = u0 + ((u1 - u0) * k) / m; bars.push({ u0: u - 0.03, u1: u + 0.03, y0, y1, c: fr }); } }
   quads(d, d.plain, face, at + s * 0.07, bars);
 }
-/** `n` equal cells between two positions along a face (for `lit`). */
-export const cells = (u0: number, u1: number, n: number): [number, number][] => Array.from({ length: Math.max(1, n) }, (_, i) => [u0 + (i * (u1 - u0)) / Math.max(1, n), u0 + ((i + 1) * (u1 - u0)) / Math.max(1, n)] as [number, number]);
-/** The lamps' warm and cool lights behind the glass (the hub's lamp material shows them dim by day and bright at night; its glass stays dark all night). */
-const LIGHTS = [0xd9a050, 0xc98a3d, 0xe0b36a, 0xb87b36, 0xd9a050, 0x7d9cc4];
-/**
- * Lit rooms behind a glazed run at night: in `density` of the `cells` (u0, u1 spans along the face), a warm (now and then a cool, a television's) quad on the
- * lamps' batch, between the glass and its frames. Two triangles a room; `rng` makes it the same every time.
- */
-export function lit(d: SiteDraw, face: Face, at: number, cells: [number, number][], y0: number, y1: number, rng: () => number, density = 0.4) {
-  const s = sign(face), list: Q[] = [], dens = density * (d.lite ? 0.5 : 1);
-  for (const [u0, u1] of cells) {
-    const r = rng(), c = LIGHTS[Math.floor(rng() * LIGHTS.length)];
-    if (r > dens) continue;
-    const m = Math.min(0.5, (u1 - u0) * 0.12);
-    list.push({ u0: u0 + m, u1: u1 - m, y0: y0 + 0.12, y1: y1 - 0.18, c: shade(c, 0.9), c2: c });
-  }
-  quads(d, d.bulbs, face, at + s * 0.05, list);
-}
 /** Vertical slats on a dark backing, one piece: a slat every `pitch` m (twice as far apart on the low preset), alternating two woods, a rail at the head and the foot. */
 export function slats(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, o: { pitch?: number; w?: number; col?: number; col2?: number; back?: number; rails?: boolean } = {}) {
   const s = sign(face), pitch = (o.pitch ?? 0.2) * (d.lite ? 1.9 : 1), w = Math.min(pitch * 0.62, (o.w ?? 0.09) * (d.lite ? 1.5 : 1)), n = Math.max(1, Math.floor((u1 - u0 - w) / pitch));
   const c1 = o.col ?? d.p.wood, c2 = o.col2 ?? shade(c1, 0.8), back = o.back ?? mix(d.p.frame, c1, 0.3);
-  quads(d, d.plain, face, at + s * 0.02, [{ u0, u1, y0, y1, c: back }]);
+  quads(d, d.plain, face, at + s * 0.03, [{ u0, u1, y0, y1, c: back }]);
   const list: Q[] = [];
   const step = (u1 - u0 - w) / n;
   for (let k = 0; k <= n; k++) list.push({ u0: u0 + k * step, u1: u0 + k * step + w, y0, y1, c: k % 3 === 1 ? c2 : c1 });
-  quads(d, d.plain, face, at + s * 0.05, list);
-  if (o.rails !== false) quads(d, d.plain, face, at + s * 0.07, [{ u0: u0 - 0.03, u1: u1 + 0.03, y0: y1 - 0.09, y1, c: d.p.frame }, { u0: u0 - 0.03, u1: u1 + 0.03, y0, y1: y0 + 0.09, c: d.p.frame }]);
+  quads(d, d.plain, face, at + s * 0.06, list);
+  if (o.rails !== false) quads(d, d.plain, face, at + s * 0.09, [{ u0: u0 - 0.03, u1: u1 + 0.03, y0: y1 - 0.09, y1, c: d.p.frame }, { u0: u0 - 0.03, u1: u1 + 0.03, y0, y1: y0 + 0.09, c: d.p.frame }]);
 }
 /** A frameless glass guard (a plane, a thin steel handrail, a post every `post` m) standing on `y`, `h` high, its plane at `at`. */
 export function guard(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y: number, h = 1.05, post = 0) {
-  const s = sign(face), lo = mix(d.p.glass, 0xa9c8d8, 0.55), hi = mix(d.p.glass, 0xdcedf5, 0.75);
-  quads(d, d.glass, face, at, [{ u0, u1, y0: y + 0.06, y1: y + h, c: lo, c2: hi }]);
+  const s = sign(face), lo = mix(d.p.glass, 0xc4def0, 0.68), hi = mix(d.p.glass, 0xeaf5fa, 0.88);
+  quads(d, d.glassDark, face, at, [{ u0, u1, y0: y + 0.06, y1: y + h, c: lo, c2: hi }]);
   const bars: Q[] = [{ u0: u0 - 0.02, u1: u1 + 0.02, y0: y + h - 0.045, y1: y + h, c: 0xc5c8ca }, { u0: u0 - 0.02, u1: u1 + 0.02, y0: y, y1: y + 0.07, c: d.p.frame }];
   if (post && !d.lite) for (let u = u0 + post; u < u1 - 0.3; u += post) bars.push({ u0: u - 0.025, u1: u + 0.025, y0: y, y1: y + h, c: 0xc5c8ca });
-  quads(d, d.plain, face, at + s * 0.012, bars);
+  quads(d, d.plain, face, at + s * 0.02, bars);
 }
 /** Horizontal joints (a course of stone every `step` m): thin lines on a face. */
 export function courses(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, step: number, col: number) {
   const s = sign(face), list: Q[] = [], st = step * (d.lite ? 2 : 1);
   for (let y = y0 + st; y < y1 - 0.05; y += st) list.push({ u0, u1, y0: y, y1: y + 0.035, c: col });
-  quads(d, d.plain, face, at + s * 0.025, list);
+  quads(d, d.plain, face, at + s * 0.03, list);
 }
 /** A vertical rhythm of lines (piers' joints, a blind's folds): thin vertical strips every `step` m. */
 export function strips(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, step: number, col: number, w = 0.04) {
   const s = sign(face), list: Q[] = [], st = step * (d.lite ? 2 : 1);
   for (let u = u0 + st; u < u1 - 0.05; u += st) list.push({ u0: u - w / 2, u1: u + w / 2, y0, y1, c: col });
-  quads(d, d.plain, face, at + s * 0.025, list);
+  quads(d, d.plain, face, at + s * 0.03, list);
 }
 
 // ------------------------------------------------------------------------------------------------ pools, furniture, flags
@@ -184,7 +175,7 @@ export function glassRail(d: SiteDraw, r: { x0: number; x1: number; z0: number; 
 export interface HotelInfo {
   storeys: number;
   balconies: { floor: number; u0: number; u1: number; face: Face; kind: 'glass' | 'oak' | 'suite' | 'terrace' }[];
-  doors: { kind: 'lobby' | 'staff' | 'service'; face: Face; x: number; z: number }[];
+  doors: { kind: 'lobby' | 'staff' | 'service' | 'court'; face: Face; x: number; z: number }[];
   serviceSide: 1 | -1;
   dropoff: { x0: number; z0: number; x1: number; z1: number } | null;
   /** The name board's plan position and height. */
@@ -196,4 +187,16 @@ export function info(d: SiteDraw): HotelInfo {
   let i = infos.get(d);
   if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null });
   return i;
+}
+/** (debug) a section boundary: when `globalThis.__hotelProfile` is an array, pushes [name, triangles so far]. */
+export function sect(d: SiteDraw, name: string) {
+  const g = globalThis as unknown as { __hotelProfile?: [string, number][] };
+  if (!g.__hotelProfile) return;
+  g.__hotelProfile.push([name, (['plain', 'pave', 'leaves', 'trunks', 'water', 'bulbs', 'glass', 'glassDark', 'metal'] as const).reduce((n, k) => n + d[k].triangles(), 0)]);
+}
+/** A garden bollard with its lamp (20 triangles) and, by night, its pool of light on the ground (not on the low preset). */
+export function bollard(d: SiteDraw, x: number, z: number) {
+  d.box(d.plain, 0.13, 0.62, 0.13, x, Y0, z, d.p.frame);
+  d.box(d.bulbs, 0.1, 0.08, 0.14, x, Y0 + 0.5, z, 0xfff1c8);
+  if (!d.lite) d.light(x, z, 2.1, 0.175);
 }

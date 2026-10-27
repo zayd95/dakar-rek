@@ -20,7 +20,7 @@ const hotels = SITES.filter(s => s.kind === 'hotel');
 const within = (c: Collider, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
 const at = (cs: Collider[], x: number, z: number) => cs.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
 /** The storeys each design draws (it clamps what the plan asks for). */
-const RANGE: Record<string, [number, number]> = { 'hotel-boutique': [3, 6], 'hotel-tower': [4, 10], 'hotel-resort': [3, 6] };
+const RANGE: Record<string, [number, number]> = { 'hotel-boutique': [3, 5], 'hotel-tower': [4, 10], 'hotel-resort': [3, 5] };
 const effective = (id: string, n: number) => Math.max(RANGE[id][0], Math.min(RANGE[id][1], n));
 const variant = (s: Site) => variantOf(s);
 const setups: { id: string; plan: Site }[] = hotels.map(plan => ({ id: variantOf(plan).id, plan }));
@@ -97,7 +97,8 @@ for (const { id, plan } of setups) describe(`${id} on ${plan.name}`, () => {
       expect(lobby).toBeDefined(); expect(lobby.face).toBe('street'); expect(Math.abs(lobby.x)).toBeLessThan(2);
       for (let z = lobby.z + 0.9; z < E - 0.6; z += 0.4) for (const x of [-0.8, 0, 0.8]) { const q = f.p(x, z); expect(at(r.colliders, q.x, q.z), `plan (${x}, ${z.toFixed(1)})`).toBe(false); }
       const keep = r.keepClear.find(k => k.why.startsWith('hotel_dropoff'))!;
-      expect(keep).toBeDefined(); expect(within({ ...keep, h: 1 }, s.rect)).toBe(true);
+      expect(keep).toBeDefined();
+      expect(within({ ...keep, h: 1 }, { x0: s.rect.x0, x1: s.rect.x1, z0: s.rect.z0 - 3.3, z1: s.rect.z1 + 3.3 }), 'the drop-off and the pavement before it').toBe(true);   // (it runs on to the pavement, as the gate\'s apron does)
       const lane = i.dropoff!, a = f.p(lane.x0, lane.z0), b = f.p(lane.x1, lane.z1);
       expect(Math.min(a.x, b.x)).toBeGreaterThanOrEqual(keep.x0 - 0.01); expect(Math.max(a.x, b.x)).toBeLessThanOrEqual(keep.x1 + 0.01);
       expect(Math.min(a.z, b.z)).toBeGreaterThanOrEqual(keep.z0 - 0.01); expect(Math.max(a.z, b.z)).toBeLessThanOrEqual(keep.z1 + 0.01);
