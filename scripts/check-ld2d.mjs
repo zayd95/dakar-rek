@@ -301,15 +301,16 @@ try {
   check('8c. both in the villa: her furniture drawn for him (the same pieces), and each one\'s game draws the other there', inB && viewB?.pieces.length === piecesA && seesA && seesB, JSON.stringify({ inB, piecesA, piecesB: viewB?.pieces.length, seesA, seesB }));
 
   // ------------------------------------------------------------------ 9. persistence
-  const saved = await A.d(() => { window.__dakar.save(); const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { home: s.assets.home, list: s.assets.list.filter(a => a.kind === 'furniture' || a.spec === 'villa_almadies').map(a => ({ uid: a.uid, spec: a.spec, how: a.how, at: a.at ?? null })) }; });
+  const saved = await A.d(() => { window.__dakar.save(); const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { home: s.assets.home, list: s.assets.list.filter(a => a.home !== undefined || a.spec === 'villa_almadies').map(a => ({ uid: a.uid, spec: a.spec, how: a.how, at: a.at ?? null })) }; });
   const carSaved = await A.d(() => window.__dakar.suv.info().record);
   await A.page.reload({ timeout: 180000 });
   await A.until(() => window.__dakar?.pos?.().hub && window.__dakar.estate && window.__dakar.suv?.info, null, 300000); await A.wait(2500);
-  const again = await A.d(() => { const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { home: s.assets.home, list: s.assets.list.filter(a => a.kind === 'furniture' || a.spec === 'villa_almadies').map(a => ({ uid: a.uid, spec: a.spec, how: a.how, at: a.at ?? null })) }; });
+  const again = await A.d(() => { const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')); return { home: s.assets.home, list: s.assets.list.filter(a => a.home !== undefined || a.spec === 'villa_almadies').map(a => ({ uid: a.uid, spec: a.spec, how: a.how, at: a.at ?? null })) }; });
   const est2 = await A.d(() => window.__dakar.estate()), car2 = await A.d(() => window.__dakar.suv.info());
+  const arm9 = again.list.find(a => a.uid === armchair?.uid)?.at ?? null;          // furniture is the assets with a home (src/core/types.ts AssetState)
   check('9. after a reload: the villa still hers and her home, every piece where she left it (the armchair at its new spot), the Lamane Sport in its bay',
-    est2.home === VILLA && JSON.stringify(again) === JSON.stringify(saved) && JSON.stringify(again.list.find(a => a.uid === armchair?.uid)?.at) === JSON.stringify(save1) && carSaved && Math.hypot(car2.x - carSaved.x, car2.z - carSaved.z) < 0.05,
-    JSON.stringify({ home: est2.home, same: JSON.stringify(again) === JSON.stringify(saved), car: [car2.x, car2.z], carSaved }));
+    est2.home === VILLA && again.list.length >= PIECES.length + 1 && JSON.stringify(again) === JSON.stringify(saved) && !!arm9 && !!save1 && arm9.x === save1.x && arm9.z === save1.z && arm9.rot === save1.rot && carSaved && Math.hypot(car2.x - carSaved.x, car2.z - carSaved.z) < 0.05,
+    JSON.stringify({ home: est2.home, pieces: again.list.length - 1, same: JSON.stringify(again) === JSON.stringify(saved), armchair: arm9, save1, car: [car2.x, car2.z], carSaved }));
   check('no page errors in either game', !A.errors.length && !B.errors.length, JSON.stringify({ a: A.errors.slice(0, 3), b: B.errors.slice(0, 3) }));
 } catch (e) {
   check('the journey went through', false, e.stack ?? String(e));
