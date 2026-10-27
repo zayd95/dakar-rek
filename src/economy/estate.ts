@@ -812,7 +812,8 @@ interface VillaSite { door: { x: number; z: number }; board: { x: number; z: num
 const residenceGate = { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 };
 export const VILLA_GATES: Record<string, VillaSite> = {
   villa_almadies: {
-    door: onLot(VILLA_DOOR.x, VILLA_DOOR.z + 1.0), board: onLot(VILLA_GATE.x0 - 2.3, VILLA_GATE.z + 0.6), entry: onLot((VILLA_GATE.x0 + VILLA_GATE.x1) / 2, VILLA_GATE.z + 1.6),
+    // (round 2: the board stands east of the gate, so the main entrance west of it reads from the street: src/world/villaCompound.ts)
+    door: onLot(VILLA_DOOR.x, VILLA_DOOR.z + 1.0), board: onLot(VILLA_GATE.x1 + 2.3, VILLA_GATE.z + 0.6), entry: onLot((VILLA_GATE.x0 + VILLA_GATE.x1) / 2, VILLA_GATE.z + 1.6),
     anchorDz: -0.2, boardPlace: true,
   },
   residence_ngor: {

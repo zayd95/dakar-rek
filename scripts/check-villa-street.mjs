@@ -1,7 +1,7 @@
 // LD2.0-D lane V-E (docs/ld2/LD2_D.md): the flagship villa's street compound and its life, on a phone page with REAL touches (scripts/lib/realTouch.mjs).
 //  A. the cost of the Almadies view on the low preset, the same views on the contract's build (before the compound) and on this one (after);
 //  B. as the owner (the villa bought, the principal residence): the gate slides open as the player walks up from the street and shuts behind him; « Entrer
-//     chez toi » at the front door; « Se baigner » at the pool (a debug basin at the contract's POOL while the interior is still the open room); « Organiser une
+//     chez toi » at the front door; « Se baigner » at the villa's pool (no timer: « Sortir de l'eau » ends it); « Organiser une
 //     petite réception » (paid through the wallet's history, eight guests, ends by itself after two city hours, once a day);
 //  C. the Lamane Sport driven in through the gate, « Garer à la villa », a reload: it is in its bay; « Monter » takes it;
 //  D. a player who is not the owner: the gate stays shut, he stays on the pavement;
@@ -115,7 +115,7 @@ check('the villa bought (400 000 000 F) and made the principal residence', bough
 const g0 = await s.d(() => window.__dakar.villa.gate());
 check('the gate stands shut, solid, before anyone comes', g0 && g0.k === 0 && g0.solid, JSON.stringify(g0));
 // the board by the gate: the listing, no way in from the pavement
-const board = P(GATE.x0 - 2.3, GATE.z + 1.2);
+const board = P(GATE.x1 + 2.3, GATE.z + 1.2);                                            // (round 2: east of the gate, the main entrance west of it: src/economy/estate.ts)
 await walkTo(s.page, s.t, board.x, board.z, { tol: 0.6, ms: 60000 });
 await s.page.waitForTimeout(600);
 const fb = await focus(s);
@@ -140,9 +140,8 @@ await s.t.tap('#act');
 await s.page.waitForFunction(() => window.__dakar.villa.inside() === 'almadies:home:villa' && window.__dakar.pos().mode === 'play', null, { timeout: 30000 }).catch(() => {});
 check('…and he is in his villa', (await s.d(() => window.__dakar.villa.inside())) === 'almadies:home:villa' && (await s.d(() => window.__dakar.villa.inOwnVilla())));
 
-// the swim: at the pool's edge (the contract's POOL; a debug basin there while the interior is still the open room)
+// the swim: at the edge of the villa's own pool (round 2: the interior's basin, src/villa/swim.ts; the free swim itself: scripts/check-villa-swim.mjs)
 const O = await s.d(() => window.__dakar.villa.origin());
-await s.d(() => window.__dakar.villa.swim.basin(true));
 const tiered = await s.d(() => window.__dakar.villa.tiered());
 await s.d(([x, z]) => window.__dakar.place(x, z, Math.PI), [O.x - 1, O.z - 5.5]);
 await s.page.waitForTimeout(800);
@@ -152,7 +151,7 @@ await s.t.tap('#act');
 await s.page.waitForFunction(() => window.__dakar.villa.swim.info().swimming, null, { timeout: 15000 }).catch(() => {});
 await s.page.waitForFunction(() => window.__dakar.villa.swim.info().t > 4, null, { timeout: 90000 }).catch(() => {});
 const sw = await s.d(() => ({ i: window.__dakar.villa.swim.info(), p: window.__dakar.pos(), clip: window.__dakar.clip() }));
-check('in the water up to the shoulders, swimming round the pool', sw.i.swimming && sw.p.y < 0 && sw.p.y > -1 && sw.i.t > 2, JSON.stringify(sw));
+check('in the water, treading at rest', sw.i.swimming && sw.i.state === 'tread' && sw.p.y < 0 && sw.i.t > 2, JSON.stringify(sw));
 { const q = await s.d(() => window.__dakar.pos()); await shot(s, '05-swim', { p: [q.x - 2.2, 4.6, q.z - 4.2], t: [q.x + 0.3, -0.2, q.z] }, true); }
 check('« Sortir de l\'eau »', await waitFocus(s, /Sortir de l’eau/, 10000), JSON.stringify(await focus(s)));
 await s.t.tap('#act');
@@ -160,14 +159,16 @@ await s.page.waitForFunction(() => !window.__dakar.villa.swim.info().swimming &&
 await s.page.waitForTimeout(600);
 const n1 = await s.d(() => ({ ...window.__dakar.state.data.needs })), sw1 = await s.d(() => ({ i: window.__dakar.villa.swim.info(), p: window.__dakar.pos() }));
 check('out of the water on the deck, cleaner and in a better mood', !sw1.i.swimming && sw1.p.y > 0 && n1.hygiene > n0.hygiene && n1.moral >= n0.moral, JSON.stringify({ n0, n1, p: sw1.p }));
-// a full swim ends by itself
+// round 2: no timer takes the swimmer out; a swim past the full swim's length earns the full gains when « Sortir de l'eau » ends it
 await s.d(([x, z]) => window.__dakar.place(x, z, Math.PI), [O.x + 2, O.z - 5.5]);
 await s.page.waitForTimeout(600);
 await s.d(() => window.__dakar.villa.swim.start());
-await s.page.waitForFunction(() => !window.__dakar.villa.swim.info().swimming, null, { timeout: 300000 }).catch(() => {});
+await s.page.waitForFunction(() => window.__dakar.villa.swim.info().t > 24, null, { timeout: 300000 }).catch(() => {});
 const sw2 = await s.d(() => window.__dakar.villa.swim.info());
-check('a swim ends by itself after about twenty seconds', sw2.log.full >= 1 && !sw2.swimming, JSON.stringify(sw2.log));
-await s.d(() => window.__dakar.villa.swim.basin(false));
+await s.d(() => window.__dakar.villa.swim.stop());
+await s.page.waitForFunction(() => !window.__dakar.villa.swim.info().swimming, null, { timeout: 60000 }).catch(() => {});
+const sw3 = await s.d(() => window.__dakar.villa.swim.info());
+check('a long swim stays in the water until « Sortir de l\'eau », then counts as a full swim', sw2.swimming && sw2.t > 22 && !sw3.swimming && sw3.log.full > sw2.log.full, JSON.stringify({ t: sw2.t, before: sw2.log, after: sw3.log }));
 
 // the reception, from the salon (a few pieces delivered first: a lived-in salon)
 await s.page.waitForFunction(() => window.__dakar.pos().y > 0.05 && !window.__dakar.seated(), null, { timeout: 60000 }).catch(() => {});

@@ -5,6 +5,7 @@ import {
 } from '../src/housing/plan';
 import { VILLA_PLAN as V } from '../src/housing/villaPlan';
 import { BACK_GARDEN, BALCONIES, FRONT_DOOR, HELIPAD, HOUSE, LEVELS, POOL, STAIR_CORE, STOREY } from '../src/housing/villa';
+import { ROTOR_DIAMETER } from '../src/world/helicopter';
 
 /**
  * LD2.0-D lane V-S (docs/ld2/LD2_D.md): the floor-plan contract version 2 (levels, stairs, open rooms, the unfolded plan space) and the Almadies
@@ -79,14 +80,22 @@ describe('the Almadies villa: the plan (LD2.0-D)', () => {
     expect(contains(inner(V, room('terrasse')), box(pad.x, pad.z, 2 * pad.r, 2 * pad.r))).toBe(true);
     const heli = V.fixtures.find(f => f.kind === 'heli')!;
     expect(Math.hypot(centre(heli.box).x - pad.x, centre(heli.box).z - pad.z)).toBeLessThan(0.3);
+    // LD2.0-D round 2: the real helicopter along the terrace (its nose toward −x): its cabin, its boom and its tail walked round, all on the terrace
+    expect(pad.yaw).toBe(HELIPAD.yaw);
+    const parts = V.fixtures.filter(f => f.kind === 'heli');
+    expect(parts.map(f => f.id)).toEqual(['heli', 'heli-boom', 'heli-tail']);
+    for (const f of parts) expect(contains(inner(V, room('terrasse')), f.box)).toBe(true);
+    for (const f of parts) for (const g of V.fixtures) if (g.kind === 'post') expect(overlaps(f.box, g.box)).toBe(false);
     const roofEdges = wallPieces(V).filter(w => w.level === 'toit' && w.kind === 'railing');
     expect(roofEdges.length).toBeGreaterThan(3);
     expect(roofEdges.every(w => w.h === 1.1)).toBe(true);
-    // the look pass: a pergola on four posts in the terrace's street-side corner, out of the rotor's sweep (7.2 m across) and off the helipad
+    // the look pass: a pergola on four posts in the terrace's street-side corner, out of the rotor's sweep (9.4 m across, round the pad's centre) and off
+    // the helipad
     const per = V.pergolas!.find(q => q.room === 'terrasse')!, posts = V.fixtures.filter(f => f.kind === 'post');
     expect(posts).toHaveLength(4);
     for (const f of posts) { expect(contains(per.box, f.box)).toBe(true); expect(contains(inner(V, room('terrasse')), f.box)).toBe(true); }
-    expect(per.box.x0).toBeGreaterThan(pad.x + 3.6);
+    const near = { x: Math.max(per.box.x0, Math.min(pad.x, per.box.x1)), z: Math.max(per.box.z0 - 0.1, Math.min(pad.z, per.box.z1 + 0.1)) };   // its slats overhang 0.1 m
+    expect(Math.hypot(near.x - pad.x, near.z - pad.z)).toBeGreaterThan(ROTOR_DIAMETER / 2 + 0.3);
     expect(per.h).toBeLessThan(2.9);
   });
 
@@ -224,8 +233,8 @@ describe('the villa\'s stairs', () => {
     expect(cz.filter(c => c.why === 'stair').length).toBe(4);
     expect(whyNotPlan(V, box(5.2, -1, 0.6, 0.6))).toBe('stair');
     expect(whyNotPlan(V, box(25.2, -1, 0.6, 0.6))).toBe('stair');
-    expect(whyNotPlan(V, box(-25.5, 0.5, 0.8, 0.8))).toBe('helipad');
-    expect(whyNotPlan(V, box(-23, 1.5, 0.8, 0.8))).toBe('fitting');                              // on the helicopter
+    expect(whyNotPlan(V, box(-23, -3.2, 0.8, 0.8))).toBe('helipad');
+    expect(whyNotPlan(V, box(-24.4, -0.6, 0.8, 0.8))).toBe('fitting');                           // on the helicopter
     expect(whyNotPlan(V, box(-1, -8, 1, 1))).toBe('fitting');                                    // in the pool
     expect(whyNotPlan(V, box(-27.2, 3.3, 0.8, 0.8))).toBeNull();                               // a corner of the roof terrace
     expect(whyNotPlan(V, box(8, -8, 1.8, 0.7))).toBeNull();                                    // a lounger on the deck beside the pool
