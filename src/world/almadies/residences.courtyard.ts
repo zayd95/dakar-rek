@@ -14,7 +14,7 @@ export const courtyard: SiteBuilder = d => {
   const O = { x0: -19.5, x1: 19.5, z0: -31.5, z1: 6.5 }, C = { x0: -10, x1: 10, z0: -22, z1: -3 }, PASS = { x0: -2.8, x1: 2.8 }, TW = 5.0, STEP = 1.0, TERR = 1.8;
   const m = k.plain, wood = mix(p.wood, 0x000000, 0.1), dark = mix(p.render2, 0x000000, 0.5);
   const ENTRY = { x: 0, w: 5.2 };                                                          // the porte-cochère: the street railing is cut across the passage, open ground from the pavement to the courtyard
-  perimeter(d, { gate: 'right', entries: [ENTRY] });                                       // the car gate stands at the east side, the passage is for people
+  perimeter(d, { gate: s.gate === 'centre' ? 'right' : s.gate, entries: [ENTRY] });                                     // the car gate stands at the east side, the passage is for people
   k.info.entries.push(ENTRY);
 
   // ------------------------------------------------------------------------------------------------ the masses: four wings, the passage, the slabs

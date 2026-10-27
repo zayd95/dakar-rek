@@ -50,7 +50,7 @@ const ROWS: Row[] = [
   R([0, 3], [1], 'villa', 0, 'terracotta', 2, { mirror: true, gate: 'right' }),
   R([0, 3], [2], 'villa', 1, 'oak', 3, { gate: 'right' }),
   R([0, 3], [3], 'house', 1, 'greige', 2, { mirror: true, gate: 'left' }),
-  R([1, 3], [0, 1, 2, 3], 'residence', 0, 'sand', 5, { facing: 'north', name: 'RÉSIDENCE JARDINS DE NGOR', gate: 'centre' }),
+  R([1, 3], [0, 1, 2, 3], 'residence', 0, 'sand', 5, { facing: 'north', name: 'RÉSIDENCE JARDINS DE NGOR', gate: 'right' }),
   R([2, 3], [0, 1], 'hotel', 1, 'ivory', 8, { name: 'HÔTEL OCÉANE', gate: 'right' }),
   R([2, 3], [2], 'villa', 2, 'greige', 2, { gate: 'right' }),
   R([2, 3], [3], 'villa', 0, 'azur', 3, { mirror: true, gate: 'right' }),
