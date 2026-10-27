@@ -20,6 +20,8 @@ import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
 import { VILLA_SITE, buildVillaCompound } from './villaCompound';
+import { buildDistrict } from './almadies/district';
+import { siteOfLot } from './almadies/plan';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -566,6 +568,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       // LD2.0-D: the flagship villa's lot (src/world/villaCompound.ts) draws the generic villa's random numbers unseen (a dry run), so every other lot
       // and the street dressing stay exactly where they were (tests/villaCompound.test.ts); its colliders stand as ghosts while the streets are dressed
       if (villaLot && L.x0 === villaLot.x0 && L.z0 === villaLot.z0) { dryRun(() => genericVilla(L, faces)); return; }
+      // LD2.0-E: every other lot of the Almadies is the district's (src/world/almadies, drawn after the street is dressed): the same dry run
+      if (id === 'almadies' && siteOfLot(i, j, b * 2 + a)) { dryRun(() => genericVilla(L, faces)); return; }
       genericVilla(L, faces);
       return;
     }
@@ -1357,6 +1361,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   if (villaLot) {
     const v = buildVillaCompound({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool });
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
+  }
+  // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
+  if (id === 'almadies') {
+    const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass, fac, metal, sign: addSign });
+    group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
   }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
   // after (src/game/streetDress.ts) leaves that strip open; given only now, the builder's own dressing and its random draws are as they were
