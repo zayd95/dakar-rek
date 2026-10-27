@@ -1,0 +1,56 @@
+{
+ "label": "after",
+ "at": "2026-10-27T22:48:27.565Z",
+ "cost": {
+  "buildSeconds": 11.9,
+  "port-plaza-aerial-day": {
+   "calls": 89,
+   "tris": 243540
+  },
+  "port-plaza-eye-day": {
+   "calls": 73,
+   "tris": 230480
+  },
+  "port-plaza-promenade-day": {
+   "calls": 96,
+   "tris": 243776
+  },
+  "gare-garden-day": {
+   "calls": 95,
+   "tris": 248514
+  },
+  "square-garden-day": {
+   "calls": 65,
+   "tris": 230142
+  },
+  "square-eye-day": {
+   "calls": 48,
+   "tris": 207626
+  },
+  "port-plaza-aerial-night": {
+   "calls": 100,
+   "tris": 253598
+  },
+  "port-plaza-eye-night": {
+   "calls": 78,
+   "tris": 231694
+  },
+  "port-plaza-promenade-night": {
+   "calls": 89,
+   "tris": 231940
+  },
+  "gare-garden-night": {
+   "calls": 95,
+   "tris": 245300
+  },
+  "square-garden-night": {
+   "calls": 83,
+   "tris": 241770
+  },
+  "square-eye-night": {
+   "calls": 52,
+   "tris": 208320
+  }
+ },
+ "errors": []
+}

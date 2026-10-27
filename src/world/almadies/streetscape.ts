@@ -37,12 +37,16 @@ const WORLD: Site = { id: 'streetscape', kind: 'villa', variant: 0, block: [0, 0
 /** Road centres (x for the roads that run north–south, z for the east–west), the pavement 5…7 m from each, and the blocks between. */
 const ROADS = [-120, -60, 0, 60, 120];
 const KERB_OFF = 6.55;
+/** The ground's top: the paved blocks (the port's, the gare's: `specialAt`) at 0.14, the others' sand at 0.13; what is laid on it lies above. */
+const PAVED = 0.14, SAND = 0.13;
 /** Where the modules that build after the hub stand (src/world/prestige.ts, src/world/city.ts, the gare in src/world/builder.ts): left to them. */
 const DEAD: Rect[] = [
   { x0: -113, z0: 3, x1: -67, z1: 57 },        // Prestige Auto's parcel and its forecourt
   { x0: 8, z0: 8, x1: 52, z1: 52 },            // the mall (its pavements are the avenues')
   { x0: -48, z0: 12, x1: -13, z1: 42 },        // the gare: its pave, the cars, the shelter, the stalls
-  { x0: 74, z0: 12, x1: 106, z1: 48 },         // the meeting square's centre: tree, benches, tables, shade, sign
+  // the meeting square (src/world/city.ts): the west and east clusters (benches, the checkers table, the shade, the stools and their people), the centre's tree and disc, two trees, the sign
+  { x0: 75.5, z0: 18.5, x1: 82.5, z1: 41.5 }, { x0: 97, z0: 18.5, x1: 104.5, z1: 41.5 }, { x0: 82, z0: 22, x1: 98, z1: 38 }, { x0: 103.5, z0: 12, x1: 108.5, z1: 17 }, { x0: 71, z0: 41.5, x1: 77, z1: 48.5 }, { x0: 78, z0: 47.5, x1: 102, z1: 52 },
+  ...[15, 29, 43].map(x => ({ x0: x - 3.2, z0: -86.6, x1: x + 3.2, z1: -81.4 })),   // the port's three market stalls (canopy, counter, posts), src/world/builder.ts `port`
 ];
 const PORT = { x0: 8, z0: -103, x1: 52, z1: -68 };
 
@@ -62,6 +66,7 @@ export function buildStreetscape(kit: DistrictKit, ground: StreetGround): Street
   const sitesR = ground.sites.map(s => s.rect);
   const count = (k: string) => { out.counts[k] = (out.counts[k] ?? 0) + 1; };
   /** Is the ground at (x, z) free for something `r` wide (its solid foot), `kerb`: on the pavement (a kerb item may stand within the roads' bands)? */
+  let base = PAVED;
   const free = (x: number, z: number, r: number, kerb = false) => {
     const no = (why: string) => { (STREETSCAPE as { why?: string[] }).why?.push(`${why} @ ${x.toFixed(1)},${z.toFixed(1)}`); return false; };
     const m = kerb ? 0.05 : 0.25;                                                                  // a kerb item stands 0.4 m off the block's edge: the fence's own colliders are that near
@@ -123,10 +128,10 @@ export function buildStreetscape(kit: DistrictKit, ground: StreetGround): Street
     take('stall', x, z, 2.0); return true;
   };
   const crate = (x: number, z: number, n: number) => { if (!free(x, z, 0.5)) return; for (let k = 0; k < n; k++) d.box(d.plain, 0.55, 0.3, 0.4, x + (k % 2) * 0.1, GROUND + k * 0.3, z, k % 2 ? 0xb98a5a : 0xa4783f, k * 0.4); solid(x - 0.35, z - 0.3, x + 0.35, z + 0.3, 0.3 * n); take('crate', x, z, 0.8); };
-  const paved = (x0: number, z0: number, x1: number, z1: number, col: number, y = GROUND + 0.012) => d.flat(d.pave, x1 - x0, z1 - z0, (x0 + x1) / 2, y, (z0 + z1) / 2, col);
+  const paved = (x0: number, z0: number, x1: number, z1: number, col: number, y = base + 0.004) => d.flat(d.pave, x1 - x0, z1 - z0, (x0 + x1) / 2, y, (z0 + z1) / 2, col);
   const lawn = (x0: number, z0: number, x1: number, z1: number) => {
     if (![[x0, z0], [x1, z0], [x0, z1], [x1, z1], [(x0 + x1) / 2, (z0 + z1) / 2]].every(([x, z]) => free(x, z, 0.3))) return false;
-    paved(x0, z0, x1, z1, d.c.lawn, GROUND + 0.016);
+    paved(x0, z0, x1, z1, d.c.lawn, base + 0.012);
     const hw = 0.28;
     for (const [a, b, c, e] of [[x0, z0, x1, z0 + hw], [x0, z1 - hw, x1, z1], [x0, z0, x0 + hw, z1], [x1 - hw, z0, x1, z1]]) d.box(d.leaves, c - a, 0.55, e - b, (a + c) / 2, GROUND, (b + e) / 2, d.c.hedge);
     take('lawn', (x0 + x1) / 2, (z0 + z1) / 2, 0.2); return true;
@@ -134,23 +139,24 @@ export function buildStreetscape(kit: DistrictKit, ground: StreetGround): Street
 
   // ------------------------------------------------------------------------------------------------ the port's plaza
   {
-    const cx = 30, P = PORT, STONE = 0xdccfae, EDGE = 0xbfa87c, INLAY = 0xe9e1cc;
+    const cx = 30, P = PORT, STONE = 0xf0e6cd, EDGE = 0xb0623a, INLAY = 0xd9884f;
     paved(cx - 4.5, P.z0, cx + 4.5, P.z1, STONE); paved(cx - 4.5, P.z0, cx - 4.1, P.z1, EDGE); paved(cx + 4.1, P.z0, cx + 4.5, P.z1, EDGE);        // the approach to the pier, with its edging
     paved(P.x0 + 1, P.z0 + 1.5, P.x1 - 1, P.z0 + 4.5, STONE); paved(P.x0 + 1, P.z0 + 4.2, P.x1 - 1, P.z0 + 4.5, EDGE);                          // the sea-front walk
-    d.cyl(d.pave, 6.4, 6.4, 0.02, cx, GROUND + 0.002, -84, EDGE, lite ? 14 : 24); d.cyl(d.pave, 5.4, 5.4, 0.022, cx, GROUND + 0.004, -84, STONE, lite ? 14 : 24); d.cyl(d.pave, 2.6, 2.6, 0.024, cx, GROUND + 0.006, -84, INLAY, lite ? 12 : 20);
+    const PZ = -73.5;                                                                                                                         // the round plaza's centre: south of the market stalls
+    d.cyl(d.pave, 6.4, 6.4, 0.016, cx, base + 0.002, PZ, EDGE, lite ? 14 : 24); d.cyl(d.pave, 5.5, 5.5, 0.02, cx, base + 0.004, PZ, STONE, lite ? 14 : 24); d.cyl(d.pave, 2.4, 2.4, 0.024, cx, base + 0.006, PZ, INLAY, lite ? 12 : 20);
     // palm avenues either side of the approach, and the sea-front's
     for (const x of [cx - 10.5, cx + 10.5]) for (let z = -96; z <= -70; z += 8.5) palm('palm', x, z, 1.0 + rng() * 0.2, true);
     for (const x of [P.x0 + 4, P.x0 + 14, P.x1 - 14, P.x1 - 4]) palm('palm', x, P.z0 - 2.6, 1.05 + rng() * 0.15, true);
-    // the lawns, hedged in, with a palm each; the beds at the road end of the approach and by the round plaza
-    lawn(P.x0 + 2, -92, cx - 13, -76); lawn(cx + 13, -92, P.x1 - 2, -76);
-    palm('palm', P.x0 + 8, -84, 1.1, true); palm('palm', P.x1 - 8, -84, 1.1, true);
+    // the lawns, hedged in, between the sea-front walk and the market stalls; the beds at the road end of the approach and by the pier's foot
+    lawn(P.x0 + 2, -96.5, cx - 13, -90); lawn(cx + 13, -96.5, P.x1 - 2, -90);
     for (const [x, z] of [[cx - 7, -69.2], [cx + 7, -69.2]]) bed(x, z, 5, 1.3, rng() < 0.5 ? d.c.bloom : d.c.bloom2);
     for (const [x, z] of [[cx - 6, -95], [cx + 6, -95]]) bed(x, z, 4.4, 1.2);
     // benches: to the sea along the walk, to the pier along the approach, round the plaza
     for (const x of [16, 24, 36, 44]) seat(x, P.z0 + 1.1, Math.PI, { len: 2.2, n: 3 });
-    for (const z of [-96, -72]) { seat(cx - 5.3, z, Math.PI / 2, { len: 2.0, n: 2 }); seat(cx + 5.3, z, -Math.PI / 2, { len: 2.0, n: 2 }); }
-    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; seat(cx + Math.sin(a) * 7.7, -84 + Math.cos(a) * 7.7, a + Math.PI, { len: 1.8, n: 2 }); }
-    // the fishmonger's stall and the tea stall at either end of the plaza, the fish crates and a fisherman at the pier's foot
+    for (const z of [-96, -79]) { seat(cx - 5.3, z, Math.PI / 2, { len: 2.0, n: 2 }); seat(cx + 5.3, z, -Math.PI / 2, { len: 2.0, n: 2 }); }
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; seat(cx + Math.sin(a) * 7.7, PZ + Math.cos(a) * 7.7, a + Math.PI, { len: 1.8, n: 2 }); }
+    // the market's own three stalls (src/world/builder.ts) have their sellers behind the counters; a fishmonger's and a tea stall at either end of the plaza, fish crates and two fishermen at the pier's foot
+    person(15, -86.9, 0, 'Talk', VENDOR); person(29, -86.9, 0, 'Idle', TEAMAN); person(43, -86.9, 0, 'Talk', SELLER2);
     stall(14, -73.8, 0, [0x2b86b0, 0xf4f1e8], 5, VENDOR); stall(46, -73.8, 0, [0xc2663a, 0xf4f1e8], 4, TEAMAN);
     crate(21, -100.4, 3); crate(39, -100.4, 3);
     person(cx - 3.2, P.z0 + 0.4, Math.PI / 2, 'Talk', FISHER); person(cx - 1.9, P.z0 + 0.4, -Math.PI / 2, 'Talk', SELLER2);
@@ -169,12 +175,18 @@ export function buildStreetscape(kit: DistrictKit, ground: StreetGround): Street
     for (const dx of [-1.2, 0, 1.2]) { const x = -27 + dx, z = 42.6; if (free(x, z, 0.3)) { const s = { x, z, yaw: 0, kind: 'stool' as const, top: 0.45 + GROUND }; d.box(d.plain, 0.34, 0.45, 0.34, x, GROUND, z, d.p.wood); out.seats.push({ id: `street:seat:${out.seats.length}`, x: s.x, z: s.z, top: s.top, yaw: Math.PI, kind: s.kind, space: 'street', occupant: null }); take('stool', x, z, 0.5); } }
   }
 
-  // ------------------------------------------------------------------------------------------------ the square's ring
+  // ------------------------------------------------------------------------------------------------ the square (the meeting place's sand: gardens round its centre)
   {
+    base = SAND;
+    const STONE = 0xf0e6cd, EDGE = 0xb0623a;
+    paved(88.4, 9.5, 91.6, 22, STONE); paved(88.4, 38, 91.6, 50.5, STONE);                                                      // the paths from the road to the centre's disc, north and south
+    for (const x of [88.2, 91.8]) { paved(x - 0.1, 9.5, x + 0.1, 22, EDGE); paved(x - 0.1, 38, x + 0.1, 50.5, EDGE); }
+    lawn(76, 11.4, 87, 16.4); lawn(93, 11.4, 101.5, 16.4); lawn(78.5, 43, 87, 47); lawn(93, 43, 104, 47);                         // four lawns, hedged in, either side of the paths
+    for (const [x, z] of [[85.5, 19.4], [93.8, 19.4], [85.5, 40.6], [93.8, 40.6]]) bed(x, z, 4.6, 1.3, rng() < 0.5 ? d.c.bloom : d.c.bloom2);
     for (const x of [70.6, 109.4]) for (let z = 18; z <= 44; z += 8.7) palm('palm', x, z, 1.0 + rng() * 0.2);
-    for (const x of [78, 102]) for (const z of [10.4, 49.6]) bed(x, z, 5, 1.3, rng() < 0.5 ? d.c.bloom : d.c.bloom2);
+    for (const x of [82.2, 97.8]) for (const z of [13.8, 45]) palm('palm', x, z, 1.1 + rng() * 0.15, true);
     stall(71.2, 10.6, 0, [0xd94a8c, 0xf4f1e8], 4, SELLER2); stall(108.8, 49.4, Math.PI, [0x2f8f6e, 0xf4f1e8], 3, TEAMAN);
-    for (const x of [86, 94]) seat(x, 10.2, 0, { len: 2.2, n: 3 });
+    for (const [x, z] of [[78, 9.8], [102, 9.8]]) seat(x, z, 0, { len: 2.2, n: 3 });
   }
 
   // ------------------------------------------------------------------------------------------------ the three avenues

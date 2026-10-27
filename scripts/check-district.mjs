@@ -5,8 +5,10 @@
 //  4. the pavement round every block is as free as the villa branch's: a body's circle walked along a line a metre outside each block against the hub's colliders;
 //  5. the Ngor residence keeps its door, its entry and its gate: the interactables stand where the estate put them and nothing solid covers them;
 //  7. the rooftop restaurant's stair door (« Terrasse de Ngor ») stands on a hotel's street face and a body walks to it from the pavement;
+//  8. life on the ground (round 3): the streetscape stands (palms, kerb palms, benches, beds, lawns, stalls), the street's benches and chairs are the city's ambient spots,
+//     and the people placed at a hotel's door are drawn when the player stands there;
 //  6. the cost of the hub against the villa branch's (docs/proof/ld2e/before/baseline.json, measured the same way: every mesh of the scene, visible or not, whatever the camera
-//     sees, the hub's own group: see staticCost): the budgets of docs/ld2/LD2_E.md (+60 k triangles, +10 meshes).
+//     sees, the hub's own group: see staticCost): the budgets of docs/ld2/LD2_E.md (+95 k triangles since round 3, +10 meshes).
 // Usage: node scripts/check-district.mjs <baseUrl> <outDir> [beforeCost.json]   (BASELINE=1: only measure and walk, pass or fail nothing: the villa branch's own build)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -96,6 +98,17 @@ for (const q of ['low', 'medium']) {
       check('(medium) the rooftop restaurant\'s door stands on the street face of a hotel of the district, in the front half of its lot, facing the street', !!hotel && roof.facade.nz === -1 && D.z - hotel.rect.z0 < 12, JSON.stringify({ door: D, facade: roof.facade, hotel: hotel?.id }));
       check('(medium) a body walks from the pavement to the rooftop restaurant\'s door', reached, JSON.stringify({ door: D }));
     } else check('(medium) the rooftop restaurant has its door', false, 'no rooftop info');
+    // 8. life on the ground (round 3)
+    const ss = await s.d(() => window.__dakar.district?.streetscape?.() ?? []), kinds = {}; for (const p of ss) kinds[p.kind] = (kinds[p.kind] ?? 0) + 1;
+    check('(medium) the streetscape stands: palms, kerb palms, benches, beds, lawns and stalls', (kinds.palm ?? 0) >= 20 && (kinds['kerb palm'] ?? 0) >= 60 && (kinds.bench ?? 0) >= 12 && (kinds.bed ?? 0) >= 6 && (kinds.lawn ?? 0) >= 4 && (kinds.stall ?? 0) >= 4, JSON.stringify(kinds));
+    await s.page.waitForTimeout(4000);
+    const spots = await s.d(() => window.__dakar.ambientSpots?.() ?? []), street = await s.d(() => window.__dakar.district?.streetSeats?.() ?? []);
+    const ownSeats = street.filter(x => /^street:seat:|:seat:/.test(x.id)), claimed = spots.reduce((n, sp) => n + sp.seats, 0);
+    check('(medium) the street\'s seats (the streetscape\'s benches and stools, the buildings\' terraces) are all the city\'s ambient spots: its people can sit on them', ownSeats.length >= 60 && claimed >= street.length - 2, JSON.stringify({ streetSeats: street.length, districtSeats: ownSeats.length, claimedBySpots: claimed, spots: spots.length }));
+    await toAlmadies(s, -35, -121.5, Math.PI);
+    await s.page.waitForTimeout(3500);
+    const drawn = (await s.d(() => window.__dakar.humanoids?.() ?? {})).full ?? 0;
+    check('(medium) people are drawn at the boutique hotel\'s door (the doorman, the bellhop, the valet, the terrace\'s waiter and customers)', drawn >= 4, JSON.stringify({ humanoidsDrawn: drawn }));
     medium = s;
   } else await s.context.close();
 }
@@ -106,7 +119,7 @@ if (medium) {
   cost = await staticCost(medium.page);
   if (!BASELINE) {
     const b0 = before.static, dT = cost.tris - b0.tris, dM = cost.meshes - b0.meshes;
-    check('(medium) the district stays within +60 k triangles of the villa branch\'s hub', dT <= 60_000, JSON.stringify({ now: cost, was: b0, dTris: dT }));
+    check('(medium) the district stays within +95 k triangles of the villa branch\'s hub (round 3: the life on the ground and the streetscape)', dT <= 95_000, JSON.stringify({ now: cost, was: b0, dTris: dT }));
     check('(medium) the district stays within +10 meshes (draw calls) of the villa branch\'s hub', dM <= 10, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
   }
   check('(medium) no page error through the walk', medium.errors.length === 0, JSON.stringify(medium.errors.slice(0, 3)));
