@@ -1,5 +1,5 @@
 import { GROUND, STOREY, type SiteBuilder } from './contract';
-import { nameBoard, palm, perimeter, roofPlant } from './parts';
+import { door, nameBoard, palm, perimeter, roofPlant } from './parts';
 import { GREEN, GUARD, kitOf, mix, type Facade } from './residences.kit';
 
 /**
@@ -13,7 +13,9 @@ export const courtyard: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(4, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n);
   const O = { x0: -19.5, x1: 19.5, z0: -31.5, z1: 6.5 }, C = { x0: -10, x1: 10, z0: -22, z1: -3 }, PASS = { x0: -2.8, x1: 2.8 }, TW = 5.0, STEP = 1.0, TERR = 1.8;
   const m = k.plain, wood = mix(p.wood, 0x000000, 0.1), dark = mix(p.render2, 0x000000, 0.5);
-  perimeter(d, { gate: s.gate, front: 'wall' });
+  const ENTRY = { x: 0, w: 5.2 };                                                          // the porte-cochère: the street railing is cut across the passage, open ground from the pavement to the courtyard
+  perimeter(d, { gate: 'right', entries: [ENTRY] });                                       // the car gate stands at the east side, the passage is for people
+  k.info.entries.push(ENTRY);
 
   // ------------------------------------------------------------------------------------------------ the masses: four wings, the passage, the slabs
   // The ground floor's wings stand on the courtyard's edge; each floor above steps its inner wall back by a metre, so the terraces cascade into the court.
@@ -54,23 +56,28 @@ export const courtyard: SiteBuilder = d => {
     }
   };
   floorsOut(FS, -14.5, 14.5, 6, { bal: true, depth: 1.8, ground: false });
-  // the ground floor of the street wing: garden flats' glass either side of the passage, stone courses
-  for (const [a, b] of [[-14.0, -9.8], [-9.0, -4.9]] as const) { FS.opening({ u0: a, u1: b, y0: G + 0.4, y1: G + 2.7, mull: 1 }); FS.opening({ u0: -b, u1: -a, y0: G + 0.4, y1: G + 2.7, mull: 1 }); }
+  // the ground floor of the street wing: a café and a shop either side of the passage, stone courses between them, awnings and tables on the pavement side
   for (const y of [G + 0.85, G + 1.7, G + 2.55]) { FS.quad(-14.5, PASS.x0 - 0.9, y, y + 0.03, 0.01, p.stoneDark); FS.quad(PASS.x1 + 0.9, 14.5, y, y + 0.03, 0.01, p.stoneDark); }
+  k.unit({ kind: 'cafe', attached: true, x0: -13.8, x1: -5.4, z0: O.z1, z1: O.z1, door: -6.4, tables: 3, awning: 1.4, terrace: 1.25 });
+  k.unit({ kind: 'shop', attached: true, x0: 5.4, x1: 13.8, z0: O.z1, z1: O.z1, door: 6.4, awning: 1.4, fascia: p.board, stripe: [mix(p.accent, 0xffffff, 0.5)], tables: 1, terrace: 1.25 });
   // the portal: two stone piers and a deep lintel over the passage, the name on it; the passage's soffit lit, its floor paved
   const PT = L(2) - 0.3;
   FS.box(-5.0, PASS.x0, G, PT, 0, 0.45, p.stone, 'iu'); FS.box(PASS.x1, 5.0, G, PT, 0, 0.45, p.stone, 'iu');
   FS.box(PASS.x0, PASS.x1, L(1) - 0.3, PT, 0, 0.45, p.stone, 'iu');
   FS.box(-5.08, 5.08, PT - 0.1, PT + 0.04, 0, 0.55, p.slab, 'iu'); FS.box(-5.0, 5.0, L(1) - 0.36, L(1) - 0.3, 0, 0.5, p.accent, 'iu');
-  for (const x of [-4.6, 4.6]) k.bulbs.box(x - 0.1, G + 2.2, O.z1 + 0.45, x + 0.1, G + 2.7, O.z1 + 0.5, 0xfff1c8, 'U');
-  m.hq(PASS.x0, C.z1, PASS.x1, O.z1, G + 0.03, true, mix(p.stone, 0xffffff, 0.35));
+  m.hq(PASS.x0, C.z1, PASS.x1, 10.55, G + 0.03, true, mix(p.stone, 0xffffff, 0.35)); m.hq(-2.0, 6.5, 2.0, 10.55, G + 0.045, true, mix(p.stone, 0xffffff, 0.6));   // the passage's floor, and the path to it from the pavement
   for (const z of [4.6, 0.6]) k.bulbs.box(-0.6, L(1) - 0.34, z - 0.1, 0.6, L(1) - 0.3, z + 0.1, 0xfff1c8, 'T');
-  const lobby = k.facade('right', PASS.x0);                                                                                     // the lobby's glass door, on the passage's west wall
-  lobby.opening({ u0: 0.2, u1: 2.6, y0: G + 0.1, y1: G + 2.7, mull: 1, head: false, ledge: false }); lobby.opening({ u0: 3.0, u1: 3.8, y0: G + 0.9, y1: G + 2.6, mull: 0, head: false, ledge: false, n: 0 });
-  k.bulbs.box(PASS.x0 + 0.04, G + 2.9, 1.0, PASS.x0 + 0.2, G + 2.96, 2.0, 0xfff1c8, 'U');
-  FS.houseNumber(s.number, 3.9, G + 1.5, 0.46);
+  // the lobby, inside the passage: glass and a door in its west wall, the intercom and the number beside it
+  const lobby = k.facade('right', PASS.x0);
+  lobby.opening({ u0: -1.4, u1: 0.4, y0: G + 0.1, y1: G + 2.9, mull: 0, head: false, ledge: false, lit: true }); lobby.opening({ u0: 2.0, u1: 3.9, y0: G + 0.1, y1: G + 2.9, mull: 1, head: false, ledge: false, lit: true });
+  door(d, { face: 'right', x: PASS.x0, z: 1.2, w: 1.5, h: 2.7, steps: false });
+  k.plain.box(PASS.x0 + 0.04, G + 1.0, 2.05, PASS.x0 + 0.1, G + 1.4, 2.35, p.frame, 'LU'); lobby.houseNumber(s.number, 2.9, G + 1.5, 0.08);
+  k.bulbs.box(PASS.x0 + 0.04, G + 3.05, 0.4, PASS.x0 + 0.2, G + 3.11, 2.4, 0xfff1c8, 'U');
+  k.info.units.push({ kind: 'lobby', face: 'right', u0: -1.4, u1: 3.9, awning: false });
+  k.info.doors.push({ kind: 'lobby', x: PASS.x0, z: 1.2, face: 'right', stand: { x: PASS.x0 + 0.95, z: 1.2 } });
+  k.info.doors.push({ kind: 'passage', x: 0, z: O.z1, face: 'street', stand: { x: 0, z: C.z1 + 0.5 } });
   k.sec('street');
-  if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: 0, z: O.z1 + 0.47, y: L(1) + 1.2, w: Math.min(9.0, 0.33 * s.name.length), h: 0.9, bg: css(p.board), fg: '#f4e6bd' }); }
+  if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: 0, z: O.z1 + 0.47, y: L(1) + 1.2, w: Math.min(6.8, 0.27 * s.name.length), h: 0.78, bg: css(p.board), fg: '#f4e6bd' }); }
 
   // ------------------------------------------------------------------------------------------------ the corner towers: blades on the two outside faces
   const towers: { x: number; z: number; sx: 1 | -1; sz: 1 | -1 }[] = [{ x: O.x0, z: O.z1, sx: -1, sz: 1 }, { x: O.x1, z: O.z1, sx: 1, sz: 1 }, { x: O.x0, z: O.z0, sx: -1, sz: -1 }, { x: O.x1, z: O.z0, sx: 1, sz: -1 }];
@@ -95,7 +102,11 @@ export const courtyard: SiteBuilder = d => {
       const a = f % 2 ? -26.5 : -26.5 + 14;
       F.balcony({ u0: a + 0.04, u1: a + 14 - 0.04, y: L(f), depth: 1.5, guard: f % 2 ? 'glass' : 'solid', guardCol: p.render, green: true });
     }
-    for (const b of [0, 1, 2, 3]) { const a = -26.5 + b * (28 / 6) * 1.5; F.opening({ u0: a + 0.5, u1: a + 3.2, y0: G + 0.5, y1: G + 2.6, lean: true }); }
+    for (const b of [0, 3]) { const a = -26.5 + b * (28 / 6) * 1.5; F.opening({ u0: a + 0.5, u1: a + 3.2, y0: G + 0.5, y1: G + 2.6, lean: true }); }
+    // toward the road: a shopfront and its awning, a bench (the café on the west, a shop on the east)
+    const west = face === 'left';
+    F.shopfront({ u0: -20.5, u1: -11.5, fascia: west ? p.accent : p.board, mull: 3.0, door: -12.6 }); F.awning({ u0: -20.6, u1: -11.4, y: G + 2.82, depth: 1.2, drop: 0.6, col: west ? p.accent : p.board });
+    k.info.units.push({ kind: west ? 'cafe' : 'shop', face, u0: -20.5, u1: -11.5, awning: true });
   };
   side('left', O.x0); side('right', O.x1);
   const FB = k.facade('back', O.z0);
@@ -154,14 +165,15 @@ export const courtyard: SiteBuilder = d => {
   roofPlant(d, { x0: -10, x1: 10, z0: -30.5, z1: -26 }, Y + 0.02, { units: 3 });
   k.sec('roof');
 
-  // ------------------------------------------------------------------------------------------------ the gardens outside
+  // ------------------------------------------------------------------------------------------------ the pavement side: paving, beds, the drive from the car gate
   const gr = (x: number, z: number, w: number, dd: number, y: number, col: number) => m.hq(x - w / 2, z - dd / 2, x + w / 2, z + dd / 2, G + y, true, col);
-  gr(-11.4, 8.7, 17.6, 3.6, 0.03, GREEN.lawn); gr(11.4, 8.7, 17.6, 3.6, 0.03, GREEN.lawn); gr(0, 8.7, 5.6, 3.6, 0.05, mix(p.stone, 0xffffff, 0.4));
-  for (let i = 0; i < 3; i++) { gr(-11.4, 7.7 + i * 1.0, 17.6, 0.45, 0.04, GREEN.lawn2); gr(11.4, 7.7 + i * 1.0, 17.6, 0.45, 0.04, GREEN.lawn2); }
-  const hb = (x0: number, x1: number, z0: number, z1: number, h = 0.55) => k.leaves.box(x0, G, z0, x1, G + h, z1, GREEN.hedge2, 'U');
-  hb(-22.4, -3.4, 10.0, 10.6); hb(3.4, 22.4, 10.0, 10.6); hb(-22.4, -21.8, -34.4, 10.0); hb(21.8, 22.4, -34.4, 10.0); hb(-22.4, 22.4, -34.4, -33.8);
-  palm(d, -6.6, 7.5, 1.1, 0.3); palm(d, 6.6, 7.3, 1.0, 1.2);
-  d.light(0, 8.7, 3, 0.16); d.light(0, cz, 4, 0.16);
+  k.paved({ x0: -22.4, z0: O.z1 + 0.3, x1: 22.4, z1: 10.55 }, mix(p.stone, 0xffffff, 0.45), 0.03);                           // the forecourt, paved to the railing
+  gr(-18.2, 8.7, 7.6, 3.2, 0.045, GREEN.lawn); for (let i = 0; i < 3; i++) gr(-18.2, 7.5 + i * 0.9, 7.6, 0.4, 0.055, GREEN.lawn2);   // a lawn at the west end
+  k.paved({ x0: 17.6, z0: O.z1 - 0.5, x1: 21.6, z1: 10.55 }, mix(p.stoneDark, 0xffffff, 0.5), 0.05); k.paved({ x0: 20.3, z0: O.z0 + 4, x1: 22.4, z1: O.z1 - 0.5 }, mix(p.stoneDark, 0xffffff, 0.5), 0.05);   // the drive from the gate, along the east side
+  k.trough(-3.9, -2.3, 10.05, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(-3.9, 9.75, -2.3, 10.35, 1.0); k.trough(2.3, 3.9, 10.05); d.solid(2.3, 9.75, 3.9, 10.35, 1.0);   // beds either side of the passage's opening
+  k.bench(-9.6, 9.9, 1.8); d.solid(-10.5, 9.65, -8.7, 10.15, 0.9); k.bench(9.6, 9.9, 1.8); d.solid(8.7, 9.65, 10.5, 10.15, 0.9);
+  palm(d, -15.4, 8.0, 1.1, 0.3); palm(d, 15.6, 8.4, 1.0, 1.2);
+  d.light(0, 8.7, 3, 0.16); d.light(0, cz, 4, 0.16); d.light(-9.6, 8.4, 2.4, 0.16);
   k.sec('garden');
   k.flush();
 };

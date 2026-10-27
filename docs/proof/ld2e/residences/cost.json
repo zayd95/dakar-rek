@@ -1,112 +1,95 @@
 {
- "at": "2026-10-27T13:34:02.080Z",
+ "at": "2026-10-27T14:44:52.034975Z",
+ "note": "each design drawn as its real site of the plan (rect, facing, mirror, palette, storeys, road edges), the viewer of src/world/almadies/viewer.ts with a site picker; the calls are the viewer's meshes (the hub adds only the sign)",
  "cost": {
   "residence-ngor": {
    "name": "Résidence de Ngor",
    "kind": "residence",
    "size": "S",
-   "views": {
-    "front": 283,
-    "street": 300,
-    "back": 169,
-    "side": 200,
-    "aerial": 279,
-    "close": 201,
-    "night": 178
-   },
+   "site": "RÉSIDENCE DE NGOR (almadies:1,1:2)",
    "medium": {
-    "calls": 8,
-    "tris": 3320
-   },
-   "info": {
-    "colliders": 11,
-    "signs": 1,
-    "tallest": 15.2
+    "calls": 9,
+    "tris": 3118
    },
    "low": {
-    "calls": 8,
-    "tris": 1916
+    "calls": 9,
+    "tris": 2144
+   },
+   "info": {
+    "colliders": 15,
+    "signs": 1,
+    "tallest": 15.2
    }
   },
   "residence-stack": {
    "name": "Balcons décalés sur pilotis",
    "kind": "residence",
    "size": "M",
-   "views": {
-    "front": 301,
-    "street": 146,
-    "back": 251,
-    "side": 183,
-    "aerial": 286,
-    "close": 209,
-    "night": 195
-   },
+   "site": "RÉSIDENCE LES ALIZÉS (almadies:3,0:01)",
    "medium": {
-    "calls": 7,
-    "tris": 4342
-   },
-   "info": {
-    "colliders": 30,
-    "signs": 1,
-    "tallest": 21.9
+    "calls": 8,
+    "tris": 4764
    },
    "low": {
-    "calls": 7,
-    "tris": 2724
+    "calls": 8,
+    "tris": 3120
+   },
+   "info": {
+    "colliders": 37,
+    "signs": 1,
+    "tallest": 21.9
    }
   },
   "residence-screen": {
    "name": "Brise-soleil sur loggias",
    "kind": "residence",
    "size": "M",
-   "views": {
-    "front": 343,
-    "street": 144,
-    "back": 197,
-    "side": 196,
-    "aerial": 305,
-    "close": 227,
-    "night": 215
-   },
+   "site": "RÉSIDENCE KËR SALAM (almadies:2,1:01)",
    "medium": {
-    "calls": 7,
-    "tris": 4308
-   },
-   "info": {
-    "colliders": 12,
-    "signs": 1,
-    "tallest": 20.9
+    "calls": 8,
+    "tris": 4690
    },
    "low": {
-    "calls": 7,
-    "tris": 2826
+    "calls": 8,
+    "tris": 3348
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 1,
+    "tallest": 20.9
    }
   },
   "residence-courtyard": {
    "name": "Cour-jardin à portail",
    "kind": "residence",
    "size": "L",
-   "views": {
-    "front": 310,
-    "street": 122,
-    "back": 191,
-    "side": 220,
-    "aerial": 363,
-    "close": 229,
-    "night": 197
-   },
+   "site": "RÉSIDENCE JARDINS DE NGOR (almadies:1,3:0123)",
    "medium": {
-    "calls": 8,
-    "tris": 6316
+    "calls": 9,
+    "tris": 7770
+   },
+   "low": {
+    "calls": 9,
+    "tris": 5522
    },
    "info": {
-    "colliders": 20,
+    "colliders": 28,
     "signs": 1,
     "tallest": 20.3
+   }
+  },
+  "residence-screen-cormorans": {
+   "name": "Brise-soleil sur loggias (Les Cormorans, mirrored, terracotta)",
+   "kind": "residence",
+   "size": "M",
+   "site": "RÉSIDENCE LES CORMORANS (almadies:3,3:01)",
+   "medium": {
+    "calls": 8,
+    "tris": 4694
    },
    "low": {
     "calls": 8,
-    "tris": 4424
+    "tris": 3352
    }
   }
  },

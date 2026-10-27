@@ -1,5 +1,5 @@
 import { GROUND, STOREY, type SiteBuilder } from './contract';
-import { door, nameBoard, palm, perimeter, planter, roofPlant, solidBox } from './parts';
+import { door, nameBoard, palm, perimeter, roofPlant, solidBox } from './parts';
 import { GREEN, GUARD, kitOf, mix } from './residences.kit';
 
 /**
@@ -16,10 +16,12 @@ import { GREEN, GUARD, kitOf, mix } from './residences.kit';
  */
 export const ngor: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(3, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n), top = n - 1;
-  const A = { x0: -9.0, x1: 5.4, z0: -9.6, z1: 2.6 }, T = { x0: 5.4, x1: 8.8, z0: -9.6, z1: 4.0 }, LB = { x0: -3.6, x1: 3.6, z0: A.z1, z1: 6.2 };
+  const A = { x0: -9.0, x1: 5.4, z0: -9.6, z1: 2.6 }, T = { x0: 5.4, x1: 8.8, z0: -9.6, z1: 4.0 }, LB = { x0: -8.4, x1: -1.6, z0: A.z1, z1: 6.2 }, cx = -5.0;
   const PH = { x0: A.x0, x1: A.x1, z0: A.z0, z1: 0.6 };                                  // the top floor, set back from the street
   const FZ = 4.5, tz = 8.0;                                                                // the terraces' front edge, and the canopy's over the lobby
-  perimeter(d, { gate: s.gate, front: 'wall' });
+  const ENTRY = { x: cx, w: 3.2 };                                                         // the walk-in opening in the street railing, in line with the lobby's door
+  perimeter(d, { gate: s.gate, entries: [ENTRY] });
+  k.info.entries.push(ENTRY);
   const m = k.plain, wood = mix(p.wood, 0x000000, 0.1);
 
   // ------------------------------------------------------------------------------------------------ the masses
@@ -47,8 +49,9 @@ export const ngor: SiteBuilder = d => {
     F.box(a + 0.3, a + 0.55, y0, y1, 0, 0.22, p.slab); F.box(b - 0.55, b - 0.3, y0, y1, 0, 0.22, p.slab);
     F.slats({ u0: a + 0.55, u1: b - 0.55, y0: y0 + 0.02, y1: y1 - 0.02, pitch: 0.21, w: 0.07, depth: 0.14, n0: 0.06 });
   };
-  // ground floor: the garden flat's salons either side of the lobby
-  F.opening({ u0: -8.6, u1: -4.2, y0: G + 0.35, y1: G + 2.7, mull: 2 }); F.opening({ u0: 4.2, u1: 5.0, y0: G + 0.35, y1: G + 2.7, mull: 0 });
+  // ground floor: the garage under the building at the end of the drive from the gate (a roller door in a bronze frame)
+  F.quad(0.6, 4.4, G, G + 2.6, 0.03, 0x4a4f55); for (let i = 1; i < 6; i++) F.quad(0.6, 4.4, G + i * 0.43, G + i * 0.43 + 0.04, 0.05, 0x33373c);
+  F.quad(0.45, 0.6, G, G + 2.7, 0.045, p.frame); F.quad(4.4, 4.55, G, G + 2.7, 0.045, p.frame); F.quad(0.45, 4.55, G + 2.6, G + 2.75, 0.045, p.frame);
   for (let f = 1; f < top; f++) {
     for (let i = 0; i < 4; i++) win(i, f);
     if (f % 2) screen(3, f, f); else screen(0, f, f);                                 // the oak screen swaps sides from one floor to the next …
@@ -64,9 +67,9 @@ export const ngor: SiteBuilder = d => {
   m.vq('z', FZ - 0.06, A.x0 - 0.3, LB.x0 - 0.3, gy0, gy1, 1, GUARD); m.vq('z', FZ - 0.06, LB.x1 + 0.3, A.x1 + 0.3, gy0, gy1, 1, GUARD);
   m.vq('x', A.x0 - 0.27, A.z1, FZ - 0.06, gy0, gy1, -1, GUARD); m.vq('x', A.x1 + 0.27, A.z1, FZ - 0.06, gy0, gy1, 1, GUARD);
   m.vq('x', LB.x0 - 0.27, FZ, tz - 0.06, gy0, gy1, -1, GUARD); m.vq('x', LB.x1 + 0.27, FZ, tz - 0.06, gy0, gy1, 1, GUARD);
-  m.vq('z', tz - 0.06, LB.x0 - 0.3, -2.6, gy0, gy1, 1, GUARD); m.vq('z', tz - 0.06, 2.6, LB.x1 + 0.3, gy0, gy1, 1, GUARD);
-  m.box(-2.6, T1, tz - 0.3, 2.6, T1 + 0.95, tz - 0.05, p.render2, 'U');                  // the solid band that carries the name
-  m.box(-2.6, T1 + 0.95, tz - 0.34, 2.6, T1 + 1.02, tz, p.slab, 'U');
+  m.vq('z', tz - 0.06, LB.x0 - 0.3, cx - 2.6, gy0, gy1, 1, GUARD); m.vq('z', tz - 0.06, cx + 2.6, LB.x1 + 0.3, gy0, gy1, 1, GUARD);
+  m.box(cx - 2.6, T1, tz - 0.3, cx + 2.6, T1 + 0.95, tz - 0.05, p.render2, 'U');         // the solid band that carries the name
+  m.box(cx - 2.6, T1 + 0.95, tz - 0.34, cx + 2.6, T1 + 1.02, tz, p.slab, 'U');
   for (const [x0, x1] of [[A.x0 - 0.2, LB.x0 - 0.3], [LB.x1 + 0.3, A.x1 + 0.2]] as const) m.hq(x0, A.z1, x1, FZ, T1 + 0.02, true, wood);   // the decks
   m.hq(LB.x0 - 0.2, A.z1, LB.x1 + 0.2, tz, T1 + 0.02, true, wood);
   k.leaves.box(A.x0 + 0.1, T1, FZ - 0.75, LB.x0 - 0.5, T1 + 0.5, FZ - 0.3, GREEN.hedge2, 'U'); k.leaves.box(LB.x1 + 0.5, T1, FZ - 0.75, A.x1 - 0.1, T1 + 0.5, FZ - 0.3, GREEN.hedge2, 'U');   // planters on the terrace
@@ -92,14 +95,18 @@ export const ngor: SiteBuilder = d => {
 
   k.bulbs.box(PH.x0 - 0.4, roof - 0.17, 1.4, -2.4, roof - 0.11, 1.43, 0xffe2b8, 'UBTLR'); k.bulbs.box(-2.4, roof - 0.17, 3.5, PH.x1 + 0.4, roof - 0.11, 3.53, 0xffe2b8, 'UBTLR');   // a line of light along the visor's fascia
 
-  // ------------------------------------------------------------------------------------------------ the lobby: a glazed front, the door under the canopy
+  // ------------------------------------------------------------------------------------------------ the lobby: glass on three sides, the door under the canopy
   const FL = k.facade('street', LB.z1);
-  FL.opening({ u0: -3.2, u1: -1.2, y0: G + 0.12, y1: G + 2.95, mull: 1 }); FL.opening({ u0: 1.2, u1: 3.2, y0: G + 0.12, y1: G + 2.95, mull: 1 });
-  door(d, { face: 'street', x: 0, z: LB.z1, w: 1.5, h: 2.7, portal: true, steps: true });
-  for (const x of [-1.2, 1.2]) k.bulbs.box(x - 0.18, T1 - 0.3, tz - 1.2, x + 0.18, T1 - 0.26, tz - 0.8, 0xfff1c8, 'T');   // downlights in the canopy's soffit
-  k.bulbs.box(-0.6, T1 - 0.3, LB.z1 + 0.4, 0.6, T1 - 0.26, LB.z1 + 0.8, 0xfff1c8, 'T');
-  FL.houseNumber(s.number, 2.05, G + 1.55, 0.06);
-  m.box(1.9, G + 1.0, LB.z1, 2.2, G + 1.4, LB.z1 + 0.05, p.frame, 'iU'); k.bulbs.box(1.95, G + 1.3, LB.z1 + 0.05, 2.15, G + 1.34, LB.z1 + 0.07, 0xfff1c8, 'U');   // the intercom
+  FL.opening({ u0: LB.x0 + 0.4, u1: cx - 1.4, y0: G + 0.12, y1: G + 2.95, mull: 1, lit: true }); FL.opening({ u0: cx + 1.4, u1: LB.x1 - 0.25, y0: G + 0.12, y1: G + 2.95, mull: 1, lit: true });
+  door(d, { face: 'street', x: cx, z: LB.z1, w: 1.5, h: 2.7, portal: true, steps: true });
+  k.facade('left', LB.x0).opening({ u0: LB.z0 + 0.5, u1: LB.z1 - 0.5, y0: G + 0.12, y1: G + 2.95, mull: 1, lit: true });                      // the lobby's glass wraps the corner toward the road
+  k.facade('right', LB.x1).opening({ u0: LB.z0 + 0.5, u1: LB.z1 - 0.5, y0: G + 0.12, y1: G + 2.95, mull: 1, lit: true });                    // … and toward the gate: seen through its bars
+  for (const x of [cx - 1.3, cx + 1.3]) k.bulbs.box(x - 0.18, T1 - 0.3, tz - 1.2, x + 0.18, T1 - 0.26, tz - 0.8, 0xfff1c8, 'T');   // downlights in the canopy's soffit
+  k.bulbs.box(cx - 0.6, T1 - 0.3, LB.z1 + 0.4, cx + 0.6, T1 - 0.26, LB.z1 + 0.8, 0xfff1c8, 'T');
+  FL.houseNumber(s.number, cx + 2.0, G + 1.55, 0.06);
+  m.box(cx + 1.45, G + 1.0, LB.z1, cx + 1.75, G + 1.4, LB.z1 + 0.05, p.frame, 'iU'); k.bulbs.box(cx + 1.5, G + 1.3, LB.z1 + 0.05, cx + 1.7, G + 1.34, LB.z1 + 0.07, 0xfff1c8, 'U');   // the intercom
+  k.info.units.push({ kind: 'lobby', face: 'street', u0: LB.x0, u1: LB.x1, awning: false });
+  k.info.doors.push({ kind: 'lobby', x: cx, z: LB.z1, face: 'street', stand: { x: cx, z: LB.z1 + 0.95 } });
 
   // ------------------------------------------------------------------------------------------------ the stair tower's claustra
   const FT = k.facade('street', T.z1), ty1 = roof + 1.5 - 0.15;
@@ -113,7 +120,11 @@ export const ngor: SiteBuilder = d => {
 
   // ------------------------------------------------------------------------------------------------ the west side and the back
   const FW = k.facade('left', A.x0);
-  for (let f = 0; f < n; f++) { FW.opening({ u0: -7.2, u1: -4.6, y0: L(f) + (f ? 0.04 : 0.5), y1: L(f) + 2.7, mull: 1, head: false }); FW.opening({ u0: -2.4, u1: -1.4, y0: L(f) + 0.9, y1: L(f) + 2.1, mull: 0, head: false }); FW.opening({ u0: 0.6, u1: 1.6, y0: L(f) + 0.9, y1: L(f) + 2.1, mull: 0, head: false }); }
+  for (let f = 1; f < n; f++) { FW.opening({ u0: -7.2, u1: -4.6, y0: L(f) + 0.04, y1: L(f) + 2.7, mull: 1, head: false }); FW.opening({ u0: -2.4, u1: -1.4, y0: L(f) + 0.9, y1: L(f) + 2.1, mull: 0, head: false }); FW.opening({ u0: 0.6, u1: 1.6, y0: L(f) + 0.9, y1: L(f) + 2.1, mull: 0, head: false }); }
+  // the ground floor toward the road: a café window with its awning (the building's west wall is on a road: the street goes by it)
+  FW.shopfront({ u0: -7.4, u1: -3.2, fascia: p.accent, mull: 2.1 }); FW.awning({ u0: -7.5, u1: -3.1, y: G + 2.82, depth: 0.9, drop: 0.6 });
+  FW.opening({ u0: -2.4, u1: -1.4, y0: G + 0.9, y1: G + 2.1, mull: 0, head: false }); FW.opening({ u0: 0.6, u1: 1.6, y0: G + 0.9, y1: G + 2.1, mull: 0, head: false });
+  k.info.units.push({ kind: 'cafe', face: 'left', u0: -7.4, u1: -3.2, awning: true });
   const FB = k.facade('back', A.z0);
   for (let f = 0; f < n; f++) for (const [a, b] of [[-8.4, -5.4], [-4.4, -1.4], [-0.4, 2.6], [3.2, 5.0]] as const) FB.opening({ u0: a, u1: b, y0: L(f) + (f ? 0.04 : 0.5), y1: L(f) + 2.7, mull: 1, head: false });
   for (let f = 1; f < n; f++) FB.balcony({ u0: -8.4, u1: -1.4, y: L(f), depth: 1.3, guard: f % 2 ? 'solid' : 'glass', guardCol: p.render, green: true });
@@ -125,23 +136,25 @@ export const ngor: SiteBuilder = d => {
   m.vq('x', -2.4, R.z1 - 0.06, 3.3, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('z', 3.3, -2.4, R.x1, roof + 0.06, roof + 1.1, 1, GUARD);
   roofPlant(d, { x0: 0.4, x1: 8, z0: -9.2, z1: -4.5 }, roof + 0.02, { units: 2 });
 
-  // ------------------------------------------------------------------------------------------------ the courtyard
+  // ------------------------------------------------------------------------------------------------ the forecourt, open to the pavement
   const gr = (x: number, z: number, w: number, dd: number, y: number, col: number) => m.hq(x - w / 2, z - dd / 2, x + w / 2, z + dd / 2, G + y, true, col);
-  gr(-6.0, 8.4, 9.2, 4.2, 0.03, GREEN.lawn); gr(6.0, 8.4, 9.2, 4.2, 0.03, GREEN.lawn);                                   // two lawns, mown in stripes
-  for (let i = 0; i < 4; i++) { gr(-6.0, 6.8 + i * 1.0, 9.2, 0.5, 0.04, GREEN.lawn2); gr(6.0, 6.8 + i * 1.0, 9.2, 0.5, 0.04, GREEN.lawn2); }
-  gr(0, 8.2, 2.8, 5.0, 0.05, mix(p.stone, 0xffffff, 0.25));                                                              // the path from the gate to the door
-  gr(0, 9.2, 2.8, 0.06, 0.06, p.stoneDark); gr(0, 7.6, 2.8, 0.06, 0.06, p.stoneDark);
-  const hb = (x0: number, x1: number, z: number, h = 0.55) => k.leaves.box(x0, G, z - 0.3, x1, G + h, z + 0.3, GREEN.hedge2, 'U');
-  hb(-10.2, -2.6, 10.1); hb(2.6, 10.2, 10.1);
-  for (const x of [-1.9, 1.9]) { m.box(x - 0.28, G, LB.z1 + 0.3, x + 0.28, G + 0.55, LB.z1 + 0.86, p.stone, 'U'); d.blob(d.leaves, 0.42, x, G + 0.95, LB.z1 + 0.58, GREEN.hedge2, 1, 0); }   // topiary either side of the door
-  planter(d, -6.5, 4.0, 5.0, 0.8, { h: 0.5, bloom: mix(p.accent, 0xff7a9a, 0.4) }); planter(d, 5.1, 3.4, 1.8, 0.7, { h: 0.55, hedge: GREEN.hedge2 });
-  palm(d, -7.0, 7.5, 1.05, 0.3); palm(d, 7.2, 7.4, 0.95, 1.2);
-  for (const x of [-2.2, 2.2]) { m.box(x - 0.07, G, 9.3 - 0.07, x + 0.07, G + 0.7, 9.3 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.3 - 0.08, x + 0.08, G + 0.74, 9.3 + 0.08, 0xfff1c8, 'U'); }
+  k.paved({ x0: -10.5, z0: LB.z1, x1: -3.0, z1: 10.55 }, mix(p.stone, 0xffffff, 0.45), 0.035);                              // the forecourt before the lobby, paved to the railing
+  gr(cx, 8.6, 3.2, 4.1, 0.05, mix(p.stone, 0xffffff, 0.2)); gr(cx, 9.7, 3.2, 0.06, 0.06, p.stoneDark); gr(cx, 7.7, 3.2, 0.06, 0.06, p.stoneDark);   // the path from the opening to the door
+  k.paved({ x0: -1.4, z0: A.z1, x1: 3.4, z1: 10.55 }, mix(p.stoneDark, 0xffffff, 0.5), 0.04);                               // the drive from the gate to the garage
+  for (let i = 0; i < 6; i++) gr(1.0, 3.6 + i * 1.1, 4.8, 0.06, 0.05, p.stoneDark);                                          // its joints
+  for (const x of [cx - 1.9, cx + 1.9]) { m.box(x - 0.28, G, LB.z1 + 0.3, x + 0.28, G + 0.55, LB.z1 + 0.86, p.stone, 'U'); d.blob(d.leaves, 0.42, x, G + 0.95, LB.z1 + 0.58, GREEN.hedge2, 1, 0); }   // topiary either side of the door
+  k.trough(-10.4, -7.6, 9.8, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(-10.4, 9.5, -7.6, 10.1, 1.0);
+  k.trough(-2.9, -2.3, 9.2); k.bench(-8.6, 8.2, 1.7); d.solid(-9.45, 7.95, -7.75, 8.45, 0.9);
+  // the café: a pavilion on the street at the drive's other side, its awning and tables toward the pavement
+  k.unit({ kind: 'cafe', x0: 4.0, x1: 10.2, z0: 5.9, z1: 8.7, door: 5.3, tables: 2, awning: 1.15, terrace: 0.75 });
+  palm(d, 7.7, 5.5, 0.85, 1.2);
+  for (const x of [-1.9, 3.7]) { m.box(x - 0.07, G, 9.9 - 0.07, x + 0.07, G + 0.7, 9.9 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.9 - 0.08, x + 0.08, G + 0.74, 9.9 + 0.08, 0xfff1c8, 'U'); }   // the bollards either side of the drive
+  d.light(0.8, 9.0, 2.6, 0.16); d.light(cx, 8.8, 2.6, 0.16);
 
   // ------------------------------------------------------------------------------------------------ the name, and what is solid
   if (s.name) {
     const w = Math.min(5.0, 0.3 * s.name.length), css = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
-    nameBoard(d, s.name, { x: 0, z: tz - 0.03, y: T1 + 0.5, w, h: 0.8, bg: css(p.board), fg: '#f4e6bd' });
+    nameBoard(d, s.name, { x: cx, z: tz - 0.03, y: T1 + 0.5, w, h: 0.8, bg: css(p.board), fg: '#f4e6bd' });
   }
   solidBox(d, A, roof + 1.1); solidBox(d, T, roof + 1.5); solidBox(d, LB, L(1));
   k.flush();

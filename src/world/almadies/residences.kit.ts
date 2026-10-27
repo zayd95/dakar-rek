@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import type { SitePalette, SiteDraw } from './contract';
-import type { Face } from './parts';
+import { GROUND, type SitePalette, type SiteDraw } from './contract';
+import { siteRng, type Face } from './parts';
 
 /**
  * LD2.0-E lane E-R: the residences' own cheap pieces. The district's shared parts (parts.ts) draw every face of every box; an apartment block is
@@ -87,8 +87,8 @@ export class Facade {
   quad(u0: number, u1: number, y0: number, y1: number, n: number, col: number, m: Mesh = this.k.plain) {
     m.vq(this.ax === 'x' ? 'z' : 'x', this.at + this.s * n, u0, u1, y0, y1, this.s, col);
   }
-  /** A pane of glass (the glass batch). */
-  pane(u0: number, u1: number, y0: number, y1: number, n: number, col = this.k.p.glass) { this.quad(u0, u1, y0, y1, n, col, this.k.glass); }
+  /** A pane of glass: in the batch of the windows that glow warm at night (`lit`, about three in four by default: the district's own glazing does the same) or in the dark one. */
+  pane(u0: number, u1: number, y0: number, y1: number, n: number, col = this.k.p.glass, lit: boolean = this.k.lit()) { this.quad(u0, u1, y0, y1, n, col, lit ? this.k.glass : this.k.glassDark); }
   /** A quad across the face (perpendicular), at u, from n0 to n1 out, facing +u (`dir` 1) or −u. */
   end(u: number, y0: number, y1: number, n0: number, n1: number, dir: 1 | -1, col: number, m: Mesh = this.k.plain) {
     const a = this.at + this.s * n0, b = this.at + this.s * n1;
@@ -109,9 +109,9 @@ export class Facade {
    * A glazed opening: a pane in slim frames (jambs, head, sill, mullions) in the palette's bronze, a sill ledge and a head band proud of the wall (their
    * shadows are what shows from the street). `lean`: the pane and its sill only (a back or a side the street does not see close).
    */
-  opening(o: { u0: number; u1: number; y0: number; y1: number; mull?: number; ledge?: boolean; head?: boolean; frame?: number; col?: number; n?: number; lean?: boolean }) {
+  opening(o: { u0: number; u1: number; y0: number; y1: number; mull?: number; ledge?: boolean; head?: boolean; frame?: number; col?: number; n?: number; lean?: boolean; lit?: boolean }) {
     const { k } = this, n = o.n ?? 0, fr = o.frame ?? k.p.frame, w = o.u1 - o.u0, mull = o.mull ?? Math.max(0, Math.round(w / 1.7) - 1);
-    this.pane(o.u0, o.u1, o.y0, o.y1, n + 0.03, o.col);
+    this.pane(o.u0, o.u1, o.y0, o.y1, n + 0.03, o.col, o.lit);
     if (o.lean || k.lite) {
       this.quad(o.u0, o.u1, o.y0 - 0.08, o.y0 + 0.02, n + 0.05, fr); this.quad(o.u0, o.u1, o.y1 - 0.08, o.y1 + 0.02, n + 0.05, fr);
       return;
@@ -121,6 +121,36 @@ export class Facade {
     for (let i = 1; i <= mull; i++) { const u = o.u0 + (w * i) / (mull + 1); this.quad(u - 0.025, u + 0.025, o.y0 + 0.06, o.y1 - 0.07, n + 0.045, fr); }
     if (o.head !== false) this.box(o.u0 - 0.06, o.u1 + 0.06, o.y1, o.y1 + 0.1, n, n + 0.16, k.p.slab, 'iute');
     if (o.ledge !== false) this.box(o.u0 - 0.06, o.u1 + 0.06, o.y0 - 0.06, o.y0, n, n + 0.12, k.p.slab, 'iue');
+  }
+  /**
+   * A canvas awning over a shopfront: stripes in two colours (the palette's accent and a cream) from the wall at height `y` out to `depth`, dropping `drop`
+   * to its edge, and a valance along the edge. Two triangles a stripe and two a flap of valance (coarser on the low preset).
+   */
+  awning(o: { u0: number; u1: number; y: number; depth?: number; drop?: number; col?: number; col2?: number; stripe?: number; n0?: number }) {
+    const { k } = this, dep = o.depth ?? 1.5, drop = o.drop ?? 0.7, n0 = o.n0 ?? 0.06, c1 = o.col ?? k.p.accent, c2 = o.col2 ?? 0xf3ede0, len = o.u1 - o.u0;
+    const ns = Math.max(2, Math.round(len / ((o.stripe ?? 0.6) * (k.lite ? 2 : 1)))), flip = this.ax === 'x' ? this.s < 0 : this.s > 0;
+    const P = (u: number, y: number, n: number): V3 => this.ax === 'x' ? [u, y, this.at + this.s * n] : [this.at + this.s * n, y, u];
+    for (let i = 0; i < ns; i++) {
+      const a = o.u0 + (len * i) / ns, b = o.u0 + (len * (i + 1)) / ns, col = i % 2 ? c2 : c1, [ua, ub] = flip ? [b, a] : [a, b];
+      k.plain.quad(P(ua, o.y - drop, n0 + dep), P(ub, o.y - drop, n0 + dep), P(ub, o.y, n0), P(ua, o.y, n0), col);
+      this.quad(a, b, o.y - drop - 0.22, o.y - drop, n0 + dep, col);
+    }
+  }
+  /**
+   * A shopfront in a wall: a stone riser, one big pane (always lit: a shop's light is on at night) in slim bronze frames with a mullion every `mull` m, a door
+   * leaf at `door` (a position along the face), a fascia band in `fascia` above it, three pendant lamps against the glass. About 30 triangles.
+   */
+  shopfront(o: { u0: number; u1: number; y0?: number; y1?: number; n?: number; fascia?: number; riser?: number; mull?: number; door?: number | null }) {
+    const { k } = this, n = o.n ?? 0, y0 = o.y0 ?? GROUND + 0.55, y1 = o.y1 ?? GROUND + 2.75, fr = k.p.frame, w = o.u1 - o.u0, mull = o.mull ?? 2.2;
+    this.quad(o.u0, o.u1, GROUND, y0, n + 0.025, o.riser ?? k.p.stoneDark);
+    this.pane(o.u0, o.u1, y0, y1, n + 0.03, k.p.glass, true);
+    this.quad(o.u0, o.u0 + 0.07, y0, y1, n + 0.045, fr); this.quad(o.u1 - 0.07, o.u1, y0, y1, n + 0.045, fr); this.quad(o.u0, o.u1, y1 - 0.07, y1, n + 0.045, fr); this.quad(o.u0, o.u1, y0, y0 + 0.07, n + 0.045, fr);
+    const m = k.lite ? Math.min(1, Math.round(w / mull) - 1) : Math.round(w / mull) - 1;
+    for (let i = 1; i <= m; i++) { const u = o.u0 + (w * i) / (m + 1); this.quad(u - 0.03, u + 0.03, y0, y1, n + 0.045, fr); }
+    if (o.door != null) { this.quad(o.door - 0.55, o.door + 0.55, y0 - 0.5, y0 + 1.55, n + 0.05, k.p.wood); this.quad(o.door - 0.55, o.door + 0.55, y0 - 0.5, y0 - 0.43, n + 0.055, fr); this.quad(o.door + 0.35, o.door + 0.4, y0 + 0.2, y0 + 0.95, n + 0.06, k.p.accent); }
+    this.quad(o.u0 - 0.05, o.u1 + 0.05, y1 + 0.04, y1 + 0.56, n + 0.04, o.fascia ?? k.p.accent);
+    this.box(o.u0 - 0.1, o.u1 + 0.1, y1 + 0.56, y1 + 0.63, n, n + 0.14, k.p.slab, 'iue');
+    if (!k.lite) for (let i = 0; i < 3; i++) { const u = o.u0 + (w * (i + 0.5)) / 3; this.quad(u - 0.2, u + 0.2, y1 - 0.62, y1 - 0.22, n + 0.07, 0xffd890, k.bulbs); }
   }
   /** The house number: gilt seven-segment digits (2 triangles a segment) on a dark plaque, `u` its centre along the face, `y` its foot, `n` out of the face. */
   houseNumber(text: string, u: number, y: number, n: number, o: { h?: number; col?: number; plate?: number } = {}) {
@@ -174,16 +204,34 @@ export class Facade {
   }
 }
 
+/** What a residence says about itself for the checks: its units (shops, cafés, the lobby), the walk-in openings it cut, its doors, its tables. */
+export interface ResInfo {
+  units: { kind: 'cafe' | 'shop' | 'lobby'; face: Face; u0: number; u1: number; awning: boolean }[];
+  entries: { x: number; w: number }[];
+  /** A door the street's walk reaches: plan (x, z) of its foot, and the plan point a body stands at before it. */
+  doors: { kind: 'lobby' | 'passage' | 'unit'; x: number; z: number; face: Face; stand: { x: number; z: number } }[];
+  tables: number;
+}
+const infos = new WeakMap<SiteDraw, ResInfo>();
+/** The record of a draw (made on first use). */
+export function infoOf(d: SiteDraw): ResInfo {
+  let i = infos.get(d);
+  if (!i) infos.set(d, i = { units: [], entries: [], doors: [], tables: 0 });
+  return i;
+}
 /** The cost breakdown of the last design flushed (tests/almadiesResidences.test.ts prints it when a budget is missed). */
 export let lastSections: [string, number][] = [];
 /** What a design draws with: the site's draw, the palette, and one heap per batch it fills (flushed at the end). */
 export class Kit {
-  readonly plain: Mesh; readonly glass: Mesh; readonly leaves: Mesh; readonly bulbs: Mesh;
+  readonly plain: Mesh; readonly glass: Mesh; readonly glassDark: Mesh; readonly leaves: Mesh; readonly bulbs: Mesh;
   readonly p: SitePalette; readonly lite: boolean;
+  private readonly rng: () => number;
   constructor(readonly d: SiteDraw) {
-    this.plain = new Mesh(d, d.plain); this.glass = new Mesh(d, d.glass); this.leaves = new Mesh(d, d.leaves); this.bulbs = new Mesh(d, d.bulbs);
-    this.p = d.p; this.lite = d.lite;
+    this.plain = new Mesh(d, d.plain); this.glass = new Mesh(d, d.glass); this.glassDark = new Mesh(d, d.glassDark); this.leaves = new Mesh(d, d.leaves); this.bulbs = new Mesh(d, d.bulbs);
+    this.p = d.p; this.lite = d.lite; this.rng = siteRng(d, 'res-lit');
   }
+  /** Whether the next pane glows at night (about three in four, deterministic from the site). */
+  lit() { return this.rng() < 0.72; }
   /** The triangles drawn since the last section, by name (the lanes' cost breakdown: the cost test prints it). */
   readonly sections: [string, number][] = [];
   private last = 0;
@@ -203,10 +251,57 @@ export class Kit {
     if (this.lite) return;
     for (let i = 0; i < n; i++) { this.plain.box(x + i * 1.9, y + 0.35, z, x + i * 1.9 + 1.7, y + 0.42, z + 1.0, 0x233044, 'U'); this.plain.box(x + i * 1.9 + 0.1, y, z + 0.1, x + i * 1.9 + 0.2, y + 0.35, z + 0.9, 0xbfc4c8, 'UT'); }
   }
+  /** What the design says about itself, for the checks (never read by the district): see `ResInfo`. */
+  get info(): ResInfo { return infoOf(this.d); }
+  /** A paved patch (a terrace, a path, a drive) on the ground: `y` above the ground (stay above 3 cm), a plan rectangle. */
+  paved(r: { x0: number; z0: number; x1: number; z1: number }, col: number, y = 0.04) { this.plain.hq(r.x0, r.z0, r.x1, r.z1, GROUND + y, true, col); }
+  /** A café table at plan (x, z): a top on a pedestal and `stools` stools round it (about 34 triangles with two); a table is counted for the checks. */
+  table(x: number, z: number, o: { top?: number; stool?: number; stools?: number } = {}) {
+    const y = GROUND, top = o.top ?? 0xf3efe6, st = o.stool ?? this.p.accent, n = this.lite ? 0 : (o.stools ?? 2), m = this.plain;
+    this.info.tables++;
+    m.box(x - 0.4, y + 0.72, z - 0.4, x + 0.4, y + 0.77, z + 0.4, top, 'U'); m.box(x - 0.035, y, z - 0.035, x + 0.035, y + 0.72, z + 0.035, this.p.frame, 'UT');
+    for (let i = 0; i < n; i++) { const sx = i % 2 ? 1 : -1; m.box(x + sx * 0.66 - 0.17, y, z - 0.17, x + sx * 0.66 + 0.17, y + 0.43, z + 0.17, st, 'U'); }
+  }
+  /** A bench: a seat and a back on two stone ends (about 40 triangles), along x at plan (x, z), `len` long, its back toward −z (the street's side when z is large). */
+  bench(x: number, z: number, len = 1.8) {
+    const m = this.plain, y = GROUND;
+    for (const sx of [-1, 1]) m.box(x + sx * (len / 2 - 0.1) - 0.06, y, z - 0.2, x + sx * (len / 2 - 0.1) + 0.06, y + 0.42, z + 0.2, this.p.stone, 'UT');
+    m.box(x - len / 2, y + 0.42, z - 0.22, x + len / 2, y + 0.48, z + 0.22, this.p.wood, 'U'); m.box(x - len / 2, y + 0.48, z + 0.2, x + len / 2, y + 0.9, z + 0.25, this.p.wood, 'UB');
+  }
+  /** A planter on the pavement: a stone trough and its hedge (and a bloom), about 30 triangles. */
+  trough(x0: number, x1: number, z: number, o: { depth?: number; bloom?: number } = {}) {
+    const dd = o.depth ?? 0.6, y = GROUND;
+    this.plain.box(x0, y, z - dd / 2, x1, y + 0.5, z + dd / 2, this.p.stone, 'U');
+    this.leaves.box(x0 + 0.06, y + 0.5, z - dd / 2 + 0.06, x1 - 0.06, y + 0.95, z + dd / 2 - 0.06, GREEN.hedge2, 'U');
+    if (!this.lite && o.bloom !== undefined) this.d.blob(this.d.leaves, 0.3, (x0 + x1) / 2, y + 1.0, z, o.bloom, 0.8, 0);
+  }
+  /**
+   * A street unit, a café or a shop: a one-storey volume on the plan (`x0…x1` along the street, `z0…z1` deep, its front `z1` facing the street) with a
+   * shopfront (and a door at `door`), a canvas awning over it, a roof with a green top, and a terrace in front with `tables` café tables (a table is a small
+   * solid). Counted in `info`. About 90 triangles and 34 a table.
+   */
+  unit(o: { kind: 'cafe' | 'shop'; x0: number; x1: number; z0: number; z1: number; door?: number; tables?: number; awning?: number; fascia?: number; stripe?: [number, number?]; terrace?: number; face?: Face; attached?: boolean }) {
+    const { d, p, plain: m } = this, G = GROUND, H = 3.4, F = this.facade('street', o.z1), col = o.fascia ?? p.accent;
+    if (!o.attached) {                                                                   // a pavilion of its own; `attached`: the shopfront is cut in a wall that is already there
+      m.box(o.x0, G, o.z0, o.x1, G + H, o.z1, p.render2, 'TU');
+      this.slab({ x0: o.x0, x1: o.x1, z0: o.z0, z1: o.z1 }, G + H + 0.12, { over: 0.12, thick: 0.2, col: p.slab });
+      m.hq(o.x0 + 0.1, o.z0 + 0.1, o.x1 - 0.1, o.z1 - 0.1, G + H + 0.14, true, mix(GREEN.moss, p.roof, 0.6));
+      d.solid(o.x0, o.z0, o.x1, o.z1, G + H);
+    }
+    F.shopfront({ u0: o.x0 + 0.3, u1: o.x1 - 0.3, fascia: col, door: o.door ?? null, mull: o.kind === 'cafe' ? 2.4 : 1.9 });
+    const dep = o.awning ?? 1.4;
+    F.awning({ u0: o.x0 + 0.2, u1: o.x1 - 0.2, y: G + 2.82, depth: dep, drop: 0.62, col, col2: o.stripe?.[0] ?? 0xf3ede0 });
+    const tz = o.terrace ?? 1.1;
+    this.paved({ x0: o.x0 - 0.2, z0: o.z1, x1: o.x1 + 0.2, z1: Math.min(o.z1 + dep + 1.0, 10.55) }, mix(p.stone, 0xffffff, 0.45), 0.035);
+    const nt = o.tables ?? 0, gap = (o.x1 - o.x0 - 0.8) / Math.max(1, nt);
+    for (let i = 0; i < nt; i++) { const tx = o.x0 + 0.4 + gap * (i + 0.5), tzz = o.z1 + tz; if (o.door != null && Math.abs(tx - o.door) < 1.9) continue; this.table(tx, tzz); d.solid(tx - 0.45, tzz - 0.45, tx + 0.45, tzz + 0.45, 0.8); }                      // (a table never stands within 1.9 m of the door: the way to it stays clear)
+    this.info.units.push({ kind: o.kind, face: o.face ?? 'street', u0: o.x0, u1: o.x1, awning: true });
+    if (o.door != null) this.info.doors.push({ kind: 'unit', x: o.door, z: o.z1, face: 'street', stand: { x: o.door, z: o.z1 + 0.7 } });
+  }
   /** A post (a pilotis, a pergola's, a canopy's): a square column from y0 to y1, four faces. */
   post(x: number, z: number, w: number, y0: number, y1: number, col: number, skip = 'UT') { this.plain.box(x - w / 2, y0, z - w / 2, x + w / 2, y1, z + w / 2, col, skip); }
-  flush() { this.plain.flush(); this.glass.flush(); this.leaves.flush(); this.bulbs.flush(); lastSections = this.sections; }
-  get tris() { return this.plain.tris + this.glass.tris + this.leaves.tris + this.bulbs.tris; }
+  flush() { this.plain.flush(); this.glass.flush(); this.glassDark.flush(); this.leaves.flush(); this.bulbs.flush(); lastSections = this.sections; }
+  get tris() { return this.plain.tris + this.glass.tris + this.glassDark.tris + this.leaves.tris + this.bulbs.tris; }
 }
 export const kitOf = (d: SiteDraw) => new Kit(d);
 /**

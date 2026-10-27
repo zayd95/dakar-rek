@@ -25,15 +25,15 @@ export const stack: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(4, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n), top = n - 1;
   const B = { x0: -20.25, x1: 20.25, z0: -8.2, z1: 3.2 }, BAY = 4.5, bu = (i: number) => B.x0 + i * BAY;         // the block, its nine bays (0 and 8 are the cores)
   const core = mix(p.accent, p.render, 0.62), m = k.plain, wood = mix(p.wood, 0x000000, 0.1);
-  perimeter(d, { gate: s.gate, front: 'low' });
+  const ENTRY = { x: 13.8, w: 3.6 };                                                      // the walk-in opening in the street railing, in line with the lobby's door
+  perimeter(d, { gate: s.gate, entries: [ENTRY] });
+  k.info.entries.push(ENTRY);
 
   // ------------------------------------------------------------------------------------------------ the ground: the court, its bays, the pilotis
   const conc = mix(p.stoneDark, 0xffffff, 0.55), line = 0xf4f2ec, y0 = G;
   m.hq(-22.4, -10.4, 22.4, 10.4, y0 + 0.03, true, conc);
   for (let j = 0; j <= 8; j++) m.hq(-15.5 + j * 2.6 - 0.05, -8.0, -15.5 + j * 2.6 + 0.05, -3.0, y0 + 0.045, true, line);
   m.hq(-15.5, -3.05, 5.3, -2.95, y0 + 0.045, true, line);
-  for (let j = 0; j <= 3; j++) m.hq(-21.5 + j * 2.6 - 0.05, 5.6, -21.5 + j * 2.6 + 0.05, 9.8, y0 + 0.045, true, line);
-  m.hq(-21.5, 9.75, -13.7, 9.85, y0 + 0.045, true, line);
   m.hq(-2.2, 3.4, 2.2, 10.4, y0 + 0.05, true, mix(conc, 0xffffff, 0.2));                                                // the drive, from the gate
   for (let j = 0; j < 8; j++) {                                                                                           // the pilotis: slim stone posts, two rows
     const x = -15.75 + j * BAY;
@@ -100,17 +100,26 @@ export const stack: SiteBuilder = d => {
   m.box(LB.x0, G, LB.z0, LB.x1, L(1) - 0.2, LB.z1 - 0.15, p.render2, 'TU');
   d.solid(LB.x0, LB.z0, LB.x1, LB.z1, L(1));
   const FL = k.facade('street', LB.z1);
-  FL.opening({ u0: 7.1, u1: 10.2, y0: G + 0.1, y1: G + 2.95, mull: 1, head: false, ledge: false }); FL.opening({ u0: 12.4, u1: 15.4, y0: G + 0.1, y1: G + 2.95, mull: 1, head: false, ledge: false });
-  door(d, { face: 'street', x: 11.3, z: LB.z1, w: 1.6, h: 2.7, portal: true, steps: true });
+  FL.opening({ u0: 7.1, u1: 12.5, y0: G + 0.1, y1: G + 2.95, mull: 2, head: false, ledge: false, lit: true });
+  door(d, { face: 'street', x: ENTRY.x, z: LB.z1, w: 1.6, h: 2.7, portal: true, steps: true });
   k.slab({ x0: 6.9, x1: 15.6, z0: LB.z1 + 0.05, z1: 5.6 }, G + 3.1, { over: 0, thick: 0.2, col: p.slab });
   for (const x of [7.2, 15.3]) { k.post(x, 5.35, 0.2, G, G + 2.9, p.frame, 'UT'); d.solid(x - 0.1, 5.25, x + 0.1, 5.45, 3); }
-  for (const x of [9.0, 13.6]) k.bulbs.box(x - 0.2, G + 2.88, 4.4, x + 0.2, G + 2.92, 4.8, 0xfff1c8, 'T');
-  FL.houseNumber(s.number, 12.85, G + 1.55, 0.08);
-  m.box(12.7, G + 1.0, LB.z1, 13.0, G + 1.4, LB.z1 + 0.05, p.frame, 'iU'); k.bulbs.box(12.75, G + 1.3, LB.z1 + 0.05, 12.95, G + 1.34, LB.z1 + 0.07, 0xfff1c8, 'U');   // the intercom
-  const sw = { x0: -12.8, x1: -6.2, z: 8.7 }, SH = 2.0;                                                                       // the sign wall: stone, a gilt top, a hedge before it, high enough to read over the low street wall
-  m.box(sw.x0, G, sw.z - 0.2, sw.x1, G + SH, sw.z + 0.2, p.stone, 'U'); m.box(sw.x0 - 0.06, G + SH, sw.z - 0.26, sw.x1 + 0.06, G + SH + 0.08, sw.z + 0.26, p.accent, 'U');
-  k.leaves.box(sw.x0 + 0.2, G, sw.z - 0.9, sw.x1 - 0.2, G + 0.55, sw.z - 0.4, GREEN.hedge2, 'U'); d.solid(sw.x0, sw.z - 0.9, sw.x1, sw.z + 0.26, SH + 0.1);
-  if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: (sw.x0 + sw.x1) / 2, z: sw.z + 0.22, y: G + 1.4, w: Math.min(6.2, 0.3 * s.name.length), h: 0.8, bg: css(p.board), fg: '#f4e6bd' }); }
+  for (const x of [9.0, 13.8]) k.bulbs.box(x - 0.2, G + 2.88, 4.4, x + 0.2, G + 2.92, 4.8, 0xfff1c8, 'T');
+  FL.houseNumber(s.number, 15.4, G + 1.55, 0.08);
+  m.box(15.15, G + 1.0, LB.z1 - 0.2, 15.45, G + 1.4, LB.z1 + 0.05, p.frame, 'iU'); k.bulbs.box(15.2, G + 1.3, LB.z1 + 0.05, 15.4, G + 1.34, LB.z1 + 0.07, 0xfff1c8, 'U');   // the intercom
+  k.info.units.push({ kind: 'lobby', face: 'street', u0: LB.x0, u1: LB.x1, awning: false });
+  k.info.doors.push({ kind: 'lobby', x: ENTRY.x, z: LB.z1, face: 'street', stand: { x: ENTRY.x, z: LB.z1 + 0.95 } });
+  // the gateway over the opening: two stone posts on the railing's piers and a deep lintel, the name on it (read from the street over the pavement)
+  const pz0 = 10.63, pz1 = 10.99;
+  for (const x of [ENTRY.x - ENTRY.w / 2 - 0.2, ENTRY.x + ENTRY.w / 2 + 0.2]) { m.box(x - 0.22, G, pz0, x + 0.22, G + 3.9, pz1, p.stone, 'U'); d.solid(x - 0.22, pz0, x + 0.22, pz1, 3.9); }
+  m.box(ENTRY.x - 3.2, G + 3.0, 10.55, ENTRY.x + 3.2, G + 3.9, 10.97, p.render2, 'U'); m.box(ENTRY.x - 3.28, G + 3.9, 10.5, ENTRY.x + 3.28, G + 3.98, 11.0, p.slab, 'U');
+  m.box(ENTRY.x - 3.2, G + 2.94, 10.55, ENTRY.x + 3.2, G + 3.0, 10.97, p.accent, 'U');
+  if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: ENTRY.x, z: 11.0, y: G + 3.45, w: Math.min(6.0, 0.3 * s.name.length), h: 0.8, bg: css(p.board), fg: '#f4e6bd' }); }
+  // the street's units: a café at the west end, a shop east of the gate; troughs and a bench on the pavement side
+  k.unit({ kind: 'cafe', x0: -21.0, x1: -12.6, z0: 5.6, z1: 8.9, door: -13.8, tables: 3, awning: 1.3, terrace: 0.8 });
+  k.unit({ kind: 'shop', x0: 3.6, x1: 10.6, z0: 6.0, z1: 8.9, door: 4.9, awning: 1.3, fascia: p.board, stripe: [mix(p.accent, 0xffffff, 0.5)] });
+  k.trough(7.2, 10.2, 10.05, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(7.2, 9.75, 10.2, 10.35, 1.0);
+  k.bench(-8.2, 9.9, 1.8); d.solid(-9.1, 9.65, -7.3, 10.15, 0.9);
   k.sec('lobby');
 
   // ------------------------------------------------------------------------------------------------ the ends and the back
@@ -118,6 +127,8 @@ export const stack: SiteBuilder = d => {
     const FE = k.facade(sx < 0 ? 'left' : 'right', sx * B.x1);
     for (let f = 1; f < top; f++) for (const [a, b] of [[-6.6, -3.4], [-0.6, 2.6]] as const) FE.opening({ u0: a, u1: b, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1, head: false });
     FE.slats({ u0: -3.0, u1: -1.0, y0: L(1) + 0.1, y1: L(top) - 0.3, pitch: 0.3, w: 0.1, depth: 0.14, back: 0x2a211a });                            // a tall oak screen between the windows
+    FE.shopfront({ u0: -6.4, u1: -1.8, fascia: sx < 0 ? p.accent : p.board, mull: 2.3 }); FE.awning({ u0: -6.5, u1: -1.7, y: G + 2.82, depth: 1.0, drop: 0.6, col: sx < 0 ? p.accent : p.board });   // the end toward the road: a window on it, its awning
+    k.info.units.push({ kind: sx < 0 ? 'cafe' : 'shop', face: sx < 0 ? 'left' : 'right', u0: -6.4, u1: -1.8, awning: true });
   }
   const FB = k.facade('back', B.z0);
   for (let f = 1; f < top; f++) {
@@ -132,10 +143,9 @@ export const stack: SiteBuilder = d => {
   m.vq('z', B.z0 - 0.3, B.x0 - 0.3, B.x1 + 0.3, roof + 0.06, roof + 1.1, -1, GUARD);
   m.vq('x', B.x0 - 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('x', B.x1 + 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, 1, GUARD);
   roofPlant(d, { x0: -12, x1: 12, z0: -8, z1: -3.8 }, roof + 0.02, { units: 3 });
-  for (const x of [-10.5, -4.6, 5.0]) { k.leaves.box(x - 1.2, G, 9.7, x + 1.2, G + 0.5, 10.3, GREEN.hedge2, 'U'); }                       // hedges inside the low wall
-  palm(d, -9.5, 5.6, 1.1, 0.3); palm(d, 17.4, 7.4, 1.0, 1.2);
-  [-19.2, -13.6, -9.4, 6.2, 12.8, 18.8].forEach((x, i) => bougainvillea(d, x, 10.55, 1.0, 0.62 + (i % 3) * 0.08, i));                          // flowers over the low wall
-  d.light(0, 8.0, 2.6, 0.16); d.light(11.3, 5.0, 2.6, 0.16);
+  palm(d, -7.4, 5.0, 1.1, 0.3);
+  [-9.6, 19.4].forEach((x, i) => bougainvillea(d, x, 10.85, 1.4, 0.62 + (i % 3) * 0.08, i));                                           // flowers over the railing
+  d.light(0, 8.0, 2.6, 0.16); d.light(ENTRY.x, 6.0, 2.6, 0.16); d.light(-16.8, 9.8, 2.4, 0.16);
   k.sec('roof');
   k.flush();
 };
