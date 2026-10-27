@@ -1,8 +1,14 @@
 import type { Variant } from './contract';
-import { placeholders } from './massing';
+import { ell } from './houses.ell';
+import { stacked } from './houses.stacked';
+import { terraces } from './houses.terraces';
 
 /**
- * LD2.0-E (docs/ld2/LD2_E.md): the houses' designs. Placeholders (a plain massing) until the lane's builders land: replace this array with the
- * real variants (each a `Variant`: id, name for the catalogue, the site size it fits, its `SiteBuilder`).
+ * LD2.0-E (docs/ld2/LD2_E.md), lane E-V: the houses' designs: compact two-storey homes of a 22 × 22 m lot behind a low wall, a street balcony, a carport
+ * or garage, a small garden; three silhouettes in the villa's finishes.
  */
-export const VARIANTS: Variant[] = placeholders('house');
+export const VARIANTS: Variant[] = [
+  { id: 'house-m1', name: 'Maison empilée', size: 'S', build: stacked },
+  { id: 'house-m2', name: 'Maison en L', size: 'S', build: ell },
+  { id: 'house-m3', name: 'Maison à gradins', size: 'S', build: terraces },
+];
