@@ -87,7 +87,13 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && wind
 await page.waitForTimeout(1500);
 await boardVehicle(page, t, 'teranga');
 await shot('driving-to-the-terrace');
-await pilot(page, t, 'teranga', [{ x: endPt.x, z: endPt.z + (vert ? 8 : 0), tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.0, speed: 1.1 }], { brakeAtEnd: true, cruise: 5 });
+// A driver does not aim at a bay 6 m to the side from the lane: the Teranga's turning radius is 5.2 m, so it swings in on an arc (a quarter circle from the lane into the bay, nose first).
+const TURN = 5.6, bayDir = Math.sign(parkingPt.z - endPt.z) || 1;
+const intoBay = vert ? [{ x: endPt.x, z: endPt.z + 8, tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.0, speed: 1.1 }]
+  : [{ x: parkingPt.x - TURN - 10, z: endPt.z, tol: 2.5, speed: 4.5 }, { x: parkingPt.x - TURN - 2, z: endPt.z, tol: 1.0, speed: 2.2 },
+    ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: parkingPt.x - TURN - 2 + TURN * Math.sin(r), z: endPt.z + bayDir * TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
+    { x: parkingPt.x, z: parkingPt.z + bayDir * 1.4, tol: 0.9, speed: 1.1 }];   // aimed a little deeper than the bay's centre: the pilot counts a short last leg as passed, and the brake takes the car about a metre
+await pilot(page, t, 'teranga', intoBay, { brakeAtEnd: true, cruise: 5 });
 const parked = await d(() => window.__dakar.teranga.at());
 await shot('parked');
 await t.tap('#ridepad .rp-off');
