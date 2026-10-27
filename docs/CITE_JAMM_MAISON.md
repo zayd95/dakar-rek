@@ -23,7 +23,7 @@ Même ordre de maison dedans que dehors : la maison avait une seule pièce ouver
 - Les meubles s'achètent et se posent comme dans l'appartement et la villa : puces de niveau (RDC, Étage) et de pièce dans « Aménager ».
 - `maison_cite` : `size` 216 m², `home` 12 × 9 (marbre) ; l'annonce dit « deux étages, cour, balcons » (`levelsBlurb` dans `estate.ts`, qui ne parle plus de piscine ni d'hélipad pour un plan sans eux).
 - Le terrain autour (pelouse, allée, murs, palmiers) de la coque lit maintenant la porte (`gate`) et la cour d'entrée (`yard`) du plan au lieu de celles de la villa.
-- Les placements enregistrés dans l'ancienne pièce ouverte ne correspondent plus à ce plan (la maison coûte 90 M F : personne ne la possède encore en jeu).
+- Les placements enregistrés dans l'ancienne pièce ouverte ne correspondent plus à ce plan (la maison coûte 150 M F : personne ne la possède encore en jeu).
 
 ## Preuves
 - `scripts/check-maison-walk.mjs` (toucher réel, joystick) : 74 étapes à pied dans les 17 pièces des deux niveaux, l'escalier monté et descendu, 6 portes ouvertes au passage, jamais dans un mur (490 relevés, au plus près 0,30 m), toujours vu, « Sortir » ; 10 meubles posés ; puces « Aménager » ; coque ≤ 17 appels de dessin par niveau (≤ 30) — 18/18 (`docs/proof/cite-maison/interior/`).
