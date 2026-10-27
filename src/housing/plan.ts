@@ -1,4 +1,5 @@
 import { VILLA_PLAN } from './villaPlan';
+import { MAISON_PLAN } from './maisonPlan';
 
 /**
  * LD2.0-C « Walkable Homes » (docs/ld2/LD2_C.md): the contract between the home's shell (its rooms, walls, doors, windows and built-in fittings,
@@ -106,6 +107,10 @@ export interface FloorPlan {
   bounds?: Rect;
   /** Heights of an open room's edges (m): default a garden wall 2.4, a parapet 1.1, a railing 1.1. */
   edgeH?: Partial<Record<EdgeKind, number>>;
+  /** The opening in the lot's street wall that the shell leaves (x range, plan metres): default the villa's car gate. */
+  gate?: { x0: number; x1: number };
+  /** The depth (m) of the front yard between the house's street wall and the lot's wall: default the lot is as deep as it is wide (the villa's). */
+  yard?: number;
 }
 /**
  * The F2 of the Résidence Jàmm (catalogue `appart_jamm`): 9 m by 7 m, 63 m². The street door opens into the entrance hall; the hall opens into the
@@ -161,7 +166,7 @@ export const F2_JAMM: FloorPlan = {
 };
 
 /** The homes built from a floor plan (by catalogue id). The others keep their one open room (src/economy/homeInterior.ts). LD2.0-D: the villa. */
-export const PLANS: Readonly<Record<string, FloorPlan>> = { appart_jamm: F2_JAMM, villa_almadies: VILLA_PLAN };
+export const PLANS: Readonly<Record<string, FloorPlan>> = { appart_jamm: F2_JAMM, maison_cite: MAISON_PLAN, villa_almadies: VILLA_PLAN };
 export const planFor = (homeId: string): FloorPlan | null => PLANS[homeId] ?? null;
 
 // ------------------------------------------------------------------------------------------------ geometry

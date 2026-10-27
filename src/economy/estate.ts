@@ -594,7 +594,7 @@ class Estate {
     items.push({ icon: '💬', label: 'Sous-louer la chambre', detail: 'Il faudra d’abord en parler à la famille (bientôt)', disabled: true, onPick: () => {} });
   }
   private benefit(sp: AssetSpec): string {
-    if (sp.kind === 'home' && planFor(sp.id)?.levels) { const plan = planFor(sp.id)!; return `${sp.size} m² sur deux étages, ${plan.rooms.filter(r => !r.outdoor && r.kind !== 'degagement' && r.kind !== 'palier').length} pièces à meubler, piscine, toit-terrasse et hélipad · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
+    if (sp.kind === 'home' && planFor(sp.id)?.levels) { const plan = planFor(sp.id)!; return `${sp.size} m² sur deux étages, ${plan.rooms.filter(r => !r.outdoor && r.kind !== 'degagement' && r.kind !== 'palier').length} pièces à meubler, ${levelsBlurb(plan)} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
     if (sp.kind === 'home') { const h = sp as HomeSpec, plan = planFor(h.id); return `${h.home.w * h.home.d | 0} m² à meubler${h.home.level === 'room' ? '' : plan ? ` : ${plan.rooms.filter(r => r.kind !== 'degagement').map(r => r.name.toLowerCase()).join(', ')}` : ', cuisine et douche'} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
     if (sp.kind === 'land') return `Loué à un maraîcher : +${fcfa(sp.income ?? 0)} / h`;
     if (sp.kind === 'billboard') return `Loué aux annonceurs : +${fcfa(sp.income ?? 0)} / h, ou ta pub`;
@@ -794,6 +794,12 @@ class Estate {
 
 const seatId = (hub: string, uid: string, k: number) => `${hub}:home:${uid}:${k}`;
 /** A room's inside (plan metres): its corners, middle and size. */
+/** What a home on several levels has besides its rooms, for the listing: the villa's pool, roof terrace and helipad; a house's courtyard and balconies. */
+function levelsBlurb(plan: NonNullable<ReturnType<typeof planFor>>): string {
+  if (plan.fixtures.some(f => f.kind === 'pool')) return `piscine, toit-terrasse${plan.fixtures.some(f => f.kind === 'heli') ? ' et hélipad' : ''}`;
+  const courtyard = plan.rooms.some(r => r.outdoor && r.kind === 'terrasse'), balconies = plan.rooms.some(r => r.kind === 'balcon');
+  return [courtyard ? 'cour' : '', balconies ? 'balcons' : ''].filter(Boolean).join(' et ') || 'étages';
+}
 function roomFrame0(plan: NonNullable<ReturnType<typeof planFor>>, r: NonNullable<ReturnType<typeof planFor>>['rooms'][number]) {
   const i = innerOf(plan, r);
   return { x0: i.x0, x1: i.x1, z0: i.z0, z1: i.z1, cx: (i.x0 + i.x1) / 2, cz: (i.z0 + i.z1) / 2, w: i.x1 - i.x0, d: i.z1 - i.z0 };

@@ -33,7 +33,7 @@ describe('the plan contract, version 2 (LD2.0-D): levels in an unfolded plan', (
 
   it('the villa is a plan home on three levels, 3.4 m apart, its rooms side by side in plan space (rdc, étage +20, toit −20)', () => {
     expect(planFor('villa_almadies')).toBe(V);
-    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'villa_almadies']);
+    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies']);
     expect(levelsOf(V).map(l => [l.id, l.y, l.dx])).toEqual([['rdc', 0, 0], ['etage', STOREY, 20], ['toit', 2 * STOREY, -20]]);
     for (const r of V.rooms) {
       expect(levelAtX(V, centre(r.box).x).id, r.id).toBe(r.level);
