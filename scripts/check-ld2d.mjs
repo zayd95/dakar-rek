@@ -231,7 +231,9 @@ try {
   if (/Aménager/.test(fa)) await A.t.tap('#act'); else await A.d(() => window.__dakar.placer.open());
   await A.until(() => window.__dakar.placer.info().open && document.querySelector('#placer.on'), null, 30000); await A.wait(700);
   const armchair = (await A.d(() => window.__dakar.placer.info().items)).find(i => i.spec === 'fauteuil_boucle');
-  // its chip, as a thumb picks it: the list shows the room the editor opened on (« Toutes les pièces » for the others), and scrolls sideways
+  // its chip, as a thumb picks it: « ☰ » opens the list and the arrows; the list shows the room the editor opened on (« Toutes les pièces » for the
+  // others), and scrolls sideways
+  if ((await A.d(() => document.querySelector('#placer [data-a="more"]')?.getAttribute('aria-expanded'))) !== 'true') { await A.tap('#placer [data-a="more"]'); await A.wait(500); }
   for (let i = 0; armchair && i < 3 && (await A.d(() => window.__dakar.placer.info().selected)) !== armchair.uid; i++) {
     if (!(await A.d(uid => !!document.querySelector(`#placer [data-uid="${uid}"]`), armchair.uid))) { await A.tap('#placer [data-a="all"]'); await A.wait(500); }
     await A.d(uid => document.querySelector(`#placer [data-uid="${uid}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' }), armchair.uid); await A.wait(400);
