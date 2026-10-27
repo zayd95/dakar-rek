@@ -243,8 +243,15 @@ try {
   const before = (await A.d(() => window.__dakar.placer.info())).pending;
   const savedAt = uid => A.d(u => { window.__dakar.save(); return JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).assets.list.find(a => a.uid === u)?.at ?? null; }, uid);
   const save0 = armchair ? await savedAt(armchair.uid) : null;
-  for (const dir of ['left', 'left', 'down']) { await A.tap(`#placer [data-a="${dir}"]`); await A.wait(250); }
-  const why = (await A.d(() => window.__dakar.placer.info())).why ?? null;
+  // moved with the arrows (a quarter of a metre a tap, up to two metres) toward a free spot, as a player tries: a way the game refuses (« Laisse le passage libre »…) is walked back
+  const BACK = { left: 'right', right: 'left', up: 'down', down: 'up' };
+  let why = 'not moved', moved = [];
+  for (const dir of ['left', 'down', 'right', 'up']) {
+    let k = 0;
+    while (k < 8) { await A.tap(`#placer [data-a="${dir}"]`); await A.wait(250); k++; why = (await A.d(() => window.__dakar.placer.info())).why ?? null; if (!why) break; }
+    if (!why) { moved = Array(k).fill(dir); break; }
+    for (let b = 0; b < k; b++) { await A.tap(`#placer [data-a="${BACK[dir]}"]`); await A.wait(200); }
+  }
   await A.tap('#placer [data-a="put"]'); await A.wait(500);
   const after = (await A.d(() => window.__dakar.placer.info())).items.find(i => i.uid === armchair?.uid)?.at ?? null;
   const save1 = armchair ? await savedAt(armchair.uid) : null;
@@ -252,7 +259,7 @@ try {
   perf.furnished = await perfHere(A); await A.shot('08-salon-furnished');
   check('7a. the Collection Almadies delivered and set out by the game in the villa (salon, salle à manger, suite)', delivered.every(([, ok]) => ok) && placed0.length >= PIECES.length, JSON.stringify({ delivered: delivered.filter(([, ok]) => !ok), n: placed0.length }));
   check('7b. « Aménager »: the bouclé armchair chosen and moved with the editor\'s buttons, « Poser »: saved at its new spot', !!armchair && chosen === armchair.uid && !why && !!after && !!before && (after.x !== before.x || after.z !== before.z)
-    && !!save0 && !!save1 && (save1.x !== save0.x || save1.z !== save0.z), JSON.stringify({ fa, chosen: chosen === armchair?.uid, before, after, why, save0, save1 }));
+    && !!save0 && !!save1 && (save1.x !== save0.x || save1.z !== save0.z), JSON.stringify({ fa, chosen: chosen === armchair?.uid, moved, before, after, why, save0, save1 }));
 
   // ------------------------------------------------------------------ 8. invite another player
   await A.d(t => window.__dakar.phone(`messages:${t}`), B.tag); await A.until(t => window.__dakar.phoneInfo().arg === t, B.tag);
