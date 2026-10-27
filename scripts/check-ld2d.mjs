@@ -211,6 +211,17 @@ try {
   const sw = await A.d(() => ({ i: window.__dakar.villa.swim.info(), y: window.__dakar.pos().y }));
   await A.shot('06-pool-swim');
   const swam = Math.hypot(sw1.x - sw0.x, sw1.z - sw0.z), stroked = strokes.some(s => s.state === 'swim' && s.speed > 0.4);
+  // back to where she got in (the far end is by the steps, which would take her out on the west deck, across the pool from the house), then out over the edge
+  const back = { x: sw0.x, z: -6.7 };
+  await A.t.down(3, joy.x, joy.y);
+  for (let i = 0; i < 24; i++) {
+    const now = await A.d(() => { const i = window.__dakar.villa.swim.info(); return { x: i.x, z: i.z, cam: window.__dakar.pos().cam }; });
+    if (Math.hypot(back.x - now.x, back.z - now.z) < 0.5) break;
+    const a = Math.atan2(back.x - now.x, back.z - now.z) - now.cam;
+    await A.t.move(3, joy.x - Math.sin(a) * 40, joy.y - Math.cos(a) * 40, 2); await A.wait(250);
+  }
+  await A.t.up(3);
+  await A.until(() => window.__dakar.villa.swim.info().state === 'tread', null, 8000);
   if (await A.waitFocus(/Sortir de l.eau/, 10000)) await A.t.tap('#act');
   await A.until(() => !window.__dakar.villa.swim.info().swimming && window.__dakar.pos().mode === 'play', null, 60000); await A.wait(800);
   const n1 = await A.d(() => ({ ...window.__dakar.state.data.needs }));
