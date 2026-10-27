@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, railing, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the resort (46 × 46 m, the whole block, 3 to 7 storeys): a U of two long wings round a pool court that opens toward the back (the
@@ -136,7 +136,8 @@ export function buildResort(d: SiteDraw): SiteResult {
     quads(d, d.plain, 'back', FZ0 - 0.06, [{ u0: -lx + 0.7, u1: lx - 0.7, y0: Y0 + 3.5, y1: Y0 + 3.6, c: p.frame }, { u0: -1.6, u1: 1.6, y0: Y0 + 0.15, y1: Y0 + 2.6, c: 0x2a2724 }, { u0: -0.03, u1: 0.03, y0: Y0 + 0.15, y1: Y0 + 2.6, c: p.frame }]);
     rec.doors.push({ kind: 'court', face: 'back', x: 0, z: FZ0 });
     for (const sx of [-1, 1]) d.box(d.plain, 0.9, yC - Y0 - 0.3, 0.5, sx * (lx - 0.35), Y0, FZ0 - 0.25, p.stone);
-    for (const sx of [-1, 1]) { d.box(d.plain, 0.8, yC - Y0 - 0.3, 0.7, sx * lx, Y0, zL, p.stone); d.solid(sx * lx - 0.4, zL - 0.35, sx * lx + 0.4, zL + 0.35, yC); }
+    for (const sx of [-1, 1]) { d.box(d.plain, 0.8, yC - Y0 - 0.3, 0.7, sx * lx, Y0, zL, p.stone); d.solid(sx * lx - 0.4, zL - 0.35, sx * lx + 0.4, zL + 0.35, yC); uplight(d, sx * lx, zL + 0.35, 'street', 0.5); }
+    pendants(d, 'street', zL + 0.04, -lx + 1.4, lx - 1.4, Y0 + 3.05, 7, 0.5); pendants(d, 'street', zL + 0.04, -lx + 1.4, lx - 1.4, yC - 1.1, 7, 0.5);
     d.box(d.plain, 4.2, 0.12, 2.4, 0, Y0, zL + 1.2, p.stone);                                                         // the steps
     solidBox(d, { x0: -lx, x1: lx, z0: FZ0, z1: zL - 0.1 }, yC + 0.3);
     // the canopy: a vast thin blade level with the flanks' floor, on four slim posts, lit underneath; the name on its fascia

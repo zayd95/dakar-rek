@@ -1,22 +1,22 @@
 {
- "at": "2026-10-27T13:41:16.108Z",
+ "at": "2026-10-27T13:48:13.358Z",
  "cost": {
   "hotel-boutique": {
    "name": "Hôtel boutique, façade de balcons",
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 197,
-    "street": 282,
+    "front": 196,
+    "street": 279,
     "back": 276,
     "side": 112,
     "aerial": 243,
-    "close": 151,
-    "night": 141
+    "close": 150,
+    "night": 140
    },
    "medium": {
     "calls": 10,
-    "tris": 4446
+    "tris": 4450
    },
    "info": {
     "colliders": 18,
@@ -25,7 +25,7 @@
    },
    "low": {
     "calls": 10,
-    "tris": 2976
+    "tris": 3008
    }
   },
   "hotel-tower": {
@@ -34,7 +34,7 @@
    "size": "M",
    "views": {
     "front": 238,
-    "street": 295,
+    "street": 296,
     "back": 116,
     "side": 162,
     "aerial": 247,
@@ -43,7 +43,7 @@
    },
    "medium": {
     "calls": 9,
-    "tris": 4450
+    "tris": 4610
    },
    "info": {
     "colliders": 23,
@@ -52,7 +52,7 @@
    },
    "low": {
     "calls": 9,
-    "tris": 3032
+    "tris": 3176
    }
   },
   "hotel-resort": {
@@ -60,17 +60,17 @@
    "kind": "hotel",
    "size": "L",
    "views": {
-    "front": 211,
-    "street": 213,
+    "front": 212,
+    "street": 214,
     "back": 225,
     "side": 206,
     "aerial": 306,
-    "close": 123,
+    "close": 124,
     "night": 129
    },
    "medium": {
     "calls": 10,
-    "tris": 7676
+    "tris": 7744
    },
    "info": {
     "colliders": 29,
@@ -79,7 +79,7 @@
    },
    "low": {
     "calls": 10,
-    "tris": 5750
+    "tris": 5818
    }
   }
  },

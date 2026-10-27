@@ -1,16 +1,16 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, railing, uplight, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
- * LD2.0-E lane E-H, the tower hotel (46 × 22 m site, a podium of two storeys and a slimmer tower of 2 to 8 more): a deep colonnade of slim columns over a
+ * LD2.0-E lane E-H, the tower hotel (46 × 22 m site, a podium of two storeys and a slimmer tower of 2 to 7 more): a deep colonnade of slim columns over a
  * glass lobby and a restaurant, a porte-cochère in its middle, a terrace on the podium's roof; behind it the tower stands back in a skin of white fins
  * that ripple in depth (the « Océane »'s wave) round deep balconies, its top floor a glass sky lounge under a thick lit crown that carries the name, a
  * pergola over the roof lounge. The sides are ribbons of glass and slabs, the back the fins' quieter echo.
  */
 export function buildTower(d: SiteDraw): SiteResult {
   const { site: s, p } = d, lite = d.lite, rec = info(d);
-  const n = clamp(s.storeys, 4, 10);                                                    // storeys in all: the podium's two, the tower's n − 2
+  const n = clamp(s.storeys, 4, 9);                                                    // storeys in all: the podium's two, the tower's n − 2
   const gx = gateX(d.w, s.gate), sg: 1 | -1 = gx < 0 ? -1 : 1, left = -sg, rite = sg;   // the service side: the gate's
   rec.serviceSide = sg;
   const PX = 21.5, zB = -9.6, zP = 3.6, zC = 6.4;                                       // the podium: its width, back wall, glass wall, the columns' line
@@ -32,6 +32,7 @@ export function buildTower(d: SiteDraw): SiteResult {
     const x = -PX + k * 4.3;
     d.box(d.plain, 0.5, yP - Y0 - 0.25, 0.5, x, Y0, zC, k % 2 ? p.stone : mix(p.stone, p.render, 0.35));
     d.solid(x - 0.25, zC - 0.25, x + 0.25, zC + 0.25, yP);
+    if (k % 2 === 0) uplight(d, x, zC + 0.25, 'street', 0.3);
   }
   d.box(d.plain, 8.6, 0.8, 0.5, 0, yP - 1.05, zC, p.slab);                               // the transfer beam over the entrance
   // the glass walls behind: the lobby below, the restaurant above, a loggia before it
@@ -39,6 +40,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   guard(d, 'street', zC - 0.12, -PX + 0.25, PX - 0.25, yF(1), 1.0, 0);
   d.flat(d.pave, 2 * PX, zC - zP, 0, Y0 + 0.012, (zC + zP) / 2, mix(p.stone, 0xffffff, 0.3));            // the arcade's floor
   rec.doors.push({ kind: 'lobby', face: 'street', x: 0, z: zP });
+  pendants(d, 'street', zP + 0.04, -PX + 2, PX - 2, Y0 + 3.0, lite ? 6 : 10, 0.45); pendants(d, 'street', zP + 0.04, -PX + 2, PX - 2, yF(1) + 3.0, lite ? 6 : 10, 0.45);
   for (const sx of [-1, 1]) {                                                            // the lobby's doors, the arcade's wall lights
     quads(d, d.plain, 'street', zP + 0.07, [{ u0: sx * 0.03, u1: sx * 1.45, y0: Y0 + 0.2, y1: Y0 + 2.7, c: mix(p.glass, 0x6a5238, 0.5) }, { u0: sx * 1.5, u1: sx * 1.56, y0: Y0 + 0.2, y1: Y0 + 2.75, c: p.frame }].map(q => ({ ...q, u0: Math.min(q.u0, q.u1), u1: Math.max(q.u0, q.u1) })));
     quads(d, d.plain, 'street', zP + 0.08, [{ u0: Math.min(sx * 0.2, sx * 0.26), u1: Math.max(sx * 0.2, sx * 0.26), y0: Y0 + 0.9, y1: Y0 + 1.7, c: 0xc9a14b }]);

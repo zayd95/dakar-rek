@@ -1,12 +1,12 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
 import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, railing, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
+import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, railing, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the boutique hotel (46 × 22 m site, 3 to 5 storeys): a long low front of cantilevered slabs between travertine bookends, a balcony for
  * every room (a glass guard, then an oak screen, the rhythm running along the front and up it like a draught board), a double-height glass lobby in a stone
- * portal under a porte-cochère, a drop-off in a paved forecourt behind a low wall, the name on the portal's lintel; on the roof a pool, a pergola bar and a
- * glass parapet. The sides are the stone bookends (a glazed slot, an oak panel), the back a corridor's oak screens and a glazed stair core.
+ * portal under a porte-cochère (the name on its dark fascia), a drop-off in a paved forecourt behind a low railed wall; on the roof a pool, a lounge under a
+ * deep white blade, a lawn and a glass parapet. The sides are the stone bookends (a glazed slot, an oak panel), the back a corridor's oak screens and a glazed stair core.
  */
 export function buildBoutique(d: SiteDraw): SiteResult {
   const { site: s, p } = d, lite = d.lite, rec = info(d);
@@ -54,7 +54,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
       bays.forEach(([a, b], i) => {
         const g = sx < 0 ? 3 - i : 6 + i, u = span(sx, a, b), oak = (g + k) % 2 === 1;
         rec.balconies.push({ floor: k, u0: u.u0, u1: u.u1, face: 'street', kind: oak ? 'oak' : 'glass' });
-        if (oak) slats(d, 'street', zF + BAL - 0.06, u.u0 + 0.1, u.u1 - 0.1, y, top, { pitch: 0.2, w: 0.1 });
+        if (oak) slats(d, 'street', zF + BAL - 0.06, u.u0 + 0.1, u.u1 - 0.1, y, top, { pitch: 0.225, w: 0.11 });
         else guard(d, 'street', zF + BAL - 0.05, u.u0 + 0.1, u.u1 - 0.1, y, 1.05, 1.8);
       });
     }
@@ -66,7 +66,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     rec.balconies.push({ floor: k, u0: -LB, u1: LB, face: 'street', kind: 'suite' });
     d.slab(d.plain, 2 * LB, 0.25, BAL + 0.4, 0, y - 0.125, zF + (BAL + 0.4) / 2, p.slab);
     pane(d, 'street', zF, -LB + 0.4, LB - 0.4, y + 0.05, y + 2.75, { mull: 2.1, rooms: 2 });
-    if (k === n - 1) slats(d, 'street', zF + BAL + 0.34, -LB + 0.3, LB - 0.3, y, top, { pitch: 0.24, w: 0.12 });
+    if (k === n - 1) slats(d, 'street', zF + BAL + 0.34, -LB + 0.3, LB - 0.3, y, top, { pitch: 0.26, w: 0.13 });
     else guard(d, 'street', zF + BAL + 0.34, -LB + 0.3, LB - 0.3, y, 1.05, 2.0);
   }
 
@@ -83,6 +83,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     d.solid(sx * (LB + 0.05) - 0.375, zF, sx * (LB + 0.05) + 0.375, zF + BAL + 0.15, yRoof);
     if (!lite) strips(d, 'street', zF + BAL + 0.1, sx * (LB + 0.05) - 0.34, sx * (LB + 0.05) + 0.34, Y0, yF(2), 0.9, p.stoneDark, 0.03);
   }
+  for (const sx of [-1, 1]) { uplight(d, sx * (LB + 0.05), zF + BAL + 0.05, 'street', 0.5); }
   const lw = LB - 0.45, warm = mix(p.glass, 0x6a5238, 0.35), sky = mix(p.glass, 0xb4d2e0, 0.7);
   quads(d, d.glass, 'street', zF + 0.04, [{ u0: -lw, u1: lw, y0: Y0 + 0.15, y1: yF(2) - 1.45, c: warm, c2: sky }]);                    // the lobby's pane: its warm hall below, the sky above
   quads(d, d.plain, 'street', zF + 0.06, [{ u0: -lw, u1: lw, y0: Y0 + 0.15, y1: Y0 + 0.22, c: p.frame }, { u0: -lw, u1: lw, y0: yF(2) - 1.52, y1: yF(2) - 1.45, c: p.frame },
@@ -96,6 +97,7 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   { const x0 = -5.7, x1 = 5.7, z0 = zF + BAL - 0.3, z1 = 9.0, y = Y0 + 4.55;
     d.slab(d.plain, x1 - x0, 0.26, z1 - z0, 0, y - 0.13, (z0 + z1) / 2, p.slab);
     d.box(d.plain, x1 - x0 + 0.02, 0.85, 0.1, 0, y - 0.7, z1 + 0.02, p.board);
+    pendants(d, 'street', zF + 0.04, -lw + 0.8, lw - 0.8, yF(2) - 1.85, 5, 0.5); pendants(d, 'street', zF + 0.04, -lw + 1.0, lw - 1.0, Y0 + 3.05, 4, 0.45);
     rec.board = { x: 0, z: z1 + 0.09, y: y - 0.28 };
     nameBoard(d, s.name ?? 'HÔTEL', { x: 0, z: z1 + 0.09, y: y - 0.28, w: 7.6, h: 0.62, bg: '#' + p.board.toString(16).padStart(6, '0'), fg: '#f4e6bd' });
     for (const sx of [-1, 1]) { d.box(d.plain, 0.26, y - 0.26 - Y0, 0.26, sx * 5.25, Y0, z1 - 0.5, p.stone); d.solid(sx * 5.25 - 0.13, z1 - 0.63, sx * 5.25 + 0.13, z1 - 0.37, 4.6); }

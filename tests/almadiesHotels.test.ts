@@ -20,7 +20,7 @@ const hotels = SITES.filter(s => s.kind === 'hotel');
 const within = (c: Collider, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
 const at = (cs: Collider[], x: number, z: number) => cs.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
 /** The storeys each design draws (it clamps what the plan asks for). */
-const RANGE: Record<string, [number, number]> = { 'hotel-boutique': [3, 5], 'hotel-tower': [4, 10], 'hotel-resort': [3, 5] };
+const RANGE: Record<string, [number, number]> = { 'hotel-boutique': [3, 5], 'hotel-tower': [4, 9], 'hotel-resort': [3, 5] };
 const effective = (id: string, n: number) => Math.max(RANGE[id][0], Math.min(RANGE[id][1], n));
 const variant = (s: Site) => variantOf(s);
 const setups: { id: string; plan: Site }[] = hotels.map(plan => ({ id: variantOf(plan).id, plan }));

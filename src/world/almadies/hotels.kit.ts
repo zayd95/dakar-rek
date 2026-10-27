@@ -209,3 +209,15 @@ export function railing(d: SiteDraw, gx: number, wallTop = 1.0, h = 0.6) {
     quads(d, d.plain, 'street', z + 0.035, list); quads(d, d.plain, 'back', z - 0.035, list);
   }
 }
+/** An uplight at the foot of a pier or a column: a bronze housing and its lamp (the lamps' batch: dim by day, bright at night), 20 triangles; `face` is the way it looks. */
+export function uplight(d: SiteDraw, x: number, z: number, face: 'street' | 'back' = 'street', w = 0.3) {
+  const s = face === 'street' ? 1 : -1;
+  d.box(d.plain, w + 0.04, 0.05, 0.14, x, Y0, z + s * 0.16, d.p.frame);
+  d.box(d.bulbs, w, 0.03, 0.1, x, Y0 + 0.05, z + s * 0.16, 0xffe2a8);
+}
+/** Pendant lamps seen through a hall's glass: warm patches on the pane (2 triangles each, the lamps' batch), `n` of them between `u0` and `u1` at height `y`. */
+export function pendants(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y: number, n: number, size = 0.5) {
+  const list: Q[] = [];
+  for (let k = 0; k < n; k++) { const u = u0 + ((u1 - u0) * (k + 0.5)) / n; list.push({ u0: u - size / 2, u1: u + size / 2, y0: y - size / 2, y1: y + size / 2, c: 0xffd890 }); }
+  quads(d, d.bulbs, face, at + sign(face) * 0.05, list);
+}
