@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import { E, GROUND, STOREY, type SiteDraw } from './contract';
+import { GROUND, STOREY, type SiteDraw } from './contract';
 import { siteRng, type Face } from './parts';
 
 /**
@@ -175,17 +175,23 @@ export function glassRail(d: SiteDraw, r: { x0: number; x1: number; z0: number; 
 export interface HotelInfo {
   storeys: number;
   balconies: { floor: number; u0: number; u1: number; face: Face; kind: 'glass' | 'oak' | 'suite' | 'terrace' }[];
-  doors: { kind: 'lobby' | 'staff' | 'service' | 'court'; face: Face; x: number; z: number }[];
+  doors: { kind: 'lobby' | 'staff' | 'service' | 'court' | 'shop'; face: Face; x: number; z: number }[];
   serviceSide: 1 | -1;
   dropoff: { x0: number; z0: number; x1: number; z1: number } | null;
   /** The name board's plan position and height. */
   board: { x: number; z: number; y: number } | null;
+  /** The walk-in opening of the street railing (plan x of its centre, its width), the café terraces on the pavement side, the shop awnings (span, z of the wall they stand from). */
+  entry: { x: number; w: number } | null;
+  terraces: TerraceInfo[];
+  awnings: { x0: number; x1: number; z: number; col: number }[];
+  /** The road-side flanks' ground floors: what stands there ('planting', 'terrace', 'window'), on which plan side (-1 left, 1 right). */
+  flanks: { side: -1 | 1; what: string }[];
 }
 const infos = new WeakMap<SiteDraw, HotelInfo>();
 /** The record of a draw (made on first use); the district never reads it, the tests do. */
 export function info(d: SiteDraw): HotelInfo {
   let i = infos.get(d);
-  if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null });
+  if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null, entry: null, terraces: [], awnings: [], flanks: [] });
   return i;
 }
 /** A garden bollard with its lamp (20 triangles) and, by night, its pool of light on the ground (not on the low preset). */
@@ -193,21 +199,6 @@ export function bollard(d: SiteDraw, x: number, z: number) {
   d.box(d.plain, 0.13, 0.62, 0.13, x, Y0, z, d.p.frame);
   d.box(d.bulbs, 0.1, 0.08, 0.14, x, Y0 + 0.5, z, 0xfff1c8);
   if (!d.lite) d.light(x, z, 2.1, 0.175);
-}
-/**
- * The railing on a low street wall (1 m, `perimeter` with `front: 'low'`): a bronze handrail and a lower rail above it, a post every 2.4 m (two planes back to
- * back: seen from the street and from the forecourt), the gate's span (`gx` ± 3.2 m: its pillars) left alone. About 100 triangles.
- */
-export function railing(d: SiteDraw, gx: number, wallTop = 1.0, h = 0.6) {
-  const ex = d.w / 2, z = E - 0.15, runs: [number, number][] = [[-ex + 0.5, gx - 3.2], [gx + 3.2, ex - 0.5]];
-  for (const [a, b] of runs) {
-    if (b - a < 1) continue;
-    d.box(d.metal, b - a, 0.05, 0.06, (a + b) / 2, wallTop + h - 0.05, z, d.p.frame);
-    d.box(d.metal, b - a, 0.04, 0.05, (a + b) / 2, wallTop + 0.18, z, d.p.frame);
-    const n = Math.max(1, Math.round((b - a) / (d.lite ? 4.8 : 2.4))), list: Q[] = [];
-    for (let k = 0; k <= n; k++) { const u = a + ((b - a) * k) / n; list.push({ u0: u - 0.03, u1: u + 0.03, y0: wallTop, y1: wallTop + h, c: d.p.frame }); }
-    quads(d, d.plain, 'street', z + 0.035, list); quads(d, d.plain, 'back', z - 0.035, list);
-  }
 }
 /** An uplight at the foot of a pier or a column: a bronze housing and its lamp (the lamps' batch: dim by day, bright at night), 20 triangles; `face` is the way it looks. */
 export function uplight(d: SiteDraw, x: number, z: number, face: 'street' | 'back' = 'street', w = 0.3) {
@@ -220,4 +211,48 @@ export function pendants(d: SiteDraw, face: Face, at: number, u0: number, u1: nu
   const list: Q[] = [];
   for (let k = 0; k < n; k++) { const u = u0 + ((u1 - u0) * (k + 0.5)) / n; list.push({ u0: u - size / 2, u1: u + size / 2, y0: y - size / 2, y1: y + size / 2, c: 0xffd890 }); }
   quads(d, d.bulbs, face, at + sign(face) * 0.05, list);
+}
+
+// ------------------------------------------------------------------------------------------------ the café on the pavement
+/** A bistro table with its two chairs (40 triangles): a post and a top, a chair either side along z (the chairs a little darker than the top). */
+export function bistro(d: SiteDraw, x: number, y: number, z: number, col = 0xf3efe6, chair = d.p.wood) {
+  table(d, x, y, z, col);
+  for (const sz of [-1, 1]) d.box(d.plain, 0.42, 0.46, 0.42, x, y, z + sz * 0.72, chair);
+}
+/** A string of lights between two posts (the lamps' batch: dim by day, bright at night): two posts, a cable, a bulb every ~1.4 m. About 110 triangles for 10 m, 60 on low. */
+export function stringLights(d: SiteDraw, x0: number, x1: number, z: number, y = 3.0) {
+  const a = Math.min(x0, x1), b = Math.max(x0, x1), n = Math.max(2, Math.round((b - a) / (d.lite ? 3.2 : 1.8)));
+  for (const x of [a, b]) d.box(d.metal, 0.07, y + 0.2, 0.07, x, Y0, z, 0xdfe2e4);
+  d.box(d.plain, b - a, 0.025, 0.025, (a + b) / 2, y, z, 0x2c2d30);
+  for (let k = 1; k < n; k++) { const x = a + ((b - a) * k) / n; d.box(d.bulbs, 0.13, 0.13, 0.13, x, y - 0.17 - 0.12 * Math.sin((Math.PI * k) / n), z, 0xffe2a8); }
+}
+/** What a terrace drew (for the checks). */
+export interface TerraceInfo { x0: number; x1: number; z0: number; z1: number; tables: number; chairs: number; parasols: number }
+/**
+ * A café terrace: a deck, rows of bistro tables (`rows`: the z of each, `per`: how many in each) between x0 and x1, a parasol over every other table
+ * (none over half of them on the low preset). Returns what it drew.
+ */
+export function terrace(d: SiteDraw, o: { x0: number; x1: number; z0: number; z1: number; rows: number[]; per: number[]; y?: number; deck?: number }): TerraceInfo {
+  const y = o.y ?? Y0, a = Math.min(o.x0, o.x1), b = Math.max(o.x0, o.x1), info: TerraceInfo = { x0: a, x1: b, z0: o.z0, z1: o.z1, tables: 0, chairs: 0, parasols: 0 };
+  if (o.deck !== undefined) d.flat(d.plain, b - a, o.z1 - o.z0, (a + b) / 2, y + 0.03, (o.z0 + o.z1) / 2, o.deck);
+  o.rows.forEach((z, r) => {
+    const n = o.per[r] ?? o.per[0];
+    for (let k = 0; k < n; k++) {
+      const x = a + ((b - a) * (k + 0.5)) / n;
+      bistro(d, x, y + 0.03, z); info.tables++; info.chairs += 2;
+      if ((k + r) % 2 === 0 && !(d.lite && k % 2)) { parasol(d, x, y + 0.03, z, 0xefe8da, 1.5); info.parasols++; }
+    }
+  });
+  return info;
+}
+/**
+ * An awning over a shopfront: a flat canvas in `col` standing out from the wall at height `y`, and a valance of stripes (`col`, white) along its edge: the top
+ * (a box: ten triangles) is seen from above, the stripes from the street (two triangles each).
+ */
+export function awning(d: SiteDraw, x0: number, x1: number, z: number, y: number, depth: number, col: number, stripe = 0.5) {
+  const a = Math.min(x0, x1), b = Math.max(x0, x1), n = Math.max(2, Math.round((b - a) / (stripe * (d.lite ? 2 : 1))));
+  d.box(d.plain, b - a, 0.08, depth, (a + b) / 2, y, z + depth / 2, col);
+  const list: Q[] = [];
+  for (let k = 0; k < n; k++) list.push({ u0: a + ((b - a) * k) / n, u1: a + ((b - a) * (k + 1)) / n, y0: y - 0.34, y1: y + 0.08, c: k % 2 ? 0xf4f1ea : col });
+  quads(d, d.plain, 'street', z + depth + 0.02, list);
 }
