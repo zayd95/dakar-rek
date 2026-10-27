@@ -45,7 +45,31 @@ Stacked on LD2.0-D (zayd95/dakar-rek#75): this phase uses the villa's drawing co
 Walk the Almadies from the sea front to the mall: every lot has its new building, no two neighbours alike; doors, balconies and signs read from the street by day and at 21 h; the flagship villa, the Ngor residence's board and door, the port, the mall, the station, Prestige Auto and the kiosks are as they were; the street dressing, traffic and people are where they were; the budgets hold; no page errors; saves untouched.
 
 ## Results
-(to come)
+**Built:** the Almadies' 41 generic villa lots are 30 sites of 14 designs in the villa's style, open to the street (decision 7). The catalogue is `docs/kits/ALMADIES_DISTRICT.md` (pictures, GLB files, numbers); the pictures of the district in the game, day and 21 h, are `docs/proof/ld2e/after/` (the villa branch's, for comparison, `docs/proof/ld2e/before/`); the flythrough is `docs/proof/ld2e/district-tour.mp4` (70 s, 24 fps, a free camera at street height: the sea-front hotels, the avenue and its villas, the Ngor residence, the mall's street, the courtyard residence; day, golden hour, night).
+
+| Kind | Sites | Designs |
+|---|---|---|
+| houses | 10 | house-m1 Maison empilée, house-m2 Maison en L, house-m3 Maison à gradins |
+| villas | 12 | villa-c1 Porte-à-faux, villa-c2 Arcades, villa-c3 Pavillons, villa-c4 Tour |
+| hotels | 3 | hotel-boutique (HÔTEL LE FILAO), hotel-tower (HÔTEL OCÉANE, 8 storeys), hotel-resort (HÔTEL BAOBAB AZUR, the whole block) |
+| residences | 5 | residence-ngor (the one for sale), residence-stack (LES ALIZÉS), residence-screen (KËR SALAM, LES CORMORANS), residence-courtyard (JARDINS DE NGOR, the whole block) |
+
+**Open to the street (decision 7), as built:** `perimeter()` draws a railing on a plinth along the street and every road-facing edge; every design has a walk-in opening to its door, lobby or passage (each lane's tests walk a body's circle from the pavement through it); the hotels have a café terrace beside the opening (tables, parasols, string lights) and an 8 m drop-off, the tower's podium has six shopfront bays with awnings and two shop doors, the residences have a lobby and one to three café/shop units with awnings and tables at street level, the courtyard residence a porte-cochère you can walk through into its courtyard. The flagship villa keeps its walls (the owner's favourite, unchanged).
+
+**Checks (on the head of this branch):**
+- `npx tsc --noEmit -p .`: clean. `npx vitest run`: 221 files passed, 2 skipped; 3 158 tests passed, 4 skipped, 0 failed (the district's own: `almadiesDistrict` 39, `almadiesBoundary` 48, `almadiesHouses`, `almadiesVillas`, `almadiesHotels` 33, `almadiesResidences` 69, plus the street-unchanged digest at both qualities).
+- `scripts/check-district.mjs` in the game (a phone page, low and medium): 12/12: it builds with no page error; every one of the 30 sites has a building two storeys tall inside it; nothing stands on a carriageway; the pavement round every block is free (6 208 points walked, 0 blocked, 507 district colliders); the Ngor residence's door, entry and gate are where the estate put them and nothing solid covers them; no page error through the walk.
+- Cost against the villa branch's hub (static scene, medium): **+55 784 triangles** (budget +60 000: 875 066 against 819 282) and **+1 mesh** (budget +10: 1 253 against 1 252: the district's sign boards, less the generic villas' own meshes). Per view on the phone page (medium): the street 218–221 k triangles / 103–110 draw calls, the aerial 209–224 k / 97–137.
+- The street dressing, traffic, the port, the mall, the station, Prestige Auto and the kiosks are where they were: `tests/almadiesDistrict.test.ts` digests everything outside the sites against the villa branch's last commit at both qualities. The only changes outside a site: each gate's apron (and a hotel's drop-off) is kept clear.
+
+**Limits:**
+- **Exterior only.** The hotels' lobbies and cafés and the residences' units have no interior and nobody in them (static tables and chairs); the only homes with an inside are still the flagship villa and the Ngor residence's open room. Interiors and people at the terraces are a next phase.
+- **Real phone untested.** Everything was measured and looked at in Chromium with a software renderer on a phone-sized page: triangles and draw calls are exact, the frame time on an iPhone is not measured. The low preset draws about 65–80 % of the medium triangles per design.
+- The district's window glow at night is its own shared material (about three panes in four lit): the hub's `glassMat` still has a constant emissive.
+- A villa whose car gate is at the centre of the street edge has no room for its walk-in opening (villa-c2/c3/c4); the plan uses no centre gate for houses or villas.
+- The hub's own street palms stand in front of some entries from some camera angles (street dressing, unchanged on purpose).
+- The viewer's pictures of a design show it with its road side on the right; the real sites have it where the grid says (`roadEdges`).
+- Workers Builds fails on every push (the Cloudflare account's preview limit, as on #72 and #75); the `check` job is the CI that tests this branch.
 
 ## Not in this slice
 - Interiors of the hotels and the apartment complexes; buying a room or a suite in them.
