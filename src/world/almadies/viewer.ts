@@ -96,10 +96,11 @@ function show(o: ShowOptions) {
   camera.position.set(pp.x, vw.y, pp.z); camera.lookAt(tt.x, vw.ty, tt.z); camera.updateMatrixWorld();
   sun.position.set(c.x + 30, 45, c.z + 22); sun.target.position.set(c.x, 0, c.z);
   const s = Math.max(30, R * 1.4); Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 200 }); sun.shadow.camera.updateProjectionMatrix();
-  ground.visible = false; road.visible = false; kerb.visible = false; person.visible = false;
+  const scenery = g.children.filter(x => x.userData.scenery);          // the road, the kerb, the person for scale and the people a design places: pictured, not counted
+  ground.visible = false; for (const x of scenery) x.visible = false;
   renderer.render(scene, camera);
   const drawn = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
-  ground.visible = true; road.visible = true; kerb.visible = true; person.visible = true; renderer.render(scene, camera);
+  ground.visible = true; for (const x of scenery) x.visible = true; renderer.render(scene, camera);
   return { id: v.id, name: v.name, size: sizeOf(site), drawn, colliders: d.colliders.length, signs: g.children.filter(x => (x as THREE.Mesh).geometry instanceof THREE.PlaneGeometry).length, tallest: Math.max(0, ...d.colliders.map(c => c.h)) };
 }
 /** The design as a GLB (base64), without the road, the kerb and the person: every mesh, its vertices shared, no texture coordinates (a material's shader hooks are exported for their colours). */

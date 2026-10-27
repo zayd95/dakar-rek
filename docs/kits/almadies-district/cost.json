@@ -1,272 +1,272 @@
 {
- "at": "2026-10-27T15:13:03.061Z",
+ "at": "2026-10-27T22:54:07.335Z",
  "cost": {
   "house-m1": {
-   "name": "Maison empil\u00e9e",
+   "name": "Maison empilée",
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 130,
-    "street": 133,
-    "night": 86
+    "front": 132,
+    "street": 132,
+    "night": 87
    },
    "medium": {
     "calls": 8,
-    "tris": 1504
+    "tris": 1644
    },
    "info": {
-    "colliders": 13,
+    "colliders": 15,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
     "calls": 8,
-    "tris": 1180
+    "tris": 1320
    },
-   "glbBytes": 128168
+   "glbBytes": 139104
   },
   "house-m2": {
    "name": "Maison en L",
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 123,
+    "front": 126,
     "street": 125,
-    "night": 82
+    "night": 83
    },
    "medium": {
     "calls": 8,
-    "tris": 1570
+    "tris": 1710
    },
    "info": {
-    "colliders": 11,
+    "colliders": 13,
     "signs": 0,
     "tallest": 7.199999999999999
    },
    "low": {
     "calls": 8,
-    "tris": 1304
+    "tris": 1444
    },
-   "glbBytes": 131852
+   "glbBytes": 142792
   },
   "house-m3": {
-   "name": "Maison \u00e0 gradins",
+   "name": "Maison à gradins",
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 148,
-    "street": 153,
-    "night": 90
+    "front": 152,
+    "street": 154,
+    "night": 93
    },
    "medium": {
     "calls": 8,
-    "tris": 1578
+    "tris": 1718
    },
    "info": {
-    "colliders": 12,
+    "colliders": 14,
     "signs": 0,
     "tallest": 9.7
    },
    "low": {
     "calls": 8,
-    "tris": 1278
+    "tris": 1418
    },
-   "glbBytes": 131776
+   "glbBytes": 142716
   },
   "villa-c1": {
-   "name": "Villa Porte-\u00e0-faux",
+   "name": "Villa Porte-à-faux",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 158,
-    "street": 174,
-    "night": 103
+    "front": 160,
+    "street": 175,
+    "night": 104
    },
    "medium": {
     "calls": 9,
-    "tris": 2558
+    "tris": 2648
    },
    "info": {
-    "colliders": 17,
+    "colliders": 18,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
     "calls": 9,
-    "tris": 2092
+    "tris": 2182
    },
-   "glbBytes": 210124
+   "glbBytes": 217156
   },
   "villa-c2": {
    "name": "Villa des Arcades",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 196,
-    "street": 198,
+    "front": 194,
+    "street": 196,
     "night": 123
    },
    "medium": {
     "calls": 9,
-    "tris": 2480
+    "tris": 2570
    },
    "info": {
-    "colliders": 19,
+    "colliders": 20,
     "signs": 0,
     "tallest": 10.7
    },
    "low": {
     "calls": 9,
-    "tris": 2038
+    "tris": 2128
    },
-   "glbBytes": 206016
+   "glbBytes": 213028
   },
   "villa-c3": {
    "name": "Villa des Pavillons",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 144,
+    "front": 147,
     "street": 135,
-    "night": 96
+    "night": 98
    },
    "medium": {
     "calls": 9,
-    "tris": 2482
+    "tris": 2612
    },
    "info": {
-    "colliders": 16,
+    "colliders": 18,
     "signs": 0,
     "tallest": 7.249999999999999
    },
    "low": {
     "calls": 9,
-    "tris": 2016
+    "tris": 2146
    },
-   "glbBytes": 206260
+   "glbBytes": 216388
   },
   "villa-c4": {
    "name": "Villa de la Tour",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 232,
-    "street": 258,
-    "night": 145
+    "front": 237,
+    "street": 261,
+    "night": 148
    },
    "medium": {
     "calls": 9,
-    "tris": 2592
+    "tris": 2722
    },
    "info": {
-    "colliders": 13,
+    "colliders": 15,
     "signs": 0,
     "tallest": 13.95
    },
    "low": {
     "calls": 9,
-    "tris": 2068
+    "tris": 2198
    },
-   "glbBytes": 212636
+   "glbBytes": 222776
   },
   "hotel-boutique": {
-   "name": "H\u00f4tel boutique, fa\u00e7ade de balcons",
+   "name": "Hôtel boutique, façade de balcons",
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 250,
-    "street": 376,
-    "night": 167
+    "front": 251,
+    "street": 380,
+    "night": 169
    },
    "medium": {
     "calls": 10,
-    "tris": 4982
+    "tris": 5402
    },
    "info": {
-    "colliders": 18,
+    "colliders": 30,
     "signs": 1,
     "tallest": 17.299999999999997
    },
    "low": {
     "calls": 10,
-    "tris": 3536
+    "tris": 3936
    },
-   "glbBytes": 417172
+   "glbBytes": 445324
   },
   "hotel-tower": {
-   "name": "H\u00f4tel tour sur son podium",
+   "name": "Hôtel tour sur son podium",
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 318,
+    "front": 321,
     "street": 377,
-    "night": 213
+    "night": 215
    },
    "medium": {
     "calls": 9,
-    "tris": 5158
+    "tris": 5472
    },
    "info": {
-    "colliders": 23,
+    "colliders": 33,
     "signs": 1,
     "tallest": 27.900000000000002
    },
    "low": {
     "calls": 9,
-    "tris": 3806
+    "tris": 4146
    },
-   "glbBytes": 430420
+   "glbBytes": 449664
   },
   "hotel-resort": {
    "name": "Resort autour de la cour de la piscine",
    "kind": "hotel",
    "size": "L",
    "views": {
-    "front": 215,
-    "street": 239,
-    "night": 136
+    "front": 216,
+    "street": 238,
+    "night": 137
    },
    "medium": {
     "calls": 10,
-    "tris": 8648
+    "tris": 9140
    },
    "info": {
-    "colliders": 29,
+    "colliders": 41,
     "signs": 1,
     "tallest": 17.6
    },
    "low": {
     "calls": 10,
-    "tris": 6564
+    "tris": 7002
    },
-   "glbBytes": 711080
+   "glbBytes": 748232
   },
   "residence-ngor": {
-   "name": "R\u00e9sidence de Ngor",
+   "name": "Résidence de Ngor",
    "kind": "residence",
    "size": "S",
    "views": {
-    "front": 280,
-    "street": 315,
-    "night": 187
+    "front": 289,
+    "street": 319,
+    "night": 193
    },
    "medium": {
     "calls": 9,
-    "tris": 3112
+    "tris": 3364
    },
    "info": {
-    "colliders": 15,
+    "colliders": 18,
     "signs": 1,
     "tallest": 15.2
    },
    "low": {
     "calls": 9,
-    "tris": 2138
+    "tris": 2404
    },
-   "glbBytes": 250884
+   "glbBytes": 270540
   },
   "residence-stack": {
-   "name": "Balcons d\u00e9cal\u00e9s sur pilotis",
+   "name": "Balcons décalés sur pilotis",
    "kind": "residence",
    "size": "M",
    "views": {
@@ -276,66 +276,66 @@
    },
    "medium": {
     "calls": 8,
-    "tris": 4772
+    "tris": 5230
    },
    "info": {
-    "colliders": 37,
+    "colliders": 45,
     "signs": 1,
     "tallest": 21.9
    },
    "low": {
     "calls": 8,
-    "tris": 3118
+    "tris": 3700
    },
-   "glbBytes": 381780
+   "glbBytes": 418516
   },
   "residence-screen": {
    "name": "Brise-soleil sur loggias",
    "kind": "residence",
    "size": "M",
    "views": {
-    "front": 341,
-    "street": 146,
-    "night": 217
+    "front": 346,
+    "street": 157,
+    "night": 220
    },
    "medium": {
     "calls": 8,
-    "tris": 4686
+    "tris": 5086
    },
    "info": {
-    "colliders": 18,
+    "colliders": 24,
     "signs": 1,
     "tallest": 20.9
    },
    "low": {
     "calls": 8,
-    "tris": 3344
+    "tris": 3780
    },
-   "glbBytes": 376580
+   "glbBytes": 407764
   },
   "residence-courtyard": {
-   "name": "Cour-jardin \u00e0 portail",
+   "name": "Cour-jardin à portail",
    "kind": "residence",
    "size": "L",
    "views": {
-    "front": 326,
-    "street": 128,
-    "night": 213
+    "front": 328,
+    "street": 138,
+    "night": 215
    },
    "medium": {
     "calls": 9,
-    "tris": 7776
+    "tris": 8226
    },
    "info": {
-    "colliders": 28,
+    "colliders": 35,
     "signs": 1,
     "tallest": 20.3
    },
    "low": {
     "calls": 9,
-    "tris": 5518
+    "tris": 6028
    },
-   "glbBytes": 612736
+   "glbBytes": 647840
   }
  },
  "errors": []

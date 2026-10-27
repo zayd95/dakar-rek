@@ -2,7 +2,9 @@
 // drawn from a free camera that glides along a smoothed route at street height and saved, so the video runs at 24 frames a second whatever the machine draws
 // in real time (a software renderer here). The route: the sea-front coast road past the hotels → the avenue and its villas → the Ngor residence and the
 // flagship → down the central avenue to the mall → the residences and the hotel tower; day, then dusk, then night (the hour moves with the camera).
-// Usage: node scripts/video-district-tour.mjs <baseUrl> <out.mp4> [seconds=70]   (a static build of the game, served; DRY=1: the route's length only, no frames)
+// ROUTE=round3 (LD2.0-E round 3, « life on the ground »): at a walking person's height: the coast road past the hotel's terrace and lobby → the port's plaza down the pier's approach → the avenue and the Ngor residence's street
+// → the meeting square's path to its centre → the mall's street; the game runs a few seconds before the camera starts so the street's people are out.
+// Usage: node scripts/video-district-tour.mjs <baseUrl> <out.mp4> [seconds=70]   (a static build of the game, served; DRY=1: the route's length only, no frames; ROUTE=round3)
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -11,13 +13,20 @@ const [base = 'http://127.0.0.1:4971/', outFile = 'district-tour.mp4', secArg = 
 const FPS = 24, DT = 1 / FPS, SECONDS = Number(secArg), FRAMES = `/tmp/claude-0/ld2d/district-frames-${Date.now()}`, DRY = !!process.env.DRY;
 fs.mkdirSync(FRAMES, { recursive: true });
 // [x, z, height]: the camera's route (the roads at −120, −60, 0, 60; the sea to the north, −z), looking ahead along it with a slow sway
-const ROUTE = [
+const ROUTE_ROUND2 = [
   [-124, -100, 3.2], [-120, -112, 3.4], [-100, -121, 3.6], [-60, -122, 4.4], [-20, -121, 3.6], [20, -120, 4], [60, -121, 3.6],        // the coast road, hotels and the sea-front residence on the left
   [62, -100, 4.6], [60, -64, 3.4], [30, -61, 3.2], [-20, -61, 3.4], [-62, -62, 3.6],                                                   // back along the first avenue
   [-60, -30, 3.4], [-56, -4, 3.2], [-30, -1, 3.0], [-4, 1, 3.4],                                                                          // down to the Ngor residence and the flagship villa
   [2, 24, 4.0], [4, 56, 3.6], [30, 61, 4], [58, 60, 5.2], [64, 90, 6.4], [62, 118, 8],                                                  // the mall's street, the hotel tower
   [20, 122, 9], [-30, 121, 7], [-62, 100, 6], [-60, 64, 5], [-62, 30, 8],                                                               // round the courtyard residence, then up
 ];
+const ROUTE_ROUND3 = [
+  [-66, -117, 2.4], [-48, -117, 2.4], [-32, -117, 2.2], [-12, -117, 2.4], [12, -117, 2.6],                                                // the coast road in front of the boutique hotel: the doorman, the terrace
+  [24, -109, 2.8], [30, -100, 2.4], [30, -88, 2.2], [30, -76, 2.2], [30, -68.5, 2.4],                                                      // the pier's approach, the plaza, the market stalls, the lawns
+  [24, -64, 2.8], [8, -62.5, 2.8], [4, -52, 3], [4, -30, 2.6], [4, -8, 2.6], [4, 2, 2.8],                                                  // west along the first avenue, then down the central avenue
+  [30, 2.5, 2.8], [60, 3, 2.6], [88, 4.5, 2.4], [90, 12, 2.0], [90, 22, 1.9], [90, 36, 1.9], [90, 50, 2.2], [93, 58, 3.2],                // east to the meeting square, its path, its centre
+];
+const ROUTE = process.env.ROUTE === 'round3' ? ROUTE_ROUND3 : ROUTE_ROUND2;
 const TARGET_AHEAD = 11;
 // a centripetal-ish Catmull-Rom through the route, sampled by arc length
 const pts = ROUTE.map(([x, z, y]) => ({ x, z, y }));
@@ -41,9 +50,10 @@ try {
   const d = (fn, a) => page.evaluate(fn, a);
   await page.goto(`${base}?debug&touch&argent=999000000`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.estate, null, { timeout: 300000 });
-  await d(() => { window.__dakar.setHour(10.5); window.__dakar.teleport('almadies', -124, -100, 0); });
+  await d(([x, z]) => { window.__dakar.setHour(10.5); window.__dakar.teleport('almadies', x, z, 0); }, ROUTE[0]);
   await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies', null, { timeout: 120000 });
   await page.waitForTimeout(2500);
+  if (process.env.ROUTE === 'round3') await d(() => { const D = window.__dakar; D.ambientRun?.(150); D.ambientSettle?.(); for (let i = 0; i < 240; i++) D.step(1 / 24, 1); });   // the street's people are out
   await d(() => window.__dakar.pause(true));
   for (let f = 0; f < N; f++) {
     const u = f / (N - 1), s = u * total, c = at(s), a = at(s + TARGET_AHEAD), sway = Math.sin(u * Math.PI * 14) * 1.2;
