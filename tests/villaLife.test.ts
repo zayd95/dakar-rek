@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { BAYS, GATE, LOT, POOL, onLot } from '../src/housing/villa';
 import { GATE_FREE, GATE_REACH, GATE_SECONDS, gateFor, gateWants, inOpening, insideWalls, stepGate, toPlan } from '../src/villa/gate';
 import { BAYS_HUB, BAY_SLOW, freeBay, inYard, parkWhy } from '../src/villa/bays';
-import { EDGE_REACH, LOOP, SWIM_GAINS, SWIM_LEAN, SWIM_SECONDS, WATER_Y, atEdge, bodyOrigin, exitPoint, maySwim, nearestOnLoop, poolDistance, swimGains, swimPose } from '../src/villa/swim';
+import {
+  CLIMB_REACH, DECK_OUT, DECK_Y, EDGE_REACH, STEPS, STEP_RISE, STICK_DEAD, STROKE_LENGTH, STROKE_RATE, SWIM_AREA, SWIM_FULL, SWIM_GAINS, SWIM_PACE, SWIM_SECONDS, TURN_RATE, WATER_Y,
+  atEdge, bodyBox, byWall, entryFor, exitPoint, footprint, freeDeck, holdIn, maySwim, nearestWall, poolDistance, stepSwimmer, stepsY, stepsZ, strokeRate, swimGains, swimPace,
+  wantsStepsIn, wantsStepsOut, type Swimmer,
+} from '../src/villa/swim';
 import { BUFFET, RECEPTION, RECEPTION_ANCHORS, cityHours, guestSpots, receptionLeft, receptionOn, receptionWhy } from '../src/villa/reception';
 import { VILLA_PLACE, daysFor, villaGoalLine, villaPath, villaPlausible, type VillaGoalFacts } from '../src/villa/goal';
 import { pistes, type PisteFacts } from '../src/economy/pistes';
@@ -79,6 +83,15 @@ describe('the bays', () => {
 });
 
 describe('the swim', () => {
+  const swimmer = (x: number, z: number, yaw = 0, mode: Swimmer['mode'] = 'tread'): Swimmer => ({ x, z, yaw, vx: 0, vz: 0, lean: mode === 'swim' ? 1 : 0, mode });
+  /** Swims `seconds` with the stick held toward (dx, dz) at `pace`, 60 steps a second; every footprint on the way. */
+  const swimFor = (s: Swimmer, dx: number, dz: number, pace: number, seconds: number, each?: (s: Swimmer) => void) => {
+    for (let i = 0; i < seconds * 60; i++) { stepSwimmer(s, dx, dz, pace, 1 / 60); each?.(s); }
+    return s;
+  };
+  const inside = (b: { x0: number; x1: number; z0: number; z1: number }, a: { x0: number; x1: number; z0: number; z1: number }, eps = 1e-6) =>
+    b.x0 >= a.x0 - eps && b.x1 <= a.x1 + eps && b.z0 >= a.z0 - eps && b.z1 <= a.z1 + eps;
+
   it('is offered at the edge, on the deck, to the villa\'s owner or renter in their own villa', () => {
     expect(poolDistance((POOL.x0 + POOL.x1) / 2, (POOL.z0 + POOL.z1) / 2)).toBe(0);
     expect(atEdge(0, POOL.z1 + 0.5)).toBe(true); expect(atEdge(0, POOL.z1 + EDGE_REACH + 0.2)).toBe(false); expect(atEdge(0, POOL.z1 - 0.5)).toBe(false);
@@ -86,35 +99,102 @@ describe('the swim', () => {
     expect(maySwim('owned', true)).toBe(true); expect(maySwim('rented', true)).toBe(true);
     expect(maySwim(null, true)).toBe(false); expect(maySwim('owned', false)).toBe(false);
   });
-  it('goes round a closed loop inside the pool, a metre from its walls, heading along it', () => {
-    for (let s = 0; s < LOOP; s += 0.25) {
-      const p = swimPose(s), q = swimPose(s + 0.05);
-      expect(p.x).toBeGreaterThan(POOL.x0 + 0.9); expect(p.x).toBeLessThan(POOL.x1 - 0.9);
-      expect(p.z).toBeGreaterThan(POOL.z0 + 0.9); expect(p.z).toBeLessThan(POOL.z1 - 0.9);
-      expect(Math.hypot(q.x - p.x, q.z - p.z)).toBeLessThan(0.06);                       // continuous
-      const head = Math.atan2(q.x - p.x, q.z - p.z);
-      expect(Math.abs(Math.atan2(Math.sin(head - p.yaw), Math.cos(head - p.yaw)))).toBeLessThan(0.15);
+
+  it('swims in the basin beyond the steps: the steps are apartment.ts\'s, the water at the deck less 0.12 m', () => {
+    expect(STEPS).toEqual({ x0: POOL.x0, x1: POOL.x0 + 1.2, z0: POOL.z0 + 0.5, z1: POOL.z1 - 0.5 });
+    expect(SWIM_AREA).toEqual({ x0: STEPS.x1, x1: POOL.x1, z0: POOL.z0, z1: POOL.z1 });
+    expect(WATER_Y).toBeCloseTo(DECK_Y - 0.12, 6);
+    // down the steps: the deck, a riser a tread, the pool's floor at its depth
+    expect(stepsY(POOL.x0 - 0.5)).toBe(DECK_Y); expect(stepsY(POOL.x0 + 0.2)).toBeCloseTo(DECK_Y - STEP_RISE, 6);
+    expect(stepsY(POOL.x0 + 1.0)).toBeCloseTo(DECK_Y - 3 * STEP_RISE, 6); expect(stepsY(POOL.x0 + 3)).toBeCloseTo(DECK_Y - POOL.depth, 6);
+  });
+
+  it('holds the whole body inside the walls, whichever way it heads, upright or level, wherever the stick sends it', () => {
+    // the footprint grows from treading (the sculling hands) to swimming (the hands ahead in the glide, the feet behind)
+    expect(footprint(1).ahead).toBeGreaterThan(1.2); expect(footprint(1).behind).toBeGreaterThan(0.9); expect(footprint(0).side).toBeGreaterThan(footprint(1).side);
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2, s = swimmer(0, -7.8, a, 'swim');
+      swimFor(s, Math.sin(a), Math.cos(a), SWIM_FULL, 14, q => expect(inside(bodyBox(q.x, q.z, q.yaw, q.lean), SWIM_AREA), `heading ${a.toFixed(2)}`).toBe(true));
+      // pressed against a wall it stops there (what goes into the wall is lost)
+      expect(Math.hypot(s.vx, s.vz)).toBeLessThan(SWIM_FULL * 0.75);
     }
-    const a = swimPose(0), b = swimPose(LOOP);
-    expect(b.x).toBeCloseTo(a.x, 6); expect(b.z).toBeCloseTo(a.z, 6);
-    const n = nearestOnLoop(0, POOL.z1 + 0.5), p = swimPose(n);
-    expect(Math.abs(p.z - (POOL.z1 - 1.05))).toBeLessThan(0.05);                        // from the near edge, the near straight
+    // a footprint put across a wall is moved back in
+    const s = swimmer(POOL.x1 + 0.4, POOL.z1 + 0.4, Math.PI / 4, 'swim'), held = holdIn(s);
+    expect(held).toEqual({ x: 1, z: 1 }); expect(inside(bodyBox(s.x, s.z, s.yaw, s.lean), SWIM_AREA)).toBe(true);
   });
-  it('holds the swimmer in the water up to the shoulders, leaning into the stroke', () => {
-    const o = bodyOrigin(0, -7.8, Math.PI / 2);
-    expect(o.y + Math.cos(SWIM_LEAN) * 1.36).toBeCloseTo(WATER_Y, 6);                      // the shoulders at the water line
-    expect(o.y).toBeLessThan(WATER_Y - 0.3); expect(o.y).toBeGreaterThan(-POOL.depth);   // feet under water, off the bottom
-    expect(o.x).toBeLessThan(0);                                                          // trailing behind the chest
-    expect(SWIM_LEAN).toBeGreaterThan(0.9); expect(SWIM_LEAN).toBeLessThan(1.4);
+
+  it('reaches the four corners of the water', () => {
+    const c = SWIM_AREA;
+    for (const [cx, cz] of [[c.x0, c.z0], [c.x1, c.z0], [c.x0, c.z1], [c.x1, c.z1]]) {
+      const s = swimmer(0, -7.8);
+      for (let i = 0; i < 20 * 60; i++) stepSwimmer(s, cx - s.x, cz - s.z, SWIM_PACE, 1 / 60);
+      expect(Math.abs(s.x - cx), `corner ${cx},${cz}`).toBeLessThan(1.5); expect(Math.abs(s.z - cz), `corner ${cx},${cz}`).toBeLessThan(1.5);
+    }
   });
-  it('climbs out at the nearest edge, on the deck; hygiene and moral up in proportion to the time in the water', () => {
-    const e = exitPoint(0, POOL.z1 - 0.3);
-    expect(e.z).toBeGreaterThan(POOL.z1); expect(poolDistance(e.x, e.z)).toBeGreaterThan(0.3); expect(atEdge(e.x, e.z)).toBe(true);
-    const w = exitPoint(POOL.x0 + 0.4, -7.8); expect(w.x).toBeLessThan(POOL.x0);
+
+  it('swims at about a metre a second, a little faster pushed to the rim; turns smoothly to face where it goes; drifts to a stop and treads water', () => {
+    expect(swimPace(0.05)).toBe(0); expect(swimPace(STICK_DEAD + 0.01)).toBeGreaterThan(0.5); expect(swimPace(0.75)).toBeCloseTo(SWIM_PACE, 6);
+    expect(swimPace(1)).toBeCloseTo(SWIM_FULL, 6); expect(SWIM_PACE).toBeGreaterThanOrEqual(0.9); expect(SWIM_PACE).toBeLessThanOrEqual(1.1);
+    expect(SWIM_FULL).toBeGreaterThan(SWIM_PACE); expect(SWIM_FULL).toBeLessThan(1.6);
+    expect(swimPace(1, true)).toBe(SWIM_PACE); expect(swimPace(1, true, true)).toBe(SWIM_FULL); expect(swimPace(0, true)).toBe(0);
+    for (let i = 0; i <= 20; i++) { const p = i / 20; expect(swimPace(Math.min(1, p + 0.05))).toBeGreaterThanOrEqual(swimPace(p)); }   // more push, never slower
+    // along the pool, the stick held east: about SWIM_PACE, facing east, level in the stroke
+    const s = swimmer(SWIM_AREA.x0 + 2, -7.8, 0);
+    let maxTurn = 0, lastYaw = s.yaw;
+    swimFor(s, 1, 0, SWIM_PACE, 3, q => { maxTurn = Math.max(maxTurn, Math.abs(Math.atan2(Math.sin(q.yaw - lastYaw), Math.cos(q.yaw - lastYaw)))); lastYaw = q.yaw; });
+    expect(Math.hypot(s.vx, s.vz)).toBeGreaterThan(0.9 * SWIM_PACE); expect(Math.hypot(s.vx, s.vz)).toBeLessThan(1.05 * SWIM_PACE);
+    expect(Math.abs(s.yaw - Math.PI / 2)).toBeLessThan(0.02); expect(s.mode).toBe('swim'); expect(s.lean).toBeGreaterThan(0.95);
+    expect(maxTurn).toBeLessThanOrEqual(TURN_RATE / 60 + 1e-9);                        // never a snap: TURN_RATE at most
+    // the stick at rest: still going a moment, then a stop, upright, treading
+    const x0 = s.x;
+    swimFor(s, 0, 0, 0, 0.5); expect(s.x - x0).toBeGreaterThan(0.2); expect(s.mode).toBe('swim');
+    swimFor(s, 0, 0, 0, 4); expect(Math.hypot(s.vx, s.vz)).toBeLessThan(0.02); expect(s.mode).toBe('tread'); expect(s.lean).toBeLessThan(0.02);
+    // the stroke's pace follows the speed
+    expect(strokeRate(SWIM_FULL)).toBeGreaterThan(strokeRate(SWIM_PACE)); expect(strokeRate(SWIM_PACE)).toBeCloseTo(SWIM_PACE / STROKE_LENGTH, 6);
+    expect(strokeRate(0)).toBe(STROKE_RATE.min);
+  });
+
+  it('goes in down the steps or over any other edge, and out over any wall within reach or up the steps', () => {
+    // down the steps: on foot at their head, pushing toward the water (not along the deck, not from elsewhere)
+    expect(wantsStepsIn(POOL.x0 - 0.35, -7.8, 1, 0.2)).toBe(true);
+    expect(wantsStepsIn(POOL.x0 - 0.35, -7.8, 0, 1)).toBe(false); expect(wantsStepsIn(POOL.x0 - 0.35, -7.8, -1, 0)).toBe(false);
+    expect(wantsStepsIn(POOL.x0 - 0.35, POOL.z0 + 0.2, 1, 0)).toBe(false); expect(wantsStepsIn(0, POOL.z1 + 0.4, 0, -1)).toBe(false);
+    expect(entryFor(POOL.x0 - 0.4, -7.8)).toEqual({ steps: true });
+    // « Se baigner » elsewhere: the nearest wall, from the deck's edge into the water, facing the water, the treading body clear of the wall
+    const e = entryFor(-1, -5.6);
+    if (e.steps) throw new Error('not the steps');
+    expect(e.side).toBe('s'); expect(e.edge.z).toBeGreaterThan(POOL.z1); expect(e.water.z).toBeLessThan(POOL.z1); expect(Math.cos(e.yaw)).toBeLessThan(-0.99);
+    expect(inside(bodyBox(e.water.x, e.water.z, e.yaw, 0), SWIM_AREA)).toBe(true);
+    const n = entryFor(POOL.x0 - 0.5, POOL.z0 - 0.3); if (n.steps) throw new Error('not the steps');      // a corner by the steps: the long side
+    expect(n.side).toBe('n'); expect(n.water.x).toBeGreaterThan(SWIM_AREA.x0);
+    const ea = entryFor(POOL.x1 + 0.6, -7.8); if (ea.steps) throw new Error('not the steps');
+    expect(ea.side).toBe('e'); expect(Math.sin(ea.yaw)).toBeLessThan(-0.99);
+    // out: the nearest wall (the steps' end is not one), facing it; the deck out of the water, clear of furniture
+    expect(nearestWall(0, POOL.z1 - 0.6)).toEqual({ side: 's', d: expect.closeTo(0.6, 6) });
+    expect(nearestWall(POOL.x1 - 0.7, -7.8).side).toBe('e');
+    const w = byWall('n', 0, -9, -0.4); expect(w.z).toBeCloseTo(POOL.z0 + 0.4, 6); expect(Math.cos(w.yaw)).toBeCloseTo(-1, 6);
+    const x = exitPoint(0, POOL.z1 - 0.3);
+    expect(x.z).toBeCloseTo(POOL.z1 + DECK_OUT, 6); expect(poolDistance(x.x, x.z)).toBeGreaterThan(0.3); expect(atEdge(x.x, x.z)).toBe(true);
+    expect(freeDeck('s', 0, -6.4, [])).toEqual({ x: 0, z: POOL.z1 + DECK_OUT });
+    const lounger = { x0: -0.4, x1: 0.4, z0: POOL.z1 + 0.2, z1: POOL.z1 + 1.5 }, f = freeDeck('s', 0, -6.4, [lounger])!;
+    expect(f.x < lounger.x0 - 0.3 || f.x > lounger.x1 + 0.3).toBe(true); expect(f.z).toBeGreaterThan(POOL.z1);
+    expect(CLIMB_REACH).toBeGreaterThan(footprint(0).side);                             // the treading body against a wall can always climb out there
+    // up the steps: by them, heading west, the stick pushing west
+    expect(wantsStepsOut({ x: SWIM_AREA.x0 + 1.3, z: -7.8, yaw: -Math.PI / 2 }, -1, 0)).toBe(true);
+    expect(wantsStepsOut({ x: SWIM_AREA.x0 + 1.3, z: -7.8, yaw: Math.PI / 2 }, -1, 0)).toBe(false);
+    expect(wantsStepsOut({ x: SWIM_AREA.x0 + 1.3, z: -7.8, yaw: -Math.PI / 2 }, 0, 1)).toBe(false);
+    expect(wantsStepsOut({ x: 2, z: -7.8, yaw: -Math.PI / 2 }, -1, 0)).toBe(false);
+    // swimming west by the steps, the stick held: the body stops short of the steps, where wantsStepsOut takes it out
+    const s = swimmer(0, -7.8, -Math.PI / 2, 'swim'); swimFor(s, -1, 0, SWIM_PACE, 8);
+    expect(wantsStepsOut(s, -1, 0)).toBe(true); expect(stepsZ(POOL.z0)).toBeGreaterThan(STEPS.z0);
+  });
+
+  it('gains hygiene and moral in proportion to the time in the water, at most a full swim\'s', () => {
     expect(swimGains(SWIM_SECONDS)).toEqual({ hygiene: SWIM_GAINS.hygiene, moral: SWIM_GAINS.moral, energie: SWIM_GAINS.energie });
     expect(swimGains(SWIM_SECONDS * 3)).toEqual(swimGains(SWIM_SECONDS));
     expect(swimGains(1).hygiene).toBe(Math.round(SWIM_GAINS.hygiene / 4));
     expect(swimGains(SWIM_SECONDS / 2).moral).toBe(Math.round(SWIM_GAINS.moral / 2));
+    expect(SWIM_GAINS).toEqual({ hygiene: 22, moral: 15, energie: -4 });
     expect(SWIM_SECONDS).toBeGreaterThanOrEqual(18); expect(SWIM_SECONDS).toBeLessThanOrEqual(25);
   });
 });
