@@ -45,7 +45,7 @@ export const tower: SiteBuilder = o => {
   balcony(gd, { face: 'back', at: H.z0, u0: -4.6, u1: 3.6, y: F1, depth: 1.6 });
   win(k, { face: 'right', at: H.x1, u0: -3.4, u1: 0.8, y0: F1 + 0.5, y1: F2 - 1.0 });
   // ---- the rooftop lounge: the deck, the guard round it, the pergola, the sofas; the stair head's door in the tower
-  deckFlat(k, R(H.x0, H.x1, H.z0, H.z1), Ft, p.wood);
+  deckFlat(k, R(-0.8, 7.6, -3.6, 2.6), Ft, p.wood);
   const g0 = Ft;
   rail(k, H.x0 + 0.1, H.z1 + 0.3, H.x1 + 0.4, H.z1 + 0.3, g0); rail(k, H.x1 + 0.4, H.z0 - 0.3, H.x1 + 0.4, H.z1 + 0.3, g0); rail(k, H.x0 + 0.1, H.z0 - 0.3, H.x1 + 0.4, H.z0 - 0.3, g0);
   slats(k, R(0.4, 6.0, -2.2, 1.8), Ft, { h: 2.45, pitch: 0.8 });
