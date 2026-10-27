@@ -206,6 +206,29 @@
   - the Almadies street dressing is drawn anew around the villa (the mall's way in kept open);
   - not tried on a real iPhone.
 
+## Round 2: the owner's review (27 Oct)
+**The owner, on the screenshots, the videos and the preview:** « The villa look good but it needs a main door different from the car garage door and easy access without going behind the car, the swimming is not smooth and animated at all I want freedom to move and swim, the helicopter need more realism right now it look like a toy. Save all the assets for the villa we will replicate this design to other houses to give almadies the luxurious feel. »
+
+**Decisions:**
+1. **The main entrance** (lane R2-E):
+   - A door for people of its own in the street wall, `ENTRANCE` (src/housing/villa.ts), in line with the house's front door; the sliding gate is left to the cars.
+   - A grand entrance: a framed portal higher than the wall, a pivoting door (teak and bronze, like the house's), a canopy, the house number, an intercom, lights at night; it opens for the villa's people (the owner, a renter, an invited guest) by the gate's rule, and stays shut to others.
+   - The walk from it to the front door (`ENTRY_WALK`) is a straight paved path through the garden, kept clear: no bay, car, palm, bed or bollard on it.
+2. **The swim** (lane R2-W):
+   - Free swimming: in the water the joystick moves the swimmer anywhere in the pool (held inside its walls), at a swimming pace; still, the swimmer treads water.
+   - A real animation: a swim stroke and treading water as clips built in code with the rig's pose solver (src/actors/humanoid.ts), several keys a cycle, cross-faded; the body level with the water when swimming, upright when treading; ripples and a wake.
+   - Smooth in and out: down the steps at the west end, or « Se baigner » at an edge (a short blended slide in); « Sortir de l'eau » at any edge, or up the steps.
+   - The gains, the debug hooks (`__dakar.villa.swim`) and the rule of who may swim stay as they are.
+3. **The helicopter** (lane R2-H):
+   - The proportions of a real light single-engine helicopter (no maker's model or brand): a sculpted cabin and engine fairing, tinted wraparound glazing with reflections, a tapered tail boom, a stabiliser with end plates, a shrouded or open tail rotor, a three-blade main rotor with its hub and droop, skids with cross tubes and steps, doors, vents, antennas, navigation lights, a Senegalese registration.
+   - Paint and glass that catch the light (metallic paint, glossy glass), within a phone's budget: at most 4 draw calls and 12 000 triangles.
+4. **The Almadies villa kit** (lane R2-E, after the entrance; « save all the assets »):
+   - Every piece of the villa as a named, reusable builder with its parameters (the plan, the facade and its finishes, the wall, the car gate, the main entrance, the bays, the garden, the pool, the pergola, the helipad, the helicopter, the furniture layout), so another Almadies lot can be built from it.
+   - A catalogue (`docs/kits/`) with a picture of each piece, and each piece saved as a 3D file (GLB) beside it.
+   - Building other houses from the kit is the next step, once the owner has seen it.
+
+**Lanes:** R2-E (the main entrance, then the kit), R2-W (the swim), R2-H (the helicopter); the integration owner merges, runs the acceptance (its first step now walks in by the main entrance), the pictures, the videos and the preview.
+
 ## Not in this slice
 - Helicopter flights, the airport and the jet.
 - Other villas and the Ngor residence keep their open room.

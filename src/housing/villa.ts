@@ -17,6 +17,13 @@ export const WALL_H = 2.4;
 export const GATE = { x0: 1.5, x1: 6.5, z: 11 } as const;
 /** The front yard between the gate and the house: the driveway, the two parking bays, the garden and the path to the door. */
 export const FRONT_YARD: Box = { x0: -11, x1: 11, z0: 4, z1: 11 };
+/**
+ * LD2.0-D round 2 (the owner's review, 27 Oct: « a main door different from the car garage door, and easy access without going behind the car »):
+ * the main entrance for people, a door of its own in the street wall, in line with the house's front door (FRONT_DOOR.x), the car gate (GATE) left
+ * to the cars. The walk from it to the front door (ENTRY_WALK) is kept clear: no bay, car, palm, bed or bollard on it.
+ */
+export const ENTRANCE = { x0: -3.8, x1: -2.2, z: 11 } as const;
+export const ENTRY_WALK: Box = { x0: -4.0, x1: -2.0, z0: 4, z1: 11 };
 /** Two parking bays side by side (2.6 × 5.4 m), a car facing the house (yaw π: toward −z). */
 export const BAYS = [{ x: 3.1, z: 7.3, yaw: Math.PI }, { x: 6.1, z: 7.3, yaw: Math.PI }] as const;
 
