@@ -49,7 +49,7 @@ function makeSite(o: ShowOptions): Site {
   // the prototype's lot rect moved to the origin region so the camera maths stay simple: the plan's frame needs only the rect and the facing
   const { w, d } = extentOf(proto), rect = { x0: -w / 2, x1: w / 2, z0: -d / 2, z1: d / 2 };
   return { ...proto, kind: o.kind, variant: idx, rect, facing: o.facing ?? 'south', mirror: o.mirror ?? false, storeys: o.storeys ?? proto.storeys, palette: o.palette ?? proto.palette,
-    name: o.name ?? (o.kind === 'hotel' || o.kind === 'residence' ? 'HÔTEL DES ALMADIES' : undefined), number: o.number ?? '12', gate: o.gate ?? proto.gate, id: `viewer:${o.kind}:${idx}` };
+    name: o.name ?? proto.name ?? (o.kind === 'hotel' || o.kind === 'residence' ? 'HÔTEL DES ALMADIES' : undefined), number: o.number ?? '12', gate: o.gate ?? proto.gate, id: `viewer:${o.kind}:${idx}` };
 }
 function show(o: ShowOptions) {
   if (current) { scene.remove(current); current.traverse(x => { const m = x as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); }); current = null; }
@@ -57,7 +57,7 @@ function show(o: ShowOptions) {
   const site = makeSite(o), g = new THREE.Group(); current = g;
   const batches = { plain: new Batch(), pave: new Batch(), leaves: new Batch(), trunks: new Batch(), water: new Batch(), bulbs: new Batch(), glass: new Batch(), glassDark: new Batch(), fac: new Batch(), metal: new Batch() };
   const kit: DistrictKit = { lite: !!o.lite, ...batches, metalMat: mats.metal, pool: () => {}, sign: (text, bg, fg, x, y, z, yaw, w = 6, h = 1.5) => {
-    const { width, height } = signCanvasSize(w, h), m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: signTexture(text, bg, fg, width, height), emissive: 0xffffff, emissiveIntensity: o.night ? 0.8 : 0 }));
+    const { width, height } = signCanvasSize(w, h), tex = signTexture(text, bg, fg, width, height), m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: o.night ? 0.8 : 0 }));
     m.position.set(x, y, z); m.rotation.y = yaw; g.add(m);
   } };
   const d = siteDraw(kit, site), v = variantsFor(site.kind, sizeOf(site))[site.variant % variantsFor(site.kind, sizeOf(site)).length];
