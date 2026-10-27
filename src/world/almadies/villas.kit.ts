@@ -31,6 +31,8 @@ export interface Ctx {
   /** Storeys (2 or 3), the floor tops (lv), the lite preset. */
   n: number; lite: boolean;
   rng: () => number;
+  /** A deterministic jitter of ±`a`, from the site's id: the same design on two lots differs a little (a palm's place and size, the bougainvillea's, a tree). */
+  j(a: number): number;
 }
 
 /** The mirror image of a draw: every x negated (`rot` and the rectangles follow). */
@@ -50,8 +52,9 @@ export function mirrored(d: SiteDraw): SiteDraw {
   return m;
 }
 export function ctx(o: SiteDraw, opt: { gateW?: number } = {}): Ctx {
+  const rng = siteRng(o, 'design');
   const flip = o.site.gate === 'left', gate = o.site.gate === 'centre' ? 'centre' : 'right', gx = gateX(o.w, gate), gateW = opt.gateW ?? 4.4;
-  return { d: flip ? mirrored(o) : o, o, flip, gate, gx, g0: gx - gateW / 2, g1: gx + gateW / 2, gateW, n: Math.max(2, Math.min(3, o.site.storeys)), lite: o.lite, rng: siteRng(o, 'design') };
+  return { d: flip ? mirrored(o) : o, o, flip, gate, gx, g0: gx - gateW / 2, g1: gx + gateW / 2, gateW, n: Math.max(2, Math.min(3, o.site.storeys)), lite: o.lite, rng, j: a => (rng() * 2 - 1) * a };
 }
 /** The boundary: the shared `perimeter` in the design's arrangement. */
 export function boundary(k: Ctx, o: Parameters<typeof perimeter>[1] & { bloom?: number[] } = {}) {
@@ -153,13 +156,11 @@ export function lantern(k: Ctx, x: number, z: number, h = 0.7) {
   d.box(d.bulbs, 0.12, 0.1, 0.12, x, GROUND + h, z, d.c.bulb);
   if (!k.lite) d.light(x, z, 1.8, 0.18);
 }
-/** A wall light: a small lit box on a vertical face at (x, y, z), the wall's side given by `face`. */
-export function sconce(k: Ctx, face: Face, x: number, y: number, z: number) {
-  const { d } = k, n = face === 'street' ? [0, 1] : face === 'back' ? [0, -1] : face === 'right' ? [1, 0] : [-1, 0];
-  d.box(d.plain, n[0] ? 0.08 : 0.26, 0.32, n[0] ? 0.26 : 0.08, x + n[0] * 0.04, y, z + n[1] * 0.04, d.p.frame);
-  d.box(d.bulbs, n[0] ? 0.03 : 0.16, 0.2, n[0] ? 0.16 : 0.03, x + n[0] * 0.09, y + 0.06, z + n[1] * 0.09, d.c.bulb);
+/** A line of light under a slab's edge (the flagship's soffit light), along x: from `x0` to `x1` at the slab's front edge `z`, `y` the slab's top. One box on the lamp batch. */
+export function edgeLight(k: Ctx, x0: number, x1: number, z: number, y: number) {
+  const { d } = k;
+  d.box(d.bulbs, x1 - x0, 0.04, 0.05, (x0 + x1) / 2, y - T_SLAB - 0.03, z - 0.06, d.c.bulb);
 }
-
 // ------------------------------------------------------------------------------------------------ the house number
 /** Seven-segment strokes of a digit: a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle. */
 const DIGIT: Record<string, string> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg' };
@@ -167,7 +168,7 @@ const DIGIT: Record<string, string> = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'ab
  * A plaque on the street face of a wall or a pillar: a dark box (`w` × `h`) with the number in two-triangle strokes, read from the street whatever the
  * frame (the digits' own order and the plaque's yaw follow the site's frame, not the design's mirror). `x`, `z`: the plaque's centre on the face; `y` its middle.
  */
-export function plaque(k: Ctx, text: string, x: number, y: number, z: number, o: { w?: number; h?: number; face?: Face } = {}) {
+export function plaque(k: Ctx, text: string, x: number, y: number, z: number, o: { w?: number; h?: number } = {}) {
   const { d, o: s } = k, w = o.w ?? 0.46, h = o.h ?? 0.26, f = s.f, X = k.flip ? -x : x;
   d.box(d.plain, w, h, 0.05, x, y - h / 2, z, s.c.plaque);
   if (k.lite) return;
@@ -238,10 +239,8 @@ export function rail(k: Ctx, x0: number, z0: number, x1: number, z1: number, y: 
 export function post(k: Ctx, x: number, z: number, y1: number, y0 = GROUND, s = 0.2, col?: number) { k.d.box(k.d.plain, s, y1 - y0, s, x, y0, z, col ?? k.d.p.frame); }
 /** A roof deck: a flat quad of wood on a roof's top. */
 export function deckFlat(k: Ctx, r: PlanRect, y: number, col?: number) { const { d } = k; d.flat(d.plain, r.x1 - r.x0, r.z1 - r.z0, (r.x0 + r.x1) / 2, y + 0.015, (r.z0 + r.z1) / 2, col ?? d.p.wood); }
-/** Grow a rectangle. */
-export const grow = (r: PlanRect, e: number): PlanRect => ({ x0: r.x0 - e, x1: r.x1 + e, z0: r.z0 - e, z1: r.z1 + e });
 
-// ------------------------------------------------------------------------------------------------ the guard's glass, cost marks
+// ------------------------------------------------------------------------------------------------ the guard's glass
 /** A pale glass for guards and balustrades (the windows' glass is dark: a guard in it would read as a dark apron): the palette's glass lightened. */
 export function guardGlass(c: number): number {
   const m = (a: number, b: number) => Math.round(a + (b - a) * 0.72);
@@ -254,14 +253,6 @@ export function lightGuard(k: Ctx): SiteDraw {
   g.glass = k.d.plain;                                              // (the guards must not glow with the windows at night: they go in the plain batch)
   return g;
 }
-/** Dev only: a scratch test sets `globalThis.__markCost` to read what each part of a design costs. */
-export function mark(k: Ctx, label: string) {
-  const h = (globalThis as { __markCost?: (label: string, tris: number) => void }).__markCost;
-  if (!h) return;
-  const b = k.o as unknown as Record<string, { triangles(): number }>;
-  h(label, ['plain', 'pave', 'leaves', 'trunks', 'water', 'bulbs', 'glass', 'fac', 'metal'].reduce((n, key) => n + b[key].triangles(), 0));
-}
-
 // ------------------------------------------------------------------------------------------------ cheaper pergolas, slatted slabs, garage doors
 /**
  * A pergola on `r` at floor `y`: slim posts at the corners, two beams along x and slats across them every `pitch` m (one piece); lighter than the

@@ -86,6 +86,14 @@ describe('the house designs', () => {
         expect(r.kit.batches.pave.count, 'a drive and a path').toBeGreaterThanOrEqual(2);
       }
     });
+    it('stays within its budget on any lot: the site id only jitters a palm, a tree, the bougainvillea (30 ids, both storeys, every gate)', () => {
+      let max = 0;
+      for (const storeys of [2, 3]) for (let k = 0; k < 30; k++) for (const gate of ['right', 'left', 'centre'] as const) {
+        const s = { ...siteWith('house', { gate, storeys, mirror: k % 2 === 0, facing: k % 3 === 0 ? 'north' : 'south' }), id: `almadies:${k % 4},${k % 3}:${k}` };
+        max = Math.max(max, drawSite(s, v).tris);
+      }
+      expect(max).toBeLessThanOrEqual(TRI_CAP.house.S!);
+    });
     it('wears any palette: its render, slab, stone, wood and frame colours come from the site\'s palette, never hard-coded', () => {
       const seen = PAL.map(p => ({ p, cols: coloursOf(drawSite(siteWith('house', { palette: p, storeys: 2 }), v).kit.batches), pal: PALETTES[p] }));
       for (const { p, cols, pal } of seen) for (const k of ['render', 'slab', 'stone', 'wood', 'frame'] as const) expect(near(cols, pal[k]), `${p}.${k}`).toBe(true);

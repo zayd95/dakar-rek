@@ -77,6 +77,14 @@ describe('the villa designs', () => {
         expect(r.canopies.length, 'a palm\'s canopy for the camera').toBeGreaterThanOrEqual(1);
       }
     });
+    it('stays within its budget on any lot: the site id only jitters a palm, a tree, the bougainvillea (30 ids, both storeys, every gate)', () => {
+      let max = 0;
+      for (const storeys of [2, 3]) for (let k = 0; k < 30; k++) for (const gate of ['right', 'left', 'centre'] as const) {
+        const s = { ...siteWith('villa', { gate, storeys, mirror: k % 2 === 0, facing: k % 3 === 0 ? 'north' : 'south' }), id: `almadies:${k % 4},${k % 3}:${k}` };
+        max = Math.max(max, drawSite(s, v).tris);
+      }
+      expect(max).toBeLessThanOrEqual(TRI_CAP.villa.S!);
+    });
     it('wears any palette: its render, slab, stone, wood and frame colours come from the site\'s palette, never hard-coded', () => {
       const seen = PAL.map(p => ({ p, cols: coloursOf(drawSite(siteWith('villa', { palette: p, storeys: 2 }), v).kit.batches), pal: PALETTES[p] }));
       for (const { p, cols, pal } of seen) for (const k of ['render', 'slab', 'stone', 'wood', 'frame'] as const) expect(near(cols, pal[k]), `${p}.${k}`).toBe(true);
