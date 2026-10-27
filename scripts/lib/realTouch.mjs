@@ -32,21 +32,24 @@ export async function realTouch(page) {
 export const STICK = 50;
 
 /**
- * The driving pad's parts in page pixels (src/transport/ridePad.ts): the steering rocker under the left thumb (the thumb's place on it sets the wheel: the rim ±1, never less than 0.4 once it is
- * down, nothing in the middle gap) and the tall gas pedal under the right (the lower the toe, the more throttle; to the floor, the boosted range).
+ * The driving pad's parts in page pixels (src/transport/ridePad.ts): the steering pad under the left thumb (a joystick on its side: the thumb slides, the wheel follows how far) and the tall
+ * gas pedal under the right (the lower the toe, the more throttle; to the floor, the boosted range).
  */
 export async function padRig(page, t) {
   const b = await page.evaluate(() => { const r = document.querySelector('#steerpad').getBoundingClientRect(), g = document.querySelector('#ridepad .rp-gas').getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, half: r.width / 2, gx: g.left + g.width / 2, gtop: g.top, gh: g.height }; });
   return {
     ...b,
-    /** A finger on the rocker for a wheel of `s` (−1 … 1): lifted for a small one, a half-and-half press for a gentle one, the real place on the rocker for a firm one. Call it again as `s` changes. */
+    /**
+     * A finger on the steering pad (a joystick on its side: src/transport/ridePad.ts): it lands in the middle and SLIDES, the wheel follows how far it has slid (56 px: full lock), lifted for no
+     * wheel. Call it again as `s` (−1 … 1) changes.
+     */
     rocker(id) {
-      let on = false, tog = 0;
+      let on = false;
       return async s => {
-        const a = Math.abs(s), want = a >= 0.4 || (a >= 0.12 && tog++ % 2 === 0);
-        if (!want) { if (on) { await t.up(id); on = false; } return; }
-        const m = Math.max(0.08, Math.min(0.97, (Math.max(0.4, a) - 0.4) / 0.6)), x = b.cx + Math.sign(s) * m * b.half;
-        if (!on) { await t.down(id, x, b.cy); on = true; } else await t.move(id, x, b.cy, 1);
+        const a = Math.abs(s);
+        if (a < 0.04) { if (on) { await t.up(id); on = false; } return; }
+        const x = b.cx + Math.sign(s) * (0.06 + 0.94 * Math.pow(Math.min(1, a), 1 / 1.15)) * 56;           // the inverse of rockerSteer
+        if (!on) { await t.down(id, b.cx, b.cy); on = true; await t.move(id, x, b.cy, 3); } else await t.move(id, x, b.cy, 1);
       };
     },
     /** A finger on the gas pedal: off, on at the heel's half (cruising: no boost), `boost` true (the toe on the floor) or a number (how far down the pedal, 0 heel … 1 toe). Call it again as the wish changes. */

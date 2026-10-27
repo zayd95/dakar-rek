@@ -42,16 +42,21 @@ const dom = await d(() => {
   return { pad: pad ? { vis: vis(pad), ...r(pad) } : null, joy: joy ? vis(joy) : null, gas: { ...r(gas), bg: getComputedStyle(gas).backgroundImage !== 'none', radius: getComputedStyle(gas).borderTopLeftRadius }, brake: { ...r(brake), bg: getComputedStyle(brake).backgroundImage !== 'none' }, vw: innerWidth };
 });
 await shot('pad-idle');
-check('the steering rocker is on the left and the joystick is gone while driving', dom.pad?.vis && dom.pad.w > 140 && dom.pad.x < 40 && dom.joy === false, JSON.stringify({ pad: dom.pad, joy: dom.joy }));
+check('the steering pad is on the left and the joystick is gone while driving', dom.pad?.vis && dom.pad.w > 140 && dom.pad.x < 40 && dom.joy === false, JSON.stringify({ pad: dom.pad, joy: dom.joy }));
 check('the pedals are pedals: upright, the gas taller than the brake, in ribbed rubber (not round buttons)', dom.gas.h > dom.gas.w * 1.5 && dom.brake.h > dom.brake.w * 1.3 && dom.gas.h > dom.brake.h && dom.gas.bg && dom.brake.bg && !/^(50|99)/.test(dom.gas.radius), JSON.stringify({ gas: dom.gas, brake: dom.brake }));
-check('the rocker and the pedals do not overlap on a 390 px phone', dom.pad.x + dom.pad.w < dom.brake.x - 2, JSON.stringify({ padEnd: dom.pad.x + dom.pad.w, brakeX: dom.brake.x }));
+check('the pad and the pedals do not overlap on a 390 px phone', dom.pad.x + dom.pad.w < dom.brake.x - 2, JSON.stringify({ padEnd: dom.pad.x + dom.pad.w, brakeX: dom.brake.x }));
 
 const R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5);
 const brk = await t.centre('#ridepad .rp-brake');
 const stop = async () => { await gasP(false); await rocker(0); await t.down(4, brk.x, brk.y); await page.waitForFunction(() => Math.abs(window.__dakar.teranga.at()?.speed ?? 0) < 0.3, null, T).catch(() => {}); await t.up(4); };
+// a thumb that only rests on a side of the pad does not steer (it is a joystick, not two buttons): the car holds its heading while a finger sits there
+await gasP(true, 0.7); await sleep(2500);
+{
+  const yA = (await AT()).yaw; await t.down(2, R.cx + 70, R.cy); await sleep(1800); const yB = (await AT()).yaw; await t.up(2);
+  check('a thumb resting on the right side of the pad does not steer: it has to slide', Math.abs(wrap(yB - yA)) < 0.1, JSON.stringify({ yA, yB }));
+}
 // steering: gas a little, the right half of the rocker turns the car right (its yaw falls), then the left half turns it left (it rises). The headless clock is slower than the game's:
 // each turn is held until the heading has really moved (or a long time has gone by), never for a fixed second.
-await gasP(true, 0.7); await sleep(2500);
 const turn = async dir => {
   const from = (await AT()).yaw; await rocker(dir);
   const done = await page.waitForFunction(([f, sg]) => { const y = window.__dakar.teranga.at().yaw; return -sg * Math.atan2(Math.sin(y - f), Math.cos(y - f)) > 0.2; }, [from, dir], { timeout: 25000 }).then(() => true).catch(() => false);
@@ -60,9 +65,9 @@ const turn = async dir => {
 const right = await turn(1); await shot('pad-steered-right');
 const left = await turn(-1); await shot('pad-steered-left');
 await sleep(500); const y4 = (await AT()).yaw, y5 = await (async () => { await sleep(900); return (await AT()).yaw; })();
-check('the right half of the rocker turns the car to the right', right.done && wrap(right.to - right.from) < -0.15, JSON.stringify(right));
-check('the left half turns it to the left', left.done && wrap(left.to - left.from) > 0.15, JSON.stringify(left));
-check('let go of the rocker, the wheel comes back: the car holds its heading', Math.abs(wrap(y5 - y4)) < 0.12, JSON.stringify({ y4, y5 }));
+check('sliding the thumb to the right turns the car to the right', right.done && wrap(right.to - right.from) < -0.15, JSON.stringify(right));
+check('sliding it to the left turns the car to the left', left.done && wrap(left.to - left.from) > 0.15, JSON.stringify(left));
+check('let go of the pad, the wheel comes back: the car holds its heading', Math.abs(wrap(y5 - y4)) < 0.12, JSON.stringify({ y4, y5 }));
 await stop();
 // throttle: the heel of the gas pedal is slower than the toe on the floor
 await d(() => window.__dakar.teranga.place(-110, 3.2, Math.PI / 2)); await sleep(500);

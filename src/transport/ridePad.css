@@ -5,29 +5,27 @@ body.ridepad #ridepad { display: flex; }
 #ridepad .rp-top { flex-wrap: wrap; }
 #ridepad button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; border: 0; border-radius: 999px; color: #fff; font: 800 15px/1.1 system-ui, sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); box-shadow: 0 3px 12px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(255, 255, 255, .35); }
 /* the pedals are pedals, upright and rounded like the ones in a car, ribbed for the toe: the accelerator in green (the lower the thumb, the more throttle: a light fills it from the toe up), the brake in red, a little shorter */
-#ridepad .rp-gas, #ridepad .rp-brake { position: relative; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 10px; overflow: hidden; color: #fff; letter-spacing: .06em; text-transform: uppercase; font-size: 10px; transform-origin: 50% 100%;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .5); box-shadow: 0 5px 12px rgba(0, 0, 0, .4), inset 0 0 0 2px rgba(255, 255, 255, .4), inset 0 -12px 16px rgba(0, 0, 0, .18); }
+#ridepad .rp-gas, #ridepad .rp-brake { position: relative; overflow: hidden; padding: 0; transform-origin: 50% 100%; box-shadow: 0 5px 12px rgba(0, 0, 0, .4), inset 0 0 0 2px rgba(255, 255, 255, .4), inset 0 -12px 16px rgba(0, 0, 0, .18); }
 #ridepad .rp-gas { width: 62px; height: 104px; border-radius: 20px 20px 14px 14px / 26px 26px 14px 14px; transform: perspective(300px) rotateX(7deg);
   background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .13) 0 3px, rgba(0, 0, 0, 0) 3px 12px), linear-gradient(180deg, #34d36b, #16a34a 70%, #15803d); }
 #ridepad .rp-brake { width: 58px; height: 86px; border-radius: 18px 18px 13px 13px / 22px 22px 13px 13px; transform: perspective(300px) rotateX(7deg);
   background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .13) 0 3px, rgba(0, 0, 0, 0) 3px 12px), linear-gradient(180deg, #ef4444, #dc2626 70%, #b91c1c); }
 #ridepad .rp-gas::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--p, 0) * 100%); background: linear-gradient(0deg, rgba(255, 255, 255, .42), rgba(255, 255, 255, 0)); opacity: 0; transition: opacity .08s; pointer-events: none; }
 #ridepad .rp-gas.down::before { opacity: 1; }
-#ridepad .rp-gas .rp-lbl, #ridepad .rp-brake .rp-lbl { position: relative; font-weight: 800; }
-#ridepad .rp-gas .rp-lbl { font-size: 9px; letter-spacing: .02em; }
 /* a car: bigger pedals, well apart, both under the one thumb */
 body.ridepad-car #ridepad .rp-gas { width: 70px; height: 120px; }
 body.ridepad-car #ridepad .rp-brake { width: 64px; height: 98px; }
 #ridepad button.down { filter: brightness(1.12); }
 #ridepad .rp-gas.down, #ridepad .rp-brake.down { transform: perspective(300px) rotateX(16deg) scale(.96); box-shadow: 0 1px 4px rgba(0, 0, 0, .35), inset 0 0 0 3px rgba(255, 255, 255, .75); }
-/* the steering rocker (left thumb): a wide pill, left half and right half; the half the thumb is on lights up and the arrow follows the wheel (--u, −1 … 1, set each frame) */
+/* the steering pad (left thumb), a joystick on its side: a wide pill with an arrow each end and a knob that follows the wheel (--u, −1 … 1, set each frame); the thumb slides it, it never has to press a side */
 #steerpad { display: none; position: absolute; left: calc(14px + var(--sa-l)); bottom: calc(22px + var(--sa-b)); z-index: 6; width: min(216px, calc(100vw - 14px - var(--sa-l) - 14px - var(--sa-r) - 176px - 8px)); height: 88px; border-radius: 44px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; overflow: hidden; --u: 0;
   background: linear-gradient(180deg, rgba(31, 41, 55, .82), rgba(17, 24, 39, .88)); box-shadow: 0 4px 14px rgba(0, 0, 0, .4), inset 0 0 0 2px rgba(255, 255, 255, .3); }
 body.ridepad #steerpad { display: block; }
 #steerpad i { position: absolute; top: 0; bottom: 0; width: 50%; opacity: .9; }
 #steerpad .sp-l { left: 0; background: no-repeat 50% 50% / 34px 34px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15 4 6 12l9 8' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
 #steerpad .sp-r { right: 0; background: no-repeat 50% 50% / 34px 34px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 4 9 8-9 8' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
-#steerpad.l .sp-l, #steerpad.r .sp-r { background-color: rgba(251, 191, 36, .32); }
+#steerpad.held { box-shadow: 0 4px 14px rgba(0, 0, 0, .4), inset 0 0 0 3px rgba(255, 255, 255, .6); }
+#steerpad.l .sp-l, #steerpad.r .sp-r { background-color: rgba(251, 191, 36, .22); }
 /* the knob: where the thumb has taken the wheel (--u, −1 … 1) */
 #steerpad .sp-k { position: absolute; top: 50%; left: calc(50% + var(--u) * (50% - 46px)); width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(255, 255, 255, .94); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); pointer-events: none; }
 #steerpad.l .sp-k, #steerpad.r .sp-k { background: #fde68a; }

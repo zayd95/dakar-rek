@@ -1,15 +1,20 @@
 /**
- * Touch driving controls. The LEFT thumb has the steering pad (`#steerpad`: a wide rocker, left half and right half; the further out the thumb, the more it turns, never
- * less than 40 % once it is down, and the wheel follows smoothly). The RIGHT thumb has two pedals shaped as pedals: the wide flat « Frein » (brakes; a car held at a standstill
- * backs up gently, a subtle « R » shows only while it really reverses) and the tall ribbed « Accélérer » (the lower the toe, the more throttle: heel half-way, toe down to the floor
- * and it opens the boosted speed range). The joystick is not used while driving. « Descendre » shows when the vehicle is stopped, every vehicle has a « Vue » button for its cameras.
+ * Touch driving controls. The LEFT thumb has the steering pad (`#steerpad`): a joystick laid on its side. The thumb lands anywhere on it and SLIDES left or right, never pressing a
+ * side: the wheel follows how far it has slid from where it landed (`rockerSteer`), the knob follows the wheel, and lifting the thumb brings it back to the middle. The RIGHT thumb
+ * has two upright pedals, no words on them: the red brake (a car held at a standstill backs up gently, a subtle « R » shows only while it really reverses) and the taller green
+ * accelerator (the lower the toe, the more throttle: heel half-way, toe down to the floor and it opens the boosted speed range). The joystick is not used while driving. « Descendre » shows when the vehicle is stopped, every vehicle has a « Vue » button for its cameras.
  * One pad for the page; the module that is being driven takes it (`show`) and gives it back (`hide`). Desktop drivers keep the keys (W / S, Shift for « Accélérer »).
  */
 import './ridePad.css';
 
 type Owner = object;
-/** The wheel for a thumb at `u` on the steering rocker (−1 the left rim … 1 the right rim): nothing in the middle gap, then never less than 0.4, the rim 1. */
-export const rockerSteer = (u: number) => { const m = Math.min(1, Math.abs(u)); return m < 0.06 ? 0 : Math.sign(u) * (0.4 + 0.6 * m); };
+/** How far the thumb slides (px, sideways from where it landed) for full lock: a thumb's stroke, well inside the pad. */
+export const STEER_REACH = 56;
+/**
+ * The wheel for a thumb that has slid `u` (−1 … 1: the displacement over STEER_REACH, left negative) from where it landed, as a joystick's: nothing while it only rests (a small dead zone),
+ * then the wheel follows the finger, a little finer near the middle (a gentle curve), full lock at the end of the stroke.
+ */
+export const rockerSteer = (u: number) => { const m = Math.min(1, Math.abs(u)), k = Math.max(0, (m - 0.06) / 0.94); return k === 0 ? 0 : Math.sign(u) * k ** 1.15; };
 /** The throttle asked by a toe at `f` down the gas pedal (0 the heel … 1 the toe): from 0.35, and from BOOST_AT the toe is on the floor. */
 export const gasPressure = (f: number) => 0.35 + 0.65 * Math.max(0, Math.min(1, f));
 /** The toe on the floor (a throttle from this up) for this long (s) opens the boosted speed range. */
@@ -26,7 +31,7 @@ let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLBut
 /** An action another module offers at the wheel where the vehicle stands (LD2.0-D: « Garer à la villa »), shown above « Descendre ». */
 let extraAct: { label: string; run(): void } | null = null;
 /** The steering rocker and the pedal pressure: what the thumbs ask for (raw) and what the car is given (smoothed, one step a frame in `tick`). */
-let steerEl: HTMLDivElement | null = null, padId = -1, padTarget = 0, padSteer = 0, gasRaw = 0.7, gasSm = 0, gasHeld = 0;
+let steerEl: HTMLDivElement | null = null, padId = -1, padX0 = 0, padTarget = 0, padSteer = 0, gasRaw = 0.7, gasSm = 0, gasHeld = 0;
 let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null, onHorn: ((on: boolean) => void) | null = null, onRadio: (() => void) | null = null;
 /** What the pad's own buttons count (the on-device diagnostics: whether a thumb's touch reached the Klaxon button at all). */
 const seen = { hornDown: 0, hornUp: 0, hornCancel: 0 };
@@ -69,7 +74,7 @@ export const ridePad = {
     const mk = (into: HTMLElement, cls: string, label: string) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; into.appendChild(b); return b; };
     extraB = mk(top, 'rp-extra', ''); offB = mk(top, 'rp-off', 'Descendre'); hornB = mk(top, 'rp-horn', 'Klaxon'); radioB = mk(top, 'rp-radio', '📻'); radioB.setAttribute('aria-label', 'Radio : station suivante'); viewB = mk(top, 'rp-view', 'Vue');
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
-    for (const b of [brakeB, gasB]) { const t = b.textContent ?? ''; b.textContent = ''; const l = document.createElement('span'); l.className = 'rp-lbl'; l.textContent = t; b.appendChild(l); }
+    for (const [b, name] of [[brakeB, 'Frein'], [gasB, 'Accélérer']] as const) { b.textContent = ''; b.setAttribute('aria-label', name); }   // no words on the pedals: they are pedals
     const rb = document.createElement('div'); rb.className = 'rp-r'; rb.textContent = 'R'; rb.setAttribute('aria-hidden', 'true'); pedals.insertBefore(rb, brakeB);   // shown only while the vehicle really reverses
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void, count?: (what: 'down' | 'up' | 'cancel') => void) => {
       const up = (e: Event) => { if (e.type === 'pointerup') count?.('up'); else if (e.type === 'pointercancel') count?.('cancel'); set(false); b.classList.remove('down'); };   // lostpointercapture follows every up: not counted
@@ -81,22 +86,21 @@ export const ridePad = {
     // the gas pedal is pressed by the toe: the lower on the pedal the thumb is, the more throttle (the heel half-way, the floor opens the boost)
     const gasAt = (e: PointerEvent) => { const r = gasB.getBoundingClientRect(); gasRaw = gasPressure((e.clientY - r.top) / Math.max(1, r.height)); gasB.style.setProperty('--p', gasRaw.toFixed(2)); };
     gasB.addEventListener('pointerdown', gasAt); gasB.addEventListener('pointermove', e => { if (this.gas) gasAt(e); });
-    // the steering rocker: left half and right half under the left thumb; where the thumb is on it (centre 0, the outer edges ±1) sets how far the wheel turns
+    // the steering pad, a joystick on its side: the thumb lands anywhere on it and slides; how far it has slid from where it landed sets the wheel
     steerEl = document.createElement('div'); steerEl.id = 'steerpad'; steerEl.setAttribute('aria-hidden', 'true');
     steerEl.innerHTML = '<i class="sp-l"></i><i class="sp-r"></i><b class="sp-k"></b>';
     const steerAt = (e: PointerEvent) => {
-      const r = steerEl!.getBoundingClientRect(), u = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-      padTarget = rockerSteer(u);
-      steerEl!.classList.toggle('l', padTarget < 0); steerEl!.classList.toggle('r', padTarget > 0);
+      padTarget = rockerSteer((e.clientX - padX0) / STEER_REACH);
+      steerEl!.classList.toggle('l', padTarget < -0.05); steerEl!.classList.toggle('r', padTarget > 0.05);
     };
-    const steerEnd = (e: PointerEvent) => { if (e.pointerId !== padId) return; padId = -1; padTarget = 0; steerEl!.classList.remove('l', 'r'); };
-    steerEl.addEventListener('pointerdown', e => { e.preventDefault(); if (padId >= 0) return; padId = e.pointerId; try { steerEl!.setPointerCapture?.(e.pointerId); } catch { /* a synthetic pointer */ } steerAt(e); });
+    const steerEnd = (e: PointerEvent) => { if (e.pointerId !== padId) return; padId = -1; padTarget = 0; steerEl!.classList.remove('l', 'r', 'held'); };
+    steerEl.addEventListener('pointerdown', e => { e.preventDefault(); if (padId >= 0) return; padId = e.pointerId; padX0 = e.clientX; padTarget = 0; steerEl!.classList.add('held'); try { steerEl!.setPointerCapture?.(e.pointerId); } catch { /* a synthetic pointer */ } });
     steerEl.addEventListener('pointermove', e => { if (e.pointerId === padId) steerAt(e); });
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) steerEl.addEventListener(t, steerEnd);
     steerEl.addEventListener('contextmenu', e => e.preventDefault());
     hold(hornB, on => { this.horn = on; onHorn?.(on); }, what => { if (what === 'down') seen.hornDown++; else if (what === 'up') seen.hornUp++; else seen.hornCancel++; });
     // a touch the system takes away (a call, the app switcher, a banner) sends no « up » to a pedal under the thumb: everything is let go, the horn included, rather than left on
-    const letGo = () => { this.gas = false; this.brake = false; padId = -1; padTarget = 0; steerEl?.classList.remove('l', 'r'); if (this.horn) { this.horn = false; onHorn?.(false); } gasB.classList.remove('down'); brakeB.classList.remove('down'); hornB.classList.remove('down'); };
+    const letGo = () => { this.gas = false; this.brake = false; padId = -1; padTarget = 0; steerEl?.classList.remove('l', 'r', 'held'); if (this.horn) { this.horn = false; onHorn?.(false); } gasB.classList.remove('down'); brakeB.classList.remove('down'); hornB.classList.remove('down'); };
     window.addEventListener('blur', letGo); document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
     // taps fire on release of the same button, so a tap with the second thumb works while the first one holds the gas (a browser may not synthesise a click then)
     const tap = (b: HTMLButtonElement, fn: () => void) => {
@@ -139,7 +143,7 @@ export const ridePad = {
     if (owner !== by) return;
     if (this.horn) onHorn?.(false);
     owner = null; onDescend = null; onView = null; onHorn = null; onRadio = null; extraAct = null; this.gas = false; this.brake = false; this.horn = false;
-    padId = -1; padTarget = 0; padSteer = 0; gasSm = 0; gasHeld = 0; steerEl?.classList.remove('l', 'r'); steerEl?.style.setProperty('--u', '0');
+    padId = -1; padTarget = 0; padSteer = 0; gasSm = 0; gasHeld = 0; steerEl?.classList.remove('l', 'r', 'held'); steerEl?.style.setProperty('--u', '0');
     document.body.classList.remove('ridepad', 'ridepad-car', 'ridepad-radio'); root?.classList.remove('stopped', 'reversing', 'extra');
     gasB?.classList.remove('down'); brakeB?.classList.remove('down'); hornB?.classList.remove('down');
   },
