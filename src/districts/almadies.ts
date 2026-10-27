@@ -11,8 +11,8 @@ import {
 } from './almadiesRules';
 
 /**
- * Almadies · Ngor, M4 « One Evening Out » (docs/districts/M4-ALMADIES.md): Awa Sy keeps the house at the Terrasse de Ngor (src/venues/rooftop.ts) and
- * sends the guest on to La Vague (src/venues/club.ts). This module stands her on the terrace, speaks for her, remembers the evening through the
+ * Almadies · Ngor, M4 « One Evening Out » (docs/districts/M4-ALMADIES.md): Awa Sy hosts the independent Terrasse de Ngor on the Almadies hospitality strip (src/venues/rooftop.ts)
+ * and sends the guest on to La Vague (src/venues/club.ts). This module stands her on the terrace, speaks for her, remembers the evening through the
  * activities' own counters, and shows one card when the evening is over. The meal, the club entry and the dance are the existing activities, unchanged.
  */
 const LOOK: PersonLook = { skin: 0x5b3420, style: 'dress', top: 0x0f6f8f, pattern: 'wax', accent: 0xf2d38a, female: true, hat: 'headwrap', hatColor: 0xf2d38a, shoes: 0x3a2a1e };

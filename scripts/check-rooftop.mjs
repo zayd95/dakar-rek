@@ -1,4 +1,4 @@
-// Rooftop restaurants/lounges (Plateau, Corniche, Almadies/Ngor): the stair door, the open-air terrace, the bar, the menu, leaving.
+// Rooftop restaurants/lounges: the authored Almadies hospitality frontage, plus the existing Plateau/Corniche facade placements; then terrace, bar, menu and leaving.
 // Usage: node scripts/check-rooftop.mjs [baseUrl] [outDir]   (localhost preview: ?argent= is honoured there)
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -18,7 +18,9 @@ try {
     await d(h => { window.__dakar.setHour(18); window.__dakar.teleport(h); }, hub);
     await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.rooftop.info()?.hub === h, hub, T).catch(() => {});
     const info = await d(() => window.__dakar.rooftop.info());
-    check(`${hub}: a rooftop door exists in the facade of a tall building`, !!info, JSON.stringify(info)?.slice(0, 200));
+    const location = hub === 'almadies' ? 'dedicated hospitality frontage' : 'facade of a tall building';
+    const authoredAlmadiesSite = hub !== 'almadies' || (!!info && Math.abs(info.door.x + 30) < 0.1 && Math.abs(info.door.z + 105.1) < 0.1);
+    check(`${hub}: a rooftop door exists at the ${location}`, !!info && authoredAlmadiesSite, JSON.stringify(info)?.slice(0, 200));
     check(`${hub}: it is a ${info.kind}, neither a gargote nor a maïga`, /rooftop/.test(info.door.id) && !/gargote|maiga/.test(info.door.id) && info.menu.length >= 4);
     // walk up to the door: « Entrer »
     await d(i => window.__dakar.place(i.door.x + i.facade.nx * 0.5, i.door.z + i.facade.nz * 0.5, Math.atan2(-i.facade.nx, -i.facade.nz)), info); await page.waitForTimeout(1500);

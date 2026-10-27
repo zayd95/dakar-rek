@@ -11,6 +11,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { ALLEY_RECT, STRIP_KEEP_CLEAR, buildHospitalityBlock } from './hospitalityStrip';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
@@ -46,7 +47,7 @@ export function citeFronts(): KeepClear[] {
   ];
 }
 
-type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
+type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza' | 'hospitality';
 type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
 type Style = 'dense' | 'villa' | 'student' | 'banlieue' | 'mermoz';
@@ -74,7 +75,8 @@ const SPECS: Record<HubId, HubSpec> = {
   almadies: {
     id: 'almadies', seed: 37, style: 'villa', ground: 0xe3d3a3, road: 0x50535a, walk: 0xe0dccc, blockGround: 0xd9ceb0,
     palette: [0xfafafa, 0xf3f0ea, 0xeeeeee, 0xf7efe2], floors: [2, 3], sea: 'north', palms: 30,
-    specials: { '2,0': 'port', '1,2': 'station' },
+    // The north-side hospitality strip replaces two generic villa blocks beside La Vague: independent venues, not restaurants inside private compounds.
+    specials: { '0,0': 'hospitality', '1,0': 'hospitality', '2,0': 'port', '1,2': 'station' },
     kiosks: [{ i: 0, j: 1, lot: 0, kind: 'restaurant', name: 'Restaurant Le Pointe' }, { i: 3, j: 1, lot: 1, kind: 'cafe', name: 'Café Touba · Ngor' }],
     spawnBlock: [1, 2],
   },
@@ -927,7 +929,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
   /** Ground kept open (a shop's frontage, a loading bay: `citeFronts`), returned with the hub for the street dressing that comes after. */
   const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
-    : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }]) : [];
+    : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }])
+    : id === 'almadies' ? [...STRIP_KEEP_CLEAR] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1472,6 +1475,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         ecurieInfo = { cx, cz: cz - 8 };
         break;
       }
+      case 'hospitality': {
+        if (id !== 'almadies') break;
+        // Two consecutive Almadies blocks are the restaurant/nightlife strip: six venues that do not look alike (src/world/hospitalityStrip.ts), their forecourts, the car parks behind them
+        // and the lit alley to La Vague. The middle venue of block 1 is the interactive Terrasse de Ngor (rooftop.ts), its door and visitor bay unchanged. No villa lots, no random draws.
+        buildHospitalityBlock({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade }, i, bx, bz, i === 1 ? bx + 7.7 + 15.3 : null);
+        break;
+      }
       case 'plaza': default: break;
     }
   };
@@ -1529,10 +1539,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
 
   yield;
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
-  // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
-  const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  // The new city blocks and the Almadies hospitality strip have authored frontage and furniture; random street props must not obstruct them.
+  const hospitalityRects = Object.entries(sp.specials).filter(([, kind]) => kind === 'hospitality').map(([key]) => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  const cityRects = [...Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; }), ...hospitalityRects];
+  const alley = id === 'almadies' ? ALLEY_RECT : null;                                               // the lit way to La Vague's gate
   const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
-    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
+    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r)
+    || (!!alley && x > alley.x0 - r && x < alley.x1 + r && z > alley.z0 - r && z < alley.z1 + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     yield;

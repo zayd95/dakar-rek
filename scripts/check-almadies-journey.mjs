@@ -1,7 +1,7 @@
 // M4 « One Evening Out » (docs/districts/M4-ALMADIES.md): the golden path, played with the REAL touch controls in one session (video recorded).
-// Almadies at 19:00, the player's Teranga parked on the road in the lane nearest the Terrasse de Ngor's door (driven there with the pedal stick, parked,
-// stepped out of). On foot to the door, « Entrer », up on the terrace. The bar: « Commander » a dish, which is a real activity: paid once at the start, prepared,
-// the guest walks to a table and sits, the plate is set on the table and eaten, the needs rise at the last bite; « Se lever ». Awa Sy, who keeps the house:
+// Almadies at 19:00, the player's Teranga is driven with the pedal stick into the marked visitor bay in the Terrasse de Ngor forecourt, parked and stepped out of.
+// On foot to the door, « Entrer », up to the terrace. The bar: « Commander » a dish, which is a real activity: paid once at the start, prepared,
+// the guest walks to a table and sits, the plate is set on the table and eaten, the needs rise at the last bite; « Se lever ». Awa Sy, the venue host:
 // « Parler à Awa », « Je fête un bon travail », her hand-off to La Vague (the walking marker). A second word the same evening gives nothing more.
 // Downstairs, La Vague (21:30, a labelled hour shortcut): the door, the fee shown first and paid once, the dance floor and one dance (the beat game is finished
 // with the existing debug shortcut `gestureFinish`, as scripts/check-venues.mjs does), the way out: the end-of-evening card, once. The taxi from the rank takes the
@@ -76,6 +76,7 @@ const R = info.door, rv = Math.round(R.x / 60) * 60, rh = Math.round(R.z / 60) *
 const side = Math.sign(vert ? R.x - rv : R.z - rh) || 1, lane = 4.3;
 const startPt = vert ? { x: rv + side * lane, z: Math.min(118, R.z + 56) } : { x: Math.max(-118, R.x - 56), z: rh + side * lane };
 const endPt = vert ? { x: rv + side * lane, z: R.z } : { x: R.x, z: rh + side * lane };
+const parkingPt = { x: R.x, z: R.z - 4.4 }; // marked forecourt bay immediately in front of the Terrasse
 const yaw = vert ? Math.PI : Math.PI / 2, F = { x: Math.sin(yaw), z: Math.cos(yaw) }, L = { x: Math.cos(yaw), z: -Math.sin(yaw) };
 log('car at', JSON.stringify(startPt), '→', JSON.stringify(endPt), vert ? 'vertical road' : 'horizontal road');
 // the Teranga's parking record moved to the start of the lane (a labelled shortcut, as in the Mermoz journey), the hub rebuilt around it
@@ -86,19 +87,26 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && wind
 await page.waitForTimeout(1500);
 await boardVehicle(page, t, 'teranga');
 await shot('driving-to-the-terrace');
-await pilot(page, t, 'teranga', [{ x: endPt.x, z: endPt.z + (vert ? 8 : 0), tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }], { brakeAtEnd: true, cruise: 5 });
+// A driver does not aim at a bay 6 m to the side from the lane: the Teranga's turning radius is 5.2 m, so it swings in on an arc (a quarter circle from the lane into the bay, nose first).
+const TURN = 5.6, bayDir = Math.sign(parkingPt.z - endPt.z) || 1;
+const intoBay = vert ? [{ x: endPt.x, z: endPt.z + 8, tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.0, speed: 1.1 }]
+  : [{ x: parkingPt.x - TURN - 10, z: endPt.z, tol: 2.5, speed: 4.5 }, { x: parkingPt.x - TURN - 2, z: endPt.z, tol: 1.0, speed: 2.2 },
+    ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: parkingPt.x - TURN - 2 + TURN * Math.sin(r), z: endPt.z + bayDir * TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
+    { x: parkingPt.x, z: parkingPt.z + bayDir * 1.4, tol: 0.9, speed: 1.1 }];   // aimed a little deeper than the bay's centre: the pilot counts a short last leg as passed, and the brake takes the car about a metre
+await pilot(page, t, 'teranga', intoBay, { brakeAtEnd: true, cruise: 5 });
 const parked = await d(() => window.__dakar.teranga.at());
 await shot('parked');
 await t.tap('#ridepad .rp-off');
 await until(() => !window.__dakar.teranga.at().driving && window.__dakar.pos().mode === 'play', null, 60000);
 await page.waitForTimeout(1200);
 const car1 = await d(() => window.__dakar.teranga.info()), pk = await d(() => window.__dakar.teranga.at());
-const onRoad = vert ? Math.abs(pk.x - rv) <= 7 : Math.abs(pk.z - rh) <= 7;
-check('driven with the pedal stick to the lane nearest the door and parked: on the road, within 25 m of the door', onRoad && Math.hypot(pk.x - R.x, pk.z - R.z) < 25, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
+// the stop is hand-steered and the brake's reach depends on the page's frame rate: the car's centre must be inside the bay's painted rectangle (7.2 × 5.0 m), shrunk 0.5 m
+const inBay = Math.abs(pk.x - parkingPt.x) <= 3.1 && Math.abs(pk.z - parkingPt.z) <= 2.0;
+check('driven with the pedal stick into the marked Terrasse visitor bay and parked within 25 m of the door', inBay && Math.hypot(pk.x - R.x, pk.z - R.z) < 25, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [+parkingPt.x.toFixed(1), +parkingPt.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
 check('stepped out: the car stays where it was left, saved as parked in Almadies', car1.owned && !pk.driving && car1.record?.hub === 'almadies' && Math.hypot(car1.record.x - pk.x, car1.record.z - pk.z) < 0.5, JSON.stringify(car1.record));
 
 // ---------------------------------------------------------------- 2. on foot to the door, up the stairs
-// the stick is steered by hand toward the door: round the parked car's tail first (it is solid), then across to the door
+// the stick is steered by hand toward the door: clear the parked car first (it is solid), then cross the forecourt to the entrance
 const me0 = await d(() => window.__dakar.pos()), around = vert ? [{ x: me0.x, z: pk.z + 4.4 }, { x: rv + side * 6.5, z: pk.z + 4.4 }] : [{ x: pk.x - 4.4, z: me0.z }, { x: pk.x - 4.4, z: rh + side * 6.5 }];
 for (const w of around) await walkTo(page, t, w.x, w.z, { tol: 0.9, ms: 40000 });
 const dWalk = await walkTo(page, t, R.x, R.z, { tol: 1.2, ms: 90000 });

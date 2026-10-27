@@ -12,14 +12,14 @@ import { signPanel } from '../economy/citeJamm';
 import { order } from '../activity/primitives';
 
 /**
- * Rooftop restaurants and lounges (Plateau, Corniche, Ngor): a stair door in the facade of a tall building of the hub, and
- * up there an open-air terrace — no roof, so the camera looks down into it — with a pergola and string lights, tables and
- * chairs (or low sofas), a bar where « Commander » opens the menu, and the city or the sea beyond the parapet. They are
- * neither a gargote nor a maïga: a place to sit and be seen. Names and menus are invented; juices and food only.
- * Local frame: 16 × 11 m deck, the stairs in the south parapet, the bar along the north one.
+ * Rooftop restaurants and lounges (Plateau, Corniche, Ngor): Plateau and Corniche use a stair door on a tall hub facade;
+ * Almadies has its own independent commercial plot on the hospitality strip. Inside, all three reuse an open-air terrace —
+ * pergola and string lights, tables and chairs (or low sofas), a bar where « Commander » opens the menu, and the city or sea
+ * beyond the parapet. They are neither a gargote nor a maïga: a place to sit and be seen. Names and menus are invented;
+ * juices and food only. Local frame: 16 × 11 m deck, stairs in the south parapet, bar along the north one.
  */
 interface Dish { name: string; icon: string; price: number; faim: number; moral: number; social?: number; /** The plate or glass shown on the table (src/game/meals.ts). */ prop: string }
-interface Def { id: string; name: string; sign: string; kind: 'restaurant' | 'lounge'; view: 'city' | 'sea'; ref: { x: number; z: number }; deck: number; accent: number; menu: Dish[]; blurb: string }
+interface Def { id: string; name: string; sign: string; kind: 'restaurant' | 'lounge'; view: 'city' | 'sea'; ref: { x: number; z: number }; site?: { x: number; z: number; nx: number; nz: number }; deck: number; accent: number; menu: Dish[]; blurb: string }
 export const ROOFTOPS: Partial<Record<HubId, Def>> = {
   plateau: {
     id: 'plateau', name: 'Toit Baobab', sign: 'TOIT BAOBAB · RESTAURANT', kind: 'restaurant', view: 'city', ref: { x: 0, z: 0 }, deck: 0xd9c19a, accent: 0x2f7d4f,
@@ -38,8 +38,8 @@ export const ROOFTOPS: Partial<Record<HubId, Def>> = {
     ],
   },
   almadies: {
-    id: 'almadies', name: 'Terrasse de Ngor', sign: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', kind: 'lounge', view: 'sea', ref: { x: -30, z: -120 }, deck: 0xe0c9a4, accent: 0x1f7aa6,
-    blurb: 'Restaurant et lounge sur le toit, vue sur l’île de Ngor',
+    id: 'almadies', name: 'Terrasse de Ngor', sign: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', kind: 'lounge', view: 'sea', ref: { x: -30, z: -105.1 }, site: { x: -30, z: -105.1, nx: 0, nz: -1 }, deck: 0xe0c9a4, accent: 0x1f7aa6,
+    blurb: 'Terrasse ouverte et lounge, cuisine de la mer près de la plage',
     menu: [
       { name: 'Poisson braisé', icon: '🐟', price: 6000, faim: 62, moral: 7, prop: 'poisson' }, { name: 'Jus de bouye', icon: '🥤', price: 1200, faim: 8, moral: 5, prop: 'jus' },
       { name: 'Salade de mangue', icon: '🥗', price: 2800, faim: 28, moral: 4, prop: 'plate' }, { name: 'Café Touba', icon: '☕', price: 500, faim: 2, moral: 4, social: 2, prop: 'drink' },
@@ -211,8 +211,9 @@ export const RooftopModule: GameModule = {
   hubLoaded(ctx, hub) {
     built = null;
     const def = ROOFTOPS[hub.id as HubId]; if (!def) return;
-    const f = findFacade(hub, def.ref); if (!f) return;
-    dressFacade(hub, def, f);
+    const f = def.site ?? findFacade(hub, def.ref); if (!f) return;
+    // The Almadies site already has its own sign and doorway on the authored hospitality strip; never attach it to a residential facade.
+    if (!def.site) dressFacade(hub, def, f);
     const idx = Object.keys(ROOFTOPS).indexOf(def.id), ox = ROOM_X + idx * STEP, doorX = ox + 5;
     const door: Interactable = { id: `${hub.id}:rooftop:${def.id}`, name: def.name, kind: 'actions', x: f.x, z: f.z, radius: 3.4, actions: [ENTER], description: def.blurb };
     hub.interactables.push(door);
