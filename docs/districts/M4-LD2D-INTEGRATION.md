@@ -3,7 +3,7 @@
 **Status: engineering only. No iPhone has run this.** Chromium with touch emulation. The branch is `integration/m4-ld2d-20261027`; neither source branch was changed. Contract: [`CONTRACT.md`](CONTRACT.md) v9, row 15.
 
 ## What is combined
-- **M4** (PR #77's head, `4d48c2c`): the evening out (the Terrasse de Ngor on its hospitality strip, Awa Sy, La Vague, the card), stacked on the football repair, M3, M2 and M1.
+- **M4** (PR #77's head, `0320068`; first merged at `4d48c2c`, then again after its placemaking pass): the evening out (the Terrasse de Ngor on its hospitality strip, Awa Sy, La Vague, the card), stacked on the football repair, M3, M2 and M1.
 - **LD2.0-D** (`integration/ld2-d-20261026` @ `628c45f`): the owner's Almadies villa (street compound, three levels, helicopter, swim, SUV bays) and the owner's showcase.
 
 They stand in different blocks of the same hub: the villa on (1,1) lot 3, the strip on (0,0) and (1,0).
@@ -29,3 +29,6 @@ The bay check was the car's centre within ±1.3 m by ±1.2 m of the bay's centre
 ## Not run
 - `scripts/check-ld2d.mjs`, the two-player acceptance on a local Workers runtime, and `check-villa-walk.mjs` and `check-villa-showcase.mjs`: not run here.
 - Not on an iPhone; no verified Cloudflare preview.
+
+## Second merge: the strip's placemaking pass (PR #77 → `0320068`)
+The owner's playtest asked for real places (not villa-like boxes): [`M4-STRIP-PLACEMAKING.md`](M4-STRIP-PLACEMAKING.md). Merged here: two text conflicts (the journey script's bay check, resolved by taking the line #78 already had; the Almadies `keepClear`, now the Embarcadère's pier and the strip's forecourts, car parks and alley together). The villa fixture (`tests/fixtures/almadiesOutsideVilla.json`, base `0320068`) was taken again on the merged generator, and checked the other way round: with the villa compound switched off (the generic villa drawn for real) the digest outside the lot is identical, so the villa's lot still disturbs nothing.

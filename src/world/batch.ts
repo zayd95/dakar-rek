@@ -58,9 +58,9 @@ export class Batch {
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rotY);
   }
-  /** Box centred at height y keeping all six faces (seen from below: roofs, canopies), tilted by `tilt` about its own x axis. */
-  slab(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0, tilt = 0) {
-    this.finish(new THREE.BoxGeometry(w, h, d), color, x, y, z, rotY, tilt);
+  /** Box centred at height y keeping all six faces (seen from below: roofs, canopies), tilted by `tilt` about its own x axis (and `roll` about z). */
+  slab(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0, tilt = 0, roll = 0) {
+    this.finish(new THREE.BoxGeometry(w, h, d), color, x, y, z, rotY, tilt, roll);
   }
   /** Flat horizontal quad (2 triangles) lying at height y: road markings, stripes, decals. */
   flat(w: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {

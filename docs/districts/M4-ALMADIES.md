@@ -50,7 +50,7 @@ When the player leaves La Vague after dancing, or leaves Almadies (taxi, drive),
 - No new money path, wallet, menu system, nightclub framework or relationship engine (CONTRACT row 14).
 - No waiter walks the food to the table at the rooftop: the guest sits and the plate appears (La Vague's table service is unchanged).
 - No valet: the car stays where it was left (it is a solid, saved parking record, as everywhere).
-- No new hub or road. Two generic villa blocks are replaced by six visible hospitality frontages on the existing street grid. Terrasse de Ngor has its own commercial plot and is no longer attached to a randomly selected residential facade.
+- No new hub or road. Two generic villa blocks are replaced by six hospitality venues on the existing street grid, each its own building, with forecourts, two car parks and the alley to La Vague (placemaking pass: [`M4-STRIP-PLACEMAKING.md`](M4-STRIP-PLACEMAKING.md)). Terrasse de Ngor has its own commercial plot and is no longer attached to a randomly selected residential facade.
 
 ## Save (CONTRACT row 14)
 Numbers in `counters` with the prefix `al_`, from a small fixed set (`AL` in `almadiesRules.ts`): `al_awa_met`, `al_awa_met_night`, `al_awa_seen_night`, `al_toast`, `al_dine_night`, `al_talk_night`, `al_dance_night`, `al_terrasse_seen`, `al_danses_seen`, `al_end_night`, `al_evenings`, `al_last_mask`, `al_gift_night`. No flag, no schema change, no migration. Beside them, the shared memory's `visit_terrasse_awa`, `served_terrasse_awa`, `freesvc_terrasse_awa` and the relation `terrasse_awa`.

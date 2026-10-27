@@ -12,6 +12,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { ALLEY_RECT, STRIP_KEEP_CLEAR, buildHospitalityBlock } from './hospitalityStrip';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
 import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
@@ -960,7 +961,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   // the Almadies' pier (the Embarcadère de Ngor, src/sea/traverseeSite.ts) from the block to its end: no palm, tree or stall stands on it, no car parks across it
   const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
     : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }])
-    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }] : [];
+    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1503,63 +1504,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       case 'hospitality': {
         if (id !== 'almadies') break;
-        // Two consecutive Almadies blocks become a small restaurant/nightlife strip. Each venue has its own street-facing
-        // frontage and open forecourt; the middle frontage in block 1 is the interactive Terrasse de Ngor (rooftop.ts).
-        // This replaces generic gated villas rather than placing a public restaurant inside somebody's residential compound.
-        const places = i === 0
-          ? [
-              { name: 'Le Patio de Ngor', board: 'LE PATIO DE NGOR · RESTAURANT', wall: 0xe7d5bd, awning: 0xb94f36, bg: '#6b3526', h: 4.1 },
-              { name: 'Chez Binta', board: 'CHEZ BINTA · GRILLADES', wall: 0xf1e4d1, awning: 0x2f6f5a, bg: '#1c4d40', h: 4.6 },
-              { name: 'Café du Phare', board: 'CAFÉ DU PHARE · JUS & CAFÉ', wall: 0xece1d0, awning: 0x1e6fd9, bg: '#173b63', h: 5.0 },
-            ]
-          : [
-              { name: 'Lounge 221', board: 'LOUNGE 221 · MUSIQUE & CUISINE', wall: 0xe5d8c5, awning: 0x8c4d77, bg: '#2e193d', h: 6.4 },
-              { name: 'Terrasse de Ngor', board: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', wall: 0xf2e7d5, awning: 0x1f7aa6, bg: '#17465a', h: 6.4 },
-              { name: 'Le Comptoir de Ngor', board: 'LE COMPTOIR DE NGOR · CUISINE', wall: 0xdcc7a7, awning: 0x9d5e34, bg: '#5b321e', h: 4.8 },
-            ];
-        for (let n = 0; n < places.length; n++) {
-          const v = places[n], x = bx + 7.7 + n * 15.3, z = bz + 13.5;
-          const w = 12.2, d = 9, h = v.h, frontZ = z - d / 2;
-          // Low independent restaurant buildings with a clear street-facing commercial frontage.
-          fac.facade(w, h, d, x, G - 0.02, z, v.wall);
-          plain.box(w + 0.36, 0.24, d + 0.36, x, G + h - 0.02, z, 0xd9d3c8);
-          plain.box(w + 0.12, 0.5, d + 0.12, x, G - 0.02, z, shade(v.wall, 0.7));
-          // A central entrance, broad glazed bays and an awning; the front remains open to the shared forecourt.
-          plain.box(1.45, 2.3, 0.14, x, G + 1.13, frontZ - 0.08, 0x30271f);
-          glass.box(3.0, 1.6, 0.08, x - 3.55, G + 1.35, frontZ - 0.1, 0x477f8e);
-          glass.box(3.0, 1.6, 0.08, x + 3.55, G + 1.35, frontZ - 0.1, 0x477f8e);
-          plain.box(10.8, 0.12, 1.65, x, G + 2.72, frontZ - 0.85, v.awning);
-          for (const side of [-1, 1]) plain.box(0.1, 2.35, 0.1, x + side * 4.9, G + 1.15, frontZ - 1.35, 0x5a4733);
-          addSign(v.board, v.bg, '#fff2d3', x, G + 3.48, frontZ - 0.12, Math.PI, 9, 0.76);
-          if (h >= 6) {
-            // Two taller venues break the low frontage rhythm with an upper floor and a simple street-facing balcony.
-            glass.box(3.3, 1.35, 0.08, x - 2.75, G + 5.05, frontZ - 0.1, 0x477f8e);
-            glass.box(3.3, 1.35, 0.08, x + 2.75, G + 5.05, frontZ - 0.1, 0x477f8e);
-            plain.box(8.0, 0.12, 1.05, x, G + 4.15, frontZ - 0.55, 0xe7dfd2);
-            plain.box(8.0, 0.08, 0.08, x, G + 4.72, frontZ - 1.0, 0x2d3748);
-            for (let rail = -3.5; rail <= 3.5; rail += 1.4) plain.box(0.05, 0.55, 0.05, x + rail, G + 4.22, frontZ - 1.0, 0x2d3748);
-          }
-          // Outdoor tables and chairs make this a destination street, not a row of sealed decorative boxes.
-          const tableXs = i === 1 && n === 1 ? [x - 7.2, x + 7.2] : [x - 3.3, x + 3.3];
-          for (const tx of tableXs) {
-            const tz = frontZ - 4.1;
-            plain.cyl(0.52, 0.52, 0.06, tx, B + 0.78, tz, 0x6b4a2e, 12);
-            plain.cyl(0.05, 0.05, 0.72, tx, B + 0.36, tz, 0x2a2a30, 6);
-            for (const side of [-1, 1]) {
-              plain.box(0.42, 0.05, 0.42, tx + side * 0.82, B + 0.44, tz, v.awning);
-              plain.box(0.42, 0.48, 0.05, tx + side * 0.82, B + 0.67, tz + 0.23, v.awning);
-            }
-          }
-          if (i === 1 && n === 1) {
-            // A small, marked visitor bay in the Terrasse's own forecourt: reachable from the coast road, clear of the door and patio tables.
-            const px = x, pz = frontZ - 5.5;
-            plain.box(7.2, 0.035, 5.0, px, B - 0.005, pz, 0x696b6d);
-            for (const side of [-1, 1]) plain.box(0.11, 0.02, 4.8, px + side * 3.48, B + 0.005, pz, 0xf2f2ec);
-            for (const end of [-1, 1]) plain.box(7.0, 0.02, 0.11, px, B + 0.005, pz + end * 2.38, 0xf2f2ec);
-          }
-          if (!(i === 1 && n === 1)) people.push({ x: x + 1.0, z: frontZ - 3.0, yaw: Math.PI, clip: 'Talk' });
-          solidC(x, z, w + 0.5, d + 0.5, h);
-        }
+        // Two consecutive Almadies blocks are the restaurant/nightlife strip: six venues that do not look alike (src/world/hospitalityStrip.ts), their forecourts, the car parks behind them
+        // and the lit alley to La Vague. The middle venue of block 1 is the interactive Terrasse de Ngor (rooftop.ts), its door and visitor bay unchanged. No villa lots, no random draws.
+        buildHospitalityBlock({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade }, i, bx, bz, i === 1 ? bx + 7.7 + 15.3 : null);
         break;
       }
       case 'plaza': default: break;
@@ -1622,8 +1569,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   // The new city blocks and the Almadies hospitality strip have authored frontage and furniture; random street props must not obstruct them.
   const hospitalityRects = Object.entries(sp.specials).filter(([, kind]) => kind === 'hospitality').map(([key]) => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
   const cityRects = [...Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; }), ...hospitalityRects];
+  const alley = id === 'almadies' ? ALLEY_RECT : null;                                               // the lit way to La Vague's gate
   const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
-    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
+    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r)
+    || (!!alley && x > alley.x0 - r && x < alley.x1 + r && z > alley.z0 - r && z < alley.z1 + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     yield;
