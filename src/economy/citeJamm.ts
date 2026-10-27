@@ -171,18 +171,78 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     sign('RÉSIDENCE JÀMM', '#1f3a5f', '#fde68a', 31, G + 3.35, 41.2, 4.6, 0.62);
     sign('APPARTEMENTS · À LOUER · À VENDRE', '#c2410c', '#fff7e0', 31, G + 7.9, 41.08, 8.4, 0.9);
   }
-  // ---------------------------------------------------------------- the family house at the back of the cité
+  // ---------------------------------------------------------------- the family house at the back of the cité: a modern two-storey Dakar house behind its wall
+  // (the owner's references, 27 Oct: a rendered villa in sand and ochre, balconies with glass railings and corbels, a black ornamental door under a small red-tile
+  // canopy on blue steps, a plinth, cornices and pilasters, a flat roof with its rebar stubs, a water tank; a low wall under black wrought-iron panels with a gate)
   {
-    const c = W(35, 10.5), h = 2 * 3.2;
-    fac.facade(12, h, 9, c.x, G - 0.02, c.z, 0xe58aa0);
-    plain.box(12.4, 0.25, 9.4, c.x, G + h - 0.02, c.z, 0x9a968c);
-    for (const [w, d, du, dv] of [[12.4, 0.22, 0, -4.59], [12.4, 0.22, 0, 4.59], [0.22, 9.4, -6.09, 0], [0.22, 9.4, 6.09, 0]] as const) plain.box(w, 0.5, d, c.x + du, G + h + 0.2, c.z + dv, 0xc9707f);
-    plain.box(12.1, 0.7, 9.1, c.x, G - 0.02, c.z, 0xa35a68);
-    plain.box(1.3, 2.35, 0.1, c.x, G, BZ + 15.05, 0x2f8f4e); plain.box(0.1, 0.06, 0.12, c.x - 0.45, G + 1.1, BZ + 15.12, 0xd4b24a);
-    plain.slab(2.2, 0.1, 1.0, c.x, G + 2.6, BZ + 15.5, 0x9a968c);
-    solid(29, 6, 41, 15.1, h);
-    sign('MAISON · CITÉ JÀMM', '#14532d', '#fff7e0', 35, G + 3.2, 15.12, 4.4, 0.6);
-    for (const [u, v] of [[29.6, 16.2], [40.4, 16.2]]) { const p = W(u, v); plain.cyl(0.35, 0.3, 0.6, p.x, G, p.z, 0xb5452b, 10); plain.blob(0.45, p.x, G + 0.9, p.z, 0xd94a8c, 0.8, 0); cols.push({ x0: p.x - 0.4, z0: p.z - 0.4, x1: p.x + 0.4, z1: p.z + 0.4, h: 1 }); }
+    const X = (u: number) => BX + u, Zv = (v: number) => BZ + v;
+    const U0 = 29, U1 = 41, V0 = 5.8, VF = 14.6, H1 = 3.3, H = 6.6, YW = 21.6;      // the body (u 29…41, v 5.8…14.6), its ground floor, its height, the wall's line
+    const cx = X((U0 + U1) / 2), cz = Zv((V0 + VF) / 2), fz = Zv(VF);
+    const SAND = 0xedd6a6, SAND_D = 0xd2b47f, CREAM = 0xf8eed6, WHITE = 0xf4f1ea, IRON = 0x1c1c20, GLASS = 0x6d93a8, GLASS_L = 0x9fc4d4, TILE = 0xc4552e, BLUE = 0x2f64b3;
+    plain.box(12, H, 8.8, cx, G - 0.02, cz, SAND);
+    plain.box(12.2, 0.8, 9.0, cx, G - 0.02, cz, SAND_D);                                       // the plinth
+    plain.box(12.2, 0.2, 0.2, cx, G + H1 - 0.12, fz + 0.06, CREAM);                              // the band between the floors
+    for (const [u, w] of [[U0 + 0.1, 0.5], [U1 - 0.1, 0.5], [33, 0.35], [37, 0.35]] as const) plain.box(w, H, 0.22, X(u), G - 0.02, fz + 0.06, SAND_D);   // pilasters
+    // the roof: a slab, a parapet with a raised middle, a cornice, the rebar left standing for the next floor, a water tank on its stand, an aerial
+    plain.box(12.6, 0.25, 9.2, cx, G + H - 0.02, cz, 0xd3ccbd);
+    for (const [w, d, du, dv] of [[12.6, 0.24, 0, -4.48], [12.6, 0.24, 0, 4.48], [0.24, 9.2, -6.18, 0], [0.24, 9.2, 6.18, 0]] as const) plain.box(w, 0.55, d, cx + du, G + H + 0.23, cz + dv, SAND);
+    plain.box(12.7, 0.3, 0.4, cx, G + H - 0.28, fz + 0.14, CREAM);
+    plain.box(4.4, 0.9, 0.26, X(35), G + H + 0.78, fz + 0.04, SAND); plain.box(4.7, 0.12, 0.38, X(35), G + H + 1.68, fz + 0.06, CREAM);
+    for (let k = 0; k < 8; k++) plain.box(0.04, 1.1 + (k % 3) * 0.12, 0.04, X(29.9 + k * 0.4), G + H + 0.23, Zv(6.4), 0x3b2f27);
+    for (const sx of [-0.55, 0.55]) for (const sz of [-0.55, 0.55]) plain.box(0.07, 0.9, 0.07, X(38.6) + sx, G + H + 0.23, Zv(8.6) + sz, 0x3a3f44);
+    plain.cyl(0.8, 0.8, 1.25, X(38.6), G + H + 1.13, Zv(8.6), 0x20365c, 12);
+    plain.box(0.04, 2.2, 0.04, X(30.4), G + H + 0.23, Zv(7.2), 0x3a3f44); plain.box(0.9, 0.04, 0.04, X(30.4), G + H + 2.1, Zv(7.2), 0x3a3f44);
+    // a window: white frame, tinted glass, a mullion and a sill; the ground floor's with a black iron grille
+    const win = (u: number, y0: number, w: number, h: number, grille: boolean) => {
+      plain.box(w + 0.3, h + 0.3, 0.1, X(u), G + y0 - 0.15, fz + 0.03, WHITE);
+      plain.box(w, h, 0.06, X(u), G + y0, fz + 0.09, GLASS); plain.box(0.05, h, 0.07, X(u), G + y0, fz + 0.1, WHITE);
+      plain.box(w + 0.5, 0.1, 0.3, X(u), G + y0 - 0.22, fz + 0.12, CREAM);
+      if (grille) for (let k = 0; k < Math.round(w / 0.28); k++) plain.box(0.025, h, 0.03, X(u - w / 2 + 0.14 + k * 0.28), G + y0, fz + 0.16, IRON);
+    };
+    // a balcony: a slab with a glass railing in white rails, corbels under it
+    const balcony = (u0: number, u1: number, depth: number) => {
+      const w = u1 - u0, m = X((u0 + u1) / 2), y = G + H1;
+      plain.box(w, 0.2, depth, m, y - 0.02, fz + depth / 2, CREAM);
+      plain.box(w - 0.1, 0.95, 0.04, m, y + 0.18, fz + depth - 0.04, GLASS_L);
+      plain.box(w, 0.06, 0.08, m, y + 1.1, fz + depth - 0.04, WHITE); plain.box(w, 0.06, 0.08, m, y + 0.14, fz + depth - 0.04, WHITE);
+      for (const sx of [-1, 1]) { plain.box(0.06, 1.0, 0.06, m + sx * (w / 2 - 0.03), y + 0.18, fz + depth - 0.04, WHITE); plain.box(0.04, 0.95, depth - 0.1, m + sx * (w / 2 - 0.05), y + 0.18, fz + depth / 2, GLASS_L); }
+      for (const sx of [-1, 1]) plain.box(0.28, 0.5, 0.65, m + sx * (w / 2 - 0.4), y - 0.5, fz + 0.4, CREAM);
+    };
+    balcony(U0 + 0.8, 33 - 0.5, 1.2); balcony(33.5, 36.6, 1.6); balcony(37.6, U1 - 0.7, 1.3);
+    win(31, H1 + 0.75, 1.6, 1.7, false); win(35, H1 + 0.55, 1.5, 2.1, false); win(39.2, H1 + 0.75, 1.6, 1.7, false);
+    win(35, 1.15, 1.7, 1.25, true); win(39.2, 1.15, 1.7, 1.25, true);
+    // the entrance (u 31): a black door with ornamental panels in a cream frame, blue steps, a small canopy of red tiles on two iron brackets, a lantern
+    plain.box(1.7, 2.6, 0.12, X(31), G - 0.02, fz + 0.04, CREAM);
+    plain.box(1.35, 2.3, 0.12, X(31), G + 0.06, fz + 0.1, IRON);
+    for (const dy of [0.5, 1.5]) for (const du of [-0.33, 0.33]) plain.box(0.4, 0.6, 0.02, X(31) + du, G + 0.06 + dy - 0.1, fz + 0.17, 0x3a3a42);
+    plain.box(0.1, 0.06, 0.12, X(31) - 0.5, G + 1.1, fz + 0.2, 0xd4b24a);
+    plain.box(2.2, 0.1, 0.55, X(31), G, fz + 0.5, BLUE); plain.box(1.8, 0.1, 0.4, X(31), G + 0.1, fz + 0.42, BLUE);
+    plain.slab(2.7, 0.1, 1.3, X(31), G + 2.78, fz + 0.65, TILE, 0, -0.12);
+    for (let k = 0; k < 5; k++) plain.box(2.7, 0.03, 0.05, X(31), G + 2.86 - k * 0.0, fz + 0.2 + k * 0.24, 0xa5421f);
+    for (const sx of [-1.2, 1.2]) plain.box(0.05, 0.4, 0.05, X(31) + sx, G + 2.45, fz + 0.1, IRON);
+    plain.box(0.18, 0.3, 0.18, X(32.45), G + 2.0, fz + 0.14, 0xf6ecb8);
+    // the yard behind its wall: paving, a pale path from the gate to the door, pots with bougainvillea, a young neem
+    plain.flat(12.4, 6.6, X(35), G + 0.03, Zv(18.1), 0xcdbfa6);
+    plain.flat(1.6, 6.6, X(31), G + 0.04, Zv(18.1), 0xe9e1cf);
+    for (const u of [29.5, 40.5]) { const p = W(u, 20.4); plain.cyl(0.35, 0.3, 0.6, p.x, G, p.z, 0xb5452b, 10); plain.blob(0.5, p.x, G + 0.95, p.z, 0xd94a8c, 0.8, 0); cols.push({ x0: p.x - 0.4, z0: p.z - 0.4, x1: p.x + 0.4, z1: p.z + 0.4, h: 1 }); }
+    tree(38.6, 18.2, 0.62);
+    // the wall: a rendered base with a cream cap, black wrought-iron panels with discs between pilasters, the gate (u 30.1…31.9) open, its leaves swung back
+    const pil = (u: number) => { plain.box(0.4, 2.1, 0.4, X(u), G - 0.02, Zv(YW), SAND); plain.box(0.52, 0.1, 0.52, X(u), G + 2.08, Zv(YW), CREAM); plain.box(0.2, 0.2, 0.2, X(u), G + 2.18, Zv(YW), SAND_D); };
+    const panel = (u0: number, u1: number) => {
+      const w = u1 - u0, m = X((u0 + u1) / 2);
+      plain.box(w, 0.9, 0.3, m, G - 0.02, Zv(YW), SAND); plain.box(w, 0.08, 0.36, m, G + 0.88, Zv(YW), CREAM);
+      plain.box(w - 0.4, 1.0, 0.05, m, G + 0.96, Zv(YW) + 0.05, IRON); plain.box(w - 0.4, 0.06, 0.07, m, G + 1.94, Zv(YW) + 0.05, IRON);
+      const n = Math.max(1, Math.round((w - 0.4) / 0.95));
+      for (let k = 0; k < Math.floor((w - 0.5) / 0.2); k++) plain.box(0.025, 0.95, 0.03, m - (w - 0.5) / 2 + 0.1 + k * 0.2, G + 0.97, Zv(YW) + 0.09, 0x3d3d45);   // the bars
+      for (let k = 0; k < n; k++) { const dx = m - (w - 0.4) / 2 + ((k + 0.5) * (w - 0.4)) / n; plain.cyl(0.27, 0.27, 0.03, dx, G + 1.1, Zv(YW) + 0.11, 0xc2a76b, 12, [Math.PI / 2, 0, 0]); plain.cyl(0.19, 0.19, 0.03, dx, G + 1.1, Zv(YW) + 0.125, 0x1c1c20, 12, [Math.PI / 2, 0, 0]); }   // ornamental discs
+      cols.push({ x0: m - w / 2, z0: Zv(YW) - 0.2, x1: m + w / 2, z1: Zv(YW) + 0.2, h: 1.9 });
+    };
+    for (const u of [28.8, 30.1, 31.9, 35.1, 38.3, 41.2]) pil(u);
+    panel(28.8, 30.1); panel(31.9, 35.1); panel(35.1, 38.3); panel(38.3, 41.2);
+    for (const u of [30.3, 31.7]) plain.box(0.06, 1.8, 0.85, X(u), G + 0.1, Zv(YW - 0.55), IRON);                    // the gate's two leaves, swung back along the wall
+    for (const u of [28.6, 41.4]) { plain.box(0.3, 1.9, 6.9, X(u), G - 0.02, Zv(18.1), SAND); plain.box(0.4, 0.08, 6.9, X(u), G + 1.88, Zv(18.1), CREAM); cols.push({ x0: X(u) - 0.2, z0: Zv(14.65), x1: X(u) + 0.2, z1: Zv(YW), h: 1.9 }); }
+    cols.push({ x0: X(U0), z0: Zv(V0), x1: X(U1), z1: Zv(VF + 0.05), h: H });
+    sign('MAISON · JÀMM', '#5a3a1e', '#fff1d0', 29.45, G + 0.5, YW + 0.2, 1.1, 0.3);
   }
   // ---------------------------------------------------------------- plots: stakes and string, a board on two posts
   const plots: CiteJamm['plots'] = {};
@@ -243,7 +303,7 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     shop: { till: W(13.5, 37.6), seller: { ...W(13.5, 35.15), yaw: 0 }, entry: W(9, 43.4) },
     homes: {
       appart_jamm: { door: W(31, 42.3), sign: W(31, 42.2), entry: W(28, 43.5), name: 'Résidence Jàmm · appartements' },
-      maison_cite: { door: W(35, 16.4), sign: W(35, 16.3), entry: W(32.5, 17.6), name: 'Maison · Cité Jàmm' },
+      maison_cite: { door: W(31, 16.2), sign: W(31, 16.0), entry: W(31, 23.4), name: 'Maison · Cité Jàmm' },
     },
     plots, billboard: { specId: 'panneau_jamm', sign: W(42.4, 45.3), entry: W(39.5, 45.6), panel, lights }, plotsEntry: W(20.5, 26.3), seats,
   };

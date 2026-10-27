@@ -13,7 +13,7 @@ import type { Collider, HubWorld } from '../src/world/types';
  *
  * The proof that the rest of the Almadies did not move: tests/fixtures/almadiesOutsideVilla.json is the digest (tests/helpers/lotDigest.ts) of the hub as the
  * contract commit (9991801) built it — until the integration with M4 (the Almadies' hospitality strip, which replaces two villa blocks and so shifts every random
- * draw after them): the fixture is now the hub as the Ngor beach branch (ngor-beach-20261027: M4 with the strip's placemaking pass, and the Plage de Ngor) built it, the villa's lot dry-run as ever — every merged primitive of every batch, in the order it was drawn, the colliders, the camera's canopies, the
+ * draw after them): the fixture is now the hub as the combined integration (combined-20261027: M4 with the strip's placemaking pass, the Plage de Ngor and the modern fronts — src/world/modernFront.ts: sand render palette, glass balconies, entrances, baked depth) built it, the villa's lot dry-run as ever — every merged primitive of every batch, in the order it was drawn, the colliders, the camera's canopies, the
  * interactables, the seats and the people, of everything that does not touch the lot — at both qualities. Any random draw shifted anywhere (another lot, a
  * street tree, a palm, a stall) would move what comes after it and change the digest.
  */
@@ -38,7 +38,7 @@ describe('the villa\'s lot in the generator', () => {
     expect(VILLA_SITE).toEqual({ hub: 'almadies', i: 1, j: 1, lot: 3 });
     expect(LOT_RECT).toEqual({ x0: -29, x1: -7, z0: -29, z1: -7 });
     expect(fixture.lot).toEqual(LOT_RECT);
-    expect(fixture.base).toBe('ngor-beach-20261027');
+    expect(fixture.base).toBe('combined-20261027');
   });
 
   for (const q of ['full', 'lite'] as const) it(`(${q}) leaves every other lot, street tree, palm, stall, collider, seat and person of the Almadies exactly as the contract commit drew them`, async () => {
