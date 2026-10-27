@@ -232,7 +232,7 @@ export function buildVillaCompound(kit: CompoundKit): VillaCompound {
   group.add(gateMesh);
   const facade = buildVillaFacade(); facade.position.set(LOT.cx, Y, LOT.cz); group.add(facade);
   solid(HOUSE.x0, HOUSE.z0, HOUSE.x1, HOUSE.z1, 2 * STOREY + PARAPET);
-  const heli = buildHelicopter(); heli.group.position.set(X(HELIPAD.x), Y + 2 * STOREY, Z(HELIPAD.z)); group.add(heli.group);
+  const heli = buildHelicopter(); heli.group.position.set(X(HELIPAD.x), Y + 2 * STOREY, Z(HELIPAD.z)); heli.group.rotation.y = HELIPAD.yaw; group.add(heli.group);
 
   // ------------------------------------------------------------------------------------------------ the back garden (the interior's, seen from outside)
   const bz0 = BACK_GARDEN.z0 + T, bz1 = BACK_GARDEN.z1, deckTop = 0.22;

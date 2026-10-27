@@ -151,9 +151,13 @@ function along(A: THREE.Vector3, B: THREE.Vector3, sx = 1, sz = 1) {
   const d = V().subVectors(B, A), len = d.length();
   return new THREE.Matrix4().compose(V().addVectors(A, B).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.normalize()), V(sx, len, sz));
 }
-/** A tube along a smooth path through `pts`, closed at both ends by small domes. */
-function tubeAlong(s: Soup, pts: THREE.Vector3[], r: number, color: number, seg: number, radial = 8) {
-  const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+/** A tube along a smooth path through `pts`, closed at both ends by small domes; with `floor`, lifted so the curve's sag never takes it below it. */
+function tubeAlong(s: Soup, pts: THREE.Vector3[], r: number, color: number, seg: number, radial = 8, floor?: number) {
+  let c = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  if (floor !== undefined) {
+    const low = Math.min(...c.getPoints(200).map(p => p.y)) - r;
+    if (low < floor) { pts = pts.map(p => p.clone().setY(p.y + floor - low)); c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); }
+  }
   s.add(new THREE.TubeGeometry(c, seg, r, radial, false), color);
   for (const [p, t] of [[pts[0], c.getTangent(0).negate()], [pts[pts.length - 1], c.getTangent(1)]] as const) {
     const cap = new THREE.SphereGeometry(r, radial, 3, 0, Math.PI * 2, 0, Math.PI / 2);
@@ -530,7 +534,7 @@ export function buildHelicopter(): HelicopterBuild {
     const { x: sx, z0, z1, r } = SKIDS;
     for (const s of [-1, 1]) {
       const x = s * sx;
-      tubeAlong(metal, [V(x, 0.07, z0), V(x, r, z0 + 0.12), V(x, r, 0), V(x, r, 1.3), V(x, 0.08, 1.56), V(x, 0.18, z1 - 0.1), V(x, 0.33, z1 + 0.02)], r, ALU, 20, 7);
+      tubeAlong(metal, [V(x, 0.07, z0), V(x, r, z0 + 0.14), V(x, r, -0.6), V(x, r, 0.6), V(x, r, 1.3), V(x, 0.08, 1.56), V(x, 0.18, z1 - 0.1), V(x, 0.33, z1 + 0.02)], r, ALU, 20, 7, 0);
       // the steps: an aluminium tread with a black anti-slip top on each cross tube, under the doors
       for (const [z, len] of [[0.78, 0.3], [-0.82, 0.26]] as const) {
         metal.add(new THREE.BoxGeometry(0.15, 0.022, len), ALU, at(s * 1.2, 0.37, z));
@@ -544,7 +548,7 @@ export function buildHelicopter(): HelicopterBuild {
       tubeAlong(metal, pts, 0.046, ALU, 22, 7);
     }
     // the skids' wear shoes under the cross tubes
-    for (const s of [-1, 1]) for (const z of [0.78, -0.82]) metal.add(new THREE.BoxGeometry(0.06, 0.02, 0.36), STEEL, at(s * sx, 0.012, z));
+    for (const s of [-1, 1]) for (const z of [0.78, -0.82]) metal.add(new THREE.BoxGeometry(0.06, 0.02, 0.36), STEEL, at(s * sx, 0.01, z));
   }
 
   // ---------------------------------------------------------------- the cabin's inside, seen through the glass: seats, the panel, the bulkhead

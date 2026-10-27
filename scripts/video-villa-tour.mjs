@@ -153,7 +153,7 @@ try {
   // up the second flight to the roof terrace, by the helicopter
   await go(H(6.2, 2.4));
   await walk([H(7.15, 1.9), H(7.15, -0.5), H(7.15, -3.4)], { mid: 0.35 });
-  await go(H(6.0, -3.9)); await go(H(0.6, -3.4)); await go(H(-1.0, 1.0));
+  await go(H(6.0, -3.9)); await go(H(0.6, -3.4)); await go(H(-3.4, -3.1));                // onto the pad, beside the helicopter (round 2: it lies along the terrace)
   const heli = await act('Regarder l.hélicoptère');
   await step(3 * FPS);
   console.log(JSON.stringify({ frames: frame, seconds: +(frame / FPS).toFixed(1), entered, swam, heli, errors: errors.slice(0, 3) }));

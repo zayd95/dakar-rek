@@ -13,7 +13,7 @@ import { OWNED_VEHICLES } from '../transport/fleet';
 import { parked, type VehicleAsset } from '../transport/owned';
 import { rideHooks, type OwnedVehicleModule } from '../transport/ownedModule';
 import { Batch } from '../world/batch';
-import { buildHelicopter } from '../world/helicopter';
+import { BLADES, REGISTRATION, ROTOR_DIAMETER, buildHelicopter } from '../world/helicopter';
 import { GATE_FREE, gateFor, gateWants, stepGate, type VillaHold } from './gate';
 import { BAYS_HUB, freeBay, inYard, parkWhy } from './bays';
 import { VillaSwim } from './swim';
@@ -185,7 +185,8 @@ class VillaModule implements GameModule {
   }
   private heliSheet() {
     const ctx = this.ctx; this.log.heli++;
-    const rows = [['Modèle', 'Hélicoptère léger, quatre places'], ['Rotor', '7,2 m, deux pales'], ['Livrée', 'blanc nacré, ventre bleu nuit, filet or'], ['Vols', 'ils arriveront avec l’aéroport']];
+    const rows = [['Modèle', 'Hélicoptère léger monoturbine, cinq places'], ['Immatriculation', REGISTRATION], ['Rotor', `${String(ROTOR_DIAMETER).replace('.', ',')} m, ${BLADES === 3 ? 'trois' : BLADES} pales`],
+      ['Livrée', 'blanc nacré métallisé, ventre bleu nuit, filet or'], ['Vols', 'ils arriveront avec l’aéroport']];
     ctx.menu('L’hélicoptère', 'Sur le toit de ta villa', [{ icon: '👍', label: 'Fermer', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } }],
       `<div class="kv">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><p class="soon">Pas de vol pour l’instant : les hélicoptères décolleront quand l’aéroport ouvrira.</p>`);
   }
@@ -195,7 +196,7 @@ class VillaModule implements GameModule {
     if (!this.tiered()) return;
     const own = g.getObjectByName('helicopter'); if (own) { this.heli = own as THREE.Group; return; }
     const o = homeOrigin(VILLA_ID)!, h = buildHelicopter();
-    h.group.position.set(o.x + HELIPAD.x, 0.1 + 2 * STOREY, o.z + HELIPAD.z);
+    h.group.position.set(o.x + HELIPAD.x, 0.1 + 2 * STOREY, o.z + HELIPAD.z); h.group.rotation.y = HELIPAD.yaw;
     g.add(h.group); this.heli = h.group;
   }
 
