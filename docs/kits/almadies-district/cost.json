@@ -1,5 +1,5 @@
 {
- "at": "2026-10-27T14:59:12.842Z",
+ "at": "2026-10-27T15:13:03.061Z",
  "cost": {
   "house-m1": {
    "name": "Maison empilée",
@@ -30,9 +30,9 @@
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 122,
+    "front": 123,
     "street": 125,
-    "night": 80
+    "night": 82
    },
    "medium": {
     "calls": 8,
@@ -47,16 +47,16 @@
     "calls": 8,
     "tris": 1304
    },
-   "glbBytes": 131912
+   "glbBytes": 131852
   },
   "house-m3": {
    "name": "Maison à gradins",
    "kind": "house",
    "size": "S",
    "views": {
-    "front": 143,
-    "street": 146,
-    "night": 89
+    "front": 148,
+    "street": 153,
+    "night": 90
    },
    "medium": {
     "calls": 8,
@@ -71,7 +71,7 @@
     "calls": 8,
     "tris": 1278
    },
-   "glbBytes": 131780
+   "glbBytes": 131776
   },
   "villa-c1": {
    "name": "Villa Porte-à-faux",
@@ -102,33 +102,33 @@
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 165,
-    "street": 178,
-    "night": 106
+    "front": 196,
+    "street": 198,
+    "night": 123
    },
    "medium": {
     "calls": 9,
-    "tris": 2412
+    "tris": 2480
    },
    "info": {
     "colliders": 19,
     "signs": 0,
-    "tallest": 7.3
+    "tallest": 10.7
    },
    "low": {
     "calls": 9,
-    "tris": 2000
+    "tris": 2038
    },
-   "glbBytes": 199588
+   "glbBytes": 206016
   },
   "villa-c3": {
    "name": "Villa des Pavillons",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 147,
-    "street": 140,
-    "night": 98
+    "front": 144,
+    "street": 135,
+    "night": 96
    },
    "medium": {
     "calls": 9,
@@ -143,31 +143,31 @@
     "calls": 9,
     "tris": 2016
    },
-   "glbBytes": 206268
+   "glbBytes": 206260
   },
   "villa-c4": {
    "name": "Villa de la Tour",
    "kind": "villa",
    "size": "S",
    "views": {
-    "front": 192,
-    "street": 210,
-    "night": 118
+    "front": 232,
+    "street": 258,
+    "night": 145
    },
    "medium": {
     "calls": 9,
-    "tris": 2560
+    "tris": 2592
    },
    "info": {
-    "colliders": 14,
+    "colliders": 13,
     "signs": 0,
-    "tallest": 10.549999999999999
+    "tallest": 13.95
    },
    "low": {
     "calls": 9,
-    "tris": 2026
+    "tris": 2068
    },
-   "glbBytes": 213740
+   "glbBytes": 212636
   },
   "hotel-boutique": {
    "name": "Hôtel boutique, façade de balcons",
@@ -198,24 +198,24 @@
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 202,
-    "street": 319,
-    "night": 130
+    "front": 318,
+    "street": 377,
+    "night": 213
    },
    "medium": {
     "calls": 9,
-    "tris": 4638
+    "tris": 5158
    },
    "info": {
     "colliders": 23,
     "signs": 1,
-    "tallest": 14.299999999999999
+    "tallest": 27.900000000000002
    },
    "low": {
     "calls": 9,
-    "tris": 3414
+    "tris": 3806
    },
-   "glbBytes": 391316
+   "glbBytes": 430420
   },
   "hotel-resort": {
    "name": "Resort autour de la cour de la piscine",
@@ -294,9 +294,9 @@
    "kind": "residence",
    "size": "M",
    "views": {
-    "front": 350,
-    "street": 154,
-    "night": 225
+    "front": 341,
+    "street": 146,
+    "night": 217
    },
    "medium": {
     "calls": 8,
@@ -311,7 +311,7 @@
     "calls": 8,
     "tris": 3344
    },
-   "glbBytes": 374968
+   "glbBytes": 376580
   },
   "residence-courtyard": {
    "name": "Cour-jardin à portail",

@@ -5,7 +5,7 @@ import { Batch, signTexture, signCanvasSize } from '../batch';
 import { addGrain } from '../grain';
 import { PALETTES, extentOf, siteDraw, sizeOf, type DistrictKit, type PaletteName, type Site, type SiteKind, type SiteSize } from './contract';
 import { SITES } from './plan';
-import { variantsFor } from './district';
+import { variantOf, variantsFor } from './district';
 
 /**
  * LD2.0-E: the district's viewer (tools/district-viewer/index.html, built by scripts/shots-district-designs.mjs). One design on a site of its size on a
@@ -47,7 +47,8 @@ function makeSite(o: ShowOptions): Site {
   const size = o.size ?? (variantsFor(o.kind, 'S').length ? 'S' : variantsFor(o.kind, 'M').length ? 'M' : 'L');
   const list = variantsFor(o.kind, size);
   const idx = typeof o.variant === 'number' ? o.variant : Math.max(0, list.findIndex(v => v.id === o.variant));
-  const proto = SITES.find(s => s.kind === o.kind && sizeOf(s) === size) ?? SITES.find(s => sizeOf(s) === size)!;
+  // the plan's own site that wears this design (its name, palette, storeys, gate), else the first of its kind and size
+  const proto = SITES.find(s => s.kind === o.kind && sizeOf(s) === size && variantOf(s).id === list[idx]?.id) ?? SITES.find(s => s.kind === o.kind && sizeOf(s) === size) ?? SITES.find(s => sizeOf(s) === size)!;
   // the prototype's lot rect moved to the origin region so the camera maths stay simple: the plan's frame needs only the rect and the facing
   const { w, d } = extentOf(proto), rect = { x0: -w / 2, x1: w / 2, z0: -d / 2, z1: d / 2 };
   return { ...proto, kind: o.kind, variant: idx, rect, facing: o.facing ?? 'south', mirror: o.mirror ?? false, storeys: o.storeys ?? proto.storeys, palette: o.palette ?? proto.palette,
