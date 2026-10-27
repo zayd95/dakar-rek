@@ -1,6 +1,6 @@
 import { E, type GateSide, type SiteDraw, type SiteResult } from './contract';
-import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table } from './hotels.kit';
+import { bench, door, gateX, menuBoard, nameBoard, paving, parkedCar, perimeter, planter, roofPlant, scooter, slabEdge, solidBox, volume } from './parts';
+import { STAFF, ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table, person, trolley } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the boutique hotel (46 × 22 m site, 3 to 5 storeys): a long low front of cantilevered slabs between travertine bookends, a balcony for
@@ -9,7 +9,7 @@ import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litB
  * deep white blade, a lawn and a glass parapet. The sides are the stone bookends (a glazed slot, an oak panel), the back a corridor's oak screens and a glazed stair core.
  */
 export function buildBoutique(d: SiteDraw): SiteResult {
-  const { site: s, p } = d, lite = d.lite, rec = info(d);
+  const { site: s, p } = d, lite = d.lite, rec = info(d), life = rec.life;
   const n = clamp(s.storeys, 3, 5);
   const gate: GateSide = s.gate === 'centre' ? 'right' : s.gate, gx = gateX(d.w, gate), sg: 1 | -1 = gx < 0 ? -1 : 1;                           // the service side: the gate's
   rec.serviceSide = sg;
@@ -162,23 +162,37 @@ export function buildBoutique(d: SiteDraw): SiteResult {
   for (let z = 6.5; z < E - 0.6; z += 1.0) paving(d, { x0: -0.07, x1: 0.07, z0: z, z1: z + 0.5 }, 0xf1efe8, Y0 + 0.03);
   paving(d, { x0: -3.9, x1: 3.9, z0: 6.0, z1: 6.15 }, 0xf1efe8, Y0 + 0.03);
   paving(d, { x0: -1.2, x1: 1.2, z0: zF + BAL + 0.1, z1: 6.0 }, p.accent, Y0 + 0.03);                                         // the carpet from the door
-  { const u = span(left, 6.4, 19.4);
-    rec.terraces.push(terrace(d, { x0: u.u0, x1: u.u1, z0: zF + BAL + 0.3, z1: 9.9, rows: [6.1, 8.5], per: [lite ? 3 : 4, 2], deck: mix(p.wood, p.stone, 0.4) }));
+  { const u = span(left, 6.4, 19.4), t = terrace(d, { x0: u.u0, x1: u.u1, z0: zF + BAL + 0.3, z1: 9.9, rows: [{ z: 6.1, per: 4 }, { z: 8.5, per: 2 }], deck: mix(p.wood, p.stone, 0.4) });
+    rec.terraces.push(t); life.seats.push(...t.seats);
     stringLights(d, left * 6.6, left * 19.6, 7.3, 3.2);
     planter(d, left * 20.2, zF + BAL + 0.75, 2.2, 0.6, { bloom: 0xd94a8c });
+    menuBoard(d, left * 6.1, 10.2, 0); rec.props.push({ kind: 'menu', x: left * 6.1, z: 10.2 });
+    // three customers already at their tables (row 1: the chairs on the street side of two tables, row 2: one), the waiter in the aisle between the rows, facing them
+    const sit = (i: number) => life.people.push(person(t.seats[i].x, t.seats[i].z, t.seats[i].yaw, 'Sit'));
+    sit(0); sit(4); sit(8);
+    life.people.push(person((t.seats[2].x + t.seats[4].x) / 2, 7.3, Math.PI, 'Talk', STAFF.waiter));         // (between the second and third tables: the second row's tables stand under the first's gaps)
   }
-  planter(d, rite * 7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c }); planter(d, rite * 14.0, E - 1.5, 3.4, 0.7);
+  // the lobby's staff: a doorman on the lobby's step, a bellhop beside him with his trolley of bags, a valet by the drop-off lane (outside it), both turned to the street
+  life.people.push(person(-2.1, 3.7, 0, 'Idle', STAFF.doorman), person(1.9, 3.7, 0, 'Idle', STAFF.bellhop));
+  trolley(d, 3.0, 3.75, 0); rec.props.push({ kind: 'trolley', x: 3.0, z: 3.75 });
+  life.people.push(person(rite * 5.4, 8.3, -rite * Math.PI / 2, 'Idle', STAFF.valet));
+  // a parked car beside the lane (parallel, in the gate's half of the forecourt), two scooters by the staff door
+  parkedCar(d, rite * 14.6, 8.6, Math.PI / 2, { col: mix(p.accent, 0xdddddd, 0.55) }); rec.props.push({ kind: 'car', x: rite * 14.6, z: 8.6 });
+  for (const [x, c] of [[17.1, 0xc23b2a], [18.0, 0x2b5f8a]] as const) { scooter(d, rite * x, 4.9, 0, c); rec.props.push({ kind: 'scooter', x: rite * x, z: 4.9 }); }
+  // the rooftop restaurant's stair door (the venue draws the door, the sign); its doorman stands by it
+  life.people.push(person(rite * 11.0, 3.95, 0, 'Idle', STAFF.doorman));
+  planter(d, rite * 7.6, zF + BAL + 1.3, 3.0, 0.8, { bloom: 0xd94a8c });
   for (const x of [-4.8, 4.8]) bollard(d, x, 6.6);
   slimPalm(d, left * 21.0, 9.3, 0.95, 1.2); slimPalm(d, rite * 11.0, 7.0, 1.0, 0.9);
   for (const [k, c] of [mix(p.accent, 0xffffff, 0.4), 0xf4f1ea].entries()) flagPole(d, (k ? 1 : -1) * 5.6, E - 1.0, 7.6, c, 1);
-  // the road-side flanks (the cross roads run along both ends): a lawn and shrubs under the stone end walls, a bench, a lamp, the stair's glass down to the pavement
+  // the road-side flanks (the cross roads run along both ends): a lawn and shrubs under the stone end walls, a bench facing the road, a lamp, the stair's glass down to the pavement
   for (const sx of [-1, 1]) {
     d.flat(d.plain, 1.7, zF + BAL + 0.1 - zB, sx * 21.55, Y0 + 0.02, (zB + zF + BAL + 0.1) / 2, d.c.lawn);
     for (let k = 0; k < (lite ? 2 : 3); k++) d.blob(d.leaves, 0.5, sx * 21.6, Y0 + 0.4, -6.2 + k * 4.6, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
-    d.box(d.plain, 0.5, 0.45, 1.8, sx * 21.7, Y0, -3.0, p.wood);
+    life.seats.push(...bench(d, sx * 21.7, -3.0, sx * Math.PI / 2, { len: 1.8, n: 2 })); rec.props.push({ kind: 'bench', x: sx * 21.7, z: -3.0 });
     bollard(d, sx * 21.7, 3.4);
     rec.flanks.push({ side: sx as -1 | 1, what: 'planting' });
   }
   // the stair door of the rooftop restaurant (the Terrasse de Ngor, src/venues/rooftop.ts) on the street face, in the first bay beyond the lobby's portal, between the pilasters at 8 and 12 (the gate's side), under the balconies: seen from the avenue, a few strides from the way in
-  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], rooftopDoor: { x: rite * 10.0, z: zF + 1.1 } };
+  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], rooftopDoor: { x: rite * 10.0, z: zF + 1.1 }, life };
 }
