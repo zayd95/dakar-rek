@@ -124,7 +124,7 @@ export class Facade {
    */
   slats(o: { u0: number; u1: number; y0: number; y1: number; pitch?: number; w?: number; depth?: number; n0?: number; col?: number; back?: number | null; alt?: number }) {
     const { k } = this, pitch = (o.pitch ?? 0.2) * (k.lite ? 1.7 : 1), w = (o.w ?? 0.07) * (k.lite ? 1.4 : 1), dep = o.depth ?? 0.12, n0 = o.n0 ?? 0.04, col = o.col ?? k.p.wood;
-    if (o.back !== null) this.quad(o.u0, o.u1, o.y0, o.y1, n0 - 0.01 > 0 ? n0 - 0.01 : 0.01, o.back ?? 0x2a211a);
+    if (o.back !== null) this.quad(o.u0, o.u1, o.y0, o.y1, n0 > 0.02 ? 0.015 : n0 + 0.02, o.back ?? 0x2a211a);
     const n = Math.max(1, Math.floor((o.u1 - o.u0 - w) / pitch));
     for (let i = 0; i <= n; i++) {
       const u = o.u0 + w / 2 + ((o.u1 - o.u0 - w) * i) / n, c = o.alt !== undefined && i % 3 === 1 ? o.alt : col;
