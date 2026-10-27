@@ -1,7 +1,8 @@
+import * as THREE from 'three';
 import type { Batch } from '../batch';
 import type { Collider } from '../types';
 import { drawPalm } from '../villaCompound';
-import { E, GROUND, PARAPET, WALL_H, type GateSide, type SiteDraw } from './contract';
+import { E, GRID, GROUND, HALF, PARAPET, WALL_H, type GateSide, type SiteDraw } from './contract';
 
 /**
  * LD2.0-E: the district's shared pieces, in the site's plan coordinates (metres from its origin, +z toward the street, x along it, y up, the ground at
@@ -176,46 +177,122 @@ export function palm(d: SiteDraw, x: number, z: number, sc = 1, turn = 0) { draw
 export function paving(d: SiteDraw, r: PlanRect, col: number, y = GROUND + 0.01) { const m = mid(r); d.flat(d.pave, m.w, m.dd, m.x, y, m.z, col); }
 
 // ------------------------------------------------------------------------------------------------ the boundary
+/** How the site meets the street: see `perimeter`. */
+/** 'fence' (the default) or 'open'; 'wall' and 'low' are the old names, kept so a call still compiles: they draw the fence too. */
+export type Front = 'fence' | 'open' | 'low' | 'wall';
+/** What each site's `perimeter` drew on its street edge last (the district's test: no site turns a solid wall to the street). */
+const fronts = new WeakMap<object, 'fence' | 'open'>();
+export const frontOf = (site: object): 'fence' | 'open' | undefined => fronts.get(site);
+/** The block (i, j) of the hub's grid in metres (src/world/builder.ts: the roads are GRID.road wide, the blocks GRID.blk, one every GRID.pitch). */
+const blockRect = (b: readonly [number, number]) => { const x0 = -HALF + GRID.road + GRID.pitch * b[0], z0 = -HALF + GRID.road + GRID.pitch * b[1]; return { x0, z0, x1: x0 + GRID.blk, z1: z0 + GRID.blk }; };
+/** Which of the site's side and back edges (plan: left −x, right +x, back −z) run along a road, not along a neighbour's wall: the site's rectangle reaches the block's edge there. */
+export function roadEdges(d: SiteDraw): Record<'left' | 'right' | 'back', boolean> {
+  const bb = blockRect(d.site.block), r = d.site.rect, o = d.f.p(0, 0), near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+  const faces = (px: number, pz: number) => { const q = d.f.p(px, pz), dx = q.x - o.x, dz = q.z - o.z; return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? near(r.x1, bb.x1) : near(r.x0, bb.x0)) : (dz > 0 ? near(r.z1, bb.z1) : near(r.z0, bb.z0)); };
+  return { right: faces(1, 0), left: faces(-1, 0), back: faces(0, -1) };
+}
+/** The railing's heights above the ground: the stone plinth, the top rail, and the collider the fence keeps (a body cannot climb it). */
+const FENCE = { plinth: 0.45, top: 1.32, collider: 1.5 } as const;
 /**
- * The site's boundary: a wall on its outer edge (thickness 0.3, `h` high, the collider 5 cm inside), a stone pillar at each end of the street face and
- * either side of the gate, and a slatted gate leaf (shut: its box is solid; the pavement's door and board outside it stay reachable). `gate`: where the
- * gate stands on the street wall (before mirroring; its width `gateW`), or 'none'. `front`: the street wall full height ('wall'), low ('low': 1.0 m
- * with a railing, a hotel's forecourt) or none ('open': the building's own front stands on the line). The back and side walls are always drawn.
- * Returns the gate's span in plan x.
+ * Flat quads standing on the plan, each facing outward (`out`: the plan's direction away from the site), gathered into ONE piece of the plain batch.
+ * A rail is one quad along a run, a bar a slim one: two triangles each, seen from the road (from the garden they are culled: that is the point).
  */
-export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'; gateW?: number; front?: 'wall' | 'low' | 'open'; col?: number; sides?: boolean } = {}): { x0: number; x1: number } {
-  const ex = d.w / 2, eb = d.depth - E, T = 0.3, h = o.h ?? WALL_H, wh = h - GROUND, col = o.col ?? d.c.wall, ci = 0.05, gw = o.gateW ?? 4.4, front = o.front ?? 'wall';
+class Upright {
+  private pos: number[] = []; private nor: number[] = [];
+  constructor(private d: SiteDraw, private out: readonly [number, number], private col: number) {}
+  /** A quad from plan point (ax, az) to (bx, bz), from y0 to y1. */
+  quad(ax: number, az: number, bx: number, bz: number, y0: number, y1: number) {
+    const f = this.d.f, o = f.p(0, 0), q = f.p(this.out[0], this.out[1]), nx = q.x - o.x, nz = q.z - o.z;
+    let A = f.p(ax, az), B = f.p(bx, bz);
+    if (-(B.z - A.z) * nx + (B.x - A.x) * nz < 0) [A, B] = [B, A];
+    const bl = [A.x, y0, A.z], br = [B.x, y0, B.z], tr = [B.x, y1, B.z], tl = [A.x, y1, A.z];
+    this.pos.push(...bl, ...br, ...tr, ...bl, ...tr, ...tl);
+    for (let k = 0; k < 6; k++) this.nor.push(nx, 0, nz);
+  }
+  /** A bar of width `w` centred on plan point (x, z), the run's direction `u`. */
+  bar(x: number, z: number, u: readonly [number, number], w: number, y0: number, y1: number) { this.quad(x - u[0] * w / 2, z - u[1] * w / 2, x + u[0] * w / 2, z + u[1] * w / 2, y0, y1); }
+  flush() {
+    if (!this.pos.length) return;
+    const n = this.pos.length / 3, c = new THREE.Color(this.col), g = new THREE.BufferGeometry(), colr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) colr.set([c.r, c.g, c.b], i * 3);
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.pos), 3)); g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(this.nor), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(colr, 3)); g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+    this.d.plain.coloured(g);
+  }
+}
+/** Bars every `gap` metres along a plan line, between y0 and y1, as quads of an `Upright`. */
+function bars(u: Upright, x0: number, z0: number, x1: number, z1: number, gap: number, y0: number, y1: number) {
+  const l = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(l / gap)), dir = [(x1 - x0) / l, (z1 - z0) / l] as const;
+  for (let k = 0; k <= n; k++) u.bar(x0 + ((x1 - x0) * k) / n, z0 + ((z1 - z0) * k) / n, dir, 0.055, y0, y1);
+}
+/**
+ * A see-through boundary run (the district is part of the street, not a compound behind a wall): a stone plinth, a bronze railing of flat bars between
+ * two rails, stone piers every 8 m or so, and a trimmed hedge in short lengths behind it (medium). The plan line (x0, z0)-(x1, z1) is its centre; `out`
+ * the outward direction. About 9 triangles a metre on medium, 6 on low.
+ */
+function fenceRun(d: SiteDraw, x0: number, z0: number, x1: number, z1: number, out: readonly [number, number]) {
+  const horiz = z0 === z1, l = Math.hypot(x1 - x0, z1 - z0);
+  if (l < 0.3) return;
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, T = 0.3, py = GROUND + FENCE.plinth, ty = GROUND + FENCE.top, ux = (x1 - x0) / l, uz = (z1 - z0) / l;
+  d.box(d.plain, horiz ? l : T, FENCE.plinth, horiz ? T : l, cx, GROUND, cz, d.p.stone);
+  const piers = Math.max(1, Math.round(l / 8));
+  const pi = 0.17 / l;                                                              // the end piers stand wholly inside the run (and so inside the site)
+  for (let k = 0; k <= piers; k++) { const t = pi + (1 - 2 * pi) * k / piers; d.box(d.plain, 0.34, FENCE.top + 0.1 - FENCE.plinth, 0.34, x0 + (x1 - x0) * t, py, z0 + (z1 - z0) * t, d.p.stone); }
+  const u = new Upright(d, out, d.p.frame), o = 0.04;                              // the rails stand 4 cm outside the run's centre line, in front of the bars
+  u.quad(x0 + out[0] * o, z0 + out[1] * o, x1 + out[0] * o, z1 + out[1] * o, ty - 0.07, ty);
+  u.quad(x0 + out[0] * o, z0 + out[1] * o, x1 + out[0] * o, z1 + out[1] * o, py, py + 0.07);
+  bars(u, x0 + ux * 0.2, z0 + uz * 0.2, x1 - ux * 0.2, z1 - uz * 0.2, d.lite ? 0.85 : 0.42, py + 0.07, ty - 0.07);
+  u.flush();
+  if (d.lite) return;
+  // the hedge: 2.6 m lengths, 0.8 m high, 0.5 m inside the railing, 3-4 m apart, away from the piers
+  const rng = siteRng(d, `hedge:${x0}:${z0}`);
+  for (let t = 1.2 + rng() * 1.5; t < l - 3.4; t += 6 + rng() * 2) {
+    const hx = x0 + ux * (t + 1.3) - out[0] * 0.55, hz = z0 + uz * (t + 1.3) - out[1] * 0.55;
+    d.box(d.leaves, horiz ? 2.6 : 0.62, 0.8, horiz ? 0.62 : 2.6, hx, GROUND, hz, d.c.hedge);
+  }
+}
+/**
+ * The site's boundary, open to the street. Its street edge and every edge that runs along a road is a **railing on a low stone plinth** (see-through:
+ * the façade, the garden and the door read from the pavement), the edges it shares with a neighbour a 2.4 m wall (a thickness 0.3, the collider 5 cm
+ * inside it). A stone pier with a lantern either side of the gate, and a bar gate (shut: its box is solid; the pavement's door and board outside it stay
+ * reachable). `gate`: where the gate stands on the street edge (before mirroring; its width `gateW`), or 'none'. `front`: 'fence' (the default; 'wall' and
+ * 'low' are old names for it: the district has no solid wall on a street) or 'open' (the building's own front stands on the line: a shopfront, a lobby).
+ * `h` is the neighbours' wall. Returns the gate's span in plan x.
+ */
+export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'; gateW?: number; front?: Front; col?: number; sides?: boolean } = {}): { x0: number; x1: number } {
+  const ex = d.w / 2, eb = d.depth - E, T = 0.3, h = o.h ?? WALL_H, wh = h - GROUND, col = o.col ?? d.c.wall, ci = 0.05, gw = o.gateW ?? 4.4;
+  const front = o.front === 'open' ? 'open' as const : 'fence' as const, fh = FENCE.collider;
+  fronts.set(d.site, front);
   const run = (x0: number, z0: number, x1: number, z1: number, hh = wh, c = col) => {
     const horiz = z0 === z1, l = horiz ? x1 - x0 : z1 - z0;
     if (l < 0.02) return;
     d.box(d.plain, horiz ? l : T, hh, horiz ? T : l, (x0 + x1) / 2, GROUND, (z0 + z1) / 2, c);
     d.box(d.plain, horiz ? l + 0.02 : T + 0.12, 0.09, horiz ? T + 0.12 : l + 0.02, (x0 + x1) / 2, GROUND + hh, (z0 + z1) / 2, d.c.coping);
   };
-  const s = E - T / 2, xs = ex - T / 2, zb = eb - T / 2, gx = gateX(d.w, o.gate ?? 'centre');
+  const s = E - T / 2, xs = ex - T / 2, zb = eb - T / 2, gx = gateX(d.w, o.gate ?? 'centre'), road = roadEdges(d);
   const gate = o.gate === 'none' || front === 'open' ? null : { x0: gx - gw / 2, x1: gx + gw / 2 };
-  if (o.sides !== false) { run(xs, -eb, xs, E); run(-xs, -eb, -xs, E); }
-  run(-ex, -zb, ex, -zb);
-  const hh = front === 'low' ? 1.0 - GROUND : wh;
-  if (front !== 'open') {
-    if (gate) { run(-ex, s, gate.x0, s, hh); run(gate.x1, s, ex, s, hh); } else run(-ex, s, ex, s, hh);
-    d.solid(-ex + ci, E - T, gate ? gate.x0 : ex - ci, E - ci, h);
-    if (gate) d.solid(gate.x1, E - T, ex - ci, E - ci, h);
+  if (o.sides !== false) {
+    if (road.right) fenceRun(d, xs, -eb, xs, E, [1, 0]); else run(xs, -eb, xs, E);
+    if (road.left) fenceRun(d, -xs, -eb, -xs, E, [-1, 0]); else run(-xs, -eb, -xs, E);
   }
-  d.solid(ex - T, -eb + ci, ex - ci, E - ci, h); d.solid(-ex + ci, -eb + ci, -ex + T, E - ci, h); d.solid(-ex + ci, -eb + ci, ex - ci, -eb + T, h);
+  if (road.back) fenceRun(d, -ex, -zb, ex, -zb, [0, -1]); else run(-ex, -zb, ex, -zb);
+  if (front !== 'open') {
+    const part = (a: number, b: number) => fenceRun(d, a, s, b, s, [0, 1]);
+    if (gate) { part(-ex, gate.x0); part(gate.x1, ex); } else part(-ex, ex);
+    d.solid(-ex + ci, E - T, gate ? gate.x0 : ex - ci, E - ci, fh);
+    if (gate) d.solid(gate.x1, E - T, ex - ci, E - ci, fh);
+  }
+  const ch = (r: boolean) => r ? fh : h;
+  d.solid(ex - T, -eb + ci, ex - ci, E - ci, ch(road.right && o.sides !== false)); d.solid(-ex + ci, -eb + ci, -ex + T, E - ci, ch(road.left && o.sides !== false)); d.solid(-ex + ci, -eb + ci, ex - ci, -eb + T, ch(road.back));
   if (gate) {
     for (const x of [gate.x0 - 0.3, gate.x1 + 0.3]) { d.box(d.plain, 0.6, h + 0.3 - GROUND, 0.46, x, GROUND, E - T / 2 + 0.04, d.p.stone); d.box(d.plain, 0.68, 0.1, 0.54, x, h + 0.3, E - T / 2 + 0.04, d.p.stoneDark); d.box(d.bulbs, 0.2, 0.22, 0.2, x, h + 0.4, E - T / 2 + 0.04, d.c.bulb); }
-    d.box(d.metal, gw, 2.2, 0.1, gx, GROUND, E - T - 0.12, d.p.frame);
-    if (!d.lite) { const n = Math.floor(gw / 0.22), parts: [number, number, number, number, number, number, number][] = []; for (let k = 0; k <= n; k++) parts.push([0.05, 2.05, 0.06, gx - gw / 2 + (gw * k) / n, GROUND + 0.05, E - T - 0.18, d.p.wood]); d.joined(d.plain, parts); }
+    // a bar gate: a kick plate, two rails, flat bars between them (the street sees through it)
+    d.box(d.metal, gw, 0.5, 0.08, gx, GROUND, E - T - 0.12, d.p.frame);
+    const u = new Upright(d, [0, 1], d.p.frame), gz = E - T - 0.08;
+    u.quad(gx - gw / 2, gz, gx + gw / 2, gz, GROUND + 1.98, GROUND + 2.08); u.quad(gx - gw / 2, gz, gx + gw / 2, gz, GROUND + 0.5, GROUND + 0.58);
+    bars(u, gx - gw / 2 + 0.1, gz, gx + gw / 2 - 0.1, gz, d.lite ? 0.55 : 0.28, GROUND + 0.58, GROUND + 1.98);
+    u.flush();
     d.solid(gate.x0, E - T - 0.05, gate.x1, E - ci, 2.3);
-  }
-  if (!d.lite && front === 'wall') {                                              // bougainvillea over the street wall, a few clusters
-    const rng = siteRng(d, 'bougainvillea');
-    for (let k = 0; k < 3; k++) {                                                    // a cushion of leaves and two or three rounder clusters of flowers over it
-      const x = -ex + 2 + rng() * (d.w - 4), r = 0.55 + rng() * 0.3;
-      if (gate && x > gate.x0 - 1.4 && x < gate.x1 + 1.4) continue;
-      d.blob(d.leaves, r, x, h - 0.12, s, d.c.hedge, 0.45, 0);
-      for (const [t, dy] of [[-0.45, 0.1], [0.1, 0.2], [0.55, 0.08]] as const) d.blob(d.leaves, r * 0.5, x + t * r, h + dy, s, (k + Math.round(t * 4)) % 3 ? d.c.bloom : d.c.bloom2, 0.75, 0);
-    }
   }
   return gate ?? { x0: 0, x1: 0 };
 }

@@ -110,7 +110,7 @@ export type SiteBuilder = (d: SiteDraw) => SiteResult | void;
 /** One design of a kind: the lane's builder, its name for the catalogue, the site size it fits. */
 export interface Variant { id: string; name: string; size: SiteSize; build: SiteBuilder }
 
-/** Triangle budgets per site (medium quality, gross; the low preset draws about 60 %), docs/ld2/LD2_E.md decision 5. */
+/** Triangle budgets per site (medium quality, gross; the low preset draws about 60 %), docs/ld2/LD2_E.md decision 5. They include the open boundary (a railing on a plinth along the street and the road-side edges: about 250 triangles for a 22 m lot's street edge and one road side, 550 for two lots, 900 for a block). */
 export const TRI_CAP: Record<SiteKind, Partial<Record<SiteSize, number>>> = {
-  house: { S: 1500 }, villa: { S: 2600 }, hotel: { M: 5000, L: 8000 }, residence: { S: 3500, M: 4500, L: 7000 },
+  house: { S: 1800 }, villa: { S: 2850 }, hotel: { M: 5600, L: 9200 }, residence: { S: 3900, M: 5200, L: 8200 },
 };
