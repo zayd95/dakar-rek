@@ -1,0 +1,114 @@
+{
+ "at": "2026-10-27T13:34:02.080Z",
+ "cost": {
+  "residence-ngor": {
+   "name": "Résidence de Ngor",
+   "kind": "residence",
+   "size": "S",
+   "views": {
+    "front": 283,
+    "street": 300,
+    "back": 169,
+    "side": 200,
+    "aerial": 279,
+    "close": 201,
+    "night": 178
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 3320
+   },
+   "info": {
+    "colliders": 11,
+    "signs": 1,
+    "tallest": 15.2
+   },
+   "low": {
+    "calls": 8,
+    "tris": 1916
+   }
+  },
+  "residence-stack": {
+   "name": "Balcons décalés sur pilotis",
+   "kind": "residence",
+   "size": "M",
+   "views": {
+    "front": 301,
+    "street": 146,
+    "back": 251,
+    "side": 183,
+    "aerial": 286,
+    "close": 209,
+    "night": 195
+   },
+   "medium": {
+    "calls": 7,
+    "tris": 4342
+   },
+   "info": {
+    "colliders": 30,
+    "signs": 1,
+    "tallest": 21.9
+   },
+   "low": {
+    "calls": 7,
+    "tris": 2724
+   }
+  },
+  "residence-screen": {
+   "name": "Brise-soleil sur loggias",
+   "kind": "residence",
+   "size": "M",
+   "views": {
+    "front": 343,
+    "street": 144,
+    "back": 197,
+    "side": 196,
+    "aerial": 305,
+    "close": 227,
+    "night": 215
+   },
+   "medium": {
+    "calls": 7,
+    "tris": 4308
+   },
+   "info": {
+    "colliders": 12,
+    "signs": 1,
+    "tallest": 20.9
+   },
+   "low": {
+    "calls": 7,
+    "tris": 2826
+   }
+  },
+  "residence-courtyard": {
+   "name": "Cour-jardin à portail",
+   "kind": "residence",
+   "size": "L",
+   "views": {
+    "front": 310,
+    "street": 122,
+    "back": 191,
+    "side": 220,
+    "aerial": 363,
+    "close": 229,
+    "night": 197
+   },
+   "medium": {
+    "calls": 8,
+    "tris": 6316
+   },
+   "info": {
+    "colliders": 20,
+    "signs": 1,
+    "tallest": 20.3
+   },
+   "low": {
+    "calls": 8,
+    "tris": 4424
+   }
+  }
+ },
+ "errors": []
+}
