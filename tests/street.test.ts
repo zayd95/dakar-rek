@@ -57,12 +57,12 @@ describe('street plan', () => {
     expect(curveAt(WALK_BY_HOUR, 7.75)).toBe(1);
   });
 
-  it('each hub its own street: commuters wait in Pikine, groups chat in the banlieue and at Fann, Almadies stays quiet', () => {
+  it('each hub its own street: commuters wait in Pikine, groups chat in the banlieue and at Fann, Almadies is quieter than all of them but not empty', () => {
     const t = (hub: 'pikine' | 'plateau' | 'corniche' | 'almadies', h: number) => streetTargets(hub, h, 'high', 4, 9, 1);
     expect(t('pikine', 18.25).perStop).toBeGreaterThan(t('almadies', 18.25).perStop * 2);
     expect(t('pikine', 19).groups).toBeGreaterThan(t('plateau', 19).groups);
     expect(t('corniche', 19).groups).toBeGreaterThan(t('almadies', 19).groups);
-    expect(t('almadies', 19).groups).toBeLessThanOrEqual(1);
+    expect(t('almadies', 19).groups).toBeLessThanOrEqual(4); expect(t('almadies', 19).groups).toBeGreaterThanOrEqual(2);   // LD2.0-E round 3: people stand about in front of the cafés
     // the busy stops get two more people: the pool still holds everyone
     for (const q of ['low', 'medium', 'high'] as const) for (const hub of ['pikine', 'plateau'] as const) for (let h = 0; h < 24; h += 0.5) {
       const x = streetTargets(hub, h, q, 4, 9, 2);
