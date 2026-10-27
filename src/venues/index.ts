@@ -6,6 +6,7 @@ import { buildMosque } from './mosque';
 import { buildBeach } from './beach';
 import { buildEmbarcadere, type EmbarcadereVenue } from './embarcadere';
 import { buildIslandRooftop, islandRooftopInfo } from './islandRooftop';
+import { buildNgorBeach } from './ngorBeach';
 import { TRAVERSEE_HUB } from '../sea/traverseeSite';
 import { buildSalon } from './salon';
 import { buildClub, CLUB_SITE, setVagueVirtual, shiftClubDay } from './club';
@@ -85,6 +86,7 @@ export const VenuesModule: GameModule = {
     if (salon) { venues.push(buildSalon(env, salon)); yield; }
     if (club) { venues.push(buildClub(env)); yield; }
     if (port) { embarcadere = buildEmbarcadere(env); venues.push(embarcadere); }
+    if (port) venues.push(buildNgorBeach(env));                         // the beach first: the Plage de Ngor west of the pier (docs/NGOR_BEACH.md)
     if (port) venues.push(buildIslandRooftop(env));                      // the island's rooftop restaurant and lounge bar: its people and its music
   },
   update(ctx, dt) {

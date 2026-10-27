@@ -13,6 +13,7 @@ import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, media
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { ALLEY_RECT, STRIP_KEEP_CLEAR, buildHospitalityBlock } from './hospitalityStrip';
+import { NGOR_BEACH_KEEP_CLEAR, buildNgorBeach, ngorBeachSeats } from './ngorBeach';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
 import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
@@ -961,7 +962,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   // the Almadies' pier (the Embarcadère de Ngor, src/sea/traverseeSite.ts) from the block to its end: no palm, tree or stall stands on it, no car parks across it
   const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
     : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }])
-    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR] : [];
+    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR, ...NGOR_BEACH_KEEP_CLEAR] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1361,6 +1362,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         group.add(buildNgorShallows(lite, () => facadeMat.emissiveIntensity / 1.25));     // the city's night (src/main.ts lights the windows by it)
         colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
+        // the beach first (the owner, 27 Oct): the Plage de Ngor west of the pier, with the embarkation's ticket hut and shelter east of it (src/world/ngorBeach.ts)
+        buildNgorBeach({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
+        seats.push(...ngorBeachSeats());
         addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
         // the island's rooftop restaurant and lounge bar, named on the roof's front edge, toward the sea and the boats coming in (« sunu toit »: our roof)
         { const rb = TRAVERSEE_SITE.island.rooftop.box; addSign('SUNU TOIT · RESTAURANT · LOUNGE', '#0e5a6b', '#fdf1d6', (rb.x0 + rb.x1) / 2, rooftopFloors().roof - 0.62, rb.z1 + 0.21, 0, 8.2, 0.5); }

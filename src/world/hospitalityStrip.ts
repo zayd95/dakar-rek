@@ -21,7 +21,7 @@ export interface StripKit {
   pool: (x: number, z: number, r: number, y?: number) => void;
   shade: (c: number, k: number) => number;
 }
-type K = StripKit;
+export type K = StripKit;
 
 export const VENUE_W = 12.2, VENUE_D = 9;
 
@@ -36,10 +36,10 @@ export const STRIP_KEEP_CLEAR: KeepClear[] = [
   { ...ALLEY_RECT, why: 'almadies_alley' },
 ];
 
-const WARM = 0xffe2a0, NEON_PINK = 0xff3fb0, NEON_CYAN = 0x38e8ff, NEON_AMBER = 0xffa927;
+export const WARM = 0xffe2a0, NEON_PINK = 0xff3fb0, NEON_CYAN = 0x38e8ff, NEON_AMBER = 0xffa927;
 
 // ---------------------------------------------------------------- small parts
-const palm = (k: K, x: number, z: number, s = 1) => {
+export const palm = (k: K, x: number, z: number, s = 1) => {
   const h = 5.4 * s;
   k.trunks.cyl(0.17 * s, 0.24 * s, h, x, 0.1, z, 0x8a6d4a, 5);
   const top = 0.1 + h;
@@ -50,17 +50,17 @@ const palm = (k: K, x: number, z: number, s = 1) => {
   }
   k.leaves.blob(0.4 * s, x, top - 0.1, z, 0x6b5a2a, 1, 0);
 };
-const planter = (k: K, x: number, z: number, w: number, d: number, col = 0xe7e1d4, green = true) => {
+export const planter = (k: K, x: number, z: number, w: number, d: number, col = 0xe7e1d4, green = true) => {
   const { plain, leaves, G } = k;
   plain.box(w, 0.62, d, x, G, z, col);
   plain.box(w + 0.12, 0.08, d + 0.12, x, G + 0.62, z, k.shade(col, 0.85));
   if (green) for (let n = 0; n < Math.max(2, Math.round(w / 0.7)); n++) leaves.blob(0.38, x - w / 2 + 0.4 + n * 0.7, G + 0.95, z + (n % 2 ? 0.08 : -0.08), n % 3 ? 0x3d8a44 : 0x2f7a3a, 0.8, 0);
   k.solidC(x, z, w, d, 0.7);
 };
-const bougainvillea = (k: K, x: number, y: number, z: number, w: number) => {
+export const bougainvillea = (k: K, x: number, y: number, z: number, w: number) => {
   for (let n = 0; n < Math.round(w / 0.8); n++) k.leaves.blob(0.42, x - w / 2 + 0.4 + n * 0.8, y + (n % 2) * 0.12, z, n % 2 ? 0xc2185b : 0xe0408a, 0.7, 0);
 };
-const cafeSet = (k: K, x: number, z: number, chair: number, top = 0x6b4a2e) => {
+export const cafeSet = (k: K, x: number, z: number, chair: number, top = 0x6b4a2e) => {
   const { plain, G } = k;
   plain.cyl(0.52, 0.52, 0.06, x, G + 0.76, z, top, 12);
   plain.cyl(0.05, 0.05, 0.72, x, G + 0.04, z, 0x2a2a30, 6);
@@ -69,11 +69,11 @@ const cafeSet = (k: K, x: number, z: number, chair: number, top = 0x6b4a2e) => {
     plain.box(0.42, 0.48, 0.05, x + side * 0.82, G + 0.49, z + 0.23, chair);
   }
 };
-const umbrella = (k: K, x: number, y: number, z: number, col: number, r = 1.1) => {
+export const umbrella = (k: K, x: number, y: number, z: number, col: number, r = 1.1) => {
   k.plain.cyl(0.03, 0.03, 2.3, x, y, z, 0xcfcfcf, 5);
   k.plain.cyl(0.04, r, 0.38, x, y + 2.0, z, col, 8);
 };
-const lampPole = (k: K, x: number, z: number, h = 4.6, bulb = WARM) => {
+export const lampPole = (k: K, x: number, z: number, h = 4.6, bulb = WARM) => {
   k.lampPosts.cyl(0.07, 0.1, h, x, 0, z, 0x2c2f36, 6);
   k.lampPosts.box(0.9, 0.08, 0.08, x, h, z, 0x2c2f36);
   k.lampBulbs.box(0.40, 0.40, 0.40, x - 0.4, h - 0.1, z, bulb); k.lampBulbs.box(0.40, 0.40, 0.40, x + 0.4, h - 0.1, z, bulb);
@@ -81,14 +81,14 @@ const lampPole = (k: K, x: number, z: number, h = 4.6, bulb = WARM) => {
   k.solidC(x, z, 0.3, 0.3, h);
 };
 /** A string of small lamps between two points, hanging a little in the middle. */
-const festoon = (k: K, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, sag: number, cols: number[], step = 0.65) => {
+export const festoon = (k: K, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, sag: number, cols: number[], step = 0.65) => {
   const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.round(len / (k.lite ? step * 1.8 : step)));
   for (let m = 0; m <= n; m++) {
     const t = m / n, y = y0 + (y1 - y0) * t - Math.sin(t * Math.PI) * sag;
     k.lampBulbs.box(0.13, 0.13, 0.13, x0 + (x1 - x0) * t, y, z0 + (z1 - z0) * t, cols[m % cols.length]);
   }
 };
-const stripedAwning = (k: K, x: number, w: number, y: number, z: number, out: number, a: number, b: number) => {
+export const stripedAwning = (k: K, x: number, w: number, y: number, z: number, out: number, a: number, b: number) => {
   const n = Math.max(3, Math.round(w / 0.7));
   for (let m = 0; m < n; m++) k.plain.slab(w / n + 0.01, 0.07, out, x - w / 2 + (m + 0.5) * (w / n), y, z - out / 2, m % 2 ? a : b, 0, -0.14);
   k.plain.box(w, 0.28, 0.06, x, y - 0.42, z - out + 0.05, a);
