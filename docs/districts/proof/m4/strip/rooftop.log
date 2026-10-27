@@ -1,0 +1,44 @@
+PASS: plateau: a rooftop door exists at the facade of a tall building {"hub":"plateau","name":"Toit Baobab","kind":"restaurant","door":{"id":"plateau:rooftop:plateau","x":-18.078402649611235,"z":27.233276828797536},"facade":{"x":-18.078402649611235,"z":27.23327682879753
+PASS: plateau: it is a restaurant, neither a gargote nor a maïga 
+PASS: plateau: « Entrer » is offered at the door {"id":"plateau:rooftop:plateau","name":"Toit Baobab","kind":"door","space":"street","primary":"Entrer","all":["Entrer"],"why":[]}
+PASS: plateau: inside the terrace, with seats registered 16 seats
+PASS: plateau: the bar offers « Commander » {"id":"plateau:rooftop:plateau:bar","name":"Le bar","kind":"counter","space":"plateau:rooftop:plateau","primary":"Commander","all":["Commander"],"why":[]}
+PASS: plateau: the menu lists the dishes with prices 
+PASS: plateau: ordering pays once at the start (50000 → 45500 F) 
+PASS: plateau: not fed yet while it is prepared 
+PASS: plateau: seated at a table with the plate on it (a table top, within reach of the seat) [{"x":3202.15,"z":1},{"prop":"ceebu","x":3201.6,"y":0.86,"z":1,"bites":0,"lifting":false}]
+PASS: plateau: the meal feeds (faim 20 → 79.66312533333335) and was not charged twice (45500 F) 
+PASS: plateau: the terrace meal is counted once 
+PASS: plateau: the table offers « Se lever » {"id":"self","name":"Assis","kind":"self","space":"plateau:rooftop:plateau","primary":"Se lever","all":["Se lever"],"why":[]}
+PASS: plateau: the stairs offer to go down {"id":"plateau:rooftop:out","name":"Sortir","kind":"door","space":"plateau:rooftop:plateau","primary":"Descendre","all":["Descendre"],"why":[]}
+PASS: plateau: back on the street at the door [-18.078402649611235,27.233276828797536]
+PASS: corniche: a rooftop door exists at the facade of a tall building {"hub":"corniche","name":"Sunset Lounge","kind":"lounge","door":{"id":"corniche:rooftop:corniche","x":-17.115446493495256,"z":28.042920227185824},"facade":{"x":-17.115446493495256,"z":28.0429202271858
+PASS: corniche: it is a lounge, neither a gargote nor a maïga 
+PASS: corniche: « Entrer » is offered at the door {"id":"corniche:rooftop:corniche","name":"Sunset Lounge","kind":"door","space":"street","primary":"Entrer","all":["Entrer"],"why":[]}
+PASS: corniche: inside the terrace, with seats registered 34 seats
+PASS: corniche: the bar offers « Commander » {"id":"corniche:rooftop:corniche:bar","name":"Le bar","kind":"counter","space":"corniche:rooftop:corniche","primary":"Commander","all":["Commander"],"why":[]}
+PASS: corniche: the menu lists the dishes with prices 
+PASS: corniche: ordering pays once at the start (45500 → 43000 F) 
+PASS: corniche: not fed yet while it is prepared 
+PASS: corniche: seated at a table with the plate on it (a table top, within reach of the seat) [{"x":3262.15,"z":0.19999999999999996},{"prop":"bissap","x":3261.64,"y":0.5,"z":1,"bites":0,"lifting":false}]
+PASS: corniche: the meal feeds (faim 20 → 24.755109333333355) and was not charged twice (43000 F) 
+PASS: corniche: the terrace meal is counted once 
+PASS: corniche: the table offers « Se lever » {"id":"self","name":"Assis","kind":"self","space":"corniche:rooftop:corniche","primary":"Se lever","all":["Se lever"],"why":[]}
+PASS: corniche: the stairs offer to go down {"id":"corniche:rooftop:out","name":"Sortir","kind":"door","space":"corniche:rooftop:corniche","primary":"Descendre","all":["Descendre"],"why":[]}
+PASS: corniche: back on the street at the door [-17.115446493495256,28.042920227185824]
+PASS: almadies: a rooftop door exists at the dedicated hospitality frontage {"hub":"almadies","name":"Terrasse de Ngor","kind":"lounge","door":{"id":"almadies:rooftop:almadies","x":-30,"z":-105.1},"facade":{"x":-30,"z":-105.1,"nx":0,"nz":-1},"bar":{"x":3322.2,"z":-3.100000000
+PASS: almadies: it is a lounge, neither a gargote nor a maïga 
+PASS: almadies: « Entrer » is offered at the door {"id":"almadies:rooftop:almadies","name":"Terrasse de Ngor","kind":"door","space":"street","primary":"Entrer","all":["Entrer"],"why":[]}
+PASS: almadies: inside the terrace, with seats registered 34 seats
+PASS: almadies: the bar offers « Commander » {"id":"almadies:rooftop:almadies:bar","name":"Le bar","kind":"counter","space":"almadies:rooftop:almadies","primary":"Commander","all":["Commander"],"why":[]}
+PASS: almadies: the menu lists the dishes with prices 
+PASS: almadies: ordering pays once at the start (43000 → 37000 F) 
+PASS: almadies: not fed yet while it is prepared 
+PASS: almadies: seated at a table with the plate on it (a table top, within reach of the seat) [{"x":3322.15,"z":0.19999999999999996},{"prop":"poisson","x":3321.64,"y":0.5,"z":1,"bites":0,"lifting":false}]
+PASS: almadies: the meal feeds (faim 20 → 81.6777786666667) and was not charged twice (37000 F) 
+PASS: almadies: the terrace meal is counted once 
+PASS: almadies: the table offers « Se lever » {"id":"self","name":"Assis","kind":"self","space":"almadies:rooftop:almadies","primary":"Se lever","all":["Se lever"],"why":[]}
+PASS: almadies: the stairs offer to go down {"id":"almadies:rooftop:out","name":"Sortir","kind":"door","space":"almadies:rooftop:almadies","primary":"Descendre","all":["Descendre"],"why":[]}
+PASS: almadies: back on the street at the door [-30,-105.1]
+PASS: no JavaScript errors 
+rooftop checks passed

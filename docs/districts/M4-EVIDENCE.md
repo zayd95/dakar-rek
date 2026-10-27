@@ -93,3 +93,10 @@ The first recording above shows the Terrasse's door on a randomly chosen villa f
 The strip costs about 10 to 13 draw calls and 9 000 to 15 000 triangles in the street view at the Terrasse's door; the terrace is unchanged. These are headless counts, not frame times on a phone.
 
 **Still not proven:** an iPhone run (not done), a preview of this build (the Cloudflare build fails instantly on new branches here, as on #67, #73, #74 and #76), and how the strip looks by day (the captures are at 20:00).
+
+## Placemaking pass: the strip as real places ([`M4-STRIP-PLACEMAKING.md`](M4-STRIP-PLACEMAKING.md))
+After the owner's playtest of PR #77 (« still looks like residential homes… give identity to the structures and street, create parkings »), the six venues were rebuilt as different buildings, with forecourts, two car parks and a lit alley to La Vague. Before / after (left / right; night strip, day strip, the alley): ![before / after](proof/m4/strip/before-after.jpg)
+
+Eye-level: [Terrasse at dusk](proof/m4/strip/eye-h15.jpg) · [Terrasse at night](proof/m4/strip/eye-h21.jpg) · [Café du Phare / Chez Binta at night](proof/m4/strip/eye2-h21.jpg) · [the alley](proof/m4/strip/alley-h21.jpg) · [the car park from behind](proof/m4/strip/rear-h15.jpg) · [phone](proof/m4/strip/phone-frontage.jpg).
+
+Numbers are in the placemaking doc's results block below (filled from the final run).

@@ -100,7 +100,8 @@ await t.tap('#ridepad .rp-off');
 await until(() => !window.__dakar.teranga.at().driving && window.__dakar.pos().mode === 'play', null, 60000);
 await page.waitForTimeout(1200);
 const car1 = await d(() => window.__dakar.teranga.info()), pk = await d(() => window.__dakar.teranga.at());
-const inBay = Math.abs(pk.x - parkingPt.x) <= 1.3 && Math.abs(pk.z - parkingPt.z) <= 1.2;
+// the stop is hand-steered and the brake's reach depends on the page's frame rate: the car's centre must be inside the bay's painted rectangle (7.2 × 5.0 m), shrunk 0.5 m
+const inBay = Math.abs(pk.x - parkingPt.x) <= 3.1 && Math.abs(pk.z - parkingPt.z) <= 2.0;
 check('driven with the pedal stick into the marked Terrasse visitor bay and parked within 25 m of the door', inBay && Math.hypot(pk.x - R.x, pk.z - R.z) < 25, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [+parkingPt.x.toFixed(1), +parkingPt.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
 check('stepped out: the car stays where it was left, saved as parked in Almadies', car1.owned && !pk.driving && car1.record?.hub === 'almadies' && Math.hypot(car1.record.x - pk.x, car1.record.z - pk.z) < 0.5, JSON.stringify(car1.record));
 
