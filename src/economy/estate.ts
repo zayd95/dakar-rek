@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld } from '../world/types';
 import { buildInterior } from '../world/interiors';
-import type { AssetState } from '../core/types';
+import type { AssetState, Placement } from '../core/types';
 import { floorSeatTop, type Seat } from '../interact/seats';
 import type { Target } from '../interact/types';
 import * as P from '../activity/primitives';
@@ -17,7 +17,7 @@ import { ECONOMY } from './config';
 import {
   HOUR_MS, adRunning, assetsOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
   cannotReturnRoom, cannotSell, cannotUpgrade, chargeOf, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding, holds, incomeOf, incomePerHour, moveIn,
-  netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, specOfAsset, upgradeAsset, valueOf,
+  netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, setPlacement, specOfAsset, touchAssets, upgradeAsset, valueOf,
 } from './assets';
 import { STARTER_HOME } from '../core/save';
 import {
@@ -26,14 +26,21 @@ import {
 } from './catalog';
 import { CATALOGUE, cannotBuy as cannotBuyFurniture, deliverFurniture, furnitureById, hasGoodMattress, piecesOf } from './furniture';
 import { furnitureModel } from './furnitureModels';
-import { installFurnitureKit } from './furnitureKitAdapter';
+import { KIT_PIECES, installFurnitureKit } from './furnitureKitAdapter';
 import { buildHomeInterior } from './homeInterior';
-import { footprint, toHome, yawOf } from './placement';
+import { planFor, reachable } from '../housing/plan';
+import { roomCentre } from '../housing/apartment';
+import { footprint, homeOrigin, inHome, layoutOf, planRooms, roomKindOf, roomOf, toHome, whyNot, yawOf } from './placement';
+import { inner as innerOf, isCovered, levelIndex, levelOfRoom } from '../housing/plan';
 import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
 import { Batch, signTexture } from '../world/batch';
 import { BLK, HALF, PITCH, ROAD } from '../world/builder';
+import { FRONT_DOOR as VILLA_DOOR, GATE as VILLA_GATE, VILLA_ID, onLot } from '../housing/villa';
+import { villaFactsOf } from '../villa/facts';
+import { villaPath } from '../villa/goal';
 import { HomeEditor, type HomeView } from './homeEditor';
 import { cannotBuy as cannotBuyVenture, ownedVentures } from './business';
+import { guestMaySit, guestMayUse } from '../online/visitRules';
 import { setWorn, worn } from './wear';
 import './estate.css';
 
@@ -48,7 +55,6 @@ import './estate.css';
  * - Sheets show what a purchase costs and brings before the one confirmation; no approval, no paperwork, no waiting.
  * - Phone: « Biens » (net worth, income, charges, everything held, listings) and « Maison » (the home, its furniture).
  */
-const ROOM_X = 1600, ROOM_STEP = 60;
 const FLOOR = 0.1;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const perDay = (n: number) => `${fcfa(n)} / jour`;
@@ -64,14 +70,28 @@ const SELLER_LINES = [
   'Pape, vendeur : « Un réchaud, et tu cuisines chez toi pour moins cher qu’à la gargote. »',
   'Pape, vendeur : « Jërëjëf ! Ba beneen yoon, inch’Allah. »',
 ];
+/** Keur Meubles' shelves (the catalogue's categories), by the room a piece is for. Since LD2.0-C: dining, bathroom, appliances, pictures, outdoor. */
 const ROOMS: { id: string; label: string; what: string; types: FurnitureType[] }[] = [
-  { id: 'salon', label: 'Salon', what: 'Canapés, fauteuils, chaises et tables', types: ['sofa', 'chair', 'table'] },
-  { id: 'chambre', label: 'Chambre', what: 'Lits, literie et rangements', types: ['bed', 'mattress', 'wardrobe'] },
-  { id: 'cuisine', label: 'Cuisine', what: 'Réchaud, cuisinière, cuisine équipée', types: ['kitchen'] },
+  { id: 'salon', label: 'Salon', what: 'Canapés, fauteuils, chaises, tables et bibliothèques', types: ['sofa', 'chair', 'table', 'shelf'] },
+  { id: 'manger', label: 'Salle à manger', what: 'Tables et leurs chaises, du plastique au marbre', types: ['dining'] },
+  { id: 'chambre', label: 'Chambre', what: 'Lits, literie, armoires, commodes et coiffeuses', types: ['bed', 'mattress', 'wardrobe'] },
+  { id: 'cuisine', label: 'Cuisine', what: 'Réchaud, cuisinières, table de cuisine, micro-ondes, fontaines', types: ['kitchen', 'appliance'] },
+  { id: 'bain', label: 'Salle de bain', what: 'Lavabos et vasques, miroirs, porte-serviettes', types: ['bath'] },
   { id: 'bureau', label: 'Bureau', what: 'Travailler chez toi, une fois par heure en ville', types: ['desk'] },
-  { id: 'loisirs', label: 'Télé et musique', what: 'Télés, radios, chaînes hi-fi', types: ['tv', 'radio'] },
-  { id: 'deco', label: 'Déco', what: 'Tapis, miroirs, plantes et lampes', types: ['rug', 'mirror', 'plant', 'lamp'] },
+  { id: 'loisirs', label: 'Télé et musique', what: 'Télés, meubles télé, radios, chaînes hi-fi', types: ['tv', 'radio'] },
+  { id: 'deco', label: 'Lumière et déco', what: 'Lampes, lanternes, tableaux, vases, sculptures, paravents, aquariums, tapis, miroirs et plantes', types: ['lamp', 'decor', 'rug', 'mirror', 'plant'] },
+  { id: 'jardin', label: 'Jardin et piscine', what: 'Transats, parasols, salons de jardin · pour la villa, ou près de la fenêtre', types: ['outdoor'] },
 ];
+
+/** A piece standing in a home view: the player's own (its asset) or a visited host's (from the snapshot). */
+interface Piece { uid: string; spec: string; at: Placement }
+/**
+ * LD2.0-B « Belong Online » (src/online/visit.ts): another player's home drawn READ-ONLY from their snapshot, in place of this player's own view of
+ * the same home, while the player visits it. Nothing of it is ever written to the save: ending the visit draws the player's own homes from the save again.
+ * `use` (the host's GuestPerms): the seats (never a bed) and the TV and the radio; nothing else of the home is offered to a guest.
+ */
+export interface VisitDraw { host: string; hostName: string; spec: string; upgrades: readonly string[]; furniture: readonly { spec: string; at: Placement }[]; use: boolean }
+let visitDraw: VisitDraw | null = null;
 
 class Estate {
   ctx!: GameCtx;
@@ -107,11 +127,12 @@ class Estate {
     this.hub = hub; this.cite = null;
     if (hub.id === CITE_HUB) this.buildCite(hub);
     if (hub.id === 'almadies') this.buildVillas(hub);
-    HOMES.forEach((spec, i) => {
+    HOMES.forEach(spec => {
       if (spec.hub !== hub.id) return;
       const door = hub.interactables.find(it => it.id === spec.home.door); if (!door) return;
       const furniture = new THREE.Group();
-      const v: HomeView = { spec, door, ox: ROOM_X + i * ROOM_STEP, oz: 0, int: null!, base: [], spots: null, ceiling: [], shellKey: '?', furniture, pieces: new Map(), seatIds: [] };
+      const o = homeOrigin(spec.id)!;                                   // one slot per catalogue entry: the same in every client (a guest draws a host's home there too)
+      const v: HomeView = { spec, door, ox: o.x, oz: o.z, int: null!, base: [], spots: null, ceiling: [], shellKey: '?', furniture, pieces: new Map(), seatIds: [] };
       this.views.set(spec.id, v);
     });
     this.rev = -1;
@@ -152,15 +173,23 @@ class Estate {
   /**
    * The villa and the luxury residence of Almadies stand behind two villa gates of the hub (world/builder.ts puts each
    * villa lot's gate at the lot's centre, on the street side): a listing board, the door, a directory entry.
+   * LD2.0-D: the flagship villa (`villa_almadies`) has its own compound (src/world/villaCompound.ts): its street door is the house's front door,
+   * inside the walls (« Entrer chez toi » there, and the player comes out there), its sale board stays on the pavement by the gate (« Voir le
+   * logement », « Gérer ») and the walking marker leads to the gate. The residence's door, board and entry are as they were.
    */
   private buildVillas(hub: HubWorld) {
     const ctx = this.ctx;
     const hooks: PlaceHooks = { ownership: id => this.openSheet(id), holds: id => holds(this.s, id), enterHome: id => this.enterHome(id) };
-    for (const [id, gate] of Object.entries(VILLA_GATES)) {
-      const sp = homeSpec(id)!, door = { x: gate.x, z: gate.z + 1.4 }, board = { x: gate.x + 2.3, z: gate.z + 0.9 };
+    for (const [id, site] of Object.entries(VILLA_GATES)) {
+      const sp = homeSpec(id)!, { door, board, entry } = site, name = sp.name.split(' · ')[0];
       hub.interactables.push({ id: sp.home.door, name: sp.name, kind: 'actions', x: door.x, z: door.z, radius: -1, actions: [] });
-      hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: gate.x - 2.6, z: gate.z + 2.2, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
-      ctx.places.add(ownable({ id, name: sp.name.split(' · ')[0], space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: door.x, z: door.z + 0.3, radius: 2.2 }] }, hooks));
+      hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: entry.x, z: entry.z, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
+      ctx.places.add(ownable({ id, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: door.x, z: door.z + site.anchorDz, radius: 2.2 }] }, hooks));
+      if (site.boardPlace) {                                                // the board by the gate: the listing (no way in from the pavement)
+        const p = ownable({ id: `${id}:panneau`, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: board.x, z: board.z + 0.6, radius: 2.2 }] }, hooks);
+        p.offers.sign = p.offers.sign.filter(o => o.id !== 'entrer');
+        ctx.places.add(p);
+      }
       const b = new Batch();
       for (const dx of [-0.75, 0.75]) b.box(0.1, 2.3, 0.1, board.x + dx, 0.12, board.z, 0x6b4a2e);
       const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) hub.group.add(mesh);
@@ -195,17 +224,25 @@ class Estate {
     return [...held.upgrades].sort().join(',') + (mattress ? '+matelas' : '');
   }
   private syncHome(v: HomeView) {
-    const ctx = this.ctx, s = this.s, held = holding(s, v.spec.id), hub = this.hub!.id;
-    const key = this.shellKeyOf(v, held);
+    const ctx = this.ctx, s = this.s, hub = this.hub!.id;
+    const vis = visitDraw?.spec === v.spec.id ? visitDraw : null;           // a host's home drawn for this guest, in place of the player's own
+    const held = vis ? undefined : holding(s, v.spec.id);
+    const key = vis ? `visit:${vis.use}:${[...vis.upgrades].sort().join(',')}` : this.shellKeyOf(v, held);
     if (key !== v.shellKey) {
       if (v.spec.home.level === 'room') {
-        const int = buildInterior('home', v.ox, v.oz, v.door.name, hub, held && hasGoodMattress(s, held.uid) ? ['matelas'] : []);
-        const comfort = held ? comfortOf(held) : 0;
-        const bed = int.interactables.find(i => i.id === `${hub}:in:bed`);
-        if (bed && comfort) bed.actions = bed.actions.map(a => ({ ...a, label: a.label + ' · moustiquaire', needs: { ...a.needs, energie: (a.needs?.energie ?? 0) + comfort } }));
+        const good = vis ? vis.upgrades.includes('matelas') : !!held && hasGoodMattress(s, held.uid);
+        const int = buildInterior('home', v.ox, v.oz, v.door.name, hub, good ? ['matelas'] : []);
+        if (vis) {                                                           // a guest: the way out only (no bed, no washing), nothing to lie on
+          int.interactables = int.interactables.filter(i => i.actions.some(a => a.special === 'exit'));
+          int.seats = int.seats.filter(st => guestMaySit(st.kind, st.clip, vis.use));
+        } else {
+          const comfort = held ? comfortOf(held) : 0;
+          const bed = int.interactables.find(i => i.id === `${hub}:in:bed`);
+          if (bed && comfort) bed.actions = bed.actions.map(a => ({ ...a, label: a.label + ' · moustiquaire', needs: { ...a.needs, energie: (a.needs?.energie ?? 0) + comfort } }));
+        }
         v.int = int; v.spots = null; v.ceiling = [];
       } else {
-        const h = buildHomeInterior(v.spec, v.ox, v.oz, hub, held?.upgrades ?? []);
+        const h = buildHomeInterior(v.spec, v.ox, v.oz, hub, vis ? vis.upgrades : held?.upgrades ?? []);
         v.int = h.int; v.spots = h.spots; v.ceiling = h.ceiling;
       }
       v.base = [...v.int.colliders];
@@ -213,24 +250,40 @@ class Estate {
       ctx.addInterior(v.door, v.int);
       v.shellKey = key;
     }
-    // pieces: one model per placed piece, at its saved spot
-    const want = held ? furnitureIn(s, held.uid).filter(f => f.at && !furnitureSpec(f.spec)?.fixed) : [];
+    // pieces: one model per placed piece, at its saved spot (a guest: at the host's spot, from the snapshot)
+    const want: Piece[] = vis
+      ? vis.furniture.flatMap((f, i) => { const fs = furnitureSpec(f.spec); return fs && !fs.fixed ? [{ uid: `visit${i}`, spec: f.spec, at: f.at }] : []; })
+      : held ? furnitureIn(s, held.uid).filter(f => f.at && !furnitureSpec(f.spec)?.fixed).map(f => ({ uid: f.uid, spec: f.spec, at: f.at! })) : [];
     for (const [uid, p] of v.pieces) if (!want.some(f => f.uid === uid && f.spec === p.spec)) { v.furniture.remove(p.obj); disposeModel(p.obj); v.pieces.delete(uid); }
+    // LD2.0-D: a home on several levels (the villa) stands each piece on its level's floor, and tells the shell's cutaway its level and whether
+    // the floor above covers it (src/housing/apartment.ts)
+    const L = layoutOf(v.spec), plan = L.plan;
     for (const f of want) {
       let p = v.pieces.get(f.uid);
       if (!p) { const obj = furnitureModel(furnitureSpec(f.spec)!); obj.userData.uid = f.uid; v.furniture.add(obj); p = { obj, spec: f.spec }; v.pieces.set(f.uid, p); }
-      p.obj.position.set(v.ox + f.at!.x, FLOOR, v.oz + f.at!.z); p.obj.rotation.y = yawOf(f.at!);
+      const w = inHome(L, f.at.x, f.at.z);
+      p.obj.position.set(v.ox + w.x, FLOOR + w.y, v.oz + w.z); p.obj.rotation.y = yawOf(f.at);
+      if (plan?.levels) {
+        const room = roomOf(L, f.at) ?? plan.rooms.find(r => r.box.x0 <= f.at.x && r.box.x1 >= f.at.x && r.box.z0 <= f.at.z && r.box.z1 >= f.at.z) ?? null;
+        p.obj.userData.homeLevel = levelIndex(plan, room ? levelOfRoom(plan, room) : plan.levels.find(l => l.id === w.level) ?? plan.levels[0]);
+        p.obj.userData.covered = !!room && isCovered(plan, room);
+      }
     }
-    this.upgradeDressing(v, held);
+    this.upgradeDressing(v, vis ? vis.upgrades : held?.upgrades ?? []);
     // colliders: the shell's, then every piece standing (rugs are walked on)
     v.int.colliders.length = 0; v.int.colliders.push(...v.base);
-    for (const f of want) { const fs = furnitureSpec(f.spec)!; if (fs.flat) continue; const r = footprint(fs, f.at!); v.int.colliders.push({ x0: v.ox + r.x0, z0: v.oz + r.z0, x1: v.ox + r.x1, z1: v.oz + r.z1, h: 1 }); }
-    // seats: unchanged ones stay (with whoever sits there), the others are replaced
+    for (const f of want) {
+      const fs = furnitureSpec(f.spec)!; if (fs.flat || fs.mount) continue;                    // rugs are walked on, hung pieces walked under
+      const r = footprint(fs, f.at), w = inHome(L, f.at.x, f.at.z), dx = w.x - f.at.x;            // (LD2.0-D: at its level, its heights on the collider)
+      v.int.colliders.push(plan?.levels ? { x0: v.ox + r.x0 + dx, z0: v.oz + r.z0, x1: v.ox + r.x1 + dx, z1: v.oz + r.z1, y0: w.y, h: w.y + FLOOR + 1 } : { x0: v.ox + r.x0, z0: v.oz + r.z0, x1: v.ox + r.x1, z1: v.oz + r.z1, h: 1 });
+    }
+    // seats: unchanged ones stay (with whoever sits there), the others are replaced; a guest sits only with « use », never on a bed
     const seats: Seat[] = [];
     for (const f of want) (furnitureSpec(f.spec)!.seats ?? []).forEach((st, k) => {
-      const [x, z] = toHome(f.at!, st.x, st.z);
-      const surface = st.top - 0.1 + FLOOR;                               // a lying place: the body's origin on the mattress
-      seats.push({ id: seatId(hub, f.uid, k), x: v.ox + x, z: v.oz + z, top: st.clip ? floorSeatTop(surface) : surface, yaw: yawOf(f.at!) + st.yaw, kind: st.kind, space: 'home', occupant: null, ...(st.clip ? { clip: st.clip } : {}) });
+      if (vis && !guestMaySit(st.kind, st.clip, vis.use)) return;
+      const [x, z] = toHome(f.at, st.x, st.z), w = inHome(L, f.at.x, f.at.z), dx = w.x - f.at.x;
+      const surface = st.top - 0.1 + FLOOR + w.y;                         // a lying place: the body's origin on the mattress (LD2.0-D: on its level)
+      seats.push({ id: seatId(hub, f.uid, k), x: v.ox + x + dx, z: v.oz + z, top: st.clip ? floorSeatTop(surface) : surface, yaw: yawOf(f.at) + st.yaw, kind: st.kind, space: 'home', occupant: null, ...(st.clip ? { clip: st.clip } : {}) });
     });
     const same = (a: Seat | null, b: Seat) => !!a && Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.z - b.z) < 1e-6 && a.yaw === b.yaw && a.top === b.top && a.clip === b.clip;
     for (const id of v.seatIds) {
@@ -241,53 +294,99 @@ class Estate {
     }
     for (const st of seats) if (!ctx.seats.get(st.id)) ctx.seats.add(st);
     v.seatIds = seats.map(x => x.id);
-    // activities of the home
-    if (held) ctx.places.add(this.homePlace(v, held, want)); else ctx.places.remove(`home:${v.spec.id}`);
+    // activities of the home (a guest: the TV and the radio with « use », nothing else)
+    const place = vis ? this.guestPlace(v, vis, want) : held ? this.homePlace(v, held, want) : null;
+    if (place) ctx.places.add(place); else ctx.places.remove(`home:${v.spec.id}`);
   }
 
   /** Comfort upgrades that show: a mosquito net over the starter bed, a ceiling fan, an air conditioner, a lit cove. */
-  private upgradeDressing(v: HomeView, held: AssetState | undefined) {
+  private upgradeDressing(v: HomeView, upgrades: readonly string[]) {
     const old = v.furniture.getObjectByName('upgrades'); if (old) { v.furniture.remove(old); disposeModel(old); }
-    if (!held || !held.upgrades.length) return;
+    if (!upgrades.length) return;
     const g = new THREE.Group(); g.name = 'upgrades';
-    const has = (u: string) => held.upgrades.includes(u), L = v.spec.home, H = L.level === 'house' ? 3.1 : L.level === 'villa' ? 3.3 : L.level === 'residence' ? 3.4 : 2.9;
+    const has = (u: string) => upgrades.includes(u), L = v.spec.home, H = L.level === 'house' ? 3.1 : L.level === 'villa' ? 3.3 : L.level === 'residence' ? 3.4 : 2.9;
     const mat = new THREE.MeshLambertMaterial({ color: 0xf8f8f2, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
     if (has('moustiquaire')) {                                             // over the starter room's bed (x0 + 1.1, oz − 0.6)
       const net = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 1.05, 1.5, 12, 1, true), mat); net.position.set(v.ox - 1.9, 1.6, v.oz - 0.55); g.add(net);
     }
     const solid = (w: number, h: number, d: number, x: number, y: number, z: number, c: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c })); m.position.set(x, y, z); g.add(m); };
-    if (has('ventilo')) { solid(0.06, 0.4, 0.06, v.ox + 1.5, H - 0.2, v.oz + 0.5, 0x333333); for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.9), new THREE.MeshLambertMaterial({ color: 0xe8e8e8 })); b.position.set(v.ox + 1.5 + Math.sin(k * 2.094) * 0.45, H - 0.38, v.oz + 0.5 + Math.cos(k * 2.094) * 0.45); b.rotation.y = k * 2.094; g.add(b); } }
+    // the ceiling fan: in the middle of the séjour of a home with a floor plan (between its two lamps), else where it always hung
+    const plan = planFor(v.spec.id), fan = (plan && roomCentre(plan, 'sejour')) || { x: 1.5, z: 0.5 };
+    if (plan?.levels) { this.villaDressing(v, g, upgrades, plan); v.furniture.add(g); return; }
+    if (has('ventilo')) { solid(0.06, 0.4, 0.06, v.ox + fan.x, H - 0.2, v.oz + fan.z, 0x333333); for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.9), new THREE.MeshLambertMaterial({ color: 0xe8e8e8 })); b.position.set(v.ox + fan.x + Math.sin(k * 2.094) * 0.45, H - 0.38, v.oz + fan.z + Math.cos(k * 2.094) * 0.45); b.rotation.y = k * 2.094; g.add(b); } }
     if (has('clim') || has('domotique')) solid(1.0, 0.32, 0.22, v.ox - L.w / 2 + 1.6, H - 0.55, v.oz - L.d / 2 + 0.12, 0xf2f2ee);
     if (has('domotique')) { const strip = new THREE.Mesh(new THREE.BoxGeometry(L.w - 0.6, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xfff1d0 })); strip.position.set(v.ox, H - 0.08, v.oz - L.d / 2 + 0.06); g.add(strip); }
     if (has('jardin')) for (let k = 0; k < 4; k++) { const p = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), new THREE.MeshLambertMaterial({ color: k % 2 ? 0xd94a8c : 0x3f7a35 })); p.position.set(v.ox - L.w / 2 + 2 + k * 2.2, 0.55, v.oz - L.d / 2 + 0.5); g.add(p); }
     v.furniture.add(g);
   }
 
-  private homePlace(v: HomeView, held: AssetState, pieces: AssetState[]): PlaceSpec {
+  /**
+   * LD2.0-D: the upgrades that show in a home on several levels (the villa): the ceiling fan in the grand salon, an air conditioner on its wall, the
+   * landscaped garden's palms and flower beds round the pool deck (each on its own level's floor, under its walls' height).
+   */
+  private villaDressing(v: HomeView, g: THREE.Group, upgrades: readonly string[], plan: NonNullable<ReturnType<typeof planFor>>) {
+    const has = (u: string) => upgrades.includes(u), L = layoutOf(v.spec);
+    const lam = (c: number) => new THREE.MeshLambertMaterial({ color: c });
+    // one group per room it dresses, tagged for the cutaway like a piece of furniture
+    const inRoom = (r: (typeof plan.rooms)[number]) => {
+      const o = new THREE.Group(), l = levelOfRoom(plan, r); o.userData.homeLevel = levelIndex(plan, l); o.userData.covered = isCovered(plan, r); g.add(o);
+      return { o, y: FLOOR + l.y, i: roomFrame0(plan, r), at: (x: number, z: number) => { const w = inHome(L, x, z); return { x: v.ox + w.x, z: v.oz + w.z }; } };
+    };
+    const mesh = (o: THREE.Object3D, geo: THREE.BufferGeometry, c: number, x: number, y: number, z: number, ry = 0) => { const m = new THREE.Mesh(geo, lam(c)); m.position.set(x, y, z); m.rotation.y = ry; o.add(m); return m; };
+    const salon = plan.rooms.find(r => r.kind === 'sejour'), garden = plan.rooms.find(r => r.outdoor && r.kind === 'terrasse');
+    if (salon && (has('ventilo') || has('clim'))) {
+      const R = inRoom(salon), top = R.y + plan.wallH, c = R.at(R.i.cx, R.i.cz);
+      if (has('ventilo')) { mesh(R.o, new THREE.BoxGeometry(0.06, 0.4, 0.06), 0x333333, c.x, top - 0.2, c.z); for (let k = 0; k < 3; k++) mesh(R.o, new THREE.BoxGeometry(0.14, 0.015, 0.9), 0xe8e8e8, c.x + Math.sin(k * 2.094) * 0.45, top - 0.38, c.z + Math.cos(k * 2.094) * 0.45, k * 2.094); }
+      if (has('clim')) { const w = R.at(R.i.x0 + 1.2, R.i.cz); mesh(R.o, new THREE.BoxGeometry(0.22, 0.32, 1.0), 0xf2f2ee, w.x - 0.1, top - 0.55, w.z); }
+    }
+    if (garden && has('jardin')) {
+      const R = inRoom(garden);
+      for (let k = 0; k < 4; k++) {
+        const p = R.at(R.i.x0 + 0.7 + (k % 2) * (R.i.w - 1.4), R.i.z0 + 0.7 + (k > 1 ? 0.9 : 0));
+        mesh(R.o, new THREE.CylinderGeometry(0.1, 0.15, 3.2, 7), 0x8a6a48, p.x, R.y + 1.6, p.z);
+        mesh(R.o, new THREE.IcosahedronGeometry(0.9, 0), k % 2 ? 0xd94a8c : 0x3f7a35, p.x, R.y + 3.3, p.z).scale.y = 0.5;
+      }
+    }
+  }
+
+  private homePlace(v: HomeView, held: AssetState, pieces: Piece[]): PlaceSpec {
     const anchors: Anchor[] = [], offers: Record<string, ActivitySpec[]> = {}, hub = this.hub!.id;
-    const comfort = comfortOf(held);
+    const comfort = comfortOf(held), L = layoutOf(v.spec);
     for (const f of pieces) {
-      const fs = furnitureSpec(f.spec)!, at = f.at!;
+      const fs = furnitureSpec(f.spec)!, at = f.at, w = inHome(L, at.x, at.z), dx = w.x - at.x;   // (LD2.0-D: on its level)
       if (fs.sleep) {
         const [x, z] = toHome(at, 0, 0);
-        anchors.push({ id: f.uid, name: fs.name, kind: 'furniture', x: v.ox + x, z: v.oz + z, y: 1.1, radius: Math.max(fs.w, fs.d) / 2 + 0.9 });
+        anchors.push({ id: f.uid, name: fs.name, kind: 'furniture', x: v.ox + x + dx, z: v.oz + z, y: 1.1 + w.y, radius: Math.max(fs.w, fs.d) / 2 + 0.9 });
         offers[f.uid] = [P.sleep({ id: 'dormir', label: 'Dormir', detail: `+${fs.sleep + comfort} énergie`, seat: seatId(hub, f.uid, 0), seconds: 6, energy: fs.sleep + comfort })];
         continue;
       }
       const u = fs.use; if (!u) continue;
       const [sx, sz] = u.spot ?? [0, fs.d / 2 + 0.6], [x, z] = toHome(at, sx, sz);
-      anchors.push({ id: f.uid, name: fs.name, kind: 'furniture', x: v.ox + x, z: v.oz + z, y: 1.3, radius: 1.1 });
+      anchors.push({ id: f.uid, name: fs.name, kind: 'furniture', x: v.ox + x + dx, z: v.oz + z, y: 1.3 + w.y, radius: 1.1 });
       offers[f.uid] = [this.useSpec(fs, f, hub)];
     }
     if (v.spots) {
-      anchors.push({ id: 'cuisine', name: 'Cuisine', kind: 'counter', x: v.spots.kitchen.x, z: v.spots.kitchen.z, y: 1.4, radius: 1.2 });
+      anchors.push({ id: 'cuisine', name: 'Cuisine', kind: 'counter', x: v.spots.kitchen.x, z: v.spots.kitchen.z, y: 1.4 + (v.spots.kitchen.y ?? 0), radius: 1.2 });
       offers.cuisine = [P.use({ id: 'cuisiner', label: 'Cuisiner un repas', primitive: 'eat', detail: '500 F d’ingrédients, faim +50', price: 500, seconds: 6, clip: 'Grab', effects: { needs: { faim: 50, moral: 4 }, counters: { meals: 1 } } })];
-      anchors.push({ id: 'douche', name: 'Douche', kind: 'spot', x: v.spots.shower.x, z: v.spots.shower.z, y: 1.6, radius: 1.1 });
+      anchors.push({ id: 'douche', name: 'Douche', kind: 'spot', x: v.spots.shower.x, z: v.spots.shower.z, y: 1.6 + (v.spots.shower.y ?? 0), radius: 1.1 });
       offers.douche = [P.use({ id: 'douche', label: 'Prendre une douche', primitive: 'wash', seconds: 3, effects: { needs: { hygiene: 60, moral: 3 } } })];
     }
     return { id: `home:${v.spec.id}`, type: 'home', name: v.spec.name, space: 'home', anchors, offers };
   }
-  private useSpec(fs: FurnitureSpec, f: AssetState, hub: string): ActivitySpec {
+  /** A guest in a host's home: with « use », the TV and the radio (watch, listen); never the kitchen, the shower, the desk's pay, the bed or the host's things. */
+  private guestPlace(v: HomeView, vis: VisitDraw, pieces: Piece[]): PlaceSpec | null {
+    if (!vis.use) return null;
+    const anchors: Anchor[] = [], offers: Record<string, ActivitySpec[]> = {}, hub = this.hub!.id, L = layoutOf(v.spec);
+    for (const f of pieces) {
+      const fs = furnitureSpec(f.spec)!;
+      if (!guestMayUse(fs.type, vis.use) || !fs.use) continue;
+      const [sx, sz] = fs.use.spot ?? [0, fs.d / 2 + 0.6], [x, z] = toHome(f.at, sx, sz), w = inHome(L, f.at.x, f.at.z);
+      anchors.push({ id: f.uid, name: fs.name, kind: 'furniture', x: v.ox + x + w.x - f.at.x, z: v.oz + z, y: 1.3 + w.y, radius: 1.1 });
+      offers[f.uid] = [this.useSpec(fs, f, hub)];
+    }
+    return anchors.length ? { id: `home:${v.spec.id}`, type: 'home', name: `Chez ${vis.hostName}`, space: 'home', anchors, offers } : null;
+  }
+  private useSpec(fs: FurnitureSpec, f: Piece, hub: string): ActivitySpec {
     const u = fs.use!, s = this.s;
     const deskWait = () => {
       const last = s.data.counters.bureau_at; if (last === undefined) return null;
@@ -304,11 +403,16 @@ class Estate {
     });
   }
 
-  /** The view of the interior the player is in, if it is a home of this hub. */
+  /** The view of the interior the player is in, if it is a home of this hub (the player's own, or a host's being visited). */
   viewInside(): HomeView | null { const i = this.ctx.inside(); return i ? [...this.views.values()].find(v => v.int === i.int) ?? null : null; }
+  /** The same, unless it is a host's home being visited: nothing of it is the player's to arrange, order for, list or move into. */
+  ownViewInside(): HomeView | null { const v = this.viewInside(); return v && !this.visited(v) ? v : null; }
+  visited(v: HomeView) { return !!visitDraw && visitDraw.spec === v.spec.id; }
+  /** Draws the visited home (or, with null, the player's own homes again) now. */
+  setVisit(d: VisitDraw | null) { visitDraw = d; if (this.hub) this.refresh(); }
   private collectSelf(space: string, x: number, z: number, out: Target[]) {
     if (space !== 'home' || this.editor.isOpen) return;
-    const v = this.viewInside(); if (!v) return;
+    const v = this.ownViewInside(); if (!v) return;
     const held = holding(this.s, v.spec.id);
     out.push({
       id: 'home:self', name: v.spec.name.split(' · ')[0], kind: 'self', space, x, z, radius: 1, bias: 2.6,
@@ -403,6 +507,7 @@ class Estate {
       if (sp.income && sp.kind !== 'home') rows.push(`Une fois à toi et loué : <b>+${fcfa(sp.income)} / h</b> en ville`);
       if (sp.upkeep) rows.push(`Charges si tu l’achètes : ${fcfa(sp.upkeep)} / h`);
       if (sp.soon) rows.push(`<span class="soon">${esc(sp.soon)}</span>`);
+      if (specId === VILLA_ID) { const f = villaFactsOf(s); for (const l of f ? villaPath(f) : []) rows.push(`🧭 ${esc(l)}`); }   // LD2.0-D: how to get there (src/villa/goal.ts)
       if (sp.price) items.push({ icon: '🔑', label: 'Acheter', right: '−' + fcfa(sp.price), detail: cannotBuy(s, specId) ?? this.benefit(sp), disabled: !!cannotBuy(s, specId), onPick: () => this.confirmBuy(sp) });
       if (sp.rent) items.push({ icon: '📝', label: 'Louer', right: perDay(sp.rent), detail: cannotRent(s, specId) ?? `${fcfa(sp.rent / 24)} chaque heure en ville · tu rends les clés quand tu veux`, disabled: !!cannotRent(s, specId), onPick: () => this.confirmRent(sp) });
       if (home && this.inHub(sp)) items.push({ icon: '🚪', label: 'Visiter', detail: 'Entrer voir le logement, vide', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
@@ -424,9 +529,9 @@ class Estate {
       if ((specOf(specId)?.wear ?? 0) > 0) rows.push(`État : ${Math.round(a.condition)} %`);
       if (a.upgrades.length) rows.push(`Améliorations : ${a.upgrades.map(u => esc(sp.upgrades?.find(x => x.id === u)?.name ?? u)).join(', ')}`);
       if (home) {
-        const inside = this.viewInside()?.spec.id === specId;
+        const inside = this.ownViewInside()?.spec.id === specId;
         if (!inside && this.inHub(sp)) items.push({ icon: '🚪', label: 'Entrer chez toi', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
-        if (inside) items.push({ icon: '🛋️', label: 'Aménager', detail: 'Déplacer, tourner, ranger tes meubles', onPick: () => { this.ctx.hud.closeModal(); const v = this.viewInside(); if (v) this.editor.open(v); } });
+        if (inside) items.push({ icon: '🛋️', label: 'Aménager', detail: 'Déplacer, tourner, ranger tes meubles', onPick: () => { this.ctx.hud.closeModal(); const v = this.ownViewInside(); if (v) this.editor.open(v); } });
         const why = cannotMoveIn(s, a.uid);
         if (why !== 'Tu y habites déjà' && !given) items.push({ icon: '⭐', label: 'Définir comme domicile principal', detail: why ?? `Tu y vis, on t’y livre ; tes meubles suivent et s’installent où il y a de la place (${furnitureIn(s, currentHome(s).uid).length} pièces)`, disabled: !!why,
           onPick: () => this.setPrincipal(a, reopen) });
@@ -489,7 +594,8 @@ class Estate {
     items.push({ icon: '💬', label: 'Sous-louer la chambre', detail: 'Il faudra d’abord en parler à la famille (bientôt)', disabled: true, onPick: () => {} });
   }
   private benefit(sp: AssetSpec): string {
-    if (sp.kind === 'home') { const h = sp as HomeSpec; return `${h.home.w * h.home.d | 0} m² à meubler${h.home.level === 'room' ? '' : ', cuisine et douche'} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
+    if (sp.kind === 'home' && planFor(sp.id)?.levels) { const plan = planFor(sp.id)!; return `${sp.size} m² sur deux étages, ${plan.rooms.filter(r => !r.outdoor && r.kind !== 'degagement' && r.kind !== 'palier').length} pièces à meubler, piscine, toit-terrasse et hélipad · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
+    if (sp.kind === 'home') { const h = sp as HomeSpec, plan = planFor(h.id); return `${h.home.w * h.home.d | 0} m² à meubler${h.home.level === 'room' ? '' : plan ? ` : ${plan.rooms.filter(r => r.kind !== 'degagement').map(r => r.name.toLowerCase()).join(', ')}` : ', cuisine et douche'} · ou à louer : +${fcfa(sp.income ?? 0)} / h`; }
     if (sp.kind === 'land') return `Loué à un maraîcher : +${fcfa(sp.income ?? 0)} / h`;
     if (sp.kind === 'billboard') return `Loué aux annonceurs : +${fcfa(sp.income ?? 0)} / h, ou ta pub`;
     return sp.what;
@@ -498,7 +604,7 @@ class Estate {
     const s = this.s, back = () => this.openSheet(sp.id), h = homeSpec(sp.id);
     const rows: [string, string][] = [['Prix', fcfa(sp.price!)], ['Il te restera', this.left(sp.price!)]];
     if (h) {
-      rows.push(['Surface', `${sp.size} m² · ${h.home.level === 'room' ? 'une pièce' : 'salon, cuisine, douche'}`]);
+      rows.push(['Surface', `${sp.size} m² · ${h.home.level === 'room' ? 'une pièce' : planFor(h.id)?.levels ? 'deux étages, toit-terrasse, piscine' : 'salon, cuisine, douche'}`]);
       rows.push(['Débloque', 'En faire ton domicile principal, y mettre tes meubles, cuisiner et te doucher chez toi']);
       rows.push(['Ou le louer', `+${fcfa(sp.income ?? 0)} / h en ville`]);
       if (sp.upkeep) rows.push(['Charges', `${fcfa(sp.upkeep)} / h`]);
@@ -568,7 +674,8 @@ class Estate {
     rows.push(['Il te restera', this.left(f.price ?? 0)]);
     this.confirm(`Acheter : ${f.name}`, rows, 'Acheter', '−' + fcfa(f.price ?? 0), cannotBuyFurniture(s, f.id), () => {
       const piece = deliverFurniture(s, f.id);
-      if (piece) this.done(`${f.name} ✓  −${fcfa(f.price ?? 0)} · ${f.fixed ? 'sur ton lit' : piece.at ? 'livré et installé chez toi' : 'livré, rangé (plus de place)'}`, back);
+      const room = piece?.at ? roomOf(layoutOf(homeSpec(currentHome(s).spec)!), piece.at) : null;
+      if (piece) this.done(`${f.name} ✓  −${fcfa(f.price ?? 0)} · ${f.fixed ? 'sur ton lit' : piece.at ? (room ? `livré et installé · ${room.name}` : 'livré et installé chez toi') : 'livré, rangé (plus de place)'}`, back);
     }, back);
   }
   private talkSeller() { this.ctx.toast(SELLER_LINES[this.talkN++ % SELLER_LINES.length]); this.s.adjust({ social: 2 }); }
@@ -608,7 +715,7 @@ class Estate {
   /** « Maison »: where the player lives, its furniture, arranging it, ordering more. */
   openHomeApp() {
     const s = this.s, h = currentHome(s), sp = specOfAsset(h), all = furnitureIn(s, h.uid), placed = all.filter(f => f.at || furnitureSpec(f.spec)?.fixed).length;
-    const inside = this.viewInside(), here = inside?.spec.id === h.spec;
+    const inside = this.ownViewInside(), here = inside?.spec.id === h.spec;
     const homes = assetsOf(s, 'home');
     const items: MenuItem[] = [
       { icon: '🛋️', label: 'Aménager', detail: here ? 'Déplacer, tourner, ranger tes meubles' : 'Entre chez toi pour aménager', disabled: !here || !all.length, onPick: () => { this.ctx.hud.closeModal(); if (inside) this.editor.open(inside); } },
@@ -618,7 +725,12 @@ class Estate {
           : a.how === 'rented' ? 'Loué par toi · domicile principal, rendre les clés' : 'À toi · domicile principal, louer, vendre' })),
       { icon: '🔑', label: 'Tous mes biens', onPick: () => this.openAssets() },
     ];
-    const list = all.map(f => `${furnitureSpec(f.spec)!.emoji} ${esc(furnitureSpec(f.spec)!.name)}${f.at || furnitureSpec(f.spec)!.fixed ? '' : ' (rangé)'}`).join(' · ');
+    const name = (f: AssetState) => `${furnitureSpec(f.spec)!.emoji} ${esc(furnitureSpec(f.spec)!.name)}${f.at || furnitureSpec(f.spec)!.fixed ? '' : ' (rangé)'}`;
+    // a home built from a floor plan lists its furniture room by room (from where each piece stands)
+    const L = homeSpec(h.spec) ? layoutOf(homeSpec(h.spec)!) : null, rooms = L ? planRooms(L) : [];
+    const byRoom = rooms.map(r => [r.name, all.filter(f => f.at && roomOf(L!, f.at)?.id === r.id)] as const).filter(([, l]) => l.length);
+    const rest = rooms.length ? all.filter(f => !f.at || !rooms.some(r => roomOf(L!, f.at!)?.id === r.id)) : all;
+    const list = [...byRoom.map(([n, l]) => `<b>${esc(n)}</b> : ${l.map(name).join(' · ')}`), ...(rest.length ? [`${rooms.length && byRoom.length ? '<b>Ailleurs</b> : ' : ''}${rest.map(name).join(' · ')}`] : [])].join('<br>');
     this.open(sp.name.split(' · ')[0], `Domicile principal · ${sp.where ?? ''} · ${all.length} meuble${all.length > 1 ? 's' : ''} (${placed} installés)`, items,
       `<div class="kv">${all.length ? list : 'Pas encore de meubles : Keur Meubles (Cité Jàmm, en face) livre chez toi.'}${comfortOf(h) ? `<br>Confort : +${comfortOf(h)} énergie au réveil` : ''}</div>`);
   }
@@ -637,13 +749,35 @@ class Estate {
       buyAsset: (id: string) => !!buyAsset(self.s, id), rentAsset: (id: string) => !!rentAsset(self.s, id), moveIn: (id: string) => { const a = holding(self.s, id); return !!a && moveIn(self.s, a.uid, true); },
       letAsset: (id: string, on = true) => { const a = holding(self.s, id); return !!a && setLeased(self.s, a.uid, on); },
       buyPiece: (id: string) => { const p = deliverFurniture(self.s, id); return p ? { uid: p.uid, at: p.at ?? null } : null; },
-      homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, model: p.obj.name, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
+      /** LD2.0-D look pass: sets a piece of the home at a spot (plan space) if the home editor's rules allow it there (as « Poser » would): null, or why not. */
+      placeAt: (uid: string, x: number, z: number, rot: number) => {
+        const h = currentHome(self.s), all = furnitureIn(self.s, h.uid), f = all.find(a => a.uid === uid); if (!f) return 'missing';
+        const L = layoutOf(homeSpec(h.spec)!), at = { x, z, rot }, others = all.filter(a => a.at && a.uid !== uid && !furnitureSpec(a.spec)?.fixed).map(a => ({ spec: furnitureSpec(a.spec)!, at: a.at! }));
+        const why = whyNot(L, furnitureSpec(f.spec)!, at, others); if (why) return why;
+        setPlacement(self.s, uid, at); touchAssets(); this.ctx.save(); return null;
+      },
+      homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, visit: this.visited(v), ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, model: p.obj.name, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
       placer: {
         look: (set?: Partial<{ yaw: number; pitch: number; zoom: number }>) => self.editor.cameraLook(set), screenOf: (uid?: string) => self.editor.screenOf(uid),
-        open: () => { const v = this.viewInside(); return v ? self.editor.open(v) : false; }, close: () => self.editor.close(), info: () => self.editor.info(),
+        open: () => { const v = this.ownViewInside(); return v ? self.editor.open(v) : false; }, close: () => self.editor.close(), info: () => self.editor.info(),
         select: (uid: string) => self.editor.select(uid), move: (dx: number, dz: number) => self.editor.move(dx, dz), moveTo: (x: number, z: number) => self.editor.moveTo(x, z), rotate: () => self.editor.rotate(), put: () => self.editor.put(), stash: () => self.editor.stash(),
+        /** LD2.0-C: frame a room of a plan home (null: the whole home), and where the camera looks (world). */
+        room: (id: string | null) => self.editor.chooseRoom(id), target: () => self.editor.target(),
       },
       legacyItem: (id: string) => furnitureById(id)?.name ?? null,
+      /** LD2.0-C: the home the player lives in, piece by piece against its rules (checks): its room, why it could not stand there (null: it can), and whether every room is reachable. */
+      homeRules: () => {
+        const h = currentHome(self.s), L = layoutOf(homeSpec(h.spec)!), placed = furnitureIn(self.s, h.uid).filter(f => f.at && !furnitureSpec(f.spec)?.fixed);
+        const all = placed.map(f => ({ uid: f.uid, spec: furnitureSpec(f.spec)!, at: f.at! }));
+        return {
+          home: h.spec, plan: L.plan?.id ?? null,
+          pieces: all.map(p => ({ uid: p.uid, spec: p.spec.id, at: p.at, room: roomOf(L, p.at)?.id ?? null, why: whyNot(L, p.spec, p.at, all.filter(o => o.uid !== p.uid)) })),
+          stored: furnitureIn(self.s, h.uid).filter(f => !f.at && !furnitureSpec(f.spec)?.fixed).map(f => f.spec),
+          reachable: L.plan ? reachable(L.plan, all.filter(p => !p.spec.flat && !p.spec.mount).map(p => footprint(p.spec, p.at))) : null,
+        };
+      },
+      /** LD2.0-C: the furniture catalogue as sold (checks, the catalogue sheet): its kit model, its room, how it is hung. */
+      furnitureList: () => CATALOGUE.map(f => ({ id: f.id, name: f.name, price: f.price ?? 0, grade: f.grade, type: f.type, kit: KIT_PIECES[f.id] ?? null, room: roomKindOf(f), mount: f.mount ?? null, w: f.w, d: f.d })),
       /** The hub's Dibi (venues module): does it offer « Parler affaires », and open that sheet. */
       dibiBusiness: () => {
         const p = this.ctx.places.all().find(x => x.type === 'dibi'); if (!p) return null;
@@ -659,13 +793,32 @@ class Estate {
 }
 
 const seatId = (hub: string, uid: string, k: number) => `${hub}:home:${uid}:${k}`;
+/** A room's inside (plan metres): its corners, middle and size. */
+function roomFrame0(plan: NonNullable<ReturnType<typeof planFor>>, r: NonNullable<ReturnType<typeof planFor>>['rooms'][number]) {
+  const i = innerOf(plan, r);
+  return { x0: i.x0, x1: i.x1, z0: i.z0, z1: i.z1, cx: (i.x0 + i.x1) / 2, cz: (i.z0 + i.z1) / 2, w: i.x1 - i.x0, d: i.z1 - i.z0 };
+}
 /** A home the player holds and could live in instead (not the principal residence, not let, not the family room): the furniture sheet points to it. */
 const otherHome = (s: GameCtx['state']) => assetsOf(s, 'home').find(a => a.uid !== s.data.assets.home && a.spec !== STARTER_HOME && !a.leased && a.how !== 'given');
-/** Gates of two villa lots of Almadies, block (1, 1), lots 3 and 2 (the gate is the lot's centre, on the street side). */
+/**
+ * The street side of the two villa lots of Almadies, block (1, 1), lots 3 and 2: the home's street door (where the player comes out; `anchorDz`: its
+ * « Entrer chez toi » a little toward the street), the sale board and the directory entry (the walking marker).
+ *  - The residence (lot 2): its gate at the lot's centre on the street side (world/builder.ts), the door just outside it, the board beside it.
+ *  - The flagship villa (lot 3, LD2.0-D, src/housing/villa.ts): the door just outside the house's front door (FRONT_DOOR, inside the compound's
+ *    walls), the board on the pavement beside the gate (GATE), the entry before the gate.
+ */
 const LOT = (BLK - 2) / 2, BM = (k: number) => -HALF + ROAD + k * PITCH;   // lot size and block corner (world/builder.ts)
-const VILLA_GATES: Record<string, { x: number; z: number }> = {
-  villa_almadies: { x: BM(1) + LOT + 2 + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
-  residence_ngor: { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
+interface VillaSite { door: { x: number; z: number }; board: { x: number; z: number }; entry: { x: number; z: number }; anchorDz: number; boardPlace: boolean }
+const residenceGate = { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 };
+export const VILLA_GATES: Record<string, VillaSite> = {
+  villa_almadies: {
+    door: onLot(VILLA_DOOR.x, VILLA_DOOR.z + 1.0), board: onLot(VILLA_GATE.x0 - 2.3, VILLA_GATE.z + 0.6), entry: onLot((VILLA_GATE.x0 + VILLA_GATE.x1) / 2, VILLA_GATE.z + 1.6),
+    anchorDz: -0.2, boardPlace: true,
+  },
+  residence_ngor: {
+    door: { x: residenceGate.x, z: residenceGate.z + 1.4 }, board: { x: residenceGate.x + 2.3, z: residenceGate.z + 0.9 }, entry: { x: residenceGate.x - 2.6, z: residenceGate.z + 2.2 },
+    anchorDz: 0.3, boardPlace: false,
+  },
 };
 const ventureName = (s: GameCtx['state']) => { const v = [...VENTURES].reverse().find(x => (ownedVentures(s)[x.id] ?? 0) > 0); return v ? v.name : 'Ton affaire'; };
 function setMap(m: THREE.Mesh, tex: THREE.Texture) {
@@ -675,6 +828,15 @@ function setMap(m: THREE.Mesh, tex: THREE.Texture) {
 function disposeModel(o: THREE.Object3D) { o.traverse(c => { const m = c as THREE.Mesh; if (!m.isMesh) return; if (!m.userData.shared) m.geometry?.dispose(); const mat = m.material as THREE.Material; if (mat && !mat.userData.shared) mat.dispose(); }); }
 
 const estate = new Estate();
+/**
+ * The homes' side of a visit (src/online/visit.ts): draw a host's home from its snapshot (or, with null, the player's own homes again), and which
+ * home the player is inside now (its catalogue id; `visit`: the host's being visited).
+ */
+export const estateVisit = {
+  set: (d: VisitDraw | null) => estate.setVisit(d),
+  get: (): VisitDraw | null => visitDraw,
+  inside: (): { spec: string; visit: boolean } | null => { const v = estate.ctx ? estate.viewInside() : null; return v ? { spec: v.spec.id, visit: estate.visited(v) } : null; },
+};
 /** The ownership module (registered in src/game/modules.ts MODULES). */
 export const ESTATE_MODULE: GameModule = {
   name: 'estate',

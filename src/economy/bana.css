@@ -1,0 +1,31 @@
+/* « Affaires » at a glance and the bana-bana table's sheets (src/economy/ui.ts openBusiness, src/economy/banaModule.ts): short cards, big numbers, no wall of text */
+#modal .biz-top { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:2px 0 8px; }
+#modal .biz-top > div { min-width:0; padding:8px 12px; border-radius:12px; background:var(--row); }
+#modal .biz-top small { display:block; font-size:12px; line-height:1.3; color:var(--ink-3); }
+#modal .biz-top b { display:block; font-size:17px; font-weight:800; line-height:1.25; color:var(--ink); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#modal .biz-top b.gain { color:var(--gain); }
+#modal .biz-note { margin:2px 4px 8px; font-size:12px; line-height:1.35; color:var(--ink-3); }
+#modal .bana-card { margin:2px 0 8px; padding:10px 12px; border-radius:14px; background:var(--row); box-shadow:inset 0 0 0 1px var(--sep); }
+#modal .bana-card h3 { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:0 0 6px; font-size:15px; font-weight:800; color:var(--ink); text-transform:none; letter-spacing:normal; }
+#modal .bana-card h3 em { flex:none; font-style:normal; font-size:13px; font-weight:800; color:var(--gain); }
+#modal .bana-stock { display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 6px; }
+#modal .bana-stock span { padding:3px 9px; border-radius:999px; background:var(--surface-2); font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; font-variant-numeric:tabular-nums; }
+#modal .bana-stock span.out { color:var(--ink-3); }
+#modal .bana-line { font-size:12.5px; line-height:1.45; color:var(--ink-2); }
+#modal .bana-line b { color:var(--ink); }
+#modal .bana-calc { margin-top:6px; padding:6px 10px; border-radius:10px; background:var(--surface-2); font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); font-variant-numeric:tabular-nums; }
+#modal .bana-calc b { color:var(--gain); }
+#modal .bana-who { display:flex; align-items:center; gap:10px; margin:2px 0 8px; padding:11px 12px; border-radius:14px; background:var(--row); }
+#modal .bana-who i { flex:none; font-style:normal; font-size:30px; line-height:1; }
+#modal .bana-who div { min-width:0; }
+#modal .bana-who b { display:block; font-size:16px; color:var(--ink); }
+#modal .bana-who span { font-size:14px; line-height:1.3; color:var(--ink-2); }
+#modal .bana-who em { flex:none; margin-left:auto; font-style:normal; font-size:18px; font-weight:850; color:var(--gain); white-space:nowrap; font-variant-numeric:tabular-nums; }
+/* « Comment ça marche » (the details moved off the main Affaires screen): the variety line and its chips */
+#modal .poly { margin:8px 0; padding:10px 12px; border-radius:12px; background:var(--row); font-size:12.5px; line-height:1.45; color:var(--ink-2); }
+#modal .poly b { color:var(--ink); }
+#modal .poly .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+#modal .poly .chips span { padding:3px 9px; border-radius:999px; background:var(--surface-2); color:var(--ink-3); font-size:12.5px; font-weight:650; }
+#modal .poly .chips span.on { background:rgba(4,120,87,.12); color:var(--gain); }
+#modal .poly .chips span.old { color:var(--ink-2); }
+#modal .poly .chips small { margin-left:4px; font-weight:500; }

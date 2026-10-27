@@ -1,0 +1,136 @@
+{
+ "base": "http://127.0.0.1:4991/",
+ "failed": 0,
+ "results": [
+  {
+   "name": "at the Résidence Jàmm's sign, a tap opens its sheet: buy or rent the F2 (9 m × 7 m, 63 m²: entrée, séjour, cuisine, chambre, salle de bain)",
+   "ok": true
+  },
+  {
+   "name": "rented by touch: the F2 is the player's, rented",
+   "ok": true
+  },
+  {
+   "name": "moved in: the F2 is the principal residence",
+   "ok": true
+  },
+  {
+   "name": "inside: the F2 built from its floor plan, in the entrée, the inner doors shut",
+   "ok": true
+  },
+  {
+   "name": "walked through the real rooms with the joystick (22 legs): entrée → séjour → cuisine → séjour → dégagement → chambre → dégagement → salle de bain → entrée",
+   "ok": true
+  },
+  {
+   "name": "every room visited",
+   "ok": true
+  },
+  {
+   "name": "the kitchen's, the bedroom's and the bathroom's doors opened as the player came through",
+   "ok": true
+  },
+  {
+   "name": "never inside a wall, a fitting or a door (129 samples, closest 0.300 m), and the player always seen",
+   "ok": true
+  },
+  {
+   "name": "at the street door the action is « Sortir »",
+   "ok": true
+  },
+  {
+   "name": "« Sortir » by a tap: back in the street",
+   "ok": true
+  },
+  {
+   "name": "five pieces bought at Keur Meubles by touch, delivered to the F2",
+   "ok": true
+  },
+  {
+   "name": "« Aménager » opens the placement mode, with the room chips",
+   "ok": true
+  },
+  {
+   "name": "séjour: the table_basse placed by touch at its spot, saved",
+   "ok": true
+  },
+  {
+   "name": "séjour: the canape_wax placed by touch at its spot, saved",
+   "ok": true
+  },
+  {
+   "name": "séjour: the tele_plate placed by touch at its spot, saved",
+   "ok": true
+  },
+  {
+   "name": "chambre: the lit_bois placed by touch at its spot, saved",
+   "ok": true
+  },
+  {
+   "name": "chambre: the armoire_bois placed by touch at its spot, saved",
+   "ok": true
+  },
+  {
+   "name": "in a doorway (where the bedroom's door swings) the wardrobe is refused, said plainly, and its spot kept",
+   "ok": true
+  },
+  {
+   "name": "two rooms furnished: three pieces in the séjour, two in the chambre",
+   "ok": true
+  },
+  {
+   "name": "left the F2 by its street door",
+   "ok": true
+  },
+  {
+   "name": "after a reload: still renting and living in the F2",
+   "ok": true
+  },
+  {
+   "name": "after a reload: the same five pieces at the same places and turns",
+   "ok": true
+  },
+  {
+   "name": "… each in its room, valid under the plan, every room still reachable",
+   "ok": true
+  },
+  {
+   "name": "… and the models stand there",
+   "ok": true
+  },
+  {
+   "name": "bought by touch at the sign: the F2 is the player's, owned",
+   "ok": true
+  },
+  {
+   "name": "entered the bought F2: the same walkable apartment",
+   "ok": true
+  },
+  {
+   "name": "and out again",
+   "ok": true
+  },
+  {
+   "name": "no page errors",
+   "ok": true
+  }
+ ],
+ "walk": {
+  "samples": 129,
+  "closest": 0.2999999999999211,
+  "rooms": [
+   "entree",
+   "sejour",
+   "cuisine",
+   "degagement",
+   "chambre",
+   "sdb"
+  ],
+  "doors": {
+   "sejour-cuisine": 1,
+   "degagement-chambre": 1,
+   "degagement-sdb": 1
+  }
+ },
+ "errors": []
+}

@@ -31,6 +31,8 @@ export interface PlaceSpec {
   space: string;
   /** Opening hours in city hours [open, close) (close may pass midnight, e.g. [20, 4]); absent = always open. */
   hours?: [number, number];
+  /** What a closed place says instead of « Fermé · ouvre à … » (the embarcadère: when the crossings start again). */
+  closedWhy?(hour: number): string;
   anchors: Anchor[];
   /** Activities offered at each anchor id. */
   offers: Record<string, ActivitySpec[]>;
@@ -91,7 +93,7 @@ export class Places implements TargetSource {
 
   private affordance(p: PlaceSpec, s: ActivitySpec): Affordance {
     const { cost, gain } = totals(s.price, s.steps, (m, c) => this.runner.payPreview(m, c));
-    const closed = isOpen(p.hours, this.hour()) ? null : `Fermé · ouvre à ${p.hours![0]} h`;
+    const h = this.hour(), closed = isOpen(p.hours, h) ? null : p.closedWhy?.(h) ?? `Fermé · ouvre à ${p.hours![0]} h`;
     return { id: s.id, verb: s.primitive, label: s.label, icon: s.icon, detail: s.detail, cost: cost || undefined, gain: gain || undefined,
       disabled: closed ?? this.runner.blocked(s), run: () => { const a = p.anchors.find(x => p.offers[x.id]?.includes(s)); this.runner.start(s, { place: p.name, at: a && { x: a.x, z: a.z } }); } };
   }

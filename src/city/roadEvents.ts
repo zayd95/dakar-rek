@@ -5,7 +5,9 @@ import type { Collider, HubWorld, RoadEdge } from '../world/types';
 import { buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { Humanoid, humanoidReady, randomLook, type PersonLook } from '../actors/humanoid';
 import { trafficClosures, type Closure } from '../actors/npc';
-import { GRID, LINES, loopNodes, roadCentre } from '../transport/lines';
+import { GRID, KERB, LINES, loopNodes, roadCentre } from '../transport/lines';
+import { ROADS } from '../road/routes';
+import { LINKS } from '../transport/hubLink';
 import { routeIn, routeOut, type Side } from '../transport/taxiRules';
 import { taxiDrop, taxiRank } from '../transport/taxi';
 import { rng } from '../core/rng';
@@ -16,7 +18,9 @@ import { galaGeo, galaRoads } from './galaRules';
  * checkpoint, a breakdown, an accident, roadworks or a jam at rush hour, for a few hours; the decorative traffic takes
  * another way (src/actors/npc.ts closures), the cones, vehicles and people there are solid, so a player driving or
  * walking goes round. The same events for everyone (the city day and the hub seed them), never on the roads of the car
- * rapide lines, the taxis or the fight-evening drop-off, so nobody's trip is ever blocked.
+ * rapide lines, the taxis or the fight-evening drop-off, nor on the streets at a way into the district (a road between
+ * districts, a border street: `waysIn`), so nobody's trip is ever blocked; and wherever one stands it leaves the other lane
+ * open (`eventSolids`, tests/ld2Drive.test.ts): what is solid is what is drawn, never a box wider than the thing.
  */
 export type RoadEventKind = 'checkpoint' | 'panne' | 'accident' | 'travaux' | 'bouchon';
 export interface RoadEvent { kind: RoadEventKind; edge: RoadEdge; from: number; to: number; seed: number }
@@ -24,7 +28,8 @@ export const EVENT_NAMES: Record<RoadEventKind, string> = {
   checkpoint: 'Contrôle de police', panne: 'Car rapide en panne', accident: 'Accrochage', travaux: 'Travaux', bouchon: 'Embouteillage',
 };
 
-const key = (e: RoadEdge) => { const a = `${Math.round(e.ax)},${Math.round(e.az)}`, b = `${Math.round(e.bx)},${Math.round(e.bz)}`; return a < b ? `${a}|${b}` : `${b}|${a}`; };
+export const edgeKey = (e: Pick<RoadEdge, 'ax' | 'az' | 'bx' | 'bz'>) => { const a = `${Math.round(e.ax)},${Math.round(e.az)}`, b = `${Math.round(e.bx)},${Math.round(e.bz)}`; return a < b ? `${a}|${b}` : `${b}|${a}`; };
+const key = edgeKey;
 const frac = (x: number) => x - Math.floor(x);
 const hash = (a: number, b: number) => frac(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
 
@@ -50,9 +55,38 @@ function gridEdges(pts: readonly { x: number; z: number }[]): string[] {
   return out;
 }
 
-/** Roads somebody's trip depends on in this hub: the car rapide lines, the taxis in and out, the arena drop-off. */
+/** The grid node nearest to a point (a district's mouth stands a few metres out from its perimeter street's node). */
+const nodeOf = (x: number, z: number) => {
+  const snap = (v: number) => roadCentre(Math.max(0, Math.min(GRID.nb, Math.round((v - roadCentre(0)) / GRID.pitch))));
+  return { x: snap(x), z: snap(z) };
+};
+/**
+ * The ways into a district (pure): the node of its perimeter street where each road between districts (src/road/routes.ts) and each border street
+ * (src/transport/hubLink.ts) comes in, and the grid edges that meet there — the street straight on into the district and the perimeter street both ways.
+ * A car arriving takes one of them: a road event on any of them would stand in its way the moment it arrives (the Almadies had checkpoints, jams and
+ * breakdowns on the first street in from Pikine and from the Corniche).
+ */
+export function waysIn(hub: HubId): { nodes: { x: number; z: number }[]; edges: Set<string> } {
+  const nodes: { x: number; z: number }[] = [];
+  for (const r of ROADS) {
+    if (r.def.a === hub) nodes.push(nodeOf(r.def.aMouth.x, r.def.aMouth.z));
+    if (r.def.b === hub) nodes.push(nodeOf(r.def.bMouth.x, r.def.bMouth.z));
+  }
+  for (const l of LINKS) {
+    if (l.from === hub) nodes.push(nodeOf(l.x, l.at));
+    if (l.to === hub) nodes.push(nodeOf(l.x, l.arrive));
+  }
+  const edges = new Set<string>(), P = GRID.pitch, lim = roadCentre(GRID.nb) + 0.5;
+  for (const n of nodes) for (const [dx, dz] of [[P, 0], [-P, 0], [0, P], [0, -P]]) {
+    const o = { x: n.x + dx, z: n.z + dz };
+    if (Math.abs(o.x) <= lim && Math.abs(o.z) <= lim) edges.add(key({ ax: n.x, az: n.z, bx: o.x, bz: o.z }));
+  }
+  return { nodes, edges };
+}
+
+/** Roads somebody's trip depends on in this hub: the car rapide lines, the taxis in and out, the arena drop-off, the streets at the ways in. */
 export function busyEdges(hub: Pick<HubWorld, 'id' | 'spawn'> & { arena?: HubWorld['arena'] }): Set<string> {
-  const out = new Set<string>();
+  const out = new Set<string>(waysIn(hub.id).edges);
   for (const l of LINES.filter(l => l.hub === hub.id)) { const n = loopNodes(l); gridEdges([...n, n[0]]).forEach(k => out.add(k)); }
   const rank = taxiRank(hub).spot, drop = taxiDrop(rank);
   for (const side of ['x-', 'x+', 'z-', 'z+'] as Side[]) { gridEdges(routeOut(rank, side)).forEach(k => out.add(k)); gridEdges(routeIn(drop, side)).forEach(k => out.add(k)); }
@@ -98,6 +132,86 @@ export function roadEvents(hub: HubId, day: number, edges: readonly RoadEdge[], 
 }
 export const activeAt = (e: RoadEvent, hour: number) => { const h = ((hour % 24) + 24) % 24; return h >= e.from && h < e.to; };
 
+// ------------------------------------------------------------------ the layout of an event (pure)
+/**
+ * One thing of an event's scene, in its edge's own frame: `along` the edge from its middle (+ toward b), `lat` across it (+ the right of a → b: the
+ * lane of the traffic going a → b; the other lane, lat < 0, always stays open). `turn`: a vehicle's heading off the road's (rad).
+ */
+export type EventPiece =
+  | { what: 'cone'; along: number; lat: number }
+  | { what: 'barrier'; along: number; lat: number }
+  | { what: 'vehicle'; kind: VehicleKind; along: number; lat: number; turn: number; driver?: boolean; seed?: number }
+  | { what: 'person'; look: 'police' | 'worker' | 'local'; along: number; lat: number; face: number; clip: 'Idle' | 'Talk' };
+export interface VehicleSize { length: number; width: number; height: number }
+/** A solid box in the edge's frame: centre, half extent along the road (`ha`) and across it (`hc`), height. */
+export interface EventSolid { along: number; lat: number; ha: number; hc: number; h: number }
+
+/** What stands where for each kind of event (the same for everyone: no randomness but the looks of the onlookers). */
+export function eventPieces(kind: RoadEventKind): EventPiece[] {
+  const P: EventPiece[] = [];
+  const cone = (along: number, lat: number) => P.push({ what: 'cone', along, lat });
+  const vehicle = (k: VehicleKind, along: number, lat: number, turn: number, o: { driver?: boolean; seed?: number } = {}) => P.push({ what: 'vehicle', kind: k, along, lat, turn, ...o });
+  const person = (look: 'police' | 'worker' | 'local', along: number, lat: number, face: number, clip: 'Idle' | 'Talk' = 'Idle') => P.push({ what: 'person', look, along, lat, face, clip });
+  switch (kind) {
+    case 'checkpoint':                                                       // cones narrow the road, a pickup, two officers
+      for (const k of [-9, -6, -3, 0]) cone(k, 1.2 + (k + 9) * 0.25);
+      vehicle('pickup', 6, 4.3, 0, { seed: 31, driver: false });
+      person('police', 1, 3.4, -Math.PI / 2, 'Talk'); person('police', 3.5, 5.6, -Math.PI / 2 - 0.4);
+      break;
+    case 'panne':                                                            // a car rapide at the kerb, its passengers waiting
+      vehicle('carRapide', 0, 4.1, 0, { driver: false });
+      for (let k = 0; k < 3; k++) person('local', -3 + k * 1.4, 6.1, Math.PI / 2 + [-0.3, 0.1, 0.35][k], k === 1 ? 'Talk' : 'Idle');
+      cone(-7, 3.2);
+      break;
+    case 'accident':                                                         // two cars at an angle in the lane, onlookers
+      vehicle('sedan', -1.5, 2.2, 0.35); vehicle('taxi', 2.2, 1.6, -0.5, { seed: 7 });
+      person('local', 0, 5.8, Math.PI / 2, 'Talk'); person('local', 1.4, 6.1, Math.PI / 2 + 0.5, 'Talk');
+      cone(-6, 2);
+      break;
+    case 'travaux':                                                          // the right-hand lane dug up behind barriers (their long side along the road)
+      barrierPair(P);
+      for (const k of [-7, -2, 2, 7]) cone(k, 0.6);
+      person('worker', 0, 3.2, 0.3); vehicle('pickup', 10, 4.3, 0, { seed: 5 });
+      break;
+    case 'bouchon':                                                          // a line of cars waiting, drivers at the wheel
+      for (let k = 0; k < 5; k++) vehicle((['taxi', 'sedan', 'carRapide', 'sedan', 'taxi'] as VehicleKind[])[k], -12 + k * 5.6, 2.2, 0, { driver: true });
+      break;
+  }
+  return P;
+}
+const barrierPair = (P: EventPiece[]) => { P.push({ what: 'barrier', along: -4, lat: 2.4 }, { what: 'barrier', along: 4, lat: 2.4 }); };
+/** A barrier panel: 2.4 m long along the road, 8 cm thick on its feet (its solid box: the panel and its feet, 0.24 m across). */
+export const BARRIER = { length: 2.4, across: 0.24, h: 1.0 } as const;
+
+/**
+ * The solid boxes of a piece, in the edge's frame: a cone its base; a barrier its panel (never more: the old 2.6 m square round a 2.4 m panel stood
+ * 1.3 m into the lane on either side of it, unseen); a vehicle one square round its front, middle and back (src/transport/ownedModule.ts `footprint`),
+ * so a car turned across the lane is not a box the size of its whole turn; a person nothing (the drivers walk round people). `size`: the vehicle's.
+ */
+export function pieceSolids(p: EventPiece, size: (k: VehicleKind) => VehicleSize): EventSolid[] {
+  if (p.what === 'cone') return [{ along: p.along, lat: p.lat, ha: 0.25, hc: 0.25, h: 0.7 }];
+  if (p.what === 'barrier') return [{ along: p.along, lat: p.lat, ha: BARRIER.length / 2, hc: BARRIER.across / 2, h: BARRIER.h }];
+  if (p.what !== 'vehicle') return [];
+  const v = size(p.kind), hw = v.width / 2, l = Math.max(0, v.length / 2 - hw), fa = Math.cos(p.turn), fl = -Math.sin(p.turn);   // the vehicle's forward, in (along, lat)
+  return [-l, 0, l].map(t => ({ along: p.along + fa * t, lat: p.lat + fl * t, ha: hw, hc: hw, h: Math.min(2.4, v.height) }));
+}
+
+/**
+ * The narrowest clear width across the carriageway (|lat| ≤ KERB) anywhere along an event (m): what is left between its solid things and the far kerb,
+ * or between two of them. A car (1.75–1.94 m) and its margin need 3 m; every kind leaves a whole lane (tests/ld2Drive.test.ts).
+ */
+export function clearWidth(solids: readonly EventSolid[]): number {
+  let worst = 2 * KERB;
+  for (let a = -16; a <= 16; a += 0.25) {
+    const cut = solids.filter(b => Math.abs(a - b.along) < b.ha).map(b => [Math.max(-KERB, b.lat - b.hc), Math.min(KERB, b.lat + b.hc)] as [number, number]).filter(([u, v]) => v > u).sort((x, y) => x[0] - y[0]);
+    let at = -KERB, best = 0;
+    for (const [u, v] of cut) { best = Math.max(best, u - at); at = Math.max(at, v); }
+    best = Math.max(best, KERB - at);
+    worst = Math.min(worst, best);
+  }
+  return worst;
+}
+
 // ------------------------------------------------------------------ the scene of an event
 const POLICE: PersonLook = { skin: 0x3b2216, style: 'tee', top: 0x223a5e, bottom: 0x1d2a44, accent: 0xffffff, shoes: 0x1c1c1f, muscular: 0.4 };
 const WORKER: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xf27a1a, bottom: 0x2b2f3a, accent: 0xf2f2ec, shoes: 0x3a2a1e };
@@ -132,48 +246,29 @@ class RoadEventsView {
     }
   }
 
-  /** Lay out the scene on the edge: along the road from its middle, on the right-hand lane (x local = across the road). */
+  /** Lay out the scene on the edge (`eventPieces`): along the road from its middle, on the right-hand lane; solid exactly where something is drawn (`pieceSolids`). */
   private build(s: Scene) {
     const e = s.ev.edge, len = Math.hypot(e.bx - e.ax, e.bz - e.az), dx = (e.bx - e.ax) / len, dz = (e.bz - e.az) / len;
     const mx = (e.ax + e.bx) / 2, mz = (e.az + e.bz) / 2, rx = -dz, rz = dx, yaw = Math.atan2(dx, dz), R = rng(s.ev.seed);
     const at = (along: number, lat: number) => ({ x: mx + dx * along + rx * lat, z: mz + dz * along + rz * lat });
-    const solid = (x: number, z: number, hw: number, hd: number, h: number) => { const c: Collider = { x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, h }; s.boxes.push(c); this.hub.colliders.push(c); };
-    const cone = (along: number, lat: number) => { const p = at(along, lat); const m = new THREE.Mesh(this.coneGeo, this.coneMat); m.position.set(p.x, 0.38, p.z); s.group.add(m); solid(p.x, p.z, 0.25, 0.25, 0.7); };
-    const vehicle = (kind: VehicleKind, along: number, lat: number, turn: number, o: { driver?: boolean; seed?: number } = {}) => {
-      const p = at(along, lat), v = buildVehicle(kind, { seed: o.seed ?? Math.floor(R() * 1e6), driver: o.driver ?? false, passengers: false });
-      v.group.position.set(p.x, 0.06, p.z); v.group.rotation.y = yaw + turn; s.group.add(v.group);
-      const hl = v.spec.length / 2, hw = v.spec.width / 2, c = Math.abs(Math.cos(yaw + turn)), sn = Math.abs(Math.sin(yaw + turn));
-      solid(p.x, p.z, c * hw + sn * hl, sn * hw + c * hl, Math.min(2.4, v.spec.height));
-    };
-    const person = (look: PersonLook, along: number, lat: number, face: number, clip: 'Idle' | 'Talk' = 'Idle') => {
-      if (!humanoidReady()) return;
-      const p = at(along, lat), h = new Humanoid(look); h.group.position.set(p.x, 0.1, p.z); h.group.rotation.y = yaw + face; h.hold = clip; s.group.add(h.group); s.people.push(h);
-    };
-    const barrier = (along: number, lat: number) => { const p = at(along, lat); const m = new THREE.Mesh(this.barrierGeo, this.barrierMat); m.position.set(p.x, 0.75, p.z); m.rotation.y = yaw + Math.PI / 2; s.group.add(m); solid(p.x, p.z, 1.3, 1.3, 1); };
-    switch (s.ev.kind) {
-      case 'checkpoint':                                                       // cones narrow the road, a pickup, two officers
-        for (const k of [-9, -6, -3, 0]) cone(k, 1.2 + (k + 9) * 0.25);
-        vehicle('pickup', 6, 4.3, 0, { seed: 31, driver: false });
-        person(POLICE, 1, 3.4, -Math.PI / 2, 'Talk'); person(POLICE, 3.5, 5.6, -Math.PI / 2 - 0.4);
-        break;
-      case 'panne':                                                            // a car rapide at the kerb, its passengers waiting
-        vehicle('carRapide', 0, 4.1, 0, { driver: false });
-        for (let k = 0; k < 3; k++) person(randomLook(R), -3 + k * 1.4, 6.1, Math.PI / 2 + (R() - 0.5), k === 1 ? 'Talk' : 'Idle');
-        cone(-7, 3.2);
-        break;
-      case 'accident':                                                         // two cars at an angle in the lane, onlookers
-        vehicle('sedan', -1.5, 2.2, 0.35); vehicle('taxi', 2.2, 1.6, -0.5, { seed: 7 });
-        person(randomLook(R), 0, 5.8, Math.PI / 2, 'Talk'); person(randomLook(R), 1.4, 6.1, Math.PI / 2 + 0.5, 'Talk');
-        cone(-6, 2);
-        break;
-      case 'travaux':                                                          // the right-hand lane dug up behind barriers
-        barrier(-4, 2.4); barrier(4, 2.4);
-        for (const k of [-7, -2, 2, 7]) cone(k, 0.6);
-        person(WORKER, 0, 3.2, 0.3); vehicle('pickup', 10, 4.3, 0, { seed: 5 });
-        break;
-      case 'bouchon':                                                          // a line of cars waiting, drivers at the wheel
-        for (let k = 0; k < 5; k++) vehicle((['taxi', 'sedan', 'carRapide', 'sedan', 'taxi'] as VehicleKind[])[k], -12 + k * 5.6, 2.2, 0, { driver: true });
-        break;
+    const alongX = Math.abs(dx) > 0.5;                                           // the grid's edges run along x or along z
+    for (const p of eventPieces(s.ev.kind)) {
+      const w = at(p.along, p.lat);
+      let size: VehicleSize | null = null;
+      if (p.what === 'cone') { const m = new THREE.Mesh(this.coneGeo, this.coneMat); m.position.set(w.x, 0.38, w.z); s.group.add(m); }
+      else if (p.what === 'barrier') { const m = new THREE.Mesh(this.barrierGeo, this.barrierMat); m.position.set(w.x, 0.75, w.z); m.rotation.y = yaw + Math.PI / 2; s.group.add(m); }   // its long side along the road
+      else if (p.what === 'vehicle') {
+        const v = buildVehicle(p.kind, { seed: p.seed ?? Math.floor(R() * 1e6), driver: p.driver ?? false, passengers: false });
+        v.group.position.set(w.x, 0.06, w.z); v.group.rotation.y = yaw + p.turn; s.group.add(v.group);
+        size = { length: v.spec.length, width: v.spec.width, height: v.spec.height };
+      } else if (humanoidReady()) {
+        const h = new Humanoid(p.look === 'police' ? POLICE : p.look === 'worker' ? WORKER : randomLook(R)); h.group.position.set(w.x, 0.1, w.z); h.group.rotation.y = yaw + p.face; h.hold = p.clip; s.group.add(h.group); s.people.push(h);
+      } else if (p.look === 'local') randomLook(R);                             // (the same looks whether the bodies are ready or not)
+      for (const b of pieceSolids(p, () => size!)) {
+        const c0 = at(b.along, b.lat), hx = alongX ? b.ha : b.hc, hz = alongX ? b.hc : b.ha;
+        const c: Collider = { x0: c0.x - hx, x1: c0.x + hx, z0: c0.z - hz, z1: c0.z + hz, h: b.h };
+        s.boxes.push(c); this.hub.colliders.push(c);
+      }
     }
     this.shut.add(key(s.ev.edge));                                         // the decorative traffic goes another way
     this.group.add(s.group);

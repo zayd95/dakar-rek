@@ -159,7 +159,8 @@ export class FollowCamera {
     let k = 1;
     if (room) {
       const m = open ? 2.2 : 0;                               // over the walls when the room is open to the sky
-      want.x = clamp(want.x, room.x0 - m, room.x1 + m); want.z = clamp(want.z, room.z0 - m, room.z1 + m); want.y = Math.min(want.y, open ? 6.6 : 2.6);
+      // under the room's height: LD2.0-D, above the floor the player stands on (a home on several levels), the same 6.6 / 2.6 on a ground floor
+      want.x = clamp(want.x, room.x0 - m, room.x1 + m); want.z = clamp(want.z, room.z0 - m, room.z1 + m); want.y = Math.min(want.y, target.y + (open ? 6.5 : 2.5));
     } else {
       const n = this.occluders(target, dist, colliders, canopies, dt);
       k = pullClear(from, want, clearFraction(from, want, n.c, n.t), n.c, n.t);   // in front of what would fill the lens

@@ -29,14 +29,17 @@ describe('the car interior at the wheel', () => {
     }
   });
 
-  it('is light: three meshes, the shell and the wheel on one shared material, under 2 500 triangles; hidden until the view is taken', () => {
+  it('is light: three meshes (three draw calls), the shell and the wheel on one shared material, under 4 000 triangles; hidden until the view is taken', () => {
     const a = new CarInterior(cabinOf(CARS[0][1]), 'city'), b = new CarInterior(cabinOf(CARS[2][1]), 'premium');
     for (const ir of [a, b]) {
       expect(ir.group.visible).toBe(false);
       const ms = meshes(ir.group);
       expect(ms).toHaveLength(3);
       expect(ms[0].material).toBe(ms[1].material);
-      expect(ir.tris).toBeLessThan(2500);
+      // 4 000, not 2 500 (25 Oct, the owner's « more real and polished »): the sculpted dash, the vents and the climate dials, the console with the
+      // gear lever, cup holders and handbrake, the bolstered seats, the door cards and the wheel's spokes and pad came to about 3 300; still a
+      // small share of a frame at the wheel (the street draws 100 000 and more) and three draw calls, as before
+      expect(ir.tris).toBeLessThan(4000);
       expect(ms.every(m => !m.castShadow && (m.material as THREE.Material).depthTest !== false)).toBe(true);   // depth-tested like the world, never drawn over it
     }
     expect(meshes(a.group)[0].material).toBe(meshes(b.group)[0].material);                                     // every car's interior shares it

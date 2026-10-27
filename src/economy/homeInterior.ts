@@ -6,6 +6,8 @@ import type { Interior } from '../world/interiors';
 import type { Collider, Interactable } from '../world/types';
 import type { HomeLevel, HomeSpec } from './catalog';
 import { openPlan, partitions } from './placement';
+import { planFor } from '../housing/plan';
+import { buildApartment } from '../housing/apartment';
 
 /**
  * Interiors of the homes above the starter room (apartment, house, villa, luxury residence): one open room in the plan of
@@ -13,7 +15,7 @@ import { openPlan, partitions } from './placement';
  * the south wall — finished according to the level (walls, floor, windows, height). Empty: the player furnishes it.
  * Built off the street grid like every interior and entered through the home's street door (src/economy/estate.ts).
  */
-interface Finish { lower: number; upper: number; h: number; door: number; trim: number; glass: boolean; kitchen: number; top: number }
+export interface Finish { lower: number; upper: number; h: number; door: number; trim: number; glass: boolean; kitchen: number; top: number }
 const FINISH: Record<Exclude<HomeLevel, 'room'>, Finish> = {
   apartment: { lower: 0xd9c7a8, upper: 0xf3efe6, h: 2.9, door: 0x1e6fd9, trim: 0x8a7a6a, glass: false, kitchen: 0x8b6a47, top: 0xd9d2c4 },
   house: { lower: 0x9fc2a0, upper: 0xf6f1e7, h: 3.1, door: 0x2f8f4e, trim: 0x6e5a44, glass: false, kitchen: 0x6e4426, top: 0xe8e2d6 },
@@ -38,13 +40,20 @@ function materials() {
   return mats;
 }
 
-export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z: number }; shower: { x: number; z: number } }; ceiling: THREE.Object3D[] }
+/** `spots`: where the kitchen and the shower are used from (world x, z; LD2.0-D: `y`, the height of their level's floor above the ground floor's). */
+export interface HomeInterior { int: Interior; spots: { kitchen: { x: number; z: number; y?: number }; shower: { x: number; z: number; y?: number } }; ceiling: THREE.Object3D[] }
 
-/** `upgrades`: the home's upgrades that show in the shell (« peinture »: freshly painted walls). */
+/**
+ * `upgrades`: the home's upgrades that show in the shell (« peinture »: freshly painted walls). A home with a floor plan (src/housing/plan.ts
+ * PLANS: the F2 of the Résidence Jàmm) is built from it, room by room (src/housing/apartment.ts); the others keep their one open room.
+ */
 export function buildHomeInterior(h: HomeSpec, ox: number, oz: number, hub: string, upgrades: readonly string[] = []): HomeInterior {
   const level = h.home.level === 'room' ? 'apartment' : h.home.level;
-  const base = FINISH[level], M = materials(), L = openPlan(level, h.home.w, h.home.d);
+  const base = FINISH[level];
   const F = upgrades.includes('peinture') ? { ...base, lower: 0x7fb7c9, upper: 0xfbf3e2, trim: 0x2f6f86 } : base;
+  const plan = planFor(h.id);
+  if (plan) return buildApartment(plan, h, ox, oz, hub, F, upgrades);
+  const M = materials(), L = openPlan(level, h.home.w, h.home.d);
   const W = L.w, D = L.d, H = F.h;
   const x0 = ox - W / 2, x1 = ox + W / 2, z0 = oz - D / 2, z1 = oz + D / 2;
   const group = new THREE.Group();

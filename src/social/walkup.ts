@@ -14,7 +14,7 @@ import type { Activity } from './routines';
  *
  * Nothing is earned by walking up: a greeting changes no relation, no counter of familiarity and no need, so it cannot be
  * farmed. It is said at most once per city hour per person, never the same line twice in a row, and only to someone the
- * player has met.
+ * player has met — except a character's `news` lines (what the whole street knows: the player's new table next door), said to a stranger too.
  */
 export const WALK_R = 4.5;
 /** The player must have gone this far away before the same person greets again. */
@@ -52,13 +52,14 @@ export interface Spoken { key: string; line: string; once: boolean }
 export function walkupLine(id: string, s: GameState, r: Relations, day: number, hour: number, act?: Activity): Spoken | null {
   const p = profileOf(id), c = s.data.counters;
   const tier = tierOf(id, s, r);
-  if (!p || !tier) return null;
+  if (!p || (!tier && !p.walkup?.some(w => w.news))) return null;      // a stranger only hears the news of the street (a `news` line)
   const stamp = hourStamp(day, hour);
   if (c[wuKey.at(id)] === stamp) return null;
   const x: Ctx = { id, s, r, hour, day, act };
   const last = c[wuKey.last(id)] ?? 0;
-  const own: Walkup[] = (p.walkup ?? []).filter(w => matches(w.when, x) && !(w.once && c[wuKey.once(id, w.id)]) && tag(w.id) !== last);
+  const own: Walkup[] = (p.walkup ?? []).filter(w => (tier || w.news) && matches(w.when, x) && !(w.once && c[wuKey.once(id, w.id)]) && tag(w.id) !== last);
   if (own.length) { const w = own[0]; return { key: w.id, line: withHourGreeting(w.line, hour), once: !!w.once }; }
+  if (!tier) return null;
   const pool = GENERAL[tier];
   const fresh = pool.map((line, i) => ({ key: `${tier}${i}`, line })).filter(g => tag(g.key) !== last);
   if (!fresh.length) return null;

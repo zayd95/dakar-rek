@@ -1,0 +1,194 @@
+[
+ {
+  "place": "street",
+  "hour": 22,
+  "view": "chase",
+  "calls": 179,
+  "tris": 166347,
+  "lane": 152.1,
+  "edgeLine": 166.3,
+  "asphalt": 167,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -62.1,
+    0.7,
+    -98.03
+   ],
+   "dir": [
+    0,
+    1
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "street",
+  "hour": 22,
+  "view": "volant",
+  "calls": 161,
+  "tris": 151563,
+  "lane": 152.4,
+  "edgeLine": 164,
+  "asphalt": 164.4,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -62.1,
+    0.7,
+    -98.03
+   ],
+   "dir": [
+    0,
+    1
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "street",
+  "hour": 5,
+  "view": "chase",
+  "calls": 175,
+  "tris": 163717,
+  "lane": 152.3,
+  "edgeLine": 165.8,
+  "asphalt": 166.6,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -62.1,
+    0.7,
+    -98.03
+   ],
+   "dir": [
+    0,
+    1
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "street",
+  "hour": 5,
+  "view": "volant",
+  "calls": 157,
+  "tris": 148683,
+  "lane": 152.4,
+  "edgeLine": 164,
+  "asphalt": 164.4,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -62.1,
+    0.7,
+    -98.03
+   ],
+   "dir": [
+    0,
+    1
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "road",
+  "hour": 22,
+  "view": "chase",
+  "calls": 74,
+  "tris": 52738,
+  "lane": 66.4,
+  "edgeLine": 215.4,
+  "asphalt": 71.3,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -445.77,
+    0.7,
+    24.78
+   ],
+   "dir": [
+    -0.946,
+    0.324
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "road",
+  "hour": 22,
+  "view": "volant",
+  "calls": 68,
+  "tris": 39852,
+  "lane": 66.6,
+  "edgeLine": 215.6,
+  "asphalt": 71.5,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -445.77,
+    0.7,
+    24.78
+   ],
+   "dir": [
+    -0.946,
+    0.324
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "road",
+  "hour": 5,
+  "view": "chase",
+  "calls": 73,
+  "tris": 51226,
+  "lane": 66.4,
+  "edgeLine": 215.4,
+  "asphalt": 71.3,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -445.77,
+    0.7,
+    24.78
+   ],
+   "dir": [
+    -0.946,
+    0.324
+   ],
+   "reach": 38
+  }
+ },
+ {
+  "place": "road",
+  "hour": 5,
+  "view": "volant",
+  "calls": 66,
+  "tris": 38338,
+  "lane": 66.6,
+  "edgeLine": 215.6,
+  "asphalt": 71.5,
+  "headlights": {
+   "on": true,
+   "strength": 2,
+   "at": [
+    -445.77,
+    0.7,
+    24.78
+   ],
+   "dir": [
+    -0.946,
+    0.324
+   ],
+   "reach": 38
+  }
+ }
+]

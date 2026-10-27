@@ -12,6 +12,7 @@ The game saves on the device only (`localStorage`, `src/core/save.ts`).
 | `dakarrek.guest.save.v6.extras` | the v6 client, with every save | the v6 client: the fields an older v6 client drops (see below) |
 | `dakarrek.guest.save.v6.extras.2` | the v6 client from the beta on, with every save (the same backup) | the v6 client: what the first backup lost when a client that knows it, but fewer fields, rewrote it |
 | `dakarrek.guest.save.v6.before-import` | the v6 client, when a save is imported (the game it replaces) | the v6 client: « Revenir à la partie d’avant l’import » (one slot) |
+| `dakarrek.vitrine/…` (every key above, under this prefix) | only the owner's private showcase build (`npm run build:showcase`, LD2.0-D `src/showcase/`), when « Vitrine du propriétaire » is chosen at its start | that build's showcase only: its own save, made on the first visit (the villa, its pieces, the Lamane Sport in its bay). It never reads, writes or removes a key outside the prefix (`tests/showcase.test.ts`); the public bundle has no such code |
 
 ## Why v6
 The Tiak Tiak tour adds an active-run field (`jobs.active.tour`) that only a v6 build understands. Under the v5 key an older client that was served again (a rollback) would read the run as a route it does not know, cancel it and write the save back, losing the tour. A schema number that stays the same is not compatibility: the tour data is in a new schema with its own key, so the older client never sees it and never writes to it.

@@ -20,7 +20,9 @@ import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecen
 import type { ActivityCategory } from '../activity/types';
 import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
 import { fcfaShort } from './format';
+import { BANA_PLACE, ownsTable, resultLine, tableCard, type TableCard } from './bana';
 import './economy.css';
+import './bana.css';
 import { streak } from './streakModule';
 import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
 import { JOB, jobBadge } from '../ui/jobMarks';
@@ -61,6 +63,16 @@ const shortName = (n: string) => { const base = n.split(' · ')[0]; return SHORT
 const stopSpot = (st: TourStop): Spot => ({ icon: iconOf(st.place.frag), name: shortName(st.place.name) });
 const TOURS_BY = (id: string) => TOURS.find(t => t.id === id);
 const clock = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/** The bana-bana table on the « Affaires » screen: the goods, the customers waiting, the last session (sales − cost = profit), today and since the purchase. */
+function tableCardHtml(c: TableCard): string {
+  const stock = c.stock.map(g => `<span class="${g.n ? '' : 'out'}">${g.icon} ${g.n}/${g.max}</span>`).join('');
+  return `<div class="bana-card"><h3>🧺 Ta table de bana-bana${c.units > 1 ? ` ×${c.units}` : ''}<em>+${fcfa(c.perHour * c.units)}/h</em></h3>
+    <div class="bana-stock">${stock}</div>
+    <div class="bana-line">Clients qui attendent : <b>${c.clients}/${c.max}</b>${c.open ? ' · table ouverte' : ''}${c.family ? ` · ${c.family} autre${c.family > 1 ? 's' : ''} tenue${c.family > 1 ? 's' : ''} par la famille` : ''}</div>
+    ${c.last ? `<div class="bana-calc">Dernière fois : ${esc(resultLine(c.last))}</div>` : ''}
+    <div class="bana-line">Ventes : aujourd’hui <b>${fcfa(c.today)}</b> · depuis l’achat <b>${fcfa(c.total)}</b></div></div>`;
+}
 
 export class Economy {
   private world: HubWorld | null = null;
@@ -495,31 +507,75 @@ export class Economy {
     return paid;
   }
 
-  /** « Affaires »: owned ventures, income, next prices; picking one asks for confirmation. Open to whoever can pay. */
+  /**
+   * « Affaires » at a glance (phone first: the owner found the old screen overloaded on an iPhone). What the player owns and earns (two numbers), their
+   * bana-bana table when they have it (stock, customers, the last session's sales − cost = profit, today and since the purchase, « Y aller »), each venture
+   * owned with its income, the next one within reach (or the first one and what is missing), then the full ladder and the details (variety, how income
+   * works) on demand. One short line on variety. Picking a venture asks for confirmation, as before.
+   */
   openBusiness() {
-    const s = this.s, value = venturesValue(s), units = unitsOwned(s);
+    const s = this.s, units = unitsOwned(s), card = tableCard(s);
+    const items: MenuItem[] = [];
+    if (card.owned) items.push({ icon: '📍', label: 'Y aller · ta table', detail: 'Marché de Pikine, à côté de la Maïga', onPick: () => this.goTable() });
+    for (const v of VENTURES) {
+      const n = ownedOf(s, v.id); if (!n) continue;
+      items.push({ icon: '🏢', label: `${v.name} ×${n}`, detail: `Encore une : ${fcfa(nextPrice(s, v.id))}`, right: `+${fcfa(perHourOf(v.id) * n)}/h`, onPick: () => this.confirmVenture(v.id) });
+    }
+    const next = this.nextVenture();
+    if (next) {
+      const price = nextPrice(s, next.id), missing = price - s.wallet;
+      items.push({ icon: '✨', label: next.name, detail: `+${fcfa(perHourOf(next.id))}/h · acheter`, reason: missing > 0 ? `Il manque ${fcfa(missing)}` : undefined, right: fcfa(price), disabled: missing > 0, onPick: () => this.confirmVenture(next.id) });
+    }
+    if (!card.owned) items.push({ icon: '📍', label: 'Voir la table à céder', detail: 'Marché de Pikine, à côté de la Maïga', onPick: () => this.goTable() });
+    items.push({ icon: '📋', label: `Voir toutes les affaires (${VENTURES.length})`, detail: 'Prix, revenus, de la table au grand groupe', onPick: () => this.openAllBusiness() });
+    items.push({ icon: 'ℹ️', label: 'Comment ça marche', detail: 'Revenus, variété des activités', onPick: () => this.openBusinessHelp() });
+    const top = units ? `<div class="biz-top"><div><small>Revenus par heure</small><b class="gain">+${fcfa(incomePerHour(s))}</b></div><div><small>Total gagné</small><b>${fcfa(s.data.assets.earned)}</b></div></div>` : '';
+    const html = `${top}${card.owned ? tableCardHtml(card) : ''}<div class="biz-note">${esc(units ? polyLine(s) : 'Une affaire rapporte à chaque heure en ville, pendant que tu joues.')}</div>`;
+    this.d.menu();
+    this.d.hud.openMenu('Affaires', `${units ? `${units} affaire${units > 1 ? 's' : ''}` : 'Aucune affaire pour l’instant'} · en poche ${fcfa(s.wallet)}`, items, html);
+  }
+
+  /** The next venture to show on the main screen: the dearest one not owned yet that the player can pay now, else the cheapest not owned (and what is missing). */
+  private nextVenture() {
+    const s = this.s, open = VENTURES.filter(v => ownedOf(s, v.id) === 0 && !lockedWhy(s, v.id));
+    return [...open].reverse().find(v => s.canAfford(nextPrice(s, v.id))) ?? open[0] ?? null;
+  }
+
+  /** « Y aller »: the walking marker on the table (in Pikine now), or waiting in Pikine (from another district). */
+  private goTable() {
+    this.d.hud.closeModal();
+    if (this.world?.id === 'pikine') { this.d.walkTo(BANA_PLACE); this.d.hud.toast(`📍 Repère : ${ownsTable(this.s) ? 'ta table de bana-bana' : 'la table à céder'}`); }
+    else { phoneHooks.markPlace?.(BANA_PLACE, 'pikine', 'Table de bana-bana'); this.d.hud.toast('📍 La table est à Pikine, à côté de la Maïga : le repère t’y attend'); }
+  }
+
+  /** The full ladder: every venture, owned or not, its income, its next price (the old « Affaires » list). */
+  openAllBusiness() {
+    const s = this.s;
     const items: MenuItem[] = VENTURES.map(v => {
       const n = ownedOf(s, v.id), why = lockedWhy(s, v.id), price = nextPrice(s, v.id), each = perHourOf(v.id);
       const missing = price - s.wallet;
       const detail = why ?? [n ? `+${fcfa(each)}/h chacune · +${fcfa(each * n)}/h en tout` : `${v.what} · +${fcfa(each)}/h`, missing > 0 ? `il manque ${fcfa(missing)}` : 'acheter'].join(' · ');
       return { label: `${v.name}${n ? ` ×${n}` : ''}`, detail, right: why ? 'Bloqué' : fcfa(price), disabled: !!why || missing > 0, onPick: () => this.confirmVenture(v.id) };
     });
+    items.push({ icon: '↩️', label: 'Retour', onPick: () => this.openBusiness() });
+    this.d.menu();
+    this.d.hud.openMenu('Toutes les affaires', `En poche ${fcfa(s.wallet)}`, items, `<div class="biz-note">Chaque unité de plus coûte 15\u202f% plus cher. Aucune condition : une affaire s’achète dès que tu peux la payer.</div>`);
+  }
+
+  /** The details, on demand: how income works, and the variety bonus with its chips (moved off the main screen). */
+  openBusinessHelp() {
+    const s = this.s, value = venturesValue(s);
     const chips = ACTIVITIES.map(a => {
       const on = isRecent(s, a), known = s.data.activities.known.includes(a), days = Math.ceil((timeLeft(s, a) / (WINDOW_MS / ECONOMY.polyvalence.windowDays)) * 10) / 10;
       return `<span class="${on ? 'on' : known ? 'old' : ''}" title="${esc(ACTIVITY_INFO[a].where)}">${on ? '✓ ' : ''}${esc(ACTIVITY_INFO[a].label)}${on ? `<small>encore ${String(days).replace('.', ',')} j</small>` : ''}</span>`;
     }).join('');
     const todo = ACTIVITIES.filter(a => !isRecent(s, a)).slice(0, 3).map(a => `${ACTIVITY_INFO[a].label} : ${ACTIVITY_INFO[a].where}`);
-    const html = `<div class="biz-sum">
-        <div><small>Revenus par heure</small><b>+${fcfa(incomePerHour(s))}</b></div>
-        <div><small>Total gagné</small><b>${fcfa(s.data.assets.earned)}</b></div>
-        <div><small>Valeur des affaires</small><b>${fcfa(value)}</b></div>
-        <div><small>Fortune totale</small><b>${fcfa(s.wallet + value)}</b></div>
-      </div>
+    const html = `<div class="biz-top"><div><small>Valeur des affaires</small><b>${fcfa(value)}</b></div><div><small>Fortune totale</small><b>${fcfa(s.wallet + value)}</b></div></div>
       <div class="poly"><b>${esc(polyLine(s))}</b><div class="chips">${chips}</div>
         <small>Bonus facultatif : chaque activité différente pratiquée ces 3 derniers jours de jeu ajoute +5\u202f% à la paie (livraisons, petits boulots), jusqu’à +15\u202f%. Il ne change pas les revenus des affaires.${todo.length ? ' À essayer : ' + esc(todo.join(' · ')) + '.' : ''}</small></div>
-      <div class="draft">${esc(INCOME_NOTE)} Chaque unité de plus coûte 15\u202f% plus cher. Aucune condition : une affaire s’achète dès que tu peux la payer.</div>`;
+      <div class="draft">${esc(INCOME_NOTE)} Ta table de bana-bana rapporte en plus ce que tu vends quand tu la tiens toi-même.</div>`;
     this.d.menu();
-    this.d.hud.openMenu('Affaires', `${units ? `${units} affaire${units > 1 ? 's' : ''}` : 'Aucune affaire pour l’instant'} · en poche ${fcfa(s.wallet)}`, items, html);
+    this.d.hud.openMenu('Comment ça marche', 'Revenus et variété', [{ icon: '↩️', label: 'Retour', onPick: () => this.openBusiness() }], html);
   }
 
   private confirmVenture(id: string) {
@@ -583,6 +639,9 @@ export class Economy {
         known: [...s.data.activities.known], next: Object.fromEntries(VENTURES.map(v => [v.id, { price: nextPrice(s, v.id), locked: lockedWhy(s, v.id) }])),
       }),
       businessApp: () => { this.openBusiness(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); },
+      /** The full ladder (« Voir toutes les affaires ») and the details (« Comment ça marche »): their rows. */
+      businessAll: () => { this.openAllBusiness(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); },
+      businessHelp: () => { this.openBusinessHelp(); return document.querySelector('#modal.on .panel')?.textContent ?? ''; },
       buyVenture: (id: string) => this.buyVenture(id),
       giveMoney: (n: number) => s.addMoney(n, 'Argent de test (debug)'),
       /** Played time passes (no needs drain): the ventures' income is counted and paid. Returns what was paid. */

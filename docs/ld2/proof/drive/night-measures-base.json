@@ -1,0 +1,90 @@
+[
+ {
+  "place": "street",
+  "hour": 22,
+  "view": "chase",
+  "calls": 186,
+  "tris": 174559,
+  "lane": 68,
+  "edgeLine": 84.1,
+  "asphalt": 82.9,
+  "headlights": null
+ },
+ {
+  "place": "street",
+  "hour": 22,
+  "view": "volant",
+  "calls": 173,
+  "tris": 165232,
+  "lane": 0,
+  "edgeLine": 0,
+  "asphalt": 0,
+  "headlights": null
+ },
+ {
+  "place": "street",
+  "hour": 5,
+  "view": "chase",
+  "calls": 177,
+  "tris": 165459,
+  "lane": 68,
+  "edgeLine": 83.6,
+  "asphalt": 83,
+  "headlights": null
+ },
+ {
+  "place": "street",
+  "hour": 5,
+  "view": "volant",
+  "calls": 159,
+  "tris": 153784,
+  "lane": 0,
+  "edgeLine": 0,
+  "asphalt": 0,
+  "headlights": null
+ },
+ {
+  "place": "road",
+  "hour": 22,
+  "view": "chase",
+  "calls": 73,
+  "tris": 52840,
+  "lane": 9.3,
+  "edgeLine": 86.9,
+  "asphalt": 9.3,
+  "headlights": null
+ },
+ {
+  "place": "road",
+  "hour": 22,
+  "view": "volant",
+  "calls": 72,
+  "tris": 45329,
+  "lane": 0,
+  "edgeLine": 0,
+  "asphalt": 0,
+  "headlights": null
+ },
+ {
+  "place": "road",
+  "hour": 5,
+  "view": "chase",
+  "calls": 73,
+  "tris": 51928,
+  "lane": 9.3,
+  "edgeLine": 86.9,
+  "asphalt": 9.3,
+  "headlights": null
+ },
+ {
+  "place": "road",
+  "hour": 5,
+  "view": "volant",
+  "calls": 71,
+  "tris": 43731,
+  "lane": 0,
+  "edgeLine": 0,
+  "asphalt": 0,
+  "headlights": null
+ }
+]

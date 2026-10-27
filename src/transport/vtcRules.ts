@@ -36,9 +36,11 @@ export const VTC_POINTS: Record<HubId, VtcPoint[]> = {
   ],
   almadies: [
     { id: 'pointe', name: 'Restaurant Le Pointe', x: -102, z: -54 }, { id: 'mall', name: 'Dakar Life Mall', x: 30, z: 47 }, { id: 'ngor', name: 'Place des voisins · Ngor', x: 101, z: 33 },
-    { id: 'cafe', name: 'Café Touba · Ngor', x: 102, z: -54 }, { id: 'port', name: 'Port de pêche', x: 30, z: -109 },
+    { id: 'cafe', name: 'Café Touba · Ngor', x: 102, z: -54 }, { id: 'port', name: 'Embarcadère de Ngor', x: 30, z: -109 },
     { id: 'gare', name: 'Gare des Almadies', x: -45, z: 30 }, { id: 'prestige', name: 'Prestige Auto', x: -75, z: 40 },
-    { id: 'embarcadere', name: 'Embarcadère de Ngor', x: 16, z: -75 }, { id: 'villas', name: 'Résidence des Almadies', x: 15, z: -30 },
+    // the club on Ngor's beach (src/venues/club.ts CLUB_SITE), the car on the coast road clear of the car rapide's stop; the villa for sale
+    // (src/economy/estate.ts), the car along its side street
+    { id: 'vague', name: 'La Vague · plage de Ngor', x: -20, z: -138 }, { id: 'villas', name: 'Villa avec piscine · Almadies', x: -8, z: -20 },
   ],
   // Mermoz · Sacré-Cœur (M1, docs/districts/M1-MERMOZ.md): two addresses only, both authored. The residence's gate on a quiet villa street under the trees (x = 60), and
   // the bakery on Sacré-Cœur's shopping street (x = −60).

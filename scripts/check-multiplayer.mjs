@@ -152,9 +152,12 @@ try {
     console.log('RAPIDE STATE', JSON.stringify(await b.evaluate(l => ({ trip: window.__dakar.transport.trip(), next: window.__dakar.transport.nextAt(l, 0), me: window.__dakar.pos(), cars: window.__dakar.transport.lines().find(x => x.id === l)?.vehicles.map(c => ({ x: +c.x.toFixed(1), z: +c.z.toFixed(1), s: +c.s.toFixed(1), v: +c.v.toFixed(2), dwell: c.dwell, next: c.next, free: c.free })) }), L0.id)));
     throw e;
   });
-  await sleep(1500);
+  // B's seat reaches A with B's next presence frame: on a slow runner (a page there takes a minute to come online) that is seconds, not a fixed 1.5 s
+  const seatedAt = Date.now();
+  await a.waitForFunction(() => { const p = window.__dakar.presence(); return p.bikes === 0 && p.peers.some(x => /rapide/.test(x.space) && x.clip === 'Sit'); }, null, { timeout: 20000 }).catch(() => {});
   const inCar = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space]) }; });
-  check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify(inCar));
+  const bSends = await b.evaluate(() => { const p = window.__dakar.presence(); return { status: p.status, space: p.move?.space ?? null, clip: p.move?.clip ?? null, phase: window.__dakar.transport.trip().phase }; });
+  check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify({ ...inCar, waitedMs: Date.now() - seatedAt, bSends }));
   await b.evaluate(() => window.__dakar.teleport('pikine')); await b.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 30000 });
   const before = await a.evaluate(() => ({ id: window.__dakar.presence().id, wallet: window.__dakar.state.wallet }));
   await contexts[0].setOffline(true);

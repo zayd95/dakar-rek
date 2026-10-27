@@ -18,16 +18,19 @@ import './theme.css';
 import type { Relations } from '../social/relations';
 import { phoneHooks } from './phoneHooks';
 import type { PhoneApi, Screen } from './phone/types';
-import { appById } from './phone/registry';
+import { APPS, appById } from './phone/registry';
 import { homeScreen, appsScreen, clock } from './phone/apps/home';
+import { pistesScreen } from './phone/apps/pistes';
 import { profileScreen } from './phone/apps/profile';
 import { moneyScreen } from './phone/apps/money';
+import { bankScreen } from './phone/apps/bank';
 import { workScreen } from './phone/apps/work';
 import { houseScreen } from './phone/apps/house';
 import { mapScreen } from './phone/apps/map';
 import { settingsScreen, newGameScreen, soundTestScreen, restoreSensitivity } from './phone/apps/settings';
 import { arenaScreen, calcScreen, clockScreen, healthScreen, helpScreen, lutteursScreen, newsScreen, tonightScreen, weatherScreen } from './phone/apps/misc';
 import { carnetScreen, notifsScreen } from './phone/apps/social';
+import { messagesScreen } from './phone/apps/messages';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -56,7 +59,8 @@ const SCREENS: Record<string, Screen> = {
   home: homeScreen, apps: appsScreen, profil: profileScreen, portefeuille: moneyScreen, travailler: workScreen, logement: houseScreen, carte: mapScreen,
   reglages: settingsScreen, nouvelle: newGameScreen, sontest: soundTestScreen,
   notifs: notifsScreen, sante: healthScreen, carnet: carnetScreen, arene: arenaScreen, lutteurs: lutteursScreen, cesoir: tonightScreen,
-  actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen,
+  actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen, banque: bankScreen,
+  messages: messagesScreen,
 };
 /** Other names a screen is opened by: « progression » is the Profile on its Progression tab (the HUD's streak chip). */
 const ALIASES: Record<string, [string, string?]> = { progression: ['profil', 'progression'], argent: ['portefeuille'], maison_hub: ['logement'], travail_hub: ['travailler'] };
@@ -155,14 +159,19 @@ export class Phone {
   refresh() { if (this.isOpen) this.render(true); }
   get current(): string { return this.stack[this.stack.length - 1]?.id ?? 'home'; }
 
-  /** Opens the phone where it was left, or on the given app (an app id, a screen id, an alias, or 'home'). Returns false for an unknown app. */
+  /**
+   * Opens the phone where it was left, or on the given app (an app id, a screen id, an alias, or 'home'; `app:arg` opens a screen on its argument, e.g.
+   * `messages:<tag>`, a conversation, above the screen's first page). Returns false for an unknown app.
+   */
   open(app?: string): boolean {
     if (app) {
-      const a = appById(app);
+      const cut = app.indexOf(':'), name = cut > 0 ? app.slice(0, cut) : app, extra = cut > 0 ? app.slice(cut + 1) : undefined;
+      const a = appById(name);
       if (a?.hook) { const fn = a.hook(); if (!fn) return false; this.launch(fn); return true; }
-      const [id, arg] = ALIASES[app] ?? [a?.screen ?? app];
+      const [id, arg] = ALIASES[name] ?? [a?.screen ?? name];
       if (!SCREENS[id]) return false;
-      this.stack = id === 'home' ? [] : [{ id, arg }];
+      // on an argument (a conversation): the screen's own first page sits under it, so « back » leads to the list
+      this.stack = id === 'home' ? [] : extra !== undefined ? [{ id, arg }, { id, arg: extra }] : [{ id, arg }];
     }
     this.remember();
     if (!this.isOpen) {
@@ -221,6 +230,24 @@ export class Phone {
     this.status();
     const s = this.shown && SCREENS[this.shown.id];
     if (s?.tick && this.page) s.tick(this.page, this.api);
+    this.badges();
+  }
+  /** The apps' counts (registry `badge`: unread messages) on their tiles, and their sum on « Toutes les apps ». */
+  private badges() {
+    const page = this.page; if (!page) return;
+    const set = (el: Element, n: number) => {
+      let b = el.querySelector<HTMLElement>(':scope > .ph-badge.app-n');
+      if (!n) { b?.remove(); return; }
+      if (!b) { b = document.createElement('b'); b.className = 'ph-badge app-n'; b.setAttribute('aria-hidden', 'true'); el.appendChild(b); }
+      const t = n > 9 ? '9+' : String(n); if (b.textContent !== t) b.textContent = t;
+    };
+    let total = 0;
+    for (const a of APPS) {
+      if (!a.badge) continue;
+      const n = a.badge(); total += n;
+      page.querySelectorAll(`.ph-app[data-app="${a.id}"]`).forEach(t => set(t, n));
+    }
+    page.querySelectorAll('.hm-tile[data-go="apps"]').forEach(t => set(t, total));
   }
   private status() {
     const t = cityTimeAt(this.ctx.now());
@@ -256,6 +283,7 @@ export class Phone {
     try { this.cleanup = screen.mount(page, this.api, top.arg) ?? null; }
     catch (err) { page.innerHTML = '<div class="pk-empty"><i aria-hidden="true">⚠️</i><p>Cette app n’a pas pu s’ouvrir. Réessaie dans un instant.</p></div>'; console.error(err); }
     this.screenEl.scrollTop = scroll;
+    this.badges();
   }
   private titleOf(e: Entry) { const s = SCREENS[e.id]; return s ? (typeof s.title === 'function' ? s.title(e.arg) : s.title) : 'Accueil'; }
 }

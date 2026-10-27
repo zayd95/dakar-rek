@@ -152,11 +152,11 @@ export const BEATS: Beat[] = [
     ],
   },
   {
-    id: 'ousmane_cousin', npc: 'ousmane', title: 'Le cousin d’Ibou', hint: 'Ousmane, au port de Ngor, connaît Tonton Ibou.',
-    text: 'Tu viens de Pikine ? Tu connais Ibou ? C’est mon cousin ! S’il te connaît, tu peux monter sur la pirogue du matin.',
+    id: 'ousmane_cousin', npc: 'ousmane', title: 'Le cousin d’Ibou', hint: 'Ousmane, à l’embarcadère de Ngor, connaît Tonton Ibou.',
+    text: 'Tu viens de Pikine ? Tu connais Ibou ? C’est mon cousin ! S’il te connaît, je te confie mes bateaux pour la traversée vers l’île, et je prends moins sur les places.',
     when: r => r.level(PLAYER, 'ibou') >= 8,
     choices: [
-      { id: 'oui', label: 'Ibou est mon voisin', reply: `Alors ${say('dalal ak jàmm')} sur le quai. Les gens de confiance sont mieux payés.`, effects: { rel: [[P, 'ousmane', 12], [P, 'ibou', 3]], flags: ['ousmane_trust'] } },
+      { id: 'oui', label: 'Ibou est mon voisin', reply: `Alors ${say('dalal ak jàmm')} à l’embarcadère. Les clients attendent sur la plage, près des pirogues : avec toi à la barre, je ne prends que trente pour cent.`, effects: { rel: [[P, 'ousmane', 12], [P, 'ibou', 3]], flags: ['ousmane_trust'] } },
     ],
   },
   {

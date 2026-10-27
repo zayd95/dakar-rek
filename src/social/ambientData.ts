@@ -101,6 +101,7 @@ export const PLACE_TAGS: Readonly<Record<string, readonly string[]>> = {
   mosque: ['mosque'], stop: ['stop'], station: ['stop'], beach: ['landing', 'fishmarket'], market: ['market'],
   shop: ['shop'], salon: ['salon'], club: ['club'], bank: ['bank'], square: ['square', 'attaya'],
   home: [], plot: [], billboard: [],
+  traversee: [],           // the Embarcadère de Ngor's pier end: its own customers wait there (src/venues/embarcadere.ts), nobody else gathers on it
   parking: [],             // the arena's moto parking: its gardien is the only one standing there (src/arena/arrival.ts)
 };
 
