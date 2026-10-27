@@ -73,9 +73,10 @@ export const HOMES: HomeSpec[] = [
   { id: 'maison_cite', kind: 'home', name: 'Maison familiale · Cité Jàmm', what: 'Une maison avec cour, grand salon et cuisine, au bout de la cité', price: 90_000_000, rent: 30_000, income: letIncome(30_000), upkeep: 100,
     hub: 'pikine', place: 'maison', where: 'Pikine · Cité Jàmm', size: 150, tier: 3, upgrades: [...COMFORT, { id: 'clim', name: 'Climatisation', what: 'Fraîcheur toute l’année : +15 énergie au réveil, loyer +15 %', price: 650_000, comfort: 15, rentMult: 1.15 }],
     home: { level: 'house', w: 11, d: 8, door: 'pikine:home:maison', floor: 'wood' } },
-  { id: 'villa_almadies', kind: 'home', name: 'Villa avec piscine · Almadies', what: 'Grand séjour ouvert sur la piscine, à deux rues de l’océan', price: 400_000_000, rent: 120_000, income: letIncome(120_000), upkeep: 500,
-    hub: 'almadies', place: 'villa', where: 'Almadies', size: 420, tier: 4, upgrades: [{ id: 'clim', name: 'Climatisation', what: '+15 énergie au réveil, loyer +15 %', price: 2_500_000, comfort: 15, rentMult: 1.15 }, { id: 'jardin', name: 'Jardin paysager', what: 'Bougainvilliers et palmiers : loyer +20 %', price: 8_000_000, rentMult: 1.2 }],
-    home: { level: 'villa', w: 14, d: 10, door: 'almadies:home:villa', floor: 'marble' } },
+  // LD2.0-D: the flagship villa, walked on its three levels (src/housing/villaPlan.ts): 288 m² on two storeys, the pool garden, two balconies, the roof terrace
+  { id: 'villa_almadies', kind: 'home', name: 'Villa avec piscine · Almadies', what: 'Deux étages, grand salon ouvert sur la piscine, suite parentale, toit-terrasse avec hélipad', price: 400_000_000, rent: 120_000, income: letIncome(120_000), upkeep: 500,
+    hub: 'almadies', place: 'villa', where: 'Almadies', size: 288, tier: 4, upgrades: [{ id: 'clim', name: 'Climatisation', what: '+15 énergie au réveil, loyer +15 %', price: 2_500_000, comfort: 15, rentMult: 1.15 }, { id: 'jardin', name: 'Jardin paysager', what: 'Bougainvilliers et palmiers : loyer +20 %', price: 8_000_000, rentMult: 1.2 }],
+    home: { level: 'villa', w: 16, d: 9, door: 'almadies:home:villa', floor: 'marble' } },
   { id: 'residence_ngor', kind: 'home', name: 'Résidence de luxe · Pointe de Ngor', what: 'Un étage entier face à l’île de Ngor, terrasse et salon de réception', price: 2_500_000_000, rent: 600_000, income: letIncome(600_000), upkeep: 2_500,
     hub: 'almadies', place: 'residence', where: 'Almadies · Ngor', size: 1_200, tier: 5, upgrades: [{ id: 'domotique', name: 'Maison connectée', what: 'Lumières et clim pilotées : +20 énergie au réveil, loyer +25 %', price: 40_000_000, comfort: 20, rentMult: 1.25 }],
     home: { level: 'residence', w: 18, d: 12, door: 'almadies:home:residence', floor: 'marble' } },
@@ -184,6 +185,8 @@ export interface FurnitureSpec extends AssetSpec {
    * It takes no floor space: floor pieces stand under it and people walk under it; it only avoids other pieces hung the same way.
    */
   mount?: 'wall' | 'ceiling';
+  /** A furniture line the catalogue shows as its own collection: 'almadies', the modern-luxury « Collection Almadies » (LD2.0-D, lane K-L). */
+  line?: 'almadies';
 }
 
 const F = (x: Omit<FurnitureSpec, 'kind' | 'shop'> & { shop?: FurnitureSpec['shop'] }): FurnitureSpec => ({ shop: 'keur_meubles', ...x, kind: 'furniture' });
@@ -455,6 +458,64 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
     use: { id: 'poissons', label: 'Regarder les poissons', seconds: 4, needs: { moral: 8 } } }),
   F({ id: 'aquarium_mer', type: 'decor', grade: 'premium', emoji: '🐡', name: 'Grand aquarium d’eau de mer', what: 'Coraux, anémone et poissons des récifs : « Regarder les poissons »', price: 1_900_000, w: 1.8, d: 0.5,
     use: { id: 'poissons', label: 'Regarder les poissons', seconds: 5, needs: { moral: 14, energie: 2 } } }),
+  // ---------------------------------------------------------------- LD2.0-D « Collection Almadies » (lane K-L): the modern-luxury line, all Prestige
+  // From the owner's three reference sheets (docs/ld2/LD2_D.md): ivory bouclé, greige linen, walnut, black and white marble, brushed bronze, black
+  // leather; each on its own kit model (src/world/furnitureKit.ts « Collection Almadies »: footprints and seats are the kit's). New ids only.
+  // (The doc's « salle_manger_marbre » is already sold, LD2.0-C's six-chair marble set: the round marble table is `salle_manger_ronde`.)
+  // the living room: sofas, armchairs, low tables, the TV stand, the sideboard, the shelves
+  F({ id: 'canape_courbe', type: 'sofa', grade: 'premium', line: 'almadies', emoji: '🛋️', name: 'Grand canapé courbe sur socle bronze', what: 'Trois modules en bouclé ivoire, socle bronze en retrait : « Se détendre »', price: 7_500_000, w: 3.4, d: 1.3,
+    seats: [{ x: -0.932, z: 0.111, top: 0.59, yaw: 0.257, kind: 'sofa' }, { x: -0.314, z: 0.003, top: 0.59, yaw: 0.086, kind: 'sofa' }, { x: 0.314, z: 0.003, top: 0.59, yaw: -0.086, kind: 'sofa' },
+      { x: 0.932, z: 0.111, top: 0.59, yaw: -0.257, kind: 'sofa' }], use: lounge(18, 18) }),
+  F({ id: 'canape_meridienne', type: 'sofa', grade: 'premium', line: 'almadies', emoji: '🛋️', name: 'Canapé d’angle méridienne en lin', what: 'Lin grège, méridienne à gauche, coussins passepoilés : « Se détendre »', price: 4_800_000, w: 2.8, d: 1.6,
+    seats: [{ x: 0.78, z: -0.16, top: 0.61, yaw: 0, kind: 'sofa' }, { x: -0.04, z: -0.16, top: 0.61, yaw: 0, kind: 'sofa' }, { x: -0.925, z: -0.16, top: 0.61, yaw: 0, kind: 'sofa' }], use: lounge(16, 15) }),
+  F({ id: 'canape_boucle', type: 'sofa', grade: 'premium', line: 'almadies', emoji: '🛋️', name: 'Canapé arrondi en bouclé, socle doré', what: 'Bouclé ivoire tout en courbes, deux coussins ronds : « Se détendre »', price: 3_200_000, w: 2.3, d: 0.9,
+    seats: [{ x: -0.6, z: 0.06, top: 0.58, yaw: 0, kind: 'sofa' }, { x: 0, z: 0.06, top: 0.58, yaw: 0, kind: 'sofa' }, { x: 0.6, z: 0.06, top: 0.58, yaw: 0, kind: 'sofa' }], use: lounge(14, 14) }),
+  F({ id: 'fauteuil_boucle', type: 'chair', grade: 'premium', line: 'almadies', emoji: '💺', name: 'Fauteuil cocon en bouclé', what: 'Une coque en bouclé ivoire sur pieds sombres : « Se détendre »', price: 1_400_000, w: 0.86, d: 0.84,
+    seats: [{ x: 0, z: 0.09, top: 0.57, yaw: 0, kind: 'chair' }], use: lounge(9, 9) }),
+  F({ id: 'fauteuil_noyer', type: 'chair', grade: 'premium', line: 'almadies', emoji: '💺', name: 'Fauteuil enveloppant, lin et noyer', what: 'Lin grège, coussin taupe, pieds en noyer : « Se détendre »', price: 1_100_000, w: 0.8, d: 0.85,
+    seats: [{ x: 0, z: 0.08, top: 0.59, yaw: 0, kind: 'chair' }], use: lounge(8, 8) }),
+  F({ id: 'table_basse_marbre_noir', type: 'table', grade: 'premium', line: 'almadies', emoji: '🫖', name: 'Table basse en marbre noir', what: 'Marbre noir veiné, pieds en bloc : « Préparer l’ataya »', price: 2_400_000, w: 1.2, d: 0.8, use: ataya(12, 6) }),
+  F({ id: 'table_basse_noyer', type: 'table', grade: 'premium', line: 'almadies', emoji: '🫖', name: 'Table basse en marbre blanc et noyer', what: 'Plateau de marbre, tiroir et niche en noyer : « Préparer l’ataya »', price: 1_600_000, w: 1.2, d: 0.6, use: ataya(11, 5) }),
+  F({ id: 'gueridon_marbre', type: 'table', grade: 'premium', line: 'almadies', emoji: '☕', name: 'Guéridon en marbre sur fût noir', what: 'Plateau rond en marbre noir, fût laqué noir', price: 650_000, w: 0.5, d: 0.5 }),
+  F({ id: 'meuble_tv_laque', type: 'tv', grade: 'premium', line: 'almadies', emoji: '📺', name: 'Meuble télé bas laqué', what: 'Grand écran sur un meuble laqué grège, socle en retrait : « Regarder la télé »', price: 1_900_000, w: 2.4, d: 0.45,
+    use: { id: 'tele', label: 'Regarder la télé', seconds: 4, needs: { moral: 18, energie: 4 }, counter: 'tele', spot: [0, 2.0] } }),
+  F({ id: 'enfilade_bronze', type: 'shelf', grade: 'premium', line: 'almadies', emoji: '🏺', name: 'Enfilade grège à filets bronze', what: 'Laque grège, filets de bronze brossé : « Sortir les beaux verres »', price: 2_800_000, w: 1.8, d: 0.48,
+    use: { id: 'verres', label: 'Sortir les beaux verres', seconds: 3, needs: { moral: 10, social: 4 } } }),
+  F({ id: 'bibliotheque_noyer', type: 'shelf', grade: 'premium', line: 'almadies', emoji: '📚', name: 'Bibliothèque éclairée en noyer', what: 'Niches éclairées, portes grèges en bas : « Prendre un livre »', price: 2_200_000, w: 1.6, d: 0.3,
+    use: { id: 'lire', label: 'Prendre un livre', seconds: 4, needs: { moral: 10 } } }),
+  F({ id: 'bibliotheque_bronze', type: 'shelf', grade: 'premium', line: 'almadies', emoji: '📚', name: 'Étagère ouverte noir et bronze', what: 'Montants noirs, tablettes filetées de bronze : « Prendre un livre »', price: 1_300_000, w: 1.5, d: 0.38,
+    use: { id: 'lire', label: 'Prendre un livre', seconds: 4, needs: { moral: 8 } } }),
+  // dining
+  F({ id: 'salle_manger_ronde', type: 'dining', grade: 'premium', line: 'almadies', emoji: '🍽️', name: 'Table ronde en marbre et quatre chaises', what: 'Marbre noir sur fût cannelé, chaises tapissées : « Préparer l’ataya »', price: 6_500_000, w: 1.96, d: 1.96,
+    seats: setOf([[0.587, 0.587, -2.356], [0.587, -0.587, -0.785], [-0.587, -0.587, 0.785], [-0.587, 0.587, 2.356]], 0.59), use: ataya(14, 7) }),
+  F({ id: 'salle_manger_noyer', type: 'dining', grade: 'premium', line: 'almadies', emoji: '🍽️', name: 'Table en noyer et quatre chaises', what: 'Noyer massif, chaises en Y et assises en lin : « Préparer l’ataya »', price: 3_600_000, w: 1.6, d: 1.74,
+    seats: setOf([[-0.4, -0.57, 0], [0.4, -0.57, 0], [-0.4, 0.57, PI], [0.4, 0.57, PI]], 0.58), use: ataya(11, 6) }),
+  // the bedroom
+  F({ id: 'lit_capitonne_noir', type: 'bed', grade: 'premium', line: 'almadies', emoji: '🛏️', name: 'Lit en cuir noir capitonné', what: 'Tête de lit en cuir noir capitonné, linge blanc et plaid taupe', price: 5_800_000, w: 2.1, d: 2.3, sleep: 100, seats: bedSeat(2.1, 0.75) }),
+  F({ id: 'lit_lin_greige', type: 'bed', grade: 'premium', line: 'almadies', emoji: '🛏️', name: 'Lit tapissier en lin grège', what: 'Tête de lit à oreilles en lin grège, jeté matelassé', price: 4_900_000, w: 2.0, d: 2.3, sleep: 100, seats: bedSeat(2.0, 0.73) }),
+  F({ id: 'lit_noyer', type: 'bed', grade: 'premium', line: 'almadies', emoji: '🛏️', name: 'Lit en noyer, tête tapissée', what: 'Cadre en noyer, tête de lit tapissée de lin taupe', price: 3_400_000, w: 1.8, d: 2.1, sleep: 100, seats: bedSeat(1.8, 0.66) }),
+  F({ id: 'chevet_greige', type: 'lamp', grade: 'premium', line: 'almadies', emoji: '🛏️', name: 'Chevet arrondi grège', what: 'Laque grège aux angles arrondis, lampe champignon', price: 450_000, w: 0.55, d: 0.42, room: 'chambre' }),
+  F({ id: 'chevet_noyer', type: 'lamp', grade: 'premium', line: 'almadies', emoji: '🛏️', name: 'Chevet en noyer, deux tiroirs', what: 'Noyer et tiroirs grèges, lampe en céramique', price: 380_000, w: 0.5, d: 0.42, room: 'chambre' }),
+  F({ id: 'banc_lit', type: 'chair', grade: 'premium', line: 'almadies', emoji: '🪑', name: 'Banc de lit tapissé', what: 'Lin grège passepoilé sur socle noir, au pied du lit', price: 900_000, w: 1.4, d: 0.45, room: 'chambre',
+    seats: [{ x: -0.35, z: 0, top: 0.57, yaw: 0, kind: 'stool' }, { x: 0.35, z: 0, top: 0.57, yaw: 0, kind: 'stool' }] }),
+  F({ id: 'commode_six', type: 'wardrobe', grade: 'premium', line: 'almadies', emoji: '🗄️', name: 'Commode six tiroirs', what: 'Laque grège, six tiroirs, tirettes en bronze : « Se changer »', price: 1_800_000, w: 1.6, d: 0.52, use: change(9, 8) }),
+  F({ id: 'chiffonnier_noyer', type: 'wardrobe', grade: 'premium', line: 'almadies', emoji: '🗄️', name: 'Chiffonnier en noyer', what: 'Noyer, cinq tiroirs grèges : « Se changer »', price: 1_200_000, w: 0.8, d: 0.42, use: change(8, 7) }),
+  F({ id: 'dressing_bronze', type: 'wardrobe', grade: 'premium', line: 'almadies', emoji: '🚪', name: 'Dressing quatre portes, poignées bronze', what: 'Quatre portes laquées, longues poignées en bronze : « Se changer »', price: 4_200_000, w: 2.0, d: 0.64, use: change(12, 12) }),
+  F({ id: 'coiffeuse_ronde', type: 'mirror', grade: 'premium', line: 'almadies', emoji: '🪞', name: 'Coiffeuse, miroir rond et tabouret', what: 'Noyer, miroir rond cerclé de laiton, tabouret : « Se préparer »', price: 1_500_000, w: 1.0, d: 0.86, room: 'chambre',
+    seats: [{ x: 0, z: 0.22, top: 0.58, yaw: PI, kind: 'stool' }], use: { id: 'preparer', label: 'Se préparer', seconds: 2, needs: { hygiene: 18, moral: 14 }, counter: 'preparer', sit: true } }),
+  // the office
+  F({ id: 'bureau_caisson', type: 'desk', grade: 'premium', line: 'almadies', emoji: '🖥️', name: 'Bureau à caisson et chaise tapissée', what: 'Caisson grège, piètement noir : « Travailler au bureau », +4 000 F par heure en ville', price: 2_600_000, w: 1.5, d: 1.25,
+    seats: [{ x: 0, z: 0.305, top: 0.59, yaw: PI, kind: 'chair' }], use: { id: 'bureau', label: 'Travailler au bureau', seconds: 6, needs: { energie: -5, moral: 4 }, pay: 4_000, sit: true, spot: [0, 0.95] } }),
+  // light and decoration
+  F({ id: 'lustre_couronne', type: 'lamp', grade: 'premium', line: 'almadies', emoji: '💎', name: 'Lustre couronne de cristal', what: 'Une couronne de cristal entre deux cercles de laiton, au plafond', price: 6_000_000, w: 0.9, d: 0.9, mount: 'ceiling' }),
+  F({ id: 'lampadaire_champignon', type: 'lamp', grade: 'premium', line: 'almadies', emoji: '💡', name: 'Lampadaire champignon', what: 'Un dôme grège sur une tige de bronze, lumière douce', price: 480_000, w: 0.45, d: 0.45 }),
+  F({ id: 'lampadaire_arc_plisse', type: 'lamp', grade: 'premium', line: 'almadies', emoji: '💡', name: 'Lampadaire arc, abat-jour plissé', what: 'Arc en bronze brossé, abat-jour plissé, pied en noyer', price: 520_000, w: 0.44, d: 0.9 }),
+  F({ id: 'tapis_rond_jute', type: 'rug', grade: 'premium', line: 'almadies', emoji: '🟤', name: 'Grand tapis rond en jute', what: 'Jute tressée, 2,2 m de diamètre : « Se poser sur le tapis »', price: 700_000, w: 2.2, d: 2.2, flat: true,
+    seats: [{ x: -0.5, z: 0, top: 0.112, yaw: 0, kind: 'mat', clip: 'SitFloor' }, { x: 0.5, z: 0, top: 0.112, yaw: 0, kind: 'mat', clip: 'SitFloor' }],
+    use: { id: 'tapis', label: 'Se poser sur le tapis', seconds: 3, needs: { energie: 10, moral: 10 }, spot: [0, 0] } }),
+  F({ id: 'miroir_ovale', type: 'mirror', grade: 'premium', line: 'almadies', emoji: '🪞', name: 'Miroir ovale, cadre bronze', what: 'Un grand miroir ovale cerclé de bronze, au mur : « Se préparer »', price: 850_000, w: 0.7, d: 0.05, mount: 'wall', use: prepare(16, 12) }),
+  F({ id: 'pot_cannele', type: 'plant', grade: 'premium', line: 'almadies', emoji: '🪴', name: 'Ficus en pot cannelé', what: 'Un ficus d’1,40 m dans un pot cannelé crème : « Arroser la plante »', price: 350_000, w: 0.6, d: 0.6,
+    use: { id: 'arroser', label: 'Arroser la plante', seconds: 2, needs: { moral: 6 }, spot: [0, 0.7] } }),
 ];
 
 // ------------------------------------------------------------------ a supporter's colours (the arena's stall « Couleurs du Géew »)

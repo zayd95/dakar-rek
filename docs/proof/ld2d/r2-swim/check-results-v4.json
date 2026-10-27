@@ -1,0 +1,60 @@
+{
+ "body": "v4",
+ "base": "http://127.0.0.1:4995/",
+ "passed": 13,
+ "of": 13,
+ "results": [
+  {
+   "name": "1a. walked with the joystick from the entrée through the salon to the pool deck and round to the steps' head",
+   "ok": true
+  },
+  {
+   "name": "1b. pushing toward the water at the steps' head walks the player down the steps into the water, treading",
+   "ok": true
+  },
+  {
+   "name": "2a. swims with the joystick to each of the four corners of the water (in it all the while)",
+   "ok": true
+  },
+  {
+   "name": "2b. at a swimming pace (about 1 m/s, a little more pushed to the rim), the stroke faster when faster",
+   "ok": true
+  },
+  {
+   "name": "3. the stick at rest: drifts to a stop and treads water, upright (the Tread clip)",
+   "ok": true
+  },
+  {
+   "name": "4. « Sortir de l'eau » by the south wall: out over it (hands on the coping), standing on the deck; hygiene and moral up",
+   "ok": true
+  },
+  {
+   "name": "5. « Se baigner » at the edge: a slip into the water in well under a second, a splash, no jump",
+   "ok": true
+  },
+  {
+   "name": "6. swimming into the steps walks the swimmer up them, out on the deck at the west end",
+   "ok": true
+  },
+  {
+   "name": "7. the acceptance's pool step in real time: « Se baigner » at its edge, in the water, « Sortir de l'eau », cleaner",
+   "ok": true
+  },
+  {
+   "name": "8a. the swimmer's footprint never left the water's rectangle (every frame in the water)",
+   "ok": true
+  },
+  {
+   "name": "8b. the camera followed above the deck, never in the basin",
+   "ok": true
+  },
+  {
+   "name": "8c. swim and tread both played, no jump of the body in or out of the water",
+   "ok": true
+  },
+  {
+   "name": "8d. no page errors",
+   "ok": true
+  }
+ ]
+}

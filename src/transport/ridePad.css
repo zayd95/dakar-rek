@@ -12,6 +12,9 @@ body.ridepad-car #ridepad .rp-brake { width: 92px; height: 92px; font-size: 16px
 #ridepad button.down { transform: scale(.94); filter: brightness(1.15); box-shadow: 0 1px 4px rgba(0, 0, 0, .35), inset 0 0 0 3px rgba(255, 255, 255, .7); }
 #ridepad .rp-off { display: none; height: 46px; padding: 0 16px; background: rgba(17, 24, 39, .88); font-size: 15px; }
 #ridepad.stopped .rp-off { display: block; }
+/* LD2.0-D: an action offered where the vehicle stands (« Garer à la villa » in the villa's yard), in green above the pedals */
+#ridepad .rp-extra { display: none; height: 46px; padding: 0 16px; background: rgba(21, 128, 61, .92); font-size: 15px; }
+#ridepad.extra .rp-extra { display: block; }
 #ridepad .rp-view { height: 46px; padding: 0 14px; background: rgba(17, 24, 39, .72); font-size: 14px; }
 /* the horn is hit without looking, with a thumb that may also be on the gas: a big target, in amber */
 #ridepad .rp-horn { display: none; height: 56px; min-width: 92px; padding: 0 16px; background: rgba(217, 119, 6, .92); font-size: 16px; }

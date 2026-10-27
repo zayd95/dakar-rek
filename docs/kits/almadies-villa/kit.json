@@ -1,0 +1,307 @@
+{
+ "generated": "2026-10-27",
+ "viewer": "tools/kit-viewer (src/kits/viewer.ts)",
+ "pieces": [
+  {
+   "id": "plan",
+   "name": "Le plan (trois niveaux)",
+   "builder": "src/housing/villaPlan.ts VILLA_PLAN, built by src/economy/homeInterior.ts buildHomeInterior (src/housing/apartment.ts)",
+   "what": "The floor plan both the interior and the façade are drawn from: the ground floor (entrée, grand salon, salle à manger, cuisine, bureau, hall, salle d’eau, the back garden and its pool), the first floor (salon familial, suite parentale with dressing and bath, two bedrooms, bathroom, two balconies), the roof terrace (helipad, pergola, stair head); two straight flights. Its 3D form is the interior shell.",
+   "params": {
+    "plan": "a FloorPlan (src/housing/plan.ts, version 2 with levels): rooms, openings, windows, fixtures, stairs, pergolas, marks"
+   },
+   "street": "none (the interior, off the street grid)",
+   "picture": "plan.png",
+   "meshes": 46,
+   "tris": 27724,
+   "verts": 83172,
+   "size": [
+    22.48,
+    11.27,
+    22.3
+   ],
+   "glb": "glb/plan.glb",
+   "glbBytes": 1590360
+  },
+  {
+   "id": "facade",
+   "name": "La façade et ses finitions",
+   "builder": "src/housing/villaFacade.ts buildVillaFacade (from VILLA_PLAN); this kit's villaFacadeFor",
+   "what": "The house seen from the street: the travertine ground floor, the ivory render above, thin white slabs, floor-to-ceiling glazing in slim dark frames, frameless glass balustrades, the oak claustra of the stair tower, the teak front door in its bronze portal, and its night lights (warm windows, uplights, the roof's line of light). Its finishes: src/housing/villaFinish.ts (travertine slabs, oak boards, the window view).",
+   "params": {
+    "storeys": "1, 2 or 3: the first-floor band dropped or repeated, the roof following",
+    "helipad": "the pad's marks and lights on the roof, or not",
+    "palette.render / palette.travertine": "the render's and the travertine's tones"
+   },
+   "street": "6 draw calls (render, travertine, trims, glazing, glass, lights)",
+   "picture": "facade.png",
+   "meshes": 6,
+   "tris": 4328,
+   "verts": 12984,
+   "size": [
+    17.46,
+    10.2,
+    12.85
+   ],
+   "glb": "glb/facade.glb",
+   "glbBytes": 287992
+  },
+  {
+   "id": "wall",
+   "name": "Le mur d’enceinte",
+   "builder": "src/world/villaCompound.ts drawBoundaryWall",
+   "what": "The 2.4 m wall on the lot's four edges with its plinth and coping, broken by the car gate and the main entrance; the side strips closed from the house; travertine pillars (a big one at the corner), the gate's lantern pillars, the plaque and letter box; bougainvillea spilling over. Solid.",
+   "params": {
+    "lot": "its edges (a larger lot: longer runs, more pillars)",
+    "palette.wall / plinth / coping / stone / stoneDark / bloom / hedge": "its colours"
+   },
+   "street": "0 (the district's merged batches)",
+   "picture": "wall.png",
+   "meshes": 3,
+   "tris": 4470,
+   "verts": 13410,
+   "size": [
+    22.9,
+    3.12,
+    23.03
+   ],
+   "glb": "glb/wall.glb",
+   "glbBytes": 156244
+  },
+  {
+   "id": "carGate",
+   "name": "Le portail coulissant (voitures)",
+   "builder": "src/world/villaCompound.ts drawCarGate; slideGate moves it (src/villa/module.ts)",
+   "what": "The telescopic car gate: two slatted anthracite half panels on two tracks; open, they stow between the main entrance and the gate. Its own mesh and its moving box; the dropped kerb before it and its pools of light. Opens for the villa's people (src/villa/gate.ts gateWants).",
+   "params": {
+    "palette.frame / slat / rail / apron": "its colours",
+    "mirror": "it stows the other way"
+   },
+   "street": "1 draw call (its own mesh)",
+   "picture": "carGate.png",
+   "meshes": 2,
+   "tris": 370,
+   "verts": 1110,
+   "size": [
+    8.8,
+    2.41,
+    2.77
+   ],
+   "glb": "glb/carGate.glb",
+   "glbBytes": 52556
+  },
+  {
+   "id": "entrance",
+   "name": "L’entrée principale",
+   "builder": "src/world/villaCompound.ts buildEntrance; swingEntrance turns its door (src/villa/module.ts, the rule src/villa/gate.ts entranceWants)",
+   "what": "The main door for people, in line with the front door: a travertine portal 0.8 m above the wall, a pivoting teak and bronze door, a slim canopy with a line of light, the house number in bronze, an intercom, light bars; the straight travertine path to the forecourt, lit flush in its edges.",
+   "params": {
+    "number": "the house number on its lintel",
+    "palette.clad / door / bronze / pull / slab": "its travertine, teak, bronze and canopy",
+    "mirror": "its door turns the other way"
+   },
+   "street": "2 draw calls (its travertine with the path, its door)",
+   "picture": "entrance.png",
+   "meshes": 4,
+   "tris": 536,
+   "verts": 1608,
+   "size": [
+    3.4,
+    3.3,
+    6.6
+   ],
+   "glb": "glb/entrance.glb",
+   "glbBytes": 44604
+  },
+  {
+   "id": "bays",
+   "name": "Les deux places de parking",
+   "builder": "src/world/villaCompound.ts drawBays (src/housing/villa.ts BAYS; « Garer à la villa »: src/villa/bays.ts)",
+   "what": "The paved driveway from the gate to the house, two marked bays of 2.6 × 5.4 m for SUVs facing the house, their wheel stops.",
+   "params": {
+    "palette.drive / line / stop": "its colours"
+   },
+   "street": "0 (the district's merged batches)",
+   "picture": "bays.png",
+   "meshes": 2,
+   "tris": 42,
+   "verts": 126,
+   "size": [
+    6.2,
+    0.25,
+    7
+   ],
+   "glb": "glb/bays.glb",
+   "glbBytes": 5588
+  },
+  {
+   "id": "frontGarden",
+   "name": "Le jardin de devant",
+   "builder": "src/world/villaCompound.ts drawLawns, drawFrontGarden, drawFrontPalms (drawPalm)",
+   "what": "The mown lawns, the forecourt to the front door and its step, stepping stones from the gate to the path, the planted stone bed along the house, the hedge inside the wall, garden bollards and their pools at night, four palms with uplights.",
+   "params": {
+    "lot": "its lawns fill a larger lot",
+    "palette.lawn / lawn2 / fore / step / bed / hedge / post / bark / frond": "its colours"
+   },
+   "street": "0 (the district's merged batches)",
+   "picture": "frontGarden.png",
+   "meshes": 5,
+   "tris": 1224,
+   "verts": 3672,
+   "size": [
+    24.36,
+    6.89,
+    13.3
+   ],
+   "glb": "glb/frontGarden.glb",
+   "glbBytes": 102068
+  },
+  {
+   "id": "poolDeck",
+   "name": "La piscine et sa terrasse",
+   "builder": "src/world/villaCompound.ts drawPoolDeck (src/housing/villa.ts POOL; the swim: src/villa/swim.ts)",
+   "what": "The back garden: the deck, the 10 × 3.6 m pool with its white coping and water (lit at night), three teak loungers and a parasol, potted plants, the back hedge, two palms in the corners.",
+   "params": {
+    "pool": "the pool, or the deck over its place",
+    "lot": "a deeper lot: a deeper deck",
+    "palette.deck / rim / water / teak / cushion": "its colours"
+   },
+   "street": "0 (the district's merged batches)",
+   "picture": "poolDeck.png",
+   "meshes": 4,
+   "tris": 1060,
+   "verts": 3180,
+   "size": [
+    25.62,
+    7.21,
+    7.85
+   ],
+   "glb": "glb/poolDeck.glb",
+   "glbBytes": 96708
+  },
+  {
+   "id": "pergola",
+   "name": "La pergola du toit",
+   "builder": "src/housing/villaFacade.ts buildVillaFacade (VILLA_PLAN.pergolas), cut out of the façade",
+   "what": "Over the roof terrace's street corner: oak slats on two dark bronze beams, on four posts, 2.7 m above the deck.",
+   "params": {
+    "plan.pergolas": "where and how high (src/housing/villaPlan.ts)"
+   },
+   "street": "part of the façade's trims (no draw call of its own)",
+   "picture": "pergola.png",
+   "meshes": 1,
+   "tris": 240,
+   "verts": 720,
+   "size": [
+    3.35,
+    2.82,
+    4
+   ],
+   "glb": "glb/pergola.glb",
+   "glbBytes": 20108
+  },
+  {
+   "id": "helipad",
+   "name": "L’héliport",
+   "builder": "src/housing/villaFacade.ts buildVillaFacade (src/housing/villa.ts HELIPAD), cut out of the façade",
+   "what": "On the roof: a dark disc 6.4 m across, a white ring, a yellow edge, the H (its uprights along the helicopter), twelve lights round it (green and yellow, lit at night).",
+   "params": {
+    "helipad": "on the roof or not",
+    "HELIPAD": "its centre and radius"
+   },
+   "street": "part of the façade's trims and lights (no draw call of its own)",
+   "picture": "helipad.png",
+   "meshes": 2,
+   "tris": 846,
+   "verts": 2538,
+   "size": [
+    6.76,
+    0.07,
+    6.78
+   ],
+   "glb": "glb/helipad.glb",
+   "glbBytes": 39560
+  },
+  {
+   "id": "helicopter",
+   "name": "L’hélicoptère",
+   "builder": "src/world/helicopter.ts buildHelicopter (lane R2-H's)",
+   "what": "Lane R2-H's light single-engine helicopter (no maker's model): its sculpted cabin under tinted glazing, a three-blade rotor, skids, a Senegalese registration; parked on the pad along the roof terrace (HELIPAD.yaw).",
+   "params": {
+    "helipad": "on its pad or not",
+    "HELIPAD.yaw": "its heading on the pad"
+   },
+   "street": "4 draw calls (its own meshes, by material)",
+   "picture": "helicopter.png",
+   "meshes": 4,
+   "tris": 10220,
+   "verts": 30660,
+   "size": [
+    8.19,
+    3.05,
+    8.57
+   ],
+   "glb": "glb/helicopter.glb",
+   "glbBytes": 361644
+  },
+  {
+   "id": "furniture",
+   "name": "L’ameublement (Collection Almadies)",
+   "builder": "src/housing/villaLayout.ts VILLA_ALMADIES_LAYOUT; the models src/economy/furnitureModels.ts furnitureModel (the kit: src/world/furnitureKit.ts)",
+   "what": "The villa furnished room by room on its three levels (the grand salon, the dining room, the study, the entrance, the suite, the bedrooms, the family lounge, the pool deck, the roof terrace): one plain list of catalogue pieces and their spots, each valid by the home editor's rules.",
+   "params": {
+    "layout": "the list: catalogue id, room, x, z (plan space), quarter turns"
+   },
+   "street": "none (inside; each piece its own model)",
+   "picture": "furniture.png",
+   "meshes": 41,
+   "tris": 22136,
+   "verts": 66408,
+   "size": [
+    17.58,
+    9.3,
+    14.48
+   ],
+   "glb": "glb/furniture.glb",
+   "glbBytes": 2273076
+  }
+ ],
+ "villa": {
+  "picture": "villa-day.png",
+  "night": "villa-21h.png",
+  "meshes": 19,
+  "tris": 22250,
+  "verts": 66750,
+  "size": [
+   25.62,
+   10.3,
+   25.99
+  ],
+  "glb": "glb/villa.glb",
+  "glbBytes": 1093656
+ },
+ "variant": {
+  "spec": {
+   "mirror": true,
+   "storeys": 3,
+   "pool": false,
+   "helipad": false,
+   "number": "12",
+   "palette": {
+    "render": 15721164,
+    "travertine": 13480074,
+    "clad": 13480074,
+    "wall": 15524562,
+    "slat": 5916214,
+    "frame": 3943972,
+    "door": 7226408,
+    "bloom": 14181434,
+    "bloom2": 15305298
+   }
+  },
+  "picture": "villa-variant.png",
+  "meshes": 14,
+  "tris": 12642
+ },
+ "glbTotalBytes": 6124164
+}

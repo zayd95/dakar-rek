@@ -21,7 +21,7 @@ import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
 import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
-import type { Action, Collider, HubWorld, Interactable } from './world/types';
+import { inBand, type Action, type Collider, type HubWorld, type Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic } from './actors/npc';
 import { MonumentLife } from './actors/life';
@@ -110,6 +110,7 @@ import { StrideUi } from './ui/stride';
 import { noteWork } from './economy/streakModule';
 import { STREAK, runOf } from './economy/streak';
 import { prayerPresence } from './actors/prayerPoses';
+import { setVillaFacadeNight } from './housing/villaFacade';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -120,6 +121,8 @@ const TEST = readTestParams(location.hostname, location.search);   // preview-on
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
 try { store = window.localStorage; store.getItem('x'); } catch { store = null; }
+// LD2.0-D: the owner's private showcase (src/showcase/start.ts), only in a build made with VITE_OWNER_SHOWCASE=1 (npm run build:showcase); compiled out of every other
+if (import.meta.env.VITE_OWNER_SHOWCASE === '1') store = await (await import('./showcase/start')).chooseStart(store);
 initSaveHealth(!!store);
 
 // ------------------------------------------------------------------ renderer and scene
@@ -374,11 +377,14 @@ function updateLighting(hour: number) {
     sun.intensity *= 0.25; hemi.intensity = isNight ? 0.35 : 0.55; hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a5a48);
     setInteriorDaylight(sky.horizon.clone().lerp(new THREE.Color(0xffffff), isNight ? 0 : 0.5).multiplyScalar(isNight ? 0.5 : 1.1));
     roomLight.position.copy(inside.int.light); roomLight.color.set(inside.int.lightColor); roomLight.intensity = isNight ? 9 : 6;
+    // LD2.0-D look pass: by a home's pool or on its roof terrace at night, the moon's light rather than a room's (src/housing/apartment.ts)
+    if (isNight && inside.int.outdoors?.()) { hemi.intensity = 0.8; hemi.color.copy(NIGHT_SKY); hemi.groundColor.set(0x2a2620); roomLight.intensity = 2.5; }
   } else roomLight.intensity = 0;
   if (world) {
     world.facadeMat.emissiveIntensity = night * 1.25;
     world.lamps.color.setScalar(lerp(0.45, 1, night));
     world.lampGlow.visible = night > 0.3;
+    setVillaFacadeNight(night);                                            // the Almadies villa's façade: its windows, uplights, roof edge (LD2.0-D)
     corridors.setNight(night);
     for (const m of world.signs) (m.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
   }
@@ -620,8 +626,12 @@ function corridorSwap(sw: Swap) {
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
 }
 
-function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
+/** The ground under the player indoors (LD2.0-D: a home on several levels walks its floors and stairs; every other interior, the floor), above y 0.1. */
+const indoorGround = (int: Interior, x: number, z: number, y: number) => int.groundAt ? int.groundAt(x, z, y - 0.1) : 0;
+/** `y` (LD2.0-D): the height of the body's feet; a collider of another floor (`Collider.y0`) is passed. */
+function pushOut(x: number, z: number, r: number, cols: Collider[], y = 0.1): [number, number] {
   for (const c of cols) {
+    if (c.y0 !== undefined && !inBand(c, y)) continue;
     const cx = clamp(x, c.x0, c.x1), cz = clamp(z, c.z0, c.z1);
     let dx = x - cx, dz = z - cz; const d2 = dx * dx + dz * dz;
     if (d2 >= r * r) continue;
@@ -717,7 +727,7 @@ const ctx: GameCtx = {
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace), drive: m => { drive = m; },
-    place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
+    place(x, z, yaw) { pos.set(x, 0.1 + (inside ? indoorGround(inside.int, x, z, pos.y) : !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
     cheer: s => cheer(s),
   },
   peers: () => [...presence.peers.values()],
@@ -794,7 +804,7 @@ function goSit(seat: Seat): boolean {
   if (!world || approach || !seats.occupy(seat.id, 'player')) return false;
   // a boat's or a vehicle's seat is boarded, not walked round; with no route but already beside it (a stool at a tap,
   // a place in a prayer row, a salon chair inside its own furniture), the player sits down where they are
-  const path = seat.kind === 'vehicle' ? null : approachPath(pos, seat, inside ? inside.int.colliders : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
+  const path = seat.kind === 'vehicle' ? null : approachPath(pos, seat, inside ? inside.int.colliders.filter(c => inBand(c, pos.y)) : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
   if (!path) {
     seats.release(seat.id, 'player');
     if (seat.kind !== 'vehicle' && Math.hypot(seat.x - pos.x, seat.z - pos.z) > SIT_HERE) return false;
@@ -817,7 +827,7 @@ function stepApproach(dt: number) {
     const step = Math.min(d, speed * dt);
     if (d > 1e-4) { pos.x += (dx / d) * step; pos.z += (dz / d) * step; }
     if (d - step < 0.05) a.i++;
-    pos.y = 0.1 + (inside || !world ? 0 : world.heightAt(pos.x, pos.z));
+    pos.y = 0.1 + (inside ? indoorGround(inside.int, pos.x, pos.z, pos.y) : !world ? 0 : world.heightAt(pos.x, pos.z));
     return;
   }
   // then turn to face the way the seat faces and sit down (or lie down on a bed) in 0.45 s
@@ -864,7 +874,8 @@ function standUp(inPlace = false) {
   sitOrigin = null;
   if (inPlace || !world) { rising = null; return; }
   // the first free spot: where it came from, in front of a chair, beside it, behind it; out of a bed by a side (or past its foot); never inside furniture or a wall
-  const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
+  const feet = sitOriginY(s) - 0.1;                                                     // the floor the seat stands on (LD2.0-D: its level's)
+  const cols = inside ? inside.int.colliders.filter(c => inBand(c, feet)) : world.colliders, r = inside ? 0.3 : 0.5;
   const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), lx = Math.cos(s.yaw), lz = -Math.sin(s.yaw);
   const spots = [
     ...(origin ? [{ x: origin.x, z: origin.z }] : []),
@@ -879,7 +890,7 @@ function standUp(inPlace = false) {
     if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
   }
   const yaw1 = s.clip === 'Lie' ? Math.atan2(nx - s.x, nz - s.z) : facing;           // out of bed, facing away from it
-  rising = { from: pos.clone(), to: new THREE.Vector3(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz), yaw0: facing, yaw1, t: 0, last: pos.clone() };
+  rising = { from: pos.clone(), to: new THREE.Vector3(nx, 0.1 + (inside ? indoorGround(inside.int, nx, nz, Math.max(0.1, feet)) : world.heightAt(nx, nz)), nz), yaw0: facing, yaw1, t: 0, last: pos.clone() };
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
 function registerSeats() {
@@ -924,6 +935,7 @@ let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
   let best = 1e9;                                              // (squares: this runs every frame over all the hub's places)
+  if (inside && pos.y > 1.6) return;                                             // LD2.0-D: upstairs in a home (its doors are on the ground floor)
   for (const it of inside ? inside.int.interactables : world.interactables) {
     const dx = it.x - pos.x, dz = it.z - pos.z, d = dx * dx + dz * dz;
     if (d <= it.radius * it.radius && d < best) { best = d; nearest = it; }
@@ -1528,7 +1540,7 @@ hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (mode !== 'play') return;
   // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
-  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing));
+  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined));
   if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
@@ -1668,7 +1680,7 @@ function frameStep(now: number, dt: number, draw = true) {
     speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
       let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
-      [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
+      [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders, pos.y);
       const b = inside ? inside.int.bounds : world.bounds;
       if (inside) { nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1); }
       else if (!inRect(b, nx, nz)) {                                         // beyond the district's streets: only on a road that leaves it (slide along its edge like the wall)
@@ -1678,7 +1690,7 @@ function frameStep(now: number, dt: number, draw = true) {
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
-    { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
+    { const gy = 0.1 + (inside ? indoorGround(inside.int, pos.x, pos.z, pos.y) : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly (LD2.0-D: a home's floors and flights too)
     state.tick(dt * 1000);
   } else if (mode === 'busy') {
     if (approach) stepApproach(dt);
@@ -1688,7 +1700,9 @@ function frameStep(now: number, dt: number, draw = true) {
     } else speed = 0;
     state.tick(dt * 1000);
   }
-  inside?.int.update?.(dt, pos, camera, litHour);                        // a home with a floor plan: its doors, the see-through hole, the room light
+  // a home with a floor plan: its doors, the see-through hole, the room light; a seated player is where their seat puts them (LD2.0-D round 2: the villa's
+  // swim moves its seat through the pool's edge, which a walker may not cross), so the home does not hold them back at its walls
+  inside?.int.update?.(dt, pos, camera, litHour, !!seated);
   if (!lambScene) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
@@ -1729,7 +1743,7 @@ function frameStep(now: number, dt: number, draw = true) {
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
-  const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
+  const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
 
   follow.roofless = !!inside?.int.open;
@@ -1956,7 +1970,8 @@ if (DEBUG) {
     enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.pin(); follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
-    place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
+    /** `y` (LD2.0-D, indoors in a home on several levels): the height of the floor to stand on (0 the ground floor, 3.4 upstairs…). */
+    place(x: number, z: number, yaw: number, y?: number) { pos.set(x, 0.1 + (inside ? indoorGround(inside.int, x, z, 0.1 + (y ?? pos.y - 0.1)) : world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
     cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
     /** Pause the game loop (true) or let it run (false); while paused, `step(dt, n)` advances it by n frames of dt seconds. */
     pause(on: boolean) { stepping = on; },
