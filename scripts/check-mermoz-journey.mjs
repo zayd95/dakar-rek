@@ -110,7 +110,7 @@ check('the Corniche → Mermoz road is there, of a believable length', len > 110
 const anchors = new Set(), cam = []; let swapAt = null, lastHub = 'corniche', profiles = new Set();
 const shots = { vdn: false, sacrecoeur: false, brt: false };
 const sampler = setInterval(() => { sampleBrt().catch(() => {}); }, 700);
-await driveRoad(page, t, 'teranga', 'corniche-mermoz', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 2400000, onTick: async (at, pr) => {
+await driveRoad(page, t, 'teranga', 'corniche-mermoz', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: false, ms: 2400000, onTick: async (at, pr) => {
   if (pr.anchor) anchors.add(pr.anchor); if (pr.profile) profiles.add(pr.profile);
   const f = pr.s / len;
   if (!shots.vdn && f > 0.45) { shots.vdn = true; shot('vdn').catch(() => {}); }
@@ -197,7 +197,7 @@ check('from the Filaos back to the road on Mermoz’s streets', !!toEnd);
 if (toEnd) await pilot(page, t, 'teranga', toEnd, { cruise: 7, stall: 60000, ms: 1500000 });
 const frames = [];
 const fs1 = setInterval(async () => { try { frames.push(await d(() => { const A = window.__dakar, a = A.teranga.at(), c = A.camera().at; return { hub: A.pos().hub, x: a.x, z: a.z, cx: c[0], cz: c[2], w: performance.now() }; })); } catch { /* swap */ } }, 250);
-await driveRoad(page, t, 'teranga', 'corniche-mermoz', 40, { cruise: 11, brakeAtEnd: true, stall: 240000, boost: true, ms: 2400000 });
+await driveRoad(page, t, 'teranga', 'corniche-mermoz', 40, { cruise: 11, brakeAtEnd: true, stall: 240000, boost: false, ms: 2400000 });
 await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 240000 }).catch(() => {});
 clearInterval(fs1);
 let maxJump = 0;
