@@ -95,6 +95,8 @@ export interface HubWorld {
   sites?: Site[];
   /** Where the rooftop restaurant has its stair door when the district's own building gives it one (the Almadies: the boutique hotel's street face): the spot in front of the face and the face's outward normal. src/venues/rooftop.ts. */
   rooftopDoor?: { x: number; z: number; nx: number; nz: number };
+  /** What the Almadies' streetscape put down (src/world/almadies/streetscape.ts): its kind and place, for the checks. */
+  streetscape?: { kind: string; x: number; z: number }[];
   /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
   canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */

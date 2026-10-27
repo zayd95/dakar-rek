@@ -183,6 +183,9 @@ export type Front = 'fence' | 'open' | 'low' | 'wall';
 /** What each site's `perimeter` drew on its street edge last (the district's test: no site turns a solid wall to the street). */
 const fronts = new WeakMap<object, 'fence' | 'open'>();
 export const frontOf = (site: object): 'fence' | 'open' | undefined => fronts.get(site);
+/** The walk-in openings each site's `perimeter` cut last, in its plan (the street keeps them clear: src/world/almadies/streetscape.ts). */
+const openings = new WeakMap<object, PlanRect[]>();
+export const openingsOf = (site: object): PlanRect[] => openings.get(site) ?? [];
 /** The block (i, j) of the hub's grid in metres (src/world/builder.ts: the roads are GRID.road wide, the blocks GRID.blk, one every GRID.pitch). */
 const blockRect = (b: readonly [number, number]) => { const x0 = -HALF + GRID.road + GRID.pitch * b[0], z0 = -HALF + GRID.road + GRID.pitch * b[1]; return { x0, z0, x1: x0 + GRID.blk, z1: z0 + GRID.blk }; };
 /** Which of the site's side and back edges (plan: left −x, right +x, back −z) run along a road, not along a neighbour's wall: the site's rectangle reaches the block's edge there. */
@@ -265,6 +268,7 @@ export function perimeter(d: SiteDraw, o: { h?: number; gate?: GateSide | 'none'
   const ex = d.w / 2, eb = d.depth - E, T = 0.3, h = o.h ?? WALL_H, wh = h - GROUND, col = o.col ?? d.c.wall, ci = 0.05, gw = o.gateW ?? 4.4;
   const front = o.front === 'open' ? 'open' as const : 'fence' as const, fh = FENCE.collider;
   fronts.set(d.site, front);
+  openings.set(d.site, (o.entries ?? []).map(e => ({ x0: e.x - e.w / 2, z0: E - 0.6, x1: e.x + e.w / 2, z1: E + 3 })));
   const run = (x0: number, z0: number, x1: number, z1: number, hh = wh, c = col) => {
     const horiz = z0 === z1, l = horiz ? x1 - x0 : z1 - z0;
     if (l < 0.02) return;

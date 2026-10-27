@@ -22,7 +22,8 @@ vi.mock('../src/housing/villaFacade', async importOriginal => {
 });
 const fixture = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/almadiesOutsideDistrict.json'))) as { base: string; rects: { x0: number; x1: number; z0: number; z1: number }[]; full: HubDigest; lite: HubDigest };
 const hubs: Partial<Record<'full' | 'lite', HubWorld>> = {};
-const build = async (q: 'full' | 'lite') => { const { buildHub } = await import('../src/world/builder'); return (hubs[q] ??= buildHub('almadies', q === 'lite')); };
+// (the rest of the Almadies is the villa branch's, with the round-3 streetscape switched off: it adds to the street on purpose, tests/almadiesStreetscape.test.ts)
+const build = async (q: 'full' | 'lite') => { const { buildHub } = await import('../src/world/builder'); const { STREETSCAPE } = await import('../src/world/almadies/streetscape'); STREETSCAPE.on = false; return (hubs[q] ??= buildHub('almadies', q === 'lite')); };
 const within = (c: Collider, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
 
 describe('the plan', () => {

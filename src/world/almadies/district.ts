@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import type { Canopy, Collider, HubWorld, KeepClear } from '../types';
 import type { Seat } from '../../interact/seats';
-import { E, LIFE_CAP, siteDraw, sizeOf, type DistrictKit, type Site, type SiteDraw, type SiteKind, type SiteLife, type SiteSize, type Variant } from './contract';
+import { E, LIFE_CAP, siteDraw, sizeOf, type DistrictKit, type Rect, type Site, type SiteDraw, type SiteKind, type SiteLife, type SiteSize, type Variant } from './contract';
 import { VARIANTS as HOTELS } from './hotels';
 import { VARIANTS as HOUSES } from './houses';
 import { VARIANTS as RESIDENCES } from './residences';
 import { VARIANTS as VILLAS } from './villas';
 import { SITES } from './plan';
 import { massing } from './massing';
-import { gateX } from './parts';
+import { gateX, openingsOf } from './parts';
 
 /**
  * LD2.0-E « The Almadies district » (docs/ld2/LD2_E.md): draws the plan's sites (src/world/almadies/plan.ts) into the hub's merged batches, after the
@@ -30,13 +30,15 @@ export interface District {
   sites: { id: string; kind: SiteKind; variant: string; colliders: number }[];
   /** The seats and the people the sites put on their ground floors, in the hub (`SiteResult.life`). */
   seats: Seat[]; people: HubWorld['people'];
+  /** The sites' walk-in openings in the hub (the street's own dressing keeps off them). */
+  openings: Rect[];
   /** The stair door of the rooftop restaurant, in the hub (the spot in front of the face, the face's outward normal), when a design gave one (`SiteResult.rooftopDoor`). */
   rooftopDoor?: { x: number; z: number; nx: number; nz: number };
 }
 /** Draws every site; `only` limits the plan (the lanes' viewers and tests draw one site at a time). */
 export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): District {
   const group = new THREE.Group(); group.name = 'almadies-district';
-  const out: District = { group, colliders: [], canopies: [], keepClear: [], sites: [], seats: [], people: [] };
+  const out: District = { group, colliders: [], canopies: [], keepClear: [], sites: [], seats: [], people: [], openings: [] };
   for (const site of SITES) {
     if (only && !only(site)) continue;
     const d = siteDraw(kit, site), v = variantOf(site), r = v.build(d) ?? {};
@@ -44,6 +46,7 @@ export function buildDistrict(kit: DistrictKit, only?: (s: Site) => boolean): Di
     // the street keeps the apron before the gate open (parked cars, stalls) and, with the site, its own lot
     const gx = gateX(d.w, site.gate);
     out.keepClear.push({ ...d.f.rect(gx - 3.2, E, gx + 3.2, E + 3.2), why: `district_gate:${site.id}` }, ...(r.keepClear ?? []));
+    out.openings.push(...openingsOf(site).map(o => d.f.rect(o.x0, o.z0, o.x1, o.z1)));
     if (r.group) group.add(r.group);
     if (r.rooftopDoor && !out.rooftopDoor) {
       const o = d.f.p(0, 0), q = d.f.p(r.rooftopDoor.x, r.rooftopDoor.z), n = d.f.p(0, 1);
