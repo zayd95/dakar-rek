@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
-import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, guard, info, litBar, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
+import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, siteRng, slabEdge, solidBox, volume } from './parts';
+import { ST, Y0, clamp, courses, flagPole, glassRail, cells, guard, info, lit, litBar, lounger, mix, pane, parasol, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the tower hotel (46 × 22 m site, a podium of two storeys and a slimmer tower of 2 to 8 more): a deep colonnade of slim columns over a
@@ -16,7 +16,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   const PX = 21.5, zB = -9.6, zP = 3.6, zC = 6.4;                                       // the podium: its width, back wall, glass wall, the columns' line
   const TX = 10, tB = -8.8, tF = -0.8, BD = 2.0;                                        // the tower: half width, back and front walls, the balconies' depth
   const yF = (k: number) => Y0 + k * ST, yP = yF(2), yT = yF(n), yR = yT + 0.1;         // floor k; the podium's roof (the terrace); the tower's top storey's ceiling, the roof slab's top
-  const ex = d.w / 2;
+  const ex = d.w / 2, rng = siteRng(d, 'lit');
   perimeter(d, { gate: s.gate, front: 'low' });
 
   // ------------------------------------------------------------------------------------------------ the podium: a colonnade over glass, two storeys
@@ -34,7 +34,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   }
   d.box(d.plain, 8.6, 0.8, 0.5, 0, yP - 1.05, zC, p.slab);                               // the transfer beam over the entrance
   // the glass walls behind: the lobby below, the restaurant above, a loggia before it
-  for (const [y0, y1] of [[Y0 + 0.2, yF(1) - 0.45], [yF(1) + 0.05, yP - 0.5]] as const) pane(d, 'street', zP, -PX + 0.4, PX - 0.4, y0, y1, { mull: 2.15, sky: 0.55 });
+  for (const [y0, y1] of [[Y0 + 0.2, yF(1) - 0.45], [yF(1) + 0.05, yP - 0.5]] as const) { pane(d, 'street', zP, -PX + 0.4, PX - 0.4, y0, y1, { mull: 2.15, sky: 0.55 }); lit(d, 'street', zP, cells(-PX + 0.4, PX - 0.4, 10), y0, y1, rng, 0.7); }
   guard(d, 'street', zC - 0.12, -PX + 0.25, PX - 0.25, yF(1), 1.0, 0);
   d.flat(d.pave, 2 * PX, zC - zP, 0, Y0 + 0.012, (zC + zP) / 2, mix(p.stone, 0xffffff, 0.3));            // the arcade's floor
   rec.doors.push({ kind: 'lobby', face: 'street', x: 0, z: zP });
@@ -83,16 +83,18 @@ export function buildTower(d: SiteDraw): SiteResult {
     rec.balconies.push({ floor: k, u0: -TX, u1: TX, face: 'street', kind: k === 2 ? 'terrace' : 'glass' });
     if (k > 2) d.slab(d.plain, 2 * TX + 0.4, 0.25, BD, 0, y - 0.125, tF + BD / 2, p.slab);   // a deep balcony slab, the width of the tower
     pane(d, 'street', tF, -TX + 0.3, TX - 0.3, y + 0.05, y + (lounge ? 3.0 : 2.7), { mull: 1.65, sky: lounge ? 0.65 : 0.5 });
+    lit(d, 'street', tF, cells(-TX + 0.3, TX - 0.3, 6), y + 0.05, y + (lounge ? 3.0 : 2.7), rng, lounge ? 0.9 : 0.5);
     guard(d, 'street', tF + BD - 0.1, -TX + 0.2, TX - 0.2, y, 1.05, 2.2);
     // ribbons on the sides and the back
     for (const sx of [-1, 1]) pane(d, sx > 0 ? 'right' : 'left', sx * TX, tB + 1.0, tF - 1.0, y + 0.6, y + 2.5, { mull: 3.0 });
     pane(d, 'back', tB, -TX + 0.5, TX - 0.5, y + 0.6, y + 2.5, { mull: 2.5 });
+    lit(d, 'back', tB, cells(-TX + 0.5, TX - 0.5, 8), y + 0.6, y + 2.5, rng, 0.4);
   }
-  { // the fins: tall white boxes standing off the slabs, a little deeper or shallower than their neighbours (a ripple), from the first tower floor to the lounge's sill
-    const top = yF(n - 1), bottom = yP, pitch = (lite ? 2.1 : 1.05), nf = Math.round((2 * TX) / pitch);
+  { // the fins: tall white boxes standing off the slabs on a wave of depths, from the terrace to the lounge's sill
+    const top = yF(n - 1), bottom = yP, nf = lite ? 7 : 13;
     for (let i = 0; i <= nf; i++) {
-      const x = -TX + (2 * TX * i) / nf, dep = 0.45 + 0.4 * Math.abs(Math.sin(i * 1.3));
-      d.box(d.plain, 0.2, top - bottom, dep, x, bottom, tF + BD - 0.1 + dep / 2, i % 3 === 1 ? p.render2 : p.slab);
+      const x = -TX + (2 * TX * i) / nf, dep = 0.5 + 0.75 * (0.5 + 0.5 * Math.sin(i * 0.95 + 0.4));
+      d.box(d.plain, 0.26, top - bottom, dep, x, bottom, tF + BD - 0.12 + dep / 2, i % 4 === 2 ? p.render2 : p.slab);
     }
   }
   // the back: the fins' quieter echo, every 2.1 m, and the stair's glass
@@ -147,7 +149,7 @@ export function buildTower(d: SiteDraw): SiteResult {
   paving(d, { x0: -1.3, x1: 1.3, z0: zC, z1: 6.9 }, p.accent, Y0 + 0.03);
   planter(d, left * 11.5, zC + 1.4, 4.4, 0.8, { bloom: 0xd94a8c }); planter(d, left * 17.0, zC + 1.4, 3.2, 0.8);
   slimPalm(d, left * 9.0, 8.0, 1.1, 0.5); slimPalm(d, left * 20.0, 8.4, 1.0, 1.4); slimPalm(d, rite * 9.4, 8.4, 1.05, 0.2);
-  for (let k = 0; k < 2; k++) flagPole(d, rite * (7.6 + k * 1.3), E - 1.1, 8.0, k ? p.board : p.accent, 1);
+  for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 7.4, E - 1.1, 8.0, k ? p.board : p.accent, 1);
   void courses;
   return { keepClear: [{ ...d.f.rect(-6.6, zC, 6.6, E), why: `hotel_dropoff:${s.id}` }] };
 }

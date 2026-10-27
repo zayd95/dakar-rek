@@ -1,6 +1,6 @@
 import { E, type SiteDraw, type SiteResult } from './contract';
-import { gateX, nameBoard, paving, perimeter, planter, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, guard, info, litBar, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
+import { gateX, nameBoard, paving, perimeter, planter, roofPlant, siteRng, slabEdge, solidBox, volume } from './parts';
+import { ST, Y0, clamp, courses, flagPole, glassRail, cells, guard, info, lit, litBar, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the resort (46 × 46 m, the whole block, 3 to 7 storeys): a U of two long wings round a pool court that opens toward the back (the
@@ -11,13 +11,14 @@ import { ST, Y0, clamp, courses, flagPole, glassRail, guard, info, litBar, loung
  */
 export function buildResort(d: SiteDraw): SiteResult {
   const { site: s, p } = d, lite = d.lite, rec = info(d);
-  const n = clamp(s.storeys, 3, 6);
+  const n = clamp(s.storeys, 3, 5);
   const gx = gateX(d.w, s.gate), sg: 1 | -1 = gx < 0 ? -1 : 1, left = -sg, rite = sg;
   rec.serviceSide = sg;
   const WX = 21.5, CX = 10.5, BAL = 1.8, FZ0 = -4, FZ1 = 4.5, ZB = -32, ex = d.w / 2;
   const yF = (k: number) => Y0 + k * ST;
   const courtFace = (sx: number) => sx < 0 ? 'right' as const : 'left' as const, outerFace = (sx: number) => sx < 0 ? 'left' as const : 'right' as const;
   const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
+  const rng = siteRng(d, 'lit');
   perimeter(d, { gate: s.gate, front: 'low', h: 1.6 });
 
   // ------------------------------------------------------------------------------------------------ the wings: three segments stepping down toward the sea
@@ -39,6 +40,7 @@ export function buildResort(d: SiteDraw): SiteResult {
         rec.balconies.push({ floor: k, u0: g.z0, u1: g.z1, face: cf, kind: 'glass' });
         d.slab(d.plain, BAL, 0.25, len + 0.4, sx * (CX - BAL / 2), y - 0.125, zc, p.slab);
         pane(d, cf, cx, gz0, gz1, y + 0.05, y + 2.7, { mull: 3.1 });
+        lit(d, cf, cx, cells(gz0, gz1, Math.round(len / 3.1)), y + 0.05, y + 2.7, rng, 0.45);
         guard(d, cf, sx * (CX - BAL) , gz0 - 0.2, gz1 + 0.2, y, 1.05, 3.1);
       }
       const nfin = Math.max(1, Math.round(len / 3.1));
@@ -48,9 +50,21 @@ export function buildResort(d: SiteDraw): SiteResult {
       }
       // the outer side: oak panels over ribbons of glass
       const of = outerFace(sx), ox = sx * WX;
-      for (let k = 1; k < g.m; k++) pane(d, of, ox, gz0, gz1, yF(k) + 0.6, yF(k) + 2.5, { mull: 3.1, head: true });
+      for (let k = 1; k < g.m; k++) { pane(d, of, ox, gz0, gz1, yF(k) + 0.6, yF(k) + 2.5, { mull: 3.1, head: true }); lit(d, of, ox, cells(gz0, gz1, Math.round(len / 3.1)), yF(k) + 0.6, yF(k) + 2.5, rng, 0.4); }
       courses(d, of, ox, g.z0, g.z1, Y0, yF(1) - 0.25, 0.85, p.stoneDark);
       for (let i = 0; i < Math.round(len / 9); i++) slats(d, of, ox, g.z0 + 1.5 + i * 9, g.z0 + 4.5 + i * 9, yF(1) + 0.3, yTop - 0.3, { pitch: 0.26, w: 0.13 });
+      if (si === 0) {                                                                                                    // the wing's front, above the flank's third storey
+        const fx = (r.x0 + r.x1) / 2;
+        for (let k = 3; k < g.m; k++) {
+          pane(d, 'street', g.z1, r.x0 + 0.7, r.x1 - 0.7, yF(k) + 0.15, yF(k) + 2.7, { mull: 2.2, sky: 0.55 });
+          slats(d, 'street', g.z1, sx > 0 ? r.x1 - 2.4 : r.x0 + 0.6, sx > 0 ? r.x1 - 0.6 : r.x0 + 2.4, yF(k) + 0.15, yF(k) + 2.7, { pitch: 0.24, w: 0.12 });
+        }
+        d.flat(d.plain, r.x1 - r.x0 - 0.2, 5.2, fx, yF(3) + 0.1 + 0.015, FZ0 + 2.7, mix(p.stone, p.slab, 0.4));              // the flank's roof is this floor's terrace
+        guard(d, 'street', FZ1 - 3.2 + 0.45, r.x0 + 0.2, r.x1 - 0.2, yF(3) + 0.1, 1.05, 2.2);
+        for (let k = 0; k < (lite ? 1 : 2); k++) lounger(d, fx + (k ? 1.6 : -1.6) * (sx > 0 ? 1 : -1), yF(3) + 0.12, FZ0 + 3.0, 0, p.wood);
+        planter(d, fx, FZ1 - 3.2 - 0.0, 3.6, 0.5, { h: 0.45 });
+        roofPlant(d, { x0: r.x0 + 0.6, x1: r.x1 - 0.6, z0: g.z0 + 0.8, z1: g.z1 - 0.8 }, yTop + 0.1, { units: 1, panels: !lite });
+      }
       // a terrace on the roof of the segment, planted, in front of the next, taller one
       if (next) {
         const yT = yTop + 0.1 + 0.015, gz = g.z1, rx = (r.x0 + r.x1) / 2;
@@ -91,6 +105,7 @@ export function buildResort(d: SiteDraw): SiteResult {
     rec.balconies.push({ floor: 1, u0: r.x0, u1: r.x1, face: 'street', kind: 'glass' });
     d.slab(d.plain, r.x1 - r.x0 + 0.2, 0.25, BAL, rx, yF(1) - 0.125, FZ1 + BAL / 2, p.slab);
     pane(d, 'street', FZ1, r.x0 + 0.4, r.x1 - 0.4, yF(1) + 0.05, yF(1) + 2.7, { mull: 2.2 });
+    lit(d, 'street', FZ1, cells(r.x0 + 0.4, r.x1 - 0.4, 3), yF(1) + 0.05, yF(1) + 2.7, rng, 0.6);
     guard(d, 'street', FZ1 + BAL - 0.05, r.x0 + 0.2, r.x1 - 0.2, yF(1), 1.05, 2.2);
     for (let i = 0; i <= 4; i++) d.box(d.plain, 0.2, yTop - yF(1) + 0.25, BAL, r.x0 + 0.1 + ((r.x1 - r.x0 - 0.2) * i) / 4, yF(1) - 0.25, FZ1 + BAL / 2, i % 2 ? p.slab : p.render2);
     // the third storey set back, a terrace in front of it
@@ -111,6 +126,11 @@ export function buildResort(d: SiteDraw): SiteResult {
     quads(d, d.plain, 'street', zL + 0.07, [{ u0: -lx + 0.3, u1: lx - 0.3, y0: Y0 + 3.5, y1: Y0 + 3.6, c: p.frame }]);
     quads(d, d.plain, 'street', zL + 0.07, [-1, 1].flatMap(sx => [{ u0: Math.min(sx * 0.03, sx * 1.6), u1: Math.max(sx * 0.03, sx * 1.6), y0: Y0 + 0.15, y1: Y0 + 2.6, c: mix(p.glass, 0x6a5238, 0.45) }, { u0: Math.min(sx * 0.18, sx * 0.24), u1: Math.max(sx * 0.18, sx * 0.24), y0: Y0 + 0.9, y1: Y0 + 1.7, c: 0xc9a14b }]));
     d.box(d.plain, 17.0, yC - Y0 - 0.3, zL - FZ1 + 0.1, 0, Y0, (zL + FZ1) / 2 - 0.05, p.render2);                    // the hall behind the glass
+    // and on the court: the hall's glass wall under the canopy's edge, its doors to the deck between two stone piers
+    pane(d, 'back', FZ0, -lx + 0.7, lx - 0.7, Y0 + 0.15, yC - 0.5, { mull: 1.9, sky: 0.55 });
+    quads(d, d.plain, 'back', FZ0 - 0.06, [{ u0: -lx + 0.7, u1: lx - 0.7, y0: Y0 + 3.5, y1: Y0 + 3.6, c: p.frame }, { u0: -1.6, u1: 1.6, y0: Y0 + 0.15, y1: Y0 + 2.6, c: mix(p.glass, 0x6a5238, 0.45) }, { u0: -0.03, u1: 0.03, y0: Y0 + 0.15, y1: Y0 + 2.6, c: p.frame }]);
+    rec.doors.push({ kind: 'service', face: 'back', x: 0, z: FZ0 });
+    for (const sx of [-1, 1]) d.box(d.plain, 0.9, yC - Y0 - 0.3, 0.5, sx * (lx - 0.35), Y0, FZ0 - 0.25, p.stone);
     for (const sx of [-1, 1]) { d.box(d.plain, 0.8, yC - Y0 - 0.3, 0.7, sx * lx, Y0, zL, p.stone); d.solid(sx * lx - 0.4, zL - 0.35, sx * lx + 0.4, zL + 0.35, yC); }
     d.box(d.plain, 4.2, 0.12, 2.4, 0, Y0, zL + 1.2, p.stone);                                                         // the steps
     solidBox(d, { x0: -lx, x1: lx, z0: FZ0, z1: zL - 0.1 }, yC + 0.3);

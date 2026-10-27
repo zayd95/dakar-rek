@@ -58,13 +58,31 @@ export const glassCols = (d: SiteDraw, k = 0.5) => ({ lo: mix(d.p.glass, 0x6f8ea
  */
 export function pane(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, o: { mull?: number; frame?: number; sky?: number; head?: boolean; sill?: boolean } = {}) {
   const s = sign(face), g = glassCols(d, o.sky ?? 0.5), fr = o.frame ?? d.p.frame, T = 0.05;
-  quads(d, d.glass, face, at + s * 0.04, [{ u0, u1, y0, y1, c: g.lo, c2: g.hi }]);
+  quads(d, d.glass, face, at + s * 0.03, [{ u0, u1, y0, y1, c: g.lo, c2: g.hi }]);
   const bars: Q[] = [];
   if (o.head !== false) bars.push({ u0, u1, y0: y1 - 0.07, y1, c: fr });
   if (o.sill !== false) bars.push({ u0, u1, y0, y1: y0 + 0.07, c: fr });
   bars.push({ u0, u1: u0 + T, y0, y1, c: fr }, { u0: u1 - T, u1, y0, y1, c: fr });
   if (o.mull) { const n = Math.max(1, Math.round((u1 - u0) / o.mull)), m = d.lite ? Math.ceil(n / 2) : n; for (let k = 1; k < m; k++) { const u = u0 + ((u1 - u0) * k) / m; bars.push({ u0: u - 0.03, u1: u + 0.03, y0, y1, c: fr }); } }
-  quads(d, d.plain, face, at + s * 0.06, bars);
+  quads(d, d.plain, face, at + s * 0.07, bars);
+}
+/** `n` equal cells between two positions along a face (for `lit`). */
+export const cells = (u0: number, u1: number, n: number): [number, number][] => Array.from({ length: Math.max(1, n) }, (_, i) => [u0 + (i * (u1 - u0)) / Math.max(1, n), u0 + ((i + 1) * (u1 - u0)) / Math.max(1, n)] as [number, number]);
+/** The lamps' warm and cool lights behind the glass (the hub's lamp material shows them dim by day and bright at night; its glass stays dark all night). */
+const LIGHTS = [0xd9a050, 0xc98a3d, 0xe0b36a, 0xb87b36, 0xd9a050, 0x7d9cc4];
+/**
+ * Lit rooms behind a glazed run at night: in `density` of the `cells` (u0, u1 spans along the face), a warm (now and then a cool, a television's) quad on the
+ * lamps' batch, between the glass and its frames. Two triangles a room; `rng` makes it the same every time.
+ */
+export function lit(d: SiteDraw, face: Face, at: number, cells: [number, number][], y0: number, y1: number, rng: () => number, density = 0.4) {
+  const s = sign(face), list: Q[] = [], dens = density * (d.lite ? 0.5 : 1);
+  for (const [u0, u1] of cells) {
+    const r = rng(), c = LIGHTS[Math.floor(rng() * LIGHTS.length)];
+    if (r > dens) continue;
+    const m = Math.min(0.5, (u1 - u0) * 0.12);
+    list.push({ u0: u0 + m, u1: u1 - m, y0: y0 + 0.12, y1: y1 - 0.18, c: shade(c, 0.9), c2: c });
+  }
+  quads(d, d.bulbs, face, at + s * 0.05, list);
 }
 /** Vertical slats on a dark backing, one piece: a slat every `pitch` m (twice as far apart on the low preset), alternating two woods, a rail at the head and the foot. */
 export function slats(d: SiteDraw, face: Face, at: number, u0: number, u1: number, y0: number, y1: number, o: { pitch?: number; w?: number; col?: number; col2?: number; back?: number; rails?: boolean } = {}) {
@@ -152,12 +170,12 @@ export function hedge(d: SiteDraw, x0: number, x1: number, z: number, o: { y?: n
 export function litBar(d: SiteDraw, x0: number, x1: number, z: number, y: number, o: { d?: number; h?: number; col?: number } = {}) {
   d.box(d.bulbs, Math.abs(x1 - x0), o.h ?? 0.05, o.d ?? 0.1, (x0 + x1) / 2, y, z, o.col ?? 0xfff1c8);
 }
-/** A glass parapet round a roof rectangle (frameless panes in the sky's colour, a steel handrail): 4 glass boxes and 4 rails (80 triangles). */
+/** A glass parapet round a roof rectangle (frameless panes, pale as a sky's reflection, and a steel handrail): 4 panes and 4 rails (80 triangles). */
 export function glassRail(d: SiteDraw, r: { x0: number; x1: number; z0: number; z1: number }, y: number, h = 1.05) {
-  const g = { hi: mix(d.p.glass, 0xe4f0f5, 0.9) }, t = 0.05, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2, w = r.x1 - r.x0, dd = r.z1 - r.z0;
+  const t = 0.05, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2, w = r.x1 - r.x0, dd = r.z1 - r.z0, pale = mix(d.p.glass, 0xf2f8fa, 0.93);
   for (const [bw, bd, x, z] of [[w, t, mx, r.z1], [w, t, mx, r.z0], [t, dd, r.x0, mz], [t, dd, r.x1, mz]] as const) {
-    d.box(d.glass, bw, h, bd, x, y, z, g.hi);
-    d.box(d.plain, bw + (bw > bd ? 0.05 : 0.03), 0.045, bd + (bw > bd ? 0.03 : 0.05), x, y + h, z, 0xc5c8ca);
+    d.box(d.plain, bw, h, bd, x, y, z, pale);
+    d.box(d.plain, bw + (bw > bd ? 0.05 : 0.03), 0.045, bd + (bw > bd ? 0.03 : 0.05), x, y + h, z, 0x9aa3a8);
   }
 }
 
