@@ -42,6 +42,10 @@ export const stack: SiteBuilder = d => {
   }
   for (let j = 0; j < 4; j++) { const x = -13.5 + j * 9, zz = -0.8; k.bulbs.box(x - 0.5, L(1) - 0.3, zz - 0.06, x + 0.5, L(1) - 0.26, zz + 0.06, 0xfff1c8, 'T'); }   // the soffit's lights
 
+  // the parking court: cars in the painted bays (some nosed in, an SUV or two), scooters against the west core
+  const bayX = (j: number) => -14.2 + 2.6 * j;
+  k.car(bayX(1), -5.2, Math.PI, 1); k.car(bayX(3), -5.2, 0, 0); k.car(bayX(6), -5.2, Math.PI, 4);
+  k.scooter(-14.9, 1.3, 0, 0); k.scooter(-14.0, 1.3, 0, 1);
   k.sec('ground');
   // ------------------------------------------------------------------------------------------------ the masses
   const slab = (f: number, o: { z1?: number; x0?: number; x1?: number; over?: number; thick?: number } = {}) => k.slab({ x0: o.x0 ?? B.x0, x1: o.x1 ?? B.x1, z0: B.z0, z1: o.z1 ?? B.z1 }, L(f), { over: o.over ?? 0.35, thick: o.thick ?? 0.26 });
@@ -66,7 +70,7 @@ export const stack: SiteBuilder = d => {
   for (let f = 1; f < top; f++) {
     for (let b = 1; b <= 7; b++) {
       if (!stackHasBalcony(b, f)) F.quad(bu(b) + 0.08, bu(b + 1) - 0.08, L(f) - 0.02, L(f + 1) - 0.3, 0.015, mix(p.accent, p.render, 0.35));      // the gap: a panel in the accent
-      F.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1, lean: f > 5 });
+      F.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1, lean: f > 3 });
       if (!stackHasBalcony(b, f)) F.quad(bu(b) + 0.55, bu(b + 1) - 0.55, L(f) + 0.06, L(f) + 1.0, 0.075, GUARD);                                   // a glass rail across its door
     }
     stackBalconyRuns(f).forEach(([a, e], g) => F.balcony({ u0: bu(a) + 0.04, u1: bu(e + 1) - 0.04, y: L(f), depth: 1.8, guard: (f + g) % 2 ? 'glass' : 'solid', guardCol: (f + g) % 2 ? undefined : p.render2, green: true }));
@@ -116,10 +120,15 @@ export const stack: SiteBuilder = d => {
   m.box(ENTRY.x - 3.2, G + 2.94, 10.55, ENTRY.x + 3.2, G + 3.0, 10.97, p.accent, 'U');
   if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: ENTRY.x, z: 11.0, y: G + 3.45, w: Math.min(6.0, 0.3 * s.name.length), h: 0.8, bg: css(p.board), fg: '#f4e6bd' }); }
   // the street's units: a café at the west end, a shop east of the gate; troughs and a bench on the pavement side
-  k.unit({ kind: 'cafe', x0: -21.0, x1: -12.6, z0: 5.6, z1: 8.9, door: -13.8, tables: 3, awning: 1.3, terrace: 0.8 });
+  k.unit({ kind: 'cafe', x0: -21.0, x1: -12.6, z0: 3.9, z1: 6.5, door: -13.8, tables: 2, awning: 1.3, terrace: 1.6 });
   k.unit({ kind: 'shop', x0: 3.6, x1: 10.6, z0: 6.0, z1: 8.9, door: 4.9, awning: 1.3, fascia: p.board, stripe: [mix(p.accent, 0xffffff, 0.5)] });
   k.trough(7.2, 10.2, 10.05, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(7.2, 9.75, 10.2, 10.35, 1.0);
-  k.bench(-8.2, 9.9, 1.8); d.solid(-9.1, 9.65, -7.3, 10.15, 0.9);
+  const bench = k.benchSeats(-8.2, 9.5, 0, { len: 1.8, n: 2 });                                                          // a bench on the pavement side, a resident on it
+  k.sitOn(bench[1], 'resident');
+  // the lobby's doorman under the canopy; a resident on the second floor's balcony talking to the street
+  k.person('doorman', 12.2, 4.4, 0, 'Idle');
+  const run = stackBalconyRuns(2)[0], bx = (bu(run[0]) + bu(run[1] + 1)) / 2;
+  k.person('resident2', bx, 4.1, 0, 'Talk', 2 * STOREY);
   k.sec('lobby');
 
   // ------------------------------------------------------------------------------------------------ the ends and the back
@@ -143,9 +152,10 @@ export const stack: SiteBuilder = d => {
   m.vq('z', B.z0 - 0.3, B.x0 - 0.3, B.x1 + 0.3, roof + 0.06, roof + 1.1, -1, GUARD);
   m.vq('x', B.x0 - 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('x', B.x1 + 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, 1, GUARD);
   roofPlant(d, { x0: -12, x1: 12, z0: -8, z1: -3.8 }, roof + 0.02, { units: 3 });
-  palm(d, -7.4, 5.0, 1.1, 0.3);
+  palm(d, -18.0, 4.6, 1.1, 0.3);
   [-9.6, 19.4].forEach((x, i) => bougainvillea(d, x, 10.85, 1.4, 0.62 + (i % 3) * 0.08, i));                                           // flowers over the railing
   d.light(0, 8.0, 2.6, 0.16); d.light(ENTRY.x, 6.0, 2.6, 0.16); d.light(-16.8, 9.8, 2.4, 0.16);
   k.sec('roof');
   k.flush();
+  return { life: k.life };
 };
