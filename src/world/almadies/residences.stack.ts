@@ -1,6 +1,6 @@
 import { GROUND, STOREY, type SiteBuilder } from './contract';
 import { door, nameBoard, palm, perimeter, roofPlant } from './parts';
-import { GREEN, GUARD, kitOf, mix } from './residences.kit';
+import { GREEN, GUARD, bougainvillea, kitOf, mix } from './residences.kit';
 
 /**
  * LD2.0-E lane E-R: the stacked and staggered residence (M, 46 × 22 m, 6 storeys): « Les Alizés ». The whole block stands on slim pilotis over a gated
@@ -9,10 +9,22 @@ import { GREEN, GUARD, kitOf, mix } from './residences.kit';
  * diagonal. The glazed lobby with its canopy, the intercom and the name on a stone sign wall stand beside the gate; the top floor is set back behind
  * its deck, a pergola over one end of it and a deep roof visor over the rest; the plant and the panels are on the roof.
  */
+/** True where the bay `b` (1…7) of floor `f` has its balcony: two bays in three, the bay without moving one bay to the left (and wrapping) from one floor to the next. */
+export const stackHasBalcony = (b: number, f: number) => (b + f) % 3 !== 2;
+/** The runs of bays [first, last] that share a balcony slab on floor `f`. */
+export function stackBalconyRuns(f: number): [number, number][] {
+  const runs: [number, number][] = [];
+  for (let b = 1; b <= 7; b++) {
+    if (!stackHasBalcony(b, f)) continue;
+    const last = runs[runs.length - 1];
+    if (last && last[1] === b - 1) last[1] = b; else runs.push([b, b]);
+  }
+  return runs;
+}
 export const stack: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(4, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n), top = n - 1;
   const B = { x0: -20.25, x1: 20.25, z0: -8.2, z1: 3.2 }, BAY = 4.5, bu = (i: number) => B.x0 + i * BAY;         // the block, its nine bays (0 and 8 are the cores)
-  const core = mix(p.accent, p.render, 0.62), m = k.plain, gl = k.glass, wood = mix(p.wood, 0x000000, 0.1);
+  const core = mix(p.accent, p.render, 0.62), m = k.plain, wood = mix(p.wood, 0x000000, 0.1);
   perimeter(d, { gate: s.gate, front: 'low' });
 
   // ------------------------------------------------------------------------------------------------ the ground: the court, its bays, the pilotis
@@ -49,16 +61,14 @@ export const stack: SiteBuilder = d => {
 
   k.sec('masses');
   // ------------------------------------------------------------------------------------------------ the street face: the weave
-  const F = k.facade('street', B.z1), cond = (b: number, f: number) => (b + f) % 3 !== 2;                            // a bay has its balcony unless (b + f) % 3 = 2: the gap climbs
+  const F = k.facade('street', B.z1);
   for (let f = 1; f < top; f++) {
-    let b = 1, g = 0;
-    while (b <= 7) {
-      if (!cond(b, f)) { F.quad(bu(b) + 0.08, bu(b + 1) - 0.08, L(f) - 0.02, L(f + 1) - 0.3, 0.015, mix(p.accent, p.render, 0.35)); F.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1 }); F.pane(bu(b) + 0.55, bu(b + 1) - 0.55, L(f) + 0.06, L(f) + 1.0, 0.075, GUARD); b++; continue; }
-      let e = b; while (e + 1 <= 7 && cond(e + 1, f)) e++;
-      for (let i = b; i <= e; i++) F.opening({ u0: bu(i) + 0.5, u1: bu(i + 1) - 0.5, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1 });
-      F.balcony({ u0: bu(b) + 0.04, u1: bu(e + 1) - 0.04, y: L(f), depth: 1.8, guard: (f + g) % 2 ? 'glass' : 'solid', guardCol: (f + g) % 2 ? undefined : p.render2, green: true });
-      g++; b = e + 1;
+    for (let b = 1; b <= 7; b++) {
+      if (!stackHasBalcony(b, f)) F.quad(bu(b) + 0.08, bu(b + 1) - 0.08, L(f) - 0.02, L(f + 1) - 0.3, 0.015, mix(p.accent, p.render, 0.35));      // the gap: a panel in the accent
+      F.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1, lean: f > 5 });
+      if (!stackHasBalcony(b, f)) F.quad(bu(b) + 0.55, bu(b + 1) - 0.55, L(f) + 0.06, L(f) + 1.0, 0.075, GUARD);                                   // a glass rail across its door
     }
+    stackBalconyRuns(f).forEach(([a, e], g) => F.balcony({ u0: bu(a) + 0.04, u1: bu(e + 1) - 0.04, y: L(f), depth: 1.8, guard: (f + g) % 2 ? 'glass' : 'solid', guardCol: (f + g) % 2 ? undefined : p.render2, green: true }));
   }
   for (const [x0, x1] of [[B.x0, -15.75], [15.75, B.x1]] as const) {                                                       // the cores' fronts: a slim opening on each floor, the stair
     const Fc = k.facade('street', B.z1 + 0.3);
@@ -74,7 +84,7 @@ export const stack: SiteBuilder = d => {
     else FP.opening({ u0: a, u1: b, y0: TT + 0.04, y1: TT + 2.8, mull: 2 });
   }
   m.hq(-15.9, 0.8, 15.9, 4.3, TT + 0.02, true, wood);
-  gl.vq('z', 4.9 - 0.06 - 0.4, -16.1, 16.1, TT + 0.06, TT + 1.05, 1, GUARD); gl.vq('x', -16.07, 3.9, 4.44, TT + 0.06, TT + 1.05, -1, GUARD); gl.vq('x', 16.07, 3.9, 4.44, TT + 0.06, TT + 1.05, 1, GUARD);
+  m.vq('z', 4.9 - 0.06 - 0.4, -16.1, 16.1, TT + 0.06, TT + 1.05, 1, GUARD); m.vq('x', -16.07, 3.9, 4.44, TT + 0.06, TT + 1.05, -1, GUARD); m.vq('x', 16.07, 3.9, 4.44, TT + 0.06, TT + 1.05, 1, GUARD);
   m.box(-16.1, TT + 1.05, 4.4, 16.1, TT + 1.09, 4.5, p.frame, 'UB');
   k.leaves.box(-15.2, TT, 3.5, -5.5, TT + 0.45, 4.1, GREEN.hedge2, 'U'); k.leaves.box(1.0, TT, 3.5, 15.2, TT + 0.45, 4.1, GREEN.hedge2, 'U');
   const pg = { x0: -14.4, x1: -6.0, z0: 1.4, z1: 3.9 }, ph = 2.7;
@@ -105,6 +115,7 @@ export const stack: SiteBuilder = d => {
   for (const sx of [-1, 1]) {
     const FE = k.facade(sx < 0 ? 'left' : 'right', sx * B.x1);
     for (let f = 1; f < top; f++) for (const [a, b] of [[-6.6, -3.4], [-0.6, 2.6]] as const) FE.opening({ u0: a, u1: b, y0: L(f) + 0.04, y1: L(f) + 2.74, mull: 1, head: false });
+    FE.slats({ u0: -3.0, u1: -1.0, y0: L(1) + 0.1, y1: L(top) - 0.3, pitch: 0.3, w: 0.1, depth: 0.14, back: 0x2a211a });                            // a tall oak screen between the windows
   }
   const FB = k.facade('back', B.z0);
   for (let f = 1; f < top; f++) {
@@ -115,12 +126,13 @@ export const stack: SiteBuilder = d => {
 
   k.sec('ends');
   // ------------------------------------------------------------------------------------------------ the roof: the plant, a glass parapet; the front garden
-  gl.vq('z', 1.0 + 0.34, B.x0 - 0.3, -5.1, roof + 0.06, roof + 1.1, 1, GUARD);
-  gl.vq('z', B.z0 - 0.3, B.x0 - 0.3, B.x1 + 0.3, roof + 0.06, roof + 1.1, -1, GUARD);
-  gl.vq('x', B.x0 - 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, -1, GUARD); gl.vq('x', B.x1 + 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, 1, GUARD);
+  m.vq('z', 1.0 + 0.34, B.x0 - 0.3, -5.1, roof + 0.06, roof + 1.1, 1, GUARD);
+  m.vq('z', B.z0 - 0.3, B.x0 - 0.3, B.x1 + 0.3, roof + 0.06, roof + 1.1, -1, GUARD);
+  m.vq('x', B.x0 - 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('x', B.x1 + 0.3, B.z0 - 0.3, 1.34, roof + 0.06, roof + 1.1, 1, GUARD);
   roofPlant(d, { x0: -12, x1: 12, z0: -8, z1: -3.8 }, roof + 0.02, { units: 3 });
   for (const x of [-10.5, -4.6, 5.0]) { k.leaves.box(x - 1.2, G, 9.7, x + 1.2, G + 0.5, 10.3, GREEN.hedge2, 'U'); }                       // hedges inside the low wall
   palm(d, -7.2, 7.6, 1.15, 0.3); palm(d, 17.4, 7.4, 1.0, 1.2);
+  [-19.2, -13.6, -9.4, 6.2, 12.8, 18.8].forEach((x, i) => bougainvillea(d, x, 10.55, 1.0, 0.62 + (i % 3) * 0.08, i));                          // flowers over the low wall
   d.light(0, 8.0, 2.6, 0.16); d.light(11.3, 5.0, 2.6, 0.16);
   k.sec('roof');
   k.flush();

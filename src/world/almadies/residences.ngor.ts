@@ -20,7 +20,7 @@ export const ngor: SiteBuilder = d => {
   const PH = { x0: A.x0, x1: A.x1, z0: A.z0, z1: 0.6 };                                  // the top floor, set back from the street
   const FZ = 4.5, tz = 8.0;                                                                // the terraces' front edge, and the canopy's over the lobby
   perimeter(d, { gate: s.gate, front: 'wall' });
-  const m = k.plain, gl = k.glass, wood = mix(p.wood, 0x000000, 0.1);
+  const m = k.plain, wood = mix(p.wood, 0x000000, 0.1);
 
   // ------------------------------------------------------------------------------------------------ the masses
   m.box(A.x0, G, A.z0, A.x1, L(1), A.z1, p.stone, 'TU');                                   // the ground floor in travertine
@@ -60,14 +60,15 @@ export const ngor: SiteBuilder = d => {
   m.box(A.x0 - 0.3, T1 - 0.26, A.z1, A.x1 + 0.3, T1, FZ, p.slab, '');                    // the terrace along the front
   m.box(LB.x0 - 0.3, T1 - 0.26, A.z1, LB.x1 + 0.3, T1, tz, p.slab, '');                  // deeper over the lobby: its canopy
   const gy0 = T1 + 0.06, gy1 = T1 + 1.05;
-  gl.vq('z', FZ - 0.06, A.x0 - 0.3, LB.x0 - 0.3, gy0, gy1, 1, GUARD); gl.vq('z', FZ - 0.06, LB.x1 + 0.3, A.x1 + 0.3, gy0, gy1, 1, GUARD);
-  gl.vq('x', A.x0 - 0.27, A.z1, FZ - 0.06, gy0, gy1, -1, GUARD); gl.vq('x', A.x1 + 0.27, A.z1, FZ - 0.06, gy0, gy1, 1, GUARD);
-  gl.vq('x', LB.x0 - 0.27, FZ, tz - 0.06, gy0, gy1, -1, GUARD); gl.vq('x', LB.x1 + 0.27, FZ, tz - 0.06, gy0, gy1, 1, GUARD);
-  gl.vq('z', tz - 0.06, LB.x0 - 0.3, -2.6, gy0, gy1, 1, GUARD); gl.vq('z', tz - 0.06, 2.6, LB.x1 + 0.3, gy0, gy1, 1, GUARD);
+  m.vq('z', FZ - 0.06, A.x0 - 0.3, LB.x0 - 0.3, gy0, gy1, 1, GUARD); m.vq('z', FZ - 0.06, LB.x1 + 0.3, A.x1 + 0.3, gy0, gy1, 1, GUARD);
+  m.vq('x', A.x0 - 0.27, A.z1, FZ - 0.06, gy0, gy1, -1, GUARD); m.vq('x', A.x1 + 0.27, A.z1, FZ - 0.06, gy0, gy1, 1, GUARD);
+  m.vq('x', LB.x0 - 0.27, FZ, tz - 0.06, gy0, gy1, -1, GUARD); m.vq('x', LB.x1 + 0.27, FZ, tz - 0.06, gy0, gy1, 1, GUARD);
+  m.vq('z', tz - 0.06, LB.x0 - 0.3, -2.6, gy0, gy1, 1, GUARD); m.vq('z', tz - 0.06, 2.6, LB.x1 + 0.3, gy0, gy1, 1, GUARD);
   m.box(-2.6, T1, tz - 0.3, 2.6, T1 + 0.95, tz - 0.05, p.render2, 'U');                  // the solid band that carries the name
   m.box(-2.6, T1 + 0.95, tz - 0.34, 2.6, T1 + 1.02, tz, p.slab, 'U');
   for (const [x0, x1] of [[A.x0 - 0.2, LB.x0 - 0.3], [LB.x1 + 0.3, A.x1 + 0.2]] as const) m.hq(x0, A.z1, x1, FZ, T1 + 0.02, true, wood);   // the decks
   m.hq(LB.x0 - 0.2, A.z1, LB.x1 + 0.2, tz, T1 + 0.02, true, wood);
+  k.leaves.box(A.x0 + 0.1, T1, FZ - 0.75, LB.x0 - 0.5, T1 + 0.5, FZ - 0.3, GREEN.hedge2, 'U'); k.leaves.box(LB.x1 + 0.5, T1, FZ - 0.75, A.x1 - 0.1, T1 + 0.5, FZ - 0.3, GREEN.hedge2, 'U');   // planters on the terrace
 
   // ------------------------------------------------------------------------------------------------ the top floor: wide glass behind its terrace
   const FP = k.facade('street', PH.z1), TT = L(top);
@@ -75,15 +76,20 @@ export const ngor: SiteBuilder = d => {
   FP.quad(1.6, 4.9, TT + 0.04, TT + 2.8, 0.03, p.wood);
   FP.slats({ u0: 1.6, u1: 4.9, y0: TT + 0.1, y1: TT + 2.7, pitch: 0.3, w: 0.1, depth: 0.1, n0: 0.06, col: mix(p.wood, 0xffffff, 0.12), back: 0x3a2a1c });
   m.hq(A.x0 - 0.2, PH.z1, A.x1 + 0.2, FZ - 0.5, TT + 0.02, true, wood);                  // the deck
-  gl.vq('z', FZ - 0.06 - 0.4, A.x0 - 0.3, A.x1 + 0.3, TT + 0.06, TT + 1.05, 1, GUARD);
-  gl.vq('x', A.x0 - 0.27, PH.z1 + 0.5, FZ - 0.46, TT + 0.06, TT + 1.05, -1, GUARD); gl.vq('x', A.x1 + 0.27, PH.z1 + 0.5, FZ - 0.46, TT + 0.06, TT + 1.05, 1, GUARD);
+  m.vq('z', FZ - 0.06 - 0.4, A.x0 - 0.3, A.x1 + 0.3, TT + 0.06, TT + 1.05, 1, GUARD);
+  m.vq('x', A.x0 - 0.27, PH.z1 + 0.5, FZ - 0.46, TT + 0.06, TT + 1.05, -1, GUARD); m.vq('x', A.x1 + 0.27, PH.z1 + 0.5, FZ - 0.46, TT + 0.06, TT + 1.05, 1, GUARD);
   m.box(A.x0 - 0.3, TT + 1.05, FZ - 0.5, A.x1 + 0.3, TT + 1.09, FZ - 0.4, p.frame, 'UB');
+  // a plunge pool on the terrace, under the visor
+  const pl = { x0: 0.4, x1: 4.2, z0: 1.5, z1: 3.1 };
+  m.hq(pl.x0 - 0.3, pl.z0 - 0.3, pl.x1 + 0.3, pl.z1 + 0.3, TT + 0.035, true, mix(p.slab, 0xffffff, 0.3)); d.flat(d.water, pl.x1 - pl.x0, pl.z1 - pl.z0, (pl.x0 + pl.x1) / 2, TT + 0.05, (pl.z0 + pl.z1) / 2, 0x2fa8d8);
   // the pergola over the terrace's street corner
   const pg = { x0: -8.4, x1: -3.2, z0: 1.4, z1: 3.9 }, ph = 2.7;
   for (const x of [pg.x0, pg.x1]) for (const z of [pg.z0, pg.z1]) k.post(x, z, 0.16, TT, TT + ph, p.frame, 'U');
   for (const z of [pg.z0, pg.z1]) m.box(pg.x0 - 0.15, TT + ph, z - 0.1, pg.x1 + 0.15, TT + ph + 0.2, z + 0.1, p.frame, 'U');
   const ns = Math.floor((pg.x1 - pg.x0) / (lite ? 0.9 : 0.42));
   for (let i = 0; i <= ns; i++) { const x = pg.x0 + ((pg.x1 - pg.x0) * i) / ns; m.box(x - 0.04, TT + ph + 0.2, pg.z0 - 0.15, x + 0.04, TT + ph + 0.3, pg.z1 + 0.15, p.wood, 'UBSLR'); }
+
+  k.bulbs.box(PH.x0 - 0.4, roof - 0.17, 1.4, -2.4, roof - 0.11, 1.43, 0xffe2b8, 'UBTLR'); k.bulbs.box(-2.4, roof - 0.17, 3.5, PH.x1 + 0.4, roof - 0.11, 3.53, 0xffe2b8, 'UBTLR');   // a line of light along the visor's fascia
 
   // ------------------------------------------------------------------------------------------------ the lobby: a glazed front, the door under the canopy
   const FL = k.facade('street', LB.z1);
@@ -112,21 +118,21 @@ export const ngor: SiteBuilder = d => {
 
   // ------------------------------------------------------------------------------------------------ the roof: a parapet, the plant
   const R = { x0: A.x0 - 0.1, x1: A.x1 + 0.1, z0: A.z0 - 0.1, z1: 1.2 };
-  gl.vq('z', R.z1 - 0.06, R.x0, -2.4, roof + 0.06, roof + 1.1, 1, GUARD); gl.vq('x', R.x0 + 0.05, R.z0, R.z1, roof + 0.06, roof + 1.1, -1, GUARD);
-  gl.vq('z', R.z0 + 0.05, R.x0, R.x1, roof + 0.06, roof + 1.1, -1, GUARD); gl.vq('x', R.x1 - 0.05, R.z0, 3.3, roof + 0.06, roof + 1.1, 1, GUARD);
-  gl.vq('x', -2.4, R.z1 - 0.06, 3.3, roof + 0.06, roof + 1.1, -1, GUARD); gl.vq('z', 3.3, -2.4, R.x1, roof + 0.06, roof + 1.1, 1, GUARD);
+  m.vq('z', R.z1 - 0.06, R.x0, -2.4, roof + 0.06, roof + 1.1, 1, GUARD); m.vq('x', R.x0 + 0.05, R.z0, R.z1, roof + 0.06, roof + 1.1, -1, GUARD);
+  m.vq('z', R.z0 + 0.05, R.x0, R.x1, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('x', R.x1 - 0.05, R.z0, 3.3, roof + 0.06, roof + 1.1, 1, GUARD);
+  m.vq('x', -2.4, R.z1 - 0.06, 3.3, roof + 0.06, roof + 1.1, -1, GUARD); m.vq('z', 3.3, -2.4, R.x1, roof + 0.06, roof + 1.1, 1, GUARD);
   roofPlant(d, { x0: 0.4, x1: 8, z0: -9.2, z1: -4.5 }, roof + 0.02, { units: 2 });
 
   // ------------------------------------------------------------------------------------------------ the courtyard
   const gr = (x: number, z: number, w: number, dd: number, y: number, col: number) => m.hq(x - w / 2, z - dd / 2, x + w / 2, z + dd / 2, G + y, true, col);
-  gr(-5.6, 8.4, 12.4, 4.2, 0.03, GREEN.lawn); gr(5.6, 8.4, 12.4, 4.2, 0.03, GREEN.lawn);                                // two lawns, mown in stripes
-  for (let i = 0; i < 4; i++) { gr(-5.6, 6.8 + i * 1.0, 12.4, 0.5, 0.04, GREEN.lawn2); gr(5.6, 6.8 + i * 1.0, 12.4, 0.5, 0.04, GREEN.lawn2); }
+  gr(-6.0, 8.4, 9.2, 4.2, 0.03, GREEN.lawn); gr(6.0, 8.4, 9.2, 4.2, 0.03, GREEN.lawn);                                   // two lawns, mown in stripes
+  for (let i = 0; i < 4; i++) { gr(-6.0, 6.8 + i * 1.0, 9.2, 0.5, 0.04, GREEN.lawn2); gr(6.0, 6.8 + i * 1.0, 9.2, 0.5, 0.04, GREEN.lawn2); }
   gr(0, 8.2, 2.8, 5.0, 0.05, mix(p.stone, 0xffffff, 0.25));                                                              // the path from the gate to the door
   gr(0, 9.2, 2.8, 0.06, 0.06, p.stoneDark); gr(0, 7.6, 2.8, 0.06, 0.06, p.stoneDark);
   const hb = (x0: number, x1: number, z: number, h = 0.55) => k.leaves.box(x0, G, z - 0.3, x1, G + h, z + 0.3, GREEN.hedge2, 'U');
   hb(-10.2, -2.6, 10.1); hb(2.6, 10.2, 10.1);
   planter(d, -6.5, 4.0, 5.0, 0.8, { h: 0.5, bloom: mix(p.accent, 0xff7a9a, 0.4) }); planter(d, 5.1, 3.4, 1.8, 0.7, { h: 0.55, hedge: GREEN.hedge2 });
-  palm(d, -8.2, 7.8, 1.15, 0.3); palm(d, 8.0, 7.4, 1.0, 1.2);
+  palm(d, -7.0, 7.5, 1.05, 0.3); palm(d, 7.2, 7.4, 0.95, 1.2);
   for (const x of [-2.2, 2.2]) { m.box(x - 0.07, G, 9.3 - 0.07, x + 0.07, G + 0.7, 9.3 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.3 - 0.08, x + 0.08, G + 0.74, 9.3 + 0.08, 0xfff1c8, 'U'); }
 
   // ------------------------------------------------------------------------------------------------ the name, and what is solid

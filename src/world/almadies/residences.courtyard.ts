@@ -12,7 +12,7 @@ import { GREEN, GUARD, kitOf, mix, type Facade } from './residences.kit';
 export const courtyard: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(4, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n);
   const O = { x0: -19.5, x1: 19.5, z0: -31.5, z1: 6.5 }, C = { x0: -10, x1: 10, z0: -22, z1: -3 }, PASS = { x0: -2.8, x1: 2.8 }, TW = 5.0, STEP = 1.0, TERR = 1.8;
-  const m = k.plain, gl = k.glass, wood = mix(p.wood, 0x000000, 0.1), dark = 0x241c16;
+  const m = k.plain, wood = mix(p.wood, 0x000000, 0.1), dark = mix(p.render2, 0x000000, 0.5);
   perimeter(d, { gate: s.gate, front: 'wall' });
 
   // ------------------------------------------------------------------------------------------------ the masses: four wings, the passage, the slabs
@@ -40,7 +40,7 @@ export const courtyard: SiteBuilder = d => {
     for (let f = o.ground ? 0 : 1; f < n; f++) for (let b = 0; b < bays; b++) {
       const a = u0 + b * bw, y = L(f), g = f === 0;
       if (f === 1 && (b === 2 || b === 3) && o.bal) continue;                                                             // behind the portal
-      F.opening({ u0: a + 0.5, u1: a + bw - 0.5, y0: y + (g ? 0.4 : 0.04), y1: y + (g ? 2.7 : 2.74), mull: bw > 4.4 ? 1 : 0, lean: o.lean, head: !g });
+      F.opening({ u0: a + 0.5, u1: a + bw - 0.5, y0: y + (g ? 0.4 : 0.04), y1: y + (g ? 2.7 : 2.74), mull: bw > 4.4 ? 1 : 0, lean: o.lean || f > 5, head: !g });
       if (o.bal && f > 0 && (b + f) % 2 === 0) F.balcony({ u0: a + 0.04, u1: a + bw - 0.04, y, depth: o.depth ?? 1.6, guard: o.guard ?? (f % 2 ? 'glass' : 'solid'), guardCol: p.render, green: true });
     }
   };
@@ -102,7 +102,7 @@ export const courtyard: SiteBuilder = d => {
     const bw = (b - a) / 4;
     for (let i = 0; i < 4; i++) F.opening({ u0: a + i * bw + 0.7, u1: a + (i + 1) * bw - 0.7, y0: L(f) + (f ? 0.04 : 0.1), y1: L(f) + 2.74, lean: true });
     if (f === 0) continue;
-    F.pane(a, b, L(f) + 0.06, L(f) + 1.05, TERR - 0.06, GUARD); F.box(a, b, L(f) + 1.05, L(f) + 1.09, TERR - 0.09, TERR - 0.03, p.frame, 'iue');
+    F.quad(a, b, L(f) + 0.06, L(f) + 1.05, TERR - 0.06, GUARD); F.box(a, b, L(f) + 1.05, L(f) + 1.09, TERR - 0.09, TERR - 0.03, p.frame, 'iue');
     F.box(a + 0.3, b - 0.3, L(f), L(f) + 0.5, TERR - 0.7, TERR - 0.2, GREEN.hedge2, 'iu', k.leaves);
   }
   k.sec('court');
@@ -134,8 +134,8 @@ export const courtyard: SiteBuilder = d => {
     m.hq(pg.x0 - 0.5, pg.z0 - 0.4, pg.x1 + 0.5, pg.z1 + 0.5, Y + 0.02, true, wood);
   }
   const gy = Y + 0.06, pr = { x0: O.x0 - 0.5, x1: O.x1 + 0.5, z0: O.z0 - 0.5, z1: O.z1 + 1.0 };
-  gl.vq('z', pr.z1 - 0.06, pr.x0, pr.x1, gy, gy + 1.05, 1, GUARD); gl.vq('z', pr.z0 + 0.04, pr.x0, pr.x1, gy, gy + 1.05, -1, GUARD);
-  gl.vq('x', pr.x0 + 0.04, pr.z0, pr.z1, gy, gy + 1.05, -1, GUARD); gl.vq('x', pr.x1 - 0.04, pr.z0, pr.z1, gy, gy + 1.05, 1, GUARD);
+  m.vq('z', pr.z1 - 0.06, pr.x0, pr.x1, gy, gy + 1.05, 1, GUARD); m.vq('z', pr.z0 + 0.04, pr.x0, pr.x1, gy, gy + 1.05, -1, GUARD);
+  m.vq('x', pr.x0 + 0.04, pr.z0, pr.z1, gy, gy + 1.05, -1, GUARD); m.vq('x', pr.x1 - 0.04, pr.z0, pr.z1, gy, gy + 1.05, 1, GUARD);
   roofPlant(d, { x0: -10, x1: 10, z0: -30.5, z1: -26 }, Y + 0.02, { units: 3 });
   k.sec('roof');
 
@@ -145,7 +145,7 @@ export const courtyard: SiteBuilder = d => {
   for (let i = 0; i < 3; i++) { gr(-11.4, 7.7 + i * 1.0, 17.6, 0.45, 0.04, GREEN.lawn2); gr(11.4, 7.7 + i * 1.0, 17.6, 0.45, 0.04, GREEN.lawn2); }
   const hb = (x0: number, x1: number, z0: number, z1: number, h = 0.55) => k.leaves.box(x0, G, z0, x1, G + h, z1, GREEN.hedge2, 'U');
   hb(-22.4, -3.4, 10.0, 10.6); hb(3.4, 22.4, 10.0, 10.6); hb(-22.4, -21.8, -34.4, 10.0); hb(21.8, 22.4, -34.4, 10.0); hb(-22.4, 22.4, -34.4, -33.8);
-  palm(d, -6.6, 8.6, 1.15, 0.3); palm(d, 6.6, 8.4, 1.0, 1.2);
+  palm(d, -6.6, 7.5, 1.1, 0.3); palm(d, 6.6, 7.3, 1.0, 1.2);
   d.light(0, 8.7, 3, 0.16); d.light(0, cz, 4, 0.16);
   k.sec('garden');
   k.flush();

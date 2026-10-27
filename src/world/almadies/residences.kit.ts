@@ -141,10 +141,10 @@ export class Facade {
     if (gu === 'none') return;
     const no = n0 + dep - 0.06;
     if (gu === 'glass') {
-      this.pane(o.u0 + 0.03, o.u1 - 0.03, o.y + 0.06, o.y + H, no, o.guardCol ?? GUARD);
+      this.quad(o.u0 + 0.03, o.u1 - 0.03, o.y + 0.06, o.y + H, no, o.guardCol ?? GUARD);
       this.box(o.u0, o.u1, o.y + H, o.y + H + 0.04, no - 0.03, no + 0.03, k.p.frame, 'iue');
-      if (ra) this.end(o.u0 + 0.03, o.y + 0.06, o.y + H, n0 + 0.02, no, -1, o.guardCol ?? GUARD, k.glass);
-      if (rb) this.end(o.u1 - 0.03, o.y + 0.06, o.y + H, n0 + 0.02, no, 1, o.guardCol ?? GUARD, k.glass);
+      if (ra) this.end(o.u0 + 0.03, o.y + 0.06, o.y + H, n0 + 0.02, no, -1, o.guardCol ?? GUARD);
+      if (rb) this.end(o.u1 - 0.03, o.y + 0.06, o.y + H, n0 + 0.02, no, 1, o.guardCol ?? GUARD);
     } else if (gu === 'solid') {
       this.box(o.u0, o.u1, o.y, o.y + H - 0.1, no - 0.07, no + 0.05, o.guardCol ?? k.p.render, 'iu');
       if (ra) this.end(o.u0, o.y, o.y + H - 0.1, n0 + 0.02, no - 0.07, -1, o.guardCol ?? k.p.render);
@@ -184,4 +184,13 @@ export class Kit {
   get tris() { return this.plain.tris + this.glass.tris + this.leaves.tris + this.bulbs.tris; }
 }
 export const kitOf = (d: SiteDraw) => new Kit(d);
+/**
+ * A cluster of bougainvillea over a wall's top at plan (x, z), the wall's top at y: a cushion of leaves and three rounder clusters of flowers in the
+ * palette's accent (as the shared perimeter's, which only draws them on a full-height street wall). Thinned out on the low preset.
+ */
+export function bougainvillea(d: SiteDraw, x: number, z: number, y: number, r = 0.7, k = 0) {
+  if (d.lite && k % 2) return;
+  d.blob(d.leaves, r, x, y - 0.12, z, d.c.hedge, 0.45, 0);
+  for (const [t, dy] of [[-0.45, 0.1], [0.1, 0.2], [0.55, 0.08]] as const) d.blob(d.leaves, r * 0.5, x + t * r, y + dy, z, (k + Math.round(t * 4)) % 3 ? d.c.bloom : d.c.bloom2, 0.75, 0);
+}
 export { E, GROUND, STOREY };

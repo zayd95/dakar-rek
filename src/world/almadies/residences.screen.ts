@@ -9,10 +9,14 @@ import { GREEN, GUARD, kitOf, mix } from './residences.kit';
  * spill over the open loggias' guards. A two-storey glass lobby stands out in front of the middle three bays, a band of stone above its glass
  * carrying the name, a canopy over its door; the roof is crowned by a pergola of oak blades, the plant behind it.
  */
+/** True where the bay `b` (0…8) is closed by blades on floor `f`: the even bays but one floor in four, the odd bays on that floor only. */
+export const screenClosed = (b: number, f: number) => (b % 2 === 0) !== ((f + b) % 4 === 0);
+/** The three bays in front of which the glass lobby stands. */
+export const LOBBY_BAYS = [3, 4, 5];
 export const screen: SiteBuilder = d => {
   const { site: s, p, lite } = d, k = kitOf(d), n = Math.max(4, s.storeys), H = STOREY, G = GROUND, L = (i: number) => G + i * H, roof = L(n), top = n - 1;
   const B = { x0: -20.25, x1: 20.25, z0: -8.2 }, Zin = 1.4, Zout = 3.6, BAY = 4.5, bu = (i: number) => B.x0 + i * BAY;
-  const m = k.plain, gl = k.glass, blade = [p.wood, mix(p.frame, p.wood, 0.12)];
+  const m = k.plain, blade = [p.wood, mix(p.frame, p.wood, 0.12)];
   perimeter(d, { gate: s.gate, front: 'wall' });
 
   // ------------------------------------------------------------------------------------------------ the masses
@@ -21,14 +25,13 @@ export const screen: SiteBuilder = d => {
   for (let i = 1; i <= top; i++) k.slab({ x0: B.x0, x1: B.x1, z0: B.z0, z1: Zout }, L(i), { over: 0.3, overS: 0.05, thick: 0.26 });
   k.slab({ x0: B.x0, x1: B.x1, z0: B.z0, z1: Zout }, roof, { over: 0.4, overS: 1.0, thick: 0.34 });                          // the roof: a deep visor
   for (let b = 1; b < 9; b++) m.box(bu(b) - 0.15, b >= 3 && b <= 6 ? L(2) : L(1), Zin, bu(b) + 0.15, roof, Zout + 0.04, p.slab, 'BTU');   // the fins between the loggias
+  for (const x of [B.x0, B.x1 - 0.3]) m.box(x, L(1), Zin, x + 0.3, roof, Zout + 0.04, p.slab, 'BTU');                                       // the end fins, closing the end loggias
   d.solid(B.x0, B.z0, B.x1, Zout, roof + 0.4);
   k.sec('masses');
 
   // ------------------------------------------------------------------------------------------------ the wrap: loggias and blades
   const Fi = k.facade('street', Zin), Fo = k.facade('street', Zout);
-  /** True where the bay `b` is closed by blades on floor `f`: the even bays but one floor in four, the odd bays on that floor only. */
-  const closed = (b: number, f: number) => (b % 2 === 0) !== ((f + b) % 4 === 0);
-  const lobbyBay = (b: number) => b >= 3 && b <= 5;
+  const closed = screenClosed, lobbyBay = (b: number) => LOBBY_BAYS.includes(b);
   for (let b = 0; b < 9; b++) {
     let f = 1;
     while (f <= top) {
@@ -42,8 +45,8 @@ export const screen: SiteBuilder = d => {
       } else {
         for (let g = f; g <= e; g++) {
           Fi.quad(bu(b) + 0.15, bu(b + 1) - 0.15, L(g), L(g + 1) - 0.27, 0.01, p.render2);
-          Fi.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(g) + 0.04, y1: L(g) + 2.74, mull: 1, ledge: false });
-          Fo.pane(u0, u1, L(g) + 0.06, L(g) + 1.05, -0.06, GUARD); Fo.box(u0, u1, L(g) + 1.05, L(g) + 1.09, -0.09, -0.03, p.frame, 'iue');
+          Fi.opening({ u0: bu(b) + 0.5, u1: bu(b + 1) - 0.5, y0: L(g) + 0.04, y1: L(g) + 2.74, mull: 1, ledge: false, lean: g > 5 });
+          Fo.quad(u0, u1, L(g) + 0.06, L(g) + 1.05, -0.06, GUARD); Fo.box(u0, u1, L(g) + 1.05, L(g) + 1.09, -0.09, -0.03, p.frame, 'iue');
           k.leaves.box(bu(b) + 0.35, L(g), Zout - 0.75, bu(b + 1) - 0.35, L(g) + 0.5, Zout - 0.25, GREEN.hedge2, 'U');
           if (!lite && (b + g) % 2 === 0) k.leaves.box(bu(b) + 0.35, L(g) + 0.5, Zout - 0.7, bu(b) + 1.2, L(g) + 0.75, Zout - 0.3, GREEN.moss, 'U');
         }
@@ -81,8 +84,8 @@ export const screen: SiteBuilder = d => {
   const ns = Math.floor((pg.x1 - pg.x0) / (lite ? 0.9 : 0.5));
   for (let i = 0; i <= ns; i++) { const x = pg.x0 + ((pg.x1 - pg.x0) * i) / ns; m.box(x - 0.045, Y + ph + 0.22, pg.z0 - 0.2, x + 0.045, Y + ph + 0.36, pg.z1 + 0.2, p.wood, 'LR'); }
   const gy = roof + 0.06;
-  gl.vq('z', Zout + 0.95, B.x0 - 0.3, B.x1 + 0.3, gy, gy + 1.05, 1, GUARD); gl.vq('z', B.z0 - 0.4, B.x0 - 0.4, B.x1 + 0.4, gy, gy + 1.05, -1, GUARD);
-  gl.vq('x', B.x0 - 0.4, B.z0 - 0.4, Zout + 1.0, gy, gy + 1.05, -1, GUARD); gl.vq('x', B.x1 + 0.4, B.z0 - 0.4, Zout + 1.0, gy, gy + 1.05, 1, GUARD);
+  m.vq('z', Zout + 0.95, B.x0 - 0.3, B.x1 + 0.3, gy, gy + 1.05, 1, GUARD); m.vq('z', B.z0 - 0.4, B.x0 - 0.4, B.x1 + 0.4, gy, gy + 1.05, -1, GUARD);
+  m.vq('x', B.x0 - 0.4, B.z0 - 0.4, Zout + 1.0, gy, gy + 1.05, -1, GUARD); m.vq('x', B.x1 + 0.4, B.z0 - 0.4, Zout + 1.0, gy, gy + 1.05, 1, GUARD);
   m.box(B.x0 - 0.4, gy + 1.05, Zout + 0.9, B.x1 + 0.4, gy + 1.09, Zout + 1.0, p.frame, 'UB');
   roofPlant(d, { x0: -14, x1: 14, z0: -8, z1: -4.5 }, roof + 0.02, { units: 3 });
   k.sec('crown');
