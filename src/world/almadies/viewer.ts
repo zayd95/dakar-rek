@@ -5,7 +5,7 @@ import { Batch, signTexture, signCanvasSize } from '../batch';
 import { addGrain } from '../grain';
 import { PALETTES, extentOf, siteDraw, sizeOf, type DistrictKit, type PaletteName, type Site, type SiteKind, type SiteSize } from './contract';
 import { SITES } from './plan';
-import { lifeInHub, variantOf, variantsFor } from './district';
+import { lifeInHub, planYaw, variantOf, variantsFor } from './district';
 
 /**
  * LD2.0-E: the district's viewer (tools/district-viewer/index.html, built by scripts/shots-district-designs.mjs). One design on a site of its size on a
@@ -71,6 +71,12 @@ function show(o: ShowOptions) {
   if (res.life) for (const p of lifeInHub(d, res.life).people) {
     const sit = p.clip === 'Sit', m = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, sit ? 0.45 : 1.05, 3, 8), new THREE.MeshLambertMaterial({ color: sit ? 0x6aa84f : p.clip === 'Talk' ? 0xd08a2c : 0x3b6ea5 }));
     m.position.set(p.x, 0.1 + (p.y ?? 0) + (sit ? 0.55 : 0.8), p.z); m.userData.scenery = true; g.add(m);
+  }
+  // the rooftop restaurant's sign (SiteResult.rooftopSign: the venue paints and lights it in the game): its faces, pictured, not counted in the cost
+  if (res.rooftopSign) for (const p of res.rooftopSign.panels) {
+    const { width, height } = signCanvasSize(p.w, p.h), tex = signTexture(p.kind === 'front' ? 'TERRASSE DE NGOR' : 'TERRASSE', '#10283a', '#ffe7a8', width, height);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), new THREE.MeshLambertMaterial({ map: tex })), q = d.f.p(p.x, p.z);
+    m.position.set(q.x, p.y, q.z); m.rotation.y = planYaw(d, p.yaw); m.userData.scenery = true; g.add(m);
   }
   // the road in front, the pavement, a person for scale
   const road = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.05, 14), new THREE.MeshLambertMaterial({ color: 0x50535a }));

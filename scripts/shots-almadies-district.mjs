@@ -38,6 +38,21 @@ const SHOTS = {
   'villa-street': { p: [-30, 1.8, -62], t: [-24, 2.6, -46] },
   'cross-street': { p: [-62, 2.4, -20], t: [-62, 3, 40] },
 };
+// SET=rooftop (round 4: « put the Terrasse de Ngor's name on top, visible from the street and far »): the boutique hotel (x −50…−10, z −113…−91, the sea road to the north) from the street, from far along the
+// road both ways, from the avenue and the cross street at its sides, from the beach and the air, and the stair door (−40, −105.6) with its plaque.
+if (process.env.SET === 'rooftop') for (const k of Object.keys(SHOTS)) delete SHOTS[k];
+if (process.env.SET === 'rooftop') Object.assign(SHOTS, {
+  'sign-street-near': { p: [-30, 1.8, -117], t: [-30, 16, -104.6] },
+  'sign-street-east': { p: [-6, 1.8, -118], t: [-30, 14, -104] },
+  'sign-road-far-east': { p: [50, 2.0, -118], t: [-30, 17, -104] },
+  'sign-road-far-west': { p: [-80, 2.0, -118], t: [-30, 17, -104] },
+  'sign-avenue': { p: [0, 1.8, -70], t: [-12, 16, -100] },
+  'sign-cross-street': { p: [-60, 1.8, -70], t: [-48, 16, -100] },
+  'sign-beach': { p: [-30, 1.8, -140], t: [-30, 15, -105] },
+  'sign-aerial': { p: [-30, 40, -152], t: [-30, 12, -104] },
+  'sign-door': { p: [-44, 1.8, -117], t: [-40, 7, -105.6] },
+  'sign-door-near': { p: [-36, 1.7, -114.5], t: [-40, 4, -105.6] },
+});
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const cost = {}, errors = [];
 try {

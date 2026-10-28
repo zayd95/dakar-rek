@@ -26,7 +26,10 @@ const ROUTE_ROUND3 = [
   [24, -64, 2.8], [8, -62.5, 2.8], [4, -52, 3], [4, -30, 2.6], [4, -8, 2.6], [4, 2, 2.8],                                                  // west along the first avenue, then down the central avenue
   [30, 2.5, 2.8], [60, 3, 2.6], [88, 4.5, 2.4], [90, 12, 2.0], [90, 22, 1.9], [90, 36, 1.9], [90, 50, 2.2], [93, 58, 3.2],                // east to the meeting square, its path, its centre
 ];
-const ROUTE = process.env.ROUTE === 'round3' ? ROUTE_ROUND3 : ROUTE_ROUND2;
+// ROUTE=rooftop (round 4): along the sea road from 130 m east of the boutique hotel to 80 m west of it, the camera held on the roof sign (« visible from the street and far »), dusk to night
+const ROUTE_ROOFTOP = [[100, -118, 2.0], [60, -118, 2.0], [20, -118, 2.1], [-10, -117.5, 2.2], [-30, -117, 2.4], [-55, -117.5, 2.4], [-80, -118, 2.2]];
+const LOOK = process.env.ROUTE === 'rooftop' ? [-30, 17.5, -104.6] : null;
+const ROUTE = process.env.ROUTE === 'round3' ? ROUTE_ROUND3 : process.env.ROUTE === 'rooftop' ? ROUTE_ROOFTOP : ROUTE_ROUND2;
 const TARGET_AHEAD = 11;
 // a centripetal-ish Catmull-Rom through the route, sampled by arc length
 const pts = ROUTE.map(([x, z, y]) => ({ x, z, y }));
@@ -40,7 +43,7 @@ const N = SECONDS * FPS;
 console.log(`route ${Math.round(total)} m, ${N} frames (${SECONDS} s at ${(total / SECONDS).toFixed(1)} m/s)`);
 if (DRY) process.exit(0);
 // the hour: late morning → golden hour → dusk → night over the route
-const hourAt = u => u < 0.4 ? 10.5 + (u / 0.4) * 6.5 : u < 0.7 ? 17 + ((u - 0.4) / 0.3) * 2.2 : 19.2 + ((u - 0.7) / 0.3) * 2.2;
+const hourAt = u => process.env.ROUTE === 'rooftop' ? 18 + u * 3 : u < 0.4 ? 10.5 + (u / 0.4) * 6.5 : u < 0.7 ? 17 + ((u - 0.4) / 0.3) * 2.2 : 19.2 + ((u - 0.7) / 0.3) * 2.2;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -53,12 +56,12 @@ try {
   await d(([x, z]) => { window.__dakar.setHour(10.5); window.__dakar.teleport('almadies', x, z, 0); }, ROUTE[0]);
   await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies', null, { timeout: 120000 });
   await page.waitForTimeout(2500);
-  if (process.env.ROUTE === 'round3') await d(() => { const D = window.__dakar; D.ambientRun?.(150); D.ambientSettle?.(); for (let i = 0; i < 240; i++) D.step(1 / 24, 1); });   // the street's people are out
+  if (process.env.ROUTE === 'round3' || process.env.ROUTE === 'rooftop') await d(() => { const D = window.__dakar; D.ambientRun?.(150); D.ambientSettle?.(); for (let i = 0; i < 240; i++) D.step(1 / 24, 1); });   // the street's people are out
   await d(() => window.__dakar.pause(true));
   for (let f = 0; f < N; f++) {
     const u = f / (N - 1), s = u * total, c = at(s), a = at(s + TARGET_AHEAD), sway = Math.sin(u * Math.PI * 14) * 1.2;
-    const yaw = Math.atan2(a.x - c.x, a.z - c.z), tx = a.x + Math.cos(yaw) * sway, tz = a.z - Math.sin(yaw) * sway;
-    await d(([c, tx, tz, h]) => { window.__dakar.setHour(h); window.__dakar.cam([c.x, c.y, c.z], [tx, Math.max(1.5, c.y * 0.9), tz]); window.__dakar.step(1 / 24, 1); window.__dakar.render(); }, [c, tx, tz, hourAt(u)]);
+    const yaw = Math.atan2(a.x - c.x, a.z - c.z), tx = LOOK ? LOOK[0] : a.x + Math.cos(yaw) * sway, tz = LOOK ? LOOK[2] : a.z - Math.sin(yaw) * sway;
+    await d(([c, tx, tz, h, ly]) => { window.__dakar.setHour(h); window.__dakar.cam([c.x, c.y, c.z], [tx, ly ?? Math.max(1.5, c.y * 0.9), tz]); window.__dakar.step(1 / 24, 1); window.__dakar.render(); }, [c, tx, tz, hourAt(u), LOOK ? LOOK[1] : null]);
     await page.screenshot({ path: `${FRAMES}/${String(f).padStart(5, '0')}.jpg`, type: 'jpeg', quality: 86 });
     if (f % 120 === 0) console.log(`frame ${f}/${N}`);
   }

@@ -1,5 +1,5 @@
 {
- "at": "2026-10-27T22:54:07.335Z",
+ "at": "2026-10-28T00:43:03.432Z",
  "cost": {
   "house-m1": {
    "name": "Maison empilée",
@@ -174,24 +174,24 @@
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 251,
-    "street": 380,
-    "night": 169
+    "front": 267,
+    "street": 381,
+    "night": 178
    },
    "medium": {
     "calls": 10,
-    "tris": 5402
+    "tris": 5548
    },
    "info": {
     "colliders": 30,
-    "signs": 1,
+    "signs": 5,
     "tallest": 17.299999999999997
    },
    "low": {
     "calls": 10,
-    "tris": 3936
+    "tris": 4082
    },
-   "glbBytes": 445324
+   "glbBytes": 456700
   },
   "hotel-tower": {
    "name": "Hôtel tour sur son podium",

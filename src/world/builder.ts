@@ -1366,13 +1366,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
   }
   // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
-  let rooftopDoor: HubWorld['rooftopDoor'], streetscape: HubWorld['streetscape'], kit: DistrictKit | undefined, openings: Rect[] = [];
+  let rooftopDoor: HubWorld['rooftopDoor'], rooftopSign: HubWorld['rooftopSign'], streetscape: HubWorld['streetscape'], kit: DistrictKit | undefined, openings: Rect[] = [];
   if (id === 'almadies') {
     const panes = new Batch(), dark = new Batch();   // the windows' panes (warm at night) and glass that never glows, each its own mesh
     kit = { lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign };
     const dist = buildDistrict(kit);
     group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
-    rooftopDoor = dist.rooftopDoor;
+    rooftopDoor = dist.rooftopDoor; rooftopSign = dist.rooftopSign;
     seats.push(...dist.seats); people.push(...dist.people);         // the district's terraces, benches and the people at its doors (LD2.0-E round 3)
     openings = dist.openings;
     for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
@@ -1437,7 +1437,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, streetscape,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, rooftopSign, streetscape,
     dispose() { disposeGroup(group); },
   };
 }

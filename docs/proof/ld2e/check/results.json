@@ -1,10 +1,10 @@
 {
- "at": "2026-10-27T22:51:43.495Z",
- "passed": 17,
+ "at": "2026-10-28T00:40:11.701Z",
+ "passed": 19,
  "failed": 0,
  "static": {
   "meshes": 184,
-  "tris": 266840
+  "tris": 266994
  },
  "ring": {
   "total": 6208,
@@ -68,6 +68,16 @@
    "detail": "{\"door\":{\"id\":\"almadies:rooftop:almadies\",\"x\":-40,\"z\":-105.6}}"
   },
   {
+   "name": "(medium) the rooftop restaurant's name is one lit mesh of five faces, up on the hotel's roof",
+   "ok": true,
+   "detail": "{\"mesh\":{\"verts\":30,\"emissive\":true,\"parent\":\"Group\"},\"sign\":{\"top\":21.41,\"faces\":4}}"
+  },
+  {
+   "name": "(medium) the name is seen from the street and from far: a face looks at each of 42 viewpoints, with nothing solid between",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
    "name": "(medium) the streetscape stands: palms, kerb palms, benches, beds, lawns and stalls",
    "ok": true,
    "detail": "{\"palm\":28,\"lawn\":6,\"bed\":10,\"bench\":14,\"stall\":5,\"crate\":2,\"stool\":2,\"kerb palm\":109}"
@@ -80,12 +90,12 @@
   {
    "name": "(medium) people are drawn at the boutique hotel's door (the doorman, the bellhop, the valet, the terrace's waiter and customers)",
    "ok": true,
-   "detail": "{\"humanoidsDrawn\":9}"
+   "detail": "{\"humanoidsDrawn\":8}"
   },
   {
    "name": "(medium) the district stays within +95 k triangles of the villa branch's hub (round 3: the life on the ground and the streetscape)",
    "ok": true,
-   "detail": "{\"now\":{\"meshes\":184,\"tris\":266840},\"was\":{\"meshes\":174,\"tris\":184520},\"dTris\":82320}"
+   "detail": "{\"now\":{\"meshes\":184,\"tris\":266994},\"was\":{\"meshes\":174,\"tris\":184520},\"dTris\":82474}"
   },
   {
    "name": "(medium) the district stays within +10 meshes (draw calls) of the villa branch's hub",

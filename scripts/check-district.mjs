@@ -7,6 +7,8 @@
 //  7. the rooftop restaurant's stair door (« Terrasse de Ngor ») stands on a hotel's street face and a body walks to it from the pavement;
 //  8. life on the ground (round 3): the streetscape stands (palms, kerb palms, benches, beds, lawns, stalls), the street's benches and chairs are the city's ambient spots,
 //     and the people placed at a hotel's door are drawn when the player stands there;
+//  9. the rooftop restaurant's name is on top of the hotel (round 4: « put it on top since it's a rooftop and make it visible from the street and far »): one lit mesh of five faces, a face looks
+//     at each of 40 viewpoints (the sea road from 50 m west to 130 m east of the hotel, the avenue and the cross street at its sides, the beach) with nothing solid of the game's between;
 //  6. the cost of the hub against the villa branch's (docs/proof/ld2e/before/baseline.json, measured the same way: every mesh of the scene, visible or not, whatever the camera
 //     sees, the hub's own group: see staticCost): the budgets of docs/ld2/LD2_E.md (+95 k triangles since round 3, +10 meshes).
 // Usage: node scripts/check-district.mjs <baseUrl> <outDir> [beforeCost.json]   (BASELINE=1: only measure and walk, pass or fail nothing: the villa branch's own build)
@@ -98,6 +100,27 @@ for (const q of ['low', 'medium']) {
       check('(medium) the rooftop restaurant\'s door stands on the street face of a hotel of the district, in the front half of its lot, facing the street', !!hotel && roof.facade.nz === -1 && D.z - hotel.rect.z0 < 12, JSON.stringify({ door: D, facade: roof.facade, hotel: hotel?.id }));
       check('(medium) a body walks from the pavement to the rooftop restaurant\'s door', reached, JSON.stringify({ door: D }));
     } else check('(medium) the rooftop restaurant has its door', false, 'no rooftop info');
+    // 9. the rooftop restaurant's name on the roof (round 4)
+    if (roof?.sign) {
+      const mesh = await s.d(() => { const m = window.__dakar.three.scene.getObjectByName('rooftop-sign'); return m ? { verts: m.geometry.attributes.position.count, emissive: !!m.material.emissiveMap, parent: m.parent?.type ?? null } : null; });
+      check('(medium) the rooftop restaurant\'s name is one lit mesh of five faces, up on the hotel\'s roof', !!mesh && mesh.verts === 30 && mesh.emissive && roof.sign.onRoof && roof.sign.top > 18 && roof.sign.faces === 4, JSON.stringify({ mesh, sign: { top: roof.sign.top, faces: roof.sign.faces } }));
+      const clearRay = (eye, to) => geo.colliders.every(([x0, z0, x1, z1, h]) => {
+        if (eye[0] > x0 && eye[0] < x1 && eye[2] > z0 && eye[2] < z1) return true;
+        const dv = [to[0] - eye[0], to[1] - eye[1], to[2] - eye[2]]; let t0 = 0, t1 = 1;
+        for (const [o, v, a, b] of [[eye[0], dv[0], x0, x1], [eye[1], dv[1], 0, h], [eye[2], dv[2], z0, z1]]) {
+          if (Math.abs(v) < 1e-9) { if (o < a || o > b) return true; continue; }
+          let ta = (a - o) / v, tb = (b - o) / v; if (ta > tb) [ta, tb] = [tb, ta];
+          t0 = Math.max(t0, ta); t1 = Math.min(t1, tb); if (t0 > t1) return true;
+        }
+        return !(t0 <= t1 && t0 < 0.985);
+      });
+      const views = [];
+      for (let x = -80; x <= 100; x += 10) views.push([`the sea road at x ${x}`, x, -118]);
+      for (let z = -60; z >= -118; z -= 8) { views.push([`the avenue at z ${z}`, 0, z]); views.push([`the cross street at z ${z}`, -60, z]); }
+      for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push([`the beach at x ${x}`, x, -140]);
+      const unseen = views.filter(([, vx, vz]) => !roof.sign.panels.some(p => { const dx = vx - p.x, dz = vz - p.z, f = (dx * p.nx + dz * p.nz) / Math.hypot(dx, dz); return f > 0.2 && clearRay([vx, 1.7, vz], [p.x, p.y, p.z]); })).map(v => v[0]);
+      check(`(medium) the name is seen from the street and from far: a face looks at each of ${views.length} viewpoints, with nothing solid between`, unseen.length === 0, JSON.stringify(unseen.slice(0, 6)));
+    } else check('(medium) the rooftop restaurant has its name on the hotel\'s roof', false, 'no sign on the roof');
     // 8. life on the ground (round 3)
     const ss = await s.d(() => window.__dakar.district?.streetscape?.() ?? []), kinds = {}; for (const p of ss) kinds[p.kind] = (kinds[p.kind] ?? 0) + 1;
     check('(medium) the streetscape stands: palms, kerb palms, benches, beds, lawns and stalls', (kinds.palm ?? 0) >= 20 && (kinds['kerb palm'] ?? 0) >= 60 && (kinds.bench ?? 0) >= 12 && (kinds.bed ?? 0) >= 6 && (kinds.lawn ?? 0) >= 4 && (kinds.stall ?? 0) >= 4, JSON.stringify(kinds));

@@ -114,6 +114,14 @@ export interface SiteLife { seats?: PlanSeat[]; people?: PlanPerson[] }
 /** What a site may put out (the humanoid budget is the game's: the nearest few are drawn, the rest wait): people and seats per site. */
 export const LIFE_CAP: Record<SiteKind, { people: number; seats: number }> = { house: { people: 2, seats: 6 }, villa: { people: 2, seats: 8 }, hotel: { people: 10, seats: 44 }, residence: { people: 8, seats: 32 } };
 
+/**
+ * One face of the rooftop restaurant's sign (LD2.0-E round 4), in the plan: its centre (`x`, `z`; `y` the height above the hub's ground), width and height, and the way it
+ * faces (`yaw`: 0 = toward the street, +z; π/2 = toward +x). 'front': the long board over the street (one face each way); 'blade': a board across the roof's end, read from along the street.
+ * The venue (src/venues/rooftop.ts) paints and lights them in one mesh; the design draws the gantry that holds them.
+ */
+export interface RoofPanel { x: number; y: number; z: number; w: number; h: number; yaw: number; kind: 'front' | 'blade' }
+export interface RoofSign { panels: RoofPanel[] }
+
 /** What a builder hands back (the colliders and canopies are read from the draw itself). */
 export interface SiteResult {
   /** Ground the street keeps open (a gate's apron, a porte-cochère); the hub's `keepClear`. */
@@ -127,6 +135,8 @@ export interface SiteResult {
   rooftopDoor?: { x: number; z: number };
   /** The seats and the people of the site's ground floor (see `SiteLife`). */
   life?: SiteLife;
+  /** The rooftop restaurant's name, up on the roof where the street and the distance see it (see `RoofPanel`). */
+  rooftopSign?: RoofSign;
 }
 export type SiteBuilder = (d: SiteDraw) => SiteResult | void;
 /** One design of a kind: the lane's builder, its name for the catalogue, the site size it fits. */

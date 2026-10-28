@@ -1,4 +1,4 @@
-import { E, type GateSide, type SiteDraw, type SiteResult } from './contract';
+import { E, type GateSide, type RoofPanel, type SiteDraw, type SiteResult } from './contract';
 import { bench, door, gateX, menuBoard, nameBoard, paving, parkedCar, perimeter, planter, roofPlant, scooter, slabEdge, solidBox, volume } from './parts';
 import { STAFF, ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, strips, table, person, trolley } from './hotels.kit';
 
@@ -113,8 +113,9 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     for (let k = 0; k < 3; k++) d.blob(d.leaves, 0.5, left * (8.5 + k * 4.2), yD + 0.45, -7.7, k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
     planter(d, left * 12.5, zF + BAL + 0.05, 4.4, 0.55, { bloom: 0xd94a8c, h: 0.45 });
   }
+  const crown = { lx: 5.2, z0: -5.0, z1: 0.6, h: 3.0 };
   { // the crown: a lounge of glass under a deep white blade on two posts, its terrace in front
-    const lx = 5.2, z0 = -5.0, z1 = 0.6, h = 3.0, yT = yD + h + 0.35;
+    const { lx, z0, z1, h } = crown, yT = yD + h + 0.35;
     d.box(d.plain, 2 * lx, h, z1 - z0, 0, yD, (z0 + z1) / 2, p.render);
     pane(d, 'street', z1, -lx + 0.5, lx - 0.5, yD + 0.15, yD + h - 0.25, { mull: 1.7, sky: 0.6, rooms: 3, glow: 'lit' });
     for (const sx of [-1, 1]) slats(d, faceOf(sx), sx * lx, z0 + 0.8, z1 - 0.8, yD + 0.2, yD + h - 0.2, { pitch: 0.24, w: 0.12 });
@@ -125,6 +126,27 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     d.flat(d.plain, 2 * lx + 0.6, 2.6, 0, yD + 0.03, 1.9, mix(p.wood, p.stone, 0.3));
     for (const x of [-2.6, 2.6]) { table(d, x, yD + 0.03, 1.9); }
     d.solid(-lx - 0.2, z0 - 0.2, lx + 0.2, z1, yD + h + 0.5);
+  }
+  // the rooftop restaurant's name up on the crown's roof, where the street and the distance see it (round 4: « put it on top since it's a rooftop and make it visible from the street and far »):
+  // a long board over the street, one face each way (the sea road in front, the avenue behind), and a blade across each end of the roof, read from along the street. The venue
+  // (src/venues/rooftop.ts) paints and lights the faces (one mesh, the one it always had); what is drawn here is the gantry: the boards' bodies, their posts, a lit edge and a lit top.
+  const rooftopSign: RoofPanel[] = [];
+  { const yT = yD + crown.h + 0.35, y0 = yT + 1.15, bh = 3.2, fw = 14.2, bw = 5.4, zS = 2.6, yc = y0 + bh / 2, fr = p.frame;
+    d.slab(d.plain, fw + 0.3, bh, 0.16, 0, yc, zS - 0.1, fr);                                                                                  // the front board's body (a frame round the faces)
+    for (const x of [-6.2, 0, 6.2]) d.box(d.metal, 0.22, y0 - yT, 0.22, x, yT, zS - 0.1, fr);                                                  // its three posts, off the crown's roof
+    litBar(d, -fw / 2, fw / 2, zS + 0.1, y0 - 0.06, { d: 0.1, h: 0.06 });                                                                      // the edge under it, lit
+    litBar(d, -fw / 2, fw / 2, zS + 0.02, y0 + bh + 0.1, { d: 0.12, h: 0.12, col: 0xffe2a8 });                                                  // and a lit bar along its top
+    // a blade at each end of the roof, standing on the slab's overhang above the end walls: from the avenue and the cross street at the hotel's sides (a board over the crown is
+    // hidden there by the hotel's own end wall) as from along the sea road, the blade is the one that faces the viewer
+    const xb = X + 0.7, zb = -2.0, yb = yD + 2.3, ybc = yb + bh / 2;
+    for (const sx of [-1, 1]) {
+      d.slab(d.plain, 0.16, bh, bw + 0.3, sx * xb, ybc, zb, fr);                                                                              // its body,
+      for (const z of [zb - 2.0, zb + 2.0]) d.box(d.metal, 0.2, yb - yD, 0.2, sx * xb, yD, z, fr);                                              // its two posts, off the roof,
+      d.box(d.bulbs, 0.1, 0.06, bw, sx * (xb + 0.1), yb - 0.06, zb, 0xfff1c8);                                                                    // the lit edge under it
+    }
+    const pf = { y: yc, h: bh - 0.18 }, pb = { y: ybc, h: bh - 0.18 };
+    rooftopSign.push({ ...pf, x: 0, z: zS + 0.01, w: fw - 0.16, yaw: 0, kind: 'front' }, { ...pf, x: 0, z: zS - 0.21, w: fw - 0.16, yaw: Math.PI, kind: 'front' },
+      { ...pb, x: xb + 0.11, z: zb, w: bw - 0.16, yaw: Math.PI / 2, kind: 'blade' }, { ...pb, x: -(xb + 0.11), z: zb, w: bw - 0.16, yaw: -Math.PI / 2, kind: 'blade' });
   }
   { const hx0 = Math.min(rite * 14.6, rite * 19.2), hx1 = Math.max(rite * 14.6, rite * 19.2);                                   // the stair head, in render with an oak panel
     d.box(d.plain, hx1 - hx0, 3.2, 4.0, (hx0 + hx1) / 2, yD, -6.2, p.render); d.slab(d.plain, hx1 - hx0 + 0.6, 0.18, 4.6, (hx0 + hx1) / 2, yD + 3.3, -6.2, p.slab);
@@ -193,6 +215,6 @@ export function buildBoutique(d: SiteDraw): SiteResult {
     bollard(d, sx * 21.7, 3.4);
     rec.flanks.push({ side: sx as -1 | 1, what: 'planting' });
   }
-  // the stair door of the rooftop restaurant (the Terrasse de Ngor, src/venues/rooftop.ts) on the street face, in the first bay beyond the lobby's portal, between the pilasters at 8 and 12 (the gate's side), under the balconies: seen from the avenue, a few strides from the way in
-  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], rooftopDoor: { x: rite * 10.0, z: zF + 1.1 }, life };
+  // the stair door of the rooftop restaurant (the Terrasse de Ngor, src/venues/rooftop.ts) on the street face (its name is up on the roof: the sign above), in the first bay beyond the lobby's portal, between the pilasters at 8 and 12 (the gate's side), under the balconies: seen from the avenue, a few strides from the way in
+  return { keepClear: [{ ...d.f.rect(-4.6, zF + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], rooftopDoor: { x: rite * 10.0, z: zF + 1.1 }, rooftopSign: { panels: rooftopSign }, life };
 }
