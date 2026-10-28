@@ -1,0 +1,53 @@
+PASS: the quay is the « Embarcadère de Ngor » and offers no fishing (« Aider les pêcheurs », « Pirogue du matin » are gone) · {"port":{"id":"almadies:port","name":"Embarcadère de Ngor","x":30,"z":-109},"actions":["Embarcadère de Ngor","Regarder l’île de Ngor"]}
+  picture /tmp/claude-0/m4/ngor/tr/00-quay.png (310 kB)
+  picture /tmp/claude-0/m4/ngor/tr/01-boats-on-the-beach.png (158 kB)
+PASS: the embarcadère is built in the Almadies: both boats pulled up on the beach at their poses (bows on the sand), customers waiting on the sand without jackets · {"boats":{"pirogue":[44,-167,3.142,1,0.0461],"chaloupe":[53,-166.5,3.142,1,0.0448]},"waiting":[[42.5,-151,false],[45,-150.2,false],[51,-150.5,false],[52.19,-147.69,false]]}
+PASS: standing on the sand by the boats focuses the embarcadère; the action button offers the crossings · ⛵Prendre le bateauEmbarcadère de NgorE
+PASS: a tap opens the choice: the pirogue shows its fare, the passengers waiting and Ousmane's share · 🛶Traversée en pirogue4 passagers attendent · 1 000 F la place · Ousmane prend 40 %+3 000 F
+PASS: the chaloupe is closed and says how many pirogue crossings remain · 🚤Traversée en chaloupeOusmane te confie sa chaloupe après 3 traversées en pirogue · encore 3
+  picture /tmp/claude-0/m4/ngor/tr/02-choice.png (109 kB)
+PASS: pirogue: a tap on « Traversée en pirogue »: the player takes the helm (seated, locked) · {"seated":"almadies:venue:embarcadere:barre:pirogue","plan":{"out":4,"back":1}}
+  picture /tmp/claude-0/m4/ngor/tr/03-boarding.png (148 kB)
+  picture /tmp/claude-0/m4/ngor/tr/03-wading.png (160 kB)
+PASS: pirogue: 4 customers put on life jackets on the sand, wade in (feet under the sea) and sit aboard in them · {"seated":[["seated",true],["seated",true],["seated",true],["seated",true]],"vestOn":[0.12,0.12,0.12,0.12],"climbFrom":[-0.066,-0.059,-0.066,-0.058],"wadingSeen":4}
+PASS: pirogue: pushed off stern first from the sand: astern, its bow off the sand (grounded → afloat) · {"astern":true,"ground0":1,"groundMin":0}
+PASS: pirogue: across the open water: the boat moves, rocks, its wake shows, the helm stays locked · {"z":-222.02,"roll":0.087,"wake":0.42,"yaw":0.15}
+  picture /tmp/claude-0/m4/ngor/tr/03-mid-crossing.png (90 kB)
+  picture /tmp/claude-0/m4/ngor/tr/03-arriving.png (164 kB)
+PASS: pirogue: it comes in bow first and runs up the island's beach (grounded, the bow lifted) · {"pose":{"x":40,"z":-294,"yaw":0,"y":0.098,"roll":-0.0015,"pitch":0.0439,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0.03},"isle":{"x":40,"z":-294,"yaw":0}}
+  picture /tmp/claude-0/m4/ngor/tr/03-island.png (200 kB)
+PASS: pirogue: the island's leg is paid once on arrival: 2400 F (4 × 1000 F = 4000 F − Ousmane's 1600 F) · {"lines":[["Traversée vers Ngor · 4 passagers · 4 000 F − part d’Ousmane 1 600 F",2400]],"wallet":[3000,5400]}
+PASS: pirogue: the customers climb out into the shallows, wade to the sand, take their jackets off there and walk up the beach · {"climbOut":[-0.157,-0.157,-0.157,-0.157],"jacketsOff":[0.149,0.167,0.144,0.16],"ashore":[["leave",38.33,-302.26,false],["leave",36.67,-301.15,false],["leave",36.53,-309.27,false],["leave",37.02,-307.09,false],["walk",38.32,-301,true]]}
+PASS: pirogue: 1 return customers come down the beach from the parasols, put on jackets, wade in and board · [[4,"vest-on",0.413],[4,"board",-0.16],[4,"seated",0.009]]
+  picture /tmp/claude-0/m4/ngor/tr/03-return.png (130 kB)
+PASS: pirogue: the boat crosses back and runs up its own beach bow first, at its pose · {"pose":{"x":44,"z":-167,"yaw":3.142,"y":0.099,"roll":0.0003,"pitch":0.0451,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0.03},"home":{"x":44,"z":-167,"yaw":3.141592653589793}}
+  picture /tmp/claude-0/m4/ngor/tr/03-back.png (157 kB)
+PASS: pirogue: at the mainland the same: out into the shallows, jackets off on the sand · {"climbOut":[-0.058],"jacketsOff":[0.091]}
+PASS: pirogue: the return leg is paid once: 600 F (1 × 1000 F − Ousmane's 400 F) · {"lines":[["Traversée vers Ngor · 4 passagers · 4 000 F − part d’Ousmane 1 600 F",2400],["Traversée retour de Ngor · 1 passager · 1 000 F − part d’Ousmane 400 F",600]],"wallet":[3000,5400,6000]}
+PASS: pirogue: the counters move by one round trip · {"traversees":1,"traversees_pirogue":1,"traversees_chaloupe":0,"passagers_ngor":5}
+PASS: pirogue: the player is set down on the sand at the anchor, free to walk; the other boat never left its pose · {"pos":{"x":49.6,"y":0.1,"z":-155.3,"hub":"almadies","mode":"play","near":null,"yaw":3.141592653589793,"cam":3.141592653589793},"boats":{"pirogue":[44,-167,1],"chaloupe":[53,-166.5,1]}}
+PAID pirogue: aller 2400 F · retour 600 F · plan {"out":{"passengers":4,"fare":1000,"fares":4000,"rate":0.4,"share":1600,"net":2400},"back":{"passengers":1,"fare":1000,"fares":1000,"rate":0.4,"share":400,"net":600}}
+PASS: after three pirogue round trips the chaloupe opens: its fare (2 500 F), its passengers, Ousmane's share · {"before":1,"text":"🚤Traversée en chaloupe3 passagers attendent · 2 500 F la place · Ousmane prend 40 % · plus rapide, plus douce+7 500 F"}
+PASS: chaloupe: a tap on « Traversée en chaloupe »: the player takes the helm (seated, locked) · {"seated":"almadies:venue:embarcadere:barre:chaloupe","plan":{"out":3,"back":2}}
+PASS: chaloupe: 3 customers put on life jackets on the sand, wade in (feet under the sea) and sit aboard in them · {"seated":[["seated",true],["seated",true],["seated",true]],"vestOn":[0.12,0.12,0.12],"climbFrom":[-0.184,-0.184,-0.184],"wadingSeen":3}
+PASS: chaloupe: pushed off stern first from the sand: astern, its bow off the sand (grounded → afloat) · {"astern":true,"ground0":1,"groundMin":0}
+PASS: chaloupe: across the open water: the boat moves, rocks, its wake shows, the helm stays locked · {"z":-222.01,"roll":0.039,"wake":0.42,"yaw":0.062}
+PASS: chaloupe: it comes in bow first and runs up the island's beach (grounded, the bow lifted) · {"pose":{"x":40,"z":-295,"yaw":0,"y":0.1,"roll":0.0004,"pitch":0.0446,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0.02},"isle":{"x":40,"z":-295,"yaw":0}}
+PASS: chaloupe: the island's leg is paid once on arrival: 4500 F (3 × 2500 F = 7500 F − Ousmane's 3000 F) · {"lines":[["Traversée vers Ngor · 3 passagers · 7 500 F − part d’Ousmane 3 000 F",4500]],"wallet":[6000,10500]}
+PASS: chaloupe: the customers climb out into the shallows, wade to the sand, take their jackets off there and walk up the beach · {"climbOut":[-0.176,-0.176,-0.176],"jacketsOff":[0.148,0.164,0.142],"ashore":[["leave",37.22,-306.34,false],["leave",36.99,-300.9,false],["leave",38.33,-302.24,false],["walk",38.63,-301.43,true],["walk",38.73,-301.57,true]]}
+PASS: chaloupe: 2 return customers come down the beach from the parasols, put on jackets, wade in and board · [[9,"vest-on",0.413],[10,"vest-on",0.465],[9,"board",-0.18],[10,"board",-0.176],[9,"seated",0.142],[10,"seated",0.143]]
+PASS: chaloupe: the boat crosses back and runs up its own beach bow first, at its pose · {"pose":{"x":53,"z":-166.5,"yaw":3.142,"y":0.099,"roll":0.0003,"pitch":0.0454,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0.04},"home":{"x":53,"z":-166.5,"yaw":3.141592653589793}}
+PASS: chaloupe: at the mainland the same: out into the shallows, jackets off on the sand · {"climbOut":[-0.184,-0.184],"jacketsOff":[0.092,0.096]}
+PASS: chaloupe: the return leg is paid once: 3000 F (2 × 2500 F − Ousmane's 2000 F) · {"lines":[["Traversée vers Ngor · 3 passagers · 7 500 F − part d’Ousmane 3 000 F",4500],["Traversée retour de Ngor · 2 passagers · 5 000 F − part d’Ousmane 2 000 F",3000]],"wallet":[6000,10500,13500]}
+PASS: chaloupe: the counters move by one round trip · {"traversees":2,"traversees_pirogue":3,"traversees_chaloupe":1,"passagers_ngor":10}
+PASS: chaloupe: the player is set down on the sand at the anchor, free to walk; the other boat never left its pose · {"pos":{"x":49.6,"y":0.1,"z":-155.3,"hub":"almadies","mode":"play","near":null,"yaw":3.141592653589793,"cam":3.141592653589793},"boats":{"pirogue":[44,-167,1],"chaloupe":[53,-166.5,1]}}
+PAID chaloupe: aller 4500 F · retour 3000 F · plan {"out":{"passengers":3,"fare":2500,"fares":7500,"rate":0.4,"share":3000,"net":4500},"back":{"passengers":2,"fare":2500,"fares":5000,"rate":0.4,"share":2000,"net":3000}}
+  picture /tmp/claude-0/m4/ngor/tr/04-before-reload.png (77 kB)
+PASS: reloaded mid-leg: the player is back on the sand at the anchor · {"x":49.6,"y":0.1,"z":-155.3,"hub":"almadies","mode":"play","near":null,"yaw":3.141592653589793,"cam":3.141592653589793}
+PASS: both boats are back on the beach at their poses, nothing is paid for the unfinished leg, the counters as they were · {"boats":{"pirogue":{"x":44,"z":-167,"yaw":3.142,"y":0.099,"roll":0.0014,"pitch":0.0445,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0},"chaloupe":{"x":53,"z":-166.5,"yaw":3.142,"y":0.101,"roll":0.0006,"pitch":0.0452,"ground":1,"astern":false,"v":0,"s":0,"len":0,"wake":0}},"wallet":[13500,13500],"counters":{"traversees":2,"traversees_pirogue":3,"traversees_chaloupe":1,"passagers_ngor":10}}
+PASS: at night no crossing: the choice says when they start again · {"why":["Plus de traversée ce soir · reprise demain à 7 h"],"act":"⛵Prendre le bateauPlus de traversée ce soir · reprise demain à 7 hE","toast":"Ce soir à l’arène de Pikine : combat de quartier · portes 17 h · billet 1 000 F au guichetPlus de traversée ce soir · reprise demain à 7 hPlus de traversée ce soir · reprise demain à 7 h"}
+  picture /tmp/claude-0/m4/ngor/tr/05-night.png (120 kB)
+PASS: Soumbédioune still offers its fishing trip (« Partir avec les pêcheurs ») · {"anchor":{"id":"pirogue","x":-149.7,"z":111.6,"space":"street"},"focus":{"id":"corniche:venue:soumbedioune:pirogue","name":"Pirogue des pêcheurs","kind":"vehicle","space":"street","primary":"Partir avec les pêcheurs","all":["Partir avec les pêcheurs"],"why":[]}}
+PASS: no page errors
+
+37/37 passed

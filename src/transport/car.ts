@@ -95,6 +95,6 @@ let cached: VehicleSpec | null = null;
 export function carSpec(): VehicleSpec {
   return (cached ??= kitCarSpec({
     id: 'car', name: 'Berline moderne', kind: 'sedan', seed: sedanSeed(), visual: glbCar,
-    drive: { maxSpeed: 19, boostSpeed: 29, reverseSpeed: 3, accel: 4, brake: 7.5, turnRadius: 5.6, steer: 2.8, grip: 9.5 },
+    drive: { maxSpeed: 19, boostSpeed: 42, reverseSpeed: 3, accel: 4, brake: 7.5, turnRadius: 5.6, steer: 2.8, grip: 9.5 },
   }));
 }

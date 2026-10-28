@@ -1,0 +1,75 @@
+{
+ "at": "2026-10-27T13:08:23.880Z",
+ "passed": 9,
+ "failed": 0,
+ "static": {
+  "meshes": 1252,
+  "tris": 819282
+ },
+ "ring": {
+  "total": 6208,
+  "blocked": 229,
+  "byBlock": {
+   "0,0": 11,
+   "0,1": 14,
+   "0,2": 12,
+   "0,3": 38,
+   "1,0": 32,
+   "1,1": 15,
+   "1,2": 13,
+   "1,3": 33,
+   "2,0": 10,
+   "2,1": 12,
+   "2,2": 21,
+   "3,1": 6,
+   "3,3": 12
+  }
+ },
+ "results": [
+  {
+   "name": "(low) the Almadies builds, no page error",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(low) every one of the 0 sites has a building at least two storeys tall inside it",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(low) no wall or building stands on a carriageway",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) the Almadies builds, no page error",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) every one of the 0 sites has a building at least two storeys tall inside it",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) no wall or building stands on a carriageway",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) the Ngor residence keeps its door and its entry on the pavement outside its gate",
+   "ok": true,
+   "detail": "[{\"id\":\"almadies:home:residence\",\"name\":\"Résidence de luxe · Pointe de Ngor\",\"x\":-42,\"z\":-5.9},{\"id\":\"almadies:city:residence\",\"name\":\"Résidence de luxe · Pointe de Ngor\",\"x\":-44.6,\"z\":-5.1}]"
+  },
+  {
+   "name": "(medium) nothing solid covers the residence's door",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) no page error through the walk",
+   "ok": true,
+   "detail": "[]"
+  }
+ ]
+}

@@ -109,7 +109,7 @@ function driver(opts: { lane?: number; boost?: boolean } = {}) {
     const off = Math.abs(p.d - laneOf(false)), crawl = mode === 'pass' && !(leader && leader.v > 1) && off < 3.4 && (obstS - p.s) * dir < 10 && (obstS - p.s) * dir > -4;     // alongside the thing being passed: slow, wide
     const merging = mode === 'lane' && Math.abs(p.d - laneOf(false)) > 1.2;                  // coming back into his lane: not at full speed
     const brakeNow = brake || (merging && m.s.speed > 7) || (crawl && m.s.speed > 2.0);
-    return { fwd: brakeNow ? 0 : merging ? 0.4 : crawl ? 0.18 : mode === 'pass' ? (movingPass ? Math.max(0.7, slow) : Math.max(0.55, Math.min(slow, 0.7))) : slowFor, steer, boost: !!opts.boost && slow > 0.9 && mode === 'lane', brake: brakeNow };
+    return { fwd: brakeNow ? 0 : merging ? 0.4 : crawl ? 0.18 : mode === 'pass' ? (movingPass ? Math.max(0.7, slow) : Math.max(0.55, Math.min(slow, 0.7))) : slowFor, steer, boost: !!opts.boost && slow > 0.9 && mode === 'lane' && aheadIn(laneOf(false), 190) === Infinity, brake: brakeNow };   // the foot comes off the boost for what is a long way ahead: a car at 160–200 km/h cannot swerve round it at the last moment (its tyres hold v² / grip)
   };
 }
 

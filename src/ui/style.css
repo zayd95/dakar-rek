@@ -634,28 +634,8 @@ body[data-focus="prayer"] #toast .mo { display:none; }
   body.touch #joy { left:calc(14px + var(--sa-l)); bottom:calc(24px + var(--sa-b)); width:112px; height:112px; }
 }
 
-/* -------------------------------------------------------------- the driving pad (src/transport/ridePad.ts): smaller pedals to look at, the same large
-   targets for the thumb (the button is the target, the coloured disc inside it is what is seen), « Descendre » and « Vue » in reach above them */
+/* -------------------------------------------------------------- the driving pad (src/transport/ridePad.ts, ridePad.css: the steering rocker under the left thumb and the two
+   pedals under the right one own their look and sizes), « Descendre » and « Vue » in reach above the pedals */
 body.ridepad #ridepad { max-width:min(250px, calc(100vw - 150px - var(--sa-l) - var(--sa-r))); gap:10px; }
-body.ridepad #ridepad .rp-gas, body.ridepad #ridepad .rp-brake { position:relative; isolation:isolate; background:transparent; box-shadow:none; font-size:12.5px; }
-body.ridepad #ridepad .rp-gas::before, body.ridepad #ridepad .rp-brake::before { content:''; position:absolute; inset:13px; z-index:-1; border-radius:50%; background:#16a34a;
-  box-shadow:0 3px 10px rgba(0,0,0,.32), inset 0 0 0 2px rgba(255,255,255,.35); }
-body.ridepad #ridepad .rp-brake::before { background:#dc2626; inset:12px; }
-body.ridepad #ridepad .rp-gas { width:94px; height:94px; } body.ridepad #ridepad .rp-brake { width:80px; height:80px; }
-body.ridepad-car #ridepad .rp-gas { width:112px; height:112px; font-size:13.5px; } body.ridepad-car #ridepad .rp-brake { width:92px; height:92px; font-size:13px; }   /* a car: the same big targets as before */
-body.ridepad-car #ridepad .rp-gas::before { inset:19px; } body.ridepad-car #ridepad .rp-brake::before { inset:16px; }
-body.ridepad #ridepad button.down { box-shadow:none; }
-body.ridepad #ridepad button.down::before { box-shadow:0 1px 4px rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.7); }
 body.ridepad #ridepad .rp-off, body.ridepad #ridepad .rp-view { min-height:44px; height:44px; font-size:14px; }
-/* a phone under 400 px: the car's pedals a little smaller, so they never reach the joystick's corner */
-@media (max-width:399px) and (orientation:portrait) {
-  body.ridepad-car #ridepad .rp-gas { width:104px; height:104px; } body.ridepad-car #ridepad .rp-brake { width:88px; height:88px; }
-  body.ridepad-car #ridepad .rp-gas::before { inset:16px; } body.ridepad-car #ridepad .rp-brake::before { inset:14px; }
-  body.ridepad #ridepad .rp-pedals { gap:8px; }
-}
-@media (max-width:360px) and (orientation:portrait) {
-  body.ridepad-car #ridepad .rp-gas::before, body.ridepad-car #ridepad .rp-brake::before { inset:12px; }
-  body.ridepad #ridepad .rp-gas, body.ridepad-car #ridepad .rp-gas { width:86px; height:86px; font-size:12px; }
-  body.ridepad #ridepad .rp-brake, body.ridepad-car #ridepad .rp-brake { width:74px; height:74px; font-size:12px; }
-  body.ridepad #ridepad .rp-pedals { gap:6px; }
-}
+body.ridepad #ridepad .rp-pedals { gap:8px; }

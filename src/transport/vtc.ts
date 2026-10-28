@@ -13,6 +13,8 @@ import { callTexture } from './vehicle';
 import { vehicleAudio } from './vehicleAudio';
 import { CARS } from './fleet';
 import { VTC_LOOKS, VTC_POINTS, atStop, rideLimitMs, stopOf, tripOf, vtcRequests, type VtcRequest } from './vtcRules';
+import { driveFeel, type DriveEvent } from './driveFeel';
+import { Banter, temperOf } from './vtcBanter';
 import { clearKerb } from './passengers';
 import { CABINS, lookSitter, placeSitter, type SitterPlace } from './cabinFit';
 import { cabinInfo, cabinView, holdCabin, rearDoorBox, seeThroughOk, setRearDoor, sitterOrder } from './carCabin';
@@ -84,8 +86,22 @@ class Vtc implements GameModule {
   private frustum = new THREE.Frustum(); private pm = new THREE.Matrix4(); private v3 = new THREE.Vector3();
   private log = { boarded: 0, alighted: 0, paid: 0, rebuilt: 0, walked: 0, maxStep: 0, events: [] as string[], phases: [] as string[], doorMax: 0, leftAt: null as null | { walked: number; camDist: number; seen: boolean }, awayWalked: 0 };
 
+  /** The passenger's talk during the ride in hand (src/transport/vtcBanter.ts): what they say to the way the player drives. */
+  private banter: Banter | null = null; private banterId = ''; private rideT = 0;
+  private banterFor(t: VtcTrip) {
+    if (!this.banter || this.banterId !== t.id) { this.banter = new Banter(t.passenger.seed, temperOf(t.passenger.seed, this.ctx.hour())); this.banterId = t.id; this.rideT = 0; }
+    return this.banter;
+  }
+  /** The passenger is in the car of the ride in hand, and the player is at its wheel. */
+  private riding(): VtcTrip | null { const t = this.trip; return t && t.stage === 'aboard' && this.phase === 'seated' && driveFeel.snap ? t : null; }
+  private onDrive(e: DriveEvent) {
+    const t = this.riding(); if (!t) return;
+    const line = this.banterFor(t).onEvent(e, this.rideT);
+    if (line) this.ctx.toast(`${t.passenger.name} : « ${line} »`);
+  }
   init(ctx: GameCtx) {
     this.ctx = ctx;
+    driveFeel.on(e => this.onDrive(e));
     phoneHooks.openVtc = () => this.openApp();
     addMissionGuide(() => this.guide());
   }
@@ -173,6 +189,12 @@ class Vtc implements GameModule {
     if (w && t) this.followTrip(t, w.id);
     else if (!t && this.h && (this.phase === 'wait' || this.phase === 'walk' || this.phase === 'seated')) this.clearPerson();   // a ride cancelled before boarding (they find someone else), or gone from the save
     this.t += dt;
+    const ride = this.riding();
+    if (ride && driveFeel.snap) {                                                    // the passenger and the road: the stop in the middle of it, the lateness, a chatty one's small talk
+      this.rideT += dt;
+      const sn = driveFeel.snap, line = this.banterFor(ride).tick(dt, this.rideT, { speed: sn.speed, late: this.lateRide(ride), atStop: sn.hub === ride.to && atStop({ x: sn.x, z: sn.z, speed: sn.speed }, stopOf(ride.dropoff).car) });
+      if (line) ctx.toast(`${ride.passenger.name} : « ${line} »`);
+    }
     this.choreography(dt);
     this.stepDoor(dt);
     this.stepLeaver(ctx, dt);
@@ -372,7 +394,8 @@ class Vtc implements GameModule {
       for (const f of vtcHooks.paid) f(t);
     }
     st.active = null; this.log.events.push(`paid:${t.id}:${t.fare}`);
-    this.speak(`${say('Jërëjëf')}, bonne route !`);
+    this.speak(this.banter && this.banterId === t.id ? this.banter.farewell(this.banter.tally) : `${say('Jërëjëf')}, bonne route !`);   // by how the ride went
+    this.banter = null; this.banterId = '';
     // the card says what was done (paid above, once): no stars, one line from what happened (late against the time the ride should take, bumps)
     // while Pape Sarr's car credit runs, his share of the fare goes to him (src/economy/credit.ts fareShare: shown on the card, turned off in « Crédits »)
     const loan = openLoans(this.ctx.state.data.loans.list, 'sarr').find(l => l.kind === 'vehicle'), share = arrived ? fareShare(loan, t.fare) : 0;
@@ -514,6 +537,8 @@ class Vtc implements GameModule {
         acceptKey: (key: string) => { const w = this.ctx.world(); if (!w) return false; const r = [...vtcHooks.extra.flatMap(f => f(w.id, this.ctx.day(), this.ctx.hour())), ...vtcRequests(w.id, this.ctx.day(), this.ctx.hour())].find(q => q.key === key); return r ? this.accept(r) : false; },
         accept: (i: number) => { const w = this.ctx.world(); if (!w) return false; const r = vtcRequests(w.id, this.ctx.day(), this.ctx.hour())[i]; return r ? this.accept(r) : false; },
         stops: () => { const t = this.trip; return t ? { pickup: stopOf(t.pickup), dropoff: stopOf(t.dropoff) } : null; },
+        /** Checks: what the passenger of the ride in hand has said about the driving, their temper and the ride's tally; and what the drive has been (src/transport/driveFeel.ts). */
+        banter: () => ({ temper: this.banter?.temper ?? null, said: this.banter ? this.banter.said.map(x => ({ ...x })) : [], tally: this.banter ? { ...this.banter.tally } : null, feel: { ...driveFeel.tally }, speed: driveFeel.snap?.speed ?? null, rideT: this.rideT, phase: this.phase, held: this.banter ? this.banter.heldNow : null }),
         cancel: () => this.cancel(),
         /** Checks: the passenger's and the driver's bodies, measured (skinned vertices) in their car's frame, against the car's cabin (src/transport/cabinFit.ts). */
         fit: () => {

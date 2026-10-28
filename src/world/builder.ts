@@ -12,7 +12,9 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { entrance, glassBalcony, type FrontKit } from './modernFront';
 import { ALLEY_RECT, STRIP_KEEP_CLEAR, buildHospitalityBlock } from './hospitalityStrip';
+import { NGOR_BEACH_KEEP_CLEAR, buildNgorBeach, ngorBeachSeats } from './ngorBeach';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
 import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
@@ -22,6 +24,9 @@ import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
 import { COMPTOIR, GROSSISTE, TRADE_PLACES, isTradeLot } from '../districts/tradePlaces';
 import { VILLA_SITE, buildVillaCompound } from './villaCompound';
+import { buildDistrict } from './almadies/district';
+import { districtGlassMaterial } from './almadies/night';
+import { siteOfLot } from './almadies/plan';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -79,7 +84,7 @@ const SPECS: Record<HubId, HubSpec> = {
   },
   almadies: {
     id: 'almadies', seed: 37, style: 'villa', ground: 0xe3d3a3, road: 0x50535a, walk: 0xe0dccc, blockGround: 0xd9ceb0,
-    palette: [0xfafafa, 0xf3f0ea, 0xeeeeee, 0xf7efe2], floors: [2, 3], sea: 'north', palms: 30,
+    palette: [0xeadcb9, 0xf3ead3, 0xe3cf9f, 0xf0e2c4, 0xdcc593, 0xf7efe2], floors: [2, 3], sea: 'north', palms: 30,
     // The north-side hospitality strip replaces two generic villa blocks beside La Vague: independent venues, not restaurants inside private compounds.
     specials: { '0,0': 'hospitality', '1,0': 'hospitality', '2,0': 'port', '1,2': 'station' },
     kiosks: [{ i: 0, j: 1, lot: 0, kind: 'restaurant', name: 'Restaurant Le Pointe' }, { i: 3, j: 1, lot: 1, kind: 'cafe', name: 'Café Touba · Ngor' }],
@@ -190,10 +195,12 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2, 0.015);           // #26, rusty sheet
   const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1, 0.006);              // #49, palm bark
   const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2);           // #11, arena tiers
-  if (sp.style === 'mermoz') {   // the M1 visual pass: baked depth (the contact shade at the foot of walls, trunks and posts; the darker undersides of crowns, balconies and eaves)
-    for (const bt of [plain, fac, blocks, trunks, concrete, lampPosts]) bt.shade = { ground: { h: 2.6, min: 0.66 }, under: 0.72 };
-    leaves.shade = { under: 0.56 };
-  }
+  // Baked depth in every district (the M1 visual pass made it Mermoz's; Mermoz keeps its stronger values): the contact shade at the foot of walls, trunks and posts, the darker
+  // undersides of crowns, balconies and eaves. It is vertex colour only: no draw call, no triangle.
+  const depth = sp.style === 'mermoz' ? { ground: { h: 2.6, min: 0.66 }, under: 0.72, crown: 0.56 } : { ground: { h: 2.8, min: 0.68 }, under: 0.74, crown: 0.6 };
+  for (const bt of [plain, fac, blocks, trunks, concrete, lampPosts]) bt.shade = { ground: depth.ground, under: depth.under };
+  leaves.shade = { under: depth.crown };
+  const front: FrontKit = { plain, lite };   // the modern house's balcony and entrance (src/world/modernFront.ts), merged into the batches above
   const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5, 0.04);   // #31, arena floor
   const terrazzo = new Batch(), terrazzoMat = addGrain(lam(), 0.2, 1, false, generatedTexture('terrazzo'), 1.5);         // #28, bank and mall floors
   // arena roof sheets: #25 mapped on each panel's own UVs so the corrugations run down the slope (about 11 cm pitch);
@@ -510,9 +517,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       roofClutter(cx, cz, w, d, G + h + 0.28);
       dressBuilding(cx, cz, w, d, h, col, faces, true);
       for (const [nx, nz] of faces) for (let f = 1; f < fl; f++) {                                  // balconies on both street faces, every floor
-        const along = nx ? d : w, bw = along * 0.6, y = G + f * 3.2, ox = cx + nx * (w / 2 + 0.6), oz = cz + nz * (d / 2 + 0.6);
-        plain.box(nx ? 1.2 : bw, 0.18, nx ? bw : 1.2, ox, y - 0.1, oz, 0xd8d2c6);
-        plain.box(nx ? 0.05 : bw, 0.9, nx ? bw : 0.05, ox + nx * 0.58, y, oz + nz * 0.58, 0x2d3748);
+        const along = nx ? d : w, bw = along * 0.6;
+        glassBalcony(front, cx + nx * (w / 2), cz + nz * (d / 2), nx, nz, bw, G + f * 3.2);
       }
       solidC(cx, cz, w + 0.4, d + 0.4, h);
       return;
@@ -528,9 +534,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       fac.facade(w, h, d, L.cx, G - 0.02, cz, hc);
       plain.box(w + 0.4, 0.28, d + 0.4, L.cx, G + h - 0.02, cz, 0xe2ddd2);
       parapet(L.cx, cz, w + 0.4, d + 0.4, G + h + 0.24, shade(hc, 0.92), 0.6);
-      const by = G + 3.2, bz = cz + gz * (d / 2 + 0.7);
-      plain.box(w * 0.55, 0.22, 1.4, L.cx - w * 0.15, by - 0.1, bz, 0xe8e4dc);                         // the balcony over the yard
-      plain.box(w * 0.55, 0.85, 0.06, L.cx - w * 0.15, by + 0.1, bz + gz * 0.68, pick([0x2d3748, 0xf2efe8, 0x6b4a2e], R));
+      pick([0x2d3748, 0xf2efe8, 0x6b4a2e], R);                                                          // (the railing's colour draw: kept, so every later lot stays where it was)
+      glassBalcony(front, L.cx - w * 0.15, cz + gz * (d / 2), 0, gz, w * 0.55, G + 3.2, 1.4);            // the balcony over the yard: glass railing on corbels
+      entrance(front, L.cx + w * 0.22, cz + gz * (d / 2), 0, gz);
       if (R() < 0.5) plain.cyl(0.7, 0.85, 1.1, L.cx + w * 0.3, G + h + 0.25, cz, 0xe9e6de, 8);              // a water tank
       for (let k = 0; k < (lite ? 1 : 3); k++) leaves.blob(0.8 + R() * 0.6, L.x0 + 1 + R() * (LS - 2), G + 2.3, gzz, pick([0xc2307a, 0xd94a8c, 0xe2588f, 0x3f7a35], R), 0.75, 0);   // bougainvillea over the wall
       if (R() < 0.6) tree(L.cx + (R() < 0.5 ? -1 : 1) * (LS / 2 - 3), L.cz + gz * (LS / 2 - 3.5), 0.9, R() < 0.25);
@@ -550,10 +556,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       for (const [nx, nz] of faces) for (let f = 1; f < fl; f++) {
         const along = nx ? d : w, bw = along * 0.4, y = G + f * 3.2, off = (f % 2 ? -1 : 1) * along * 0.22;
         const ox = cx + nx * (w / 2 + 0.6) + (nz ? off : 0), oz = cz + nz * (d / 2 + 0.6) + (nx ? off : 0);
-        plain.box(nx ? 1.2 : bw, 0.18, nx ? bw : 1.2, ox, y - 0.1, oz, 0xd8d2c6);
-        plain.box(nx ? 0.05 : bw, 0.95, nx ? bw : 0.05, ox + nx * 0.58, y, oz + nz * 0.58, 0x2d3748);
+        glassBalcony(front, cx + nx * (w / 2) + (nz ? off : 0), cz + nz * (d / 2) + (nx ? off : 0), nx, nz, bw, y);
         if (!lite && R() < 0.4) acUnit(ox - nz * bw * 0.3, y + 1.6, oz - nx * bw * 0.3, nx, nz);
       }
+      entrance(front, cx - w * 0.3, cz + gz * (d / 2), 0, gz, 1.8);
       wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xece6da, 1.2);
       gate(L.cx, gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, gz, 2.2);
       if (!lite) for (let t = 2; t < LS - 2; t += 1.6) leaves.blob(0.55, L.x0 + t, G + 1.35, gz < 0 ? L.z0 + 0.9 : L.z1 - 0.9, 0x3f7a35, 0.8, 0);   // the hedge
@@ -578,8 +584,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     plain.box(0.14, h, 4, cx - w / 2 - 0.07, G, cz, 0xc86b4f);                                                // the terracotta band on the street face
     for (let f = 1; f < 7; f++) for (const oz of [-d / 2 + 5, d / 2 - 5]) {
       const y = G + f * 3.2;
-      plain.box(1.3, 0.2, 6, cx - w / 2 - 0.65, y - 0.1, cz + oz, 0xe2ddd2);
-      plain.box(0.05, 1.0, 6, cx - w / 2 - 1.28, y, cz + oz, 0x2d3748);
+      glassBalcony(front, cx - w / 2, cz + oz, -1, 0, 6, y, 1.3);
       if (!lite && f % 2) plain.box(0.04, 0.6, 1.0, cx - w / 2 - 1.3, y + 0.35, cz + oz + 1.5, pick([0xd9482b, 0x2f6fb3, 0xf4c20d, 0xf2f2ec], R));
     }
     plain.box(4, 3.6, 4, cx, G + h + 0.3, cz, 0xcfc9bd);
@@ -727,8 +732,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     plain.box(w + 0.6, 0.3, d + 0.6, L.cx, G + h - 0.02, L.cz + 3, 0xdadada);
     plain.box(w + 0.1, 0.6, d + 0.1, L.cx, G - 0.02, L.cz + 3, 0xb9b2a4);
     plain.box(w * 0.5, 0.25, 2.2, L.cx - w * 0.2, G + 3.2, L.cz + 3 - d / 2 - 1.1, 0xe8e4dc); // terrace slab
-    for (let k = 0; k < 6; k++) plain.box(0.06, 0.9, 0.06, L.cx - w * 0.45 + k * (w * 0.5 / 5), G + 3.45, L.cz + 3 - d / 2 - 2.15, 0x333333);
-    plain.box(w * 0.5, 0.06, 0.08, L.cx - w * 0.2, G + 4.35, L.cz + 3 - d / 2 - 2.15, 0x333333);
+    plain.box(w * 0.5, 0.9, 0.04, L.cx - w * 0.2, G + 3.45, L.cz + 3 - d / 2 - 2.15, 0x8fb5c4);          // the terrace's glass railing
+    plain.box(w * 0.5 + 0.06, 0.06, 0.07, L.cx - w * 0.2, G + 4.35, L.cz + 3 - d / 2 - 2.15, 0x23262c);
+    entrance(front, L.cx + w * 0.3, L.cz + 3 - d / 2, 0, -1);
     glass.box(w - 2, 1.6, 0.1, L.cx, G + 1.0, L.cz + 3 - d / 2 - 0.06, 0x2f5f86);
     plain.box(8.6, 0.1, 5.1, L.cx + 3, G, L.cz - 6.5, 0xe8e4dc);                    // pool deck
     water.box(8, 0.06, 4.5, L.cx + 3, G + 0.05, L.cz - 6.5, 0x35b0de);              // pool
@@ -820,6 +826,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       // LD2.0-D: the flagship villa's lot (src/world/villaCompound.ts) draws the generic villa's random numbers unseen (a dry run), so every other lot
       // and the street dressing stay exactly where they were (tests/villaCompound.test.ts); its colliders stand as ghosts while the streets are dressed
       if (villaLot && L.x0 === villaLot.x0 && L.z0 === villaLot.z0) { dryRun(() => genericVilla(L, faces)); return; }
+      // LD2.0-E: every other lot of the Almadies is the district's (src/world/almadies, drawn after the street is dressed): the same dry run
+      if (id === 'almadies' && siteOfLot(i, j, b * 2 + a)) { dryRun(() => genericVilla(L, faces)); return; }
       genericVilla(L, faces);
       return;
     }
@@ -861,14 +869,14 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       for (let k = -2; k <= 2; k++) plain.box(0.5, 3.2, 0.5, cx + k * (w / 4.4), G, cz + fz * (d / 2 + 2.6), 0xe9e1cf);
       for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), cz + fz * (d / 2 + 0.05), 0, fz);
       if (fl >= 5) plain.box(4, 2, 4, cx, G + h + 0.3, cz, 0x9aa3a8);                     // roof plant
+      for (let f = 2; f < fl; f += 2) glassBalcony(front, cx + (f % 4 ? -1 : 1) * w * 0.2, cz + fz * (d / 2), 0, fz, w * 0.34, G + f * 3.2);   // glass balconies up the street face, every other floor
     } else {
-      // student blocks: balconies with railings on the street side
+      // student blocks: balconies with glass railings on the street side, and the entrance under them
       const fz = b ? 1 : -1;
+      entrance(front, cx, cz + fz * (d / 2), 0, fz, 1.8);
       for (let f = 1; f < fl; f++) {
         const bw = w * 0.42, bxc = cx + (f % 2 ? -1 : 1) * w * 0.22, y = G + f * 3.2, z = cz + fz * (d / 2 + 0.6);
-        plain.box(bw, 0.18, 1.2, bxc, y - 0.1, z, 0xd8d2c6);
-        plain.box(bw, 0.06, 0.06, bxc, y + 0.95, z + fz * 0.58, 0x2d3748);
-        for (let k = 0; k <= 8; k++) plain.box(0.04, 0.95, 0.04, bxc - bw / 2 + (k * bw) / 8, y, z + fz * 0.58, 0x2d3748);
+        glassBalcony(front, bxc, cz + fz * (d / 2), 0, fz, bw, y);
         if (R() < 0.6 && !lite) plain.box(0.9, 0.6, 0.02, bxc + (R() - 0.5) * bw * 0.6, y + 0.4, z + fz * 0.62, pick([0xd9482b, 0x2f6fb3, 0xf4c20d, 0xf2f2ec], R)); // laundry
       }
     }
@@ -961,7 +969,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   // the Almadies' pier (the Embarcadère de Ngor, src/sea/traverseeSite.ts) from the block to its end: no palm, tree or stall stands on it, no car parks across it
   const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
     : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }])
-    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR] : [];
+    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR, ...NGOR_BEACH_KEEP_CLEAR] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1361,6 +1369,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         group.add(buildNgorShallows(lite, () => facadeMat.emissiveIntensity / 1.25));     // the city's night (src/main.ts lights the windows by it)
         colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
+        // the beach first (the owner, 27 Oct): the Plage de Ngor west of the pier, with the embarkation's ticket hut and shelter east of it (src/world/ngorBeach.ts)
+        buildNgorBeach({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
+        seats.push(...ngorBeachSeats());
         addSign('EMBARCADÈRE DE NGOR', '#0d5869', '#fbeccb', cx, 3.4, bz + 1, 0, 6, 1.1);
         // the island's rooftop restaurant and lounge bar, named on the roof's front edge, toward the sea and the boats coming in (« sunu toit »: our roof)
         { const rb = TRAVERSEE_SITE.island.rooftop.box; addSign('SUNU TOIT · RESTAURANT · LOUNGE', '#0e5a6b', '#fdf1d6', (rb.x0 + rb.x1) / 2, rooftopFloors().roof - 0.62, rb.z1 + 0.21, 0, 8.2, 0.5); }
@@ -1779,8 +1790,18 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   yield;
   // LD2.0-D: the flagship villa's compound on its lot, now that every random number of the street is drawn (its own draw none)
   if (villaLot) {
+    const shaded = [plain, leaves, trunks].map(b => b.shade);   // the flagship villa is drawn as the owner approved it: the district's baked depth is left off for its own pieces
+    plain.shade = leaves.shade = trunks.shade = null;
     const v = buildVillaCompound({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool });
+    [plain.shade, leaves.shade, trunks.shade] = shaded;
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
+  }
+  // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
+  if (id === 'almadies') {
+    const panes = new Batch(), dark = new Batch();   // the windows' panes (warm at night) and glass that never glows, each its own mesh
+    const dist = buildDistrict({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign });
+    group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
+    for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
   }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
   // after (src/game/streetDress.ts) leaves that strip open; given only now, the builder's own dressing and its random draws are as they were

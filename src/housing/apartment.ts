@@ -12,7 +12,7 @@ import { FINISH_SIZE, oakPlanks, stoneTiles, windowView } from './villaFinish';
 import { GATE, WALL_H } from './villa';
 import {
   edgeHeights, groundAt, halfAt, homeBox, inner, isCovered, levelAtX, levelOfRoom, levelsOf, passage, stairParts, wallPieces,
-  type Fixture, type FloorPlan, type Level, type Opening, type Rect, type Room, type Side, type StairPart, type WallPiece,
+  type Fixture, type FloorPlan, type Level, type Opening, type PlanLook, type Rect, type Room, type Side, type StairPart, type WallPiece,
 } from './plan';
 
 /**
@@ -175,6 +175,17 @@ const RENDER = 0xf4efe6, BAND = 0xc9b79a, COPING = 0xe9e0cf, ALU = 0x2e3236, VCA
 const VWALL = 0xf6f1e8, TRAVERTINE = 0xe6d5b8, CLAD = 0xe8d9bf, OAK = 0xb08a62, SLATGAP = 0x2a211b, SKIRT = 0x47423c, BRONZE = 0x6b5640, WALNUT = 0x5c3d28,
   COVE = 0xfff0d2, TEAK = 0xb9977a, PALESTONE = 0xece8e0, SLABEDGE = 0xf3efe8;
 interface Look { lower: number; upper: number; faience: boolean; floor: number }
+/** A plan's identity (`FloorPlan.look`) over the look of a room: the colours the hub gives it; a repainted home (« peinture neuve ») keeps its own paint. */
+function wearIdentity(look: Look, r: Room, ov: PlanLook | undefined, painted: boolean): Look {
+  if (!ov) return look;
+  const k = ov.kinds?.[r.kind], plain = !['chambre', 'cuisine', 'sdb', 'bureau', 'dressing', 'manger'].includes(r.kind);
+  return {
+    ...look,
+    lower: painted ? look.lower : k?.lower ?? (plain ? ov.dado ?? look.lower : look.lower),
+    upper: painted ? look.upper : k?.upper ?? (plain ? ov.wall ?? look.upper : look.upper),
+    floor: k?.floor ?? look.floor,
+  };
+}
 function lookOf(r: Room, F: Finish, painted: boolean, villa = false): Look {
   if (villa) {
     // LD2.0-D look pass: large cream marble slabs, oak in the bedrooms, teak decks outdoors, pale stone in the wet rooms; warm white walls (or the
@@ -305,7 +316,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   const colliders: Collider[] = [], solids: Solid[] = [], blocks: Block[] = [];
   const W = (x: number) => ox + x - DX, Z = (z: number) => oz + z;
   const room = (id: string) => p.rooms.find(r => r.id === id)!;
-  const looks = new Map(p.rooms.map(r => [r.id, lookOf(r, F, painted, multi)]));
+  const looks = new Map(p.rooms.map(r => [r.id, wearIdentity(lookOf(r, F, painted, multi), r, p.look, painted)]));
   const CAPC = multi ? VCAP : CAP;
   const inners = p.rooms.map(r => ({ r, i: inner(p, r), li: liOf(levelOfRoom(p, r)) }));
   const roomIn = (x: number, z: number) => p.rooms.find(r => x > r.box.x0 && x < r.box.x1 && z > r.box.z0 && z < r.box.z1) ?? null;
@@ -507,7 +518,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     // a balcony's slab, seen from the side and from below
     if (multi && r.outdoor && li > 0) pbox(S.plain, r.box, -slabAbove(li - 1), -0.004, SLABEDGE, ['px', 'nx', 'pz', 'nz']);
   }
-  if (multi) ground();
+  if (multi && !p.noLot) ground();
   /** The paved part of a garden: round its pool (1.3 m) and along the house's wall (1.5 m), clipped to it. */
   function gardenDeck(r: Room): Rect[] {
     const b = r.box, out: Rect[] = [];
@@ -953,14 +964,18 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const rm = room(m.room); use(liOf(levelOfRoom(p, rm)), false);
     const disc = (r0: number, r1: number, y: number, c: number) => { const g = new THREE.RingGeometry(r0, r1, 48, 1); g.rotateX(-Math.PI / 2); S.plain.geometry(g, c, W(m.x), Y + y, Z(m.z)); };
     disc(0, m.r, 0.012, 0x4b4f55); disc(m.r - 0.32, m.r - 0.16, 0.016, 0xf4f1e8); disc(m.r - 0.08, m.r, 0.016, 0xf2c230);
-    // the H, painted (its uprights along the helicopter's length)
-    for (const [x, z, w2, d2] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) S.plain.box(w2, 0.004, d2, W(m.x + x), Y + 0.016, Z(m.z + z), 0xf4f1e8);
+    // the H, painted (its uprights along the helicopter's length: turned with its heading)
+    const across = Math.abs(Math.sin(m.yaw ?? 0)) > 0.5;
+    for (const [a, b, w2, d2] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) {
+      const [x, z, w, d] = across ? [b, a, d2, w2] : [a, b, w2, d2];
+      S.plain.box(w, 0.004, d, W(m.x + x), Y + 0.016, Z(m.z + z), 0xf4f1e8);
+    }
     // the edge lights round it: little domes that glow at night
     for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; S.glow.cyl(0.05, 0.07, 0.07, W(m.x + Math.cos(a) * (m.r + 0.12)), Y, Z(m.z + Math.sin(a) * (m.r + 0.12)), k % 3 ? 0x8fd16b : 0xf7d36b, 8); }
     const heli = p.fixtures.find(f => f.kind === 'heli' && f.room === m.room);
     if (heli) {
       const hb = buildHelicopter(), g = hb.group;
-      g.position.set(W(m.x), Y + 0.02, Z(m.z)); g.rotation.y = 0;                              // its nose toward +z (the street)
+      g.position.set(W(m.x), Y + 0.02, Z(m.z)); g.rotation.y = m.yaw ?? 0;                     // its heading on the pad (HELIPAD.yaw: its nose toward −x)
       g.traverse(o => { const mm = o as THREE.Mesh; if (mm.isMesh) { mm.castShadow = false; mm.receiveShadow = false; } });
       S.g.add(g);
     }
@@ -969,7 +984,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   function ground() {
     use(0, false);
     const B = homeBox(p), house = { x0: Math.min(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.x0)), x1: Math.max(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.x1)), z0: Math.min(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.z0)), z1: Math.max(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.z1)) };
-    const lot = { x0: B.x0, x1: B.x1, z0: B.z0, z1: B.x1 };                                  // a square lot (its street side as far from the middle as its sides)
+    const lot = { x0: B.x0, x1: B.x1, z0: B.z0, z1: p.yard !== undefined ? house.z1 + p.yard : B.x1 }, GT = p.gate ?? GATE;   // a square lot (its street side as far from the middle as its sides), or the front yard the plan asks for
     const t = p.outWall / 2, LAWN = 0x86ad5a, PATH = 0xd8ccb4, front = p.openings.find(o => o.kind === 'front');
     for (const r of [{ x0: lot.x0, x1: house.x0 - t, z0: house.z0 - t, z1: house.z1 + t }, { x0: house.x1 + t, x1: lot.x1, z0: house.z0 - t, z1: house.z1 + t }, { x0: lot.x0, x1: lot.x1, z0: house.z1 + t, z1: lot.z1 }]) {
       rbox(S.plain, r, -0.06, -0.03, LAWN);
@@ -979,12 +994,12 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
       rbox(S.plain, { x0: front.x - 0.6, x1: front.x + 0.6, z0: house.z1 + 1.4, z1: lot.z1 }, -0.03, -0.015, PATH);
       for (const s of [-1, 1]) for (let k = 0; k < 3; k++) S.plain.blob(0.28, W(front.x + s * 1.2), Y - 0.03 + 0.18, Z(house.z1 + 2.2 + k * 1.4), 0x3f7a35, 0.8, 0);
     }
-    rbox(S.plain, { x0: GATE.x0, x1: GATE.x1, z0: house.z1 + t, z1: lot.z1 }, -0.03, -0.012, 0xb9b2a6);           // the driveway (src/housing/villa.ts GATE)
-    for (const r of [{ x0: lot.x0 - 0.12, x1: lot.x0 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x1 - 0.12, x1: lot.x1 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x0, x1: GATE.x0, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }, { x0: GATE.x1, x1: lot.x1, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }]) {
+    rbox(S.plain, { x0: GT.x0, x1: GT.x1, z0: house.z1 + t, z1: lot.z1 }, -0.03, -0.012, 0xb9b2a6);           // the driveway (src/housing/villa.ts GATE)
+    for (const r of [{ x0: lot.x0 - 0.12, x1: lot.x0 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x1 - 0.12, x1: lot.x1 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x0, x1: GT.x0, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }, { x0: GT.x1, x1: lot.x1, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }]) {
       rbox(S.wall, r, -0.06, WALL_H, 0xeee3cf); rbox(S.plain, grow2(r, 0.03), WALL_H, WALL_H + 0.06, COPING);
     }
     // palms in the front yard's corners
-    for (const [x, z] of [[lot.x0 + 1.4, lot.z1 - 1.6], [lot.x1 - 1.4, house.z1 + 1.6], [lot.x0 + 1.2, house.z1 + 1.2]] as const) {
+    for (const [x, z] of (p.yard !== undefined ? [[lot.x1 - 1.4, house.z1 + 1.8], [lot.x0 + 1.2, lot.z1 - 1.2]] : [[lot.x0 + 1.4, lot.z1 - 1.6], [lot.x1 - 1.4, house.z1 + 1.6], [lot.x0 + 1.2, house.z1 + 1.2]]) as readonly (readonly [number, number])[]) {
       S.plain.cyl(0.12, 0.17, 4.2, W(x), Y - 0.03, Z(z), 0x8a6a48, 7);
       for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; S.plain.slab(0.32, 0.05, 1.9, W(x + Math.sin(a) * 0.8), Y + 4.0, Z(z + Math.cos(a) * 0.8), 0x3f7a35, a, 0.45); }
     }
@@ -1102,11 +1117,12 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     light: lampAt.get(firstRoom.id)!.clone(), lightColor: 0xffd9a0,
     holeFocus: null,
     ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y), outdoors: () => !!roomId && !!room(roomId).outdoor } : {}),
-    update(dt, player, camera, hour) {
+    update(dt, player, camera, hour, placed = false) {
       const lx = player.x - ox, lz = player.z - oz;
       feet = player.y;
-      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood
-      if (Number.isFinite(last.x)) {
+      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood (not a player their seat
+      // places: the villa's swim takes them over the pool's edge, src/villa/swim.ts)
+      if (Number.isFinite(last.x) && !placed) {
         const step = Math.hypot(lx - last.x, lz - last.z);
         if (step > 1e-6 && step < SHELL.jump && blocked(last.x, last.z, lx, lz, feet)) { player.x = ox + last.x; player.z = oz + last.z; }
         else { last.x = lx; last.z = lz; }

@@ -6,12 +6,11 @@ const css = text('../src/transport/ridePad.css');
 const ts = text('../src/transport/ridePad.ts');
 
 describe('the Klaxon button on the phone', () => {
-  it('is hidden by default (screen space) and comes back with ?klaxon, the code and the pad wiring all still there', () => {
-    expect(css).toMatch(/#ridepad \.rp-horn \{ display: none;/);
-    expect(css).toMatch(/body\.klaxon #ridepad \.rp-horn \{ display: block; \}/);
-    expect(ts).toContain("classList.add('klaxon')");
-    expect(ts).toMatch(/hornB = mk\(top, 'rp-horn', 'Klaxon'\)/);          // still built…
-    expect(ts).toContain('onHorn(by: Owner');                              // …and still wired to the horn
+  it('is on the pad (a big amber target, the passengers and the street answer it), the code and the pad wiring all there', () => {
+    expect(css).toMatch(/#ridepad \.rp-horn \{ display: block;/);
+    expect(css).not.toMatch(/body\.klaxon #ridepad \.rp-horn/);
+    expect(ts).toMatch(/hornB = mk\(top, 'rp-horn', 'Klaxon'\)/);
+    expect(ts).toContain('onHorn(by: Owner');                              // wired to the horn
   });
   it('does not touch the other driving controls', () => {
     expect(css).not.toContain('.rp-rev');                                                // the separate R button is gone: the brake backs a car up when held at a standstill

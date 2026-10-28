@@ -61,13 +61,13 @@ const modelSpec = (id: string, name: string, model: CarModelId, drive: Parameter
   return s;
 };
 /** Nimble and light: quick off the line, a tight circle. */
-export const terangaSpec = modelSpec('teranga', 'Teranga', 'teranga', { maxSpeed: 19, boostSpeed: 29, reverseSpeed: 3, accel: 4.2, brake: 7.6, turnRadius: 5.2, steer: 2.9, grip: 9.8 });
+export const terangaSpec = modelSpec('teranga', 'Teranga', 'teranga', { maxSpeed: 19, boostSpeed: 46, reverseSpeed: 3, accel: 4.2, brake: 7.6, turnRadius: 5.2, steer: 2.9, grip: 9.8 });
 /** The sporty one: a little more of everything. */
-export const rafetSpec = modelSpec('rafet', 'Rafet', 'rafet', { maxSpeed: 20, boostSpeed: 30.5, reverseSpeed: 3, accel: 4.6, brake: 7.9, turnRadius: 5.3, steer: 3.0, grip: 10.2 });
+export const rafetSpec = modelSpec('rafet', 'Rafet', 'rafet', { maxSpeed: 20, boostSpeed: 49, reverseSpeed: 3, accel: 4.6, brake: 7.9, turnRadius: 5.3, steer: 3.0, grip: 10.2 });
 /** Heavy and steady (the luxury SUV's numbers). */
-export const lamaneSpec = modelSpec('suv', 'Lamane Sport', 'lamane', { maxSpeed: 19.5, boostSpeed: 28.5, reverseSpeed: 3, accel: 3.8, brake: 7.4, turnRadius: 6.4, steer: 2.4, grip: 8.2 });
+export const lamaneSpec = modelSpec('suv', 'Lamane Sport', 'lamane', { maxSpeed: 19.5, boostSpeed: 45, reverseSpeed: 3, accel: 3.8, brake: 7.4, turnRadius: 6.4, steer: 2.4, grip: 8.2 });
 /** The coupé SUV: as heavy, a little quicker. */
-export const gaindeSpec = modelSpec('gainde', 'Gaïndé', 'gainde', { maxSpeed: 20.5, boostSpeed: 30.5, reverseSpeed: 3, accel: 4.4, brake: 7.8, turnRadius: 6.2, steer: 2.5, grip: 8.8 });
+export const gaindeSpec = modelSpec('gainde', 'Gaïndé', 'gainde', { maxSpeed: 20.5, boostSpeed: 51, reverseSpeed: 3, accel: 4.4, brake: 7.8, turnRadius: 6.2, steer: 2.5, grip: 8.8 });
 
 // ------------------------------------------------------------------------------------------------ Ndiaye Auto (Plateau): the showroom's three lots
 /** The showroom's lots, in order: 0 the modern sedan (src/transport/carModule.ts), 1 a Teranga, 2 a Rafet. */

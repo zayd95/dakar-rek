@@ -1,5 +1,5 @@
 import { DriveControls, type DriveCmd } from '../../src/transport/controls';
-import { driveStep, newDriveState, type Blocked } from '../../src/transport/drive';
+import { driveSteps, newDriveState, type Blocked } from '../../src/transport/drive';
 import type { DriveSpec } from '../../src/transport/spec';
 import { wrapAngle } from '../../src/road/network';
 import type { Road } from '../../src/road/routes';
@@ -13,6 +13,16 @@ export function steerFor(err: number, look: number, v: number, d: { turnRadius: 
   return Math.max(-1, Math.min(1, -kappa * radius));
 }
 export const lookFor = (v: number) => Math.max(14, Math.min(48, 10 + 1.3 * v));
+
+/** What a driver does before a bend: the speed (m/s) the road ahead allows, from the sharpest turn in the next 90 m and what the tyres hold (a lateral acceleration of 0.7 × grip). */
+export function bendLimit(road: Road, s: number, dir: number, grip: number) {
+  let kappa = 0;
+  for (let a = 0; a < 90; a += 15) {
+    const y0 = road.spine.at(Math.max(0, Math.min(road.length, s + dir * a))).yaw, y1 = road.spine.at(Math.max(0, Math.min(road.length, s + dir * (a + 15)))).yaw;
+    kappa = Math.max(kappa, Math.abs(wrapAngle(y1 - y0)) / 15);
+  }
+  return kappa < 1e-4 ? Infinity : Math.max(11, Math.sqrt((0.7 * grip) / kappa));
+}
 
 export interface Lap { secs: number; metres: number; maxLateral: number; bumps: number; reversals: number; top: number; left: boolean; wobble: number }
 
@@ -31,8 +41,9 @@ export function lap(road: Road, d: DriveSpec, { boost = false, back = false, lan
     const g = road.spine.at(look), lat = dir > 0 ? -lane : lane, ax = g.x + Math.cos(g.yaw) * lat, az = g.z - Math.sin(g.yaw) * lat;
     const err = wrapAngle(Math.atan2(ax - s.x, az - s.z) - s.yaw);
     steerCmd = steerFor(err, Math.hypot(ax - s.x, az - s.z), v, d); void rate;
-    const cmd: DriveCmd = { fwd: 1, steer: steerCmd, boost, brake: false };
-    const hit = driveStep(s, ctl.update(dt, cmd, s.speed, d, true), d, dt, blocked);
+    const slow = v > bendLimit(road, p.s, dir, d.grip ?? 9) + 1;                                  // a driver brakes for a bend, and goes on when it is behind them
+    const cmd: DriveCmd = { fwd: 1, steer: steerCmd, boost, brake: slow };
+    const hit = driveSteps(s, ctl.update(dt, cmd, s.speed, d, true), d, dt, blocked);
     if (hit) bumps++;
     rate = wrapAngle(s.yaw - last) / dt; last = s.yaw;
     const sg = Math.sign(steerCmd) * (Math.abs(steerCmd) > 0.08 ? 1 : 0);

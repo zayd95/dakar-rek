@@ -15,6 +15,9 @@ import {
   BUSY_STOP_EXTRA, ColliderGrid, HUB_STREETS, PAVE, crowdSlots, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
 } from './streetPlan';
 import { len2 } from '../core/math';
+import { driveFeel, type DriveEvent } from '../transport/driveFeel';
+import { CAR_DIMS, CRASH_LINES, HONK_LINES, REACTION, STREET_LINES, assess, lineFor, stepAway, type CarState, type Level } from './streetReact';
+import { StreetVoice } from './streetVoice';
 
 /**
  * Street life with reasons (docs/CROWD.md, spec §23), on the reusable crowd: people walking the pavements (more at the
@@ -46,6 +49,8 @@ interface Agent {
   goal: Pt | null;
   /** Seconds before setting off on `path` (people climbing into a car one after the other). */
   delay: number;
+  /** Stepping away from the player's car (src/crowd/streetReact.ts): not to be startled again until they have walked on. */
+  startle?: boolean;
 }
 interface StopRt {
   site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt; busy: boolean;
@@ -108,6 +113,10 @@ export class StreetLife {
   private leaving = 0;
   private leaveT = 0;
   readonly counts = { spawned: 0, boarded: 0, alighted: 0, left: 0, taxi: 0, recruited: 0, dibi: 0 };
+  /** How the street has reacted to the player's car (src/crowd/streetReact.ts): by level, and to a crash and a horn. */
+  readonly reacted = { danger: 0, close: 0, notice: 0, thanks: 0, crash: 0, honk: 0 };
+  private voice: StreetVoice; private offFeel: () => void;
+  private reactT = 0; private clock = 0; private cool = new Map<string, number>(); private said = new Map<string, string>(); private reactRand = rng(7331);
   /** The hub's Dibi (where some spectators go on after the gala), or null. */
   private dibi: Pt | null = null;
 
@@ -123,6 +132,8 @@ export class StreetLife {
     this.crowd = new Crowd(slots, { quality: this.q, near: B.near, nearRadius: 9, name: 'street', seed: 61 + hub.id.length, blobs: true, fidget: 0.02 });
     this.agents = slots.map(s => ({ id: s.id, role: 'off', x: 0, z: 0, yaw: 0, speed: 0, lane: 0, fwd: true, t: 0, side: 0, path: null, pi: 0, then: null, spot: null, stop: -1, group: -1, corner: -1, stay: 0, goal: null, delay: 0 }));
     ctx.extra.add(this.crowd.group);
+    this.voice = new StreetVoice(ctx.extra);
+    this.offFeel = driveFeel.on(e => this.onDrive(e));
   }
 
   /** Stops, groups and taxi corners need the places and the city's own people of the hub (registered after us). */
@@ -186,7 +197,7 @@ export class StreetLife {
   private show(a: Agent) { this.crowd.setPresent(a.id, true); this.place(a); this.counts.spawned++; }
   private hide(a: Agent) {
     this.release(a);
-    a.goal = null; a.delay = 0;
+    a.goal = null; a.delay = 0; a.startle = false;
     a.role = 'off'; a.path = null; a.then = null; a.speed = 0;
     this.crowd.setPresent(a.id, false);
   }
@@ -319,9 +330,71 @@ export class StreetLife {
     if (this.warm > 0) this.warm -= dt;
     for (const a of this.agents) if (a.role !== 'off') this.step(a, dt);
     const me = this.ctx.player.pos;
+    this.react(dt);
     this.crowd.setFocus(me.x, me.z, null);
     this.crowd.setCamera(cam);
     this.crowd.update(dt, true);
+  }
+
+  // ---------------------------------------------------------------- the street reacts to the player's car (src/crowd/streetReact.ts)
+  private byId(id: string) { return this.agents.find(a => a.id === id) ?? null; }
+  private head(a: Agent) { return { x: a.x, y: this.ground(a.x, a.z) + 2.15, z: a.z }; }
+  private say(a: Agent, text: string) { this.voice.say(a.id, text); this.said.set(a.id, text); }
+  /** The player's vehicle as a car in the street's frame (a vehicle going backwards moves the other way), or null when nobody drives here or it is nearly still. */
+  private carNow(minSpeed = 0.8): CarState | null {
+    const sn = driveFeel.snap; if (!sn || sn.hub !== this.hub.id || Math.abs(sn.speed) < minSpeed) return null;
+    const d = CAR_DIMS[sn.kind];
+    return { x: sn.x, z: sn.z, yaw: sn.speed < 0 ? sn.yaw + Math.PI : sn.yaw, speed: Math.abs(sn.speed), hl: d.hl, hw: d.hw };
+  }
+  /** Ten times a second: whoever the car is coming at, passing close or going by fast steps back, shouts, looks; whoever it slows for says thanks. */
+  private react(dt: number) {
+    this.clock += dt;
+    this.voice.update(dt, id => { const a = this.byId(id); return a && a.role !== 'off' ? this.head(a) : null; });
+    this.reactT -= dt; if (this.reactT > 0) return; this.reactT = 0.1;
+    const car = this.carNow(); if (!car) return;
+    let n = 0;
+    for (const a of this.agents) {
+      if (a.role === 'off' || a.startle || a.role === 'gone') continue;
+      const dx = a.x - car.x, dz = a.z - car.z; if (dx * dx + dz * dz > 19 * 19) continue;
+      if ((this.cool.get(a.id) ?? -1) > this.clock) continue;
+      const r = assess(car, a); if (r.level === 'none') continue;
+      this.reactTo(a, r.level, r.side, car);
+      if (++n >= 2) break;                                                         // two people a tenth of a second at most: a street, not a chorus
+    }
+  }
+  private reactTo(a: Agent, level: Exclude<Level, 'none'>, side: -1 | 1, car: CarState) {
+    const R = REACTION[level];
+    this.cool.set(a.id, this.clock + R.cool + this.reactRand() * 3); this.reacted[level]++;
+    if (this.reactRand() < R.speak) this.say(a, lineFor(STREET_LINES[level], this.reactRand(), this.said.get(a.id)));
+    if (a.role === 'walk') {
+      const away = R.step > 0 ? stepAway(car, a, side, R.step) : null;
+      a.startle = true;
+      // a quick step out of the way when there is room, else they stop where they are; then the pose, a pause, and they walk on
+      if (away && clearWalk(a.x, a.z, away.x, away.z, this.cols, 0.3)) this.walkTo(a, [away], () => this.afterStartle(a, level), R.speed);
+      else this.walkTo(a, [{ x: a.x, z: a.z }], () => this.afterStartle(a, level), 0);
+    } else if (R.pose) this.crowd.reactOne(a.id, R.pose, R.seconds);               // people standing at a stop, in a group: they flinch where they are
+  }
+  private afterStartle(a: Agent, level: Exclude<Level, 'none'>) {
+    const R = REACTION[level]; a.startle = false;
+    if (a.role !== 'walk') return;
+    a.speed = 0; this.place(a);
+    if (R.pose) this.crowd.reactOne(a.id, R.pose, R.seconds);
+    a.delay = R.pause + R.seconds * 0.5; this.toLane(a);
+  }
+  /** A crash, a horn: the people near it turn, stand up, shout; the horn is answered by whoever is ahead. */
+  private onDrive(e: DriveEvent) {
+    if (e.kind !== 'crash' && e.kind !== 'honk') return;
+    const car = this.carNow(0); if (!car) return;
+    const list = this.agents.filter(a => a.role !== 'off' && !a.startle && (a.x - car.x) ** 2 + (a.z - car.z) ** 2 < (e.kind === 'crash' ? 22 : 14) ** 2).sort((p, q) => (p.x - car.x) ** 2 + (p.z - car.z) ** 2 - ((q.x - car.x) ** 2 + (q.z - car.z) ** 2));
+    let talkers = 0;
+    for (const a of list.slice(0, e.kind === 'crash' ? 6 : 3)) {
+      if (e.kind === 'crash') {
+        if (talkers < 2) { this.say(a, lineFor(CRASH_LINES, this.reactRand(), this.said.get(a.id))); talkers++; }
+        if (a.role === 'walk') { a.startle = true; this.walkTo(a, [{ x: a.x, z: a.z }], () => this.afterStartle(a, 'close'), 0); } else this.crowd.reactOne(a.id, 'standUp', 2.2);
+        this.cool.set(a.id, this.clock + 6);
+      } else if (assess(car, a).ahead > 1 && talkers < 1 && this.reactRand() < 0.55) { this.say(a, lineFor(HONK_LINES, this.reactRand(), this.said.get(a.id))); talkers++; }
+    }
+    this.reacted[e.kind]++;
   }
 
   /** Once a second: bring the street towards the hour's targets, a few people at a time. */
@@ -530,6 +603,7 @@ export class StreetLife {
       lanes: this.lanes.length, busyLanes: this.lanes.filter(l => l.w > 1).length, stops: this.stops.map(s => ({ key: s.key, busy: s.busy, crowd: s.crowd, served: s.served, waiting: s.taken.filter(Boolean).length, slots: s.slots.length })),
       groups: this.groups.filter(g => g.on).length, groupSpots: this.groups.length, corners: this.corners.map(c => c.taken.filter(Boolean).length),
       crowd: this.crowd.stats(), drawCalls: this.crowd.drawCalls(),
+      reacted: { ...this.reacted }, shouting: this.voice.lines,
     };
   }
   /** Debug: where the agents are (checks verify nobody stands inside a collider). */
@@ -541,7 +615,7 @@ export class StreetLife {
   /** Debug: start the after-gala flow now. */
   leaveNow(n = 20) { this.leaving = n; this.leaveT = 0; }
 
-  dispose() { this.crowd.dispose(); }
+  dispose() { this.offFeel(); this.voice.dispose(); this.crowd.dispose(); }
 }
 
 const hash = (x: number, z: number) => { const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453; return s - Math.floor(s); };

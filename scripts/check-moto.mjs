@@ -6,7 +6,7 @@
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-moto.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
 import { chromium } from 'playwright';
-import { realTouch } from './lib/realTouch.mjs';
+import { realTouch, padRig } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/';
@@ -41,9 +41,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
       await hold();
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); await page.keyboard.up('KeyW');
     } else {
-      // real fingers: one on the gas button (the ride pad), one on the joystick, which only steers
-      const gas = await touch_.centre('#ridepad .rp-gas'), j = await touch_.centre('#joy');
-      await touch_.down(1, gas.x, gas.y); await touch_.down(2, j.x, j.y); if (steer) await touch_.move(2, j.x + steer * 30, j.y);
+      // real fingers: one on the gas pedal (the ride pad), one on the steering rocker, which only steers
+      const gas = await touch_.centre('#ridepad .rp-gas'), R = await padRig(page, touch_);
+      await touch_.down(1, gas.x, gas.y + 18); if (steer) await R.rocker(2)(steer);
       await hold();
       await touch_.upAll();
     }

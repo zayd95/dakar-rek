@@ -57,9 +57,8 @@ describe('the F2 of the Résidence Jàmm, built from its floor plan (LD2.0-C)', 
     expect(h.int.bounds).toEqual({ x0: OX - 4.5, x1: OX + 4.5, z0: OZ - 3.5, z1: OZ + 3.5 });
     expect(h.int.cameraBox).toEqual(h.int.bounds);
     expect(h.int.interactables.map(i => [i.id, i.name])).toEqual([['pikine:in:door:appart_jamm', 'Sortir']]);
-    const other = buildHomeInterior(homeSpec('maison_cite')!, 2000, 0, 'pikine');
-    expect(other.int.describe).toBeUndefined();
-    expect(other.int.update).toBeUndefined();
+    // no home is one open room any more: a catalogue home without a floor plan is refused, not drawn smaller
+    expect(() => buildHomeInterior({ ...homeSpec('residence_ngor')!, id: 'sans_plan' }, 2000, 0, 'pikine')).toThrow(/no floor plan/);
     expect(homeSpec('appart_jamm')!.home).toMatchObject({ w: P.w, d: P.d });
     expect(homeSpec('appart_jamm')!.size).toBe(63);
   });

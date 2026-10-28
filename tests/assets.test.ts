@@ -31,7 +31,8 @@ describe('catalogue', () => {
   it('homes climb room → apartment → house → villa → luxury residence, up to billions', () => {
     expect(HOMES.map(h => h.home.level)).toEqual(['room', 'apartment', 'house', 'villa', 'residence']);
     const priced = HOMES.slice(1);
-    for (let i = 1; i < priced.length; i++) { expect(priced[i].price!).toBeGreaterThan(priced[i - 1].price! * 3); expect(priced[i].rent!).toBeGreaterThan(priced[i - 1].rent!); }
+    // each step costs more (the owner set the house at 150 M F, the villa at 400 M F: from the house to the villa it is less than the tripling the first steps made)
+    for (let i = 1; i < priced.length; i++) { expect(priced[i].price!).toBeGreaterThan(priced[i - 1].price! * (priced[i].home.level === 'villa' ? 2 : 3)); expect(priced[i].rent!).toBeGreaterThan(priced[i - 1].rent!); }
     expect(HOMES.at(-1)!.price!).toBeGreaterThanOrEqual(1e9);
     expect(HOMES.find(h => h.home.level === 'villa')!.price!).toBeGreaterThanOrEqual(1e8);
     for (const h of HOMES) expect(h.home.door).toMatch(/:home:/);
@@ -73,9 +74,10 @@ describe('placement', () => {
   // a one-room home: the F2's open room from before LD2.0-C (8 × 6.5 m), which the other homes still use; the F2 itself is built from its floor plan
   // now (src/housing/plan.ts), and its rules are tested in tests/furnishRooms.test.ts
   const room = layoutOf(homeSpec(STARTER_HOME)!), appart = openPlan('apartment', 8, 6.5);
-  it('the F2 follows its floor plan; the other homes keep their open room', () => {
+  it('the F2 and the family house follow their floor plans; the other homes keep their open room', () => {
     expect(layoutOf(homeSpec('appart_jamm')!).plan?.id).toBe('f2_jamm');
-    expect(layoutOf(homeSpec('maison_cite')!).plan).toBeUndefined();
+    expect(layoutOf(homeSpec('maison_cite')!).plan?.id).toBe('maison_cite');
+    expect(layoutOf(homeSpec('residence_ngor')!).plan?.id).toBe('residence_ngor');
     expect(layoutOf(homeSpec(STARTER_HOME)!).plan).toBeUndefined();
   });
   it('a quarter turn swaps width and depth; points rotate like three.js', () => {
@@ -160,7 +162,7 @@ describe('homes: buy, rent, move in — the furniture follows', () => {
     const h = buyAsset(s, 'maison_cite')!; moveIn(s, h.uid);
     expect(furnitureIn(s, h.uid).every(f => f.at)).toBe(true);
     const w = s.wallet, got = sellAsset(s, h.uid);
-    expect(got).toBe(Math.round(90_000_000 * ECONOMY.property.saleShare)); expect(s.wallet).toBe(w + got);
+    expect(got).toBe(Math.round(150_000_000 * ECONOMY.property.saleShare)); expect(s.wallet).toBe(w + got);
     expect(currentHome(s).spec).toBe(STARTER_HOME); expect(furnitureIn(s, currentHome(s).uid).length).toBe(2);
   });
   it('comfort upgrades: the starter room takes a mosquito net (+8 energy a night)', () => {

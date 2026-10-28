@@ -27,7 +27,7 @@ let berlineCache: ReturnType<typeof kitCarSpec> | null = null, suvCache: ReturnT
 /** A little faster and softer than the modern sedan. */
 export const berlineSpec = () => (berlineCache ??= kitCarSpec({
   id: 'berline', name: 'Berline neuve', kind: 'luxury', seed: berlineSeed(), openable: true,
-  drive: { maxSpeed: 21, boostSpeed: 32, reverseSpeed: 3, accel: 4.6, brake: 8, turnRadius: 6, steer: 2.7, grip: 10 },
+  drive: { maxSpeed: 21, boostSpeed: 55, reverseSpeed: 3, accel: 4.6, brake: 8, turnRadius: 6, steer: 2.7, grip: 10 },
 }));
 /** The heaviest: slower to pick up, the widest circle. Its body is the Lamane Sport's own (src/transport/modelCars.ts). */
 export const suvSpec = lamaneSpec;
