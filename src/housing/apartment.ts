@@ -969,7 +969,7 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
   function ground() {
     use(0, false);
     const B = homeBox(p), house = { x0: Math.min(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.x0)), x1: Math.max(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.x1)), z0: Math.min(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.z0)), z1: Math.max(...p.rooms.filter(r => !r.outdoor && liOf(levelOfRoom(p, r)) === 0).map(r => r.box.z1)) };
-    const lot = { x0: B.x0, x1: B.x1, z0: B.z0, z1: B.x1 };                                  // a square lot (its street side as far from the middle as its sides)
+    const lot = { x0: B.x0, x1: B.x1, z0: B.z0, z1: p.yard !== undefined ? house.z1 + p.yard : B.x1 }, GT = p.gate ?? GATE;   // a square lot (its street side as far from the middle as its sides), or the front yard the plan asks for
     const t = p.outWall / 2, LAWN = 0x86ad5a, PATH = 0xd8ccb4, front = p.openings.find(o => o.kind === 'front');
     for (const r of [{ x0: lot.x0, x1: house.x0 - t, z0: house.z0 - t, z1: house.z1 + t }, { x0: house.x1 + t, x1: lot.x1, z0: house.z0 - t, z1: house.z1 + t }, { x0: lot.x0, x1: lot.x1, z0: house.z1 + t, z1: lot.z1 }]) {
       rbox(S.plain, r, -0.06, -0.03, LAWN);
@@ -979,12 +979,12 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
       rbox(S.plain, { x0: front.x - 0.6, x1: front.x + 0.6, z0: house.z1 + 1.4, z1: lot.z1 }, -0.03, -0.015, PATH);
       for (const s of [-1, 1]) for (let k = 0; k < 3; k++) S.plain.blob(0.28, W(front.x + s * 1.2), Y - 0.03 + 0.18, Z(house.z1 + 2.2 + k * 1.4), 0x3f7a35, 0.8, 0);
     }
-    rbox(S.plain, { x0: GATE.x0, x1: GATE.x1, z0: house.z1 + t, z1: lot.z1 }, -0.03, -0.012, 0xb9b2a6);           // the driveway (src/housing/villa.ts GATE)
-    for (const r of [{ x0: lot.x0 - 0.12, x1: lot.x0 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x1 - 0.12, x1: lot.x1 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x0, x1: GATE.x0, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }, { x0: GATE.x1, x1: lot.x1, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }]) {
+    rbox(S.plain, { x0: GT.x0, x1: GT.x1, z0: house.z1 + t, z1: lot.z1 }, -0.03, -0.012, 0xb9b2a6);           // the driveway (src/housing/villa.ts GATE)
+    for (const r of [{ x0: lot.x0 - 0.12, x1: lot.x0 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x1 - 0.12, x1: lot.x1 + 0.12, z0: house.z0, z1: lot.z1 }, { x0: lot.x0, x1: GT.x0, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }, { x0: GT.x1, x1: lot.x1, z0: lot.z1 - 0.12, z1: lot.z1 + 0.12 }]) {
       rbox(S.wall, r, -0.06, WALL_H, 0xeee3cf); rbox(S.plain, grow2(r, 0.03), WALL_H, WALL_H + 0.06, COPING);
     }
     // palms in the front yard's corners
-    for (const [x, z] of [[lot.x0 + 1.4, lot.z1 - 1.6], [lot.x1 - 1.4, house.z1 + 1.6], [lot.x0 + 1.2, house.z1 + 1.2]] as const) {
+    for (const [x, z] of (p.yard !== undefined ? [[lot.x1 - 1.4, house.z1 + 1.8], [lot.x0 + 1.2, lot.z1 - 1.2]] : [[lot.x0 + 1.4, lot.z1 - 1.6], [lot.x1 - 1.4, house.z1 + 1.6], [lot.x0 + 1.2, house.z1 + 1.2]]) as readonly (readonly [number, number])[]) {
       S.plain.cyl(0.12, 0.17, 4.2, W(x), Y - 0.03, Z(z), 0x8a6a48, 7);
       for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; S.plain.slab(0.32, 0.05, 1.9, W(x + Math.sin(a) * 0.8), Y + 4.0, Z(z + Math.cos(a) * 0.8), 0x3f7a35, a, 0.45); }
     }

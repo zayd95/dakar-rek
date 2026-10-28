@@ -18,7 +18,7 @@ uncapped (Habib, 9 Oct): the ladders climb to hundreds of millions and billions.
   camera looks down on the room; pick a piece, move it on a 25 cm grid (arrows, keys, or a tap on the floor), turn it,
   « Poser » where the footprint is green, or « Ranger » it. Saved at once.
 - **Move up.** Homes ladder: room (lent by the family) → apartment (Résidence Jàmm, rent 6 000 F a day or buy
-  15 M F) → house (Cité Jàmm, 90 M F) → villa (Almadies, 400 M F) → luxury residence (Ngor, 2,5 Md F). Visit before
+  15 M F) → house (Cité Jàmm, 150 M F) → villa (Almadies, 400 M F) → luxury residence (Ngor, 2,5 Md F). Visit before
   renting; « Emménager » moves in and the furniture follows (set up again where it fits, stored otherwise — never lost).
   An owned home the player does not live in can be let.
 - **Invest.** Two plots (150 and 300 m²) let to a market gardener; a 4 × 3 billboard let to advertisers, or showing the
