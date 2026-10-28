@@ -1,0 +1,80 @@
+{
+ "base": "http://127.0.0.1:4973/",
+ "at": "2026-10-27T22:52:18.680Z",
+ "hours": {
+  "9": {
+   "live": 37,
+   "sitting": 5,
+   "street": 37,
+   "streetSitting": 5,
+   "byTag": {
+    "corner": 11,
+    "stop": 18,
+    "shop": 4,
+    "cafe": 1,
+    "eat": 1,
+    "kiosk": 1,
+    "bench": 3
+   },
+   "problems": []
+  },
+  "13": {
+   "live": 31,
+   "sitting": 2,
+   "street": 31,
+   "streetSitting": 2,
+   "byTag": {
+    "stop": 14,
+    "shop": 7,
+    "cafe": 1,
+    "eat": 1,
+    "kiosk": 1,
+    "corner": 8,
+    "attaya": 1
+   },
+   "problems": []
+  },
+  "19": {
+   "live": 35,
+   "sitting": 4,
+   "street": 35,
+   "streetSitting": 4,
+   "byTag": {
+    "stop": 20,
+    "corner": 1,
+    "shop": 8,
+    "eat": 1,
+    "kiosk": 1,
+    "attaya": 1,
+    "square": 1,
+    "bench": 2,
+    "dames": 1,
+    "juice": 1
+   },
+   "problems": []
+  },
+  "21": {
+   "live": 35,
+   "sitting": 7,
+   "street": 35,
+   "streetSitting": 7,
+   "byTag": {
+    "stop": 11,
+    "corner": 11,
+    "shop": 2,
+    "attaya": 2,
+    "bench": 5,
+    "dames": 1,
+    "eat": 2,
+    "kiosk": 2,
+    "juice": 1,
+    "square": 1,
+    "cafe": 1
+   },
+   "problems": []
+  }
+ },
+ "spots": 50,
+ "streetSeats": null,
+ "errors": []
+}

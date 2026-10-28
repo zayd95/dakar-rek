@@ -22,6 +22,11 @@ import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
 import { COMPTOIR, GROSSISTE, TRADE_PLACES, isTradeLot } from '../districts/tradePlaces';
 import { VILLA_SITE, buildVillaCompound } from './villaCompound';
+import { buildDistrict } from './almadies/district';
+import type { DistrictKit, Rect } from './almadies/contract';
+import { districtGlassMaterial } from './almadies/night';
+import { SITES, siteOfLot } from './almadies/plan';
+import { STREETSCAPE, buildStreetscape } from './almadies/streetscape';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -820,6 +825,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       // LD2.0-D: the flagship villa's lot (src/world/villaCompound.ts) draws the generic villa's random numbers unseen (a dry run), so every other lot
       // and the street dressing stay exactly where they were (tests/villaCompound.test.ts); its colliders stand as ghosts while the streets are dressed
       if (villaLot && L.x0 === villaLot.x0 && L.z0 === villaLot.z0) { dryRun(() => genericVilla(L, faces)); return; }
+      // LD2.0-E: every other lot of the Almadies is the district's (src/world/almadies, drawn after the street is dressed): the same dry run
+      if (id === 'almadies' && siteOfLot(i, j, b * 2 + a)) { dryRun(() => genericVilla(L, faces)); return; }
       genericVilla(L, faces);
       return;
     }
@@ -1782,11 +1789,29 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const v = buildVillaCompound({ lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool });
     group.add(v.group); colliders.push(...v.colliders); canopies.push(...v.canopies); keepClear.push(...v.keepClear);
   }
+  // LD2.0-E: the Almadies district (houses, villas, hotels, residences) on the lots the generic villas stood on, drawn in the hub's own batches
+  let rooftopDoor: HubWorld['rooftopDoor'], rooftopSign: HubWorld['rooftopSign'], streetscape: HubWorld['streetscape'], kit: DistrictKit | undefined, openings: Rect[] = [];
+  if (id === 'almadies') {
+    const panes = new Batch(), dark = new Batch();   // the windows' panes (warm at night) and glass that never glows, each its own mesh
+    kit = { lite, plain, pave, leaves, trunks, water, bulbs: lampBulbs, metalMat, pool, glass: panes, glassDark: dark, fac, metal, sign: addSign };
+    const dist = buildDistrict(kit);
+    group.add(dist.group); colliders.push(...dist.colliders); canopies.push(...dist.canopies); keepClear.push(...dist.keepClear);
+    rooftopDoor = dist.rooftopDoor; rooftopSign = dist.rooftopSign;
+    seats.push(...dist.seats); people.push(...dist.people);         // the district's terraces, benches and the people at its doors (LD2.0-E round 3)
+    openings = dist.openings;
+    for (const [b, m] of [[panes, districtGlassMaterial()], [dark, glassMat]] as [Batch, THREE.Material][]) { const mesh = b.build(m, false, false); if (mesh) group.add(mesh); }
+  }
   // a mall's way in from the street: its courtyard opens between the pylons onto the pavement (src/world/city.ts), so the street dressing that comes
   // after (src/game/streetDress.ts) leaves that strip open; given only now, the builder's own dressing and its random draws are as they were
   for (const [key, kind] of Object.entries(CITY_BLOCKS[id])) if (kind === 'mall') {
     const [i, j] = key.split(',').map(Number), cx = blockMin(i) + BLK / 2, cz = blockMin(j) + BLK / 2;
     keepClear.push({ x0: cx - 5, x1: cx + 5, z0: cz + 21, z1: cz + 29, why: 'mall_entrance' });
+  }
+  // LD2.0-E round 3: what grows and stands between the Almadies' buildings (the plazas, the gare's garden, the square's ring, the kerbs), on the ground that is left: after the district and every keep-clear
+  if (kit && STREETSCAPE.on) {
+    const ss = buildStreetscape(kit, { colliders, keepClear, sites: SITES, openings });
+    colliders.push(...ss.colliders); canopies.push(...ss.canopies); seats.push(...ss.seats); people.push(...ss.people);
+    streetscape = ss.placed;
   }
   for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
@@ -1836,7 +1861,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, rooftopSign, streetscape,
     dispose() { disposeGroup(group); },
   };
 }

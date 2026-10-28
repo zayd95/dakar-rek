@@ -229,6 +229,41 @@
 
 **Lanes:** R2-E (the main entrance, then the kit), R2-W (the swim), R2-H (the helicopter); the integration owner merges, runs the acceptance (its first step now walks in by the main entrance), the pictures, the videos and the preview.
 
+### Round 2 results (27 Oct)
+- **Merged:** R2-W `bf941e5`, R2-H `ab398f7`, R2-E `429c510` (the last change to the game); after it, the checks and the video tour only.
+- **The acceptance, 17/17** (`scripts/check-ld2d.mjs`, two players on the local Workers runtime, phone pages, real touches; the game built from `429c510`):
+  - 1a: Awa walks up from the street to the main entrance; it swings open for her while the car gate stays shut; she walks up the path, and the door shuts behind her.
+  - 5: in the water the stick steers her across the pool (3.6 m, the stroke), she treads water once it is let go, swims back, « Sortir de l'eau ».
+  - 8b: Moussa, the invited guest, comes in by the same door.
+  - The rest as in round 1: the floors, the roof, the car in its bay, the Collection, the reload, no page errors.
+  - Pictures and results: `docs/proof/ld2d/acceptance-r2/` (round 1's stay in `docs/proof/ld2d/acceptance/`).
+- **Performance on a phone page** (390 × 844, quality medium; budget per furnished level 60 draw calls, 80k triangles):
+
+  | Where | Draw calls | Triangles |
+  |---|---|---|
+  | Ground floor | 17 | 24 258 |
+  | First floor | 22 | 24 650 |
+  | Roof terrace | 29 (was 26) | 32 184 (was 23 164): the new helicopter |
+  | Salon furnished (13 pieces) | 23 | 27 714 |
+- **Unit tests and types** on the code of this commit (the game as at `429c510`): tsc clean; vitest 215 files passed (1 skipped), 2 751 tests passed (3 skipped).
+- **The lanes' checks:**
+  - the entrance, 33/33 (`docs/proof/ld2d/r2-entrance/results.json`); the compound, 14 draw calls and 15 288 triangles in a view of the entrance (budget ≤ 25);
+  - the swim, 13/13 on each of the three bodies (`docs/proof/ld2d/r2-swim/`);
+  - the street check (`scripts/check-villa-street.mjs`, updated below), 43/43 on the round-2 game (run without round 1's comparison against the contract's build);
+  - the helicopter: 4 draw calls, 10 220 triangles (budget 4 and 12 000); `scripts/check-heli-roof.mjs` 6/6, the roof walked with real touches round it (`docs/proof/ld2d/r2-heli/roof-walk.json`); before and after pictures.
+- **Fixed during integration** (the checks, not the game):
+  - the acceptance and the video tour walk in by the main entrance;
+  - the swim step waits for the swimmer to glide to a stop before it asks for treading water;
+  - it swims back before « Sortir de l'eau »: the far end is by the steps, which take a swimmer out onto the west deck, across the pool from the house, where the walk to the dining room met the pool's wall;
+  - the street check (`scripts/check-villa-street.mjs`) swam in round 1's debug basin, removed, and waited for a timer, gone: it now swims in the villa's pool and ends a long swim with « Sortir de l'eau ».
+- **Limitations:**
+  - other players see a swimmer as a standing figure;
+  - the camera does not swing behind a swimmer; a hand can dip about 10 cm into a pool wall;
+  - the helicopter's lights do not glow; it casts no shadow on the roof;
+  - the main entrance and the car gate move on each player's screen by their own rule, not synchronised;
+  - the kit: another `storeys` count changes the street view only (the interior keeps the flagship's three levels); the gate's collider assumes the flagship's orientation; the GLB files leave out the game's own shader touches (the grain, the travertine and oak detail maps);
+  - round 1's limitations stand.
+
 ## Not in this slice
 - Helicopter flights, the airport and the jet.
 - Other villas and the Ngor residence keep their open room.
