@@ -48,7 +48,7 @@ export const ROOFTOPS: Partial<Record<HubId, Def>> = {
 
 const ROOM_X = 3200, STEP = 60;
 const HW = 8, HD = 5.5, PARAPET = 1.15;
-interface Built { def: Def; door: Interactable; int: Interior; bar: { x: number; z: number }; facade: { x: number; z: number; nx: number; nz: number } }
+interface Built { def: Def; door: Interactable; int: Interior; bar: { x: number; z: number }; facade: { x: number; z: number; nx: number; nz: number }; sign: { onRoof: boolean; top: number; faces: number; panels: NonNullable<HubWorld['rooftopSign']>['panels'] } | null }
 let built: Built | null = null;
 let ctxRef: GameCtx | null = null;
 
@@ -70,7 +70,54 @@ function findFacade(hub: HubWorld, ref: { x: number; z: number }): { x: number; 
   return null;
 }
 
-/** The door in the facade: frame, sign and a few bulbs; the hub keeps the geometry. */
+/**
+ * The rooftop restaurant's name on the roof (LD2.0-E round 4: « put it on top since it's a rooftop and make it visible from the street and far »): the hotel's gantry
+ * (`hub.rooftopSign`) holds the faces, and this paints them in ONE atlas and builds them as ONE mesh, lit like every other sign at night: the long board (one face each way:
+ * the street's, and the avenue's behind), a blade across each end of the roof, and the small plaque at the stair door that says where the way up is. One mesh: the door's old sign.
+ */
+type RoofFace = NonNullable<HubWorld['rooftopSign']>['panels'][number];
+const ATLAS_W = 2048, INK = '#10283a', GOLD = '#ffe7a8', SEA = '#8fd3e8';
+function paintBoard(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, lines: { t: string; k: number; col?: string }[]) {
+  c.fillStyle = INK; c.fillRect(x, y, w, h);
+  c.strokeStyle = GOLD; c.lineWidth = Math.max(4, Math.round(h / 32)); c.strokeRect(x + 6, y + 6, w - 12, h - 12);
+  const gap = h * 0.035, total = lines.reduce((n, l) => n + l.k * h, 0) + gap * (lines.length - 1), pad = h * 0.3;
+  let yy = y + (h - total) / 2;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (const l of lines) {
+    let size = Math.round(l.k * h); c.font = `800 ${size}px system-ui, sans-serif`;
+    while (c.measureText(l.t).width > w - 2 * pad && size > 8) { size -= 2; c.font = `800 ${size}px system-ui, sans-serif`; }
+    c.fillStyle = l.col ?? GOLD; c.fillText(l.t, x + w / 2, yy + (l.k * h) / 2 + 2); yy += l.k * h + gap;
+  }
+}
+function roofSignMesh(faces: RoofFace[], plaque: RoofFace): THREE.Mesh {
+  const front = faces.find(f => f.kind === 'front'), blade = faces.find(f => f.kind === 'blade');
+  const fh = Math.round(ATLAS_W * (front ? front.h / front.w : 0.2)), bh = Math.round(ATLAS_W / 2 * (blade ? blade.h / blade.w : 0.5)), ph = Math.round(ATLAS_W / 2 * (plaque.h / plaque.w)), H = fh + Math.max(bh, ph);
+  const cv = document.createElement('canvas'); cv.width = ATLAS_W; cv.height = H;
+  const c = cv.getContext('2d')!;
+  paintBoard(c, 0, 0, ATLAS_W, fh, [{ t: 'TERRASSE DE NGOR', k: 0.5 }, { t: 'ROOFTOP · RESTAURANT & LOUNGE', k: 0.17, col: SEA }]);
+  paintBoard(c, 0, fh, ATLAS_W / 2, bh, [{ t: 'TERRASSE', k: 0.28 }, { t: 'DE NGOR', k: 0.28 }, { t: 'ROOFTOP', k: 0.12, col: SEA }]);
+  paintBoard(c, ATLAS_W / 2, fh, ATLAS_W / 2, ph, [{ t: 'TERRASSE · ACCÈS AU TOIT ↑', k: 0.4 }]);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const rect = (f: RoofFace, isPlaque: boolean) => isPlaque ? { x: ATLAS_W / 2, y: fh, w: ATLAS_W / 2, h: ph } : f.kind === 'front' ? { x: 0, y: 0, w: ATLAS_W, h: fh } : { x: 0, y: fh, w: ATLAS_W / 2, h: bh };
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [];
+  const quad = (f: RoofFace, isPlaque = false) => {
+    const rx = f.nz, rz = -f.nx, hw = f.w / 2, hh = f.h / 2, r = rect(f, isPlaque);
+    const corner = (sx: number, sy: number) => [f.x + rx * hw * sx, f.y + hh * sy, f.z + rz * hw * sx];
+    const bl = corner(-1, -1), br = corner(1, -1), tr = corner(1, 1), tl = corner(-1, 1);
+    const u0 = r.x / ATLAS_W, u1 = (r.x + r.w) / ATLAS_W, v0 = 1 - (r.y + r.h) / H, v1 = 1 - r.y / H;
+    pos.push(...bl, ...br, ...tr, ...bl, ...tr, ...tl); uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+    for (let k = 0; k < 6; k++) nor.push(f.nx, 0, f.nz);
+  };
+  for (const f of faces) quad(f);
+  quad(plaque, true);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3)); g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3)); g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 }));
+  m.name = 'rooftop-sign';
+  return m;
+}
+
+/** The door in the facade: frame and a few bulbs, and the sign: the name up on the roof when the hub has the hotel's gantry (`hub.rooftopSign`), else over the door as before; the hub keeps the geometry. */
 function dressFacade(hub: HubWorld, def: Def, f: { x: number; z: number; nx: number; nz: number }) {
   const b = new Batch(), yaw = Math.atan2(f.nx, f.nz), fx = f.x - f.nx * 1.1, fz = f.z - f.nz * 1.1;   // fx, fz: the facade face
   const ax = Math.abs(f.nx) > 0.5;                                                                        // facade along z when the normal is x
@@ -83,6 +130,11 @@ function dressFacade(hub: HubWorld, def: Def, f: { x: number; z: number; nx: num
   bx(1.6, 0.12, 0.45, 0, 2.5, 0.25, 0xe9dcc0);                                                          // canopy
   for (let i = -2; i <= 2; i++) bx(0.09, 0.09, 0.09, i * 0.34, 2.38, 0.46, 0xfff1c8);                   // bulbs
   const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, false); if (mesh) hub.group.add(mesh);
+  if (hub.rooftopSign) {                                                                                  // the name is on the roof; at the door, only the plaque that says the way up
+    const plaque: RoofFace = { x: fx + f.nx * 0.14, y: 3.1, z: fz + f.nz * 0.14, w: 2.4, h: 0.6, nx: f.nx, nz: f.nz, kind: 'front' };
+    const sign = roofSignMesh(hub.rooftopSign.panels, plaque); hub.group.add(sign); hub.signs.push(sign);
+    return;
+  }
   const panel = signPanel(signTexture(def.sign, '#1d2a3a', '#ffe7a8', 512, 128), 3.4, 0.72);
   panel.position.set(fx + f.nx * 0.14, 3.15, fz + f.nz * 0.14); panel.rotation.y = yaw; hub.group.add(panel); hub.signs.push(panel);
 }
@@ -193,7 +245,7 @@ export const RooftopModule: GameModule = {
   hubLoaded(ctx, hub) {
     built = null;
     const def = ROOFTOPS[hub.id as HubId]; if (!def) return;
-    const f = findFacade(hub, def.ref); if (!f) return;
+    const f = hub.rooftopDoor ?? findFacade(hub, def.ref); if (!f) return;      // the Almadies' district names its door (the hotel's street face); elsewhere the nearest tall building's first free side
     dressFacade(hub, def, f);
     const idx = Object.keys(ROOFTOPS).indexOf(def.id), ox = ROOM_X + idx * STEP, doorX = ox + 5;
     const door: Interactable = { id: `${hub.id}:rooftop:${def.id}`, name: def.name, kind: 'actions', x: f.x, z: f.z, radius: 3.4, actions: [ENTER], description: def.blurb };
@@ -201,11 +253,12 @@ export const RooftopModule: GameModule = {
     hub.interactables.push({ id: `${hub.id}:rooftop:dir`, name: `${def.name} · toit`, kind: 'actions', x: f.x, z: f.z, radius: -1, actions: [], description: def.blurb });
     const t = buildTerrace(def, ox, 0, hub.id, doorX);
     ctx.addInterior(door, t.int);
-    built = { def, door, int: t.int, bar: t.bar, facade: f };
+    const rs = hub.rooftopSign;
+    built = { def, door, int: t.int, bar: t.bar, facade: f, sign: rs ? { onRoof: true, top: Math.max(...rs.panels.map(p => p.y + p.h / 2)), faces: rs.panels.length, panels: rs.panels } : null };
   },
   debug: () => ({
     rooftop: {
-      info: () => built ? { hub: built.def.id, name: built.def.name, kind: built.def.kind, door: { id: built.door.id, x: built.door.x, z: built.door.z }, facade: built.facade, bar: built.bar, seats: built.int.seats.length, menu: built.def.menu.map(d => [d.name, d.price]) } : null,
+      info: () => built ? { hub: built.def.id, name: built.def.name, kind: built.def.kind, door: { id: built.door.id, x: built.door.x, z: built.door.z }, facade: built.facade, sign: built.sign, bar: built.bar, seats: built.int.seats.length, menu: built.def.menu.map(d => [d.name, d.price]) } : null,
       enter: () => { if (built && ctxRef) ctxRef.enter(built.door.id); },
       order: (i = 0) => { if (!built || !ctxRef) return false; const d = built.def.menu[i], s = ctxRef.state; if (s.wallet < d.price) return false; s.addMoney(-d.price, `${built.def.name} : ${d.name}`); s.adjust({ faim: d.faim, moral: d.moral }); return true; },
     },

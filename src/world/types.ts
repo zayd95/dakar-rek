@@ -93,6 +93,12 @@ export interface HubWorld {
   seats: Seat[];
   /** Lots and blocks left to a gameplay module (src/world/sites.ts, composed by src/venues). */
   sites?: Site[];
+  /** Where the rooftop restaurant has its stair door when the district's own building gives it one (the Almadies: the boutique hotel's street face): the spot in front of the face and the face's outward normal. src/venues/rooftop.ts. */
+  rooftopDoor?: { x: number; z: number; nx: number; nz: number };
+  /** The rooftop restaurant's sign up on the hotel's roof (src/world/almadies/contract.ts `RoofPanel`, in the hub): each face's centre, size and the horizontal normal it faces. The venue paints and lights them. */
+  rooftopSign?: { panels: { x: number; y: number; z: number; w: number; h: number; nx: number; nz: number; kind: 'front' | 'blade' }[] };
+  /** What the Almadies' streetscape put down (src/world/almadies/streetscape.ts): its kind and place, for the checks. */
+  streetscape?: { kind: string; x: number; z: number }[];
   /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
   canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */

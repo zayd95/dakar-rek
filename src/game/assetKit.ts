@@ -5,7 +5,7 @@ import type { GameModule } from './modules';
 import { furnitureRows, furnishedRooms, poseScene, rideScene } from './assetShowroom';
 import type { Humanoid } from '../actors/humanoid';
 import { rng } from '../core/rng';
-import { ParkedBake, placeParked, PARKED_COUNT } from './parkedVehicles';
+import { ParkedBake, placeParked, parkedCountFor } from './parkedVehicles';
 import type { FurnitureId } from '../world/furnitureKit';
 import { glbVehicle, glbStats, setGlbVehicles, preloadGlbVehicles } from '../actors/glbVehicle';
 import { animateVehicle, buildVehicle, vehicleSpec, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
@@ -27,7 +27,7 @@ export const assetKitModule: GameModule = {
   name: 'assetKit',
   hubLoaded(ctx, hub) {
     // parked vehicles along the kerbs: none on Low, more on High (density follows the graphics quality)
-    const parked = placeParked(hub, PARKED_COUNT[ctx.quality()]);
+    const parked = placeParked(hub, parkedCountFor(hub.id, ctx.quality()));
     ctx.extra.add(parked);
     parkedBake?.dispose();
     parkedBake = new ParkedBake(parked, { x: (hub.bounds.x0 + hub.bounds.x1) / 2, z: (hub.bounds.z0 + hub.bounds.z1) / 2 }, ctx.quality() !== 'low');

@@ -1,0 +1,236 @@
+{
+ "residence-ngor-front": {
+  "drawn": {
+   "calls": 15,
+   "tris": 4618
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-ngor-street": {
+  "drawn": {
+   "calls": 13,
+   "tris": 4202
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-ngor-back": {
+  "drawn": {
+   "calls": 15,
+   "tris": 4618
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-ngor-aerial": {
+  "drawn": {
+   "calls": 15,
+   "tris": 4618
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-ngor-night": {
+  "drawn": {
+   "calls": 15,
+   "tris": 4618
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-ngor-low": {
+  "drawn": {
+   "calls": 15,
+   "tris": 3658
+  },
+  "colliders": 18,
+  "signs": 1,
+  "tallest": 15.2
+ },
+ "residence-stack-front": {
+  "drawn": {
+   "calls": 15,
+   "tris": 6678
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-stack-street": {
+  "drawn": {
+   "calls": 12,
+   "tris": 6260
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-stack-back": {
+  "drawn": {
+   "calls": 15,
+   "tris": 6678
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-stack-aerial": {
+  "drawn": {
+   "calls": 15,
+   "tris": 6678
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-stack-night": {
+  "drawn": {
+   "calls": 15,
+   "tris": 6678
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-stack-low": {
+  "drawn": {
+   "calls": 15,
+   "tris": 5158
+  },
+  "colliders": 45,
+  "signs": 1,
+  "tallest": 21.9
+ },
+ "residence-screen-front": {
+  "drawn": {
+   "calls": 16,
+   "tris": 6754
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-street": {
+  "drawn": {
+   "calls": 13,
+   "tris": 6130
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-back": {
+  "drawn": {
+   "calls": 16,
+   "tris": 6754
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-aerial": {
+  "drawn": {
+   "calls": 16,
+   "tris": 6754
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-night": {
+  "drawn": {
+   "calls": 16,
+   "tris": 6754
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-low": {
+  "drawn": {
+   "calls": 16,
+   "tris": 5448
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-courtyard-front": {
+  "drawn": {
+   "calls": 17,
+   "tris": 9884
+  },
+  "colliders": 35,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-courtyard-street": {
+  "drawn": {
+   "calls": 16,
+   "tris": 9874
+  },
+  "colliders": 35,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-courtyard-back": {
+  "drawn": {
+   "calls": 17,
+   "tris": 9884
+  },
+  "colliders": 35,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-courtyard-aerial": {
+  "drawn": {
+   "calls": 17,
+   "tris": 9884
+  },
+  "colliders": 35,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-courtyard-night": {
+  "drawn": {
+   "calls": 17,
+   "tris": 9884
+  },
+  "colliders": 35,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-courtyard-low": {
+  "drawn": {
+   "calls": 17,
+   "tris": 7696
+  },
+  "colliders": 34,
+  "signs": 1,
+  "tallest": 20.3
+ },
+ "residence-screen-cormorans-front": {
+  "drawn": {
+   "calls": 16,
+   "tris": 6758
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ },
+ "residence-screen-cormorans-low": {
+  "drawn": {
+   "calls": 16,
+   "tris": 5452
+  },
+  "colliders": 24,
+  "signs": 1,
+  "tallest": 20.9
+ }
+}
