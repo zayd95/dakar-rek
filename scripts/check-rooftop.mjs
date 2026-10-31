@@ -18,8 +18,9 @@ try {
     await d(h => { window.__dakar.setHour(18); window.__dakar.teleport(h); }, hub);
     await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.rooftop.info()?.hub === h, hub, T).catch(() => {});
     const info = await d(() => window.__dakar.rooftop.info());
-    const location = hub === 'almadies' ? 'dedicated hospitality frontage' : 'facade of a tall building';
-    const authoredAlmadiesSite = hub !== 'almadies' || (!!info && Math.abs(info.door.x + 30) < 0.1 && Math.abs(info.door.z + 105.1) < 0.1);
+    const location = hub === 'almadies' ? 'boutique hotel\'s street face, its name on the roof' : 'facade of a tall building';
+    // LD2.0-E + M4 integration (docs/districts/ALMADIES-NIGHTLIFE.md): one Terrasse de Ngor, the boutique hotel's stair door beside the lobby, its name lit on the hotel's roof
+    const authoredAlmadiesSite = hub !== 'almadies' || (!!info && Math.abs(info.door.x + 40) < 0.1 && Math.abs(info.door.z + 105.6) < 0.1 && info.sign?.onRoof === true && info.sign.faces >= 3);
     check(`${hub}: a rooftop door exists at the ${location}`, !!info && authoredAlmadiesSite, JSON.stringify(info)?.slice(0, 200));
     check(`${hub}: it is a ${info.kind}, neither a gargote nor a maïga`, /rooftop/.test(info.door.id) && !/gargote|maiga/.test(info.door.id) && info.menu.length >= 4);
     // walk up to the door: « Entrer »

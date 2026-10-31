@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stubCanvas } from './hubstub';
 import { ALLEY_RECT } from '../src/world/hospitalityStrip';
-import { BAY_DEPTH, DROP_BAY, FRONT_Z, LOTS, NIGHT_KEEP_CLEAR, NIGHT_RECTS, NIGHT_VENUES, PATIO_SITE, ROAD_EDGE_Z, WALK_Z0, inNightStreet } from '../src/world/nightStreet';
+import { APRON, BAY_DEPTH, DROP_BAY, FRONT_Z, LOTS, NIGHT_KEEP_CLEAR, NIGHT_RECTS, NIGHT_VENUES, PATIO_SITE, ROAD_EDGE_Z, WALK_Z0, inNightStreet } from '../src/world/nightStreet';
 import type { Collider, HubWorld } from '../src/world/types';
 
 /**
@@ -59,7 +59,8 @@ describe('the night street', () => {
     expect(n.bays.length).toBeGreaterThanOrEqual(30);
     for (const b of n.bays) {
       expect(b.z, `bay at ${b.x}`).toBeLessThan(ROAD_EDGE_Z - 1);                         // the whole car clear of the lanes: its tail is 2.1 m behind its middle
-      expect(b.z - 2.15).toBeGreaterThan(ROAD_EDGE_Z - BAY_DEPTH - 0.3);
+      expect(b.z - 2.15).toBeGreaterThan(ROAD_EDGE_Z - APRON - BAY_DEPTH - 0.3);                  // and inside the asphalt
+      expect(b.z + 2.15).toBeLessThan(ROAD_EDGE_Z - APRON + 0.3);
       expect(b.x).toBeGreaterThan(LOTS[b.lot].x0 - 1); expect(b.x).toBeLessThan(LOTS[b.lot].x1 + 1);
     }
     const free = n.bays.filter(b => b.free);

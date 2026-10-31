@@ -13,9 +13,9 @@ import {
  * club of src/venues/patio.ts, the Terrasse de Ngor the boutique hotel's roof.
  *
  * From the road to the sea (z grows toward the road; the carriageway's north edge is z −127):
- *   − 127 … − 132.6   the car parks: two rows of painted bays, nose to the beach, open to the road (a car drives straight in and reverses out) — « PARKING DU PATIO » in the west,
+ *   − 127 … − 133.2   the car parks: a metre of asphalt apron, then two rows of painted bays, nose to the beach, open to the road (a car drives straight in and reverses out; one that stops a metre short is still off the carriageway) — « PARKING DU PATIO » in the west,
  *                      « PARKING NGOR » (hotel, Terrasse and La Vague's visitors) in the east; a dépose-minute bay for taxis between the west one and the alley
- *   − 132.6 … − 137   the promenade: an ochre walk along the venues' fronts, lamp poles and festoons, café tables at the doors
+ *   − 133.2 … − 137   the promenade: an ochre walk along the venues' fronts, lamp poles and festoons, café tables at the doors
  *   − 137 …           the venues' fronts (the buildings, a courtyard behind the gate of Le Patio), the beach and the sea behind them
  * No marking lies on the carriageway; the bays are on the sand verge, so a car in one is out of every traffic lane. The NPC cars in them leave every third bay free and the bays
  * nearest each venue's door.
@@ -24,7 +24,7 @@ import {
  */
 
 /** The carriageway's north edge, the car parks' open side, and the line of the venues' fronts (La Vague's gate is on it). */
-export const ROAD_EDGE_Z = -127, BAY_DEPTH = 5.0, WALK_Z0 = -132.6, FRONT_Z = -137;
+export const ROAD_EDGE_Z = -127, APRON = 1.0, BAY_DEPTH = 4.8, WALK_Z0 = -133.2, FRONT_Z = -137;
 export const BAY_W = 2.6;
 /** The two car parks' extent along the road. */
 export const LOTS = {
@@ -53,10 +53,10 @@ export const ZEBRA = { x: -30, z0: -126.2, z1: -113.8 };
 /** The crossing's ground: no parked car stands on it (the digest tests leave it out too). */
 export const ZEBRA_RECT = { x0: -32.5, z0: -127, x1: -27.5, z1: -113.4 };
 export const NIGHT_KEEP_CLEAR: KeepClear[] = [
-  { x0: LOTS.west.x0 - 1, z0: -133, x1: DROP_BAY.x1 + 0.5, z1: -122.5, why: 'almadies_car_park' },
-  { x0: LOTS.east.x0 - 1, z0: -133, x1: LOTS.east.x1 + 1, z1: -122.5, why: 'almadies_car_park' },
-  { x0: NIGHT_RECTS.west.x0, z0: -158, x1: DROP_BAY.x0 - 0.5, z1: -133, why: 'almadies_night_street' },
-  { x0: NIGHT_RECTS.east.x0, z0: -158, x1: NIGHT_RECTS.east.x1, z1: -133, why: 'almadies_night_street' },
+  { x0: LOTS.west.x0 - 1, z0: -133.6, x1: DROP_BAY.x1 + 0.5, z1: -122.5, why: 'almadies_car_park' },
+  { x0: LOTS.east.x0 - 1, z0: -133.6, x1: LOTS.east.x1 + 1, z1: -122.5, why: 'almadies_car_park' },
+  { x0: NIGHT_RECTS.west.x0, z0: -158, x1: DROP_BAY.x0 - 0.5, z1: -133.6, why: 'almadies_night_street' },
+  { x0: NIGHT_RECTS.east.x0, z0: -158, x1: NIGHT_RECTS.east.x1, z1: -133.6, why: 'almadies_night_street' },
   { ...ALLEY_RECT, why: 'almadies_alley' },
   { ...ZEBRA_RECT, why: 'almadies_crossing' },
 ];
@@ -94,14 +94,14 @@ export function turned(k: StripKit, cx: number, cz: number): StripKit {
 /** A row of painted bays along the road's north edge, open to the carriageway: asphalt, lines, wheel stops, NPC cars that leave open the bays within `r` metres of each door `[x, r]` of `free` (a player drives in on an arc and needs the neighbours clear), and a sign at each end. */
 function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number, free: [number, number][]) {
   const { plain, G } = k, R = rng(seed), top = G + 0.045, y = G + 0.005;
-  const n = Math.floor((x1 - x0) / BAY_W), w = n * BAY_W, bx0 = x0 + ((x1 - x0) - w) / 2, zFront = ROAD_EDGE_Z, zBack = ROAD_EDGE_Z - BAY_DEPTH;
-  plain.box(w + 0.6, 0.035, BAY_DEPTH + 0.6, bx0 + w / 2, y - 0.015, (zFront + zBack) / 2, 0x4a4d52);                       // the asphalt, on the sand verge
+  const n = Math.floor((x1 - x0) / BAY_W), w = n * BAY_W, bx0 = x0 + ((x1 - x0) - w) / 2, zFront = ROAD_EDGE_Z - APRON, zBack = zFront - BAY_DEPTH;
+  plain.box(w + 0.6, 0.035, ROAD_EDGE_Z - zBack + 0.3, bx0 + w / 2, y - 0.015, (ROAD_EDGE_Z + zBack - 0.3) / 2, 0x4a4d52);   // the asphalt, apron and bays, on the sand verge
   for (let i = 0; i <= n; i++) plain.box(0.1, 0.012, BAY_DEPTH - 0.1, bx0 + i * BAY_W, top, (zFront + zBack) / 2 + 0.05, 0xf2f2ec);   // bay lines
   plain.box(w, 0.012, 0.1, bx0 + w / 2, top, zBack + 0.05, 0xf2f2ec);                                                     // the row's back line
   const bays: { x: number; z: number }[] = [];
   for (let i = 0; i < n; i++) {
     const cx = bx0 + (i + 0.5) * BAY_W;
-    bays.push({ x: cx, z: zBack + 2.5 });
+    bays.push({ x: cx, z: zBack + 2.4 });
     plain.box(1.5, 0.11, 0.16, cx, top, zBack + 0.45, 0x8d8f93);                                                           // the wheel stop (a visual: nothing solid at the back)
   }
   // NPC cars: about two bays in five, never the bays nearest a door (`free`) and never every bay of a stretch
@@ -167,7 +167,7 @@ export function buildNightStreet(k: StripKit): NightStreetInfo {
     const cz = FRONT_Z - VENUE_D / 2, kt = turned(k, v.cx, cz), t = v.kind;
     BUILD[t](kt, v.cx, cz);
     const tables = t === 'lounge' ? [] : t === 'comptoir' ? [v.cx - 7.3] : t === 'phare' ? [v.cx + 7.4] : [v.cx - 7.3];
-    for (const tx of tables) cafeSet(kt, tx, cz - VENUE_D / 2 - 4.0, t === 'comptoir' ? 0x2a6fb0 : t === 'phare' ? 0x1e6fd9 : 0xb94f36);
+    for (const tx of tables) cafeSet(kt, tx, cz - VENUE_D / 2 - 3.5, t === 'comptoir' ? 0x2a6fb0 : t === 'phare' ? 0x1e6fd9 : 0xb94f36);
     if (t !== 'lounge') kt.people.push({ x: v.cx + 1.0, z: cz - VENUE_D / 2 - 3.0, yaw: Math.PI, clip: 'Talk' });
     kt.solidC(v.cx, cz, VENUE_W + 0.5, VENUE_D + 0.5, t === 'lounge' ? 6.4 : t === 'phare' ? 5.0 : t === 'binta' ? 4.2 : 4.6);
     venues.push({ kind: t, cx: v.cx, front: FRONT_Z });
