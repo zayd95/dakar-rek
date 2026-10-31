@@ -126,8 +126,8 @@ if (runs('drive') && FROM === 'drive') {
   await pilot(page, t, 'teranga', [{ x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: -30, tol: 4 }, { x: -60.4, z: -90, tol: 4 }, { x: -60.4, z: -112, tol: 2.5, speed: 4 }, ...arc, { x: bay.x + TURN + 26, z: laneZ, tol: 3, speed: 6 }], { cruise: 8, stall: 25000, brakeAtEnd: false });
   await shot('on-the-coast-road');
   // Le Patio’s sign: the signed night street is in the view as the car comes along the coast road (a picture, and a check by name)
-  const seen = await d(() => ({ spots: window.__dakar.cityPlaces().filter(x => /Patio|Vague/.test(x.name)).map(x => x.name), places: window.__dakar.places().filter(n => /Terrasse de Ngor/.test(n)) }));
-  check('the places of the night street are listed: Le Patio and La Vague among the neighbourhood’s spots, the Terrasse de Ngor (the hotel’s roof) among its places', seen.spots.length === 2 && seen.places.length === 1, JSON.stringify(seen));
+  const seen = await d(() => ({ spots: window.__dakar.cityPlaces().filter(x => /Patio|Vague/.test(x.name)).map(x => x.name), ids: window.__dakar.interactables().filter(i => /Terrasse de Ngor/.test(i.name)).map(i => i.id) }));
+  check('the places of the night street are listed: Le Patio and La Vague among the neighbourhood’s spots, the Terrasse de Ngor (the hotel’s roof, one door) among its interactables', seen.spots.length === 2 && seen.ids.filter(i => i === 'almadies:rooftop:almadies').length === 1, JSON.stringify(seen));
   // into the bay: the same swing as the parking check — an arc from the lane into the bay, nose first
   const intoBay = [{ x: bay.x + TURN + 12, z: laneZ, tol: 2.5, speed: 4.5 }, { x: bay.x + TURN + 2, z: laneZ, tol: 1.0, speed: 2.2 },
     ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: bay.x + TURN + 2 - TURN * Math.sin(r), z: laneZ - TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
