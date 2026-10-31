@@ -142,8 +142,19 @@ if (medium) {
   cost = await staticCost(medium.page);
   if (!BASELINE) {
     const b0 = before.static, dT = cost.tris - b0.tris, dM = cost.meshes - b0.meshes;
-    check('(medium) the district stays within +95 k triangles of the villa branch\'s hub (round 3: the life on the ground and the streetscape)', dT <= 95_000, JSON.stringify({ now: cost, was: b0, dTris: dT }));
-    check('(medium) the district stays within +10 meshes (draw calls) of the villa branch\'s hub', dM <= 10, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    // LD2.0-E's own budget (docs/ld2/LD2_E.md): +95 k triangles, +10 meshes over the villa branch's hub. On the integration branch the hub also carries M4's venues (measured on 8cedf12 against
+    // the villa branch: +24 meshes, +1.4 k triangles) and Le Patio (its own tests cap it at 12 draw calls and 40 k triangles): the integrated budget is the sum of the three accepted pieces; the strict
+    // E budget is still printed (a note, not hidden) so the owner sees both.
+    const integrated = await medium.page.evaluate(() => !!window.__dakar.district?.nightStreet?.());
+    const E = { tris: 95_000, meshes: 10 }, M4 = { tris: 1_400, meshes: 24 }, PATIO = { tris: 40_000, meshes: 12 };
+    if (integrated) {
+      console.log(`NOTE: strict LD2.0-E budget (+${E.tris} triangles, +${E.meshes} meshes over the villa branch): now +${dT} triangles, +${dM} meshes (${dT <= E.tris && dM <= E.meshes ? 'within' : 'over: M4\'s venues and Le Patio are in this hub too'})`);
+      check(`(medium) integrated hub: within the sum of the accepted budgets of LD2.0-E, M4 and Le Patio (+${E.tris + M4.tris + PATIO.tris} triangles)`, dT <= E.tris + M4.tris + PATIO.tris, JSON.stringify({ now: cost, was: b0, dTris: dT }));
+      check(`(medium) integrated hub: within the sum of the accepted budgets of LD2.0-E, M4 and Le Patio (+${E.meshes + M4.meshes + PATIO.meshes} meshes = draw calls)`, dM <= E.meshes + M4.meshes + PATIO.meshes, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    } else {
+      check('(medium) the district stays within +95 k triangles of the villa branch\'s hub (round 3: the life on the ground and the streetscape)', dT <= E.tris, JSON.stringify({ now: cost, was: b0, dTris: dT }));
+      check('(medium) the district stays within +10 meshes (draw calls) of the villa branch\'s hub', dM <= E.meshes, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    }
   }
   check('(medium) no page error through the walk', medium.errors.length === 0, JSON.stringify(medium.errors.slice(0, 3)));
   await medium.context.close();
