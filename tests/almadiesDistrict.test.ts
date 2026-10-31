@@ -1,3 +1,5 @@
+import { NIGHT_RECTS, ZEBRA_RECT } from '../src/world/nightStreet';
+import { ALLEY_RECT } from '../src/world/hospitalityStrip';
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { stubCanvas } from './hubstub';
@@ -130,6 +132,8 @@ describe('the district in the hub', () => {
     hubs[q] = hub!;
     const was = fixture[q];
     expect(fixture.base).toBe('3ca9e39');
+    // the night street's beach (src/world/nightStreet.ts) is not the district's: the fixture leaves it out too, rectangle for rectangle (taken again at the villa branch with them)
+    for (const r of [...Object.values(NIGHT_RECTS), ALLEY_RECT, ZEBRA_RECT]) expect(fixture.rects, JSON.stringify(r)).toContainEqual(expect.objectContaining({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }));
     expect(now.batches.map(b => b.n)).toEqual(was.batches.map(b => b.n));
     expect(now.batches).toEqual(was.batches);
     expect(now.colliders).toEqual(was.colliders);

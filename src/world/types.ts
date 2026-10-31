@@ -99,6 +99,8 @@ export interface HubWorld {
   rooftopSign?: { panels: { x: number; y: number; z: number; w: number; h: number; nx: number; nz: number; kind: 'front' | 'blade' }[] };
   /** What the Almadies' streetscape put down (src/world/almadies/streetscape.ts): its kind and place, for the checks. */
   streetscape?: { kind: string; x: number; z: number }[];
+  /** The Almadies' night street (src/world/nightStreet.ts): its painted bays, the free ones among them, the venues turned toward the road, Le Patio's site and the dépose-minute bay. */
+  nightStreet?: import('./nightStreet').NightStreetInfo;
   /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
   canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
