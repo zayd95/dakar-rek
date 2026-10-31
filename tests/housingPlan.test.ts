@@ -10,7 +10,7 @@ describe('the F2 of the Résidence Jàmm: a floor plan (LD2.0-C)', () => {
     expect(planFor('appart_jamm')).toBe(P);
     expect(planFor('maison_cite')).not.toBeNull();   // the family house has its own plan (tests/maisonPlan.test.ts)
     expect(planFor('residence_ngor')).not.toBeNull();   // the Ngor residence too (tests/homeKit.test.ts)
-    expect(Object.keys(PLANS)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor']);
+    expect(Object.keys(PLANS).slice(0, 4)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor']);   // the hand-made plans, in catalogue order; kit homes registered by the catalogue follow
   });
 
   it('has the rooms the brief asks for, and they tile the home with no gap and no overlap', () => {
