@@ -3,6 +3,8 @@ import { stubCanvas } from './hubstub';
 import { ALLEY_RECT } from '../src/world/hospitalityStrip';
 import { APRON, BAY_DEPTH, DROP_BAY, FRONT_Z, LOTS, NIGHT_KEEP_CLEAR, NIGHT_RECTS, NIGHT_VENUES, PATIO_SITE, ROAD_EDGE_Z, WALK_Z0, inNightStreet } from '../src/world/nightStreet';
 import type { Collider, HubWorld } from '../src/world/types';
+import { ROOFTOPS } from '../src/venues/rooftop';
+import { isOpen } from '../src/activity/places';
 
 /**
  * The Almadies' night street (src/world/nightStreet.ts, docs/districts/ALMADIES-NIGHTLIFE.md): the beach side of the coast road, M4's venues turned toward the road, two car parks of painted bays,
@@ -100,6 +102,25 @@ describe('the night street', () => {
     for (const t of trunks) expect(inNightStreet((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, 0), `palm at ${t.x0}, ${t.z0}`).toBe(false);
     expect(NIGHT_RECTS.west.x1).toBeLessThan(ALLEY_RECT.x0 + 0.01);
     expect(NIGHT_RECTS.east.x0).toBeLessThan(LOTS.east.x0);
+  });
+
+  it('puts its café chairs in the street\'s seats, where the city\'s people sit by the hour, clear of every solid', async () => {
+    const h = await build(), mine = h.seats.filter(q => q.id.startsWith('night:seat:'));
+    expect(mine.length).toBeGreaterThanOrEqual(12);
+    expect(new Set(mine.map(q => q.id)).size).toBe(mine.length);
+    for (const q of mine) {
+      expect(q.space).toBe('street'); expect(q.occupant).toBeNull(); expect(q.top).toBeGreaterThan(0.4); expect(q.top).toBeLessThan(0.7);
+      expect(inNightStreet(q.x, q.z, 0), `seat ${q.id}`).toBe(true);
+      expect(q.z).toBeGreaterThan(FRONT_Z); expect(q.z).toBeLessThan(WALK_Z0 + 0.5);                          // on the promenade, in front of a door, not in a bay
+      expect(h.colliders.filter(c => c.h >= 0.45 && meets(c, q.x - 0.2, q.z - 0.2, q.x + 0.2, q.z + 0.2)), `seat ${q.id}`).toEqual([]);
+    }
+  });
+
+  it('the Terrasse de Ngor opens at dusk and closes after midnight (its stair door says so by day)', () => {
+    const hours = ROOFTOPS.almadies!.hours!;
+    expect(hours).toEqual([17, 1]);
+    for (const [h, open] of [[10, false], [16.5, false], [17, true], [21, true], [0.5, true], [1, false], [3, false]] as const) expect(isOpen(hours, h), `${h} h`).toBe(open);
+    expect(ROOFTOPS.plateau!.hours).toBeUndefined();                                                          // the other terraces are as they were
   });
 
   it('is the same every time it is built', async () => {

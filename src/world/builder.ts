@@ -1798,7 +1798,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   }
   // the Almadies' night street (src/world/nightStreet.ts, docs/districts/ALMADIES-NIGHTLIFE.md): the beach side of the coast road: two car parks, the promenade, four venues turned toward the road and the alley to La Vague
   let nightStreet: HubWorld['nightStreet'];
-  if (id === 'almadies') nightStreet = buildNightStreet({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
+  if (id === 'almadies') nightStreet = buildNightStreet({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, seats, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
   // LD2.0-E round 3: what grows and stands between the Almadies' buildings (the plazas, the gare's garden, the square's ring, the kerbs), on the ground that is left: after the district and every keep-clear
   if (kit && STREETSCAPE.on) {
     const ss = buildStreetscape(kit, { colliders, keepClear, sites: SITES, openings });

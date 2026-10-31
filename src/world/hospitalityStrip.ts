@@ -17,6 +17,8 @@ import { rng } from '../core/rng';
 export interface StripKit {
   plain: Batch; glass: Batch; metal: Batch; lampBulbs: Batch; lampPosts: Batch; leaves: Batch; trunks: Batch; tin: Batch; tileRoof: Batch;
   canopies: Canopy[]; people: HubWorld['people'];
+  /** The street's seats (the Seats registry's, `space: 'street'`): the café sets register their chairs, so the city's ambient people sit there by the hour. */
+  seats?: HubWorld['seats'];
   G: number; lite: boolean; seed: number;
   addSign: (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w?: number, h?: number) => void;
   solidC: (cx: number, cz: number, w: number, d: number, h: number) => void;
@@ -56,6 +58,7 @@ export const bougainvillea = (k: K, x: number, y: number, z: number, w: number) 
 };
 export const cafeSet = (k: K, x: number, z: number, chair: number, top = 0x6b4a2e) => {
   const { plain, G } = k;
+  if (k.seats) for (const side of [-1, 1]) k.seats.push({ id: `night:seat:${k.seats.length}`, x: x + side * 0.82, z, top: 0.55, yaw: Math.PI, kind: 'chair', space: 'street', occupant: null, table: { x, y: 0.86, z } });
   plain.cyl(0.52, 0.52, 0.06, x, G + 0.76, z, top, 12);
   plain.cyl(0.05, 0.05, 0.72, x, G + 0.04, z, 0x2a2a30, 6);
   for (const side of [-1, 1]) {

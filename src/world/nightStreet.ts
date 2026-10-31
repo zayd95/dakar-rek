@@ -28,7 +28,7 @@ export const ROAD_EDGE_Z = -127, APRON = 1.0, BAY_DEPTH = 4.8, WALK_Z0 = -133.2,
 export const BAY_W = 2.6;
 /** The two car parks' extent along the road. */
 export const LOTS = {
-  west: { name: 'PARKING DU PATIO · 24H/24', x0: -122, x1: -64 },
+  west: { name: 'PARKING DU PATIO · 24H/24', x0: -122, x1: -55 },
   east: { name: 'PARKING NGOR · HÔTEL · TERRASSE · LA VAGUE', x0: -22, x1: 10 },
 } as const;
 /** Where Le Patio stands: the club's local frame (VenueKit: the gate toward +z, the sea toward −z), its centre and half extents. The gate is on the venues' front line. */
@@ -40,8 +40,8 @@ export const NIGHT_VENUES = [
 ] as const;
 type VenueKind = typeof NIGHT_VENUES[number]['kind'];
 const BUILD: Record<VenueKind, (k: StripKit, x: number, z: number) => void> = { binta, phare, lounge, comptoir };
-/** The dépose-minute bay (taxis and the drop-offs of the west car park), between the west car park and the alley. */
-export const DROP_BAY = { x0: -62.5, x1: -53.5 };
+/** The dépose-minute bay (taxis and drop-offs), a gap in the west car park right in front of Le Patio's gate: guests are let out at the door. */
+export const DROP_BAY = { x0: -114, x1: -104 };
 
 /** The ground the night street owns: the street dressing (billboards, stalls, parked traffic, palms) keeps off, and the digest tests leave it out of the « rest of the Almadies ». */
 export const NIGHT_RECTS = {
@@ -53,9 +53,9 @@ export const ZEBRA = { x: -30, z0: -126.2, z1: -113.8 };
 /** The crossing's ground: no parked car stands on it (the digest tests leave it out too). */
 export const ZEBRA_RECT = { x0: -32.5, z0: -127, x1: -27.5, z1: -113.4 };
 export const NIGHT_KEEP_CLEAR: KeepClear[] = [
-  { x0: LOTS.west.x0 - 1, z0: -133.6, x1: DROP_BAY.x1 + 0.5, z1: -122.5, why: 'almadies_car_park' },
+  { x0: LOTS.west.x0 - 1, z0: -133.6, x1: LOTS.west.x1 + 1, z1: -122.5, why: 'almadies_car_park' },
   { x0: LOTS.east.x0 - 1, z0: -133.6, x1: LOTS.east.x1 + 1, z1: -122.5, why: 'almadies_car_park' },
-  { x0: NIGHT_RECTS.west.x0, z0: -158, x1: DROP_BAY.x0 - 0.5, z1: -133.6, why: 'almadies_night_street' },
+  { x0: NIGHT_RECTS.west.x0, z0: -158, x1: NIGHT_RECTS.west.x1, z1: -133.6, why: 'almadies_night_street' },
   { x0: NIGHT_RECTS.east.x0, z0: -158, x1: NIGHT_RECTS.east.x1, z1: -133.6, why: 'almadies_night_street' },
   { ...ALLEY_RECT, why: 'almadies_alley' },
   { ...ZEBRA_RECT, why: 'almadies_crossing' },
@@ -84,6 +84,7 @@ export function turned(k: StripKit, cx: number, cz: number): StripKit {
     plain: wrap(k.plain), glass: wrap(k.glass), metal: wrap(k.metal), lampBulbs: wrap(k.lampBulbs), lampPosts: wrap(k.lampPosts), leaves: wrap(k.leaves), trunks: wrap(k.trunks), tin: wrap(k.tin), tileRoof: wrap(k.tileRoof),
     canopies: { push: (...c: StripKit['canopies']) => k.canopies.push(...c.map(o => ({ ...o, x: mx(o.x), z: mz(o.z) }))) } as unknown as StripKit['canopies'],
     people: { push: (...p: StripKit['people']) => k.people.push(...p.map(o => ({ ...o, x: mx(o.x), z: mz(o.z), yaw: o.yaw + Math.PI }))) } as unknown as StripKit['people'],
+    seats: k.seats && ({ push: (...q: NonNullable<StripKit['seats']>) => k.seats!.push(...q.map(o => ({ ...o, x: mx(o.x), z: mz(o.z), yaw: o.yaw + Math.PI, table: o.table && { ...o.table, x: mx(o.table.x), z: mz(o.table.z) } }))), get length() { return k.seats!.length; } } as unknown as NonNullable<StripKit['seats']>),
     addSign: (text, bg, fg, x, y, z, rotY, w, h) => k.addSign(text, bg, fg, mx(x), y, mz(z), rotY + Math.PI, w, h),
     solidC: (x, z, w, d, h) => k.solidC(mx(x), mz(z), w, d, h),
     pool: (x, z, r, y) => k.pool(mx(x), mz(z), r, y),
@@ -92,15 +93,17 @@ export function turned(k: StripKit, cx: number, cz: number): StripKit {
 
 // ---------------------------------------------------------------- the car parks and the promenade
 /** A row of painted bays along the road's north edge, open to the carriageway: asphalt, lines, wheel stops, NPC cars that leave open the bays within `r` metres of each door `[x, r]` of `free` (a player drives in on an arc and needs the neighbours clear), and a sign at each end. */
-function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number, free: [number, number][]) {
+function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number, free: [number, number][], gap: [number, number] | null = null) {
   const { plain, G } = k, R = rng(seed), top = G + 0.045, y = G + 0.005;
   const n = Math.floor((x1 - x0) / BAY_W), w = n * BAY_W, bx0 = x0 + ((x1 - x0) - w) / 2, zFront = ROAD_EDGE_Z - APRON, zBack = zFront - BAY_DEPTH;
   plain.box(w + 0.6, 0.035, ROAD_EDGE_Z - zBack + 0.3, bx0 + w / 2, y - 0.015, (ROAD_EDGE_Z + zBack - 0.3) / 2, 0x4a4d52);   // the asphalt, apron and bays, on the sand verge
-  for (let i = 0; i <= n; i++) plain.box(0.1, 0.012, BAY_DEPTH - 0.1, bx0 + i * BAY_W, top, (zFront + zBack) / 2 + 0.05, 0xf2f2ec);   // bay lines
-  plain.box(w, 0.012, 0.1, bx0 + w / 2, top, zBack + 0.05, 0xf2f2ec);                                                     // the row's back line
+  for (let i = 0; i <= n; i++) { const lx = bx0 + i * BAY_W; if (gap && lx > gap[0] + 0.05 && lx < gap[1] - 0.05) continue; plain.box(0.1, 0.012, BAY_DEPTH - 0.1, lx, top, (zFront + zBack) / 2 + 0.05, 0xf2f2ec); }   // bay lines (none across the dépose-minute bay)
+  if (gap) { plain.box(gap[0] - bx0, 0.012, 0.1, (bx0 + gap[0]) / 2, top, zBack + 0.05, 0xf2f2ec); plain.box(bx0 + w - gap[1], 0.012, 0.1, (gap[1] + bx0 + w) / 2, top, zBack + 0.05, 0xf2f2ec); }
+  else plain.box(w, 0.012, 0.1, bx0 + w / 2, top, zBack + 0.05, 0xf2f2ec);                                                 // the row's back line
   const bays: { x: number; z: number }[] = [];
   for (let i = 0; i < n; i++) {
     const cx = bx0 + (i + 0.5) * BAY_W;
+    if (gap && cx + BAY_W / 2 > gap[0] && cx - BAY_W / 2 < gap[1]) continue;                                              // the dépose-minute bay: no painted bay here
     bays.push({ x: cx, z: zBack + 2.4 });
     plain.box(1.5, 0.11, 0.16, cx, top, zBack + 0.45, 0x8d8f93);                                                           // the wheel stop (a visual: nothing solid at the back)
   }
@@ -118,15 +121,21 @@ function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number,
   return { n, bx0, w, cars: cars.length, bays: bays.map(b => ({ x: +b.x.toFixed(2), z: +b.z.toFixed(2), free: !taken.has(b) })) };
 }
 
-/** The ochre walk along the venues' fronts, with its lamp poles and the festoons that run from them to the fronts. */
-function promenade(k: StripKit, x0: number, x1: number) {
+/** Where the promenade's lamp poles stand (in the gaps between the venues' fronts and the café sets): a string of festoons runs from each to the next. */
+const POLES = { west: [-118, -94, -79.5, -65], east: [-20, -4, 11.5] };
+/** The café sets on the promenade, in front of the doors: the chairs face the street, and are the street's seats. */
+const TABLES = [-98.5, -91, -82, -76, -69, 3.2, 8.6];
+const TABLE_Z = -135.2;
+
+/** The ochre walk along the venues' fronts, with its lamp poles and the festoons that run from pole to pole. */
+function promenade(k: StripKit, x0: number, x1: number, poles: number[]) {
   const { plain, G } = k, z0 = FRONT_Z, z1 = WALK_Z0, top = G + 0.035;
   plain.box(x1 - x0, 0.035, z1 - z0, (x0 + x1) / 2, G, (z0 + z1) / 2, 0xb99a74);
   for (let x = x0 + 7.7; x < x1 - 1; x += 7.7) plain.box(0.12, 0.018, z1 - z0, x, top, (z0 + z1) / 2, 0xd8c9ab);              // joints
-  for (let x = x0 + 6; x < x1 - 3; x += 12.4) {
+  poles.forEach((x, i) => {
     lampPole(k, x, z1 - 0.6, 4.9);
-    festoon(k, x, 4.6, z1 - 0.6, x + 6.2, 3.4, z0 + 1.0, 0.3, [WARM, 0xffc46b], 0.8);
-  }
+    if (i + 1 < poles.length) festoon(k, x, 4.7, z1 - 0.6, poles[i + 1], 4.7, z1 - 0.6, 0.55, [WARM, 0xffc46b], 0.8);
+  });
 }
 
 /** The dépose-minute bay: a yellow-hatched kerb strip beside the road with a TAXI sign, where a taxi waits and the club's guests are let out. */
@@ -136,7 +145,7 @@ function dropBay(k: StripKit) {
   for (let i = 0; i < 7; i++) plain.box(0.16, 0.012, 3.2, DROP_BAY.x0 + 0.8 + i * (w - 1.6) / 6, top, ROAD_EDGE_Z - 1.7, 0xf2c230, Math.PI / 8);
   plain.box(w, 0.012, 0.1, cx, top, ROAD_EDGE_Z - 3.4, 0xf2f2ec);
   plain.box(0.14, 3.4, 0.14, DROP_BAY.x1 - 0.4, G, ROAD_EDGE_Z - 3.9, 0x2b2b2b);
-  k.addSign('TAXIS · DÉPOSE-MINUTE', '#f2c230', '#1a1a1a', DROP_BAY.x1 - 0.4, G + 3.0, ROAD_EDGE_Z - 3.8, 0, 2.6, 0.6);
+  k.addSign('TAXIS · DÉPOSE · LE PATIO', '#f2c230', '#1a1a1a', DROP_BAY.x1 - 0.4, G + 3.0, ROAD_EDGE_Z - 3.8, 0, 2.6, 0.6);
   k.solidC(DROP_BAY.x1 - 0.4, ROAD_EDGE_Z - 3.9, 0.2, 0.2, 3.4);
   parkedCar(k, DROP_BAY.x0 + 3.2, ROAD_EDGE_Z - 2.4, -1, 0xf2c230, false);                                                       // a taxi waiting (solid, as every parked car)
 }
@@ -158,16 +167,15 @@ export interface NightStreetInfo {
 }
 export function buildNightStreet(k: StripKit): NightStreetInfo {
   const venues: NightStreetInfo['venues'] = [];
-  const w = bayRow(k, LOTS.west.x0, LOTS.west.x1, LOTS.west.name, k.seed * 31 + 3, [[PATIO_SITE.x, 6], [-86.5, 6], [-72.5, 6]]);
+  const w = bayRow(k, LOTS.west.x0, LOTS.west.x1, LOTS.west.name, k.seed * 31 + 3, [[PATIO_SITE.x, 12], [-86.5, 6], [-72.5, 6]], [DROP_BAY.x0, DROP_BAY.x1]);
   const e = bayRow(k, LOTS.east.x0, LOTS.east.x1, LOTS.east.name, k.seed * 31 + 10, [[-12, 8], [4, 4]]);
   dropBay(k); zebra(k);
-  promenade(k, LOTS.west.x0, DROP_BAY.x0 - 1);
-  promenade(k, LOTS.east.x0, LOTS.east.x1);
+  promenade(k, LOTS.west.x0, LOTS.west.x1, POLES.west);
+  promenade(k, LOTS.east.x0, LOTS.east.x1, POLES.east);
+  TABLES.forEach((tx, i) => cafeSet(turned(k, tx, TABLE_Z), tx, TABLE_Z, [0xb94f36, 0x1e6fd9, 0x2a6fb0][i % 3]));
   for (const v of NIGHT_VENUES) {
     const cz = FRONT_Z - VENUE_D / 2, kt = turned(k, v.cx, cz), t = v.kind;
     BUILD[t](kt, v.cx, cz);
-    const tables = t === 'lounge' ? [] : t === 'comptoir' ? [v.cx - 7.3] : t === 'phare' ? [v.cx + 7.4] : [v.cx - 7.3];
-    for (const tx of tables) cafeSet(kt, tx, cz - VENUE_D / 2 - 3.5, t === 'comptoir' ? 0x2a6fb0 : t === 'phare' ? 0x1e6fd9 : 0xb94f36);
     if (t !== 'lounge') kt.people.push({ x: v.cx + 1.0, z: cz - VENUE_D / 2 - 3.0, yaw: Math.PI, clip: 'Talk' });
     kt.solidC(v.cx, cz, VENUE_W + 0.5, VENUE_D + 0.5, t === 'lounge' ? 6.4 : t === 'phare' ? 5.0 : t === 'binta' ? 4.2 : 4.6);
     venues.push({ kind: t, cx: v.cx, front: FRONT_Z });
