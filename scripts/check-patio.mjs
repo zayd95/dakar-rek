@@ -91,7 +91,7 @@ if (SECTIONS.includes('boot')) {
   const types = await d(() => window.__dakar.venues().map(v => v.type));
   check('Le Patio is built on the night street’s site, beside La Vague (which is still there, and listed before it: the checks that look for « the club » find La Vague)', !!p && !!c && p.origin.x === -109 && p.origin.z === -147 && types.indexOf('club') >= 0 && types.indexOf('club') < types.indexOf('patio'), JSON.stringify({ types, patio: p?.origin, club: c?.origin }));
   check('it has its door, floor, bar, lounge, DJ and exit, six stools, six salon seats, a VIP corner', ['door', 'floor', 'bar', 'lounge', 'dj', 'exit'].every(a => p.anchors.some(x => x.id === a)) && p.stools.length === 6 && p.lounge.length === 6 && p.vip.length === 4, p.anchors.map(a => a.id).join(' '));
-  check('it is one of the neighbourhood’s spots (« Le Patio · club privé VIP »)', await d(() => window.__dakar.cityPlaces().some(x => x.id === 'almadies:city:patio' && /Le Patio · club privé VIP/.test(x.name))), '');
+  check('it is one of the neighbourhood’s spots (« Le Patio », just the name)', await d(() => window.__dakar.cityPlaces().some(x => x.id === 'almadies:city:patio' && x.name === 'Le Patio')), '');
   check('its building is a few merged batches: at most 12 draw calls and 40 000 triangles on this quality', p.draw.meshes <= 12 && p.draw.tris <= 40000, JSON.stringify(p.draw));
   check('La Vague works as before: its terrace is its own space, its recipe still 21 h – 5 h', c.name === 'La Vague · terrasse dansante' && c.anchors.some(a => a.id === 'floor') && c.stools.length === 5 && c.admitted === false, `${c.name} ${c.stools.length} stools`);
 }
@@ -144,7 +144,7 @@ if (SECTIONS.includes('door')) {
   await tapAct();
   await until(() => !!document.querySelector('#modal.on'), null, 15000);
   const ask = await modal(), sAsk = await S();
-  check('the age and the fee are shown before anything is paid (18 ans minimum, club privé, ticket 5 000 F, une seule fois)', /18 ans minimum/.test(ask ?? '') && /5\s000\sF/.test(ask ?? '') && /club privé/.test(ask ?? '') && /une seule fois pour toute la nuit/.test(ask ?? '') && sAsk.wallet === s0.wallet && sAsk.ledger === s0.ledger, (ask ?? '').slice(0, 200));
+  check('the age and the fee are shown before anything is paid (18 ans minimum, ticket 5 000 F, une seule fois)', /18 ans minimum/.test(ask ?? '') && /5\s000\sF/.test(ask ?? '') && !/club priv/i.test(ask ?? '') && /une seule fois pour toute la nuit/.test(ask ?? '') && sAsk.wallet === s0.wallet && sAsk.ledger === s0.ledger, (ask ?? '').slice(0, 200));
   await shot('door-fee', '/tmp/claude-0/patio-shots');
   await tapRow(/et entrer/);
   await until(() => window.__dakar.venues().find(v => v.type === 'patio').admitted && !window.__dakar.activity(), null, 40000);

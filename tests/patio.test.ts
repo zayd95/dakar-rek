@@ -59,7 +59,7 @@ describe('the club recipe: La Vague is the recipe as it always was, Le Patio is 
       { count: k => counters[k] ?? 0, hour: () => hour, day: () => day, converse: () => {}, enter: () => {}, tired: () => null, done: () => {} }, PATIO_VARIANT);
     expect(p.hours).toEqual([20, 4]); expect(p.hours).toEqual([...PATIO_HOURS]); expect(p.peaks).toEqual([[0, 2.5]]); expect(p.type).toBe('club'); expect(p.chat).toBe(true);
     const vis = (anchor: string) => p.offers[anchor].filter(o => !o.visible || o.visible());
-    // the door: shown first, a 5 000 F ticket (the private VIP club), once a night; a regular after three nights comes in free
+    // the door: shown first, a 5 000 F ticket (the VIP clubbing spot), once a night; a regular after three nights comes in free
     expect(vis('door').map(o => o.id)).toEqual(['entree', 'videur']);
     expect(p.offers.door.find(o => o.id === 'entree')!.detail).toMatch(/Entrée 5\s000\sF, une fois pour la nuit · Ce soir : /);
     expect(p.offers.door.find(o => o.id === 'payer')!.price).toBe(5000);

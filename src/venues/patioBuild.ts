@@ -133,7 +133,7 @@ export function drawBoards(cv: HTMLCanvasElement, open: boolean, night: number) 
     c.fillStyle = '#f6efe8'; c.font = font(k === 0 ? 800 : 500, 25); c.fillText(what, 28, y + 26);
   });
   c.textAlign = 'center'; c.fillStyle = '#b9a6b8'; c.font = font(500, 19);
-  c.fillText(`club privé · 18+ · ticket ${price(PATIO_ENTRY)}`, w / 2, h - 44);
+  c.fillText(`18+ · ticket ${price(PATIO_ENTRY)}`, w / 2, h - 44);
   c.fillText(`habitués offerts après ${PATIO_REGULAR} soirées`, w / 2, h - 18);
 }
 

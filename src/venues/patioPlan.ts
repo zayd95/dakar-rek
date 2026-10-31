@@ -13,7 +13,7 @@ import { say } from '../i18n/wolof';
 export const PATIO_NAME = 'Le Patio';
 /** Open 20 h – 4 h (La Vague's are 21 h – 5 h). */
 export const PATIO_HOURS: readonly [number, number] = [20, 4];
-/** The ticket at the door: Le Patio is the Almadies' private VIP club, its ticket starts at 5 000 F (once a night, shown before it is paid); and the nights out before the doorman lets a regular in free. */
+/** The ticket at the door: Le Patio is the Almadies' VIP clubbing spot, its ticket starts at 5 000 F (once a night, shown before it is paid); and the nights out before the doorman lets a regular in free. */
 export const PATIO_ENTRY = 5000, PATIO_REGULAR = 3;
 
 // ------------------------------------------------------------------ the night

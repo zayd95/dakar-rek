@@ -162,7 +162,7 @@ if (runs('patio')) {
   const sp0 = await S();
   await t.tap('#act'); await page.waitForTimeout(900);
   const ask = await sheet();
-  check('the age and the fee are shown before anything is paid (club privé, 18 ans minimum, a 5 000 F ticket, one time for the night)', /18 ans minimum/.test(ask ?? '') && /5\s?000\s?F/.test(ask ?? '') && /club privé/.test(ask ?? '') && /une seule fois/.test(ask ?? '') && (await S()).wallet === sp0.wallet, (ask ?? '').slice(0, 200));
+  check('the age and the fee are shown before anything is paid (18 ans minimum, a 5 000 F ticket, one time for the night)', /18 ans minimum/.test(ask ?? '') && /5\s?000\s?F/.test(ask ?? '') && !/club priv/i.test(ask ?? '') && /une seule fois/.test(ask ?? '') && (await S()).wallet === sp0.wallet, (ask ?? '').slice(0, 200));
   await shot('le-patio-fee');
   await tapItem(/et entrer/);
   await until(() => window.__dakar.venues().find(v => v.type === 'patio').admitted && !window.__dakar.activity(), null, 60000);

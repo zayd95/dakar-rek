@@ -81,7 +81,7 @@ export function buildPatio(env: VenueEnv): Venue {
     return t > 0 ? Math.max(base, t + (F - 0.1)) : base;
   };
   const front = at(0, ZF + 2.6);
-  world.interactables.push({ id: `${hub}:city:patio`, name: `${PATIO_NAME} · club privé VIP`, kind: 'actions', x: front.x, z: front.z, radius: 0, actions: [], description: PLACE_DESCRIPTION });
+  world.interactables.push({ id: `${hub}:city:patio`, name: PATIO_NAME, kind: 'actions', x: front.x, z: front.z, radius: 0, actions: [], description: PLACE_DESCRIPTION });
 
   // ---------------------------------------------------------------- the gates: the arch and the rope, the smokers' door
   const toWorld = (b: Box): Collider => { const a = k.w(b.x0, b.z0), c = k.w(b.x1, b.z1); return { x0: Math.min(a.x, c.x), x1: Math.max(a.x, c.x), z0: Math.min(a.z, c.z), z1: Math.max(a.z, c.z), h: b.h }; };
@@ -145,7 +145,7 @@ export function buildPatio(env: VenueEnv): Venue {
   };
   const barC = at(BAR.anchorX, BAR.anchorZ), loungeC = at(SALON.cx, SALON.cz);
   const place = clubRecipe({
-    id, name: `${PATIO_NAME} · club privé VIP`, space: SPACE, bar: { ...barC, r: 4.2 }, lounge: { ...loungeC, r: SALON.r },
+    id, name: PATIO_NAME, space: SPACE, bar: { ...barC, r: 4.2 }, lounge: { ...loungeC, r: SALON.r },
     anchors: [
       { id: 'door', name: `Entrée · ${PATIO_NAME}`, kind: 'door', ...at(parts.at.door.x, parts.at.door.z), y: 2.4, radius: 2.0, space: 'street' },
       { id: 'floor', name: 'Piste de danse', kind: 'spot', ...at(DANCE_FLOOR.x, DANCE_FLOOR.z), y: 2.0, radius: 3.3 },
