@@ -122,8 +122,9 @@ if (runs('drive') && FROM === 'drive') {
   check('the district changes under the wheels: still at the wheel, in Almadies, heading north on the same street', afterSwap.hub === 'almadies' && afterSwap.car.driving, JSON.stringify(afterSwap));
   await shot('almadies-arrival');
   // north along x −60 to the coast road, turning left (west) into its north lane, then along it to the bay
-  const arc = [0, 30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: -66 + 5.6 * Math.cos(r), z: -118.7 - 5.6 * Math.sin(r), tol: 1.5, speed: 3 }; });
-  await pilot(page, t, 'teranga', [{ x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: -30, tol: 4 }, { x: -60.4, z: -90, tol: 4 }, { x: -60.4, z: -112, tol: 2.5, speed: 4 }, ...arc, { x: bay.x + TURN + 26, z: laneZ, tol: 3, speed: 6 }], { cruise: 8, stall: 25000, brakeAtEnd: false });
+  // an 8 m arc (the Teranga's tightest is about 5.2 m: a 5.6 m arc taken at speed ran wide on some runs and the car went straight on across the coast road)
+  const R8 = 8, arc = [0, 30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: -60.4 - R8 + R8 * Math.cos(r), z: laneZ + R8 - R8 * Math.sin(r), tol: 1.5, speed: 2.6 }; });
+  await pilot(page, t, 'teranga', [{ x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: -30, tol: 4 }, { x: -60.4, z: -88, tol: 4, speed: 5 }, { x: -60.4, z: -106, tol: 2, speed: 3 }, ...arc], { cruise: 8, stall: 25000, brakeAtEnd: false });          // (the arc ends heading west in the lane; the bay's own approach follows: no waypoint behind the car)
   await shot('on-the-coast-road');
   // Le Patio’s sign: the signed night street is in the view as the car comes along the coast road (a picture, and a check by name)
   const seen = await d(() => ({ spots: window.__dakar.cityPlaces().filter(x => /Patio|Vague/.test(x.name)).map(x => x.name), ids: window.__dakar.interactables().filter(i => /Terrasse de Ngor/.test(i.name)).map(i => i.id) }));
@@ -145,6 +146,7 @@ if (runs('drive') && FROM === 'drive') {
   pk = await d(() => window.__dakar.teranga.at());
   const rec = await d(() => window.__dakar.teranga.info().record);
   check('1. driven from the Corniche to the night street: the district swap and the coast road with the pedal stick', afterSwap.hub === 'almadies', JSON.stringify(afterSwap.car));
+  if (Math.hypot(pk.x - bay.x, pk.z - bay.z) > 6) { check('2. the car reached its bay (the rest of the journey needs it there)', false, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [bay.x, bay.z] })); await d(() => clearInterval(window.__pin)); await context.close(); await browser.close(); console.log(`\n${total - failed}/${total} (stopped: the drive did not end in the bay)`); process.exit(1); }
   check('2. parked in a painted bay of « PARKING DU PATIO » (centre inside its lines, the whole car off the carriageway), a few metres from the gate', Math.abs(pk.x - bay.x) <= 1.3 && Math.abs(pk.z - bay.z) <= 2.4 && pk.z < -128.6 && Math.abs(pk.x - GATE_X) < 30, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [bay.x, bay.z], gate: GATE_X }));
   check('2. stepped out: the car stays where it was left, saved as parked in Almadies', !pk.driving && rec?.hub === 'almadies' && Math.hypot(rec.x - pk.x, rec.z - pk.z) < 0.5, JSON.stringify(rec));
 } else {
