@@ -171,3 +171,40 @@ export async function boardVehicle(page, t, key, { tries = 3 } = {}) {
   }
   throw new Error('could not board ' + key);
 }
+
+/**
+ * Plays the in-world dance with real touches (no debug finish): each cue's touch is timed from the page's own music clock (the gesture's `upcoming` cues and `epoch`, as
+ * scripts/capture-activities-av.mjs does), on a second finger, most within 40 ms of the beat and one in eight a little off on purpose, a rare wrong side. The touches go through Chrome's
+ * input pipeline like the thumb's: left or right half of the screen steps that way, a swipe up throws the arms up, a swipe sideways turns. Returns what it played.
+ */
+export async function playDance(page, t, { ms = 240000, seed = 12345, offFraction = 0.12 } = {}) {
+  const sleep = n => new Promise(r => setTimeout(r, n));
+  const R = (() => { let a = seed; return () => ((a = (a * 1103515245 + 12345) >>> 0) / 4294967296); })();
+  const scheduled = new Set(), plan = [], out = { touches: 0, performances: 0, grades: null, score: null };
+  const deadline = Date.now() + ms;
+  let label = '';
+  while (Date.now() < deadline) {
+    const [g, active] = await Promise.all([page.evaluate(() => window.__dakar.gesture()), page.evaluate(() => !!window.__dakar.activity())]);
+    if (!g && !active) break;
+    if (!g) { await sleep(60); continue; }
+    if (g.label && g.label !== label && g.phase !== 'linger') { label = g.label; out.performances++; }
+    if (g.grades) { out.grades = g.grades; out.score = g.score; }
+    for (const c of g.upcoming ?? []) {
+      const key = `${g.label}:${c.i}`; if (scheduled.has(key)) continue;
+      scheduled.add(key); out.touches++;
+      const off = R() < offFraction ? (R() < 0.5 ? 0.17 : -0.16) : (R() - 0.5) * 0.08, wrong = R() < 0.04, kind = wrong ? (c.kind === 'L' ? 'R' : 'L') : c.kind;
+      plan.push({ at: g.epoch + (c.beat - g.beat) * g.beatSec * 1000 + off * 1000, kind });
+    }
+    for (const p of plan.filter(p => !p.armed)) {
+      p.armed = true;
+      setTimeout(async () => {                                         // each touch on its own timer: the page may be busy drawing, the touch still leaves on time
+        if (p.kind === 'L' || p.kind === 'R') { const x = p.kind === 'L' ? 95 : 295; await t.down(7, x, 520); await t.up(7); }
+        else if (p.kind === 'up') { await t.down(7, 195, 600); await t.move(7, 195, 470, 2); await t.up(7); }
+        else { await t.down(7, 110, 520); await t.move(7, 280, 520, 2); await t.up(7); }
+      }, Math.max(0, p.at - Date.now() - 4));
+    }
+    await sleep(40);
+  }
+  await sleep(600);
+  return out;
+}

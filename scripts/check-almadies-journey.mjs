@@ -11,7 +11,7 @@
 // Usage: node scripts/check-almadies-journey.mjs <baseUrl> <outDir>
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { realTouch, pilot, boardVehicle, walkTo } from './lib/realTouch.mjs';
+import { realTouch, pilot, boardVehicle, walkTo, playDance } from './lib/realTouch.mjs';
 
 const [base = 'http://127.0.0.1:4650/', out = '/tmp/claude-0/m4/journey'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -195,10 +195,12 @@ await walkTo(page, t, club.floor.x, club.floor.z, { tol: 1.2, ms: 120000 });
 check('on the floor: « Danser »', await act(`almadies:venue:club:${club.floor.id}`));
 await until(() => !!window.__dakar.gesture() && /^Dance_/.test(window.__dakar.clip() ?? ''), null, 30000);
 await shot('dancing');
-await until(() => { if (window.__dakar.gesture()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 120000);   // the beat game: the existing debug finish
+const played = await playDance(page, t);                                                   // the beat game, played with real touches on the music's beat (no debug finish)
+log('danced:', JSON.stringify(played));
 await page.waitForTimeout(1500);
 await until(() => (window.__dakar.almadies.info().stages & 4) === 4, null, 30000);          // the evening's module reads the club's counter on its own frame: a slow page may take a moment
 const sd = await S();
+check('the beat game was played with real touches on the beat (cues touched, a card at the end)', played.touches >= 8 && played.performances >= 2, JSON.stringify(played));
 check('one dance counted by La Vague, and the evening knows it', (sd.c['club:almadies:venue:club:danses'] ?? 0) === 1 && ((await A()).stages & 4) === 4, JSON.stringify((await A()).counters));
 
 // ---------------------------------------------------------------- 6. the way out: the evening card, once

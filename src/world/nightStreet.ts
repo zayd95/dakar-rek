@@ -8,19 +8,19 @@ import {
 
 /**
  * The Almadies' night street (docs/districts/ALMADIES-NIGHTLIFE.md): the beach side of the coast road, across from the boutique hotel and the resort, from Le Patio at the west end to
- * Le Comptoir de Ngor at the east (the pirogues pulled up on the sand beyond it, x > 11, stay where the Embarcadère has them), with La Vague behind its alley in the middle. It is the M4 team's hospitality strip (Lounge 221, Le Comptoir de Ngor, Chez Binta, Café du Phare and
- * the lit alley, src/world/hospitalityStrip.ts) turned to face the road and moved off the two sea-front blocks, which LD2.0-E's hotels and villas have again; Le Patio is the courtyard
- * club of src/venues/patio.ts, the Terrasse de Ngor the boutique hotel's roof.
+ * Le Comptoir de Ngor at the east, with La Vague behind its alley in the middle. It is the M4 team's hospitality strip (Lounge 221, Le Comptoir de Ngor, Chez Binta, Café du Phare and the
+ * lit alley, src/world/hospitalityStrip.ts) turned to face the road and moved off the two sea-front blocks, which LD2.0-E's hotels and villas have again; Le Patio is the courtyard club of
+ * src/venues/patio.ts, the Terrasse de Ngor the boutique hotel's roof. The pirogues pulled up on the sand east of x 11 stay where the Embarcadère has them.
  *
  * From the road to the sea (z grows toward the road; the carriageway's north edge is z −127):
- *   − 127 … − 133.2   the car parks: a metre of asphalt apron, then two rows of painted bays, nose to the beach, open to the road (a car drives straight in and reverses out; one that stops a metre short is still off the carriageway) — « PARKING DU PATIO » in the west,
- *                      « PARKING NGOR » (hotel, Terrasse and La Vague's visitors) in the east; a dépose-minute bay for taxis between the west one and the alley
- *   − 133.2 … − 137   the promenade: an ochre walk along the venues' fronts, lamp poles and festoons, café tables at the doors
+ *   − 127 … − 133.2   the car parks: a metre of asphalt apron, then two rows of painted bays, nose to the beach, open to the road (a car drives straight in and reverses out; one that
+ *                      stops a metre short is still off the carriageway): « PARKING DU PATIO » in the west, with a gap for the taxis' dépose-minute bay in front of Le Patio's gate,
+ *                      and « PARKING NGOR » (hotel, Terrasse and La Vague's visitors) in the east
+ *   − 133.2 … − 137   the promenade: an ochre walk along the venues' fronts, lamp poles and festoons, café sets at the doors whose chairs are the street's seats
  *   − 137 …           the venues' fronts (the buildings, a courtyard behind the gate of Le Patio), the beach and the sea behind them
- * No marking lies on the carriageway; the bays are on the sand verge, so a car in one is out of every traffic lane. The NPC cars in them leave every third bay free and the bays
- * nearest each venue's door.
+ * No marking lies on the carriageway; the bays are on the sand verge, so a car in one is out of every traffic lane. The NPC cars leave runs of free bays by every door.
  *
- * It only adds merged primitives and colliders. It draws nothing from the generator's own random stream: a local stream feeds the parked cars.
+ * It only adds merged primitives, seats and colliders. It draws nothing from the generator's own random stream: local streams feed the parked cars and the alley's murals.
  */
 
 /** The carriageway's north edge, the car parks' open side, and the line of the venues' fronts (La Vague's gate is on it). */
