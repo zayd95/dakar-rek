@@ -34,15 +34,16 @@ const A = () => d(() => window.__dakar.almadies.info());
 const S = () => d(() => ({ wallet: window.__dakar.state.wallet, n: { ...window.__dakar.state.data.needs }, c: { ...window.__dakar.state.data.counters }, ledger: window.__dakar.state.data.ledger.length }));
 let t;
 async function tapItem(re) {
-  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, re);
+  // the sheet slides in: wait until the row stops moving (up to ~6 s on a slow page), and tap only where the row itself is under the finger
+  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(), x = b.x + b.width / 2, y = b.y + b.height / 2, hit = document.elementFromPoint(x, y); return { x, y, on: !!hit && e.contains(hit) }; }, re);
   const before = await sheet();
-  for (let n = 0; n < 2; n++) {
+  for (let n = 0; n < 4; n++) {
     let box = await rowAt();
-    for (let k = 0; k < 10 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) break; box = again; }
+    for (let k = 0; k < 50 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && again.on && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) { box = again; break; } box = again; }
     if (!box) { if (n) return; throw new Error(`no sheet row matches /${re}/: ${JSON.stringify(await items())}`); }
-    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(700);
+    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(900);
     if ((await sheet()) !== before) return;
-    log(`tap on /${re}/ not taken, once more`);
+    log(`tap on /${re}/ not taken (row ${box.on ? 'under the finger' : 'not under the finger'} at ${Math.round(box.y)}), once more`);
   }
 }
 /** The action button for a focus id: tapped once it is offered. */
