@@ -39,12 +39,20 @@ Only colours — the walls above the dado and the dado, the tint of the floors a
 ```ts
 const spec = homeSpecFromTemplate('studio', {
   id: 'studio_filaos_1', identity: 'mermoz', mirror: true,
-  name: 'Studio · Résidence Les Filaos', hub: 'mermoz', place: 'filaos', where: 'Mermoz', door: 'mermoz:home:filaos',
+  name: 'Studio · Résidence Les Filaos', hub: 'mermoz', place: 'filaos_studio', where: 'Mermoz', door: 'mermoz:home:filaos_studio',
 });            // the plan is registered under the id (`registerPlan`); push `spec` onto HOMES, after the existing entries
 ```
-The hub still draws the building, its street door (an interactable `<hub>:home:<place>`) and the listing board, as `src/economy/citeJamm.ts` does in Pikine and `VILLA_GATES` in Almadies: the kit gives the inside and the catalogue entry. New entries go at the **end** of `HOMES` (a home's slot in the interior zone is its index: `homeOrigin`, so the order of the existing ones must not move). Nothing of Mermoz is listed yet: that is the next step, with the building.
+The hub still draws the building, its street door (an interactable `<hub>:home:<place>`) and the listing board, as `src/economy/citeJamm.ts` does in Pikine and `VILLA_GATES` in Almadies: the kit gives the inside and the catalogue entry. New entries go at the **end** of `HOMES` (a home's slot in the interior zone is its index: `homeOrigin`, so the order of the existing ones must not move). One home of Mermoz is listed (below): that is the next step, with the building.
+
+## The first listing: Appartement F3 · Résidence Les Filaos (Mermoz)
+`f3_filaos`, appended to `HOMES` (the sixth entry: its interior stands in the slot `homeOrigin` gives its index, so no other home moves, no save changes, no migration).
+
+- **What it is:** the kit's F3 (entrance, living room, kitchen, two bedrooms, bathroom, passage; 30 M F to buy, 11 000 F a day to rent) in **Mermoz's colours** (bright cool whites, a soft teal band, deep-teal doors, pale large tiles; `IDENTITIES.mermoz`), on the sixth floor of the seven-floor Résidence Les Filaos the district already has (Pape Diouf's gate, the booth, the terracotta band, the glazed balconies). It is the same F3 that Pikine would not have: another look, another door, another street.
+- **The street side** (`Estate.buildMermoz`, `src/economy/estate.ts`): a listing board on the wall by the gate (« F3 · À LOUER · À VENDRE »), the pavement spot where « Voir le logement » is offered, the building's door just inside the gate (where the player comes out), and the walking marker « Y aller à pied ». The district's ground, its streets, Pape and the drop-off are untouched; nothing the generator draws changed, so the other lots stay where they were.
+- **The ordinary flow, nothing new:** « Voir le logement » › Visiter (empty), Louer (a day's rent in hand) or Acheter; « Emménager », furniture (Keur Meubles) set in its rooms, « Entrer chez toi » from the board, leave, reload, come back. Phone › Biens › Annonces lists it.
+- **Saves:** an old client ignores an asset whose spec it does not know; a client that knows it keeps it.
 
 ## Limits
-- No listing of a kit home in Mermoz or elsewhere yet (the kit is the assets; each needs its building and door).
+- One kit home is listed so far: the F3 of the Résidence Les Filaos in Mermoz (below). Every other kit home still needs its building and door (the kit is the assets).
 - Furniture saved in the old one-room Ngor residence would not match its new plan (it costs 2.5 Md F: nobody owns it in the game).
 - Real phone untested; the shells are measured headless (draw calls per shell, tests/homeKit.test.ts: ≤ 24 for the flats, ≤ 60 for the premium ones).

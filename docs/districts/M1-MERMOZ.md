@@ -77,3 +77,7 @@ A bus waits for anything in its path. The road's traffic stops at the main road'
 - The next city day in the journey check is a labelled debug shortcut. A real « later visit » needs 2 city hours, which is 2 real minutes.
 - A save with a vehicle parked in Mermoz, loaded by a client older than this branch, puts the car at the same coordinates in that client's fallback hub. This only happens on a rollback.
 - The multiplayer room `mermoz` only exists on a worker built from this branch.
+
+
+## A home in Mermoz (28 Oct 2026)
+The Résidence Les Filaos now has a home to rent or buy: the Appartement F3, the first home of the home kit (`docs/kits/HOMES.md`, « The first listing »). A listing board by the gate, the building's door just inside it, the usual sheet (visit, rent, buy), the usual « Emménager »; nothing of the district's ground, Pape's gate or the drop-off moved, and no random draw of the generator changed. Home saves: `f3_filaos` is a catalogue entry like any other; there is no new save field.

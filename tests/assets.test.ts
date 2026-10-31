@@ -29,11 +29,14 @@ describe('catalogue', () => {
     expect(specOf(STARTER_HOME)?.kind).toBe('home');
   });
   it('homes climb room → apartment → house → villa → luxury residence, up to billions', () => {
-    expect(HOMES.map(h => h.home.level)).toEqual(['room', 'apartment', 'house', 'villa', 'residence']);
-    const priced = HOMES.slice(1);
+    // a level may list several homes (the Résidence Jàmm F2 and the F3 of the Résidence Les Filaos are both apartments): the ladder is the cheapest of each level, in order
+    const levels = ['room', 'apartment', 'house', 'villa', 'residence'] as const;
+    expect([...new Set(HOMES.map(h => h.home.level))].sort((a, b) => levels.indexOf(a as typeof levels[number]) - levels.indexOf(b as typeof levels[number]))).toEqual([...levels]);
+    expect(HOMES.map(h => h.home.level).filter((l, i, all) => all.indexOf(l) !== i)).toEqual(['apartment']);
+    const priced = levels.slice(1).map(l => HOMES.filter(h => h.home.level === l).sort((a, b) => a.price! - b.price!)[0]);
     // each step costs more (the owner set the house at 150 M F, the villa at 400 M F: from the house to the villa it is less than the tripling the first steps made)
     for (let i = 1; i < priced.length; i++) { expect(priced[i].price!).toBeGreaterThan(priced[i - 1].price! * (priced[i].home.level === 'villa' ? 2 : 3)); expect(priced[i].rent!).toBeGreaterThan(priced[i - 1].rent!); }
-    expect(HOMES.at(-1)!.price!).toBeGreaterThanOrEqual(1e9);
+    expect(Math.max(...HOMES.map(h => h.price ?? 0))).toBeGreaterThanOrEqual(1e9);          // the residence: homes added later are appended, not necessarily the dearest
     expect(HOMES.find(h => h.home.level === 'villa')!.price!).toBeGreaterThanOrEqual(1e8);
     for (const h of HOMES) expect(h.home.door).toMatch(/:home:/);
   });
