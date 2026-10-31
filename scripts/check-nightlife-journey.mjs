@@ -259,12 +259,12 @@ if (runs('patio')) {
   const exit = p.anchors.find(a => a.id === 'exit');
   await walk(exit.x, exit.z, { tol: 0.9, ms: 90000 });
   check('the way out of Le Patio', await act('almadies:venue:patio:exit'));
-  await until(() => window.__dakar.pos().z > p.origin.z + 9, null, 30000);
+  await until(z => window.__dakar.pos().z > z, p.origin.z + 9, 30000);
   await page.waitForTimeout(1500);
   const out1 = await d(() => window.__dakar.pos());
   check('back on the promenade, in the street', out1.z > p.origin.z + 9 && (await patio()).space !== 'almadies:venue:patio', JSON.stringify({ x: out1.x, z: out1.z }));
   const spOut = await S();
-  check('Le Patio counted the night once (the door), the drink and the dance; the club helper’s keys only', (spOut.c['club:almadies:venue:patio:nights'] ?? 0) === 1 && Object.keys(spOut.c).filter(k => k.startsWith('club:')).every(k => k.startsWith('club:almadies:venue:patio:')), JSON.stringify(Object.fromEntries(Object.entries(spOut.c).filter(([k]) => k.startsWith('club:')))));
+  check('Le Patio counted the night once (the door), the drink and the dance; the club helper’s keys only', (spOut.c['club:almadies:venue:patio:soirees'] ?? 0) === 1 && Object.keys(spOut.c).filter(k => k.startsWith('club:')).every(k => k.startsWith('club:almadies:venue:patio:')), JSON.stringify(Object.fromEntries(Object.entries(spOut.c).filter(([k]) => k.startsWith('club:')))));
 }
 
 if (process.env.UNTIL === 'patio') { await d(() => clearInterval(window.__pin)); check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | ')); console.log(`\n${total - failed}/${total} (UNTIL=patio)`); await context.close(); await browser.close(); process.exit(failed ? 1 : 0); }
@@ -458,7 +458,7 @@ await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T);
 const sa = await S(), after = (await A()).counters;
 check('12. after a reload the money is the same to the franc', sa.wallet === sv.wallet, `${sv.wallet} → ${sa.wallet}`);
 check('12. the memory of M4 is there: the evenings, the choice, the meeting, Awa’s gift; nothing counted again', after.al_evenings === before.al_evenings && after.al_toast === 2 && after.al_awa_met === before.al_awa_met && after.al_gift_night === before.al_gift_night, JSON.stringify({ before, after }));
-check('12. the progression of the activities is there: Le Patio’s night and dance, La Vague’s dance, the Terrasse’s meal', Object.entries(clubKeys).every(([k, v]) => sa.c[k] === v) && (sa.c['club:almadies:venue:patio:nights'] ?? 0) === 1 && (sa.c['club:almadies:venue:patio:danses'] ?? 0) === 1 && (sa.c['club:almadies:venue:club:danses'] ?? 0) === 1 && (sa.c.terrasse ?? 0) === 1, JSON.stringify(clubKeys));
+check('12. the progression of the activities is there: Le Patio’s night and dance, La Vague’s dance, the Terrasse’s meal', Object.entries(clubKeys).every(([k, v]) => sa.c[k] === v) && (sa.c['club:almadies:venue:patio:soirees'] ?? 0) === 1 && (sa.c['club:almadies:venue:patio:danses'] ?? 0) === 1 && (sa.c['club:almadies:venue:club:danses'] ?? 0) === 1 && (sa.c.terrasse ?? 0) === 1, JSON.stringify(clubKeys));
 check('12. only the existing counters were written (al_*, club:*, the ordinary ones): no new save field', Object.keys(sa.c).filter(k => k.startsWith('al_')).length > 0, '');
 await d(() => window.__dakar.teleport('almadies'));
 await until(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.teranga.info().here && window.__dakar.pos().mode === 'play', null, 120000); await page.waitForTimeout(2500);
