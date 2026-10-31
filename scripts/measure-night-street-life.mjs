@@ -28,7 +28,8 @@ try {
       const D = window.__dakar; D.ambientRun(240); D.ambientSettle?.();
       const a = D.ambientActors(), inStreet = x => x.x > -124 && x.x < 13 && x.z < -127 && x.z > -158;
       const here = a.filter(inStreet);
-      return { live: D.ambient().live, onTheNightStreet: here.length, sitting: here.filter(x => x.sitting).length, atPlaces: here.map(x => x.spot).reduce((m, k) => (m[k] = (m[k] ?? 0) + 1, m), {}) };
+      const venues = Object.fromEntries(D.venues().filter(v => v.type === 'patio' || v.type === 'club').map(v => [v.type, { moment: v.moment ?? null, open: v.open ?? null, npcs: v.npcs ?? null, queue: v.queue ?? v.queueLen ?? null, people: v.people?.length ?? null }]));
+      return { live: D.ambient().live, onTheNightStreet: here.length, sitting: here.filter(x => x.sitting).length, atPlaces: here.map(x => x.spot).reduce((m, k) => (m[k] = (m[k] ?? 0) + 1, m), {}), venues };
     });
   }
   res.errors = errors.slice(0, 3);
