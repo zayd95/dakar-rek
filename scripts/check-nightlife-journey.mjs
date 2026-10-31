@@ -7,7 +7,7 @@
 // « PARKING DU PATIO ». Everything on foot is the joystick. Every fee is the existing one (Le Patio’s 5 000 F ticket once, the bar, the Terrasse's dish, La Vague 2 000 F once, the taxi).
 // Labelled shortcuts (everything else is the real thing): the hour (`setHour`), the city day held where the run began (a city day is 24 minutes of the wall's; `nextDay` for « another
 // evening »), the Teranga bought and put in the Corniche, the player put beside it, the next city day, the return from the Corniche after the taxi, reading state.
-// Usage: node scripts/check-nightlife-journey.mjs [baseUrl] [outDir]     FROM=drive|patio|hotel narrows a run while iterating (a labelled set-up stands in for what came before). NOVIDEO=1 skips the video.
+// Usage: node scripts/check-nightlife-journey.mjs [baseUrl] [outDir]     FROM=drive|patio|hotel narrows a run while iterating (a labelled set-up stands in for what came before); UNTIL=patio stops after Le Patio. NOVIDEO=1 skips the video.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, boardVehicle, walkTo, playDance } from './lib/realTouch.mjs';
@@ -38,18 +38,31 @@ const ledgerSum = from => d(f => window.__dakar.state.data.ledger.slice(f).reduc
 const patio = () => d(() => window.__dakar.venues().find(v => v.type === 'patio') ?? null);
 const until = (fn, a, ms = 120000) => page.waitForFunction(fn, a, { timeout: ms }).then(() => true, () => false);
 let t;
-async function tapItem(re) {
-  // the sheet slides in: wait until the row stops moving (up to ~6 s on a slow page), and tap only where the row itself is under the finger
-  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2; const top = document.elementFromPoint(x, y); return { x, y, on: !!top && (e === top || e.contains(top)) }; }, re.source ?? re);
+async function tapItem(re, expect) {
+  // the sheet slides in and may scroll: wait until the row stops moving (up to ~6 s on a slow page), tap only where the row itself is under the finger, and when `expect` (a RegExp the sheet
+  // must then show, or `'closed'` for a sheet that must go away) is given, check it; a tap that did not do what it should is made again (a real thumb does the same)
+  const src = re.source ?? re;
+  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); const x = b.left + b.width / 2, y = b.top + b.height / 2; const top = document.elementFromPoint(x, y); return { x, y, on: !!top && (e === top || e.contains(top)) }; }, src);
+  const done = async () => {
+    for (let k = 0; k < 40; k++) {
+      const now = await sheet();
+      if (expect === 'closed' ? now === null : expect ? new RegExp(expect.source ?? expect).test(now ?? '') : now !== before) return true;
+      await page.waitForTimeout(100);
+    }
+    return false;
+  };
   const before = await sheet();
   for (let n = 0; n < 4; n++) {
     let box = await rowAt();
     for (let k = 0; k < 50 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && again.on && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) { box = again; break; } box = again; }
-    if (!box) { if (n) return; throw new Error(`no sheet row matches /${re.source ?? re}/: ${JSON.stringify(await items())}`); }
-    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(900);
-    if ((await sheet()) !== before) return;
-    log(`tap on /${re.source ?? re}/ not taken (row ${box.on ? 'under the finger' : 'not under the finger'} at ${Math.round(box.y)}), once more`);
+    if (!box) { if (n) return; throw new Error(`no sheet row matches /${src}/: ${JSON.stringify(await items())}`); }
+    const live = await rowAt();                                             // and once more, the instant before the finger goes down
+    if (live) box = live;
+    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(500);
+    if (await done()) return;
+    log(`tap on /${src}/ did not do what it should (row ${box.on ? 'under the finger' : 'not under the finger'} at ${Math.round(box.y)}): once more`);
   }
+  throw new Error(`tap on /${src}/ never took: ${JSON.stringify(await items())}`);
 }
 /** The action button for a focus id: tapped once it is offered. */
 async function act(id, ms = 25000) {
@@ -113,8 +126,8 @@ if (runs('drive') && FROM === 'drive') {
   await pilot(page, t, 'teranga', [{ x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: -30, tol: 4 }, { x: -60.4, z: -90, tol: 4 }, { x: -60.4, z: -112, tol: 2.5, speed: 4 }, ...arc, { x: bay.x + TURN + 26, z: laneZ, tol: 3, speed: 6 }], { cruise: 8, stall: 25000, brakeAtEnd: false });
   await shot('on-the-coast-road');
   // Le Patio’s sign: the signed night street is in the view as the car comes along the coast road (a picture, and a check by name)
-  const seen = await d(() => window.__dakar.cityPlaces().filter(x => /Patio|Vague|Terrasse/.test(x.name)).map(x => x.name));
-  check('the places of the night street are on the neighbourhood’s list (Le Patio, La Vague, the Terrasse)', seen.length >= 3, JSON.stringify(seen));
+  const seen = await d(() => ({ spots: window.__dakar.cityPlaces().filter(x => /Patio|Vague/.test(x.name)).map(x => x.name), places: window.__dakar.places().filter(n => /Terrasse de Ngor/.test(n)) }));
+  check('the places of the night street are listed: Le Patio and La Vague among the neighbourhood’s spots, the Terrasse de Ngor (the hotel’s roof) among its places', seen.spots.length === 2 && seen.places.length === 1, JSON.stringify(seen));
   // into the bay: the same swing as the parking check — an arc from the lane into the bay, nose first
   const intoBay = [{ x: bay.x + TURN + 12, z: laneZ, tol: 2.5, speed: 4.5 }, { x: bay.x + TURN + 2, z: laneZ, tol: 1.0, speed: 2.2 },
     ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: bay.x + TURN + 2 - TURN * Math.sin(r), z: laneZ - TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
@@ -206,22 +219,22 @@ if (runs('patio')) {
   const a = await talkTo('fatou');
   check('a patron to talk to: Fatou, her birthday (her name and her words, French with everyday Wolof)', !!a && /Fatou/.test(a.hello ?? '') && /anniversaire/.test(a.hello ?? ''), (a?.hello ?? 'nobody').slice(0, 160));
   if (a) {
-    await tapItem(/Joyeux anniversaire/);
+    await tapItem(/Joyeux anniversaire/, /surprise|gâteau/);
     check('she answers a topic', /surprise|gâteau/.test((await sheet()) ?? ''), ((await sheet()) ?? '').slice(0, 120));
-    await tapItem(/Pas maintenant, merci/);
+    await tapItem(/Pas maintenant, merci/, /Pas de souci/);
     check('a no is received gracefully, and the sheet stays as it was', /Pas de souci/.test((await sheet()) ?? '') && (await items()).length === a.rows.length, ((await sheet()) ?? '').slice(0, 120));
-    await tapItem(/Bonne soirée/); await until(() => !document.querySelector('#modal.on'), null, 15000);
+    await tapItem(/Bonne soirée/, 'closed');
   }
   const b = await talkTo('rokhaya');
   check('a woman who works the night there says so herself, as work, and that they can just talk', !!b && /Je travaille ici la nuit/.test(b.hello ?? '') && /juste parler/.test(b.hello ?? ''), (b?.hello ?? 'nobody').slice(0, 200));
   if (b) {
-    await tapItem(/Comment tu restes en sécurité/);
+    await tapItem(/Comment tu restes en sécurité/, /droit de dire non/);
     check('she talks about staying safe: the right to say no, to anyone', /droit de dire non/.test((await sheet()) ?? ''), '');
     const before = await S(), rows0 = await items();
-    await tapItem(/Ce n’est pas ce que je cherche/);
+    await tapItem(/Ce n’est pas ce que je cherche/, /Aucun problème, vraiment/);
     const declined = (await sheet()) ?? '', after = await S();
     check('declined: graceful, no insistence, no question, the choices as they were; it cost nothing and changed nothing', /Aucun problème, vraiment/.test(declined) && !/\?\s*»?\s*$/.test(declined) && (await items()).length === rows0.length && after.wallet === before.wallet && after.ledger === before.ledger && JSON.stringify(after.c) === JSON.stringify(before.c), declined.slice(0, 160));
-    await tapItem(/Bonne soirée/); await until(() => !document.querySelector('#modal.on'), null, 15000);
+    await tapItem(/Bonne soirée/, 'closed');
   }
   const sw1 = await S();
   check('talking moved no money and wrote no ledger line (the beer was the only thing bought since the door)', sw1.wallet === sb1.wallet && sw1.ledger === sb1.ledger, `${sb1.wallet} → ${sw1.wallet}`);
@@ -254,6 +267,7 @@ if (runs('patio')) {
   check('Le Patio counted the night once (the door), the drink and the dance; the club helper’s keys only', (spOut.c['club:almadies:venue:patio:nights'] ?? 0) === 1 && Object.keys(spOut.c).filter(k => k.startsWith('club:')).every(k => k.startsWith('club:almadies:venue:patio:')), JSON.stringify(Object.fromEntries(Object.entries(spOut.c).filter(([k]) => k.startsWith('club:')))));
 }
 
+if (process.env.UNTIL === 'patio') { await d(() => clearInterval(window.__pin)); check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | ')); console.log(`\n${total - failed}/${total} (UNTIL=patio)`); await context.close(); await browser.close(); process.exit(failed ? 1 : 0); }
 // ---------------------------------------------------------------- 4, 5. the hotel: along the promenade, across the road; the Terrasse's name is up on the roof
 if (runs('hotel')) {
   log('4-5. the hotel');
