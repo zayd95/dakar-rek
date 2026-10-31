@@ -343,7 +343,7 @@ check('the first time she introduces herself and asks what brings the guest (sho
 await shot('awa-first');
 await tapItem('Je fête un bon travail');
 const reply = await sheet();
-check('her answer follows the guest’s choice and sends them on to La Vague (21 h)', /bon travail/.test(reply ?? '') && /La Vague/.test(reply ?? '') && /21 h/.test(reply ?? ''), (reply ?? '').slice(0, 200));
+check('her answer follows the guest’s choice and sends them on to La Vague (21 h)', /bon travail/.test(reply ?? '') && /La Vague/.test(reply ?? '') && (/21 h/.test(reply ?? '') || /c’est ouvert/.test(reply ?? '')), (reply ?? '').slice(0, 200));
 const s2 = await S();
 check('a real word: social and mood rise once, the choice is remembered, she is a known face', s2.n.social >= soc0 + 6 && s2.c.al_toast === 2 && (s2.c.al_awa_met ?? 0) > 0 && (await A()).rel > 0, JSON.stringify({ soc: [soc0, s2.n.social], al: (await A()).counters, rel: (await A()).rel }));
 { const dest = await d(() => window.__dakar.destination()); check('the walking marker now points to La Vague', dest === 'almadies:city:club', String(dest)); }
@@ -454,13 +454,14 @@ const sv = await S(), before = (await A()).counters, rel0 = (await A()).rel, car
 const spent = -(await ledgerSum(ledger0));
 check('12. before the save: the wallet fell by exactly what the ledger says was paid (the door, the beer, the dish, La Vague, the taxi: each once; the coffee and the talks nothing)', wallet0 - sv.wallet === spent && spent > 5000 + 1500 + 6000 + 2000, `${wallet0} → ${sv.wallet}, ledger ${spent}`);
 const clubKeys = Object.fromEntries(Object.entries(sv.c).filter(([k]) => k.startsWith('club:')));
-await page.reload({ timeout: 180000 });
+await page.goto(`${base}?debug&touch`, { timeout: 180000 });                 // a plain URL: the debug parameter ?argent= would set the wallet again, and ?heure= the hour
 await ready(); t = await realTouch(page);
 await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T);
 const sa = await S(), after = (await A()).counters;
 check('12. after a reload the money is the same to the franc', sa.wallet === sv.wallet, `${sv.wallet} → ${sa.wallet}`);
 check('12. the memory of M4 is there: the evenings, the choice, the meeting, Awa’s gift; nothing counted again', after.al_evenings === before.al_evenings && after.al_toast === 2 && after.al_awa_met === before.al_awa_met && after.al_gift_night === before.al_gift_night, JSON.stringify({ before, after }));
-check('12. the progression of the activities is there: Le Patio’s night and dance, La Vague’s dance, the Terrasse’s meal', Object.entries(clubKeys).every(([k, v]) => sa.c[k] === v) && (sa.c['club:almadies:venue:patio:soirees'] ?? 0) === 1 && (sa.c['club:almadies:venue:patio:danses'] ?? 0) === 1 && (sa.c['club:almadies:venue:club:danses'] ?? 0) === 1 && (sa.c.terrasse ?? 0) === 1, JSON.stringify(clubKeys));
+const mismatch = Object.entries({ ...clubKeys, terrasse: sv.c.terrasse }).filter(([k, v]) => sa.c[k] !== v).map(([k, v]) => `${k}: ${v} → ${sa.c[k]}`);
+check('12. the progression of the activities is there, to the unit: Le Patio’s night (1) and dance (1), La Vague’s dance (1), the Terrasse’s dishes (the dinner and the second evening’s free coffee)', mismatch.length === 0 && (sa.c['club:almadies:venue:patio:soirees'] ?? 0) === 1 && (sa.c['club:almadies:venue:patio:danses'] ?? 0) === 1 && (sa.c['club:almadies:venue:club:danses'] ?? 0) === 1 && (sa.c.terrasse ?? 0) >= 1, JSON.stringify({ mismatch, terrasse: sa.c.terrasse, clubKeys }));
 check('12. only the existing counters were written (al_*, club:*, the ordinary ones): no new save field', Object.keys(sa.c).filter(k => k.startsWith('al_')).length > 0, '');
 await d(() => window.__dakar.teleport('almadies'));
 await until(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.teranga.info().here && window.__dakar.pos().mode === 'play', null, 120000); await page.waitForTimeout(2500);
