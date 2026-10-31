@@ -14,6 +14,7 @@ import { phoneHooks } from '../../phoneHooks';
 import { mountSoundTest, soundTestHtml, type TestKit } from '../../soundTest';
 import { bindSaveCard, saveCardHtml } from '../../saveCard';
 import { betaFooter, reportText } from '../../betaInfo';
+import { frameStats } from '../../../core/frameStats';
 
 /**
  * Réglages, in five short groups (Affichage, Graphismes, Son, Caméra, Partie). Each setting is one control; its one-line explanation is the current
@@ -39,7 +40,8 @@ function html(api: PhoneApi): string {
         toggle('minimap', 'Mini-carte', mapBridge.enabled, 'Le petit rond : où tu es, les lieux autour', ['Affichée', 'Masquée']),
         toggle('gloss', 'Traduction du wolof', gloss, gloss ? 'Français, expressions en wolof : « Jërëjëf (merci) »' : 'Français, expressions en wolof : « Jërëjëf » seul', ['Affichée', 'Masquée']),
       ])}`)
-    + section('Graphismes', `${seg('q', (['low', 'medium', 'high'] as Quality[]).map(k => [k, QUALITY_LABEL[k]]), q)}${note(QUALITY_NOTE[q])}`)
+    + section('Graphismes', `${seg('q', (['low', 'medium', 'high'] as Quality[]).map(k => [k, QUALITY_LABEL[k]]), q)}${note(QUALITY_NOTE[q])}
+      ${rows([toggle('fps', 'Mesure de fluidité', frameStats.enabled, 'Images par seconde à l’écran ; « Signaler un problème » les ajoute à ton message', ['Activée', 'Désactivée'])])}`)
     + section('Son', `${rows([
         toggle('sound', 'Son du jeu', !isMuted(), '', ['Activé', 'Coupé']),
         ...(canVibrate() ? [toggle('haptics', 'Vibrations', hapticsOn(), 'Chocs et klaxon', ['Activées', 'Coupées'])] : []),
@@ -79,6 +81,7 @@ export const settingsScreen: Screen = {
         case 'soundtest': api.go('sontest'); break;
         case 'save': { const ok = api.ctx.save(); api.notify(ok ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur', ok ? 'ok' : 'warn'); break; }
         case 'new': api.go('nouvelle'); break;
+        case 'fps': frameStats.setEnabled(!frameStats.enabled); if (frameStats.enabled) frameStats.reset(); api.rerender(); break;
         case 'devmode': devMode.set(!devMode.on); api.rerender(); break;
         case 'presence': if (phoneHooks.openPresence) api.launch(phoneHooks.openPresence); break;
         case 'report': {                          // the lines a tester pastes at the top of a report (src/ui/betaInfo.ts): shown, and copied where allowed

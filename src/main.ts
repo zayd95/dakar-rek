@@ -114,6 +114,8 @@ import { setVillaFacadeNight } from './housing/villaFacade';
 import { setDistrictNight } from './world/almadies/night';
 import { SITES as DISTRICT_SITES } from './world/almadies/plan';
 import { sizeOf as districtSize } from './world/almadies/contract';
+import { frameStats, gpuName } from './core/frameStats';
+import { updateFrameMeter } from './ui/frameMeter';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -1616,6 +1618,11 @@ function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (!stepping) frameStep(now, dt);
+  if (frameStats.enabled && world) {                        // « Mesure de fluidité » (src/core/frameStats.ts): this frame filed under where the player is
+    if (!frameStats.gpu) frameStats.gpu = gpuName(renderer.getContext());
+    frameStats.tick(now, `${(HUB_NAMES[world.id] ?? world.id).split(' · ')[0]} · ${inside ? 'dans un logement' : document.body.classList.contains('ridepad') ? 'au volant' : 'à pied'}`, renderer.info.render.calls, renderer.info.render.triangles);
+  }
+  updateFrameMeter(now);
 }
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
