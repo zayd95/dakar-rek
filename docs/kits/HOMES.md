@@ -51,6 +51,7 @@ The hub still draws the building, its street door (an interactable `<hub>:home:<
 - **The street side** (`Estate.buildMermoz`, `src/economy/estate.ts`): a listing board on the wall by the gate (« F3 · À LOUER · À VENDRE »), the pavement spot where « Voir le logement » is offered, the building's door just inside the gate (where the player comes out), and the walking marker « Y aller à pied ». The district's ground, its streets, Pape and the drop-off are untouched; nothing the generator draws changed, so the other lots stay where they were.
 - **The ordinary flow, nothing new:** « Voir le logement » › Visiter (empty), Louer (a day's rent in hand) or Acheter; « Emménager », furniture (Keur Meubles) set in its rooms, « Entrer chez toi » from the board, leave, reload, come back. Phone › Biens › Annonces lists it.
 - **Saves:** an old client ignores an asset whose spec it does not know; a client that knows it keeps it.
+- **Proof:** `scripts/check-mermoz-home.mjs` (real touch, a phone-sized page, 11/11): the board, the sheet, a visit, out by the door, a lease, moving in, « Entrer chez toi », a reload. Pictures and the log: `docs/proof/mermoz-home/`. The frame rates are a software renderer's; nothing here was run on an iPhone.
 
 ## Limits
 - One kit home is listed so far: the F3 of the Résidence Les Filaos in Mermoz (below). Every other kit home still needs its building and door (the kit is the assets).

@@ -60,7 +60,9 @@ const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;
 const perDay = (n: number) => `${fcfa(n)} / jour`;
 /** Résidence Les Filaos (Mermoz): the listing's spot on the pavement south of the gate (x = 60 is the street, the wall stands at 67.3, the gate at z = −30), and the building's door just inside it. */
 const FILAOS_BOARD = { x: 66.2, z: -36.5 };
-const FILAOS_DOOR = { x: 69.3, z: -32.6 };
+const FILAOS_DOOR = { x: 68.5, z: -35.6 };
+/** The facade of the Résidence stands at x = 70 (builder.ts `filaos`: x0 + 3). */
+const FILAOS_FACADE_X = 70;
 /** Directory entries of the Cité Jàmm (places directory, walking marker): id by catalogue entry. */
 const ENTRY: Record<string, string> = {
   appart_jamm: 'pikine:city:jamm', maison_cite: 'pikine:city:maison', parcelle_150: 'pikine:city:parcelles', parcelle_300: 'pikine:city:parcelles',
@@ -217,6 +219,11 @@ class Estate {
     hub.interactables.push({ id: sp.home.door, name: sp.name, kind: 'actions', x: door.x, z: door.z, radius: -1, actions: [] });
     hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: board.x, z: board.z + 1, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
     ctx.places.add(ownable({ id, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: board.x, z: board.z, radius: 2.4 }] }, hooks));
+    const b = new Batch();                                                                                  // the building's door: a deep-teal frame (Mermoz's door colour), a glazed leaf, a canopy, a step
+    const fx = FILAOS_FACADE_X - 0.08;
+    b.box(0.16, 2.5, 1.5, fx, 0.1, door.z, 0x1f6f78); b.box(0.1, 2.2, 1.1, fx - 0.07, 0.1, door.z, 0x9fb3c2); b.box(0.08, 2.2, 0.06, fx - 0.09, 0.1, door.z, 0x1f6f78);
+    b.box(1.3, 0.12, 2.2, fx - 0.6, 2.6, door.z, 0xe6e0d6); b.box(0.9, 0.16, 1.9, fx - 0.45, 0.1, door.z, 0xcfc9bd);
+    const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) hub.group.add(mesh);
     const panel = signPanel(signTexture('F3 · À LOUER · À VENDRE', '#2f6f5a', '#fdf6e4', 512, 160), 1.8, 0.6);
     panel.position.set(board.x + 0.85, 1.5, board.z); panel.rotation.y = -Math.PI / 2; hub.group.add(panel); hub.signs.push(panel);        // on the wall, facing the street (x = 60)
   }

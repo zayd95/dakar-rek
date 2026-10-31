@@ -37,7 +37,7 @@ describe('Appartement F3 · Résidence Les Filaos (Mermoz)', () => {
   it('has its door and its board on the pavement and inside the gate of the Résidence, clear of Pape, of the drop-off and of every wall', async () => {
     const { buildHub } = await import('../src/world/builder');
     const hub = buildHub('mermoz', true);
-    const door = { x: 69.3, z: -32.6 }, board = { x: 66.2, z: -36.5 };
+    const door = { x: 68.5, z: -35.6 }, board = { x: 66.2, z: -36.5 };
     const drop = VTC_POINTS.mermoz.find(p => p.id === 'filaos')!;
     for (const [what, p] of [['the door', door], ['the board spot', board]] as const) {
       expect(inside(hub.colliders, p.x, p.z), `${what} is not inside a wall`).toBe(false);
