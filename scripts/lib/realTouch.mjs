@@ -182,7 +182,7 @@ export async function playDance(page, t, { ms = 240000, seed = 12345, offFractio
   const R = (() => { let a = seed; return () => ((a = (a * 1103515245 + 12345) >>> 0) / 4294967296); })();
   const scheduled = new Set(), plan = [], out = { touches: 0, performances: 0, grades: null, score: null };
   const deadline = Date.now() + ms;
-  let label = '';
+  let label = '', touchQueue = Promise.resolve();
   while (Date.now() < deadline) {
     const [g, active] = await Promise.all([page.evaluate(() => window.__dakar.gesture()), page.evaluate(() => !!window.__dakar.activity())]);
     if (!g && !active) break;
@@ -197,14 +197,21 @@ export async function playDance(page, t, { ms = 240000, seed = 12345, offFractio
     }
     for (const p of plan.filter(p => !p.armed)) {
       p.armed = true;
-      setTimeout(async () => {                                         // each touch on its own timer: the page may be busy drawing, the touch still leaves on time
-        if (p.kind === 'L' || p.kind === 'R') { const x = p.kind === 'L' ? 95 : 295; await t.down(7, x, 520); await t.up(7); }
-        else if (p.kind === 'up') { await t.down(7, 195, 600); await t.move(7, 195, 470, 2); await t.up(7); }
-        else { await t.down(7, 110, 520); await t.move(7, 280, 520, 2); await t.up(7); }
+      // each touch on its own timer (the page may be busy drawing, the touch still leaves on time), but the touches themselves go through one queue: two cues close together share the finger
+      // table, and one's « move » must not overtake another's « start » (a protocol error that used to end the run); a touch that is lost is lost, as on glass
+      setTimeout(() => {
+        touchQueue = touchQueue.then(async () => {
+          try {
+            if (p.kind === 'L' || p.kind === 'R') { const x = p.kind === 'L' ? 95 : 295; await t.down(7, x, 520); await t.up(7); }
+            else if (p.kind === 'up') { await t.down(7, 195, 600); await t.move(7, 195, 470, 2); await t.up(7); }
+            else { await t.down(7, 110, 520); await t.move(7, 280, 520, 2); await t.up(7); }
+          } catch { await t.up(7).catch(() => {}); }
+        });
       }, Math.max(0, p.at - Date.now() - 4));
     }
     await sleep(40);
   }
+  await touchQueue;
   await sleep(600);
   return out;
 }
