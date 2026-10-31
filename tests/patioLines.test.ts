@@ -146,8 +146,8 @@ describe('nothing is for sale but the door, the bar and the DJ’s request', () 
     const talkerSet = new Set(TALKERS.flatMap(talkerLines));
     for (const l of priced) expect(talkerSet.has(l), l.slice(0, 80)).toBe(false);
     for (const l of priced) expect(l, l.slice(0, 80)).toMatch(/Boubacar|DJ|entrée|Entrée|carte|Avec alcool|F ?$|ticket|500|3 ?000|habitués|18 ans/i);
-    expect(read(doormanAsk({ night: 1, hour: 23, nights: 0 }))).toContain('3 000');
-    expect(PATIO_ENTRY).toBe(3000);
+    expect(read(doormanAsk({ night: 1, hour: 23, nights: 0 }))).toContain('5 000');
+    expect(PATIO_ENTRY).toBe(5000);
     expect(read(djRequest())).toMatch(/500 F/);
   });
   it('the bar’s menu is 1 000 – 4 500 F, with beer, cocktails and spirits mixes AND soft drinks, juice and water', () => {

@@ -161,12 +161,12 @@ export const PATIO_BYE = `« ${PATIO_NAME} te dit ${say('Ba beneen yoon')}. Rent
 export function doormanGreeting(c: PatioCtx): string {
   const t = theme(c.night).label;
   if (c.nights >= PATIO_REGULAR) return `Boubacar : « Ah, te revoilà ! Pour toi, l’entrée est offerte. Ce soir : ${t}. Entre, entre. »`;
-  if (c.nights > 0) return `Boubacar : « Bonsoir ! Ce soir, c’est ${t}. L’entrée, c’est ${price(PATIO_ENTRY)}, comme d’habitude. »`;
-  return `Boubacar : « Bonsoir et bienvenue au Patio. 18 ans minimum, pièce d’identité si on te la demande. Ce soir : ${t}. L’entrée, c’est ${price(PATIO_ENTRY)}, une seule fois pour la nuit. »`;
+  if (c.nights > 0) return `Boubacar : « Bonsoir ! Ce soir, c’est ${t}. Le ticket, c’est ${price(PATIO_ENTRY)}, comme d’habitude. »`;
+  return `Boubacar : « Bonsoir et bienvenue au Patio, le club privé. 18 ans minimum, pièce d’identité si on te la demande. Ce soir : ${t}. Le ticket d’entrée, c’est ${price(PATIO_ENTRY)}, une seule fois pour la nuit. »`;
 }
 /** At the door, before anything is paid: the fee, once for the night, the age. */
 export const doormanAsk = (c: PatioCtx) =>
-  `Boubacar : « Bonsoir. 18 ans minimum, pièce d’identité si on te la demande. Ce soir, c’est ${theme(c.night).label}. L’entrée, c’est ${price(PATIO_ENTRY)}, une seule fois pour toute la nuit : tu peux sortir fumer et revenir. »`;
+  `Boubacar : « Bonsoir. Ici, c’est un club privé, VIP : 18 ans minimum, pièce d’identité si on te la demande. Ce soir, c’est ${theme(c.night).label}. Le ticket d’entrée, c’est ${price(PATIO_ENTRY)}, une seule fois pour toute la nuit : tu peux sortir fumer et revenir. »`;
 export const doormanRules = () =>
   '« La règle de la maison est simple : un non, c’est un non. Personne ne force personne, ni au bar, ni sur la piste, ni ailleurs. Si quelqu’un insiste, tu me fais signe et je m’en occupe. Pour tout le monde, du patron à la serveuse. »';
 export const doormanHours = () => `« Le Patio ouvre de ${PATIO_HOURS[0]} h à ${PATIO_HOURS[1]} h, tous les soirs. Avant ${PATIO_HOURS[0]} h, c’est la livraison et le ménage : la porte reste fermée. »`;
@@ -216,11 +216,11 @@ export const nextNights = (night: number) => `« ${programme(night + 1, 6).join(
 
 // ------------------------------------------------------------------ the signs and the street
 export const SIGNS = {
-  main: 'LE PATIO', sub: 'BAR · CLUB · 18+', hours: `OUVERT ${PATIO_HOURS[0]} H – ${PATIO_HOURS[1]} H · TOUS LES SOIRS`,
-  closed: `FERMÉ · OUVRE À ${PATIO_HOURS[0]} H`, open: 'OUVERT', smoke: 'FUMEURS', smokeSub: 'terrasse · entrée de la rue', vip: 'VIP · RÉSERVÉ', bar: 'BAR · COCKTAILS', age: 'ENTRÉE 18 ANS ET PLUS',
+  main: 'LE PATIO', sub: 'CLUB PRIVÉ · VIP · 18+', hours: `OUVERT ${PATIO_HOURS[0]} H – ${PATIO_HOURS[1]} H · TOUS LES SOIRS`,
+  closed: `FERMÉ · OUVRE À ${PATIO_HOURS[0]} H`, open: 'OUVERT', smoke: 'FUMEURS', smokeSub: 'terrasse · entrée de la rue', vip: 'VIP · RÉSERVÉ', bar: 'BAR · COCKTAILS', age: `CLUB PRIVÉ · TICKET ${price(PATIO_ENTRY)} · 18 ANS ET PLUS`,
 } as const;
 /** The place's identity in the neighbourhood (« Les coins du quartier », the walking hint), in front of the gate. */
-export const PLACE_DESCRIPTION = `Boubacar, le videur : « Bonsoir ! » Bar et club ouvert de ${PATIO_HOURS[0]} h à ${PATIO_HOURS[1]} h · 18 ans minimum · l’entrée est de ${price(PATIO_ENTRY)}.`;
+export const PLACE_DESCRIPTION = `Boubacar, le videur : « Bonsoir ! » Club privé VIP, bar et piste, ouvert de ${PATIO_HOURS[0]} h à ${PATIO_HOURS[1]} h · 18 ans minimum · le ticket d’entrée est de ${price(PATIO_ENTRY)}.`;
 
 // ------------------------------------------------------------------ for the tests: every string the file can say
 export function allStrings(): string[] {

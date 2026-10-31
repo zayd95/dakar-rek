@@ -4,7 +4,7 @@
 //  8 down, La Vague                                       9 the existing dance, played on the beat   10 the taxi home                          11 another evening: Awa remembers
 // 12 save, reload: money, car, memory, progression.
 // The Teranga starts parked in the Corniche and is driven north across the district border and along the coast road (the pedal stick, the brake: real fingers), into a painted bay of
-// « PARKING DU PATIO ». Everything on foot is the joystick. Every fee is the existing one (Le Patio 3 000 F once, the bar, the Terrasse's dish, La Vague 2 000 F once, the taxi).
+// « PARKING DU PATIO ». Everything on foot is the joystick. Every fee is the existing one (Le Patio’s 5 000 F ticket once, the bar, the Terrasse's dish, La Vague 2 000 F once, the taxi).
 // Labelled shortcuts (everything else is the real thing): the hour (`setHour`), the city day held where the run began (a city day is 24 minutes of the wall's; `nextDay` for « another
 // evening »), the Teranga bought and put in the Corniche, the player put beside it, the next city day, the return from the Corniche after the taxi, reading state.
 // Usage: node scripts/check-nightlife-journey.mjs [baseUrl] [outDir]     FROM=drive|patio|hotel narrows a run while iterating (a labelled set-up stands in for what came before). NOVIDEO=1 skips the video.
@@ -162,12 +162,12 @@ if (runs('patio')) {
   const sp0 = await S();
   await t.tap('#act'); await page.waitForTimeout(900);
   const ask = await sheet();
-  check('the age and the fee are shown before anything is paid (18 ans minimum, 3 000 F, one time for the night)', /18 ans minimum/.test(ask ?? '') && /3\s?000\s?F/.test(ask ?? '') && /une seule fois/.test(ask ?? '') && (await S()).wallet === sp0.wallet, (ask ?? '').slice(0, 200));
+  check('the age and the fee are shown before anything is paid (club privé, 18 ans minimum, a 5 000 F ticket, one time for the night)', /18 ans minimum/.test(ask ?? '') && /5\s?000\s?F/.test(ask ?? '') && /club privé/.test(ask ?? '') && /une seule fois/.test(ask ?? '') && (await S()).wallet === sp0.wallet, (ask ?? '').slice(0, 200));
   await shot('le-patio-fee');
   await tapItem(/et entrer/);
   await until(() => window.__dakar.venues().find(v => v.type === 'patio').admitted && !window.__dakar.activity(), null, 60000);
   const sp1 = await S();
-  check('3. paid once: 3 000 F exactly, one ledger line, the rope lifted for the night', sp1.wallet === sp0.wallet - 3000 && sp1.ledger === sp0.ledger + 1 && sp1.last?.amount === -3000, `${sp0.wallet} → ${sp1.wallet}`);
+  check('3. paid once: the 5 000 F ticket exactly, one ledger line, the rope lifted for the night', sp1.wallet === sp0.wallet - 5000 && sp1.ledger === sp0.ledger + 1 && sp1.last?.amount === -5000, `${sp0.wallet} → ${sp1.wallet}`);
   // through the arched gate, across the floor, to the bar
   let p = await patio();
   const gate = { x: p.origin.x, z: p.origin.z + 7.5 };
@@ -436,7 +436,7 @@ await d(() => window.__dakar.save?.());
 await page.waitForTimeout(1500);
 const sv = await S(), before = (await A()).counters, rel0 = (await A()).rel, carB = await d(() => window.__dakar.teranga.info().record);
 const spent = -(await ledgerSum(ledger0));
-check('12. before the save: the wallet fell by exactly what the ledger says was paid (the door, the beer, the dish, La Vague, the taxi: each once; the coffee and the talks nothing)', wallet0 - sv.wallet === spent && spent > 3000 + 1500 + 6000 + 2000, `${wallet0} → ${sv.wallet}, ledger ${spent}`);
+check('12. before the save: the wallet fell by exactly what the ledger says was paid (the door, the beer, the dish, La Vague, the taxi: each once; the coffee and the talks nothing)', wallet0 - sv.wallet === spent && spent > 5000 + 1500 + 6000 + 2000, `${wallet0} → ${sv.wallet}, ledger ${spent}`);
 const clubKeys = Object.fromEntries(Object.entries(sv.c).filter(([k]) => k.startsWith('club:')));
 await page.reload({ timeout: 180000 });
 await ready(); t = await realTouch(page);
