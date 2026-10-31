@@ -3,6 +3,7 @@ import type { SeatKind } from '../interact/seats';
 import type { RoomKind } from '../housing/plan';
 import { STARTER_HOME } from '../core/save';
 import { ECONOMY } from './config';
+import { homeSpecFromTemplate } from '../housing/kit';
 
 /**
  * The catalogue of everything a player can own or rent (docs/OWNERSHIP.md): what each thing is, where it is, what it
@@ -80,6 +81,12 @@ export const HOMES: HomeSpec[] = [
   { id: 'residence_ngor', kind: 'home', name: 'Résidence de luxe · Pointe de Ngor', what: 'Un étage entier face à l’île de Ngor, terrasse et salon de réception', price: 2_500_000_000, rent: 600_000, income: letIncome(600_000), upkeep: 2_500,
     hub: 'almadies', place: 'residence', where: 'Almadies · Ngor', size: 330, tier: 5, upgrades: [{ id: 'domotique', name: 'Maison connectée', what: 'Lumières et clim pilotées : +20 énergie au réveil, loyer +25 %', price: 40_000_000, comfort: 20, rentMult: 1.25 }],
     home: { level: 'residence', w: 22, d: 15, door: 'almadies:home:residence', floor: 'marble' } },
+  // MERMOZ (Living Districts M1, the owner's reference: a shaded residential street, mixed concrete, gated compounds): the first home of the home kit (docs/kits/HOMES.md), a F3
+  // on a high floor of the Résidence Les Filaos, in Mermoz's colours. APPENDED: a home's interior stands in the slot of its index (placement.ts `homeOrigin`), so no other moves.
+  { ...homeSpecFromTemplate('f3', {
+      id: 'f3_filaos', identity: 'mermoz', name: 'Appartement F3 · Résidence Les Filaos', hub: 'mermoz', place: 'filaos', where: 'Mermoz · Résidence Les Filaos', door: 'mermoz:home:filaos',
+      what: 'Au sixième étage, sur la rue des filaos : entrée, séjour, cuisine, deux chambres, salle de bain, et la brise du soir au balcon', floor: 'tiles',
+    }), income: letIncome(11_000), upgrades: COMFORT },
 ];
 
 // ------------------------------------------------------------------ land and billboards
