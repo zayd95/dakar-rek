@@ -197,6 +197,7 @@ await until(() => !!window.__dakar.gesture() && /^Dance_/.test(window.__dakar.cl
 await shot('dancing');
 await until(() => { if (window.__dakar.gesture()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 120000);   // the beat game: the existing debug finish
 await page.waitForTimeout(1500);
+await until(() => (window.__dakar.almadies.info().stages & 4) === 4, null, 30000);          // the evening's module reads the club's counter on its own frame: a slow page may take a moment
 const sd = await S();
 check('one dance counted by La Vague, and the evening knows it', (sd.c['club:almadies:venue:club:danses'] ?? 0) === 1 && ((await A()).stages & 4) === 4, JSON.stringify((await A()).counters));
 

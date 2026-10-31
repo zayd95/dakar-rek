@@ -70,6 +70,7 @@ import { football } from './football';
 import { mermozModule } from '../districts/mermoz';
 import { tradeModule } from '../districts/trade';
 import { almadiesModule } from '../districts/almadies';
+import { nightStreetModule } from '../districts/nightStreet';
 import { VISIT_MODULE } from '../online/visit';
 import { MEETUPS_MODULE } from '../online/meetups';
 import { villaModule } from '../villa/module';
@@ -269,6 +270,7 @@ export const MODULES: GameModule[] = [
   mermozModule,         // Mermoz · Sacré-Cœur (M1): Pape Diouf at the Filaos' gate, his two rides on « Courses VTC », his memory (docs/districts/M1-MERMOZ.md)
   tradeModule,          // Plateau · Médina (M2): Oumar Diallo's lots, the Comptoir Sall, the porters' pousse-pousse (docs/districts/M2-PLATEAU-MEDINA.md)
   almadiesModule,       // Almadies · Ngor (M4): Awa Sy on the Terrasse de Ngor, the hand-off to La Vague, the end-of-evening card (docs/districts/M4-ALMADIES.md)
+  nightStreetModule,    // the night street's counters (Chez Binta, Le Comptoir de Ngor, Café du Phare, Lounge 221): their hours and menus, the ambient people's tables (docs/districts/ALMADIES-NIGHTLIFE.md)
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)

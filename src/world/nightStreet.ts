@@ -124,7 +124,7 @@ function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number,
 /** Where the promenade's lamp poles stand (in the gaps between the venues' fronts and the café sets): a string of festoons runs from each to the next. */
 const POLES = { west: [-118, -94, -79.5, -65], east: [-20, -4, 11.5] };
 /** The café sets on the promenade, in front of the doors: the chairs face the street, and are the street's seats. */
-const TABLES = [-98.5, -91, -82, -76, -69, 3.2, 8.6];
+const TABLES = [-98.5, -91, -82, -76, -69, -6.4, 3.2, 8.6];
 const TABLE_Z = -135.2;
 
 /** The ochre walk along the venues' fronts, with its lamp poles and the festoons that run from pole to pole. */
