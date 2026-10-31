@@ -16,6 +16,24 @@ export type CueKind = 'L' | 'R' | 'up' | 'spin';
 export interface Cue { i: number; beat: number; kind: CueKind; move: MoveId }
 export interface Phrase { move: MoveId; label: string; hint: string; from: number; to: number; variation: string | null }
 export interface TrackShape { bars: number; beatsPerBar: number; sections: readonly { id: string; from: number; to: number }[]; fills: readonly number[] }
+/**
+ * The words (and the one footwork) a club's dance takes from its music: what a phrase on the track's break is, what a phrase ending on a drum fill says, how the moves are called and what the
+ * floor says to a low score. The default is La Vague's mbalax: the sabar's solo and its footwork. Another club with another music (Le Patio, src/venues/patioPlan.ts `PATIO_DANCE`) gives its own,
+ * so nothing of La Vague's sabar is ever said on a floor that has none.
+ */
+export interface DanceWords {
+  /** The move a phrase on the track's `break` becomes (null: the break changes no move, it only gets its line). */
+  breakMove: MoveId | null;
+  breakText: string; fillText: string;
+  /** Other names for a move's label and hint. */
+  moves: Partial<Record<MoveId, { label: string; hint: string }>>;
+  /** The floor's word to a low score. */
+  low(): string;
+}
+export const VAGUE_WORDS: DanceWords = {
+  breakMove: 'sabar', breakText: 'Le solo des tambours : jeu de jambes sabar', fillText: 'Le roulement des tambours : un pas de plus', moves: {},
+  low: () => `${say('Ndank ndank')} : écoute le tambour, ça va venir.`,
+};
 
 export const PHRASE_BEATS = 8;
 export const MOVES: Record<MoveId, { label: string; hint: string; cues: readonly (readonly [number, CueKind])[] }> = {
@@ -46,20 +64,24 @@ const barAt = (track: TrackShape, beat: number) => { const n = track.bars * trac
 export function nextDownbeat(now: number, beatsPerBar = 4, lead = 2) { return Math.ceil((now + lead) / beatsPerBar) * beatsPerBar; }
 
 /** A performance: `rounds` phrases from `start` (a downbeat), the cues to play, with the music's variations. */
-export function routine(o: { rounds: number; speed?: number; start: number; seed: number; track: TrackShape }): { phrases: Phrase[]; cues: Cue[] } {
-  const R = mulberry(o.seed), plan = PLANS[levelOf(o.speed)], phrases: Phrase[] = [], cues: Cue[] = [];
+export function routine(o: { rounds: number; speed?: number; start: number; seed: number; track: TrackShape; words?: DanceWords }): { phrases: Phrase[]; cues: Cue[] } {
+  const R = mulberry(o.seed), plan = PLANS[levelOf(o.speed)], phrases: Phrase[] = [], cues: Cue[] = [], W = o.words ?? VAGUE_WORDS;
   for (let r = 0; r < Math.max(1, o.rounds); r++) {
     const from = o.start + r * PHRASE_BEATS;
     let move = plan[r % plan.length], variation: string | null = null;
-    if (sectionAt(o.track, from) === 'break' && move !== 'sabar') { move = 'sabar'; variation = 'Le solo des tambours : jeu de jambes sabar'; }
+    if (sectionAt(o.track, from) === 'break') {
+      if (W.breakMove === null) variation = W.breakText;
+      else if (move !== W.breakMove) { move = W.breakMove; variation = W.breakText; }
+    }
     const list: [number, CueKind][] = MOVES[move].cues.map(([b, k]) => [b, k]);
     if (r > 0 && !variation && R() < 0.22) {                                  // now and then: a turn or a double step in place of a step
       const i = 2 + Math.floor(R() * 4), c = list[i];
       if (c && (c[1] === 'L' || c[1] === 'R') && Number.isInteger(c[0])) { if (move === 'pas') { list.splice(i, 1, [c[0], c[1]], [c[0] + 0.5, c[1]]); variation = 'Un pas doublé'; } else { list[i] = [c[0], 'spin']; variation = 'Un tour en plus'; } }
     }
     const lastBar = barAt(o.track, from + PHRASE_BEATS - 1);
-    if (o.track.fills.includes(lastBar) && !list.some(([b]) => b === 7.5)) { list.push([7.5, list[list.length - 1][1] === 'L' ? 'R' : 'L']); variation ??= 'Le roulement des tambours : un pas de plus'; }
-    phrases.push({ move, label: MOVES[move].label, hint: MOVES[move].hint, from, to: from + PHRASE_BEATS, variation });
+    if (o.track.fills.includes(lastBar) && !list.some(([b]) => b === 7.5)) { list.push([7.5, list[list.length - 1][1] === 'L' ? 'R' : 'L']); variation ??= W.fillText; }
+    const name = W.moves[move] ?? MOVES[move];
+    phrases.push({ move, label: name.label, hint: name.hint, from, to: from + PHRASE_BEATS, variation });
     for (const [b, kind] of list) cues.push({ i: cues.length, beat: from + b, kind, move });
   }
   cues.sort((a, b) => a.beat - b.beat).forEach((c, i) => { c.i = i; });
@@ -97,8 +119,8 @@ export function matchTouch(cues: readonly Cue[], judged: ReadonlySet<number>, ki
 export const danceScore = (scores: readonly number[]) => (scores.length ? scores.reduce((t, s) => t + s, 0) / scores.length : 0);
 
 /** The floor's word after a performance (French with the everyday Wolof of src/i18n/wolof.ts). */
-export function danceLine(score: number): { mood: 'top' | 'ok' | 'meh'; text: string } {
+export function danceLine(score: number, words: DanceWords = VAGUE_WORDS): { mood: 'top' | 'ok' | 'meh'; text: string } {
   if (score >= 0.8) return { mood: 'top', text: `${say('Rafet na')} ! La piste t’applaudit.` };
   if (score >= 0.5) return { mood: 'ok', text: `${say('Baax na')} ! Tu as le rythme.` };
-  return { mood: 'meh', text: `${say('Ndank ndank')} : écoute le tambour, ça va venir.` };
+  return { mood: 'meh', text: words.low() };
 }

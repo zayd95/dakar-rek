@@ -353,10 +353,11 @@ export const CLUB_THEMES: readonly ClubTheme[] = [
   { id: 'retro', label: 'Soirée rétro', detail: 'Les classiques des années 70 et 80' },
 ];
 const mod = (n: number, m: number) => ((Math.floor(n) % m) + m) % m;
-export const clubTheme = (night: number) => CLUB_THEMES[mod(night, CLUB_THEMES.length)];
+/** Tonight's theme: La Vague's week by default, or another club's own week (`themes`, a club() variant). */
+export const clubTheme = (night: number, themes: readonly ClubTheme[] = CLUB_THEMES) => themes[mod(night, themes.length)];
 /** Nights from `night` to the next contest night (0 = tonight). */
-export function nightsToContest(night: number): number {
-  for (let k = 0; k < CLUB_THEMES.length; k++) if (clubTheme(night + k).contest) return k;
+export function nightsToContest(night: number, themes: readonly ClubTheme[] = CLUB_THEMES): number {
+  for (let k = 0; k < themes.length; k++) if (clubTheme(night + k, themes).contest) return k;
   return -1;
 }
 /** Entry at the door (paid once a night), nights out before the doorman lets a regular in free, the contest. */
@@ -374,7 +375,8 @@ export const clubCounters = (placeId: string) => ({
   contests: `club:${placeId}:concours`, contestNight: `club:${placeId}:concours_nuit`, requests: `club:${placeId}:morceaux`,
 });
 /** Drinks of a dance terrace (no alcohol on the menu: the juices of Dakar, a fruit cocktail, water). */
-export const CLUB_DRINKS: readonly { id: string; label: string; detail?: string; price: number; needs: Partial<Needs> }[] = [
+export interface ClubDrink { id: string; label: string; detail?: string; price: number; needs: Partial<Needs>; /** Only labels the drink (the menu, the checks): the recipe treats every drink alike. */ alcohol?: boolean }
+export const CLUB_DRINKS: readonly ClubDrink[] = [
   { id: 'bissap', label: 'Bissap glacé', price: 500, needs: { moral: 4, social: 3 } },
   { id: 'bouye', label: 'Jus de bouye', detail: 'Le jus du fruit du baobab', price: 700, needs: { faim: 6, moral: 5, social: 3 } },
   { id: 'gingembre', label: 'Jus de gingembre', detail: 'Ça pique, ça réveille', price: 700, needs: { energie: 6, moral: 4 } },
@@ -393,6 +395,27 @@ export function clubCrowd(h: number): ClubCrowd {
 /** Label of the step during which the waiter brings a drink to the table (the venue walks him over). */
 export const TABLE_SERVICE = 'Le serveur t’apporte ta boisson';
 
+/** La Vague's hours and busy window: what club() offers when it is given no variant. */
+export const CLUB_HOURS: readonly [number, number] = [21, 5];
+export const CLUB_PEAKS: readonly (readonly [number, number])[] = [[0, 3.5]];
+/** The few texts of club() a second club words its own way (the defaults are La Vague's). */
+export interface ClubLabels { doorTalk: string; barmanTalk: string; djTalk: string; djDetail: string; tableDetail: string; exitDetail: string }
+export const CLUB_LABELS: Readonly<ClubLabels> = {
+  doorTalk: 'Le programme de la semaine', barmanTalk: 'Parler au barman', djTalk: 'Parler au DJ', djDetail: 'Le DJ le passe juste après',
+  tableDetail: 'Le serveur te l’apporte', exitDetail: 'Le videur te souhaite bonne nuit',
+};
+/**
+ * What makes a second club (Le Patio, src/venues/patio.ts) a different club on the same recipe: its hours and busy window, the fee at the door and the nights before a regular
+ * comes in free, its bar, its week of themes (none with a contest: then the floor offers no contest and says nothing about one) and a few of its words. Every field is optional and
+ * its default is La Vague's, so `club(b, h)` and `club(b, h, {})` are the recipe as it always was (tests/patio.test.ts compares them to its digest from before the variant existed).
+ */
+export interface ClubVariant {
+  hours?: readonly [number, number]; peaks?: readonly (readonly [number, number])[]; entry?: number; regularAt?: number;
+  drinks?: readonly ClubDrink[]; themes?: readonly ClubTheme[]; labels?: Partial<ClubLabels>;
+  /** false: the floor has no dance contest at all (its prizes are money paid to the player: Le Patio has none). Default true. */
+  contest?: boolean;
+}
+
 /**
  * Night club / dance terrace: open at night (21 h–5 h) with tonight's theme.
  * - Door: « Entrer » shows the fee before anything is paid (`enter`: the place's own confirmation, which then runs the
@@ -403,23 +426,26 @@ export const TABLE_SERVICE = 'Le serveur t’apporte ta boisson';
  *   the week, a three-round contest after 23 h (prize scaled by how well each round is danced, once a night).
  * - Bar: drinks on a free stool around `bar`; lounge: sit at a free table around `lounge` and the waiter brings it.
  * - DJ: ask for a song; exit: « Sortir » by the gate (`done('sortie')`).
+ * - `v` (optional, `ClubVariant`): a second club's hours, fee, drinks, themes and words on the same recipe; without it, La Vague exactly.
  */
-export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lounge?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
+export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lounge?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}, v: ClubVariant = {}): PlaceSpec {
   const at = anchors(b.anchors);
+  const hours = v.hours ?? CLUB_HOURS, entry = v.entry ?? CLUB_ENTRY, regularAt = v.regularAt ?? CLUB_REGULAR, drinks = v.drinks ?? CLUB_DRINKS, themes = v.themes ?? CLUB_THEMES;
+  const words: ClubLabels = { ...CLUB_LABELS, ...v.labels }, contests = themes.some(t => t.contest);
   const has = (id: string) => b.anchors.some(a => a.id === id);
   const keys = clubCounters(b.id);
   const n = (k: string) => h.count?.(k) ?? 0;
   const hour = () => h.hour?.() ?? 23;
   const night = () => clubNight(h.day?.() ?? 0, hour());
-  const theme = () => clubTheme(night());
+  const theme = () => clubTheme(night(), themes);
   const admitted = () => !h.count || !has('door') || n(keys.paid) === night() + 1;
-  const regular = () => n(keys.nights) >= CLUB_REGULAR;
+  const regular = () => n(keys.nights) >= regularAt;
   const inside = () => (admitted() ? null : 'Paie l’entrée à la porte');
   const both = (a: () => string | null, c: () => string | null) => () => a() ?? c();
   const stool: SeatPick = b.bar ? { near: { x: b.bar.x, z: b.bar.z }, r: b.bar.r ?? 4, kind: 'stool' } : 'near';
-  const late = () => hour() >= CONTEST_FROM || hour() < 5;
+  const late = () => hour() >= CONTEST_FROM || hour() < hours[1];
   const soon = () => {
-    const k = nightsToContest(night());
+    const k = nightsToContest(night(), themes);
     return k === 0 ? (late() ? 'concours de danse en cours' : `concours de danse ce soir à ${CONTEST_FROM} h`) : `prochain concours dans ${k} nuit${k > 1 ? 's' : ''}`;
   };
   const dance = live<ActivitySpec>({
@@ -429,7 +455,7 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lou
       { label: 'Le pas du soir', primitive: 'dance', clip: 'Dance_B', gesture: G.dance(5, 1.35), seconds: 4,
         effects: { needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' }, then: () => h.done?.('danse') },
     ],
-  }, () => `${theme().label} · danse sur le temps · ${soon()}`);
+  }, () => (contests ? `${theme().label} · danse sur le temps · ${soon()}` : `${theme().label} · danse sur le temps`));
   const last = CONTEST_ROUNDS.length - 1;
   const contest = live<ActivitySpec>({
     id: 'concours', primitive: 'dance', label: 'Concours de danse', icon: '🏆', visible: () => !!theme().contest && late(),
@@ -441,10 +467,10 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lou
     })),
   }, () => `Trois passages devant le public · jusqu’à ${price(Math.round(CONTEST_ROUNDS.reduce((t, r) => t + r.prize, 0) * 1.2))} selon ta danse`);
   const offers: Record<string, ActivitySpec[]> = {
-    floor: [dance, contest],
+    floor: v.contest === false ? [dance] : [dance, contest],
     bar: [
-      ...CLUB_DRINKS.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat: stool, needs: d.needs, requires: inside })),
-      ...opt(h.converse, P.talk({ id: 'barman', label: 'Parler au barman', requires: inside, then: () => h.converse!('barman') })),
+      ...drinks.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat: stool, needs: d.needs, requires: inside })),
+      ...opt(h.converse, P.talk({ id: 'barman', label: words.barmanTalk, requires: inside, then: () => h.converse!('barman') })),
     ],
   };
   const list = [at('floor'), at('bar')];
@@ -453,8 +479,8 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lou
     const lounge = b.lounge ?? at('lounge');
     const table: SeatPick = { near: { x: lounge.x, z: lounge.z }, r: b.lounge?.r ?? 5, kind: 'bench' };
     list.push(at('lounge'));
-    offers.lounge = CLUB_DRINKS.map((d): ActivitySpec => ({
-      id: 'table_' + d.id, primitive: 'order', label: `${d.label} · à table`, icon: P.ICONS.order, detail: 'Le serveur te l’apporte', price: d.price, requires: inside,
+    offers.lounge = drinks.map((d): ActivitySpec => ({
+      id: 'table_' + d.id, primitive: 'order', label: `${d.label} · à table`, icon: P.ICONS.order, detail: words.tableDetail, price: d.price, requires: inside,
       steps: [
         { label: 'Tu t’installes', primitive: 'sit', seat: table },
         { label: TABLE_SERVICE, primitive: 'wait', seconds: 3 },
@@ -465,12 +491,12 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lou
   if (has('dj')) {
     list.push(at('dj'));
     offers.dj = [
-      P.use({ id: 'morceau', primitive: 'buy', label: 'Demander un morceau', detail: 'Le DJ le passe juste après', price: 500, seconds: 2, requires: inside,
+      P.use({ id: 'morceau', primitive: 'buy', label: 'Demander un morceau', detail: words.djDetail, price: 500, seconds: 2, requires: inside,
         effects: { needs: { moral: 5, social: 3 }, counters: { [keys.requests]: 1 }, category: 'loisir' }, then: () => h.done?.('morceau') }),
-      ...opt(h.converse, P.talk({ id: 'dj', label: 'Parler au DJ', requires: inside, then: () => h.converse!('dj') })),
+      ...opt(h.converse, P.talk({ id: 'dj', label: words.djTalk, requires: inside, then: () => h.converse!('dj') })),
     ];
   }
-  if (has('exit')) { list.push(at('exit')); offers.exit = [P.handOver('exit', { id: 'sortir', label: 'Sortir', detail: 'Le videur te souhaite bonne nuit', then: () => h.done?.('sortie') })]; }
+  if (has('exit')) { list.push(at('exit')); offers.exit = [P.handOver('exit', { id: 'sortir', label: 'Sortir', detail: words.exitDetail, then: () => h.done?.('sortie') })]; }
   if (has('door')) {
     list.push(at('door'));
     const tonight = () => `Ce soir : ${theme().label} · ${theme().detail}`;
@@ -478,13 +504,13 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lou
     const come = (a: ActivitySpec) => { const s = a.steps[a.steps.length - 1]; s.effects = { ...s.effects, counters: { [keys.nights]: 1 }, category: 'loisir' }; return a; };
     const asking = !!h.enter;
     offers.door = [
-      ...opt(asking, live(P.enter({ id: 'entree', label: 'Entrer', visible: () => !admitted() && !regular(), then: () => h.enter!() }), () => `Entrée ${price(CLUB_ENTRY)}, une fois pour la nuit · ${tonight()}`)),
-      live(come(P.buy({ id: 'payer', label: 'Payer l’entrée', price: CLUB_ENTRY, visible: () => !asking && !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
+      ...opt(asking, live(P.enter({ id: 'entree', label: 'Entrer', visible: () => !admitted() && !regular(), then: () => h.enter!() }), () => `Entrée ${price(entry)}, une fois pour la nuit · ${tonight()}`)),
+      live(come(P.buy({ id: 'payer', label: 'Payer l’entrée', price: entry, visible: () => !asking && !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
       live(come(P.use({ id: 'entree_habitue', primitive: 'enter', label: 'Entrer · habitué', seconds: 1, visible: () => !admitted() && regular(), then: () => h.done?.('entree') })), () => `Entrée offerte aux habitués · ${tonight()}`),
-      ...opt(h.converse, P.talk({ id: 'videur', label: 'Le programme de la semaine', then: () => h.converse!('videur') })),
+      ...opt(h.converse, P.talk({ id: 'videur', label: words.doorTalk, then: () => h.converse!('videur') })),
     ];
   }
-  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [21, 5], chat: true, peaks: [[0, 3.5]], anchors: list, offers };
+  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [hours[0], hours[1]], chat: true, peaks: (v.peaks ?? CLUB_PEAKS).map(w => [w[0], w[1]] as [number, number]), anchors: list, offers };
 }
 
 /**
