@@ -1,4 +1,5 @@
 import { BUILD_ID } from '../core/build';
+import { frameStats } from '../core/frameStats';
 
 /**
  * « Signaler un problème » in Réglages (docs/beta/FEEDBACK_TEMPLATE.md): the lines a tester pastes at the top of a report, so every report names its build,
@@ -19,4 +20,4 @@ export function reportHeader(w: BetaWhere, now = new Date()): string {
 }
 export const betaFooter = () => `Dakar Rek · bêta · build ${BUILD_ID}`;
 /** The report to fill in: the header above, then three questions (the same as docs/beta/FEEDBACK_TEMPLATE.md). */
-export const reportText = (w: BetaWhere) => `${reportHeader(w)}\n\nCe que je faisais :\nCe qui s’est passé :\nCe que j’attendais :\n(une capture d’écran ou une vidéo aide beaucoup)`;
+export const reportText = (w: BetaWhere) => `${[reportHeader(w), ...frameStats.reportLines()].join('\n')}\n\nCe que je faisais :\nCe qui s’est passé :\nCe que j’attendais :\n(une capture d’écran ou une vidéo aide beaucoup)`;
