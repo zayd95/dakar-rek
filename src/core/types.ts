@@ -278,6 +278,11 @@ export interface AssetState {
    * entry's price, so resale and net worth carry no windfall when the catalogue changes. Absent: worth follows the catalogue price.
    */
   basis?: number;
+  /**
+   * A rented home: the daily rent (F) it was let at, fixed when the lease began. Absent (a lease made before leases kept their rate): the rent the
+   * catalogue then asked, `LEGACY_RENT` in src/economy/assets.ts, else the catalogue's own. A later change of the catalogue's rent never re-prices a lease.
+   */
+  rate?: number;
   /** Furniture: the home (asset uid) it belongs to, and where it stands there (null = stored). */
   home?: string;
   at?: Placement | null;

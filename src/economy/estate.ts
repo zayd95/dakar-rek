@@ -15,7 +15,7 @@ import { fcfa, type MenuItem } from '../ui/hud';
 import { phoneHooks } from '../ui/phoneHooks';
 import { ECONOMY } from './config';
 import {
-  HOUR_MS, adRunning, assetsOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
+  HOUR_MS, adRunning, assetsOf, rentOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
   cannotReturnRoom, cannotSell, cannotUpgrade, chargeOf, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding, holds, incomeOf, incomePerHour, moveIn,
   netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, setPlacement, specOfAsset, touchAssets, upgradeAsset, valueOf,
 } from './assets';
@@ -519,7 +519,7 @@ class Estate {
       }
     } else {
       const room = a.spec === STARTER_HOME, given = room && roomReturned(s);
-      const sub = [a.how === 'rented' ? `Loué par toi · ${perDay(sp.rent ?? 0)}` : given ? 'Rendue à la famille' : a.how === 'given' ? 'Prêtée par la famille' : `À toi · valeur ${fcfa(valueOf(a))}`];
+      const sub = [a.how === 'rented' ? `Loué par toi · ${perDay(rentOf(a))}` : given ? 'Rendue à la famille' : a.how === 'given' ? 'Prêtée par la famille' : `À toi · valeur ${fcfa(valueOf(a))}`];
       if (s.data.assets.home === a.uid) sub.push('ton domicile principal');
       else if (room && !given) sub.push('gardée comme chambre familiale');
       rows.push(sub.join(' · '));
@@ -696,7 +696,7 @@ class Estate {
       const sp = specOfAsset(a), inc = incomeOf(s, a), chg = chargeOf(a);
       const tag = s.data.assets.home === a.uid ? '★ domicile principal · ' : '';
       return { icon: KIND_ICON[sp.kind], label: sp.name, right: inc ? `+${fcfa(inc)}/h` : chg ? `−${fcfa(chg)}/h` : a.how === 'owned' ? fcfa(valueOf(a)) : '',
-        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(sp.rent ?? 0)}` : a.how === 'given' ? (roomReturned(s) && a.spec === STARTER_HOME ? 'rendue à la famille' : 'prêtée par la famille') : a.leased ? 'à toi · loué' : worn(s)?.id === sp.id ? 'à toi · tu le portes' : 'à toi'), onPick: () => this.openSheet(sp.id) };
+        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(rentOf(a))}` : a.how === 'given' ? (roomReturned(s) && a.spec === STARTER_HOME ? 'rendue à la famille' : 'prêtée par la famille') : a.leased ? 'à toi · loué' : worn(s)?.id === sp.id ? 'à toi · tu le portes' : 'à toi'), onPick: () => this.openSheet(sp.id) };
     });
     items.push({ icon: '🏪', label: 'Affaires', detail: ventures ? `${ventures} affaire${ventures > 1 ? 's' : ''}` : 'Aucune pour l’instant', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } });
     items.push({ icon: '🛋️', label: 'Meubles', detail: `${pieces} pièce${pieces > 1 ? 's' : ''} · aménage chez toi`, onPick: () => this.openHomeApp() });

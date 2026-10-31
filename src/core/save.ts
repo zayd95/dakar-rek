@@ -360,6 +360,7 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
     };
     if (x.ownAd === true) asset.ownAd = true;
     if (typeof x.basis === 'number' && x.basis > 0) asset.basis = money(x.basis);
+    if (asset.how === 'rented' && typeof x.rate === 'number' && x.rate > 0) asset.rate = money(x.rate);
     if (typeof x.home === 'string' && UID.test(x.home)) { asset.home = x.home; asset.at = placementOf(x.at); }
     list.push(asset);
   }
