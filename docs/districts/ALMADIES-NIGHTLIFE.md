@@ -2,6 +2,13 @@
 
 **Status: engineering only, for the owner's approval. Nothing is merged, nothing is deployed, `wip/visual-pass` is untouched. No iPhone has run this** (Chromium with touch emulation is not an iPhone test). Branch `integration/almadies-nightlife-20261028`, a separate branch and worktree; the originals (`feature/ld-m4-almadies-20261026` / #76, `fix/m4-terrasse-hospitality-strip-20261026` / #77, `integration/m4-ld2d-20261027` / #78, `integration/ld2-e-20261027` / #81) are not changed.
 
+## The owner's decision (1 Nov 2026)
+- **Approved: the creative direction** (one Terrasse de Ngor on the hotel's roof; the night street and its venues; Le Patio as the VIP clubbing spot, a 5 000 F ticket, shown as just « Le Patio »; La Vague kept distinct; the parking).
+- **Approved, provisionally: the performance cost** of the integrated Almadies hub: 215 meshes / 285 140 triangles at medium quality and 215 / 238 666 on the phone preset (+41 meshes and +100 620 triangles over the villa branch, above LD2.0-E's own +10 / +95 000, within the sum of the three accepted pieces that `check-district.mjs` checks). « Provisional »: no iPhone has measured it, and it stands until one does.
+- **Not approved: the production merge.** The branch stays a draft (PR #83); nothing is merged into any shared or production branch and nothing is deployed until the owner says so.
+- Still open from the report: Le Patio's price tiers and the free entry of regulars, whether Le Patio joins Awa's evening and the meetups, the reading of `src/i18n/patioLines.ts` (the Wolof is a draft).
+- Not yet done and relevant before a merge is considered (the engineer's list, not the owner's): a run on an iPhone, with a frame measurement of this district; someone listening to Le Patio's music; the last head's pull-request CI run (cancelled by the 45-minute cap while the push run of the same commit passed) green on a fresh run.
+
 The owner approved LD2.0-E's Almadies architecture and asked for M4's evening to live in it: one definitive Terrasse de Ngor, a recognisable night street, three anchor venues that are three different places (the Terrasse, Le Patio, La Vague), working parking, a street that changes through the day.
 
 ## What was integrated
