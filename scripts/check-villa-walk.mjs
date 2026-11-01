@@ -102,7 +102,8 @@ try {
     [-3.4, -1.6, 'suite', 'etage'], [-3.6, -1.1, 'suite', 'etage'], [-3.6, 0.4, 'salon_familial', 'etage'], [0.25, 0.5, 'salon_familial', 'etage', 'salon-chambre2'], [0.25, -1.2, 'chambre2', 'etage'], [1.4, -2.6, 'chambre2', 'etage'], [0.25, -1.2, 'chambre2', 'etage'], [0.25, 0.5, 'salon_familial', 'etage'],
     // up the second flight to the roof, onto the helipad, the terrace on the street side
     [6.2, 2.4, 'palier', 'etage'], [7.15, 1.9, 'palier', 'etage'], [7.15, -0.5], [7.15, -3.4, 'edicule', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [3.6, -3.9, 'terrasse', 'toit'],
-    [0.6, -3.4, 'terrasse', 'toit'], [-1.0, 1.0, 'terrasse', 'toit'], [3.6, 3.0, 'terrasse', 'toit'], [6.2, 3.0, 'terrasse_rue', 'toit'],
+    // (round 2: the helicopter lies along the terrace, nose west: onto its pad on its north side, then round its tail to the street side)
+    [0.6, -3.4, 'terrasse', 'toit'], [-3.4, -3.1, 'terrasse', 'toit'], [2.9, -3.0, 'terrasse', 'toit'], [3.6, 3.0, 'terrasse', 'toit'], [6.2, 3.0, 'terrasse_rue', 'toit'],
     // and back down to the front door
     [3.6, 3.0, 'terrasse', 'toit'], [3.6, -3.9, 'terrasse', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [7.15, -3.3, 'edicule', 'toit'], [7.15, 0.0], [7.15, 2.0, 'palier', 'etage'],
     [6.2, 2.4, 'palier', 'etage'], [5.15, 2.2, 'palier', 'etage'], [5.15, 0.5], [5.15, -3.2, 'hall', 'rdc'], [5.3, -3.85, 'hall', 'rdc'], [3.4, -3.85, 'manger', 'rdc'],
@@ -124,14 +125,14 @@ try {
     const ok = r.dist < 0.45 && (!room || r.room === room) && (!level || r.level === level) && doorOk;
     went.push({ to: [x, z], room: r.room, level: r.level, y: +r.y.toFixed(2), dist: +r.dist.toFixed(2), ok });
     if (!ok) console.log('  leg', JSON.stringify({ to: [x, z], want: [room, level, door], got: { room: r.room, level: r.level, y: r.y, dist: r.dist } }));
-    if (x === -1.0 && z === 1.0) onPad.at = await d(() => window.__dakar.pos());
+    if (x === -3.4 && z === -3.1) onPad.at = await d(() => window.__dakar.pos());
   }
   const bad = went.filter(w => !w.ok);
   check(`walked with the joystick through ${legs.length} legs on three levels, each reached in the room and on the level it is on`, !bad.length, JSON.stringify(bad));
   check('every level walked: the ground floor, the first floor and the roof terrace (the feet up to 6.9 m)', ['rdc', 'etage', 'toit'].every(l => samples.levels.has(l)) && samples.maxY > 6.8, `${[...samples.levels]} max y ${samples.maxY.toFixed(2)}`);
   const want = ['entree', 'bureau', 'salon', 'jardin', 'manger', 'cuisine', 'hall', 'sde', 'palier', 'salon_familial', 'balcon_rue', 'suite', 'balcon_piscine', 'dressing', 'chambre2', 'edicule', 'terrasse', 'terrasse_rue'];
   check(`the rooms visited: ${want.length} rooms of the three levels, the pool deck, a balcony and the roof terraces`, want.every(r => samples.rooms.has(r)), `missing: ${want.filter(r => !samples.rooms.has(r))}`);
-  const pad = onPad.at, padD = pad ? Math.hypot(pad.x - O.x + 3, pad.z - O.z + 0.5) : Infinity;
+  const pad = onPad.at, padD = pad ? Math.hypot(pad.x - O.x + 4.4, pad.z - O.z + 0.6) : Infinity;   // HELIPAD (src/housing/villa.ts)
   check(`reached the helipad on the roof (${padD.toFixed(2)} m from its centre, radius 3.2, feet at ${pad?.y.toFixed(2)} m)`, padD < 3.2 && pad.y > 6.8, JSON.stringify(pad));
   check('each door opened as the player came through it (the bureau, the salle d\'eau, the suite, the bedroom)', ['entree-bureau', 'hall-sde', 'salon-suite', 'salon-chambre2'].every(id => samples.doorMax[id] === 1), JSON.stringify(samples.doorMax));
   check(`never inside a wall, a railing or a fitting of the floor the player is on: ${samples.n} samples, always at least 0.2 m from them (closest ${samples.worstWall.toFixed(3)} m)`, samples.inside.length === 0, JSON.stringify(samples.inside.slice(0, 5)));

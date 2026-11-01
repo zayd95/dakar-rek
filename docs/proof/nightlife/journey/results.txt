@@ -1,0 +1,74 @@
+PASS: a new evening: nothing of M4 is remembered yet, nothing of Le Patio either
+PASS: the Terrasse de Ngor is the hotel’s roof (one rooftop, its stair door in the street beside the lobby), Awa Sy on its terrace; Le Patio is a venue of the night street
+PASS: Le Patio’s car park has a free painted bay with room to swing in, a few metres from the gate
+PASS: the Teranga is parked in the Corniche (owned, one copy), the player beside it
+PASS: the district changes under the wheels: still at the wheel, in Almadies, heading north on the same street
+PASS: the places of the night street are listed: Le Patio and La Vague among the neighbourhood’s spots, the Terrasse de Ngor (the hotel’s roof, one door) among its interactables
+PASS: 1. driven from the Corniche to the night street: the district swap and the coast road with the pedal stick
+PASS: 2. parked in a painted bay of « PARKING DU PATIO » (centre inside its lines, the whole car off the carriageway), a few metres from the gate
+PASS: 2. stepped out: the car stays where it was left, saved as parked in Almadies
+PASS: on foot from the car to the promenade past the bays’ cars 0.94 m left
+PASS: along the promenade to Le Patio’s gate: « Entrer » is offered (with a word for the doorman) 0.77 m left, focus almadies:venue:patio:door
+PASS: the age and the fee are shown before anything is paid (18 ans minimum, a 5 000 F ticket, one time for the night) Le Patio · ticket d’entréeBoubacar : « Bonsoir. 18 ans minimum, pièce d’identité si on te la demande. Ce soir, c’est Dancehall et 
+PASS: 3. paid once: the 5 000 F ticket exactly, one ledger line, the rope lifted for the night 500000 → 495000
+PASS: through the gate on foot into the courtyard: its own space 0.45 m, space almadies:venue:patio
+PASS: across the courtyard to the bar: « Commander » is offered, with the barwoman 0.28 m left, focus almadies:venue:patio:bar
+PASS: the bar’s menu has alcohol and soft drinks, priced, none free 🧾Bière glacée33 cl, bien fraîche−1 500 F | 🧾MojitoRhum, menthe, citron vert−3 000 F | 🧾Dakar SunsetLa maison : rhum, mangue, bissap−3 500 F | 🧾Gin tonicGin, tonic, une t
+PASS: a beer at the bar: 1 500 F, paid once at the start, one ledger line, served on a stool 495000 → 493500
+PASS: a patron to talk to: Fatou, her birthday (her name and her words, French with everyday Wolof) Fatou · Le PatioFatou : « Hé ! Moi c’est Fatou, et c’est mon anniversaire : vingt-huit ans ! Avec les filles, on danse jusqu’à ce qu’il fasse jour. 
+PASS: she answers a topic Fatou · Le Patio« Jërëjëf (merci) ! Mes amies m’ont caché leur surprise toute la semaine. Un gâteau au bar à minuit, par
+PASS: a no is received gracefully, and the sheet stays as it was Fatou · Le Patio« Pas de souci du tout, c’est ta soirée aussi ! Reviens quand tu en as envie, on sera là. »🎂Joyeux anni
+PASS: a woman who works the night there says so herself, as work, and that they can just talk Rokhaya · Le PatioRokhaya : « Bonsoir. Moi c’est Rokhaya. Je travaille ici la nuit, tout le monde sait ce que je fais : je ne m’en cache pas. Si ce n’est pas 
+PASS: she talks about staying safe: the right to say no, to anyone 
+PASS: declined: graceful, no insistence, no question, the choices as they were; it cost nothing and changed nothing Rokhaya · Le Patio« Aucun problème, vraiment. Je ne force personne et personne ne me force. On peut parler d’autre chose, ou tu peux profit
+PASS: talking moved no money and wrote no ledger line (the beer was the only thing bought since the door) 493500 → 493500
+PASS: on the floor « Danser » is offered almadies:venue:patio:floor
+PASS: a dance at Le Patio, played on its beat with real touches (cues touched, counted once)
+PASS: the way out of Le Patio 
+PASS: back on the promenade, in the street
+PASS: Le Patio counted the night once (the door), the drink and the dance; the club helper’s keys only
+PASS: 5. from the car park by Le Patio, the Terrasse de Ngor’s name is up on the hotel’s roof and nothing solid is in the way
+PASS: 5. from the promenade the name is seen too (a face of the sign looks at the street)
+PASS: 4. from Le Patio along the promenade, up the alley, over the zebra and in by the forecourt to the hotel’s stair door: nothing in the way 0.95 m left, at
+PASS: « Entrer » is offered at the stair door 
+PASS: 6. up on the Terrasse de Ngor, on the hotel’s roof 
+PASS: the bar offers « Commander »
+PASS: 6. the order is a real activity: 6 000 F paid once, at the start 493500 → 487500
+PASS: not fed while it is prepared 
+PASS: 6. the guest walked to a table, sat, and the plate is on the table, close to the seat
+PASS: 6. the last bite feeds (faim up), money untouched after the start, the meal counted once
+PASS: the evening knows it: dinner is a stage
+PASS: « Se lever » from the table 
+PASS: 7. « Parler à Awa » is offered beside her 
+PASS: the first time she introduces herself and asks what brings the guest (short, three answers, no wall of text) Awa Sy · hôtesse · Terrasse de NgorBonsoir, bienvenue à la Terrasse de Ngor. Je suis Awa, je m’occupe de la terrasse. Qu’est-ce qui t’a
+PASS: her answer follows the guest’s choice and sends them on to La Vague (21 h) Awa Sy · hôtesse · Terrasse de NgorUn bon travail, ça se fête. Tu ne seras pas seul à cette table. Après le repas, descends à La Vague : c’est ouvert. Dis à Lamine qu
+PASS: a real word: social and mood rise once, the choice is remembered, she is a known face
+PASS: the walking marker now points to La Vague almadies:city:club
+PASS: asking again the same evening gives nothing more (no farming): social unchanged, still one stage, one visit counted
+PASS: the stairs offer to go down
+PASS: 8. at La Vague’s door: « Entrer » 
+PASS: the fee is shown before anything is paid La Vague · entréeLamine : « Ce soir, c’est Nuit du sabar · concours. L’entrée, c’est 2 000 F, une seule fois pour toute la nuit : tu peux sortir et revenir. »🎟
+PASS: paid once (2 000 F): the rope is lifted for the night 
+PASS: on the floor: « Danser » 
+PASS: the beat game was played with real touches on the beat (cues touched, a card at the end)
+PASS: 9. one dance counted by La Vague, and the evening knows it
+PASS: the way out of the club 
+PASS: one card: a first evening in Almadies — dinner, Awa, the dance, « une soirée complète » 🌙Ta première soirée à Almadies🍽️ Dîner à la Terrasse de Ngor💬 Awa Sy se souviendra de toi💃 La Vague : tu as danséUne soirée complète. Rent
+PASS: counted once: one evening, the card is not shown again
+PASS: the taxi rank by La Vague offers « Prendre un taxi » 
+PASS: 10. the taxi home: the fare paid once, one ledger line, in the Corniche
+PASS: the evening card was not shown a second time, and the evening count is still 1
+PASS: back in Almadies the car is still exactly where it was parked (one car, not a copy)
+PASS: 11. climbing the stairs on a later evening, Awa remembers what the guest said and did (a bon travail; danced) Ce soir à l’arène de Pikine : grand gala de lutte · portes 17 h · billet 1 000 F au guichetAwa Sy : « Tu fêtais un bon travail, la de
+PASS: her words are not the first evening’s: she recognises the guest and offers a coffee on the house Awa Sy · hôtesse · Terrasse de NgorTu fêtais un bon travail, la dernière fois. Ça continue ? Et Lamine m’a dit que tu avais fait danser La Vague.�
+PASS: the coffee is free: nothing charged, and it is the house’s gift once an evening 483000 → 483000
+PASS: a second word the same evening has no coffee 
+PASS: 12. before the save: the wallet fell by exactly what the ledger says was paid (the door, the beer, the dish, La Vague, the taxi: each once; the coffee and the talks nothing) 500000 → 483000, ledger 17000
+PASS: 12. after a reload the money is the same to the franc 483000 → 483000
+PASS: 12. the memory of M4 is there: the evenings, the choice, the meeting, Awa’s gift; nothing counted again
+PASS: 12. the progression of the activities is there, to the unit: Le Patio’s night (1) and dance (1), La Vague’s dance (1), the Terrasse’s dishes (the dinner and the second evening’s free coffee)
+PASS: 12. only the existing counters were written (al_*, club:*, the ordinary ones): no new save field 
+PASS: 12. the car is where it was left, in Le Patio’s bay: one car, the same place after the reload
+PASS: 12. Le Patio remembers the guest: the night is counted, the door’s fee is not asked again for the same night
+PASS: no JavaScript errors 
+73 passed, 0 failed

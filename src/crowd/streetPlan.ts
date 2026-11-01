@@ -44,7 +44,13 @@ export const HUB_STREETS: Record<HubId, HubStreets> = {
   // the main street: from the room's block to the arena gate and the market (the Ligne 23 runs along it)
   pikine: { level: 0.9, stops: 1.15, groups: 1.25, busy: [{ name: 'Grand-rue de Pikine', weight: 6, segs: [[-60, -60, 60, -60], [60, -60, 60, 0]] }] },
   corniche: { level: 0.55, stops: 0.75, groups: 1.1, busy: [] },
-  almadies: { level: 0.35, stops: 0.5, groups: 0.4, busy: [] },
+  // the villas, hotels and the mall: not Pikine's crowd, but not an empty district either (LD2.0-E round 3: « some streets feel too empty »): the coast road in front of the hotels, the
+  // avenue that runs down to the mall and the mall's street are the busy ones (more people walk there, more cars park there)
+  almadies: { level: 0.6, stops: 0.6, groups: 0.7, busy: [
+    { name: 'Route des Almadies', weight: 4, segs: [[-120, -120, -60, -120], [-60, -120, 0, -120], [0, -120, 60, -120], [60, -120, 120, -120]] },
+    { name: 'Avenue du Littoral', weight: 4, segs: [[0, -120, 0, -60], [0, -60, 0, 0], [0, 0, 0, 60], [0, 60, 0, 120]] },
+    { name: 'Rue du Mall', weight: 3, segs: [[0, 60, 60, 60], [60, 60, 120, 60], [-60, 60, 0, 60]] },
+  ] },
   // Sacré-Cœur's shopping street (the first column, by the way in) is busy; Mermoz's villa streets beyond are calm
   mermoz: { level: 0.55, stops: 0.7, groups: 0.8, busy: [{ name: 'Rue de Sacré-Cœur', weight: 5, segs: [[-60, -120, -60, 120]] }] },
 };

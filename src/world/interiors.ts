@@ -39,9 +39,10 @@ export interface Interior {
   /**
    * Per frame while the player is inside (main.ts, after the player has moved, before the lighting): a home built from a floor plan
    * (src/housing/apartment.ts) swings its doors, opens the see-through hole round the player, moves `light` to the room they are in, lights its
-   * lamps by the `hour`. It may put `player` back where it stood the frame before if a slow frame's step went through a wall.
+   * lamps by the `hour`. It may put `player` back where it stood the frame before if a slow frame's step went through a wall; not when `placed`
+   * (LD2.0-D round 2): the player sits on a seat that moves them (the villa's swim, src/villa/swim.ts), and goes where the seat goes.
    */
-  update?(dt: number, player: THREE.Vector3, camera: THREE.Camera, hour: number): void;
+  update?(dt: number, player: THREE.Vector3, camera: THREE.Camera, hour: number, placed?: boolean): void;
   /** Debug (`__dakar.home()`): what such a home is doing now (its room, its doors, the light, the hole). */
   describe?(): unknown;
   /** Where the see-through hole opens instead of round the player (the editor framing a room: a point at chest height in it); null: the player. */

@@ -953,14 +953,18 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     const rm = room(m.room); use(liOf(levelOfRoom(p, rm)), false);
     const disc = (r0: number, r1: number, y: number, c: number) => { const g = new THREE.RingGeometry(r0, r1, 48, 1); g.rotateX(-Math.PI / 2); S.plain.geometry(g, c, W(m.x), Y + y, Z(m.z)); };
     disc(0, m.r, 0.012, 0x4b4f55); disc(m.r - 0.32, m.r - 0.16, 0.016, 0xf4f1e8); disc(m.r - 0.08, m.r, 0.016, 0xf2c230);
-    // the H, painted (its uprights along the helicopter's length)
-    for (const [x, z, w2, d2] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) S.plain.box(w2, 0.004, d2, W(m.x + x), Y + 0.016, Z(m.z + z), 0xf4f1e8);
+    // the H, painted (its uprights along the helicopter's length: turned with its heading)
+    const across = Math.abs(Math.sin(m.yaw ?? 0)) > 0.5;
+    for (const [a, b, w2, d2] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) {
+      const [x, z, w, d] = across ? [b, a, d2, w2] : [a, b, w2, d2];
+      S.plain.box(w, 0.004, d, W(m.x + x), Y + 0.016, Z(m.z + z), 0xf4f1e8);
+    }
     // the edge lights round it: little domes that glow at night
     for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; S.glow.cyl(0.05, 0.07, 0.07, W(m.x + Math.cos(a) * (m.r + 0.12)), Y, Z(m.z + Math.sin(a) * (m.r + 0.12)), k % 3 ? 0x8fd16b : 0xf7d36b, 8); }
     const heli = p.fixtures.find(f => f.kind === 'heli' && f.room === m.room);
     if (heli) {
       const hb = buildHelicopter(), g = hb.group;
-      g.position.set(W(m.x), Y + 0.02, Z(m.z)); g.rotation.y = 0;                              // its nose toward +z (the street)
+      g.position.set(W(m.x), Y + 0.02, Z(m.z)); g.rotation.y = m.yaw ?? 0;                     // its heading on the pad (HELIPAD.yaw: its nose toward −x)
       g.traverse(o => { const mm = o as THREE.Mesh; if (mm.isMesh) { mm.castShadow = false; mm.receiveShadow = false; } });
       S.g.add(g);
     }
@@ -1102,11 +1106,12 @@ export function buildApartment(p: FloorPlan, h: HomeSpec, ox: number, oz: number
     light: lampAt.get(firstRoom.id)!.clone(), lightColor: 0xffd9a0,
     holeFocus: null,
     ...(multi ? { groundAt: (x: number, z: number, y: number) => groundAt(p, x - ox, z - oz, y), outdoors: () => !!roomId && !!room(roomId).outdoor } : {}),
-    update(dt, player, camera, hour) {
+    update(dt, player, camera, hour, placed = false) {
       const lx = player.x - ox, lz = player.z - oz;
       feet = player.y;
-      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood
-      if (Number.isFinite(last.x)) {
+      // a slow frame's step must never carry the player through a wall, a fitting or a door: back to where they stood (not a player their seat
+      // places: the villa's swim takes them over the pool's edge, src/villa/swim.ts)
+      if (Number.isFinite(last.x) && !placed) {
         const step = Math.hypot(lx - last.x, lz - last.z);
         if (step > 1e-6 && step < SHELL.jump && blocked(last.x, last.z, lx, lz, feet)) { player.x = ox + last.x; player.z = oz + last.z; }
         else { last.x = lx; last.z = lz; }

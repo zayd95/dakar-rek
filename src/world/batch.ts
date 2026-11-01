@@ -98,6 +98,8 @@ export class Batch {
     this.finish(g, color, x, y, z);
   }
 
+  /** Triangles drawn so far (for the budgets: tests/helpers/siteCost.ts). */
+  triangles() { let n = 0; for (const g of this.geos) n += g.index ? g.index.count / 3 : g.attributes.position.count / 3; return n; }
   /** Number of pieces so far; `rollback(mark)` drops the pieces added after it (a builder's dry run). */
   mark() { return this.geos.length; }
   rollback(mark: number) { this.geos.length = Math.min(this.geos.length, mark); this.count = this.geos.length; }

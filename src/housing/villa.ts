@@ -52,8 +52,13 @@ export const BACK_GARDEN: Box = { x0: -11, x1: 11, z0: -11, z1: -5 };
 export const POOL: Box & { depth: number } = { x0: -6, x1: 4, z0: -9.6, z1: -6, depth: 1.4 };
 /** The balconies of the first floor: over the front door, and over the pool deck. */
 export const BALCONIES: readonly Box[] = [{ x0: -6, x1: 0, z0: 4, z1: 5.4 }, { x0: -8, x1: 2, z0: -6.6, z1: -5 }];
-/** The helipad on the roof terrace: its centre and radius (the helicopter stands on it, its nose toward +z). */
-export const HELIPAD = { x: -3, z: -0.5, r: 3.2 } as const;
+/**
+ * The helipad on the roof terrace: its centre and radius, and the heading of the helicopter parked on it (`yaw`: its nose toward −x, its left side
+ * to the street). LD2.0-D round 2 (« more realism »): a real light helicopter (src/world/helicopter.ts: 8.5 m long, a 9.4 m rotor) lies along the
+ * terrace's length, its skids on the pad, its tail short of the pergola and the stair head, its parked blades over the roof; the pad clear of
+ * the two loungers by the glass (src/housing/villaLayout.ts) and the rotor's sweep clear of the pergola.
+ */
+export const HELIPAD = { x: -4.4, z: -0.6, r: 3.2, yaw: -Math.PI / 2 } as const;
 
 /** A plan point of the street side in the Almadies hub. */
 export const onLot = (x: number, z: number) => ({ x: LOT.cx + x, z: LOT.cz + z });

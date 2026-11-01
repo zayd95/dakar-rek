@@ -44,6 +44,8 @@ function materials() {
   for (const m of Object.values(mats)) m.userData.shared = true;
   return mats;
 }
+/** The façade's materials (shared, never disposed): the villa's other pieces in the same finishes (the main entrance's travertine and teak, src/world/villaCompound.ts). */
+export const villaFacadeMaterials = () => materials();
 /** The night (0 by day … 1 at night, main.ts updateLighting): the windows' warm light, the uplights, the roof's edge, the helipad's lights. */
 export function setVillaFacadeNight(night: number) {
   const M = materials();
@@ -266,7 +268,11 @@ export function buildVillaFacade(plan: FloorPlan = VILLA_PLAN): THREE.Group {
   // ---------------------------------------------------------------- the helipad: a dark disc, a white ring, an H, lights round it
   const yRoof = 2 * STOREY + 0.02, ring = (r0: number, r1: number, y: number, c: number) => { const geo = new THREE.RingGeometry(r0, r1, 40, 1); geo.rotateX(-Math.PI / 2); trim.geometry(geo, c, HELIPAD.x, y, HELIPAD.z); };
   ring(0, HELIPAD.r, yRoof + 0.01, 0x4b4f55); ring(HELIPAD.r - 0.32, HELIPAD.r - 0.16, yRoof + 0.015, 0xf4f1e8); ring(HELIPAD.r - 0.08, HELIPAD.r, yRoof + 0.015, 0xf2c230);
-  for (const [x, z, w, d] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) trim.box(w, 0.004, d, HELIPAD.x + x, yRoof + 0.015, HELIPAD.z + z, 0xf4f1e8);
+  const across = Math.abs(Math.sin(HELIPAD.yaw)) > 0.5;                                    // the H's uprights along the helicopter (HELIPAD.yaw)
+  for (const [a, b, w2, d2] of [[-0.62, 0, 0.32, 2.2], [0.62, 0, 0.32, 2.2], [0, 0, 0.92, 0.32]] as const) {
+    const [x, z, w, d] = across ? [b, a, d2, w2] : [a, b, w2, d2];
+    trim.box(w, 0.004, d, HELIPAD.x + x, yRoof + 0.015, HELIPAD.z + z, 0xf4f1e8);
+  }
   for (let k = 0; k < 12; k++) {
     const a = (k / 12) * Math.PI * 2, x = HELIPAD.x + Math.cos(a) * (HELIPAD.r + 0.12), z = HELIPAD.z + Math.sin(a) * (HELIPAD.r + 0.12);
     trim.cyl(0.06, 0.07, 0.04, x, yRoof, z, 0xd9dcde, 6); light.cyl(0.05, 0.05, 0.03, x, yRoof + 0.04, z, k % 3 ? 0x7fe06b : 0xffd75a, 6);

@@ -12,6 +12,7 @@ import { fitEyes } from './eyes';
 import type { Appearance } from './appearance';
 import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
 import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './prayerPoses';
+import { SWIM_POSES, assembleSwimClips, type SwimClip } from './swimStroke';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -30,9 +31,11 @@ export function handClosure(clip: string | null): number {
   if (clip === 'Grab') return 0.75;
   if (clip?.startsWith('Pray')) return 0.12;
   if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
+  if (clip === 'Swim' || clip === 'Tread') return 0.08;                     // flat hands that pull the water (src/actors/swimStroke.ts)
+  if (clip === 'SwimClimb') return 0.2;                                     // flat on the pool's coping
   return HAND_REST;
 }
-export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip | SwimClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
 /**
@@ -120,6 +123,8 @@ function finishTemplate(gltf: GLTF, sitLift = 0, body?: { scale: number }): Temp
   // ---- prayer postures (src/actors/prayerPoses.ts: their own module, so the other lanes' poses never collide with them)
   clips.push(...buildPoseClips(gltf.scene, gltf.animations, body, PRAYER_POSES));
   deriveSalam(clips);
+  // ---- LD2.0-D round 2: the swim (src/actors/swimStroke.ts): the breaststroke and treading water as looping clips of solved poses, the climb out
+  clips.push(...assembleSwimClips(buildPoseClips(gltf.scene, gltf.animations, body, SWIM_POSES)));
   // ----
   if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel' || c.name === 'SitCar' || c.name === 'Drive' || PRAY_SEATED.includes(c.name as PrayerClip)) for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
   if (body) rollPalmsInClips(gltf.scene, clips, ['Sit', 'Kneel']);
@@ -696,6 +701,11 @@ export class Humanoid {
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
   hold: Clip | null = null;
+  /**
+   * LD2.0-D round 2 (the swim, src/villa/swim.ts): how long a change of held clip cross-fades (s), and how fast the held clip plays (× its own pace:
+   * the stroke follows the swimming speed). Whoever sets them sets them back (0.2, 1).
+   */
+  holdFade = 0.2; holdRate = 1;
   /** On foot: the computed gait (src/actors/gait.ts) and its weight (0 while a pose is held). */
   private gait: GaitState | null = null;
   private gaitRig: GaitRig | null | undefined;
@@ -966,7 +976,7 @@ export class Humanoid {
     if (!this.fullRate && seenD2 >= 0) this.showFace(seenD2);
     if (lod === ANIM_LOD.unseen || lod === ANIM_LOD.hidden) this.gaitW = 0;  // nobody sees it go: no fade needed
     this.near = lod === 0;
-    if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
+    if (held) { this.play(held, this.holdFade); if (this.current && this.current.timeScale !== this.holdRate) this.current.timeScale = this.holdRate; this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
     else if (lod === 0 || this.gaitW > 0) {
       const g = (this.gait ??= new GaitState());
       if (this.gaitW <= 0) g.reset(o.x, o.z, this.group.rotation.y, this.group.scale.x);        // back on foot from a held pose
@@ -1063,6 +1073,10 @@ export class Humanoid {
       feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
     };
   }
+  /** Where the clip being played is in its cycle (0…1): the swim's stroke reads it for its surge (src/actors/swimStroke.ts strokeSurge). */
+  clipPhase(): number { const a = this.current; if (!a) return 0; const d = a.getClip().duration; return d > 0 ? (((a.time / d) % 1) + 1) % 1 : 0; }
+  /** Puts the clip being played at `phase` of its cycle (the proof's pictures of the stroke's keys hold it there with `holdRate` 0). */
+  seekClip(phase: number) { const a = this.current; if (a) a.time = phase * a.getClip().duration; }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.setVest(false); this.meshy?.dispose(); this.group.removeFromParent(); }

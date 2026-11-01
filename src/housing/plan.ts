@@ -81,7 +81,7 @@ export interface Level { id: string; name: string; y: number; dx: number }
  */
 export interface Stair { id: string; from: string; to: string; box: Rect; up: Side; steps: number; well?: Rect }
 /** LD2.0-D: a mark painted on a floor and kept clear of furniture (a helipad: an H in a circle). */
-export interface Mark { id: string; kind: 'helipad'; room: string; x: number; z: number; r: number }
+export interface Mark { id: string; kind: 'helipad'; room: string; x: number; z: number; r: number; /** The parked aircraft's heading (its nose: +z at 0). */ yaw?: number }
 export interface FloorPlan {
   id: string;
   /** The home's box: x from −w/2 to w/2, z from −d/2 to d/2 (or `box`). */

@@ -75,8 +75,8 @@ describe('the villa is furnished room by room, on its three levels', () => {
     expect(whyNot(L, spec('plante'), at(25.2, -1), [])).toBe(WHY.stair);
     expect(whyNot(L, spec('plante'), at(5.2, -3.3), [])).toBe(WHY.passage);                  // at the foot of the stairs
     expect(whyNot(L, spec('transat'), at(-1, -8), [])).toBe('Pas dans la piscine');
-    expect(whyNot(L, spec('transat'), at(-25.5, 0.5), [])).toBe(WHY.helipad);
-    expect(whyNot(L, spec('transat'), at(-23, 0), [])).toBe('Pas sur l’hélicoptère');
+    expect(whyNot(L, spec('transat'), at(-23, -3.2), [])).toBe(WHY.helipad);                   // on the pad, beside the helicopter (HELIPAD: −4.4, −0.6)
+    expect(whyNot(L, spec('transat'), at(-24.4, -0.6), [])).toBe('Pas sur l’hélicoptère');
     expect(whyNot(L, spec('lustre'), at(-2, -8.8), [])).toBe(WHY.noCeiling);
     expect(whyNot(L, spec('lustre'), at(-4, -2.5), [])).toBeNull();
     // a picture against the house's wall on the balcony is fine; against its glass railing, never

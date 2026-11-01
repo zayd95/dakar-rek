@@ -2,10 +2,10 @@
 // rooftop → visit the pool → park the SUV → furnish a room → invite another player → verify persistence ».
 // Two players on the real local Workers runtime (`wrangler dev --local`, fresh state), each in a phone-sized page of the real online build; every move is a
 // real touch (the joystick, the action button, the driving pad, the editor's buttons, the phone), as in scripts/check-ld2b-journey.mjs.
-//   Awa (the owner): her villa bought with game money; walks from the street through the gate to the front door, round the ground floor, up both flights to
+//   Awa (the owner): her villa bought with game money; walks from the street through the main entrance (round 2) up the path to the front door, round the ground floor, up both flights to
 //   the roof and the helicopter, down to the pool for a swim, out to drive her Lamane Sport into its bay, furnishes the salon with the « Collection
 //   Almadies » and moves a piece with the editor, invites Moussa from Messages; then reloads.
-//   Moussa (the guest): accepts, comes to the villa, the gate opens for him, « Entrer chez Awa (invité) » at the front door, inside with her furniture.
+//   Moussa (the guest): accepts, comes to the villa, the main entrance opens for him, « Entrer chez Awa (invité) » at the front door, inside with her furniture.
 // Debug hooks only set the scene (money, the villa's purchase through the game's own buyAsset, the SUV, the pieces delivered, a starting spot in the street)
 // and read the state. Awa's page is recorded (video, then MP4 with ffmpeg) for the owner.
 // Usage: npm run build:online && node scripts/check-ld2d.mjs [outDir=docs/proof/ld2d/acceptance]   Ports: wrangler dev 8850 (inspector 9350); LD2D_PORT.
@@ -30,6 +30,8 @@ const check = (name, ok, extra = '') => { results.push({ name, ok: !!ok, extra: 
 // the villa's lot (src/housing/villa.ts): plan metres from the lot's centre, +z toward the street
 const LOT = { cx: -18, cz: -18 }, P = (x, z) => ({ x: LOT.cx + x, z: LOT.cz + z });
 const GATE = { x0: 1.5, x1: 6.5, z: 11 }, GC = P((GATE.x0 + GATE.x1) / 2, GATE.z);
+// round 2: the main entrance for people (src/housing/villa.ts ENTRANCE), in line with the front door; the way through beside its open leaf
+const ENTRANCE = { x0: -3.8, x1: -2.2, z: 11 }, EX = (ENTRANCE.x0 + ENTRANCE.x1) / 2 + 0.15;
 const VILLA = 'villa_almadies';
 // the Collection Almadies pieces Awa has delivered (lane K-L's suggested salon and suite)
 const PIECES = ['canape_courbe', 'table_basse_marbre_noir', 'tapis_rond_jute', 'fauteuil_boucle', 'gueridon_marbre', 'lampadaire_champignon', 'meuble_tv_laque',
@@ -140,20 +142,23 @@ try {
   const w1 = await A.d(() => window.__dakar.state.wallet);
   const est = await A.d(() => window.__dakar.estate());
   check('the scene: Awa buys the villa for 400 000 000 F of game money (the catalogue\'s price) and makes it her principal residence', bought && w0 - w1 === 400_000_000 && est.home === VILLA && est.assets.some(a => a.spec === VILLA && a.how === 'owned'), JSON.stringify({ paid: w0 - w1, home: est.home }));
-  await A.d(([x, z]) => { const D = window.__dakar; D.teleport('almadies', x, z, Math.PI); D.setHour(10.5); }, [GC.x, 2.5]);
+  const front = P(EX, ENTRANCE.z + 1.7), through = P(EX, ENTRANCE.z - 0.9), path = P(EX, 8.2), door = P(-3, 4.9);
+  await A.d(([x, z]) => { const D = window.__dakar; D.teleport('almadies', x, z, Math.PI); D.setHour(10.5); }, [front.x, 2.5]);
   await A.until(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.pos().mode === 'play', null, 120000); await A.wait(2500);
 
-  // ------------------------------------------------------------------ 1. from the gate to the entrance
-  await walkTo(A.page, A.t, GC.x, GC.z + 3.6, { tol: 0.5, ms: 60000 }); await A.wait(700);
-  const g1 = await A.d(() => ({ g: window.__dakar.villa.gate(), p: window.__dakar.pos() }));
-  await A.shot('01-gate-opening');
-  await walkTo(A.page, A.t, GC.x, GC.z - 3.4, { tol: 0.6, ms: 60000 });
-  const door = P(-3, 4.9);
-  await walkTo(A.page, A.t, door.x + 1.2, door.z + 1.4, { tol: 0.6, ms: 60000 });
+  // ------------------------------------------------------------------ 1. from the main entrance to the front door (round 2: the car gate is the cars')
+  await walkTo(A.page, A.t, front.x, front.z, { tol: 0.3, ms: 60000 }); await A.wait(700);
+  const e1 = await A.d(() => ({ e: window.__dakar.villa.entrance(), gate: window.__dakar.villa.gate(), p: window.__dakar.pos() }));
+  await A.shot('01-main-entrance');
+  await A.until(() => window.__dakar.villa.entrance().solid === 'open', null, 5000);
+  await walkTo(A.page, A.t, through.x, through.z, { tol: 0.35, ms: 60000 });
+  await walkTo(A.page, A.t, path.x, path.z, { tol: 0.45, ms: 60000 });
   await walkTo(A.page, A.t, door.x, door.z + 0.3, { tol: 0.5, ms: 60000 });
-  const atDoor = await A.waitFocus(/Entrer chez toi/), g2 = await A.d(() => window.__dakar.villa.gate());
+  const atDoor = await A.waitFocus(/Entrer chez toi/);
+  const shut = await A.until(() => { const e = window.__dakar.villa.entrance(); return e.k === 0 && e.solid === 'shut'; }, null, 15000);
+  const e2 = await A.d(() => ({ e: window.__dakar.villa.entrance(), gate: window.__dakar.villa.gate() }));
   await A.shot('02-front-door');
-  check('1a. walking up from the street, the gate slides open for its owner; she walks through and it shuts behind her', g1.g.k > 0 && g2.k === 0 && g2.solid, JSON.stringify({ g1, g2 }));
+  check('1a. walking up from the street, the main entrance opens for its owner (the car gate stays shut); she walks up the path and it shuts behind her', e1.e.k > 0 && e1.gate.k === 0 && shut && e2.gate.k === 0, JSON.stringify({ e1, e2 }));
   check('1b. « Entrer chez toi » at the front door', atDoor, JSON.stringify(await A.focus()));
   await A.t.tap('#act');
   await A.until(() => window.__dakar.home()?.plan === 'villa_almadies' && window.__dakar.pos().mode === 'play', null, 60000); await A.wait(1500);
@@ -175,7 +180,7 @@ try {
 
   // ------------------------------------------------------------------ 4. the rooftop
   const roof = await tour(A, O, [[-3.6, 0.4, 'salon_familial', 'etage'], [3.6, 2.6, 'salon_familial', 'etage'], [6.2, 2.4, 'palier', 'etage'], [7.15, 1.9, 'palier', 'etage'], [7.15, -0.5],
-    [7.15, -3.4, 'edicule', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [3.6, -3.9, 'terrasse', 'toit'], [0.6, -3.4, 'terrasse', 'toit'], [-1.0, 1.0, 'terrasse', 'toit']]);
+    [7.15, -3.4, 'edicule', 'toit'], [6.0, -3.9, 'edicule', 'toit'], [3.6, -3.9, 'terrasse', 'toit'], [0.6, -3.4, 'terrasse', 'toit'], [-3.4, -3.1, 'terrasse', 'toit']]);   // onto the pad, beside the helicopter (round 2: it lies along the terrace)
   const heli = await A.waitFocus(/Regarder l.hélicoptère/, 15000);
   perf.toit = await perfHere(A); await A.shot('05-rooftop-helicopter');
   let heliSheet = '';
@@ -189,13 +194,38 @@ try {
   const edge = await A.waitFocus(/Se baigner/, 15000);
   if (edge) await A.t.tap('#act');
   const swimming = await A.until(() => window.__dakar.villa.swim.info().swimming, null, 20000);
+  // round 2: free in the water: the thumb holds the stick toward the pool's far end for three seconds, the swimmer swims there (the stroke), then treads
+  const sw0 = await A.d(() => window.__dakar.villa.swim.info());
+  const joy = await A.t.centre('#joy'), strokes = [], far = { x: sw0.x < -1 ? 2.5 : -4.5, z: -7.8 };      // the pool's other end (plan: x −6…4, z −9.6…−6)
+  await A.t.down(3, joy.x, joy.y);
+  for (let i = 0; i < 12; i++) {                                                                       // the stick aimed at it as the camera turns, as a thumb would
+    const now = await A.d(() => { const i = window.__dakar.villa.swim.info(); return { state: i.state, clip: i.clip, speed: i.speed, x: i.x, z: i.z, cam: window.__dakar.pos().cam }; });
+    strokes.push(now);
+    const a = Math.atan2(far.x - now.x, far.z - now.z) - now.cam;
+    await A.t.move(3, joy.x - Math.sin(a) * 40, joy.y - Math.cos(a) * 40, 2); await A.wait(250);
+  }
+  await A.t.up(3);
+  await A.until(() => window.__dakar.villa.swim.info().state === 'tread', null, 8000);     // the stick let go: the swimmer glides to a stop, then treads water
+  const sw1 = await A.d(() => window.__dakar.villa.swim.info());
   await A.until(() => window.__dakar.villa.swim.info().t > 4, null, 60000);
   const sw = await A.d(() => ({ i: window.__dakar.villa.swim.info(), y: window.__dakar.pos().y }));
   await A.shot('06-pool-swim');
+  const swam = Math.hypot(sw1.x - sw0.x, sw1.z - sw0.z), stroked = strokes.some(s => s.state === 'swim' && s.speed > 0.4);
+  // back to where she got in (the far end is by the steps, which would take her out on the west deck, across the pool from the house), then out over the edge
+  const back = { x: sw0.x, z: -6.7 };
+  await A.t.down(3, joy.x, joy.y);
+  for (let i = 0; i < 24; i++) {
+    const now = await A.d(() => { const i = window.__dakar.villa.swim.info(); return { x: i.x, z: i.z, cam: window.__dakar.pos().cam }; });
+    if (Math.hypot(back.x - now.x, back.z - now.z) < 0.5) break;
+    const a = Math.atan2(back.x - now.x, back.z - now.z) - now.cam;
+    await A.t.move(3, joy.x - Math.sin(a) * 40, joy.y - Math.cos(a) * 40, 2); await A.wait(250);
+  }
+  await A.t.up(3);
+  await A.until(() => window.__dakar.villa.swim.info().state === 'tread', null, 8000);
   if (await A.waitFocus(/Sortir de l.eau/, 10000)) await A.t.tap('#act');
   await A.until(() => !window.__dakar.villa.swim.info().swimming && window.__dakar.pos().mode === 'play', null, 60000); await A.wait(800);
   const n1 = await A.d(() => ({ ...window.__dakar.state.data.needs }));
-  check('5. down both flights to the pool: « Se baigner » at its edge, in the water swimming, « Sortir de l\'eau », cleaner', !down.missed.length && edge && swimming && sw.i.t > 2 && sw.y < 0 && n1.hygiene > n0.hygiene, JSON.stringify({ missed: down.missed, edge, sw, n0: n0.hygiene, n1: n1.hygiene }));
+  check('5. down both flights to the pool: « Se baigner » at its edge, swims where the joystick says (the stroke), treads at rest, « Sortir de l\'eau », cleaner', !down.missed.length && edge && swimming && swam > 1 && stroked && sw1.state === 'tread' && sw.i.t > 2 && sw.y < 0 && n1.hygiene > n0.hygiene, JSON.stringify({ swam: +swam.toFixed(2), stroked, rest: sw1.state, missed: down.missed, edge, sw, n0: n0.hygiene, n1: n1.hygiene }));
 
   // ------------------------------------------------------------------ 6. the SUV into its bay
   await tour(A, O, [[1.7, -4.0, 'manger', 'rdc'], [-3, -1.5, 'salon', 'rdc'], [-3, 2.6, 'entree', 'rdc'], [-3, 3.1, 'entree', 'rdc']]);
@@ -280,17 +310,18 @@ try {
   const destB = await B.d(() => window.__dakar.destination());
   check('8a. « Inviter chez moi » from Messages names the villa; Moussa accepts and « Y aller » guides him there', inv?.home?.spec === VILLA && !!destB, JSON.stringify({ sheet: invSheet.slice(0, 140), home: inv?.home, dest: destB }));
   // he comes to the Almadies (the city's way is long: he is put in the street before the villa), then walks
-  await B.d(([x, z]) => { const D = window.__dakar; D.teleport('almadies', x, z, Math.PI); D.setHour(10.5); }, [GC.x + 1, 2.5]);
+  await B.d(([x, z]) => { const D = window.__dakar; D.teleport('almadies', x, z, Math.PI); D.setHour(10.5); }, [front.x + 1, 2.5]);
   await B.until(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.pos().mode === 'play', null, 120000); await B.wait(2500);
-  await walkTo(B.page, B.t, GC.x, GC.z + 3.6, { tol: 0.5, ms: 60000 }); await B.wait(700);
-  const gB = await B.d(() => window.__dakar.villa.gate());
-  await walkTo(B.page, B.t, GC.x, GC.z - 3.4, { tol: 0.6, ms: 60000 });
-  await walkTo(B.page, B.t, door.x + 1.2, door.z + 1.4, { tol: 0.6, ms: 60000 });
+  await walkTo(B.page, B.t, front.x, front.z, { tol: 0.3, ms: 60000 }); await B.wait(700);
+  const gB = await B.d(() => window.__dakar.villa.entrance());
+  await B.until(() => window.__dakar.villa.entrance().solid === 'open', null, 5000);
+  await walkTo(B.page, B.t, through.x, through.z, { tol: 0.35, ms: 60000 });
+  await walkTo(B.page, B.t, path.x, path.z, { tol: 0.45, ms: 60000 });
   await walkTo(B.page, B.t, door.x, door.z + 0.3, { tol: 0.5, ms: 60000 });
   const guestDoor = await B.waitFocus(/Entrer chez Awa \(invité\)/, 20000);
   const fB = await B.focus();
   await B.shot('09-guest-at-door');
-  check('8b. the gate opens for the invited guest; at the front door « Entrer chez Awa (invité) »', gB.k > 0 && guestDoor, JSON.stringify({ gate: gB, focus: fB }));
+  check('8b. the main entrance opens for the invited guest; up the path, at the front door « Entrer chez Awa (invité) »', gB.k > 0 && guestDoor, JSON.stringify({ entrance: gB, focus: fB }));
   await B.t.tap('#act');
   const inB = await B.until(() => window.__dakar.visit.info().visiting?.inside === true && window.__dakar.pos().mode === 'play', null, 60000);
   await B.wait(2500);

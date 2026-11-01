@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Batch } from './batch';
+import { Batch } from './batch';
 import { TRAVERSEE_SITE as S } from '../sea/traverseeSite';
 import { islandXZ, ngorAngles, ngorWaterR, palmTree, type NgorBatches } from './ngor';
 import { rng } from '../core/rng';
@@ -57,11 +57,12 @@ export const BEACH_PALMS: [number, number][] = [
   [-86, -151], [-44, -137.5], [-36, -147], [4, -150], [104, -151], [118, -138], [-121, -153], [112, -146.5],
 ];
 /** The beach's palms on the sand, into the hub's trunk and leaf batches; a slim solid at each foot. About 56 triangles a palm. */
-export function buildBeachPalms(k: NgorBatches, lite: boolean): Collider[] {
+export function buildBeachPalms(k: NgorBatches, lite: boolean, taken: (x: number, z: number) => boolean = () => false): Collider[] {
   const R = rng(2610), colliders: Collider[] = [];
   for (const [x, z] of BEACH_PALMS.slice(0, lite ? 10 : BEACH_PALMS.length)) {
-    palmTree(k, x, 0, z, 1 + R() * 0.25, R, lite ? 5 : 6);
-    colliders.push({ x0: x - 0.3, x1: x + 0.3, z0: z - 0.3, z1: z + 0.3, h: 3 });
+    // a palm where the night street stands (src/world/nightStreet.ts) is drawn into a batch nobody builds, so the others keep their fronds and their random numbers
+    palmTree(taken(x, z) ? { plain: new Batch(), leaves: new Batch(), trunks: new Batch(), bulbs: new Batch() } : k, x, 0, z, 1 + R() * 0.25, R, lite ? 5 : 6);
+    if (!taken(x, z)) colliders.push({ x0: x - 0.3, x1: x + 0.3, z0: z - 0.3, z1: z + 0.3, h: 3 });
   }
   return colliders;
 }

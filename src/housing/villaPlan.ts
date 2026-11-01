@@ -29,7 +29,7 @@ import { BACK_GARDEN, BALCONIES, FRONT_DOOR, HELIPAD, HOUSE, LEVELS, PARAPET, PO
  *       │ chambre 3  door  salon familial   arch  landing   │
  *     4 └────────────┴──glass─────────────────┴─────────────┘
  *
- *   Toit-terrasse (−20): the terrace behind its glass balustrade, the helipad (−3, −0.5), a pergola on the street side (x 1.1…4.15, z 0.1…3.6),
+ *   Toit-terrasse (−20): the terrace behind its glass balustrade, the helipad (−4.4, −0.6), a pergola on the street side (x 1.1…4.15, z 0.1…3.6),
  *   the stair head x 4.4…8, z −5…1.6 and the terrace on the street side.
  *
  * The look (LD2.0-D look pass, the owner's « modern premium Senegalese villa »): the ground floor's rooms clad in travertine outside (`clad`), the
@@ -148,9 +148,12 @@ const fixtures: Fixture[] = [
   F('bain-bath', 'bain', 'bath', box(-2.73, -1.03, -4.875, -4.125, ET), 0.58, 's'),
   F('bain-wc', 'bain', 'wc', box(-1.12, -0.47, -4.0, -3.45, ET), 0.8, 'w'),
   F('bain-basin', 'bain', 'basin', box(-2.73, -2.28, -3.6, -3.0, ET), 0.85, 'e'),
-  // the roof: the light helicopter's body on the helipad (src/world/helicopter.ts), walked round under its rotor
-  F('heli', 'terrasse', 'heli', box(HELIPAD.x - 1.1, HELIPAD.x + 1.1, HELIPAD.z - 2.5, HELIPAD.z + 2.3, TO), 2.9, 's'),
-  // the pergola's four posts on the roof terrace (clear of the rotor's sweep, x ≤ 0.6)
+  // the roof: the light helicopter on the helipad (src/world/helicopter.ts), its nose toward −x (HELIPAD.yaw), walked round under its rotor: its
+  // cabin on its skids and steps (the first: what the roof draws it by), its tail boom and stabiliser, its fin and tail rotor
+  F('heli', 'terrasse', 'heli', box(HELIPAD.x - 2.5, HELIPAD.x + 2.1, HELIPAD.z - 1.3, HELIPAD.z + 1.3, TO), 2.9, 's'),
+  F('heli-boom', 'terrasse', 'heli', box(HELIPAD.x + 2.1, HELIPAD.x + 4.85, HELIPAD.z - 1.08, HELIPAD.z + 1.08, TO), 2.0, 's'),
+  F('heli-tail', 'terrasse', 'heli', box(HELIPAD.x + 4.85, HELIPAD.x + 6.05, HELIPAD.z - 0.12, HELIPAD.z + 0.28, TO), 2.65, 's'),
+  // the pergola's four posts on the roof terrace (clear of the rotor's sweep, x ≤ 0.3)
   ...([[1.1, 0.1], [4.15, 0.1], [1.1, 3.6], [4.15, 3.6]] as const).map(([x, z], k) => F(`pergola-${k}`, 'terrasse', 'post', box(x - 0.08, x + 0.08, z - 0.08, z + 0.08, TO), PERGOLA_H, 's')),
 ];
 /** The roof terrace's pergola: oak slats on two beams over the street side's corner, 2.7 m above the deck. */
@@ -169,7 +172,7 @@ export const VILLA_PLAN: FloorPlan = {
     // the first floor to the roof: the core's east half, rising toward the garden
     { id: 'etage-toit', from: 'palier', to: 'edicule', box: box(6.55, 7.8, -2.76, 1.4, ET), up: 'n', steps: 17 },
   ],
-  marks: [{ id: 'helipad', kind: 'helipad', room: 'terrasse', x: HELIPAD.x + TO, z: HELIPAD.z, r: HELIPAD.r }],
+  marks: [{ id: 'helipad', kind: 'helipad', room: 'terrasse', x: HELIPAD.x + TO, z: HELIPAD.z, r: HELIPAD.r, yaw: HELIPAD.yaw }],
   box: { x0: BACK_GARDEN.x0, x1: BACK_GARDEN.x1, z0: BACK_GARDEN.z0, z1: BALCONIES[0].z1 },
   bounds: { x0: H0.x0 + TO - 0.5, x1: H0.x1 + ET + 0.5, z0: BACK_GARDEN.z0 - 0.5, z1: BALCONIES[0].z1 + 0.5 },
   edgeH: { garden: WALL_H, parapet: PARAPET, railing: 1.1 },
