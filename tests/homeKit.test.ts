@@ -21,7 +21,7 @@ afterAll(() => { vi.unstubAllGlobals(); });
 describe('every home of the catalogue but « Ma chambre » is a floor plan', () => {
   it('has a plan with a room to live in, a bathroom and a kitchen or a kitchenette', () => {
     const homes = HOMES.filter(h => h.home.level !== 'room');
-    expect(homes.map(h => h.id)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor']);
+    expect(homes.map(h => h.id)).toEqual(['appart_jamm', 'maison_cite', 'villa_almadies', 'residence_ngor', 'f3_filaos']);   // new homes are appended: their interior stands in the slot of their index
     for (const h of homes) {
       const p = planFor(h.id)!; expect(p, h.id).toBeTruthy();
       const kinds = new Set(p.rooms.map(r => r.kind));

@@ -3,6 +3,7 @@ import type { SeatKind } from '../interact/seats';
 import type { RoomKind } from '../housing/plan';
 import { STARTER_HOME } from '../core/save';
 import { ECONOMY } from './config';
+import { homeSpecFromTemplate } from '../housing/kit';
 
 /**
  * The catalogue of everything a player can own or rent (docs/OWNERSHIP.md): what each thing is, where it is, what it
@@ -70,7 +71,7 @@ export const HOMES: HomeSpec[] = [
     upgrades: [{ id: 'moustiquaire', name: 'Moustiquaire', what: 'Des nuits sans moustiques : +8 énergie au réveil', price: 6_000, comfort: 8 }], home: { level: 'room', w: 6, d: 4.8, door: 'pikine:home:11', floor: 'tiles' } },
   { id: 'appart_jamm', kind: 'home', name: 'Appartement F2 · Résidence Jàmm', what: 'Entrée, séjour, cuisine, chambre et salle de bain, au premier étage', price: 15_000_000, rent: 6_000, income: letIncome(6_000),
     hub: 'pikine', place: 'jamm', where: 'Pikine · Cité Jàmm', size: 63, tier: 2, upgrades: COMFORT, home: { level: 'apartment', w: 9, d: 7, door: 'pikine:home:jamm', floor: 'tiles' } },
-  { id: 'maison_cite', kind: 'home', name: 'Maison familiale · Cité Jàmm', what: 'Une maison avec cour, grand salon et cuisine, au bout de la cité', price: 150_000_000, rent: 30_000, income: letIncome(30_000), upkeep: 100,
+  { id: 'maison_cite', kind: 'home', name: 'Maison familiale · Cité Jàmm', what: 'Une maison avec cour, grand salon et cuisine, au bout de la cité', price: 150_000_000, rent: 16_700, income: letIncome(16_700), upkeep: 100,
     hub: 'pikine', place: 'maison', where: 'Pikine · Cité Jàmm', size: 216, tier: 3, upgrades: [...COMFORT, { id: 'clim', name: 'Climatisation', what: 'Fraîcheur toute l’année : +15 énergie au réveil, loyer +15 %', price: 650_000, comfort: 15, rentMult: 1.15 }],
     home: { level: 'house', w: 12, d: 9, door: 'pikine:home:maison', floor: 'marble' } },
   // LD2.0-D: the flagship villa, walked on its three levels (src/housing/villaPlan.ts): 288 m² on two storeys, the pool garden, two balconies, the roof terrace
@@ -80,6 +81,12 @@ export const HOMES: HomeSpec[] = [
   { id: 'residence_ngor', kind: 'home', name: 'Résidence de luxe · Pointe de Ngor', what: 'Un étage entier face à l’île de Ngor, terrasse et salon de réception', price: 2_500_000_000, rent: 600_000, income: letIncome(600_000), upkeep: 2_500,
     hub: 'almadies', place: 'residence', where: 'Almadies · Ngor', size: 330, tier: 5, upgrades: [{ id: 'domotique', name: 'Maison connectée', what: 'Lumières et clim pilotées : +20 énergie au réveil, loyer +25 %', price: 40_000_000, comfort: 20, rentMult: 1.25 }],
     home: { level: 'residence', w: 22, d: 15, door: 'almadies:home:residence', floor: 'marble' } },
+  // MERMOZ (Living Districts M1, the owner's reference: a shaded residential street, mixed concrete, gated compounds): the first home of the home kit (docs/kits/HOMES.md), a F3
+  // on a high floor of the Résidence Les Filaos, in Mermoz's colours. APPENDED: a home's interior stands in the slot of its index (placement.ts `homeOrigin`), so no other moves.
+  { ...homeSpecFromTemplate('f3', {
+      id: 'f3_filaos', identity: 'mermoz', name: 'Appartement F3 · Résidence Les Filaos', hub: 'mermoz', place: 'filaos', where: 'Mermoz · Résidence Les Filaos', door: 'mermoz:home:filaos',
+      what: 'Au sixième étage, sur la rue des filaos : entrée, séjour, cuisine, deux chambres, salle de bain, et la brise du soir au balcon', floor: 'tiles',
+    }), income: letIncome(11_000), upgrades: COMFORT },
 ];
 
 // ------------------------------------------------------------------ land and billboards

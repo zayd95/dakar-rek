@@ -5,7 +5,7 @@ import { Batch, signTexture, signCanvasSize } from '../batch';
 import { addGrain } from '../grain';
 import { PALETTES, extentOf, siteDraw, sizeOf, type DistrictKit, type PaletteName, type Site, type SiteKind, type SiteSize } from './contract';
 import { SITES } from './plan';
-import { variantOf, variantsFor } from './district';
+import { lifeInHub, planYaw, variantOf, variantsFor } from './district';
 
 /**
  * LD2.0-E: the district's viewer (tools/district-viewer/index.html, built by scripts/shots-district-designs.mjs). One design on a site of its size on a
@@ -67,6 +67,17 @@ function show(o: ShowOptions) {
   const res = v.build(d) ?? {};
   for (const [k, b] of Object.entries(batches)) { const mesh = b.build((mats as Record<string, THREE.Material>)[k], true, k !== 'glass' && k !== 'glassDark'); if (mesh) g.add(mesh); }
   if (res.group) g.add(res.group);
+  // the people a design places (SiteResult.life): a capsule each, blue standing, orange talking, green seated (the game draws its humanoids there); not counted in the cost
+  if (res.life) for (const p of lifeInHub(d, res.life).people) {
+    const sit = p.clip === 'Sit', m = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, sit ? 0.45 : 1.05, 3, 8), new THREE.MeshLambertMaterial({ color: sit ? 0x6aa84f : p.clip === 'Talk' ? 0xd08a2c : 0x3b6ea5 }));
+    m.position.set(p.x, 0.1 + (p.y ?? 0) + (sit ? 0.55 : 0.8), p.z); m.userData.scenery = true; g.add(m);
+  }
+  // the rooftop restaurant's sign (SiteResult.rooftopSign: the venue paints and lights it in the game): its faces, pictured, not counted in the cost
+  if (res.rooftopSign) for (const p of res.rooftopSign.panels) {
+    const { width, height } = signCanvasSize(p.w, p.h), tex = signTexture(p.kind === 'front' ? 'TERRASSE DE NGOR' : 'TERRASSE', '#10283a', '#ffe7a8', width, height);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), new THREE.MeshLambertMaterial({ map: tex })), q = d.f.p(p.x, p.z);
+    m.position.set(q.x, p.y, q.z); m.rotation.y = planYaw(d, p.yaw); m.userData.scenery = true; g.add(m);
+  }
   // the road in front, the pavement, a person for scale
   const road = new THREE.Mesh(new THREE.BoxGeometry(site.rect.x1 - site.rect.x0 + 80, 0.05, 14), new THREE.MeshLambertMaterial({ color: 0x50535a }));
   const sz = site.facing === 'south' ? site.rect.z1 + 7 + 2 : site.rect.z0 - 7 - 2;
@@ -91,10 +102,11 @@ function show(o: ShowOptions) {
   camera.position.set(pp.x, vw.y, pp.z); camera.lookAt(tt.x, vw.ty, tt.z); camera.updateMatrixWorld();
   sun.position.set(c.x + 30, 45, c.z + 22); sun.target.position.set(c.x, 0, c.z);
   const s = Math.max(30, R * 1.4); Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 200 }); sun.shadow.camera.updateProjectionMatrix();
-  ground.visible = false; road.visible = false; kerb.visible = false; person.visible = false;
+  const scenery = g.children.filter(x => x.userData.scenery);          // the road, the kerb, the person for scale and the people a design places: pictured, not counted
+  ground.visible = false; for (const x of scenery) x.visible = false;
   renderer.render(scene, camera);
   const drawn = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles };
-  ground.visible = true; road.visible = true; kerb.visible = true; person.visible = true; renderer.render(scene, camera);
+  ground.visible = true; for (const x of scenery) x.visible = true; renderer.render(scene, camera);
   return { id: v.id, name: v.name, size: sizeOf(site), drawn, colliders: d.colliders.length, signs: g.children.filter(x => (x as THREE.Mesh).geometry instanceof THREE.PlaneGeometry).length, tallest: Math.max(0, ...d.colliders.map(c => c.h)) };
 }
 /** The design as a GLB (base64), without the road, the kerb and the person: every mesh, its vertices shared, no texture coordinates (a material's shader hooks are exported for their colours). */

@@ -114,6 +114,8 @@ import { setVillaFacadeNight } from './housing/villaFacade';
 import { setDistrictNight } from './world/almadies/night';
 import { SITES as DISTRICT_SITES } from './world/almadies/plan';
 import { sizeOf as districtSize } from './world/almadies/contract';
+import { frameStats, gpuName } from './core/frameStats';
+import { updateFrameMeter } from './ui/frameMeter';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
 
@@ -1616,6 +1618,11 @@ function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (!stepping) frameStep(now, dt);
+  if (frameStats.enabled && world) {                        // « Mesure de fluidité » (src/core/frameStats.ts): this frame filed under where the player is
+    if (!frameStats.gpu) frameStats.gpu = gpuName(renderer.getContext());
+    frameStats.tick(now, `${(HUB_NAMES[world.id] ?? world.id).split(' · ')[0]} · ${inside ? 'dans un logement' : document.body.classList.contains('ridepad') ? 'au volant' : 'à pied'}`, renderer.info.render.calls, renderer.info.render.triangles);
+  }
+  updateFrameMeter(now);
 }
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
@@ -1997,7 +2004,7 @@ if (DEBUG) {
       return { ...b.gaitInfo(), clip: b.clipName, hold: b.hold, L: sole('L'), R: sole('R') };
     },
     /** LD2.0-E: the Almadies district's plan (src/world/almadies/plan.ts), for the checks. */
-    district: { sites: () => DISTRICT_SITES.map(s => ({ id: s.id, kind: s.kind, size: districtSize(s), rect: s.rect, storeys: s.storeys, name: s.name ?? null, gate: s.gate, facing: s.facing })) },
+    district: { streetscape: () => world?.streetscape ?? [], /** The seats of the street (this district's terraces, benches and stools: the Seats registry's): how many, and how many a person sits on now. */ streetSeats: () => seats.all().filter(s => s.space === 'street').map(s => ({ id: s.id, x: +s.x.toFixed(1), z: +s.z.toFixed(1), occupant: s.occupant })), sites: () => DISTRICT_SITES.map(s => ({ id: s.id, kind: s.kind, size: districtSize(s), rect: s.rect, storeys: s.storeys, name: s.name ?? null, gate: s.gate, facing: s.facing })) },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];
       world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });

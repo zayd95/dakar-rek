@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import { E, GROUND, STOREY, type GateSide, type SiteDraw } from './contract';
-import { gateX, palm, perimeter, roadEdges, siteRng, type Face, type PlanRect } from './parts';
+import type { PersonLook } from '../../actors/humanoid';
+import { E, GROUND, STOREY, type GateSide, type PlanPerson, type PlanSeat, type SiteDraw, type SiteLife } from './contract';
+import { bench as partsBench, gateX, palm, parkedCar, perimeter, roadEdges, scooter, siteRng, type Face, type PlanRect } from './parts';
 
 /**
  * LD2.0-E, lane E-V: the pieces the houses' and the villas' designs share, written on the district's parts (parts.ts) and nothing else.
@@ -77,12 +78,36 @@ export function houseNumber(k: Ctx, text: string, ent: { x: number; w: number }[
 }
 /** A short stone-paved walk from the pavement (the street edge) to the door's step: a flat quad on the paving batch, `w` wide, centred on x, to z1. */
 export function walk(k: Ctx, x: number, z1: number, w = 1.5, layer = 2) { pave(k, { x0: x - w / 2, x1: x + w / 2, z0: z1, z1: E - 0.3 }, tones(k).path, layer); }
-/** A bench by the entry (two boxes: a seat in the palette's wood on a stone base), facing the street's side; `x`, `z` its centre. */
-export function bench(k: Ctx, x: number, z: number, w = 1.6) {
-  const { d } = k;
-  d.box(d.plain, w, 0.38, 0.4, x, GROUND, z, d.p.stone);
-  d.box(d.plain, w + 0.1, 0.07, 0.46, x, GROUND + 0.38, z, d.p.wood);
-  d.solid(x - w / 2, z - 0.25, x + w / 2, z + 0.25, 0.5);
+// ------------------------------------------------------------------------------------------------ life at the ground floor (LD2.0-E round 3)
+/** The paints a parked car wears (a small family: white, silver, graphite, navy, wine, sand), picked from the site's id. */
+export const CAR_COLS = [0xe8e8ea, 0xb9bcc0, 0x3a3d42, 0x2a3f66, 0x6b2a30, 0xcfc8b8] as const;
+/** Who stands about: a guard in navy, a gardener in green, residents (a woman in wax print and a headwrap, a man in a white boubou), a visitor in a tee. */
+export const LOOKS: Record<'guard' | 'gardener' | 'woman' | 'man' | 'visitor', PersonLook> = {
+  guard: { skin: 0x3b2216, style: 'tee', top: 0x223a5e, bottom: 0x1d2a44, accent: 0xffffff, shoes: 0x1c1c1f, muscular: 0.4 },
+  gardener: { skin: 0x4e2e1c, style: 'tee', top: 0x4f7a3a, bottom: 0x6b5a3a, shoes: 0x3a2a1e, hat: null },
+  woman: { skin: 0x5a3322, style: 'dress', top: 0xd9a441, pattern: 'wax', accent: 0x2b6f6a, hat: 'headwrap', hatColor: 0xc2663a, shoes: 0x7a5a3a, female: true },
+  man: { skin: 0x4a2b1a, style: 'boubou', top: 0xf1ece0, bottom: 0xe3dcc8, hat: 'kufi', hatColor: 0xf1ece0, shoes: 0x3a2a1e },
+  visitor: { skin: 0x6a3f28, style: 'tee', top: 0x3b6ea5, bottom: 0x2b2f3a, shoes: 0xe8e8ea, hair: 'short' },
+};
+/** A pick from a list, by the site's own deterministic generator. */
+export const pick = <T>(k: Ctx, list: readonly T[]): T => list[Math.floor(k.rng() * list.length) % list.length];
+/** A parked car in the design's arrangement (`yaw` a multiple of π/2: 0 nose to the street): a sedan or an SUV in one of the family's paints. Solid. */
+export function car(k: Ctx, x: number, z: number, yaw: number, o: { suv?: boolean; col?: number } = {}) { parkedCar(k.d, x, z, yaw, { suv: o.suv, col: o.col ?? pick(k, CAR_COLS) }); }
+/** A parked scooter, in a red, teal or ochre. Solid. */
+export function scoot(k: Ctx, x: number, z: number, yaw: number) { scooter(k.d, x, z, yaw, pick(k, [0xc23b2a, 0x2b6f6a, 0xd9a441] as const)); }
+/** A street bench with its seats (the shared one): the seats are for `life`. */
+export function seatBench(k: Ctx, x: number, z: number, yaw: number, o: { len?: number; n?: number } = {}): PlanSeat[] { return partsBench(k.d, x, z, yaw, o); }
+/** A person standing or talking at (x, z) on the ground, or on a balcony `floor` (its top, `lv(n)`), facing `yaw`. */
+export function who(x: number, z: number, yaw: number, clip: 'Idle' | 'Talk', look: PersonLook, floor?: number): PlanPerson {
+  return { x, z, yaw, clip, look, ...(floor !== undefined ? { y: floor - GROUND } : {}) };
+}
+/** The design's life (drawn in its arrangement) as the site's own plan has it: a mirrored design mirrors its seats' and people's places and facings. */
+export function lifeOut(k: Ctx, l: SiteLife): SiteLife {
+  const mx = (x: number) => (k.flip ? -x : x), my = (a: number) => (k.flip ? -a : a);
+  return {
+    seats: (l.seats ?? []).map(s => ({ ...s, x: mx(s.x), yaw: my(s.yaw), ...(s.table ? { table: { ...s.table, x: mx(s.table.x) } } : {}) })),
+    people: (l.people ?? []).map(p => ({ ...p, x: mx(p.x), yaw: my(p.yaw) })),
+  };
 }
 /** The bougainvillea's two magentas (the flagship's, src/world/villaCompound.ts): the palette's accent colours the planters, not the wall's flowers. */
 const BOUG = [0xc2307a, 0xd94a8c] as const;

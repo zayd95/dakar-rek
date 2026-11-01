@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, eave, garageDoor, lantern, lawn, lightGuard, lv, pave, houseNumber, post, rail, slats, tones, tree, win, edgeLight, entry, walk } from './villas.kit';
+import { GROUND, R, T_SLAB, boundary, ctx, eave, garageDoor, lantern, lawn, lightGuard, lv, pave, houseNumber, post, rail, slats, tones, tree, win, edgeLight, entry, walk, car, scoot, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * House 2, « Maison en L »: an L of two wings under deep thin flat roofs, a stone plinth and a travertine ground floor, a covered loggia in the L's corner
@@ -50,5 +50,8 @@ export const ell: SiteBuilder = o => {
   if (n === 2) lantern(k, -2.8, 6.6);
   pave(k, R(-10.4, 10.4, -10.4, -6.8), tn.deck);
   lawn(k, R(-10.0, -1.0, -10.0, -7.4)); lawn(k, R(4.0, 10.0, -10.0, 0.0));
+  car(k, 4.6, 7.8, Math.PI);                                                                       // a sedan before the garage, clear of the gate's apron
+  scoot(k, -8.3, 6.4, 0);                                                                          // a scooter on the lawn, left of the door
   solidBox(d, A, Ft + 0.3); solidBox(d, B, Ft + 0.3); solidBox(d, Gar, F1 - 0.3);
+  return { life: lifeOut(k, { people: [who(-5.0, 6.1, 0, 'Talk', LOOKS.man, F1)] }) };               // a resident on the street balcony
 };

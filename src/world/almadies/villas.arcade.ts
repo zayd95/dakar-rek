@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, roofKit, shrub, slats, tones, win, entry, walk, bench } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, roofKit, shrub, slats, tones, win, entry, walk, seatBench, car, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * Villa 2, « Arcades »: a portico of square piers and deep lintels along the front, the sand-coloured house behind it, the upper floor opening on a long
@@ -69,7 +69,8 @@ export const arcade: SiteBuilder = o => {
   walk(k, -3.05, 6.1, 1.6);
   pave(k, R(3.4, 9.8, 6.4, 10.4), tn.drive, 1);
   lawn(k, R(-10.4, -4.0, 6.5, 10.4)); lawn(k, R(-1.8, 3.2, 6.6, 10.4));
-  bench(k, -0.9, 9.5);
+  const seats = seatBench(k, -0.7, 9.4, 0);
+  car(k, 4.2, 8.4, Math.PI);                                                                      // a sedan on the forecourt, beside the drive to the garage
   lantern(k, -5.8, 6.9); lantern(k, -0.4, 6.9);
   pot(k, 1.1, 7.0, 1.2, 0.7, 0.55, true);
   palmAt(k, -9.3 + k.j(0.3), 4.9 + k.j(0.8), 1.05 + k.j(0.08), 0.7 + k.j(0.9));
@@ -81,4 +82,5 @@ export const arcade: SiteBuilder = o => {
   // ---- solid
   solidBox(d, M, Ft + 0.4);
   for (const x of px) solidBox(d, R(x - 0.26, x + 0.26, zp - 0.26, zp + 0.26), F1);                      // the piers; the bays stay open to the door
+  return { life: lifeOut(k, { seats, people: [who(-4.95, 9.4, 0, 'Idle', LOOKS.gardener), who(0.7, 5.0, 0, 'Talk', LOOKS.man, F1)] }) };
 };

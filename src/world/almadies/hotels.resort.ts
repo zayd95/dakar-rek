@@ -1,6 +1,6 @@
 import { E, type GateSide, type SiteDraw, type SiteResult } from './contract';
-import { door, gateX, nameBoard, paving, perimeter, planter, roofPlant, slabEdge, solidBox, volume } from './parts';
-import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table } from './hotels.kit';
+import { bench, door, gateX, menuBoard, nameBoard, paving, parkedCar, perimeter, planter, roofPlant, scooter, slabEdge, solidBox, volume } from './parts';
+import { STAFF, ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litBar, pendants, stringLights, terrace, uplight, lounger, mix, pane, parasol, pool, quads, slats, slimPalm, table, person, trolley } from './hotels.kit';
 
 /**
  * LD2.0-E lane E-H, the resort (46 × 46 m, the whole block, 3 to 7 storeys): a U of two long wings round a pool court that opens toward the back (the
@@ -10,7 +10,7 @@ import { ST, Y0, clamp, courses, flagPole, glassRail, bollard, guard, info, litB
  * lobby and a beach-club pergola at the sea end, seen over a low wall from the coast road.
  */
 export function buildResort(d: SiteDraw): SiteResult {
-  const { site: s, p } = d, lite = d.lite, rec = info(d);
+  const { site: s, p } = d, lite = d.lite, rec = info(d), life = rec.life;
   const n = clamp(s.storeys, 3, 5);
   const gate: GateSide = s.gate === 'centre' ? 'right' : s.gate, gx = gateX(d.w, gate), sg: 1 | -1 = gx < 0 ? -1 : 1, left = -sg, rite = sg;
   rec.serviceSide = sg;
@@ -197,25 +197,41 @@ export function buildResort(d: SiteDraw): SiteResult {
 
   // ------------------------------------------------------------------------------------------------ the forecourt: open to the pavement, the café's terrace beside the way in
   paving(d, { x0: -ex, x1: ex, z0: FZ1 + BAL + 0.05, z1: E - 0.3 }, 0xe3d9c3);
-  const lane = { x0: -4, z0: 7.4, x1: 4, z1: E - 0.3 };
+  const lane = { x0: -4, z0: 8.3, x1: 4, z1: E - 0.3 };
   paving(d, lane, 0x6d7075, Y0 + 0.02);                                                                                     // the drop-off lane runs through the opening to the kerb
   rec.dropoff = lane; rec.entry = { x: 0, w: 8 };
-  for (let z = 7.8; z < E - 0.6; z += 1.0) paving(d, { x0: -0.07, x1: 0.07, z0: z, z1: z + 0.5 }, 0xf1efe8, Y0 + 0.03);
-  paving(d, { x0: -3.9, x1: 3.9, z0: 7.4, z1: 7.55 }, 0xf1efe8, Y0 + 0.03);
-  paving(d, { x0: -1.4, x1: 1.4, z0: 6.9, z1: 7.4 }, p.accent, Y0 + 0.03);
-  { const u = span(left, 6.6, 20.4);
-    rec.terraces.push(terrace(d, { x0: u.u0, x1: u.u1, z0: FZ1 + BAL + 0.4, z1: 10.2, rows: [7.7, 9.2], per: [3, lite ? 2 : 3], deck: mix(p.wood, p.stone, 0.4) }));
-    stringLights(d, left * 6.8, left * 20.2, 8.45, 3.3);
+  for (let z = 8.7; z < E - 0.6; z += 1.0) paving(d, { x0: -0.07, x1: 0.07, z0: z, z1: z + 0.5 }, 0xf1efe8, Y0 + 0.03);
+  paving(d, { x0: -3.9, x1: 3.9, z0: 8.3, z1: 8.45 }, 0xf1efe8, Y0 + 0.03);
+  paving(d, { x0: -1.4, x1: 1.4, z0: 6.9, z1: 8.3 }, p.accent, Y0 + 0.03);
+  { const u = span(left, 9.4, 20.6), t = terrace(d, { x0: u.u0, x1: u.u1, z0: FZ1 + BAL + 0.4, z1: 10.3, rows: [{ z: 7.9, per: 3 }, { z: 9.9, per: 3, dir: 'x' }], deck: mix(p.wood, p.stone, 0.4) });
+    rec.terraces.push(t); life.seats.push(...t.seats);
+    stringLights(d, left * 9.2, left * 20.4, 8.95, 3.3);
+    menuBoard(d, left * 8.6, 10.1, 0); rec.props.push({ kind: 'menu', x: left * 8.6, z: 10.1 });
+    // three customers at their tables, the waiter between two tables of the first row, turned to the nearer
+    const sit = (i: number) => life.people.push(person(t.seats[i].x, t.seats[i].z, t.seats[i].yaw, 'Sit'));
+    sit(0); sit(4); sit(7);
+    const mid = (t.seats[0].x + t.seats[2].x) / 2;
+    life.people.push(person(mid, 7.9, Math.sign(t.seats[0].x - mid) * Math.PI / 2, 'Talk', STAFF.waiter));
   }
-  for (const x of [-4.8, 4.8]) bollard(d, x, 7.2);
+  // the lobby's staff on the platform before the glass: a doorman and a bellhop either side of the doors with his trolley, a valet by the lane (outside it), a guard at the service gate
+  life.people.push(person(-2.8, 7.6, 0, 'Idle', STAFF.doorman), person(2.8, 7.6, 0, 'Idle', STAFF.bellhop));
+  trolley(d, 4.0, 7.65, 0); rec.props.push({ kind: 'trolley', x: 4.0, z: 7.65 });
+  life.people.push(person(rite * 5.3, 8.8, -rite * Math.PI / 2, 'Idle', STAFF.valet), person(rite * 16.4, 9.9, 0, 'Idle', STAFF.doorman));
+  // a parked car in the gate's half of the forecourt, two scooters by the staff door on the front flank
+  parkedCar(d, rite * 11.5, 9.2, Math.PI / 2, { col: mix(p.accent, 0xdddddd, 0.55), suv: true }); rec.props.push({ kind: 'car', x: rite * 11.5, z: 9.2 });
+  for (const [x, c] of [[17.4, 0xc23b2a], [18.4, 0xe0b44a]] as const) { scooter(d, rite * x, 5.6, 0, c); rec.props.push({ kind: 'scooter', x: rite * x, z: 5.6 }); }
+  for (const x of [-4.8, 4.8]) bollard(d, x, 8.0);
   slimPalm(d, left * 21.3, 9.1, 1.05, 0.3); slimPalm(d, rite * 12.5, 6.9, 1.05, 0.7);
-  planter(d, rite * 8.4, 9.7, 3.0, 0.7, { bloom: 0xd94a8c }); planter(d, rite * 16.0, FZ1 + BAL + 0.9, 3.2, 0.8);
+  planter(d, rite * 7.0, 9.8, 2.6, 0.7, { bloom: 0xd94a8c }); planter(d, rite * 16.0, FZ1 + BAL + 0.9, 3.2, 0.8);
   for (let k = 0; k < 2; k++) flagPole(d, (k ? 1 : -1) * 5.9, E - 1.0, 7.8, k ? 0xf4f1ea : mix(p.accent, 0xffffff, 0.2), 1);
-  // the road-side flanks, the cross roads' and the sea road's: a lawn and shrubs along the wings' feet, a lamp at each end
+  // the road-side flanks, the cross roads' and the sea road's: a lawn and shrubs along the wings' feet, a lamp at each end, a one-seat bench on each lawn facing the road
   for (const sx of [-1, 1]) {
     d.flat(d.plain, 1.0, 38 - 3, sx * 22.1, Y0 + 0.02, (6 - 33) / 2 + 0.0, d.c.lawn);
     for (let k = 0; k < (lite ? 3 : 6); k++) d.blob(d.leaves, 0.44, sx * 22.1, Y0 + 0.38, 3.0 - k * (lite ? 12 : 6.6), k % 2 ? d.c.hedge : d.c.hedge2, 0.85, 0);
     bollard(d, sx * 22.1, -4.6);
+    const b = bench(d, sx * 22.1, 3.4, sx * Math.PI / 2, { len: 1.0, n: 1 });                                       // (the lawn is a 1.2 m strip: one seat, reached from the forecourt)
+    life.seats.push(...b); rec.props.push({ kind: 'bench', x: sx * 22.1, z: 3.4 });
+    if (sx > 0) life.people.push({ ...person(b[0].x, b[0].z, b[0].yaw, 'Sit'), y: -0.01 });                          // someone on the east bench (the bench's top is 0.57, the chair's 0.49)
   }
-  return { keepClear: [{ ...d.f.rect(-4.6, FZ1 + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }] };
+  return { keepClear: [{ ...d.f.rect(-4.6, FZ1 + BAL, 4.6, E + 3.2), why: `hotel_dropoff:${s.id}` }], life };
 }

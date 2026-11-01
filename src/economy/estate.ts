@@ -15,7 +15,7 @@ import { fcfa, type MenuItem } from '../ui/hud';
 import { phoneHooks } from '../ui/phoneHooks';
 import { ECONOMY } from './config';
 import {
-  HOUR_MS, adRunning, assetsOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
+  HOUR_MS, adRunning, assetsOf, rentOf, assetsRevision, assetsValue, buyAsset, cannotBuy, cannotLet, cannotMoveIn, cannotRent, cannotRentAd,
   cannotReturnRoom, cannotSell, cannotUpgrade, chargeOf, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding, holds, incomeOf, incomePerHour, moveIn,
   netWorth, normalize, reclaimRoom, rentAdSpace, rentAsset, repairAsset, repairCost, returnRoom, roomReturned, saleValue, sellAsset, setLeased, setOwnAd, setPlacement, specOfAsset, touchAssets, upgradeAsset, valueOf,
 } from './assets';
@@ -58,11 +58,17 @@ import './estate.css';
 const FLOOR = 0.1;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const perDay = (n: number) => `${fcfa(n)} / jour`;
+/** Résidence Les Filaos (Mermoz): the listing's spot on the pavement south of the gate (x = 60 is the street, the wall stands at 67.3, the gate at z = −30), and the building's door just inside it. */
+const FILAOS_BOARD = { x: 66.2, z: -36.5 };
+const FILAOS_DOOR = { x: 68.5, z: -35.6 };
+/** The facade of the Résidence stands at x = 70 (builder.ts `filaos`: x0 + 3). */
+const FILAOS_FACADE_X = 70;
 /** Directory entries of the Cité Jàmm (places directory, walking marker): id by catalogue entry. */
 const ENTRY: Record<string, string> = {
   appart_jamm: 'pikine:city:jamm', maison_cite: 'pikine:city:maison', parcelle_150: 'pikine:city:parcelles', parcelle_300: 'pikine:city:parcelles',
   panneau_jamm: 'pikine:city:panneau', keur_meubles: 'pikine:city:keur_meubles',
   villa_almadies: 'almadies:city:villa', residence_ngor: 'almadies:city:residence',
+  f3_filaos: 'mermoz:city:filaos',
 };
 const SELLER_LINES = [
   'Pape, vendeur : « Dalal ak jàmm ! Essaie les canapés, tout est livré chez toi, sans frais. »',
@@ -127,6 +133,7 @@ class Estate {
     this.hub = hub; this.cite = null;
     if (hub.id === CITE_HUB) this.buildCite(hub);
     if (hub.id === 'almadies') this.buildVillas(hub);
+    if (hub.id === 'mermoz') this.buildMermoz(hub);
     HOMES.forEach(spec => {
       if (spec.hub !== hub.id) return;
       const door = hub.interactables.find(it => it.id === spec.home.door); if (!door) return;
@@ -197,6 +204,28 @@ class Estate {
       panel.position.set(board.x, 1.95, board.z + 0.07); hub.group.add(panel); hub.signs.push(panel);
       hub.colliders.push({ x0: board.x - 0.9, z0: board.z - 0.1, x1: board.x + 0.9, z1: board.z + 0.1, h: 2.3 });
     }
+  }
+
+  /**
+   * The first home of the home kit in Mermoz (docs/kits/HOMES.md): the F3 on a high floor of the Résidence Les Filaos, whose gate and booth the district already has (src/world/builder.ts
+   * `filaos`, Pape Diouf's gate). Nothing of the district's ground changes: a listing board on the wall by the gate, the pavement spot where « Voir le logement » is offered, the
+   * building's door just inside the gate (where the player comes out), and a walking marker. Both are registered here, in the estate's own `hubLoaded`, which runs before the
+   * district's module (src/game/modules.ts), so the door exists when the catalogue looks for it.
+   */
+  private buildMermoz(hub: HubWorld) {
+    const ctx = this.ctx, id = 'f3_filaos', sp = homeSpec(id); if (!sp) return;
+    const hooks: PlaceHooks = { ownership: sid => this.openSheet(sid), holds: sid => holds(this.s, sid), enterHome: sid => this.enterHome(sid) };
+    const board = FILAOS_BOARD, door = FILAOS_DOOR, name = sp.name.split(' · ')[0];
+    hub.interactables.push({ id: sp.home.door, name: sp.name, kind: 'actions', x: door.x, z: door.z, radius: -1, actions: [] });
+    hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: board.x, z: board.z + 1, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
+    ctx.places.add(ownable({ id, name, space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: board.x, z: board.z, radius: 2.4 }] }, hooks));
+    const b = new Batch();                                                                                  // the building's door: a deep-teal frame (Mermoz's door colour), a glazed leaf, a canopy, a step
+    const fx = FILAOS_FACADE_X - 0.08;
+    b.box(0.16, 2.5, 1.5, fx, 0.1, door.z, 0x1f6f78); b.box(0.1, 2.2, 1.1, fx - 0.07, 0.1, door.z, 0x9fb3c2); b.box(0.08, 2.2, 0.06, fx - 0.09, 0.1, door.z, 0x1f6f78);
+    b.box(1.3, 0.12, 2.2, fx - 0.6, 2.6, door.z, 0xe6e0d6); b.box(0.9, 0.16, 1.9, fx - 0.45, 0.1, door.z, 0xcfc9bd);
+    const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) hub.group.add(mesh);
+    const panel = signPanel(signTexture('F3 · À LOUER · À VENDRE', '#2f6f5a', '#fdf6e4', 512, 160), 1.8, 0.6);
+    panel.position.set(board.x + 0.85, 1.5, board.z); panel.rotation.y = -Math.PI / 2; hub.group.add(panel); hub.signs.push(panel);        // on the wall, facing the street (x = 60)
   }
 
   update(ctx: GameCtx, dt: number) {
@@ -519,7 +548,7 @@ class Estate {
       }
     } else {
       const room = a.spec === STARTER_HOME, given = room && roomReturned(s);
-      const sub = [a.how === 'rented' ? `Loué par toi · ${perDay(sp.rent ?? 0)}` : given ? 'Rendue à la famille' : a.how === 'given' ? 'Prêtée par la famille' : `À toi · valeur ${fcfa(valueOf(a))}`];
+      const sub = [a.how === 'rented' ? `Loué par toi · ${perDay(rentOf(a))}` : given ? 'Rendue à la famille' : a.how === 'given' ? 'Prêtée par la famille' : `À toi · valeur ${fcfa(valueOf(a))}`];
       if (s.data.assets.home === a.uid) sub.push('ton domicile principal');
       else if (room && !given) sub.push('gardée comme chambre familiale');
       rows.push(sub.join(' · '));
@@ -696,7 +725,7 @@ class Estate {
       const sp = specOfAsset(a), inc = incomeOf(s, a), chg = chargeOf(a);
       const tag = s.data.assets.home === a.uid ? '★ domicile principal · ' : '';
       return { icon: KIND_ICON[sp.kind], label: sp.name, right: inc ? `+${fcfa(inc)}/h` : chg ? `−${fcfa(chg)}/h` : a.how === 'owned' ? fcfa(valueOf(a)) : '',
-        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(sp.rent ?? 0)}` : a.how === 'given' ? (roomReturned(s) && a.spec === STARTER_HOME ? 'rendue à la famille' : 'prêtée par la famille') : a.leased ? 'à toi · loué' : worn(s)?.id === sp.id ? 'à toi · tu le portes' : 'à toi'), onPick: () => this.openSheet(sp.id) };
+        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(rentOf(a))}` : a.how === 'given' ? (roomReturned(s) && a.spec === STARTER_HOME ? 'rendue à la famille' : 'prêtée par la famille') : a.leased ? 'à toi · loué' : worn(s)?.id === sp.id ? 'à toi · tu le portes' : 'à toi'), onPick: () => this.openSheet(sp.id) };
     });
     items.push({ icon: '🏪', label: 'Affaires', detail: ventures ? `${ventures} affaire${ventures > 1 ? 's' : ''}` : 'Aucune pour l’instant', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } });
     items.push({ icon: '🛋️', label: 'Meubles', detail: `${pieces} pièce${pieces > 1 ? 's' : ''} · aménage chez toi`, onPick: () => this.openHomeApp() });

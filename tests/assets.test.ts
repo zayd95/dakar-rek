@@ -8,7 +8,7 @@ import {
 import {
   HOUR_MS, DAY_MS, accrue, assetsValue, buyAsset, cannotBuy, cannotLet, cannotRent, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding,
   incomeOf, incomePerHour, moveIn, netWorth, normalize, rentAdSpace, rentAsset, repairAsset, repairCost, saleValue, sellAsset, setLeased, setOwnAd, setPlacement,
-  takeNotices, upgradeAsset, valueOf, adRunning, setCondition,
+  takeNotices, upgradeAsset, valueOf, adRunning, setCondition, rentOf,
 } from '../src/economy/assets';
 import { buyVenture, ownedOf } from '../src/economy/business';
 import { buyFurniture, cannotBuy as cannotBuyPiece, deliverFurniture, ownedFurnitureIds } from '../src/economy/furniture';
@@ -29,11 +29,14 @@ describe('catalogue', () => {
     expect(specOf(STARTER_HOME)?.kind).toBe('home');
   });
   it('homes climb room → apartment → house → villa → luxury residence, up to billions', () => {
-    expect(HOMES.map(h => h.home.level)).toEqual(['room', 'apartment', 'house', 'villa', 'residence']);
-    const priced = HOMES.slice(1);
+    // a level may list several homes (the Résidence Jàmm F2 and the F3 of the Résidence Les Filaos are both apartments): the ladder is the cheapest of each level, in order
+    const levels = ['room', 'apartment', 'house', 'villa', 'residence'] as const;
+    expect([...new Set(HOMES.map(h => h.home.level))].sort((a, b) => levels.indexOf(a as typeof levels[number]) - levels.indexOf(b as typeof levels[number]))).toEqual([...levels]);
+    expect(HOMES.map(h => h.home.level).filter((l, i, all) => all.indexOf(l) !== i)).toEqual(['apartment']);
+    const priced = levels.slice(1).map(l => HOMES.filter(h => h.home.level === l).sort((a, b) => a.price! - b.price!)[0]);
     // each step costs more (the owner set the house at 150 M F, the villa at 400 M F: from the house to the villa it is less than the tripling the first steps made)
     for (let i = 1; i < priced.length; i++) { expect(priced[i].price!).toBeGreaterThan(priced[i - 1].price! * (priced[i].home.level === 'villa' ? 2 : 3)); expect(priced[i].rent!).toBeGreaterThan(priced[i - 1].rent!); }
-    expect(HOMES.at(-1)!.price!).toBeGreaterThanOrEqual(1e9);
+    expect(Math.max(...HOMES.map(h => h.price ?? 0))).toBeGreaterThanOrEqual(1e9);          // the residence: homes added later are appended, not necessarily the dearest
     expect(HOMES.find(h => h.home.level === 'villa')!.price!).toBeGreaterThanOrEqual(1e8);
     for (const h of HOMES) expect(h.home.door).toMatch(/:home:/);
   });
@@ -223,7 +226,7 @@ describe('land and billboard: buy, let, upgrade, ad space', () => {
     expect(cannotLet(s, h.uid)).toMatch(/habites/);
     moveIn(s, s.data.assets.list.find(x => x.spec === STARTER_HOME)!.uid);
     expect(setLeased(s, h.uid, true)).toBe(true);
-    expect(incomeOf(s, h)).toBe(Math.round((30_000 / 24) * ECONOMY.property.letShare));
+    expect(incomeOf(s, h)).toBe(Math.round((16_700 / 24) * ECONOMY.property.letShare));
   });
 });
 
@@ -338,5 +341,62 @@ describe('a vehicle’s condition (Pass 3)', () => {
     expect(back(new GameState(raw)).data.assets.list.find(x => x.uid === a.uid)!.condition).toBe(100);
     setCondition(a, 50); const w0 = s.data.wallet, q = repairCost(a);
     expect(repairAsset(s, a.uid)).toBe(true); expect(w0 - s.data.wallet).toBe(q); expect(a.condition).toBe(100); expect(repairAsset(s, a.uid)).toBe(false);
+  });
+});
+
+describe('the Jàmm house rent (docs/economy/RENT_JAMM.md): a lease keeps the rate it began with', () => {
+  const house = () => homeSpec('maison_cite')!;
+  it('asks 16 700 F a day (about 500 000 F over an in-game month of 30 city days), above the apartment and under the villa', () => {
+    expect(house().rent).toBe(16_700);
+    expect(house().rent! * 30).toBeGreaterThanOrEqual(500_000); expect(house().rent! * 30).toBeLessThan(505_000);
+    expect(house().rent!).toBeGreaterThan(homeSpec('appart_jamm')!.rent!); expect(house().rent!).toBeLessThan(homeSpec('villa_almadies')!.rent!);
+    expect(house().income).toBe(Math.round((16_700 / 24) * ECONOMY.property.letShare));    // let out by its owner, it follows the rent
+  });
+  it('a new lease is made at the rent of the day and is charged by the hour at that rate', () => {
+    const s = fresh(1_000_000); play(s, 1);
+    const a = rentAsset(s, 'maison_cite')!;
+    expect(a.rate).toBe(16_700); expect(rentOf(a)).toBe(16_700);
+    expect(chargesPerHour(s)).toBe(Math.round(16_700 / 24));                // charged by the hour, to the franc
+  });
+  it('a lease keeps its rate when the catalogue’s rent changes later', () => {
+    const s = fresh(1_000_000); play(s, 1);
+    const a = rentAsset(s, 'maison_cite')!;
+    const sp = house(), was = sp.rent; sp.rent = 99_000;
+    try { expect(rentOf(a)).toBe(16_700); expect(chargesPerHour(s)).toBe(Math.round(16_700 / 24)); expect(cannotRent(fresh(1_000_000), 'maison_cite')).toBeNull(); }
+    finally { sp.rent = was; }
+  });
+  it('a lease made before leases kept their rate is still charged the 30 000 F a day it was let at', () => {
+    const s = fresh(1_000_000); play(s, 1);
+    const a = rentAsset(s, 'maison_cite')!; delete a.rate;                                // as the save of an older client has it
+    expect(rentOf(a)).toBe(30_000); expect(chargesPerHour(s)).toBe(Math.round(30_000 / 24));
+    const b = back(s); const again = holding(b, 'maison_cite')!;
+    expect(again.how).toBe('rented'); expect(again.rate).toBeUndefined(); expect(rentOf(again)).toBe(30_000);   // and a reload does not re-price it
+  });
+  it('the rate survives a save and a reload, and is dropped when the tenant buys the home', () => {
+    const s = fresh(1_000_000_000); play(s, 1);
+    rentAsset(s, 'maison_cite');
+    expect(holding(back(s), 'maison_cite')!.rate).toBe(16_700);
+    const owned = buyAsset(s, 'maison_cite')!;
+    expect(owned.how).toBe('owned'); expect(owned.rate).toBeUndefined();
+  });
+  it('a malformed rate in a save is ignored; only a rented asset keeps one', () => {
+    const s = fresh(1_000_000); play(s, 1);
+    const a = rentAsset(s, 'maison_cite')!;
+    const raw = JSON.parse(JSON.stringify(s.data)); const e = raw.assets.list.find((x: { uid: string }) => x.uid === a.uid);
+    e.rate = 'cheap'; expect(holding(new GameState(migrate(raw)!), 'maison_cite')!.rate).toBeUndefined();
+    e.rate = -5; expect(holding(new GameState(migrate(JSON.parse(JSON.stringify(raw)))!), 'maison_cite')!.rate).toBeUndefined();
+    e.rate = 12_345; expect(holding(new GameState(migrate(JSON.parse(JSON.stringify(raw)))!), 'maison_cite')!.rate).toBe(12_345);
+    const room = raw.assets.list.find((x: { spec: string }) => x.spec === STARTER_HOME); room.rate = 777;
+    expect(currentHome(new GameState(migrate(raw)!)).rate).toBeUndefined();
+  });
+  it('unpaid rent evicts after three days of the lease\u2019s own rent (the hourly loop of the apartment\u2019s test), a pre-rate lease after three days of its 30 000 F', () => {
+    for (const [legacy, perHour] of [[false, Math.round(16_700 / 24)], [true, 30_000 / 24]] as const) {
+      const s = fresh(40_000); play(s, 1);
+      const a = rentAsset(s, 'maison_cite')!; if (legacy) delete a.rate; s.data.wallet = 0;
+      let h = 0; for (; h < 24 * 4 && holding(s, 'maison_cite'); h++) { play(s, HOUR_MS); accrue(s); }
+      expect(holding(s, 'maison_cite')).toBeUndefined();
+      expect(h).toBeGreaterThanOrEqual(72); expect(h).toBeLessThanOrEqual(74);            // 3 days of rent behind, whatever the rate
+      expect(perHour).toBeGreaterThan(0);
+    }
   });
 });

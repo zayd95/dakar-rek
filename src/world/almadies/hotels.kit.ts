@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Batch } from '../batch';
-import { GROUND, STOREY, type SiteDraw } from './contract';
+import type { PersonLook } from '../../actors/humanoid';
+import { GROUND, STOREY, type PlanPerson, type PlanSeat, type SiteDraw, type SiteLife } from './contract';
 import { siteRng, type Face } from './parts';
 
 /**
@@ -186,12 +187,16 @@ export interface HotelInfo {
   awnings: { x0: number; x1: number; z: number; col: number }[];
   /** The road-side flanks' ground floors: what stands there ('planting', 'terrace', 'window'), on which plan side (-1 left, 1 right). */
   flanks: { side: -1 | 1; what: string }[];
+  /** What the ground floor puts out: the seats (terrace chairs, benches) and the placed people, in the plan (`SiteResult.life`). */
+  life: Required<SiteLife>;
+  /** The small props the ground floor drew (plan point): parked cars, scooters, luggage trolleys, benches, menu boards. */
+  props: { kind: 'car' | 'scooter' | 'trolley' | 'bench' | 'menu'; x: number; z: number }[];
 }
 const infos = new WeakMap<SiteDraw, HotelInfo>();
 /** The record of a draw (made on first use); the district never reads it, the tests do. */
 export function info(d: SiteDraw): HotelInfo {
   let i = infos.get(d);
-  if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null, entry: null, terraces: [], awnings: [], flanks: [] });
+  if (!i) infos.set(d, i = { storeys: d.site.storeys, balconies: [], doors: [], serviceSide: 1, dropoff: null, board: null, entry: null, terraces: [], awnings: [], flanks: [], life: { seats: [], people: [] }, props: [] });
   return i;
 }
 /** A garden bollard with its lamp (20 triangles) and, by night, its pool of light on the ground (not on the low preset). */
@@ -214,10 +219,29 @@ export function pendants(d: SiteDraw, face: Face, at: number, u0: number, u1: nu
 }
 
 // ------------------------------------------------------------------------------------------------ the café on the pavement
-/** A bistro table with its two chairs (40 triangles): a post and a top, a chair either side along z (the chairs a little darker than the top). */
-export function bistro(d: SiteDraw, x: number, y: number, z: number, col = 0xf3efe6, chair = d.p.wood) {
-  table(d, x, y, z, col);
-  for (const sz of [-1, 1]) d.box(d.plain, 0.42, 0.46, 0.42, x, y, z + sz * 0.72, chair);
+/** The height of a chair's seat above the deck it stands on (the ground 0.1 + the deck 0.03 + this = 0.49, the seat registry's chair top) and of a bistro table's top. */
+export const CHAIR_H = 0.36, TABLE_H = 0.77;
+/**
+ * A chair (20 triangles): a seat block and a back on the side away from the table, in `col`; `yaw` the way the sitter faces (plan: 0 = the street, π = the building,
+ * π/2 = +x); `y` the deck it stands on. Returns the seat for `SiteLife.seats` (`table`: where a plate goes, in front of the sitter).
+ */
+export function chair(d: SiteDraw, x: number, y: number, z: number, yaw: number, col: number = d.p.wood, table?: { x: number; y: number; z: number }): PlanSeat {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  d.box(d.plain, 0.42, CHAIR_H, 0.42, x, y, z, col, yaw);
+  if (!d.lite) d.box(d.plain, 0.42, 0.4, 0.04, x - fx * 0.19, y + CHAIR_H, z - fz * 0.19, col, yaw);
+  return { x, z, yaw, kind: 'chair', top: y + CHAIR_H, ...(table ? { table } : {}) };
+}
+/**
+ * A bistro table with its two chairs facing each other, along z (`dir` 'z': the sitter on the street side looks to the building, the other to the street) or along x ('x'):
+ * a post and a top (solid, 0.9 m, 0.8 high: a body walks round it) and two chairs. Returns the two seats, each with its table in front, for `SiteLife.seats`.
+ */
+export function bistro(d: SiteDraw, x: number, y: number, z: number, o: { col?: number; chair?: number; dir?: 'z' | 'x' } = {}): PlanSeat[] {
+  table(d, x, y, z, o.col ?? 0xf3efe6);
+  d.solid(x - 0.45, z - 0.45, x + 0.45, z + 0.45, y + 0.8);
+  const on = { x, y: y + TABLE_H, z }, col = o.chair ?? d.p.wood;
+  return o.dir === 'x'
+    ? [-1, 1].map(sx => chair(d, x + sx * 0.72, y, z, -sx * Math.PI / 2, col, on))
+    : [-1, 1].map(sz => chair(d, x, y, z + sz * 0.72, sz > 0 ? Math.PI : 0, col, on));
 }
 /** A string of lights between two posts (the lamps' batch: dim by day, bright at night): two posts, a cable, a bulb every ~1.4 m. About 110 triangles for 10 m, 60 on low. */
 export function stringLights(d: SiteDraw, x0: number, x1: number, z: number, y = 3.0) {
@@ -227,20 +251,20 @@ export function stringLights(d: SiteDraw, x0: number, x1: number, z: number, y =
   for (let k = 1; k < n; k++) { const x = a + ((b - a) * k) / n; d.box(d.bulbs, 0.13, 0.13, 0.13, x, y - 0.17 - 0.12 * Math.sin((Math.PI * k) / n), z, 0xffe2a8); }
 }
 /** What a terrace drew (for the checks). */
-export interface TerraceInfo { x0: number; x1: number; z0: number; z1: number; tables: number; chairs: number; parasols: number }
+export interface TerraceInfo { x0: number; x1: number; z0: number; z1: number; tables: number; chairs: number; parasols: number; seats: PlanSeat[] }
 /**
- * A café terrace: a deck, rows of bistro tables (`rows`: the z of each, `per`: how many in each) between x0 and x1, a parasol over every other table
- * (none over half of them on the low preset). Returns what it drew.
+ * A café terrace: a deck, rows of bistro tables between x0 and x1 (each row: its `z`, how many tables `per`, and `dir` the way their chairs face each other), a parasol over
+ * every other table (none over half of them on the low preset). Returns what it drew: the tables' seats are in `seats`.
  */
-export function terrace(d: SiteDraw, o: { x0: number; x1: number; z0: number; z1: number; rows: number[]; per: number[]; y?: number; deck?: number }): TerraceInfo {
-  const y = o.y ?? Y0, a = Math.min(o.x0, o.x1), b = Math.max(o.x0, o.x1), info: TerraceInfo = { x0: a, x1: b, z0: o.z0, z1: o.z1, tables: 0, chairs: 0, parasols: 0 };
+export function terrace(d: SiteDraw, o: { x0: number; x1: number; z0: number; z1: number; rows: { z: number; per: number; dir?: 'z' | 'x' }[]; y?: number; deck?: number }): TerraceInfo {
+  const y = o.y ?? Y0, a = Math.min(o.x0, o.x1), b = Math.max(o.x0, o.x1), info: TerraceInfo = { x0: a, x1: b, z0: o.z0, z1: o.z1, tables: 0, chairs: 0, parasols: 0, seats: [] };
   if (o.deck !== undefined) d.flat(d.plain, b - a, o.z1 - o.z0, (a + b) / 2, y + 0.03, (o.z0 + o.z1) / 2, o.deck);
-  o.rows.forEach((z, r) => {
-    const n = o.per[r] ?? o.per[0];
-    for (let k = 0; k < n; k++) {
-      const x = a + ((b - a) * (k + 0.5)) / n;
-      bistro(d, x, y + 0.03, z); info.tables++; info.chairs += 2;
-      if ((k + r) % 2 === 0 && !(d.lite && k % 2)) { parasol(d, x, y + 0.03, z, 0xefe8da, 1.5); info.parasols++; }
+  o.rows.forEach((row, r) => {
+    for (let k = 0; k < row.per; k++) {
+      const x = a + ((b - a) * (k + 0.5)) / row.per;
+      info.seats.push(...bistro(d, x, y + 0.03, row.z, { dir: row.dir })); info.tables++; info.chairs += 2;
+      const pr = Math.min(1.5, 10.8 - row.z);                                                                 // (a parasol over a front row would reach past the railing: none, then)
+      if ((k + r) % 2 === 0 && !(d.lite && k % 2) && pr >= 1.1) { parasol(d, x, y + 0.03, row.z, 0xefe8da, pr); info.parasols++; }
     }
   });
   return info;
@@ -255,4 +279,31 @@ export function awning(d: SiteDraw, x0: number, x1: number, z: number, y: number
   const list: Q[] = [];
   for (let k = 0; k < n; k++) list.push({ u0: a + ((b - a) * k) / n, u1: a + ((b - a) * (k + 1)) / n, y0: y - 0.34, y1: y + 0.08, c: k % 2 ? 0xf4f1ea : col });
   quads(d, d.plain, 'street', z + depth + 0.02, list);
+}
+
+// ------------------------------------------------------------------------------------------------ the people and the small props of the ground floor
+/** The staff's looks (the game's humanoid: a dark suit, a livery, an apron): a doorman, a bellhop, a valet, a waiter, a shopkeeper. */
+export const STAFF: Record<'doorman' | 'bellhop' | 'valet' | 'waiter' | 'shop', PersonLook> = {
+  doorman: { skin: 0x5a3a28, style: 'tee', top: 0x1d2733, bottom: 0x15191f, shoes: 0x0e0e10, hair: 'none' },
+  bellhop: { skin: 0x6b4630, style: 'tee', top: 0xb8893a, bottom: 0x1d2733, shoes: 0x0e0e10, hair: 'short' },
+  valet: { skin: 0x7a5236, style: 'tee', top: 0x9d2f2a, bottom: 0x15191f, shoes: 0x0e0e10, hair: 'short' },
+  waiter: { skin: 0x5a3a28, style: 'tee', top: 0xf4f1ea, bottom: 0x15191f, shoes: 0x0e0e10, hair: 'short' },
+  shop: { skin: 0x6b4630, style: 'dress', top: 0xc2663a, female: true, hair: 'puff', hat: 'headwrap', hatColor: 0xe0b44a },
+};
+/** A placed person at the plan point, facing `yaw` (0 = the street): one of the site's `life.people`. */
+export const person = (x: number, z: number, yaw: number, clip: PlanPerson['clip'], look?: PersonLook): PlanPerson => ({ x, z, yaw, clip, ...(clip === 'Sit' ? { y: -0.05 } : {}), ...(look ? { look } : {}) });
+/**
+ * A luggage trolley (about 60 triangles): a brass frame on a base with a handle and three bags of the palette's colours; solid (0.95 × 0.6 m, 1.2 high), `yaw` a multiple of π/2
+ * (its length lies along x for 0 and π).
+ */
+export function trolley(d: SiteDraw, x: number, z: number, yaw = 0) {
+  const along = Math.abs(Math.sin(yaw)) < 0.5, at = (a: number, b: number) => [x + (along ? a : b), z + (along ? b : a)] as const;
+  const bx = (b: number, w: number, h: number, dd: number, a: number, y: number, c: number, bt = d.plain) => { const q = at(a, b); d.box(bt, along ? w : dd, h, along ? dd : w, q[0], y, q[1], c); };
+  bx(0, 0.95, 0.07, 0.55, 0, Y0 + 0.1, 0xc9a14b);                                       // the base
+  bx(0, 0.05, 1.15, 0.05, -0.44, Y0 + 0.1, 0xc9a14b); bx(0, 0.05, 1.15, 0.05, 0.44, Y0 + 0.1, 0xc9a14b);          // the two posts
+  bx(0, 0.95, 0.05, 0.05, 0, Y0 + 1.2, 0xc9a14b);                                         // the rail
+  bx(0, 0.5, 0.42, 0.4, -0.2, Y0 + 0.17, mix(d.p.accent, 0x2c2d30, 0.3)); bx(0, 0.36, 0.3, 0.32, 0.22, Y0 + 0.17, 0x7a5434); bx(0, 0.4, 0.3, 0.3, -0.2, Y0 + 0.59, 0xd9cfbf);
+  for (const a of [-0.38, 0.38]) bx(0.27, 0.12, 0.12, 0.12, a, Y0, 0x1a1a1c);               // the wheels
+  const r = along ? { w: 0.95, h: 0.6 } : { w: 0.6, h: 0.95 };
+  d.solid(x - r.w / 2, z - r.h / 2, x + r.w / 2, z + r.h / 2, Y0 + 1.2);
 }

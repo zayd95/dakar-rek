@@ -1,0 +1,48 @@
+// « Mesure de fluidité » (src/core/frameStats.ts, docs/beta/IPHONE_PLAYTEST.md): on a phone-sized page with real touch, the switch in Réglages › Graphismes puts the meter on screen, it
+// names the place, and « Signaler un problème » carries one measured line for it. The frame rate here is a software renderer's: only the plumbing is checked, not the numbers.
+// Usage: node scripts/check-frame-meter.mjs <baseUrl> <outDir>
+import { chromium } from 'playwright';
+import fs from 'node:fs';
+const [base = 'http://127.0.0.1:4720/', out = '/tmp/claude-0/kit/meter'] = process.argv.slice(2);
+fs.mkdirSync(out, { recursive: true });
+let failed = 0, total = 0;
+const check = (name, ok, detail = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+await context.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); localStorage.removeItem('dakarrek.fps'); } catch { /* */ } });
+const page = await context.newPage(); page.setDefaultTimeout(120000);
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+await page.goto(`${base}?debug&touch&heure=15`, { timeout: 180000 });
+await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.pos().mode === 'play', null, { timeout: 180000 });
+await page.waitForTimeout(1500);
+const meter = () => page.evaluate(() => { const e = [...document.body.children].find(x => x.getAttribute('aria-hidden') === 'true' && /img\/s/.test(x.textContent ?? '')); return e && !e.hidden ? e.textContent : null; });
+check('the meter is off by default', (await meter()) === null);
+await page.evaluate(() => window.__dakar.phone('reglages'));
+await page.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+await page.waitForTimeout(700);
+const sw = page.locator('#phone [data-act="fps"]');
+check('« Mesure de fluidité » is a switch in Réglages', await sw.count() === 1, await sw.first().textContent().catch(() => ''));
+await sw.tap();
+await page.waitForTimeout(800);
+await page.evaluate(() => window.__dakar.phoneClose?.() ?? document.querySelector('#phone [data-nav="close"]')?.click());
+await page.waitForTimeout(6000);
+const txt = await meter();
+check('the meter shows the rate and the place', !!txt && /\d+ img\/s · 95 % < \d+ ms · .+ · (à pied|au volant|dans un logement)/.test(txt), String(txt));
+await page.screenshot({ path: `${out}/meter.png` });
+await page.evaluate(() => window.__dakar.phone('reglages'));
+await page.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+await page.waitForTimeout(700);
+await page.locator('#phone [data-act="report"]').tap();
+await page.waitForTimeout(800);
+const report = await page.locator('#phone [data-report]').inputValue().catch(() => '');
+check('the report names the build and the device', /Dakar Rek bêta · build/.test(report) && /Appareil :/.test(report));
+check('and carries the measured line for the place', /Fluidité mesurée sur cet appareil/.test(report) && /images\/s en moyenne/.test(report), report.split('\n').slice(5, 8).join(' | '));
+await page.locator('#phone [data-act="fps"]').tap().catch(() => {});
+await page.waitForTimeout(500);
+await page.evaluate(() => window.__dakar.phoneClose?.());
+await page.waitForTimeout(1500);
+check('switching it off hides the meter', (await meter()) === null);
+check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+console.log(failed ? `${failed}/${total} frame meter checks FAILED` : `${total}/${total} frame meter checks passed`);
+await browser.close();
+process.exit(failed ? 1 : 0);

@@ -1,0 +1,23 @@
+PASS: the villa is the player's, and their home villa_almadies
+PASS: « Entrer chez toi »: inside the villa built from its plan, on the ground floor, in the entrée, inside the front door {"h0":{"plan":"villa_almadies","level":"rdc","room":"entree"},"at":[-3,3.2]}
+PASS: on arrival only the ground floor is drawn (the cutaway) [{"id":"rdc","shell":true,"core":true},{"id":"etage","shell":false,"core":false},{"id":"toit","shell":false,"core":false}]
+PASS: walked with the joystick through 80 legs on three levels, each reached in the room and on the level it is on []
+PASS: every level walked: the ground floor, the first floor and the roof terrace (the feet up to 6.9 m) rdc,etage,toit max y 6.90
+PASS: the rooms visited: 18 rooms of the three levels, the pool deck, a balcony and the roof terraces missing: 
+PASS: reached the helipad on the roof (2.59 m from its centre, radius 3.2, feet at 6.90 m) {"x":1776.3028923218947,"y":6.8999999999999995,"z":-3.092581424599921,"hub":"almadies","mode":"play","near":null,"yaw":-20.4106379489741,"cam":11.03079175668841}
+PASS: each door opened as the player came through it (the bureau, the salle d'eau, the suite, the bedroom) {"entree-bureau":1,"hall-sde":1,"couloir-sdb":0,"salon-chambre2":1,"salon-suite":1,"salon-chambre3":0}
+PASS: never inside a wall, a railing or a fitting of the floor the player is on: 630 samples, always at least 0.2 m from them (closest 0.300 m) []
+PASS: the player always seen: on screen, and the see-through hole open whenever a wall stands between the camera and the player {"hidden":[],"off":[]}
+PASS: back on the ground floor at the front door: only the ground floor drawn again {"y":0.1,"levels":[{"id":"rdc","shell":true,"core":true},{"id":"etage","shell":false,"core":false},{"id":"toit","shell":false,"core":false}]}
+PASS: at the front door, the action is « Sortir » {"id":"almadies:in:door:villa_almadies","name":"Sortir","kind":"door","space":"home","primary":"Sortir","all":["Sortir"],"why":[]}
+PASS: « Sortir » by a tap: back in the street of Almadies {"x":-21,"y":0.1,"z":-13,"hub":"almadies","mode":"play","near":"Villa avec piscine · Almadies","yaw":-25.142419872346558,"cam":-25.382419872346556}
+PASS: pictures of the three levels by day and at 21 h, each PNG under 400 kB (18) rdc-salon-day 246 kB, rdc-pool-day 226 kB, rdc-hall-day 210 kB, rdc-cuisine-day 194 kB, etage-salon-day 249 kB, etage-suite-day 224 kB, etage-balcon-day 132 kB, toit-helipad-day 216 kB, toit-terrasse-day 278 kB, rdc-salon-night 258 kB, rdc-pool-night 194 kB, rdc-hall-night 213 kB, rdc-cuisine-night 195 kB, etage-salon-night 254 kB, etage-suite-night 232 kB, etage-balcon-night 127 kB, toit-helipad-night 184 kB, toit-terrasse-night 239 kB
+PASS: the shell of each level at most 30 draw calls (with what is seen of the levels below; the helicopter's own on the roof): rdc 14 calls 8916 tris, etage 27 calls 9566 tris, toit 28 calls 16248 tris {"rdc":{"calls":14,"tris":8916,"frame":{"calls":16,"tris":23846}},"etage":{"calls":27,"tris":9566,"frame":{"calls":32,"tris":25212}},"toit":{"calls":28,"tris":16248,"frame":{"calls":34,"tris":31450}}}
+PASS: « Aménager »: the level chips (RDC, Étage, Toit) and the ground floor's room chips {"levels":["RDC","Étage","Toit"],"rooms":["Entrée","Grand salon","Salle à manger","Cuisine","Bureau","Salle d’eau","Piscine"]}
+PASS: a tap on « Étage »: the first floor in view (the cutaway follows the editor), its room chips {"level":"etage","home":"etage","rooms":["Salon familial","Suite","Dressing","Bain parental","Chambre 2","Chambre 3","Salle de bain","Balcon rue","Balcon suite"]}
+PASS: the level's room chips fit the phone's width in a few rows (374 × 155 px) {"w":374,"h":155,"bottom":267}
+PASS: the suite chip frames the master suite from above its floor; the bed bought is in it, set up by its kind {"room":"suite","cam":[1774.6275,13.157363330364939,-2.972545093179948],"bed":{"uid":"a7","spec":"lit_capitonne_noir","at":{"x":14.63,"z":-1.82,"rot":2},"room":"suite"}}
+PASS: each level, empty and with 12 pieces of furniture: ≤ 60 draw calls and ≤ 80k triangles (phone page) {"empty":{"rdc":{"calls":21,"tris":24772},"etage":{"calls":32,"tris":25212},"toit":{"calls":34,"tris":31888}},"furnished":{"rdc":{"calls":20,"tris":25820},"etage":{"calls":28,"tris":26212},"toit":{"calls":36,"tris":32138}}}
+PASS: no page errors 
+
+21 passed, 0 failed

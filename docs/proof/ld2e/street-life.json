@@ -1,0 +1,76 @@
+{
+ "base": "http://127.0.0.1:4971/",
+ "at": "2026-10-27T22:52:18.626Z",
+ "hours": {
+  "9": {
+   "live": 36,
+   "sitting": 9,
+   "street": 36,
+   "streetSitting": 9,
+   "byTag": {
+    "cafe": 1,
+    "eat": 1,
+    "kiosk": 1,
+    "shop": 4,
+    "stop": 18,
+    "corner": 6,
+    "bench": 7
+   },
+   "problems": []
+  },
+  "13": {
+   "live": 30,
+   "sitting": 2,
+   "street": 30,
+   "streetSitting": 2,
+   "byTag": {
+    "stop": 14,
+    "shop": 7,
+    "corner": 7,
+    "attaya": 1,
+    "cafe": 1,
+    "eat": 1,
+    "kiosk": 1
+   },
+   "problems": []
+  },
+  "19": {
+   "live": 34,
+   "sitting": 8,
+   "street": 34,
+   "streetSitting": 8,
+   "byTag": {
+    "stop": 20,
+    "shop": 5,
+    "juice": 1,
+    "bench": 6,
+    "dames": 1,
+    "corner": 1
+   },
+   "problems": []
+  },
+  "21": {
+   "live": 34,
+   "sitting": 12,
+   "street": 34,
+   "streetSitting": 12,
+   "byTag": {
+    "stop": 11,
+    "juice": 1,
+    "bench": 10,
+    "corner": 5,
+    "shop": 2,
+    "eat": 2,
+    "kiosk": 2,
+    "attaya": 2,
+    "cafe": 1,
+    "square": 1,
+    "dames": 1
+   },
+   "problems": []
+  }
+ },
+ "spots": 70,
+ "streetSeats": 213,
+ "errors": []
+}

@@ -135,7 +135,7 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     ['meuble_vasque', 15.46, 37.7, 3], ['miroir_lumineux', 15.63, 37.7, 3], ['seche_serviettes', 15.65, 38.65, 3],
     // out front: the bench and the planter, a deck chair, and the garden set under its parasol and a sun lounger on the forecourt
     ['banquette', 5.0, 42.7, 0], ['jardiniere', 11.0, 42.3, 0], ['transat', 2.9, 43.0, 0], ['salon_teck', 14.4, 43.5, 0], ['bain_soleil', 17.0, 43.4, 0],
-    ['jarre_herbes', 6.25, 42.7, 0], ['lanternes_fer', 2.75, 41.6, 0],
+    ['jarre_herbes', 6.0, 42.7, 0], ['lanternes_fer', 2.75, 41.6, 0],
     ...(lite ? [] : [['lampadaire_laiton', 2.8, 32.8, 0], ['palmier', 15.2, 40.4, 0], ['plante', 2.7, 36.0, 0], ['enceintes', 12.5, 39.8, 3],
       ['lustre', 5.0, 34.6, 0], ['vitrine', 13.35, 32.55, 0], ['lampadaire_arc', 6.6, 32.9, 3], ['ventilo_pied', 4.0, 36.6, 0], ['canari', 7.05, 40.6, 0]] as [string, number, number, number][]),
   ];

@@ -13,6 +13,9 @@ import { HUB_STREETS, edgeWeight } from '../crowd/streetPlan';
  * collider. They are drawn merged (`ParkedBake`: one body and one glass draw call per quarter of the hub in view).
  */
 export const PARKED_COUNT = { low: 22, medium: 34, high: 48 } as const;
+/** A hub's share of the count above: the Almadies' avenues are wide and its houses have drives, kerbs and forecourts to fill (LD2.0-E round 3: « some streets feel too empty »). */
+export const PARKED_HUB_FACTOR: Partial<Record<HubWorld['id'], number>> = { almadies: 1.6 };
+export const parkedCountFor = (hub: HubWorld['id'], quality: keyof typeof PARKED_COUNT) => Math.round(PARKED_COUNT[quality] * (PARKED_HUB_FACTOR[hub] ?? 1));
 const PARKED_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   plateau: [['sedan', 30], ['taxi', 25], ['suv', 15], ['luxury', 8], ['moto', 12], ['pickup', 10]],
   corniche: [['sedan', 30], ['taxi', 20], ['suv', 18], ['luxury', 12], ['moto', 12], ['pickup', 8]],
@@ -27,6 +30,11 @@ const PARKED_MIX_BUSY: Partial<Record<HubWorld['id'], [VehicleKind, number][]>> 
 /** Hubs whose side streets keep their own share: past this share of the count, the rest park on the side streets (Mermoz's villa streets have cars along their walls). */
 const BUSY_SHARE: Partial<Record<HubWorld['id'], number>> = { mermoz: 0.6 };
 /** Distance from the road centre line to the parked vehicle's centre (sidewalks start at 5 m). */
+/**
+ * Kerb that stays free of parked cars: the coast road in front of the Almadies' hospitality strip (blocks (0,0) and (1,0): x −113…−7), where a driver comes up to the Terrasse de Ngor's visitor bay
+ * and the car parks' ways in (check-almadies-journey drives that lane). The strip has its own authored cars; the district's busy streets (LD2.0-E round 3) park the rest of the road.
+ */
+const KERB_FREE: Partial<Record<HubWorld['id'], { x0: number; z0: number; x1: number; z1: number }[]>> = { almadies: [{ x0: -121, z0: -119.2, x1: -6, z1: -112 }] };
 export const PARK_OFFSET = 4.3;
 /** Weight of a busy street's places against a side street's when the cars are drawn. */
 const BUSY_PARK = 14;
@@ -47,7 +55,7 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
   const R = rng(0x5eed + seedSalt + world.id.length * 977 + Math.round(world.spawn.x * 13 + world.spawn.z * 7));
   const mixes = [PARKED_MIX[world.id] ?? PARKED_MIX.plateau, PARKED_MIX_BUSY[world.id] ?? PARKED_MIX[world.id] ?? PARKED_MIX.plateau];
   const pickKind = (main: boolean) => { const mix = mixes[main ? 1 : 0]; let x = R() * mix.reduce((a, [, w]) => a + w, 0); for (const [k, w] of mix) { x -= w; if (x <= 0) return k; } return mix[0][0]; };
-  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [...(world.keepClear ?? [])];   // ground kept open (a loading bay, a shop's frontage): no car parks there
+  const taken: { x0: number; z0: number; x1: number; z1: number }[] = [...(world.keepClear ?? []), ...(KERB_FREE[world.id] ?? [])];   // ground kept open (a loading bay, a shop's frontage): no car parks there
   const hits = (r: { x0: number; z0: number; x1: number; z1: number }) =>
     world.colliders.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0) || taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
   const gate = world.arena ? { x: world.arena.cx, z: world.arena.cz - 30 } : null;
