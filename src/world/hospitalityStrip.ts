@@ -97,6 +97,24 @@ export const stripedAwning = (k: K, x: number, w: number, y: number, z: number, 
 const door = (k: K, x: number, z: number, w = 1.45, h = 2.3, col = 0x30271f) => { k.plain.box(w, h, 0.14, x, k.G - 0.02, z, col); k.pool(x, z - 2.2, 3.4); };
 
 // ---------------------------------------------------------------- venues
+/**
+ * The Terrasse de Ngor's name on its roof (LD2.0-E round 4's wish for the rooftop restaurant, « put it on top since it's a rooftop and make it visible from the street and far », carried
+ * to the Terrasse of the strip): the numbers of the gantry that `terrasse` draws and the faces the venue paints and lights (src/venues/rooftop.ts), in one place. `x`, `z` are the
+ * venue's centre; `y` the roof terrace's floor.
+ */
+export function terrasseGantry(x: number, z: number, G: number) {
+  const fz = z - VENUE_D / 2, ry = G + 6.3, rz0 = fz - 1.35;
+  const front = { w: VENUE_W + 0.2, h: 2.6, y0: ry + 1.25, z: rz0 + 0.35 };                          // the long board over the street, a face each way
+  const xb = VENUE_W / 2 + 0.25, blade = { w: 3.4, h: 2.4, y0: ry + 0.95, z: fz + 1.7, x: xb };       // a blade across each end of the roof, read from along the coast road
+  const panels = [
+    { x, y: front.y0 + front.h / 2, z: front.z - 0.09, w: front.w - 0.3, h: front.h - 0.2, nx: 0, nz: -1, kind: 'front' as const },
+    { x, y: front.y0 + front.h / 2, z: front.z + 0.09, w: front.w - 0.3, h: front.h - 0.2, nx: 0, nz: 1, kind: 'front' as const },
+    { x: x + blade.x + 0.09, y: blade.y0 + blade.h / 2, z: blade.z, w: blade.w - 0.2, h: blade.h - 0.2, nx: 1, nz: 0, kind: 'blade' as const },
+    { x: x - blade.x - 0.09, y: blade.y0 + blade.h / 2, z: blade.z, w: blade.w - 0.2, h: blade.h - 0.2, nx: -1, nz: 0, kind: 'blade' as const },
+  ];
+  return { ry, rz0, fz, front, blade, panels };
+}
+
 /** Terrasse de Ngor: limestone ground floor behind a glass curtain wall, a timber-slat floor cantilevered over the entrance, and a roof terrace with a pergola, umbrellas and a lit sign. */
 function terrasse(k: K, x: number, z: number) {
   const { plain, glass, lampBulbs, G } = k, fz = z - VENUE_D / 2, stone = 0xece4d4, timber = 0x8b5a34, black = 0x23262b;
@@ -136,10 +154,17 @@ function terrasse(k: K, x: number, z: number) {
   glass.box(1.0, 1.9, 0.05, x + 4.5, ry + 0.3, z + 1.82, 0x6fb9cf);
   for (let n = 0; n <= 14; n++) lampBulbs.box(0.1, 0.1, 0.1, x - 6.2 + n * 0.88, ry + 1.15, rz0 - 0.02, n % 2 ? 0xfff0c0 : WARM);
   festoon(k, x - 5.3, ry + 2.45, fz + 0.3, x + 4.5, ry + 2.5, fz + 0.5, 0.35, [WARM, 0xfff0c0]);
-  // the lit sign on the roof (blade posts + a cyan outline)
-  for (const s of [-1, 1]) plain.box(0.12, 2.4, 0.12, x + s * 4.3, ry, rz0 + 0.15, black);
-  k.addSign('TERRASSE DE NGOR · ROOFTOP', '#0f3340', '#c8f6ff', x, ry + 1.9, rz0 + 0.05, Math.PI, 8.4, 1.2);
-  for (const [w, h, ox, oy] of [[8.6, 0.07, 0, 2.55], [8.6, 0.07, 0, 1.28], [0.07, 1.34, -4.3, 1.9], [0.07, 1.34, 4.3, 1.9]] as const) lampBulbs.box(w, h, 0.06, x + ox, ry + oy, rz0 - 0.02, NEON_CYAN);
+  // the lit name on the roof: a long board over the street (a face each way) and a blade across each end, on posts off the roof; the faces are painted and lit by the venue (rooftop.ts)
+  { const g = terrasseGantry(x, z, G), fr = 0x0f3340;
+    plain.box(g.front.w, g.front.h, 0.16, x, g.front.y0, g.front.z, fr);
+    for (const px of [-5.4, 0, 5.4]) plain.box(0.2, g.front.y0 - ry, 0.2, x + px, ry, g.front.z, black);
+    lampBulbs.box(g.front.w, 0.07, 0.06, x, g.front.y0 - 0.05, g.front.z - 0.12, NEON_CYAN); lampBulbs.box(g.front.w, 0.07, 0.06, x, g.front.y0 + g.front.h + 0.05, g.front.z - 0.12, NEON_CYAN);
+    for (const s of [-1, 1]) {
+      plain.box(0.16, g.blade.h, g.blade.w, x + s * g.blade.x, g.blade.y0, g.blade.z, fr);
+      for (const dz of [-1.35, 1.35]) plain.box(0.2, g.blade.y0 - ry, 0.2, x + s * g.blade.x, ry, g.blade.z + dz, black);
+      lampBulbs.box(0.06, 0.07, g.blade.w, x + s * (g.blade.x + 0.1), g.blade.y0 - 0.05, g.blade.z, NEON_CYAN);
+    }
+  }
   // the front: planters and lanterns against the wall; a valet stand beside the bay
   for (const s of [-1, 1]) {
     planter(k, x + s * 3.6, fz - 0.6, 1.5, 0.7, stone);

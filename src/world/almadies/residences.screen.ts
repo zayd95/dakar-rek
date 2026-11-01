@@ -89,9 +89,9 @@ export const screen: SiteBuilder = d => {
   k.info.doors.push({ kind: 'lobby', x: dx, z: LB.z1 - 0.1, face: 'street', stand: { x: dx, z: LB.z1 + 0.85 } });
   if (s.name) { const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`; nameBoard(d, s.name, { x: lc, z: LB.z1 - 0.1 + 0.16, y: lt - 0.72, w: Math.min(11.5, 0.34 * s.name.length), h: 0.9, bg: css(p.board), fg: '#f4e6bd' }); }
   // the plinth's shopfronts on the pavement: a café and a shop west of the lobby, a boutique east of it; their awnings and tables on the forecourt
-  k.unit({ kind: 'cafe', attached: true, x0: -19.4, x1: -11.9, z0: Zout, z1: Zout, door: -12.9, tables: 2, awning: 1.6, terrace: 1.4 });
-  k.unit({ kind: 'shop', attached: true, x0: -11.3, x1: -7.4, z0: Zout, z1: Zout, door: -8.2, awning: 1.6, fascia: p.board, stripe: [mix(p.accent, 0xffffff, 0.5)] });
-  k.unit({ kind: 'shop', attached: true, x0: 9.2, x1: 19.4, z0: Zout, z1: Zout, door: 10.2, tables: 2, awning: 1.6, terrace: 1.4, fascia: mix(p.accent, p.board, 0.5) });
+  k.unit({ kind: 'cafe', attached: true, x0: -20.1, x1: -12.5, z0: Zout, z1: Zout, door: -13.5, tables: 2, awning: 1.6, terrace: 1.4 });
+  k.unit({ kind: 'shop', attached: true, x0: -12.2, x1: -7.2, z0: Zout, z1: Zout, door: -11.2, awning: 1.6, fascia: p.board, stripe: [mix(p.accent, 0xffffff, 0.5)] });
+  k.unit({ kind: 'shop', attached: true, x0: 9.2, x1: 19.4, z0: Zout, z1: Zout, door: 10.2, awning: 1.6, terrace: 1.4, fascia: mix(p.accent, p.board, 0.5) });
   k.sec('lobby');
 
   // ------------------------------------------------------------------------------------------------ the crown: a pergola of oak blades, a glass parapet, the plant
@@ -129,9 +129,14 @@ export const screen: SiteBuilder = d => {
   k.paved({ x0: dx - 1.7, z0: LB.z1, x1: dx + 1.7, z1: 10.55 }, mix(p.stone, 0xffffff, 0.8), 0.05);                         // the path from the opening to the door
   for (const [x0, x1] of [[-6.2, -3.6], [-1.0, 3.0]] as const) { m.hq(x0, 6.6, x1, 9.2, G + 0.045, true, GREEN.lawn); k.leaves.box(x0, G, 9.2, x1, G + 0.5, 9.6, GREEN.hedge2, 'U'); }
   k.trough(-18.6, -15.6, 9.7, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(-18.6, 9.4, -15.6, 10.0, 1.0); k.trough(12.6, 16.0, 9.7); d.solid(12.6, 9.4, 16.0, 10.0, 1.0);
-  k.bench(-10.2, 9.7, 1.8); d.solid(-11.1, 9.45, -9.3, 9.95, 0.9);
-  palm(d, -12.2, 7.4, 1.15, 0.3); palm(d, 19.2, 6.8, 1.0, 1.2);
+  const bench = k.benchSeats(-10.2, 9.4, 0, { len: 1.8, n: 2 });                                                         // a bench on the forecourt, a resident on it
+  k.sitOn(bench[0], 'resident');
+  k.scooter(20.8, 5.9, 0, 0); k.scooter(21.6, 5.9, 0, 3);                                                                // scooters by the boutique
+  k.person('doorman', dx + 1.3, 6.6, 0, 'Idle');                                                                          // the lobby's doorman under the canopy
+  k.person('driver', 20.7, 7.5, Math.PI, 'Talk');                                                                         // a rider with his scooters
+  palm(d, -3.4, 8.2, 1.15, 0.3); palm(d, 19.2, 6.8, 1.0, 1.2);
   d.light(dx, 8.2, 3, 0.16); d.light(-15.6, 7.6, 2.6, 0.16);
   k.sec('garden');
   k.flush();
+  return { life: k.life };
 };

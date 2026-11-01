@@ -144,11 +144,15 @@ export const ngor: SiteBuilder = d => {
   for (let i = 0; i < 6; i++) gr(1.0, 3.6 + i * 1.1, 4.8, 0.06, 0.05, p.stoneDark);                                          // its joints
   for (const x of [cx - 1.9, cx + 1.9]) { m.box(x - 0.28, G, LB.z1 + 0.3, x + 0.28, G + 0.55, LB.z1 + 0.86, p.stone, 'U'); d.blob(d.leaves, 0.42, x, G + 0.95, LB.z1 + 0.58, GREEN.hedge2, 1, 0); }   // topiary either side of the door
   k.trough(-10.4, -7.6, 9.8, { bloom: mix(p.accent, 0xff7a9a, 0.4) }); d.solid(-10.4, 9.5, -7.6, 10.1, 1.0);
-  k.trough(-2.9, -2.3, 9.2); k.bench(-8.6, 8.2, 1.7); d.solid(-9.45, 7.95, -7.75, 8.45, 0.9);
+  k.trough(-2.9, -2.3, 9.2);
+  const bench = k.benchSeats(-9.2, 8.7, 0, { len: 1.8, n: 2 });                                                        // a bench on the forecourt, a resident on it
+  k.sitOn(bench[0], 'resident2');
+  k.scooter(-8.7, 6.9, Math.PI / 2, 2);                                                                                  // a scooter by the lobby
   // the café: a pavilion on the street at the drive's other side, its awning and tables toward the pavement
-  k.unit({ kind: 'cafe', x0: 4.0, x1: 10.2, z0: 5.9, z1: 8.7, door: 5.3, tables: 2, awning: 1.15, terrace: 0.75 });
+  k.unit({ kind: 'cafe', x0: 3.6, x1: 10.4, z0: 4.7, z1: 6.7, door: 4.7, tables: 2, awning: 1.15, terrace: 1.6 });
+  k.car(2.3, 5.0, 0, 0);                                                                                                 // a car on the drive, nose to the street
   palm(d, 7.7, 5.5, 0.85, 1.2);
-  for (const x of [-1.9, 3.7]) { m.box(x - 0.07, G, 9.9 - 0.07, x + 0.07, G + 0.7, 9.9 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.9 - 0.08, x + 0.08, G + 0.74, 9.9 + 0.08, 0xfff1c8, 'U'); }   // the bollards either side of the drive
+  for (const x of [-1.9, 3.1]) { m.box(x - 0.07, G, 9.9 - 0.07, x + 0.07, G + 0.7, 9.9 + 0.07, p.frame, 'U'); k.bulbs.box(x - 0.08, G + 0.62, 9.9 - 0.08, x + 0.08, G + 0.74, 9.9 + 0.08, 0xfff1c8, 'U'); }   // the bollards either side of the drive
   d.light(0.8, 9.0, 2.6, 0.16); d.light(cx, 8.8, 2.6, 0.16);
 
   // ------------------------------------------------------------------------------------------------ the name, and what is solid
@@ -157,5 +161,9 @@ export const ngor: SiteBuilder = d => {
     nameBoard(d, s.name, { x: cx, z: tz - 0.03, y: T1 + 0.5, w, h: 0.8, bg: css(p.board), fg: '#f4e6bd' });
   }
   solidBox(d, A, roof + 1.1); solidBox(d, T, roof + 1.5); solidBox(d, LB, L(1));
+  // the doorman at the lobby door, a resident on the first floor's terrace looking at the street
+  k.person('doorman', cx - 1.1, 7.2, 0, 'Idle');
+  k.person('resident', 2.6, 3.3, 0, 'Idle', STOREY);
   k.flush();
+  return { life: k.life };
 };

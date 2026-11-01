@@ -22,6 +22,10 @@ const SHOTS = {
   'boutique-flank': { p: [8, 3.2, -96], t: [-7, 5, -104] },
   'tower-flank': { p: [-8, 3.2, 62], t: [7, 6, 76] },
   'resort-flank': { p: [-52, 3.2, -78], t: [-67, 6, -92] },
+  // the café terraces, from the pavement at eye level (the seats are the city's to fill)
+  'boutique-terrace': { p: [-12, 1.9, -119.5], t: [-17, 1.0, -108] },
+  'tower-terrace': { p: [39, 1.9, 61], t: [43, 1.0, 70] },
+  'resort-terrace': { p: [-99, 1.9, -61.5], t: [-103, 1.0, -70] },
   // the way in from the pavement, at eye level
   'boutique-entry': { p: [-35, 1.7, -123.5], t: [-30, 3.5, -105] },
   'tower-entry': { p: [21, 1.7, 57], t: [30, 3.5, 74] },

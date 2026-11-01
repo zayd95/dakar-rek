@@ -13,6 +13,9 @@ import { HUB_STREETS, edgeWeight } from '../crowd/streetPlan';
  * collider. They are drawn merged (`ParkedBake`: one body and one glass draw call per quarter of the hub in view).
  */
 export const PARKED_COUNT = { low: 22, medium: 34, high: 48 } as const;
+/** A hub's share of the count above: the Almadies' avenues are wide and its houses have drives, kerbs and forecourts to fill (LD2.0-E round 3: « some streets feel too empty »). */
+export const PARKED_HUB_FACTOR: Partial<Record<HubWorld['id'], number>> = { almadies: 1.6 };
+export const parkedCountFor = (hub: HubWorld['id'], quality: keyof typeof PARKED_COUNT) => Math.round(PARKED_COUNT[quality] * (PARKED_HUB_FACTOR[hub] ?? 1));
 const PARKED_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   plateau: [['sedan', 30], ['taxi', 25], ['suv', 15], ['luxury', 8], ['moto', 12], ['pickup', 10]],
   corniche: [['sedan', 30], ['taxi', 20], ['suv', 18], ['luxury', 12], ['moto', 12], ['pickup', 8]],

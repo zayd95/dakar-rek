@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, louvres, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, post, pot, rail, slats, stones, tones, win, entry, walk, bench } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, post, pot, rail, slats, stones, tones, win, entry, walk, seatBench, car, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * Villa 1, « Porte-à-faux »: a long white upper volume cantilevered 5.6 m past a travertine ground floor over the carport, a deep glass-guarded street
@@ -66,7 +66,8 @@ export const cantilever: SiteBuilder = o => {
   lawn(k, R(-10.4, -5.4, 4.6, 10.4));
   lawn(k, R(-3.4, k.g0 - 0.3, 6.6, 10.4));
   stones(k, k.g0 - 1.2, 6.8, -2.6, 8.4, 3);
-  bench(k, -2.2, 9.5);
+  const seats = seatBench(k, -2.0, 9.4, 0);
+  car(k, 5.5, -0.2, 0, { suv: true });                                                             // an SUV under the cantilever, nose to the street
   lantern(k, -3.0, 5.2); if (n === 2) lantern(k, -5.8, 5.2);
   pot(k, -7.6, 5.4, 1.4, 0.7, 0.6, true);
   palmAt(k, -8.6 + k.j(0.5), 7.4 + k.j(0.7), 1.05 + k.j(0.08), 0.4 + k.j(0.9));
@@ -80,4 +81,5 @@ export const cantilever: SiteBuilder = o => {
   solidBox(d, R(G.x1, U.x1, U.z0, U.z1), F2 + 0.35).y0 = F1 - 0.4;
   solidBox(d, R(U.x0, G.x1, G.z1, U.z1), F2 + 0.35).y0 = F1 - 0.4;
   solidBox(d, R(2.8, 8.4, -4.2, -3.9), F1);
+  return { life: lifeOut(k, { seats, people: [who(-6.3, 9.5, 0, 'Idle', LOOKS.guard), who(-3.2, 7.1, 0, 'Talk', LOOKS.woman, F1)] }) };
 };

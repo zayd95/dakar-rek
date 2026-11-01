@@ -16,5 +16,5 @@ export const trisOf = (t: TestKit) => Object.values(t.batches).reduce((n, b) => 
 /** Draws one site with a variant (or the plan's own): the triangles, the colliders, the canopies, the keep-clear rectangles, the signs. */
 export function drawSite(site: Site, v: Variant, lite = false) {
   const t = testKit(lite), d = siteDraw(t.kit, site), r = v.build(d) ?? {};
-  return { tris: trisOf(t), colliders: d.colliders, canopies: d.canopies, keepClear: r.keepClear ?? [], signs: t.signs, group: r.group, lights: t.lights, draw: d, kit: t };
+  return { tris: trisOf(t), colliders: d.colliders, canopies: d.canopies, keepClear: r.keepClear ?? [], signs: t.signs, group: r.group, rooftopDoor: r.rooftopDoor, lights: t.lights, draw: d, kit: t };
 }

@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, louvres, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, bench } from './villas.kit';
+import { GROUND, R, T_SLAB, bloomRail, bloomWall, boundary, ctx, deckFlat, garageDoor, lantern, lawn, lightGuard, lv, palmAt, palmSmall, pave, houseNumber, poolGarden, pot, rail, slats, tones, win, edgeLight, entry, walk, seatBench, car, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * Villa 4, « La Tour »: a stair tower in vertical oak slats rising a storey above the house, stacked and staggered balconies on the street face, the
@@ -57,7 +57,8 @@ export const tower: SiteBuilder = o => {
   pave(k, R(3.4, 9.8, 3.4, 10.4), tn.drive, 1);
   walk(k, -3.9, 4.6, 1.6);
   lawn(k, R(-10.4, -5.0, 3.0, 10.4)); lawn(k, R(-2.8, 3.2, 5.4, 10.4));
-  bench(k, -1.7, 9.5);
+  const seats = [...seatBench(k, -1.7, 9.4, 0), ...seatBench(k, -6.4, 6.0, Math.PI / 2)];
+  car(k, 4.3, 7.0, Math.PI, { suv: true });                                                        // an SUV on the forecourt, beside the drive to the garage
   lantern(k, -2.6, 5.4);
   if (n === 2) pot(k, -7.6, 5.6, 1.3, 0.7, 0.6, true);
   palmAt(k, -8.6 + k.j(0.5), 8.0 + k.j(0.6), 1.05 + k.j(0.08), 0.2 + k.j(0.9));
@@ -68,4 +69,5 @@ export const tower: SiteBuilder = o => {
   bloomWall(k, 'left', -2.0, 2.2); if (n === 2) bloomWall(k, 'back', 2.0, 2.2);
   // ---- solid
   solidBox(d, H, Ft + 0.35); solidBox(d, R(T.x0, T.x1, T.z0, T.z1), Tt);
+  return { life: lifeOut(k, { seats, people: [who(-5.9, 9.4, 0, 'Idle', LOOKS.gardener), who(-1.2, 4.1, 0, 'Talk', LOOKS.woman, F1)] }) };
 };

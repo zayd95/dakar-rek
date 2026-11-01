@@ -1,6 +1,6 @@
 import { type SiteBuilder } from './contract';
 import { balcony, door, glazing, slabEdge, solidBox, volume } from './parts';
-import { GROUND, R, T_SLAB, boundary, ctx, eave, lantern, lawn, lightGuard, lv, pave, houseNumber, pot, post, rail, roofKit, shrub, slats, tones, tree, win, edgeLight, entry, walk } from './villas.kit';
+import { GROUND, R, T_SLAB, boundary, ctx, eave, lantern, lawn, lightGuard, lv, pave, houseNumber, pot, post, rail, roofKit, shrub, slats, tones, tree, win, edgeLight, entry, walk, car, scoot, who, lifeOut, LOOKS } from './villas.kit';
 
 /**
  * House 1, « Maison empilée »: two boxes stacked and offset (the white upper one slides forward over the entry and out over the carport), a big street
@@ -50,8 +50,11 @@ export const stacked: SiteBuilder = o => {
   shrub(k, 1.6, 8.6, 0.6);
   pave(k, R(-10.4, 10.4, -10.4, -4.6), tn.deck);
   lawn(k, R(-10.0, -1.0, -10.0, -6.0));
+  car(k, 6.4, 2.4, 0);                                                                           // a sedan in the carport, nose to the street
+  scoot(k, -7.6, 3.4, Math.PI / 2);                                                                // a scooter against the façade, left of the door
   solidBox(d, R(G.x0, U.x0, G.z0, G.z1), F1 + 0.2);
   solidBox(d, R(U.x0, G.x1, G.z0, G.z1), Ft + 0.35);
   const ov = solidBox(d, R(G.x1, U.x1, U.z0, U.z1), F2 + 0.35); ov.y0 = F1 - 0.5;
   const ov2 = solidBox(d, R(U.x0, G.x1, G.z1, U.z1), F2 + 0.35); ov2.y0 = F1 - 0.5;
+  return { life: lifeOut(k, { people: [who(-4.6, 4.5, 0, 'Talk', LOOKS.woman), who(-4.6, 5.9, Math.PI, 'Talk', LOOKS.visitor)] }) };   // a resident on the step, a visitor at the door
 };

@@ -1,31 +1,31 @@
 {
- "at": "2026-10-27T14:38:00.382Z",
+ "at": "2026-10-27T22:24:26.139Z",
  "cost": {
   "hotel-boutique": {
    "name": "Hôtel boutique, façade de balcons",
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 200,
-    "street": 283,
-    "back": 273,
-    "side": 112,
+    "front": 194,
+    "street": 282,
+    "back": 270,
+    "side": 122,
     "aerial": 247,
-    "close": 148,
-    "night": 145
+    "close": 151,
+    "night": 140
    },
    "medium": {
-    "calls": 10,
-    "tris": 4684
+    "calls": 18,
+    "tris": 7066
    },
    "info": {
-    "colliders": 18,
+    "colliders": 30,
     "signs": 1,
     "tallest": 17.299999999999997
    },
    "low": {
-    "calls": 10,
-    "tris": 3386
+    "calls": 18,
+    "tris": 5600
    }
   },
   "hotel-tower": {
@@ -33,26 +33,26 @@
    "kind": "hotel",
    "size": "M",
    "views": {
-    "front": 245,
-    "street": 288,
-    "back": 114,
-    "side": 160,
+    "front": 242,
+    "street": 286,
+    "back": 380,
+    "side": 168,
     "aerial": 250,
-    "close": 127,
-    "night": 183
+    "close": 130,
+    "night": 182
    },
    "medium": {
-    "calls": 9,
-    "tris": 4822
+    "calls": 18,
+    "tris": 7344
    },
    "info": {
-    "colliders": 23,
+    "colliders": 33,
     "signs": 1,
     "tallest": 27.900000000000002
    },
    "low": {
-    "calls": 9,
-    "tris": 3634
+    "calls": 18,
+    "tris": 6018
    }
   },
   "hotel-resort": {
@@ -60,26 +60,26 @@
    "kind": "hotel",
    "size": "L",
    "views": {
-    "front": 220,
-    "street": 239,
-    "back": 222,
-    "side": 195,
+    "front": 216,
+    "street": 238,
+    "back": 233,
+    "side": 204,
     "aerial": 306,
-    "close": 142,
-    "night": 139
+    "close": 155,
+    "night": 137
    },
    "medium": {
-    "calls": 10,
-    "tris": 7606
+    "calls": 19,
+    "tris": 11012
    },
    "info": {
-    "colliders": 29,
+    "colliders": 41,
     "signs": 1,
     "tallest": 17.6
    },
    "low": {
-    "calls": 10,
-    "tris": 6042
+    "calls": 19,
+    "tris": 8874
    }
   }
  },
