@@ -10,8 +10,7 @@ PASS: 3. after both reload: her Teranga Money 5 000 F and his wallet as saved (�
 PASS: 4. « Inviter chez moi » (her F2) reaches Moussa; he accepts on the card (« Acceptée » on her side too) and « Y aller » guides him to her door 
 PASS: 5a. Moussa walks to her door (joystick) and is offered « Entrer chez Awa (invité) » 
 PASS: 5b. both in her home: her space and his are `home:<her tag>`, her furniture drawn for him (same pieces), and each one’s game draws the other inside 
-FAIL: the journey went through Error: Awa: nothing to tap: #phone .mg-sheet [data-place="pikine:city:square"]
-    at p.tapWhere (file:///tmp/wt-rc/scripts/check-ld2b-journey.mjs:70:19)
-    at async file:///tmp/wt-rc/scripts/check-ld2b-journey.mjs:248:3
-12/13 passed
-exit=1
+PASS: 6. a meeting « Grand-place de Pikine » at a city time (« À NN h », sent as server ms): Moussa accepts; both there in its window → met on both sides, the card shown 
+PASS: no page errors in either game 
+14/14 passed
+exit=0
