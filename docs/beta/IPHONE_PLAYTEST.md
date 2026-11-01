@@ -5,7 +5,7 @@
 had to be slowed down (no boost) because a 5 fps page cannot steer a car at 190 km/h. So nothing yet says how the build plays on an iPhone.
 This page is the playtest that does: about 25 minutes, one build, real numbers off the phone, and a report that comes back in one message.
 
-**Not on production.** The build is a private preview (a claude.ai artifact, the same link as before) made from the **release candidate**: branch `integration/rc-20261101`, tag `rc-20261101`. Réglages shows the build id at the bottom (« build `<short SHA>-<date>` »): it must be the RC's short SHA given in the report that came with this guide. `wip/visual-pass` is untouched and nothing is deployed.
+**Not on production.** The build is a private preview (a claude.ai artifact, the same link as before) made from the **release candidate**: branch `integration/rc-20261101`, the commit named in the report that came with this guide (the remote refused a git tag, so the SHA is the identity). Réglages shows the build id at the bottom (« build `<short SHA>-<date>` »): it must be the RC's short SHA given in the report that came with this guide. `wip/visual-pass` is untouched and nothing is deployed.
 
 ## What is in the release candidate
 

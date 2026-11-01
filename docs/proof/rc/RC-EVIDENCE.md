@@ -1,7 +1,7 @@
 # Release candidate rc-20261101 — evidence
 
-**What the RC is.** Branch `integration/rc-20261101`, tag `rc-20261101` on its last commit (the tag's SHA is the RC SHA; the build id in the game's
-Réglages is that SHA's first 8 characters). Base: `integration/combined-20261027` (zayd95/dakar-rek#82, `dac784d4`). Features are frozen: since the merges
+**What the RC is.** Branch `integration/rc-20261101`; the RC is identified by the SHA of its last commit, named in the report that came with this file (a git tag was
+attempted and refused by the remote, so there is none). The build id in the game's Réglages is that SHA's first 8 characters. Base: `integration/combined-20261027` (zayd95/dakar-rek#82, `dac784d4`). Features are frozen: since the merges
 below, the only code changes are the three fixes listed under "Changes made while testing".
 
 **Not done, by instruction:** no production merge, no deployment, no change to `wip/visual-pass`.
