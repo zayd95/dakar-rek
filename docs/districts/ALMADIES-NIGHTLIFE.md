@@ -64,7 +64,7 @@ What is not in the table, stated plainly: **after 23 h the outside is quiet** (t
 | Full test suite (`npx vitest run`) | 235 files passed, 2 skipped; **3 456 tests passed, 4 skipped, 0 failed** |
 | GitHub « Game checks » on this branch | green on every completed head (the run for the last head was still going when this was written); the only failing check is Cloudflare's Workers Build, the account limit already noted on the PR |
 | The 12-step journey, one session, real touch, recorded (`scripts/check-nightlife-journey.mjs`) | **73 checks passed, 0 failed** on the integrated build: [`docs/proof/nightlife/journey/results.txt`](../proof/nightlife/journey/results.txt), 20 pictures beside it. The 18 min 46 s recording (14.6 MB MP4) is delivered with the report, not committed |
-| Le Patio in game (`check-patio.mjs`) | 61/61 on the merged build before the ticket and name change; the re-run on the final build is recorded in the next commit |
+| Le Patio in game (`check-patio.mjs`) | **61/61 passed, 0 failed** on the final build (the 5 000 F ticket, the name-only wording): the door and its fee, the courtyard, drinks, talks and the decline, the walk-over, the dance on its own beat, the terrace, the way out, the free entry of a regular, the hours by day / dawn / set-up / peak, low quality. (The first run, before the ticket and name change, was also 61/61.) |
 | Parking (`check-almadies-parking.mjs`, both car parks, driven with the pedal stick) | 9/9 |
 | Rooftop (`check-rooftop.mjs`) | 43/43 |
 | City life (`check-city-life.mjs`) | 41/41 |
