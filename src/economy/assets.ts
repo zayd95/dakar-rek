@@ -102,10 +102,16 @@ function incomeWith(a: AssetState, ad: boolean): number {
 }
 /** Income of one asset per in-game hour now. */
 export const incomeOf = (s: GameState, a: AssetState) => incomeWith(a, adRunning(s));
+/**
+ * The daily rent a lease was made at (28 Oct 2026, docs/economy/RENT_JAMM.md). A lease keeps the rate it began with (`AssetState.rate`); a lease made before that kept
+ * nothing and was charged the catalogue's rent live, so it keeps the rent the catalogue then asked, for the homes whose rent has changed since. Never read for a purchase.
+ */
+export const LEGACY_RENT: Readonly<Record<string, number>> = { maison_cite: 30_000 };
+export const rentOf = (a: AssetState): number => a.rate ?? LEGACY_RENT[a.spec] ?? specOf(a.spec)?.rent ?? 0;
 /** Charges of one asset per in-game hour: the rent of a rented home, the upkeep of an owned one. */
 export function chargeOf(a: AssetState): number {
   const sp = specOf(a.spec); if (!sp) return 0;
-  if (a.how === 'rented') return (sp.rent ?? 0) / 24;
+  if (a.how === 'rented') return rentOf(a) / 24;
   if (a.how === 'owned') return sp.upkeep ?? 0;
   return 0;
 }
@@ -167,7 +173,7 @@ export function accrue(s: GameState): number {
     const taken = -s.addMoney(-owe, st.arrears > 0 ? `${chargeLabel(s)} (avec l’arriéré)` : chargeLabel(s));
     st.spent += taken; net -= taken; st.arrears = owe - taken;
   }
-  const rentDay = st.list.filter(a => a.how === 'rented').reduce((t, a) => t + (specOf(a.spec)?.rent ?? 0), 0);
+  const rentDay = st.list.filter(a => a.how === 'rented').reduce((t, a) => t + rentOf(a), 0);
   if (st.arrears > 0 && (rentDay <= 0 || st.arrears >= rentDay * P.evictDays)) {
     for (const a of st.list.filter(x => x.how === 'rented')) { endLease(s, a.uid, false); notices.push(`Loyer impayé : le propriétaire a repris les clés · ${specOf(a.spec)?.name ?? ''}`); }
     st.arrears = 0;
@@ -199,7 +205,7 @@ export function buyAsset(s: GameState, specId: string): AssetState | null {
   s.addMoney(-sp.price!, `Achat : ${label(sp)}`);
   const lease = holding(s, specId);
   let a: AssetState;
-  if (lease) { lease.how = 'owned'; lease.paid = sp.price!; lease.since = s.data.playedMs; lease.condition = 100; a = lease; bump(); }
+  if (lease) { lease.how = 'owned'; delete lease.rate; lease.paid = sp.price!; lease.since = s.data.playedMs; lease.condition = 100; a = lease; bump(); }
   else a = addAsset(s, specId, 'owned', sp.price!);
   practise(s, 'commerce'); s.count('biens');
   return a;
@@ -235,7 +241,7 @@ export function cannotRent(s: GameState, specId: string): string | null {
 export function rentAsset(s: GameState, specId: string): AssetState | null {
   if (cannotRent(s, specId)) return null;
   accrue(s);
-  const a = addAsset(s, specId, 'rented', 0);
+  const a = addAsset(s, specId, 'rented', 0, { rate: specOf(specId)!.rent });
   s.count('locations');
   return a;
 }
