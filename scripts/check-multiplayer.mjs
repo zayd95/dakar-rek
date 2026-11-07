@@ -152,6 +152,7 @@ try {
   // never takes a waiting passenger fails all four tries and that wait. (Found by simulating the real transport module at 0.03-8 s a frame: docs/mobile/MOBILE-01-INVESTIGATION.md.)
   for (let tries = 0, taken = false; tries < 4 && !taken; tries++) {
     const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
+    console.log(`rapide wait: try ${tries + 1}, next car in ${wait0 === null ? 'null' : wait0.toFixed(1)} s${wait0 > 8 ? ' (warped)' : wait0 === 0 ? ' (a car stands there now: the race this loop covers)' : ''}`);   // (so a CI log shows whether the race ever occurs)
     if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
     taken = await b.waitForFunction(() => window.__dakar.transport.trip().phase !== 'waiting', null, { timeout: 20000 }).then(() => true, () => false);
   }
