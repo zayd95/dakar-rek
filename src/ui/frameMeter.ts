@@ -15,10 +15,16 @@ export function updateFrameMeter(now: number) {
     el = document.createElement('div');
     el.setAttribute('aria-hidden', 'true');
     el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);z-index:9;pointer-events:none;max-width:calc(100vw - 12px);overflow:hidden;text-overflow:ellipsis;'
-      + 'font:600 11px/1.3 ui-monospace,Menlo,monospace;color:#d9ffd9;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:6px;white-space:nowrap';
+      + 'font:600 11px/1.3 ui-monospace,Menlo,monospace;color:#d9ffd9;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:6px;white-space:pre;text-align:center';
     document.body.appendChild(el);
   }
   const c = frameStats.current();
   el.hidden = !c;
-  if (c) el.textContent = `${c.fps} img/s · 95 % < ${c.p95} ms · ${c.key}`;
+  if (c) {
+    const m = frameStats.memoryNow(), t = frameStats.recentTransition(now);
+    const mem = m ? (m.heapMB !== undefined ? `${m.heapMB} Mo` : m.geometries !== undefined ? `${m.geometries} géom. · ${m.textures ?? '?'} tex.` : '') : '';
+    const tr = t ? `quartier ${t.totalMs} ms (pire image ${t.worstAfterMs})` : '';
+    const second = [mem, tr].filter(Boolean).join(' · ');                  // a second line, so the first stays readable on a phone's width
+    el.textContent = `${c.fps} img/s · 95 % < ${c.p95} ms · ${c.key}${second ? `\n${second}` : ''}`;
+  }
 }
