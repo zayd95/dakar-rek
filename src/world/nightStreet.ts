@@ -167,7 +167,7 @@ export interface NightStreetInfo {
 }
 export function buildNightStreet(k: StripKit): NightStreetInfo {
   const venues: NightStreetInfo['venues'] = [];
-  const w = bayRow(k, LOTS.west.x0, LOTS.west.x1, LOTS.west.name, k.seed * 31 + 3, [[PATIO_SITE.x, 8], [-88.35, 3], [-75.35, 3], [-62.35, 3], [-53, 2]], [DROP_BAY.x0, DROP_BAY.x1]);
+  const w = bayRow(k, LOTS.west.x0, LOTS.west.x1, LOTS.west.name, k.seed * 31 + 3, [[PATIO_SITE.x, 18], [-88.35, 2.6], [-75.35, 2.6], [-62.35, 8], [-53, 2]], [DROP_BAY.x0, DROP_BAY.x1]);
   dropBay(k); zebra(k);
   promenade(k, LOTS.west.x0, NIGHT_RECTS.comptoir.x1, POLES.west);                                  // as far as Le Comptoir's front, beside the alley
   TABLES.forEach((tx, i) => cafeSet(turned(k, tx, TABLE_Z), tx, TABLE_Z, [0xb94f36, 0x1e6fd9, 0x2a6fb0][i % 3]));

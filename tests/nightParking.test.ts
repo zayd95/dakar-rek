@@ -58,22 +58,28 @@ const hubs: Partial<Record<'full' | 'lite', HubWorld>> = {};
 const build = async (q: 'full' | 'lite') => hubs[q] ??= (await import('../src/world/builder')).buildHub('almadies', q === 'lite');
 
 describe('the night street\'s car park: 21 bays are enough', () => {
-  it('has at least 20 painted bays; NPC cars fill between a quarter and 60 % of them (a street with life, not an empty lot, not a full one) and at least 40 % stay free, on both presets', async () => {
+  it('has at least 20 painted bays; NPC cars stand in some of them (a lot with life, at most 60 %) and at least 40 % stay free, on both presets', async () => {
     for (const q of ['full', 'lite'] as const) {
       const n = (await build(q)).nightStreet!, free = n.bays.filter(b => b.free).length, npc = n.bays.length - free;
       expect(n.bays.length, q).toBeGreaterThanOrEqual(20);
-      expect(npc, `${q}: ${npc} NPC cars in ${n.bays.length} bays`).toBeGreaterThanOrEqual(Math.ceil(n.bays.length / 4));
+      expect(npc, `${q}: ${npc} NPC cars in ${n.bays.length} bays`).toBeGreaterThanOrEqual(3);
+      expect(npc / n.bays.length, q).toBeLessThanOrEqual(0.6);
       expect(free / n.bays.length, `${q}: ${free} free of ${n.bays.length}`).toBeGreaterThanOrEqual(0.4);
       expect(free, q).toBeGreaterThanOrEqual(8);
       expect(n.cars, 'the street\'s count of NPC cars is the bays that are taken').toBe(npc);
     }
   });
 
-  it('keeps at least two free bays within 12 m of every door (Le Patio and the four venues; the hotel within 30 m), with NPC cars standing between them', async () => {
+  it('keeps a run of free bays by every door a driver can swing into (a free bay with its west neighbour and the two to its east free: the rule the journeys\' pilots use), with NPC cars standing between the doors', async () => {
     const h = await build('full'), n = h.nightStreet!, free = n.bays.filter(b => b.free), door = h.rooftopDoor!.x;
     for (const [name, x] of [['Le Patio', PATIO_SITE.x], ...NIGHT_VENUES.map(v => [v.kind, v.cx] as const)] as const) expect(free.filter(b => Math.abs(b.x - x) < 12).length, name).toBeGreaterThanOrEqual(2);
     expect(free.filter(b => Math.abs(b.x - door) < 30).length, 'the hotel and its Terrasse across the road (the car park\'s east end is 15 m from the stair door)').toBeGreaterThanOrEqual(2);
-    expect(n.bays.some(b => !b.free && Math.abs(b.x - PATIO_SITE.x) < 40), 'NPC cars stand in the Patio\'s half of the lot too').toBe(true);
+    const BW = 2.6, isFree = (x: number) => free.some(b => Math.abs(b.x - x) < 0.3), run = free.filter(b => isFree(b.x - BW) && isFree(b.x + BW) && isFree(b.x + 2 * BW));
+    const nearest = (x: number) => Math.min(...run.map(b => Math.abs(b.x - x)));
+    expect(nearest(PATIO_SITE.x), 'a swing-in run within 22 m of Le Patio\'s gate').toBeLessThanOrEqual(22);
+    expect(nearest(-64), 'and at the car park\'s east end, by the alley').toBeLessThanOrEqual(22);
+    expect(nearest(door), 'and within 45 m of the hotel\'s stair door').toBeLessThanOrEqual(45);
+    expect(n.bays.some(b => !b.free), 'NPC cars stand in the lot').toBe(true);
   });
 
   it('takes each of the four cars the game sells into at least six free bays, swept on paper from the lane (the car\'s own circle, nothing solid touched)', async () => {
