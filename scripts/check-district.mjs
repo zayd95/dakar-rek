@@ -117,7 +117,9 @@ for (const q of ['low', 'medium']) {
       const views = [];
       for (let x = -80; x <= 100; x += 10) views.push([`the sea road at x ${x}`, x, -118]);
       for (let z = -60; z >= -118; z -= 8) { views.push([`the avenue at z ${z}`, 0, z]); views.push([`the cross street at z ${z}`, -60, z]); }
-      for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push([`the beach at x ${x}`, x, -140]);
+      // the sea side: the beach at z −140; west of x −43 that ground is the night street's venues' (solid footprints z −146.25…−136.75, Le Patio to Le Comptoir de Ngor): nobody stands inside one, so there the sample is on the
+      // promenade in front of them (z −135), as in tests/almadiesRooftop.test.ts
+      for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push([`the beach at x ${x}`, x, x < -43 ? -135 : -140]);
       const unseen = views.filter(([, vx, vz]) => !roof.sign.panels.some(p => { const dx = vx - p.x, dz = vz - p.z, f = (dx * p.nx + dz * p.nz) / Math.hypot(dx, dz); return f > 0.2 && clearRay([vx, 1.7, vz], [p.x, p.y, p.z]); })).map(v => v[0]);
       check(`(medium) the name is seen from the street and from far: a face looks at each of ${views.length} viewpoints, with nothing solid between`, unseen.length === 0, JSON.stringify(unseen.slice(0, 6)));
     } else check('(medium) the rooftop restaurant has its name on the hotel\'s roof', false, 'no sign on the roof');
