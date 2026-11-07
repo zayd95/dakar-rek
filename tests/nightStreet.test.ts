@@ -45,14 +45,16 @@ function grid(h: HubWorld, cs: Collider[]) {
 }
 
 describe('the night street', () => {
-  it('has its three M4 venues turned toward the road, Le Patio\'s site and La Vague\'s alley on the same front line', async () => {
+  it('has its four M4 venues turned toward the road, Le Patio\'s site and La Vague\'s alley on the same front line', async () => {
     const h = await build(), n = h.nightStreet!;
-    expect(n.venues.map(v => v.kind)).toEqual(['binta', 'phare', 'lounge']);
+    expect(n.venues.map(v => v.kind)).toEqual(['binta', 'phare', 'lounge', 'comptoir']);
     for (const v of n.venues) expect(v.front).toBe(FRONT_Z);
     expect(PATIO_SITE.z + PATIO_SITE.halfD).toBe(FRONT_Z);                              // the club's gate (local +z) is on the venues' front line
-    const sites = [{ x0: PATIO_SITE.x - PATIO_SITE.halfW, x1: PATIO_SITE.x + PATIO_SITE.halfW }, ...NIGHT_VENUES.map(v => ({ x0: v.cx - 6.2, x1: v.cx + 6.2 })), { x0: ALLEY_RECT.x0, x1: ALLEY_RECT.x1 }];
+    const sites = [{ x0: PATIO_SITE.x - PATIO_SITE.halfW, x1: PATIO_SITE.x + PATIO_SITE.halfW }, ...NIGHT_VENUES.map(v => ({ x0: v.cx - 6.2, x1: v.cx + 6.2 })), { x0: -41, x1: -28 }];   // the alley as built (mural wall at x −40.8 to the container bar's east face, src/world/hospitalityStrip.ts `clubAlley`); `ALLEY_RECT` is the wider ground the dressing keeps off, which the venues' footprints stay clear of in z
     sites.sort((a, b) => a.x0 - b.x0);
     for (let i = 1; i < sites.length; i++) expect(sites[i].x0, `site ${i} overlaps the one before`).toBeGreaterThanOrEqual(sites[i - 1].x1);
+    // no venue's solid footprint (12.7 m wide, 9.5 m deep from the front line) meets the alley's keep-clear ground
+    for (const v of NIGHT_VENUES) expect(FRONT_Z - 9.5 < ALLEY_RECT.z0 && FRONT_Z - 0.25 <= ALLEY_RECT.z0, `${v.kind} against the alley ground`).toBe(true);
     // the hotels across the road are the district's: no colliders of the strip on the south side
     expect(h.rooftopDoor).toBeTruthy();
   });
@@ -81,6 +83,7 @@ describe('the night street', () => {
     for (const v of NIGHT_VENUES) expect(near(v.cx, 12), v.kind).toBeGreaterThanOrEqual(2);
     expect(near(h.rooftopDoor!.x, 30), 'the hotel and its Terrasse').toBeGreaterThanOrEqual(2);
     expect(free.some(b => b.x > -66), 'a free bay in the east end of the car park, within sight of the hotel and the alley').toBe(true);
+    expect(near(-49.35, 12), 'Le Comptoir de Ngor, beside the alley').toBeGreaterThanOrEqual(2);
   });
 
   it('can be walked: from the road to every front, the alley\'s gate, the taxi bay and the hotel\'s side of the road', async () => {
@@ -103,7 +106,7 @@ describe('the night street', () => {
     for (const t of trunks) expect(inNightStreet((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, 0), `palm at ${t.x0}, ${t.z0}`).toBe(false);
     expect(NIGHT_RECTS.west.x1).toBeLessThan(ALLEY_RECT.x0 + 0.01);
     // the Plage de Ngor's sand begins where the night street ends (src/world/ngorBeach.ts: x −24…): nothing of the street stands on it
-    expect(NIGHT_RECTS.west.x1).toBeLessThan(NGOR_BEACH.promenade.x0);
+    for (const r of Object.values(NIGHT_RECTS)) expect(r.x1, 'the beach begins east of the street').toBeLessThan(NGOR_BEACH.promenade.x0);
   });
 
   it('puts its café chairs in the street\'s seats, where the city\'s people sit by the hour, clear of every solid', async () => {

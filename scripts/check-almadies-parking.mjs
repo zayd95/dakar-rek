@@ -1,5 +1,5 @@
 // Almadies night street, the car parks (src/world/nightStreet.ts, docs/districts/ALMADIES-NIGHTLIFE.md): the Teranga is driven with the pedal stick (real touch) from the coast road's north lane
-// into a free painted bay of each row, « PARKING DU PATIO » in the west and « PARKING NGOR » (hotel, Terrasse and La Vague) in the east, and parked there: the whole car off the carriageway, its
+// into a free painted bay of each row, « PARKING · LE PATIO · LA VAGUE · HÔTEL »: by Le Patio's gate in the west and by the alley in the east (the hotel's, the Terrasse's and La Vague's visitors), and parked there: the whole car off the carriageway, its
 // centre inside the bay's lines, no solid touched on the way; the player steps out and walks to the promenade. At night, 22 h, with the NPC cars in their bays.
 // Debug hooks used (labelled): the hour, putting the Teranga's parking record at the start of the lane, reading its position, the night street's bay list.
 // Usage: node scripts/check-almadies-parking.mjs <baseUrl> <outDir>
@@ -69,7 +69,7 @@ async function scenario(lot, near, hour = 22) {
   await page.waitForTimeout(600); await shot('from-above');
   await context.close();
 }
-await scenario('east', -15);
+await scenario('west', -64);                      // the car park's east end, by the alley: the hotel's, the Terrasse's and La Vague's visitors park there
 await scenario('west', -109);
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 console.log(failed ? `${failed} parking checks FAILED` : 'parking checks passed');

@@ -131,8 +131,8 @@ if (runs('drive') && FROM === 'drive') {
   check('the places of the night street are listed: Le Patio and La Vague among the neighbourhood’s spots, the Terrasse de Ngor (the hotel’s roof, one door) among its interactables', seen.spots.length === 2 && seen.ids.filter(i => i === 'almadies:rooftop:almadies').length === 1, JSON.stringify(seen));
   // into the bay: the same swing as the parking check — an arc from the lane into the bay, nose first
   const intoBay = [{ x: bay.x + TURN + 12, z: laneZ, tol: 2.5, speed: 4.5 }, { x: bay.x + TURN + 2, z: laneZ, tol: 1.0, speed: 2.2 },
-    ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: bay.x + TURN + 2 - TURN * Math.sin(r), z: laneZ - TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
-    { x: bay.x, z: bay.z - 0.7, tol: 0.9, speed: 1.0 }];
+    ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: bay.x + TURN + 2 - TURN * Math.sin(r), z: laneZ - TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.5 }; }),
+    { x: bay.x, z: bay.z + 0.4, tol: 0.9, speed: 0.8 }];       // (the release candidate's driving feel carries the car further after the pedal is lifted than the villa branch's did: the last point is taken short of the bay's middle)
   await pilot(page, t, 'teranga', intoBay, { brakeAtEnd: true, cruise: 5 });
   for (let k = 0; k < 2; k++) {                                          // a driver who stops short of the bay's back line eases forward a little
     const at = await d(() => window.__dakar.teranga.at());

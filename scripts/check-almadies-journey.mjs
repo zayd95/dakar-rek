@@ -75,8 +75,8 @@ check('the Terrasse de Ngor has a door in the Almadies streets, and Awa Sy stand
 // ---------------------------------------------------------------- 1. the car, to the night street's car park across the road from the hotel
 const R = info.door;                                                  // the boutique hotel's stair door (LD2.0-E): the one Terrasse de Ngor
 const ns = await d(() => window.__dakar.district.nightStreet());
-// the target: a free bay of the east car park nearest the hotel's door, its west neighbour and the two to its east free too (a driver swings in on an arc from the east, heading west along the north lane)
-const BW = 2.6, eastBays = ns.bays.filter(b => b.lot === 'east'), isFree = x => eastBays.some(b => Math.abs(b.x - x) < 0.3 && b.free);
+// the target: a free bay of the car park nearest the hotel's door (its east end, by the alley), its west neighbour and the two to its east free too (a driver swings in on an arc from the east, heading west along the north lane)
+const BW = 2.6, eastBays = ns.bays.filter(b => b.lot === 'west'), isFree = x => eastBays.some(b => Math.abs(b.x - x) < 0.3 && b.free);
 const bay = eastBays.filter(b => b.free && isFree(b.x - BW) && isFree(b.x + BW) && isFree(b.x + 2 * BW)).sort((a, b) => Math.hypot(a.x - R.x, a.z - R.z) - Math.hypot(b.x - R.x, b.z - R.z))[0];
 check('the night street has a free bay in the car park across the road from the hotel, with room to swing in', !!bay && Math.hypot(bay.x - R.x, bay.z - R.z) < 45, JSON.stringify({ bay, door: R }));
 const laneZ = -124.3, yaw = -Math.PI / 2, F = { x: Math.sin(yaw), z: Math.cos(yaw) }, L = { x: Math.cos(yaw), z: -Math.sin(yaw) };   // the north lane, heading west
