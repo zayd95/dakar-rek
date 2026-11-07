@@ -146,8 +146,16 @@ try {
     console.log('STOP STATE', JSON.stringify({ atStop, after: await b.evaluate(() => ({ trip: window.__dakar.transport.trip(), focus: window.__dakar.focus(), pos: window.__dakar.pos(), toast: document.querySelector('.toast')?.textContent ?? null })) }));
     throw e;
   });
-  const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
-  if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
+  // `nextAt` reads the car's state as of the page's LAST frame and answers 0 for a car standing at the stop with time left to board. On a slow page (frames seconds apart) that car can
+  // leave before the next frame takes B; the next one is then a lap away (a single car at low quality, 120 s) and no wait of 60 s can succeed. So: read, warp to the next arrival, give
+  // it 20 s to take B; if B is still waiting, read again and warp again (at most 4 times). The proof is the same as before: B must still reach « riding » (the last wait), and a game that
+  // never takes a waiting passenger fails all four tries and that wait. (Found by simulating the real transport module at 0.03-8 s a frame: docs/mobile/MOBILE-01-INVESTIGATION.md.)
+  for (let tries = 0, taken = false; tries < 4 && !taken; tries++) {
+    const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
+    console.log(`rapide wait: try ${tries + 1}, next car in ${wait0 === null ? 'null' : wait0.toFixed(1)} s${wait0 > 8 ? ' (warped)' : wait0 === 0 ? ' (a car stands there now: the race this loop covers)' : ''}`);   // (so a CI log shows whether the race ever occurs)
+    if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
+    taken = await b.waitForFunction(() => window.__dakar.transport.trip().phase !== 'waiting', null, { timeout: 20000 }).then(() => true, () => false);
+  }
   await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 }).catch(async e => {   // on a miss, say where the line's cars were and why none took B
     console.log('RAPIDE STATE', JSON.stringify(await b.evaluate(l => ({ trip: window.__dakar.transport.trip(), next: window.__dakar.transport.nextAt(l, 0), me: window.__dakar.pos(), cars: window.__dakar.transport.lines().find(x => x.id === l)?.vehicles.map(c => ({ x: +c.x.toFixed(1), z: +c.z.toFixed(1), s: +c.s.toFixed(1), v: +c.v.toFixed(2), dwell: c.dwell, next: c.next, free: c.free })) }), L0.id)));
     throw e;
