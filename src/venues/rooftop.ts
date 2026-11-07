@@ -9,8 +9,8 @@ import { Batch, signTexture } from '../world/batch';
 import { ENTER } from '../world/content';
 import { rng } from '../core/rng';
 import { signPanel } from '../economy/citeJamm';
-import { VENUE_D, terrasseGantry } from '../world/hospitalityStrip';
 import { order } from '../activity/primitives';
+import { isOpen } from '../activity/places';
 
 /**
  * Rooftop restaurants and lounges (Plateau, Corniche, Ngor): Plateau and Corniche use a stair door on a tall hub facade;
@@ -20,7 +20,7 @@ import { order } from '../activity/primitives';
  * juices and food only. Local frame: 16 × 11 m deck, stairs in the south parapet, bar along the north one.
  */
 interface Dish { name: string; icon: string; price: number; faim: number; moral: number; social?: number; /** The plate or glass shown on the table (src/game/meals.ts). */ prop: string }
-interface Def { id: string; name: string; sign: string; kind: 'restaurant' | 'lounge'; view: 'city' | 'sea'; ref: { x: number; z: number }; site?: { x: number; z: number; nx: number; nz: number }; deck: number; accent: number; menu: Dish[]; blurb: string }
+interface Def { id: string; name: string; sign: string; kind: 'restaurant' | 'lounge'; view: 'city' | 'sea'; ref: { x: number; z: number }; deck: number; accent: number; menu: Dish[]; blurb: string; /** When the stair door lets guests up (the city's hour; wraps midnight). Absent: always. */ hours?: [number, number] }
 export const ROOFTOPS: Partial<Record<HubId, Def>> = {
   plateau: {
     id: 'plateau', name: 'Toit Baobab', sign: 'TOIT BAOBAB · RESTAURANT', kind: 'restaurant', view: 'city', ref: { x: 0, z: 0 }, deck: 0xd9c19a, accent: 0x2f7d4f,
@@ -39,8 +39,8 @@ export const ROOFTOPS: Partial<Record<HubId, Def>> = {
     ],
   },
   almadies: {
-    id: 'almadies', name: 'Terrasse de Ngor', sign: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', kind: 'lounge', view: 'sea', ref: { x: -30, z: -105.1 }, site: { x: -30, z: -105.1, nx: 0, nz: -1 }, deck: 0xe0c9a4, accent: 0x1f7aa6,
-    blurb: 'Terrasse ouverte et lounge, cuisine de la mer près de la plage',
+    id: 'almadies', name: 'Terrasse de Ngor', sign: 'TERRASSE DE NGOR · RESTAURANT & LOUNGE', kind: 'lounge', view: 'sea', ref: { x: -30, z: -105.1 }, deck: 0xe0c9a4, accent: 0x1f7aa6,
+    blurb: 'Terrasse ouverte et lounge, cuisine de la mer près de la plage', hours: [17, 1],     // the hotel's roof opens at dusk (docs/districts/ALMADIES-NIGHTLIFE.md): dinner and lounge, until one in the morning
     menu: [
       { name: 'Poisson braisé', icon: '🐟', price: 6000, faim: 62, moral: 7, prop: 'poisson' }, { name: 'Jus de bouye', icon: '🥤', price: 1200, faim: 8, moral: 5, prop: 'jus' },
       { name: 'Salade de mangue', icon: '🥗', price: 2800, faim: 28, moral: 4, prop: 'plate' }, { name: 'Café Touba', icon: '☕', price: 500, faim: 2, moral: 4, social: 2, prop: 'drink' },
@@ -78,8 +78,6 @@ function findFacade(hub: HubWorld, ref: { x: number; z: number }): { x: number; 
  * the street's, and the avenue's behind), a blade across each end of the roof, and the small plaque at the stair door that says where the way up is. One mesh: the door's old sign.
  */
 type RoofFace = NonNullable<HubWorld['rooftopSign']>['panels'][number];
-/** The ground's height in the hubs (src/world/builder.ts `G`): the strip's roof terrace stands 6.3 m above it. */
-const STRIP_GROUND = 0.12;
 const ATLAS_W = 2048, INK = '#10283a', GOLD = '#ffe7a8', SEA = '#8fd3e8';
 function paintBoard(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, lines: { t: string; k: number; col?: string }[]) {
   c.fillStyle = INK; c.fillRect(x, y, w, h);
@@ -93,25 +91,14 @@ function paintBoard(c: CanvasRenderingContext2D, x: number, y: number, w: number
     c.fillStyle = l.col ?? GOLD; c.fillText(l.t, x + w / 2, yy + (l.k * h) / 2 + 2); yy += l.k * h + gap;
   }
 }
-interface BoardText { front: { t: string; k: number; col?: string }[]; blade: { t: string; k: number; col?: string }[]; plaque?: { t: string; k: number }[] }
-const TERRASSE_TEXT: BoardText = {
-  front: [{ t: 'TERRASSE DE NGOR', k: 0.5 }, { t: 'ROOFTOP · RESTAURANT & LOUNGE', k: 0.17, col: SEA }],
-  blade: [{ t: 'TERRASSE', k: 0.28 }, { t: 'DE NGOR', k: 0.28 }, { t: 'ROOFTOP', k: 0.12, col: SEA }],
-  plaque: [{ t: 'TERRASSE · ACCÈS AU TOIT ↑', k: 0.4 }],
-};
-/** A hotel's own gantry (the boutique hotel of the Almadies' district): its name, never the Terrasse's. */
-const hotelText = (name: string): BoardText => ({
-  front: [{ t: name, k: 0.46 }, { t: 'HÔTEL · SUITES & ROOFTOP', k: 0.16, col: SEA }],
-  blade: name.length > 14 && name.includes(' ') ? [{ t: name.split(' ').slice(0, Math.ceil(name.split(' ').length / 2)).join(' '), k: 0.2 }, { t: name.split(' ').slice(Math.ceil(name.split(' ').length / 2)).join(' '), k: 0.2 }, { t: 'HÔTEL', k: 0.12, col: SEA }] : [{ t: name, k: 0.24 }, { t: 'HÔTEL', k: 0.12, col: SEA }],
-});
-function roofSignMesh(faces: RoofFace[], plaque: RoofFace | null, text: BoardText = TERRASSE_TEXT): THREE.Mesh {
+function roofSignMesh(faces: RoofFace[], plaque: RoofFace): THREE.Mesh {
   const front = faces.find(f => f.kind === 'front'), blade = faces.find(f => f.kind === 'blade');
-  const fh = Math.round(ATLAS_W * (front ? front.h / front.w : 0.2)), bh = Math.round(ATLAS_W / 2 * (blade ? blade.h / blade.w : 0.5)), ph = plaque ? Math.round(ATLAS_W / 2 * (plaque.h / plaque.w)) : 0, H = fh + Math.max(bh, ph);
+  const fh = Math.round(ATLAS_W * (front ? front.h / front.w : 0.2)), bh = Math.round(ATLAS_W / 2 * (blade ? blade.h / blade.w : 0.5)), ph = Math.round(ATLAS_W / 2 * (plaque.h / plaque.w)), H = fh + Math.max(bh, ph);
   const cv = document.createElement('canvas'); cv.width = ATLAS_W; cv.height = H;
   const c = cv.getContext('2d')!;
-  paintBoard(c, 0, 0, ATLAS_W, fh, text.front);
-  paintBoard(c, 0, fh, ATLAS_W / 2, bh, text.blade);
-  if (plaque && text.plaque) paintBoard(c, ATLAS_W / 2, fh, ATLAS_W / 2, ph, text.plaque);
+  paintBoard(c, 0, 0, ATLAS_W, fh, [{ t: 'TERRASSE DE NGOR', k: 0.5 }, { t: 'ROOFTOP · RESTAURANT & LOUNGE', k: 0.17, col: SEA }]);
+  paintBoard(c, 0, fh, ATLAS_W / 2, bh, [{ t: 'TERRASSE', k: 0.28 }, { t: 'DE NGOR', k: 0.28 }, { t: 'ROOFTOP', k: 0.12, col: SEA }]);
+  paintBoard(c, ATLAS_W / 2, fh, ATLAS_W / 2, ph, [{ t: 'TERRASSE · ACCÈS AU TOIT ↑', k: 0.4 }]);
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   const rect = (f: RoofFace, isPlaque: boolean) => isPlaque ? { x: ATLAS_W / 2, y: fh, w: ATLAS_W / 2, h: ph } : f.kind === 'front' ? { x: 0, y: 0, w: ATLAS_W, h: fh } : { x: 0, y: fh, w: ATLAS_W / 2, h: bh };
   const pos: number[] = [], nor: number[] = [], uv: number[] = [];
@@ -124,7 +111,7 @@ function roofSignMesh(faces: RoofFace[], plaque: RoofFace | null, text: BoardTex
     for (let k = 0; k < 6; k++) nor.push(f.nx, 0, f.nz);
   };
   for (const f of faces) quad(f);
-  if (plaque) quad(plaque, true);
+  quad(plaque, true);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3)); g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3)); g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 }));
@@ -274,32 +261,31 @@ export const RooftopModule: GameModule = {
         affordances: () => [{ id: 'commander', verb: 'browse', label: 'Commander', icon: b.def.menu[0].icon, detail: b.def.blurb, run: () => openMenu(ctx, b.def, b.bar) }] });
     } });
   },
+  /** The stair door of a terrace with opening hours: « Entrer » while it is open, its hours on the door while it is not (someone already up there is never sent down). */
+  update(ctx) {
+    const b = built; if (!b?.def.hours) return;
+    const open = isOpen(b.def.hours, ctx.hour());
+    if (open === (b.door.actions.length > 0)) return;
+    b.door.actions = open ? [ENTER] : [];
+    b.door.description = open ? b.def.blurb : `${b.def.name} · ouvre à ${b.def.hours[0]} h`;
+  },
   hubLoaded(ctx, hub) {
     built = null;
     const def = ROOFTOPS[hub.id as HubId]; if (!def) return;
-    // The Terrasse de Ngor is the one on the authored hospitality strip (`def.site`: its own door, bay and lit gantry): never on a residential facade, and never on the boutique hotel,
-    // whose own rooftop stair is architecture (`hub.rooftopDoor`) and whose gantry carries the hotel's name. Elsewhere the district may name the door; else the nearest tall building's first free side.
-    const f = def.site ?? hub.rooftopDoor ?? findFacade(hub, def.ref); if (!f) return;
-    if (!def.site) dressFacade(hub, def, f);
+    const f = hub.rooftopDoor ?? findFacade(hub, def.ref); if (!f) return;      // the Almadies' district names its door (the hotel's street face); elsewhere the nearest tall building's first free side
+    dressFacade(hub, def, f);
     const idx = Object.keys(ROOFTOPS).indexOf(def.id), ox = ROOM_X + idx * STEP, doorX = ox + 5;
     const door: Interactable = { id: `${hub.id}:rooftop:${def.id}`, name: def.name, kind: 'actions', x: f.x, z: f.z, radius: 3.4, actions: [ENTER], description: def.blurb };
     hub.interactables.push(door);
     hub.interactables.push({ id: `${hub.id}:rooftop:dir`, name: `${def.name} · toit`, kind: 'actions', x: f.x, z: f.z, radius: -1, actions: [], description: def.blurb });
     const t = buildTerrace(def, ox, 0, hub.id, doorX);
     ctx.addInterior(door, t.int);
-    // the name on the roof, lit: the Terrasse's own gantry on the strip (its numbers are `terrasseGantry`, drawn with the building); the boutique hotel's gantry, when the district has one, carries the hotel's name
-    let rs: HubWorld['rooftopSign'] = hub.rooftopSign;
-    if (def.site) {
-      const g = terrasseGantry(def.site.x, def.site.z + 0.08 + VENUE_D / 2, STRIP_GROUND);
-      rs = { panels: g.panels };
-      const sign = roofSignMesh(g.panels, null, TERRASSE_TEXT); hub.group.add(sign); hub.signs.push(sign);
-      if (hub.rooftopSign) { const hotel = roofSignMesh(hub.rooftopSign.panels, null, hotelText(hub.rooftopSign.name ?? 'HÔTEL')); hub.group.add(hotel); hub.signs.push(hotel); }
-    }
+    const rs = hub.rooftopSign;
     built = { def, door, int: t.int, bar: t.bar, facade: f, sign: rs ? { onRoof: true, top: Math.max(...rs.panels.map(p => p.y + p.h / 2)), faces: rs.panels.length, panels: rs.panels } : null };
   },
   debug: () => ({
     rooftop: {
-      info: () => built ? { hub: built.def.id, name: built.def.name, kind: built.def.kind, door: { id: built.door.id, x: built.door.x, z: built.door.z }, facade: built.facade, sign: built.sign, bar: built.bar, seats: built.int.seats.length, menu: built.def.menu.map(d => [d.name, d.price]) } : null,
+      info: () => built ? { hub: built.def.id, name: built.def.name, kind: built.def.kind, hours: built.def.hours ?? null, open: built.door.actions.length > 0, door: { id: built.door.id, x: built.door.x, z: built.door.z }, facade: built.facade, sign: built.sign, bar: built.bar, seats: built.int.seats.length, menu: built.def.menu.map(d => [d.name, d.price]) } : null,
       enter: () => { if (built && ctxRef) ctxRef.enter(built.door.id); },
       order: (i = 0) => { if (!built || !ctxRef) return false; const d = built.def.menu[i], s = ctxRef.state; if (s.wallet < d.price) return false; s.addMoney(-d.price, `${built.def.name} : ${d.name}`); s.adjust({ faim: d.faim, moral: d.moral }); return true; },
     },

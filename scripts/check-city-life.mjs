@@ -99,19 +99,19 @@ try {
     }
     await page.evaluate(() => { const d = window.__dakar; d.place(30, 47, Math.PI); d.setHour(21); d.cam([60, 16, 60], [30, 2, 26]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-mall-night.jpg`, type: 'jpeg', quality: 88 });
-    // M4 placemaking regression: capture the dedicated Terrasse frontage and hospitality strip, not the old residential-facade placement.
+    // M4 × LD2.0-E integration (docs/districts/ALMADIES-NIGHTLIFE.md): the one Terrasse de Ngor is the boutique hotel's roof; the night street (the venues, the car parks, the alley) is on the beach side of the coast road across from it
     await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.setHour(20); });
     await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.rooftop.info()?.hub === 'almadies', null, { timeout: 30000 });
-    await page.evaluate(() => window.__dakar.cam([-30, 14, -132], [-30, 1.5, -102]));
+    await page.evaluate(() => window.__dakar.cam([-30, 2.2, -126], [-30, 14, -104]));
     await page.waitForTimeout(500);
     const terraceSite = await page.evaluate(() => window.__dakar.rooftop.info());
-    check(`${label}: Terrasse de Ngor uses its authored hospitality frontage`, !!terraceSite && Math.abs(terraceSite.door.x + 30) < 0.1 && Math.abs(terraceSite.door.z + 105.1) < 0.1, JSON.stringify(terraceSite?.door));
-    const bayClear = await page.evaluate(() => { const c = window.__dakar.cityGeometry().colliders; return !c.some(v => v.x0 < -26.4 && v.x1 > -33.6 && v.z0 < -107 && v.z1 > -112); });
-    check(`${label}: the marked Terrasse visitor bay is free of static colliders`, bayClear);
-    await page.screenshot({ path: `${out}/${label}-almadies-hospitality-frontage.jpg`, type: 'jpeg', quality: 88 });
-    await page.evaluate(() => { window.__dakar.cam([-82, 24, -141], [-48, 2, -101]); });
+    check(`${label}: Terrasse de Ngor is the boutique hotel's roof: its stair door beside the lobby, its name lit on the roof`, !!terraceSite && Math.abs(terraceSite.door.x + 40) < 0.1 && Math.abs(terraceSite.door.z + 105.6) < 0.1 && terraceSite.sign?.onRoof === true, JSON.stringify({ door: terraceSite?.door, sign: terraceSite?.sign && { onRoof: terraceSite.sign.onRoof, faces: terraceSite.sign.faces } }));
+    const night = await page.evaluate(() => window.__dakar.district.nightStreet());
+    check(`${label}: the night street has its bays, and every free bay is free of static colliders`, !!night && night.bays.length >= 30 && await page.evaluate(n => { const c = window.__dakar.cityGeometry().colliders; return n.bays.filter(b => b.free).every(b => !c.some(v => v.x0 < b.x + 0.95 && v.x1 > b.x - 0.95 && v.z0 < b.z + 2.2 && v.z1 > b.z - 2.2)); }, night), `${night?.bays.length} bays, ${night?.bays.filter(b => b.free).length} free`);
+    await page.screenshot({ path: `${out}/${label}-almadies-hotel-terrasse.jpg`, type: 'jpeg', quality: 88 });
+    await page.evaluate(() => { window.__dakar.cam([-96, 22, -112], [-62, 2, -140]); });
     await page.waitForTimeout(400);
-    await page.screenshot({ path: `${out}/${label}-almadies-hospitality-strip.jpg`, type: 'jpeg', quality: 88 });
+    await page.screenshot({ path: `${out}/${label}-almadies-night-street.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('plateau'); d.place(90, -28.5, Math.PI); d.setHour(13); d.cam([110, 8, -5], [90, 2.2, -35]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-bank.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-19.5, 93, Math.PI); d.setHour(17); d.cam([-4, 12, 115], [-30, 1.5, 89]); });

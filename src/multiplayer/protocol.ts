@@ -184,12 +184,12 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
   // spaces: the street, the own room, a scene, a public interior of this hub, a vehicle of one of its lines
-  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts), a club's terrace (src/venues/club.ts), or a player's home
+  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts), a club's terrace (src/venues/club.ts) or Le Patio's courtyard (src/venues/patio.ts), or a player's home
   // (`home:<tag>`, LD2.0-B: its owner and their accepted guests only; the server checks who may be there: HOME_SPACE)
   if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene' || HOME_SPACE.test(v.space)
     || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space)
     || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space)
-    || v.space === `${hub}:venue:club`)) return null;
+    || v.space === `${hub}:venue:club` || v.space === `${hub}:venue:patio`)) return null;
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
   const arena = v.arena === undefined ? undefined : parseArena(v.arena);
   if (arena === null) return null;

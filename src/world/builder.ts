@@ -13,8 +13,8 @@ import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, media
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { entrance, glassBalcony, type FrontKit } from './modernFront';
-import { ALLEY_RECT, STRIP_KEEP_CLEAR, buildHospitalityBlock } from './hospitalityStrip';
 import { NGOR_BEACH_KEEP_CLEAR, buildNgorBeach, ngorBeachSeats } from './ngorBeach';
+import { NIGHT_KEEP_CLEAR, buildNightStreet, inNightStreet } from './nightStreet';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { buildNgorIsland, buildNgorQuay, rooftopFloors } from './ngor';
 import { WET_SAND_TOP, buildBeachPalms, buildNgorLaunches, buildNgorShallows, wetSand } from './ngorBay';
@@ -59,7 +59,7 @@ export function citeFronts(): KeepClear[] {
   ];
 }
 
-type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza' | 'hospitality';
+type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
 type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
 type Style = 'dense' | 'villa' | 'student' | 'banlieue' | 'mermoz';
@@ -87,8 +87,8 @@ const SPECS: Record<HubId, HubSpec> = {
   almadies: {
     id: 'almadies', seed: 37, style: 'villa', ground: 0xe3d3a3, road: 0x50535a, walk: 0xe0dccc, blockGround: 0xd9ceb0,
     palette: [0xeadcb9, 0xf3ead3, 0xe3cf9f, 0xf0e2c4, 0xdcc593, 0xf7efe2], floors: [2, 3], sea: 'north', palms: 30,
-    // The north-side hospitality strip replaces two generic villa blocks beside La Vague: independent venues, not restaurants inside private compounds.
-    specials: { '0,0': 'hospitality', '1,0': 'hospitality', '2,0': 'port', '1,2': 'station' },
+    // The north-side blocks are the Almadies district's again (resort, boutique hotel, villas: LD2.0-E); the nightlife venues stand on the beach side of the coast road (src/world/nightStreet.ts).
+    specials: { '2,0': 'port', '1,2': 'station' },
     kiosks: [{ i: 0, j: 1, lot: 0, kind: 'restaurant', name: 'Restaurant Le Pointe' }, { i: 3, j: 1, lot: 1, kind: 'cafe', name: 'Café Touba · Ngor' }],
     spawnBlock: [1, 2],
   },
@@ -971,7 +971,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   // the Almadies' pier (the Embarcadère de Ngor, src/sea/traverseeSite.ts) from the block to its end: no palm, tree or stall stands on it, no car parks across it
   const keepClear: KeepClear[] = id === 'pikine' ? citeFronts()
     : id === 'plateau' ? TRADE_PLACES.flatMap(p => [{ ...p.bay, why: 'trade_bay' }, { ...p.front, why: 'trade_front' }])
-    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...STRIP_KEEP_CLEAR, ...NGOR_BEACH_KEEP_CLEAR] : [];
+    : id === TRAVERSEE_HUB ? [{ ...TRAVERSEE_SITE.pier, why: 'embarcadere' }, ...NIGHT_KEEP_CLEAR, ...NGOR_BEACH_KEEP_CLEAR] : [];
   const kept = (x: number, z: number) => keepClear.some(r => x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1);
   /**
    * Street dressing that would fall inside a composed site or on ground kept open is not drawn, but it draws its random numbers and keeps its
@@ -1369,7 +1369,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // one draw call the embarcadère adds to the static scene; more palms along the beach, either side of the boarding beach
         buildNgorLaunches(plain, lite);
         group.add(buildNgorShallows(lite, () => facadeMat.emissiveIntensity / 1.25));     // the city's night (src/main.ts lights the windows by it)
-        colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite));
+        colliders.push(...buildBeachPalms({ plain, leaves, trunks, bulbs: lampBulbs }, lite, inNightStreet));
         for (let k = 0; k < 3; k++) { plain.box(5, 0.15, 3, bx + 8 + k * 14, 2.4, cz + 6, 0x3b82f6); plain.box(4, 0.8, 2.4, bx + 8 + k * 14, B, cz + 6, 0xdbeafe); for (const s of [-1, 1]) plain.box(0.1, 2.3, 0.1, bx + 8 + k * 14 + s * 2.4, B, cz + 6 - 1.4, 0x555555); }
         // the beach first (the owner, 27 Oct): the Plage de Ngor west of the pier, with the embarkation's ticket hut and shelter east of it (src/world/ngorBeach.ts)
         buildNgorBeach({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
@@ -1515,13 +1515,6 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         ecurieInfo = { cx, cz: cz - 8 };
         break;
       }
-      case 'hospitality': {
-        if (id !== 'almadies') break;
-        // Two consecutive Almadies blocks are the restaurant/nightlife strip: six venues that do not look alike (src/world/hospitalityStrip.ts), their forecourts, the car parks behind them
-        // and the lit alley to La Vague. The middle venue of block 1 is the interactive Terrasse de Ngor (rooftop.ts), its door and visitor bay unchanged. No villa lots, no random draws.
-        buildHospitalityBlock({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, G, lite, seed: sp.seed, addSign, solidC, pool, shade }, i, bx, bz, i === 1 ? bx + 7.7 + 15.3 : null);
-        break;
-      }
       case 'plaza': default: break;
     }
   };
@@ -1579,13 +1572,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
 
   yield;
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
-  // The new city blocks and the Almadies hospitality strip have authored frontage and furniture; random street props must not obstruct them.
-  const hospitalityRects = Object.entries(sp.specials).filter(([, kind]) => kind === 'hospitality').map(([key]) => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
-  const cityRects = [...Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; }), ...hospitalityRects];
-  const alley = id === 'almadies' ? ALLEY_RECT : null;                                               // the lit way to La Vague's gate
+  // The new city blocks have authored frontage and furniture; random street props must not obstruct them.
+  const cityRects = [...Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; })];
   const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
-    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r)
-    || (!!alley && x > alley.x0 - r && x < alley.x1 + r && z > alley.z0 - r && z < alley.z1 + r);
+    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     yield;
@@ -1816,6 +1806,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const [i, j] = key.split(',').map(Number), cx = blockMin(i) + BLK / 2, cz = blockMin(j) + BLK / 2;
     keepClear.push({ x0: cx - 5, x1: cx + 5, z0: cz + 21, z1: cz + 29, why: 'mall_entrance' });
   }
+  // the Almadies' night street (src/world/nightStreet.ts, docs/districts/ALMADIES-NIGHTLIFE.md): the beach side of the coast road: two car parks, the promenade, four venues turned toward the road and the alley to La Vague
+  let nightStreet: HubWorld['nightStreet'];
+  if (id === 'almadies') nightStreet = buildNightStreet({ plain, glass, metal, lampBulbs, lampPosts, leaves, trunks, tin, tileRoof, canopies, people, seats, G, lite, seed: sp.seed, addSign, solidC, pool, shade });
   // LD2.0-E round 3: what grows and stands between the Almadies' buildings (the plazas, the gare's garden, the square's ring, the kerbs), on the ground that is left: after the district and every keep-clear
   if (kit && STREETSCAPE.on) {
     const ss = buildStreetscape(kit, { colliders, keepClear, sites: SITES, openings });
@@ -1870,7 +1863,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, rooftopSign, streetscape,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, rooftopSign, streetscape, nightStreet,
     dispose() { disposeGroup(group); },
   };
 }

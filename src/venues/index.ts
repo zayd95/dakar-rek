@@ -10,6 +10,7 @@ import { buildNgorBeach } from './ngorBeach';
 import { TRAVERSEE_HUB } from '../sea/traverseeSite';
 import { buildSalon } from './salon';
 import { buildClub, CLUB_SITE, setVagueVirtual, shiftClubDay } from './club';
+import { buildPatio, PATIO_SITES, setPatioVirtual, shiftPatioDay } from './patio';
 import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
@@ -76,15 +77,17 @@ export const VenuesModule: GameModule = {
     const landing = hub.interactables.find(i => i.id === `${hub.id}:city:soumbedioune`), market = hub.interactables.find(i => i.id === `${hub.id}:city:fish-market`);
     const salon = hub.interactables.find(i => i.id === `${hub.id}:city:salon-tech` && i.name === 'Salon Awa');
     const club = !!CLUB_SITE[hub.id];
+    const patio = !!PATIO_SITES[hub.id] && !!hub.nightStreet;                         // Le Patio, the courtyard club of the Almadies' night street (src/venues/patio.ts)
     // the Almadies' old fishing quay is the Embarcadère de Ngor (docs/TRAVERSEE.md): the venue at its pier's end, found through the quay's own place
     const port = hub.id === TRAVERSEE_HUB ? hub.interactables.find(i => i.id === `${hub.id}:port`) : undefined;
-    if (!sites.length && !(landing && market) && !salon && !club && !port) return;
+    if (!sites.length && !(landing && market) && !salon && !club && !patio && !port) return;
     mats = new VenueMaterials();
     const env: VenueEnv = { ctx, mats, lite: ctx.quality() === 'low', addPeople: f => bodies.push(f) };
     for (const s of sites) { venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s)); yield; }
     if (landing && market) { venues.push(buildBeach(env, landing, market)); yield; }
     if (salon) { venues.push(buildSalon(env, salon)); yield; }
     if (club) { venues.push(buildClub(env)); yield; }
+    if (patio) { venues.push(buildPatio(env)); yield; }
     if (port) { embarcadere = buildEmbarcadere(env); venues.push(embarcadere); }
     if (port) venues.push(buildNgorBeach(env));                         // the beach first: the Plage de Ngor west of the pier (docs/NGOR_BEACH.md)
     if (port) venues.push(buildIslandRooftop(env));                      // the island's rooftop restaurant and lounge bar: its people and its music
@@ -116,6 +119,9 @@ export const VenuesModule: GameModule = {
     clubShift: (n: number) => shiftClubDay(n),
     /** Frame-by-frame films: La Vague's music clock follows the game's frames from `t` s (null: the audio context's). */
     vagueVirtual: (t: number | null) => setVagueVirtual(t),
+    /** Le Patio: play the night as if the city were n days ahead; its music clock by the game's frames (null: the audio context's). */
+    patioShift: (n: number) => shiftPatioDay(n),
+    patioVirtual: (t: number | null) => setPatioVirtual(t),
     prayer: (h: number) => ({ now: prayerAt(h)?.name ?? null, next: nextPrayer(h).name, times: PRAYER_TIMES.map(p => [p.name, p.hour]) }),
     /** La traversée: the phase, the boat in use and its pose, the customers, the legs paid, the counters, why each choice is closed (null outside the Almadies). */
     traversee: () => embarcadere?.traversee() ?? null,

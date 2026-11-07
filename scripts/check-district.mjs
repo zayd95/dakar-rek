@@ -1,6 +1,6 @@
 // LD2.0-E « The Almadies district » (docs/ld2/LD2_E.md): the district in the real game, on a phone page, with real touches.
 //  1. the Almadies builds on both presets (low, medium) with no page error;
-//  2. every site of the plan has its building: a solid collider two storeys tall (or the site's own storeys, if fewer) inside its rectangle (25 sites on 33 lots in the combined game: the hospitality strip holds two blocks);
+//  2. every site of the plan has its building: a solid collider two storeys tall (or the site's own storeys, if fewer) inside its rectangle (30 sites on 41 lots);
 //  3. nothing of the district stands on a road: no solid taller than a man, wider than a post, on the carriageway of the avenues;
 //  4. the pavement round every block is as free as the villa branch's: a body's circle walked along a line a metre outside each block against the hub's colliders;
 //  5. the Ngor residence keeps its door, its entry and its gate: the interactables stand where the estate put them and nothing solid covers them;
@@ -62,7 +62,7 @@ for (const q of ['low', 'medium']) {
   // 2. every site of the plan has its building
   const sites = await s.d(() => window.__dakar.district?.sites() ?? []);
   const lacking = sites.filter(st => { const need = Math.min(st.storeys, 2) * 3.4 * 0.9, r = st.rect; return !geo.colliders.some(([x0, z0, x1, z1, h]) => x0 >= r.x0 - 0.1 && x1 <= r.x1 + 0.1 && z0 >= r.z0 - 0.1 && z1 <= r.z1 + 0.1 && x1 - x0 > 4 && z1 - z0 > 4 && h >= need); }).map(st => st.id);
-  check(`(${q}) every one of the ${sites.length} sites has a building at least two storeys tall inside it`, BASELINE || (sites.length >= 20 && lacking.length === 0), JSON.stringify(lacking));
+  check(`(${q}) every one of the ${sites.length} sites has a building at least two storeys tall inside it`, BASELINE || (sites.length === 30 && lacking.length === 0), JSON.stringify(lacking));
   // 3. nothing big on the carriageways (the roads' bands ±5 m of the centre lines, the lamp posts and stalls are small)
   const roads = [-120, -60, 0, 60].flatMap(c => [{ x0: -127, x1: 127, z0: c - 5, z1: c + 5 }, { x0: c - 5, x1: c + 5, z0: -127, z1: 127 }]);
   const onRoad = geo.colliders.filter(([x0, z0, x1, z1, h]) => h >= 3 && roads.some(r => x0 < r.x1 && x1 > r.x0 && z0 < r.z1 && z1 > r.z0 && (x1 - x0 > 2.5 || z1 - z0 > 2.5) && !(x1 - x0 > 40 && z1 - z0 > 40)));
@@ -142,8 +142,19 @@ if (medium) {
   cost = await staticCost(medium.page);
   if (!BASELINE) {
     const b0 = before.static, dT = cost.tris - b0.tris, dM = cost.meshes - b0.meshes;
-    check('(medium) the district stays within +95 k triangles of the villa branch\'s hub (round 3: the life on the ground and the streetscape)', dT <= 95_000, JSON.stringify({ now: cost, was: b0, dTris: dT }));
-    check('(medium) the district stays within +10 meshes (draw calls) of the villa branch\'s hub', dM <= 10, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    // LD2.0-E's own budget (docs/ld2/LD2_E.md): +95 k triangles, +10 meshes over the villa branch's hub. On the integration branch the hub also carries M4's venues (measured on 8cedf12 against
+    // the villa branch: +24 meshes, +1.4 k triangles) and Le Patio (its own tests cap it at 12 draw calls and 40 k triangles): the integrated budget is the sum of the three accepted pieces; the strict
+    // E budget is still printed (a note, not hidden) so the owner sees both.
+    const integrated = await medium.page.evaluate(() => !!window.__dakar.district?.nightStreet?.());
+    const E = { tris: 95_000, meshes: 10 }, M4 = { tris: 1_400, meshes: 24 }, PATIO = { tris: 40_000, meshes: 12 };
+    if (integrated) {
+      console.log(`NOTE: strict LD2.0-E budget (+${E.tris} triangles, +${E.meshes} meshes over the villa branch): now +${dT} triangles, +${dM} meshes (${dT <= E.tris && dM <= E.meshes ? 'within' : 'over: M4\'s venues and Le Patio are in this hub too'})`);
+      check(`(medium) integrated hub: within the sum of the accepted budgets of LD2.0-E, M4 and Le Patio (+${E.tris + M4.tris + PATIO.tris} triangles)`, dT <= E.tris + M4.tris + PATIO.tris, JSON.stringify({ now: cost, was: b0, dTris: dT }));
+      check(`(medium) integrated hub: within the sum of the accepted budgets of LD2.0-E, M4 and Le Patio (+${E.meshes + M4.meshes + PATIO.meshes} meshes = draw calls)`, dM <= E.meshes + M4.meshes + PATIO.meshes, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    } else {
+      check('(medium) the district stays within +95 k triangles of the villa branch\'s hub (round 3: the life on the ground and the streetscape)', dT <= E.tris, JSON.stringify({ now: cost, was: b0, dTris: dT }));
+      check('(medium) the district stays within +10 meshes (draw calls) of the villa branch\'s hub', dM <= E.meshes, JSON.stringify({ now: cost.meshes, was: b0.meshes, dMeshes: dM }));
+    }
   }
   check('(medium) no page error through the walk', medium.errors.length === 0, JSON.stringify(medium.errors.slice(0, 3)));
   await medium.context.close();

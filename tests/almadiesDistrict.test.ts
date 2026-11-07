@@ -1,3 +1,5 @@
+import { NIGHT_RECTS, ZEBRA_RECT } from '../src/world/nightStreet';
+import { ALLEY_RECT } from '../src/world/hospitalityStrip';
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { stubCanvas } from './hubstub';
@@ -31,16 +33,16 @@ describe('the plan', () => {
     expect([GRID.pitch, GRID.blk, GRID.road, GRID.nb, HALF]).toEqual([PITCH, BLK, ROAD, NB, BHALF]);
     expect(GRID.lot * 2 + GRID.gap).toBe(BLK);
   });
-  it('is 25 sites on the 33 free lots (the strip takes blocks (0,0) and (1,0)), each lot once, none of the kept ones', () => {
-    expect(SITES).toHaveLength(25);
+  it('is 30 sites on the 41 free lots, each lot once, none of the kept ones', () => {
+    expect(SITES).toHaveLength(30);
     const seen = new Map<string, string>();
     for (const s of SITES) for (const l of s.lots) {
       const key = `${s.block},${l}`;
       expect(seen.has(key), `${key} twice (${seen.get(key)} and ${s.id})`).toBe(false);
       seen.set(key, s.id);
     }
-    expect(seen.size).toBe(33);
-    const special = new Set(['0,0', '1,0', '2,0', '1,2', '2,2', '3,2', '0,2']);                         // the hospitality strip (two blocks), the port, the station, the mall, the square, Prestige Auto
+    expect(seen.size).toBe(41);
+    const special = new Set(['2,0', '1,2', '2,2', '3,2', '0,2']);                                     // the port, the station, the mall, the square, Prestige Auto
     for (const [key] of seen) { const [i, j] = key.split(',').map(Number); expect(special.has(`${i},${j}`), key).toBe(false); }
     for (const [block, lots] of Object.entries(KEPT_LOTS)) for (const l of lots) expect(seen.has(`${block},${l}`), `${block} lot ${l}`).toBe(false);
     for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {                                        // every lot of every other block is the district's, bar the kept ones
@@ -118,8 +120,8 @@ describe('every design', () => {
 describe('the district in the hub', () => {
   it('draws every site of the plan, its colliders inside its own rectangle, a gate apron kept open before each', () => {
     const t = testKit(), dist = buildDistrict(t.kit);
-    expect(dist.sites).toHaveLength(25);
-    expect(dist.keepClear.filter(k => k.why.startsWith('district_gate:'))).toHaveLength(25);
+    expect(dist.sites).toHaveLength(30);
+    expect(dist.keepClear.filter(k => k.why.startsWith('district_gate:'))).toHaveLength(30);
     for (const c of dist.colliders) expect(SITES.some(s => within(c, s.rect)), JSON.stringify(c)).toBe(true);
     // the whole district's cost, gross, on the medium preset (the budget: docs/ld2/LD2_E.md decision 5)
     expect(trisOf(t)).toBeLessThanOrEqual(110_000);
@@ -129,7 +131,9 @@ describe('the district in the hub', () => {
     const now = await digestHub(async () => (hub = await build(q)), fixture.rects, 0.3, () => facade.depth > 0);
     hubs[q] = hub!;
     const was = fixture[q];
-    expect(fixture.base).toBe('combined-20261027');
+    expect(fixture.base).toBe('3ca9e39');
+    // the night street's beach (src/world/nightStreet.ts) is not the district's: the fixture leaves it out too, rectangle for rectangle (taken again at the villa branch with them)
+    for (const r of [...Object.values(NIGHT_RECTS), ALLEY_RECT, ZEBRA_RECT]) expect(fixture.rects, JSON.stringify(r)).toContainEqual(expect.objectContaining({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }));
     expect(now.batches.map(b => b.n)).toEqual(was.batches.map(b => b.n));
     expect(now.batches).toEqual(was.batches);
     expect(now.colliders).toEqual(was.colliders);

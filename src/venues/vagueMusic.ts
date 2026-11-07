@@ -1,6 +1,6 @@
 import { audioBus } from '../lamb/audio';
 import { hasGestured, listenForGesture } from '../arena/exteriorAudio';
-import { VAGUE_TRACK as T } from './vagueTrack';
+import { VAGUE_TRACK } from './vagueTrack';
 
 /**
  * La Vague's music: the track of scripts/audio/render-vague.mjs (public/assets/audio/music/la-vague.mp3, its beat map in
@@ -10,9 +10,16 @@ import { VAGUE_TRACK as T } from './vagueTrack';
  * is exactly k × 60 / bpm after the loop's start. `clock()` gives the beat the player HEARS now: the audio context's own
  * output timestamp (what reaches the speaker), not a page timer — the dance is judged on it (src/venues/dancePlay.ts).
  * Nothing is created before the player's first gesture; the bytes are fetched when the club's hub is loaded.
+ * Another club plays its own piece on the same player: `new VagueMusic(base, track)` (Le Patio, src/venues/patioTrack.ts); without a track it is La Vague's, as always.
  */
-export const BEAT = 60 / T.bpm;
-export const LOOP_BEATS = T.bars * T.beatsPerBar;
+export const BEAT = 60 / VAGUE_TRACK.bpm;
+export const LOOP_BEATS = VAGUE_TRACK.bars * VAGUE_TRACK.beatsPerBar;
+
+/** What the player needs of a track's map (src/venues/vagueTrack.ts has the full one): the file, the tempo, the loop and the sync tick. */
+export interface MusicTrack {
+  file: string; bpm: number; beatsPerBar: number; bars: number; loop: number; tick: number; tickSample: number; sampleRate: number; loopStart: number;
+  sections: readonly { id: string; from: number; to: number }[]; fills: readonly number[];
+}
 
 interface Chain { ctx: AudioContext; bus: GainNode; lp: BiquadFilterNode; pan: StereoPannerNode | null; src: AudioBufferSourceNode; start: number; loopStart: number; delay: number }
 
@@ -22,6 +29,8 @@ export class VagueMusic {
   private decoding: Promise<void> | null = null;
   private chain: Chain | null = null;
   private quietFor = 0;
+  /** The file was fetched (true), could not be (false: no such file, an error), or the fetch is not over yet / not started (null). */
+  private fetched: boolean | null = null;
   /** Fetch or decode failed: the club stays silent (its lights keep their own beat), nothing else is touched. */
   failed = false;
   /**
@@ -34,12 +43,17 @@ export class VagueMusic {
   /** Debug: the decoder's delay found from the tick (s), and when the loop started on the context's clock. */
   get delay() { return this.chain?.delay ?? null; }
 
-  constructor(private readonly base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/') { listenForGesture(); }
+  constructor(private readonly base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/', readonly track: MusicTrack = VAGUE_TRACK) { listenForGesture(); }
+
+  /** Seconds in one beat of this player's track. */
+  get beatSec() { return 60 / this.track.bpm; }
+  /** Whether the track's file exists: null until the fetch has answered (or when it was never started), then true or false. */
+  get available() { return this.fetched; }
 
   /** Starts fetching the file (once). */
   prefetch() {
     if (this.bytes || typeof fetch === 'undefined') return;
-    this.bytes = fetch(`${this.base}${T.file}`).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null);
+    this.bytes = fetch(`${this.base}${this.track.file}`).then(r => { this.fetched = r.ok; return r.ok ? r.arrayBuffer() : null; }).catch(() => { this.fetched = false; return null; });
   }
 
   /** Every frame: how loud (0…1), how muffled (0 clear … 1 far behind the fence), from which side. 0 fades out, then stops. */
@@ -89,7 +103,7 @@ export class VagueMusic {
   }
 
   /** The loop's start in the decoded buffer: where the tick landed, minus where it is in the file. */
-  static loopPoints(buf: AudioBuffer): { start: number; delay: number } {
+  static loopPoints(buf: AudioBuffer, T: MusicTrack = VAGUE_TRACK): { start: number; delay: number } {
     const x = buf.getChannelData(0), sr = buf.sampleRate, lim = Math.min(x.length, Math.round(sr * 1.2));
     let at = -1;
     for (let i = 0; i < lim; i++) if (Math.abs(x[i]) > 0.12) { at = i; break; }
@@ -98,7 +112,7 @@ export class VagueMusic {
   }
 
   private startChain(ctx: AudioContext, bus: GainNode, buf: AudioBuffer) {
-    const { start: loopStart, delay } = VagueMusic.loopPoints(buf);
+    const T = this.track, { start: loopStart, delay } = VagueMusic.loopPoints(buf, T);
     const src = ctx.createBufferSource(), lp = ctx.createBiquadFilter();
     src.buffer = buf; src.loop = true; src.loopStart = loopStart; src.loopEnd = loopStart + T.loop;
     lp.type = 'lowpass'; lp.Q.value = 0.5; lp.frequency.value = 18000;
@@ -138,17 +152,17 @@ export class VagueMusic {
   }
 
   /** The beat heard now (unwrapped, fractional), or null. */
-  beat(perfNow?: number): number | null { const h = this.heard(perfNow); return h === null ? null : h / BEAT; }
+  beat(perfNow?: number): number | null { const h = this.heard(perfNow); return h === null ? null : h / this.beatSec; }
 
   /** For the checks and the debug panel. */
   info() {
-    const c = this.chain, h = this.heard();
+    const c = this.chain, h = this.heard(), T = this.track;
     return {
-      file: T.file, bpm: T.bpm, loop: T.loop, decoded: !!this.buf, failed: this.failed, playing: this.playing, gestured: hasGestured(),
+      file: T.file, bpm: T.bpm, loop: T.loop, available: this.fetched, decoded: !!this.buf, failed: this.failed, playing: this.playing, gestured: hasGestured(),
       level: +this.want.level.toFixed(3), muffle: +this.want.muffle.toFixed(3), pan: +this.want.pan.toFixed(2),
       gain: c ? +c.bus.gain.value.toFixed(3) : 0, cutoff: c ? Math.round(c.lp.frequency.value) : null,
       decoderDelay: c ? +c.delay.toFixed(4) : null, loopStart: c ? +c.loopStart.toFixed(4) : null, sampleRate: this.buf?.sampleRate ?? null,
-      heard: h === null ? null : +h.toFixed(3), beat: h === null ? null : +(h / BEAT).toFixed(3),
+      heard: h === null ? null : +h.toFixed(3), beat: h === null ? null : +(h / this.beatSec).toFixed(3),
       latency: c ? { base: c.ctx.baseLatency ?? null, output: c.ctx.outputLatency ?? null } : null, virtual: this.virtual,
     };
   }
