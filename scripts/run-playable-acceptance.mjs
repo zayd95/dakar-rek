@@ -26,12 +26,13 @@ const LIST = [
   ['vtc', 'check-vtc-ride.mjs', [], 15],                               // transport: a ride-hailing trip
   ['night', 'check-night.mjs', null, 10],                              // day and night
   ['district', 'check-district.mjs', [], 12],                          // the Almadies district: plan, budgets, street unchanged
+  ['online', 'check-multiplayer.mjs', 'none', 30],                    // presence in every district, a dropped network and its reconnection (builds the online bundle and starts its own local worker)
 ];
 const chosen = only ? LIST.filter(([n]) => only.split(',').includes(n)) : LIST;
 const results = [];
 for (const [name, script, extra, minutes] of chosen) {
   const o = dir(name); fs.mkdirSync(o, { recursive: true });
-  const args = ['scripts/' + script, base, ...(extra === null ? [] : [o, ...extra])];
+  const args = extra === 'none' ? ['scripts/' + script] : ['scripts/' + script, base, ...(extra === null ? [] : [o, ...extra])];
   if (name === 'night') args.push(o);
   const log = fs.createWriteStream(`${out}/${name}.log`);
   const t0 = Date.now();
