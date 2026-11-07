@@ -77,7 +77,7 @@ If a step cannot be done (a door is shut, a road is not offered, a place is empt
 2. Then add what only you know: iPhone model, iOS version, battery at the start and at the end, whether the phone felt warm or hot, and for each step of § 4 a mark from **1** (unplayable) to **3** (fine) to **5** (smooth), with anything that looked wrong.
 3. A screen recording of step 6 or step 9, if you can.
 
-`docs/mobile/MOBILE-01-REPORT.md` is the same thing as a form to fill in.
+`docs/mobile/MOBILE-01-REPORT.md` is the same thing as a form to fill in. `docs/proof/mobile-01/report-sample.txt` shows what the copied report looks like (a headless sample: the numbers mean nothing, the shape is the point) and `reglages-with-meter-on.png` the Réglages page with the measure on.
 
 **What counts as good** — the owner's provisional private-beta gates (1 Nov 2026), judged on **Moyenne**; Basse is the fallback:
 
