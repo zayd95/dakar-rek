@@ -114,7 +114,7 @@ import { setVillaFacadeNight } from './housing/villaFacade';
 import { setDistrictNight } from './world/almadies/night';
 import { SITES as DISTRICT_SITES } from './world/almadies/plan';
 import { sizeOf as districtSize } from './world/almadies/contract';
-import { frameStats, gpuName } from './core/frameStats';
+import { frameStats, gpuName, memoryProbe } from './core/frameStats';
 import { updateFrameMeter } from './ui/frameMeter';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
@@ -140,6 +140,10 @@ try {
   throw new Error('WebGL unavailable');
 }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+frameStats.probe = memoryProbe(renderer);                  // MOBILE-01: « Mesure de fluidité » also reports memory, district changes and what kills a game on a phone
+canvas.addEventListener('webglcontextlost', () => frameStats.note('contexte WebGL perdu : la page a perdu sa carte graphique (mémoire ?)'));
+canvas.addEventListener('webglcontextrestored', () => frameStats.note('contexte WebGL rétabli'));
+document.addEventListener('visibilitychange', () => frameStats.note(document.hidden ? 'page masquée (autre app, écran verrouillé)' : 'page de nouveau visible'));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -497,8 +501,10 @@ function warmEnd(w: Warm, world: HubWorld) {
 }
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }, keepSpeed = 0) {
+  const t0 = performance.now();
   const g = loadHubSteps(id, at, keepSpeed, null, false);
   for (;;) if (g.next().done) break;
+  const ms = performance.now() - t0; frameStats.endTransition(ms, ms, performance.now());         // (a direct load is one block: the whole of it)
 }
 /** The same load, in steps: the frame that swaps the district in does the least that must be done at once (staged: the player's vehicle and place), the rest follows within a few ms a frame. */
 function loadHubStaged(id: HubId, at: { x: number; z: number; yaw: number }, keepSpeed: number, built: HubWorld | null) {
@@ -513,12 +519,14 @@ function stagedStep(budgetMs: number) {
   const t0 = performance.now();
   while (performance.now() - t0 < budgetMs) {
     const a = performance.now(); const r = st.gen.next(); st.steps++; st.maxStep = Math.max(st.maxStep, performance.now() - a);
-    if (r.done) { lastStaged = { total: performance.now() - st.start, steps: st.steps, maxStep: st.maxStep, log: st.log.sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n, ms]) => [n, Math.round(ms)]) }; staged = null; return; }
+    if (r.done) { lastStaged = { total: performance.now() - st.start, steps: st.steps, maxStep: st.maxStep, log: st.log.sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n, ms]) => [n, Math.round(ms)]) }; frameStats.endTransition(performance.now() - st.start, st.maxStep, performance.now()); staged = null; return; }
   }
 }
 
 function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | undefined, keepSpeed: number, built: HubWorld | null, early: boolean): Generator<void, void, void> {
   hubAt = performance.now();
+  const hubLabel = (h: string) => (HUB_NAMES[h as HubId] ?? h).split(' · ')[0];
+  frameStats.beginTransition(world ? hubLabel(world.id) : '(démarrage)', hubLabel(id), early ? 'route' : 'saut');   // MOBILE-01: « Mesure de fluidité » files the load
   let lt = performance.now();
   const lap = (n: string) => { const t = performance.now(); staged?.log.push([n, t - lt]); lt = t; };
   const pause = function* (n: string) { lap(n); yield; lt = performance.now(); };
