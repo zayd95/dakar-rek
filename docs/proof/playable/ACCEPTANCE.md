@@ -29,7 +29,7 @@ Every open phase PR of the Living Dakar / vehicles / Living Districts / LD2.0 li
 ## 4. Evidence — automated
 
 ### 4.1 Unit tests
-Full run on the final code tree: see § 7 (filled in at the end). Earlier full runs on this branch: 3 640 passed, 4 skipped, after the merge's six real failures were fixed (below).
+Full run on the final code tree: **247 files passed (2 skipped), 3 648 tests passed (4 skipped)**, § 7.1. Earlier full runs on this branch: 3 640 passed, 4 skipped, after the merge's six real failures were fixed (below).
 
 ### 4.2 Browser journeys on the final tree (real touch controls where a player touches; labelled shortcuts only for the hour, the day, the car's placement and reading state)
 Run 7 Nov 2026 02:21–04:06 UTC against the build of `5838464c`'s tree, one after the other, no other browser load. Logs: `final-tree/*.log`; summary: `final-tree/summary.json`; pictures: `final-tree/{nightlife,almadies-parking,rooftop,ngor-beach}/`.
@@ -76,6 +76,7 @@ Villa branch (before the district): 174 meshes / 184 520 triangles. **Unmodified
 **Unresolved**
 - VTC drop-off stall (§ 5.1): one occurrence in 7 runs of the journey on the final build, on the scripted driver, cause unknown, not reproduced; needs a real-device drive. Separately, the journey's kerb check has a phase list too narrow for a slow frame rate (1 miss in 7, harmless to the ride) — not changed.
 - Absolute cost of the Almadies hub on a phone: unmeasured; larger than the first integration's provisional figure by 15 meshes and 14 k triangles, all inherited (§ 4.5).
+- `check:online` went red once in CI on an identical tree (§ 7.3): not reproduced locally, cause not established, not re-runnable from this session.
 - Parking is 21 bays, not 34 (§ 3.3).
 - GitHub's pull-request run can reach its 45-minute cap (it did once on `8098e80c`); Cloudflare « Workers Builds » fails on every push (account limit).
 - Le Patio: price tiers and free entry of regulars, its place in Awa's evening, the Wolof draft in `src/i18n/patioLines.ts`, listening to its music (open since #83).
@@ -87,8 +88,32 @@ Villa branch (before the district): 174 meshes / 184 520 triangles. **Unmodified
 4. The absolute hub cost (§ 4.5): accept provisionally as the candidate's, or ask for an optimisation pass before any merge.
 5. The production merge: **not approved, not requested here.**
 
-## 7. Final verification (filled in at the end)
-(see the PR's last comment and the sections below, written after the last runs)
+## 7. Final verification (written 7 Nov 2026, about 05:55 UTC)
+
+A file cannot contain the result of the run on its own commit: the rows for the runs still going, and for the commit that carries this file, are in the **last comment on PR #88**, written after they finished.
+
+### 7.1 Unit tests on the final code tree
+`npm test` (vitest), run locally on the tree whose `src/` and `tests/` are identical to `5838464c` and whose scripts last changed at `2dfd9026`: **247 files passed, 2 skipped; 3 648 tests passed, 4 skipped** (119 s). Summary: `final-tree/vitest-final-summary.log`. `git diff 2dfd9026 a6dad56d -- src tests scripts .github package.json` is empty: everything after `2dfd9026` is documents and evidence.
+
+### 7.2 GitHub Actions, per exact commit (workflow « Game checks »; the push run and the pull-request run of each)
+| Commit | What it is | Push run | Pull-request run |
+|---|---|---|---|
+| `5838464c` | the code tree every journey ran against | green | green |
+| `6ba63e9a` | VTC journey diagnostics | green | green |
+| `871f34f3` | online two-player check | green | green |
+| `b5fadd46` | same, snapshot fix | still running at 05:53 (43 min, the cap is 45) | still running |
+| `2dfd9026` | last change to a script | green | still running |
+| `242cc74e` | evidence of the final-tree suite | green | **red: `npm run check:online`** (§ 7.3) |
+| `933abb97` | the first draft of this report | green | still running |
+| `a6dad56d` | VTC re-runs, local online check | running | running |
+
+### 7.3 The one red run on the final code tree: `242cc74e`, pull-request run, `check:online`
+- **What failed:** `scripts/check-multiplayer.mjs:151`, a 60-second wait for player B, standing at the Pikine stop of the car-rapide line 23, to reach the state `riding`. Everything before it in that script passed (18 checks in CI, including A and B seeing each other, a rider on a bike, and the hub membership following travel); the script's remaining checks did not run. The printed state: B `waiting`, the line's only car 318.7 m along and moving at 4.8 m/s towards stop 3 (it had left the stop), next arrival at stop 0 in 52.4 s. The second page took 32.5 s to come online (the first, 3.2 s): a slow runner.
+- **Why I do not think it is this change, and what is not proven:** it is Pikine's transport, which this branch does not touch. `src/` and `tests/` are byte-identical to `5838464c` (green, push and pull-request) and the **push run of the very same commit `242cc74e` is green**. The same script on the final tree locally: **46 pass, 0 fail**, with the second page online after 48 s (slower than in CI) and B boarded within 14 ms of the wait (`online/check-multiplayer-local-final-tree.log`). That step has been tuned for slow runners before (`35432dd0`, `28d64a94`, `406e5201`, `35427c96`). The cause is **not established**: a timing window missed on a slow second page is the likely class, a boarding-versus-dwell race at a low frame rate is the other candidate (the same family as the VTC stall); neither is proven.
+- **What I did not do:** the job could not be re-run from this session (the integration token gets a 403 on « re-run »), and I did not edit the shared check to make it pass. One red in about ten runs of an identical tree is recorded as an open item (§ 6), not as fixed.
+
+### 7.4 What the green and red above do not say
+CI is software-rendered Chromium at a few frames a second. A green run says the rules hold on that renderer; it does not say the game is smooth, comfortable or enjoyable on a phone (§ 8). The Cloudflare « Workers Builds » check is red on every push of every branch (the account's build limit) and is not a test of this change.
 
 ## 8. Automated coverage and what it is not
 
