@@ -59,13 +59,16 @@ try {
 
   // A's own state before the drop
   await a.evaluate(() => { const A = window.__dakar; A.state.count('terrasse'); A.state.addMoney(-1500, 'Café Touba · test'); A.save?.(); });
+  await sleep(3000);                                          // the game reacts to the counter on its own frames (the Almadies evening records `al_terrasse_seen` and `al_dine_night` from it): the snapshot is taken once it has
   const s0 = await state(a);
+  const injected = s0.counters.terrasse === 1 && s0.counters.al_terrasse_seen === 1;
 
   // 2. A drops off the network: B sees A leave; A knows it is offline
   await ctxs[0].setOffline(true);
   await a.waitForFunction(() => window.__dakar.presence().status === 'offline', null, { timeout: 60000 });
   const bSeesLeave = await peersOf(b, 0, 90000);
   const gB = await drawn(b, 0, 30000);
+  check('0. the state to be preserved is real: the counter A earned, the game\'s own record of it, and the money spent', injected && s0.wallet === 248500, JSON.stringify({ wallet: s0.wallet, terrasse: s0.counters.terrasse, al_terrasse_seen: s0.counters.al_terrasse_seen, al_dine_night: s0.counters.al_dine_night }));
   check('2. A goes offline: A reports it, B sees A leave, and A\'s avatar is gone from B\'s street (no frozen ghost)', bSeesLeave && (await pr(b)).count === 1 && gB.ok, JSON.stringify({ ...(await pr(b)), goneAfterMs: gB.ms }));
   const sOff = await state(a);
   check('2. while offline A\'s own game goes on untouched: money, place, counters', diff(s0, sOff).length === 0, JSON.stringify(diff(s0, sOff)));
