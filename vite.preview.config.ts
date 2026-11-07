@@ -22,7 +22,10 @@ window.addEventListener('error',function(e){var t=e.target;if(t&&t!==window){if(
 window.addEventListener('unhandledrejection',function(e){var r=e.reason;show('Promesse rejetée : '+(r&&r.message||r));});
 document.addEventListener('securitypolicyviolation',function(e){show('Refusé par la politique de sécurité : '+e.violatedDirective+' '+e.blockedURI);});})();`;
 
-const bootDiagnostics: Plugin = { name: 'mobile-01-boot-diagnostics', transformIndexHtml: () => [{ tag: 'script', children: BOOT, injectTo: 'head-prepend' }] };
+const bootDiagnostics: Plugin = {
+  name: 'mobile-01-boot-diagnostics',
+  transformIndexHtml: { order: 'pre', handler: html => ({ html: html.replace('<title>Dakar Rek</title>', '<title>Dakar Rek Playtest</title>'), tags: [{ tag: 'script', children: BOOT, injectTo: 'head-prepend' }] }) },   // (its own name among the older previews)
+};
 
 export default defineConfig({
   base: './',

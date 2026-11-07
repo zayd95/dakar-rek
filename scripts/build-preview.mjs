@@ -1,5 +1,5 @@
 // MOBILE-01: builds the private device-playtest preview of an accepted candidate and writes down what it was built from (docs/mobile/MOBILE-01.md).
-// Usage:  node scripts/build-preview.mjs --base <full commit of the accepted candidate> [--out dist-preview] [--allow-dirty]
+// Usage:  node scripts/build-preview.mjs --base <full commit of the accepted candidate> [--out dist-preview] [--branch name] [--allow-dirty]
 // It refuses to build unless: the work tree is clean (so the build id names the commit exactly), the candidate is an ancestor of HEAD, and every file that differs from the
 // candidate is one of the playtest's own (diagnostics, the build config, the docs). It then type-checks, builds with vite.preview.config.ts, and writes into the output folder
 //   version.json         the full commits (the playtest's and the candidate's), the files that differ from the candidate, how and when it was built;
@@ -12,7 +12,7 @@ import path from 'node:path';
 
 const argv = process.argv.slice(2);
 const arg = n => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : null; };
-const base = arg('base'), out = arg('out') ?? 'dist-preview', allowDirty = argv.includes('--allow-dirty');
+const base = arg('base'), out = arg('out') ?? 'dist-preview', allowDirty = argv.includes('--allow-dirty'), branch = arg('branch');   // (a detached checkout has no branch name: --branch records it)
 const git = (...a) => execFileSync('git', a, { encoding: 'utf8' }).trim();
 const die = m => { console.error(`build-preview: ${m}`); process.exit(1); };
 
@@ -26,7 +26,7 @@ if (dirty && !allowDirty) die(`the work tree has uncommitted changes; the build 
 const ALLOWED = [
   /^src\/core\/frameStats\.ts$/, /^src\/core\/build\.ts$/, /^src\/ui\/frameMeter\.ts$/, /^src\/ui\/betaInfo\.ts$/,
   /^src\/main\.ts$/,                                  // only the diagnostics wiring (the hunks are listed in docs/mobile/MOBILE-01.md)
-  /^tests\/frameStats\.test\.ts$/, /^vite\.preview\.config\.ts$/, /^scripts\/build-preview\.mjs$/, /^\.gitignore$/,
+  /^tests\/frameStats\.test\.ts$/, /^vite\.preview\.config\.ts$/, /^scripts\/build-preview\.mjs$/, /^scripts\/check-preview\.mjs$/, /^\.gitignore$/,
   /^docs\/mobile\//, /^docs\/beta\//,
 ];
 const changed = git('diff', '--name-status', base, head).split('\n').filter(Boolean).map(l => { const [status, ...p] = l.split('\t'); return { status, file: p.join('\t') }; });
@@ -49,7 +49,7 @@ const version = {
   name: 'Dakar Rek · playtest preview (MOBILE-01)',
   commit: head, buildId: env.BUILD_ID + '-apercu',
   baseCommit: base, baseIsAcceptedCandidate: 'PR #88 (integration/playable-20261107)',
-  branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
+  branch: branch ?? git('rev-parse', '--abbrev-ref', 'HEAD'),
   builtAtUtc: new Date().toISOString(), node: process.version, dirty: !!dirty,
   showcase: true, measureOnByDefault: true,
   changedFilesVsCandidate: changed.map(c => `${c.status} ${c.file}`), numstatVsCandidate: numstat,
