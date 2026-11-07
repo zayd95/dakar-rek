@@ -29,13 +29,16 @@ try {
   const open = async i => {
     const ctx = ctxs[i] ?? await browser.newContext({ viewport: i === 0 ? { width: 390, height: 844 } : { width: 1280, height: 720 }, hasTouch: i === 0, isMobile: i === 0 });
     if (!ctxs[i]) { ctxs[i] = ctx; await ctx.addInitScript(n => { try { if (!localStorage.getItem('dakarrek.quality')) localStorage.setItem('dakarrek.quality', 'low'); if (!localStorage.getItem('dakarrek.presence.profile')) localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: n, look: n === 'Awa' ? 1 : 0 })); } catch { /* */ } }, NAMES[i]); }
+    const first = !pages[i];                                                   // ?argent= gives the new game its money: only the first time (a reload with it would overwrite the save)
     const p = await ctx.newPage(); p.on('pageerror', e => pageErrors.push(`${NAMES[i]}: ${e.message}`)); pages[i] = p;
-    await p.goto(`${base}?debug${i === 0 ? '&touch' : ''}&argent=250000`);
+    await p.goto(`${base}?debug${i === 0 ? '&touch' : ''}${first ? '&argent=250000' : ''}`);
     await p.waitForFunction(() => window.__dakar?.presence().status === 'online', null, { timeout: 180000 });
     return p;
   };
   const pr = p => p.evaluate(() => { const x = window.__dakar.presence(); return { status: x.status, count: x.count, id: x.id, room: x.room, peers: x.peers.map(q => ({ id: q.id, name: q.name, x: q.x, z: q.z, hub: q.hub })), visible: x.visible }; });
   const state = p => p.evaluate(() => { const A = window.__dakar; return { wallet: A.state.wallet, pos: A.pos(), counters: { ...A.state.data.counters } }; });
+  const drawn = async (p, n, ms = 45000) => { const t0 = Date.now(); const ok = await p.waitForFunction(n => window.__dakar.presence().visible === n, n, { timeout: ms }).then(() => true, () => false); return { ok, ms: Date.now() - t0, visible: (await pr(p)).visible }; };
+  const diff = (a, b) => { const out = []; if (a.wallet !== b.wallet) out.push(`wallet ${a.wallet}→${b.wallet}`); if (a.pos.hub !== b.pos.hub) out.push(`hub ${a.pos.hub}→${b.pos.hub}`); const dp = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z); if (dp > 0.3) out.push(`moved ${dp.toFixed(2)} m`); for (const k of new Set([...Object.keys(a.counters), ...Object.keys(b.counters)])) if (a.counters[k] !== b.counters[k]) out.push(`counter ${k} ${a.counters[k]}→${b.counters[k]}`); return out; };
   const peersOf = async (p, n, ms = 60000) => p.waitForFunction(n => window.__dakar.presence().peers.length === n, n, { timeout: ms }).then(() => true, () => false);
 
   const a = await open(0), b = await open(1);
@@ -47,7 +50,8 @@ try {
   const seeA = await peersOf(a, 1), seeB = await peersOf(b, 1);
   const pa = await pr(a), pb = await pr(b);
   check('1. two independent clients connect to the same room and each counts two players', seeA && seeB && pa.count === 2 && pb.count === 2 && pa.room === pb.room, JSON.stringify({ a: [pa.count, pa.room], b: [pb.count, pb.room] }));
-  check('1. each sees the other: one avatar drawn, a distinct id', pa.visible === 1 && pb.visible === 1 && pa.peers[0].id === pb.id && pb.peers[0].id === pa.id && pa.id !== pb.id, JSON.stringify({ aSees: pa.peers[0]?.id === pb.id, bSees: pb.peers[0]?.id === pa.id, vis: [pa.visible, pb.visible] }));
+  const dA = await drawn(a, 1), dB = await drawn(b, 1);
+  check('1. each sees the other: one avatar drawn (within 45 s of the peer being known), a distinct id', dA.ok && dB.ok && pa.peers[0].id === pb.id && pb.peers[0].id === pa.id && pa.id !== pb.id, JSON.stringify({ aSees: pa.peers[0]?.id === pb.id, bSees: pb.peers[0]?.id === pa.id, drawnAfterMs: [dA.ms, dB.ms], vis: [dA.visible, dB.visible] }));
   await a.waitForFunction(() => window.__dakar.presence().peers.some(q => Math.abs(q.x + 56) < 0.6 && Math.abs(q.z + 135) < 0.6), null, { timeout: 30000 }).catch(() => {});
   const seenAt = (await pr(a)).peers[0];
   check('1. movement is replicated: A sees B where B stands (±0.6 m), B sees A', Math.abs(seenAt.x + 56) < 0.6 && Math.abs(seenAt.z + 135) < 0.6, JSON.stringify(seenAt));
@@ -61,18 +65,19 @@ try {
   await ctxs[0].setOffline(true);
   await a.waitForFunction(() => window.__dakar.presence().status === 'offline', null, { timeout: 60000 });
   const bSeesLeave = await peersOf(b, 0, 90000);
-  check('2. A goes offline: A reports it, and B sees A leave (no frozen ghost)', bSeesLeave && (await pr(b)).count === 1, JSON.stringify(await pr(b)));
+  const gB = await drawn(b, 0, 30000);
+  check('2. A goes offline: A reports it, B sees A leave, and A\'s avatar is gone from B\'s street (no frozen ghost)', bSeesLeave && (await pr(b)).count === 1 && gB.ok, JSON.stringify({ ...(await pr(b)), goneAfterMs: gB.ms }));
   const sOff = await state(a);
-  check('2. while offline A\'s own game goes on untouched: money, place, counters', sOff.wallet === s0.wallet && sOff.pos.hub === s0.pos.hub && Math.hypot(sOff.pos.x - s0.pos.x, sOff.pos.z - s0.pos.z) < 0.3 && JSON.stringify(sOff.counters) === JSON.stringify(s0.counters), JSON.stringify({ was: s0.wallet, now: sOff.wallet }));
+  check('2. while offline A\'s own game goes on untouched: money, place, counters', diff(s0, sOff).length === 0, JSON.stringify(diff(s0, sOff)));
 
   // 3. A comes back: both see each other again, exactly one copy each, A's state unchanged
   await ctxs[0].setOffline(false);
   await a.waitForFunction(() => window.__dakar.presence().status === 'online', null, { timeout: 120000 });
   const backA = await peersOf(a, 1, 90000), backB = await peersOf(b, 1, 90000);
-  await sleep(1500);
+  const dA2 = await drawn(a, 1), dB2 = await drawn(b, 1);
   const pa2 = await pr(a), pb2 = await pr(b), s1 = await state(a);
-  check('3. A reconnects: both see each other again, exactly one peer each (no duplicate of A)', backA && backB && pa2.peers.length === 1 && pb2.peers.length === 1 && pb2.count === 2 && pa2.visible === 1 && pb2.visible === 1, JSON.stringify({ a: pa2.peers.length, b: pb2.peers.length, count: pb2.count }));
-  check('3. A\'s state survived the drop and the reconnection: money, place, counters (and B still sees A where A stands)', s1.wallet === s0.wallet && s1.pos.hub === s0.pos.hub && Math.hypot(s1.pos.x - s0.pos.x, s1.pos.z - s0.pos.z) < 0.3 && JSON.stringify(s1.counters) === JSON.stringify(s0.counters) && Math.abs(pb2.peers[0].x + 60) < 0.8 && Math.abs(pb2.peers[0].z + 135) < 0.8, JSON.stringify({ wallet: [s0.wallet, s1.wallet], seenByB: pb2.peers[0] && [pb2.peers[0].x, pb2.peers[0].z] }));
+  check('3. A reconnects: both see each other again, exactly one peer each (no duplicate of A)', backA && backB && pa2.peers.length === 1 && pb2.peers.length === 1 && pb2.count === 2 && dA2.ok && dB2.ok && pa2.visible === 1 && pb2.visible === 1, JSON.stringify({ a: pa2.peers.length, b: pb2.peers.length, count: pb2.count, vis: [pa2.visible, pb2.visible] }));
+  check('3. A\'s state survived the drop and the reconnection: money, place, counters (and B still sees A where A stands)', diff(s0, s1).length === 0 && Math.abs(pb2.peers[0].x + 60) < 0.8 && Math.abs(pb2.peers[0].z + 135) < 0.8, JSON.stringify({ diff: diff(s0, s1), seenByB: pb2.peers[0] && [pb2.peers[0].x, pb2.peers[0].z] }));
   await b.screenshot({ path: `${out}/3-b-after-a-returns.png` });
 
   // 4. A reloads the page (a new session): the save brings its state back, B sees one A (the old session is gone)
@@ -84,7 +89,7 @@ try {
   await sleep(1500);
   const s2 = await state(a2), pb3 = await pr(b);
   check('4. A closes the page: B sees A leave; A opens a new session: B sees exactly one A again', goneA && rejoinedB && rejoinedA && pb3.peers.length === 1 && pb3.count === 2, JSON.stringify({ gone: goneA, peers: pb3.peers.length, count: pb3.count }));
-  check('4. A\'s saved state is back after the reload: money and counters (the save is the browser\'s)', s2.wallet === s0.wallet && JSON.stringify(s2.counters) === JSON.stringify(s0.counters), JSON.stringify({ wallet: [s0.wallet, s2.wallet], terrasse: [s0.counters.terrasse, s2.counters.terrasse] }));
+  check('4. A\'s saved state is back after the reload: money and counters (the save is the browser\'s)', s2.wallet === s0.wallet && diff({ ...s0, pos: s2.pos }, s2).length === 0, JSON.stringify({ diff: diff({ ...s0, pos: s2.pos }, s2) }));
   await a2.screenshot({ path: `${out}/4-a-after-reload.png` });
 
   // 5. B leaves for good and returns: A sees it go and come back
