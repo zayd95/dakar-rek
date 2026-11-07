@@ -29,6 +29,9 @@ const ready = async () => { await page.waitForFunction(() => window.__dakar?.pos
 
 await page.goto(`${base}?debug&touch&heure=9&argent=4500000`, { timeout: 180000 });
 await ready();
+// DAY=<n> pins the city day (a labelled shortcut): the rides and the road events are seeded by the day, which follows the wall clock (24 real minutes a day), so two runs at different times are different journeys
+if (process.env.DAY) await d(n => { const A = window.__dakar; A.nextDay(n - A.nextDay(0)); }, Number(process.env.DAY));
+await ready();
 let t = await realTouch(page);
 // the car, bought (cash here; Journey A buys it on credit), then the ride the city asks for at this hour: the Pikine → Plateau one, with a pickup and a drop-off near the road
 await page.waitForFunction(() => window.__dakar.teranga.info().floor.length > 0, null, T);
