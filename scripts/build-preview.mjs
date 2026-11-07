@@ -40,6 +40,15 @@ const run = (cmd, args) => { const r = spawnSync(cmd, args, { stdio: 'inherit', 
 run('npx', ['tsc', '--noEmit']);
 run('npx', ['vite', 'build', '--config', 'vite.preview.config.ts']);
 
+// Hosts that serve no .glb (the claude.ai artifact page): the GLBs go into one JSON file, base64 by path below assets/, and the .glb files leave the folder (vite.preview.config.ts, GLB_SHIM).
+{
+  const bundle = {}, glbs = [];
+  (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (f.endsWith('.glb')) glbs.push(f); } })(path.join(out, 'assets'));
+  for (const f of glbs.sort()) bundle[path.relative(path.join(out, 'assets'), f).split(path.sep).join('/')] = fs.readFileSync(f).toString('base64');
+  fs.writeFileSync(path.join(out, 'assets', 'glb-bundle.json'), JSON.stringify(bundle));
+  for (const f of glbs) fs.unlinkSync(f);
+  console.log(`build-preview: ${glbs.length} GLB files packed into assets/glb-bundle.json (${(fs.statSync(path.join(out, 'assets', 'glb-bundle.json')).size / 1048576).toFixed(1)} MB)`);
+}
 const files = [];
 (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else files.push(f); } })(out);
 const rel = f => path.relative(out, f).split(path.sep).join('/');

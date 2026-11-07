@@ -26,6 +26,7 @@ const version = JSON.parse(fs.readFileSync(path.join(dir, 'version.json'), 'utf8
 let fails = 0; const check = (n, ok, d = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}: ${n}${d ? ' ' + d : ''}`); if (!ok) fails++; };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const bundleServed = { v: false };
 const open = async (query) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   await context.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); } catch { /* */ } });
@@ -34,6 +35,8 @@ const open = async (query) => {
   const optional = u => /car_rapide\.glb$/.test(u);          // an optional model the game asks for and does without (a 404 in every build and on every host)
   page.on('console', m => { if ((m.type() === 'error' || /Refused to|Content Security Policy/.test(m.text())) && !optional(m.location().url ?? '')) problems.push('console: ' + m.text().slice(0, 200)); });
   page.on('requestfailed', r => { if (!optional(r.url())) problems.push('requestfailed: ' + r.url().slice(-80)); });
+  page.on('console', m => { if (/\[vehicles\].*did not load/.test(m.text())) problems.push('vehicle model fell back: ' + m.text().slice(0, 160)); });
+  page.on('response', r => { if (/glb-bundle\.json$/.test(r.url()) && r.status() === 200) bundleServed.v = true; });
   page.on('response', r => { if (r.status() >= 400 && !optional(r.url())) problems.push(`http ${r.status()}: ${r.url().slice(-80)}`); });
   await page.goto(base + (query ?? ''), { timeout: 180000 });
   return { page, context, problems };
@@ -54,6 +57,7 @@ const open = async (query) => {
   check('memory shows on the meter (JS heap in Chrome, the renderer\'s own counts elsewhere)', /\d+ Mo|\d+ géom\./.test(meter), JSON.stringify(meter));
   const boot = await page.evaluate(() => [...document.querySelectorAll('pre')].some(p => /toucher pour fermer/.test(p.textContent ?? '')));
   check('no boot-error box on screen', !boot);
+  check('the GLB models came from the bundle (this host serves no .glb) and the vehicles loaded as models, not stand-ins', bundleServed.v && !problems.some(p => /vehicle model fell back/.test(p)));
   check('nothing was refused by the policy, nothing failed to load, no uncaught error', problems.length === 0, JSON.stringify(problems.slice(0, 5)));
   await page.screenshot({ path: `${out}/02-showcase-start.png` });
   await context.close();

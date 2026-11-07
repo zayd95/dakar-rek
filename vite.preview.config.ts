@@ -9,11 +9,24 @@ declare const process: { env: Record<string, string | undefined> };
  *  - the build id says it is a playtest build (`<commit>-<date>-apercu`) and `__BASE_COMMIT__` names the accepted candidate it was made from;
  *  - « Mesure de fluidité » starts on (src/core/frameStats.ts; the player can switch it off in Réglages);
  *  - the owner's showcase start is compiled in (VITE_OWNER_SHOWCASE=1 in the environment, as for `build:showcase`): its own save, so the player's real game is never touched;
- *  - a few lines of script in the page's head say on screen what stopped the game from starting (a blocked script, a refused file), because nobody can open a console on a phone.
+ *  - a few lines of script in the page's head say on screen what stopped the game from starting (a blocked script, a refused file), because nobody can open a console on a phone;
+ *  - a hosted page that serves no .glb gets them from one JSON file instead (GLB_SHIM below): the same bytes, so the vehicles and bodies are the real ones, not stand-ins.
  * Nothing here changes how the game plays.
  */
 const base = process.env.MOBILE_BASE_COMMIT ?? '';
 const id = `${buildId()}-apercu`;
+
+/**
+ * Some preview hosts (the claude.ai artifact page among them) serve no .glb file. scripts/build-preview.mjs then packs every GLB of the build into assets/glb-bundle.json (base64, one
+ * entry per path below assets/) and this makes the game's own fetch of a .glb get its bytes from there: the vehicles, the characters and the bodies load exactly as they do from a plain
+ * .glb, no loader is changed. A path the bundle does not hold (the optional car_rapide.glb) or a bundle that cannot be read goes to the real fetch, so a host that serves .glb still works.
+ */
+const GLB_SHIM = `(function(){var real=window.fetch.bind(window),bundle=null;
+function key(u){u=String(u).split('?')[0].split('#')[0];var i=u.lastIndexOf('/assets/');return i>=0&&u.slice(-4)==='.glb'?u.slice(i+8):null;}
+function load(){return bundle||(bundle=real(new URL('assets/glb-bundle.json',document.baseURI).href).then(function(r){if(!r.ok)throw new Error('bundle '+r.status);return r.json();}));}
+window.fetch=function(input,init){var k=key(typeof input==='string'?input:(input&&input.url)||input);if(!k)return real(input,init);
+return load().then(function(b){var s=b[k];if(!s)return real(input,init);var bin=atob(s),u8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+return new Response(u8,{status:200,headers:{'content-type':'model/gltf-binary'}});},function(){return real(input,init);});};})();`;
 
 /** Runs before the game's own script. Shows a dismissable (tap) red box with the build on a failure to load or an uncaught error; says nothing otherwise. */
 const BOOT = `(function(){var box,info='Dakar Rek aperçu · build ${id}${base ? ` · candidat ${base.slice(0, 8)}` : ''}';
@@ -24,7 +37,7 @@ document.addEventListener('securitypolicyviolation',function(e){show('Refusé pa
 
 const bootDiagnostics: Plugin = {
   name: 'mobile-01-boot-diagnostics',
-  transformIndexHtml: { order: 'pre', handler: html => ({ html: html.replace('<title>Dakar Rek</title>', '<title>Dakar Rek Playtest</title>'), tags: [{ tag: 'script', children: BOOT, injectTo: 'head-prepend' }] }) },   // (its own name among the older previews)
+  transformIndexHtml: { order: 'pre', handler: html => ({ html: html.replace('<title>Dakar Rek</title>', '<title>Dakar Rek Playtest</title>'), tags: [{ tag: 'script', children: BOOT + GLB_SHIM, injectTo: 'head-prepend' }] }) },   // (its own name among the older previews)
 };
 
 export default defineConfig({
