@@ -156,7 +156,9 @@ describe('seen from the street and from far', () => {
     for (let x = -80; x <= 100; x += 10) views.push({ at: [x, -118], what: `the sea road at x ${x}` });                       // along the Route des Almadies, from 50 m west of the hotel's middle (the resort's wing stands in the way further) to 130 m east
     for (let z = -60; z >= -118; z -= 8) views.push({ at: [0, z], what: `the avenue at z ${z}` });                           // down the whole Avenue du Littoral to the sea road, at the hotel's east side
     for (let z = -60; z >= -118; z -= 8) views.push({ at: [-60, z], what: `the cross street at z ${z}` });                   // the road at the hotel's west end
-    for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push({ at: [x, -140], what: `the beach at x ${x}` });                    // the sea side
+    // the sea side: the beach at z −140. West of x −43 that ground is the night street's venues' (their solid footprints run z −146.25…−136.75 from Le Patio to Le Comptoir de Ngor, packed side by side): nobody stands inside one, so
+    // there the sample is on the promenade in front of them (z −135), the walkable ground; from behind a 6.4 m venue the roof sign 60 m away is hidden, as it would be in the street
+    for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push({ at: [x, x < -43 ? -135 : -140], what: `the beach at x ${x}` });
     const centre = (p: { x: number; y: number; z: number }) => [p.x, p.y, p.z] as [number, number, number];
     const unseen: string[] = [];
     for (const v of views) {
