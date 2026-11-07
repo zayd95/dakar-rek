@@ -14,7 +14,7 @@ import type { Collider, HubWorld } from '../src/world/types';
 /**
  * LD2.0-E « The Almadies district » (docs/ld2/LD2_E.md): the plan covers the hub's free lots exactly once, every design stays inside its site, keeps
  * its budget, draws no random number, leaves the gate's apron open; and the rest of the Almadies (every street tree, palm, stall, collider, seat and
- * person, every other lot's primitive) is exactly where the villa branch's last commit (3ca9e39) drew it.
+ * person, every other lot's primitive) is exactly where the same generator draws it without the district (the fixture, `playable-20261107`: the release candidate plus the night street, taken with the district switched off and the night street's ground left out).
  */
 stubCanvas();
 const facade = vi.hoisted(() => ({ depth: 0 }));
@@ -24,7 +24,7 @@ vi.mock('../src/housing/villaFacade', async importOriginal => {
 });
 const fixture = JSON.parse(new TextDecoder().decode(readFileSync('tests/fixtures/almadiesOutsideDistrict.json'))) as { base: string; rects: { x0: number; x1: number; z0: number; z1: number }[]; full: HubDigest; lite: HubDigest };
 const hubs: Partial<Record<'full' | 'lite', HubWorld>> = {};
-// (the rest of the Almadies is the villa branch's, with the round-3 streetscape switched off: it adds to the street on purpose, tests/almadiesStreetscape.test.ts)
+// (the rest of the Almadies is what the generator draws without the district, with the round-3 streetscape switched off: it adds to the street on purpose, tests/almadiesStreetscape.test.ts)
 const build = async (q: 'full' | 'lite') => { const { buildHub } = await import('../src/world/builder'); const { STREETSCAPE } = await import('../src/world/almadies/streetscape'); STREETSCAPE.on = false; return (hubs[q] ??= buildHub('almadies', q === 'lite')); };
 const within = (c: Collider, r: { x0: number; x1: number; z0: number; z1: number }, m = 0.02) => c.x0 >= r.x0 - m && c.x1 <= r.x1 + m && c.z0 >= r.z0 - m && c.z1 <= r.z1 + m;
 
@@ -126,13 +126,13 @@ describe('the district in the hub', () => {
     // the whole district's cost, gross, on the medium preset (the budget: docs/ld2/LD2_E.md decision 5)
     expect(trisOf(t)).toBeLessThanOrEqual(110_000);
   });
-  for (const q of ['full', 'lite'] as const) it(`(${q}) leaves every other lot, street tree, palm, stall, collider, seat and person of the Almadies exactly as the villa branch drew them`, async () => {
+  for (const q of ['full', 'lite'] as const) it(`(${q}) leaves every other lot, street tree, palm, stall, collider, seat and person of the Almadies exactly as the same generator draws them without the district`, async () => {
     let hub: HubWorld | null = null;
     const now = await digestHub(async () => (hub = await build(q)), fixture.rects, 0.3, () => facade.depth > 0);
     hubs[q] = hub!;
     const was = fixture[q];
-    expect(fixture.base).toBe('3ca9e39');
-    // the night street's beach (src/world/nightStreet.ts) is not the district's: the fixture leaves it out too, rectangle for rectangle (taken again at the villa branch with them)
+    expect(fixture.base).toBe('playable-20261107');
+    // the night street's beach (src/world/nightStreet.ts) is not the district's: the fixture leaves it out too, rectangle for rectangle (taken again with the district switched off, with them)
     for (const r of [...Object.values(NIGHT_RECTS), ALLEY_RECT, ZEBRA_RECT]) expect(fixture.rects, JSON.stringify(r)).toContainEqual(expect.objectContaining({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 }));
     expect(now.batches.map(b => b.n)).toEqual(was.batches.map(b => b.n));
     expect(now.batches).toEqual(was.batches);

@@ -14,9 +14,9 @@ let hub: HubWorld | null = null;
 const build = async () => (hub ??= (await import('../src/world/builder')).buildHub('almadies', true));
 
 describe('the night street\'s counters', () => {
-  it('are four places of their own: a restaurant, a restaurant, a café and a night lounge, each open at its own hours', () => {
-    expect(NIGHT_PLACES.map(p => p.kind)).toEqual(['binta', 'comptoir', 'phare', 'lounge']);
-    expect(NIGHT_PLACES.map(p => p.type)).toEqual(['restaurant', 'restaurant', 'cafe', 'bar']);
+  it('are three places of their own: a restaurant, a café and a night lounge (Le Comptoir de Ngor has no ground in the combined game), each open at its own hours', () => {
+    expect(NIGHT_PLACES.map(p => p.kind)).toEqual(['binta', 'phare', 'lounge']);
+    expect(NIGHT_PLACES.map(p => p.type)).toEqual(['restaurant', 'cafe', 'bar']);
     const by = (id: string) => NIGHT_PLACES.find(p => p.id === id)!;
     expect(isOpen(by('phare').hours, 8)).toBe(true); expect(isOpen(by('binta').hours, 8)).toBe(false);         // the café opens before the grill
     expect(isOpen(by('binta').hours, 13)).toBe(true); expect(isOpen(by('lounge').hours, 13)).toBe(false);      // a lunch, not a lounge

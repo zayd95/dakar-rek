@@ -14,7 +14,7 @@ import { FRONT_Z, NIGHT_VENUES } from '../world/nightStreet';
 interface Item { id: string; label: string; detail?: string; price: number; needs: Partial<Needs>; drink?: boolean }
 interface NightPlace { id: string; name: string; type: 'restaurant' | 'cafe' | 'bar'; hours: [number, number]; kind: 'binta' | 'comptoir' | 'phare' | 'lounge'; items: Item[] }
 
-export const NIGHT_PLACES: readonly NightPlace[] = [
+const ALL_PLACES: readonly NightPlace[] = [
   { id: 'binta', name: 'Chez Binta', type: 'restaurant', hours: [11, 24], kind: 'binta', items: [
     { id: 'poisson', label: 'Poisson grillé', detail: 'Au charbon, citron et oignons', price: 3500, needs: { faim: 52, moral: 4 } },
     { id: 'brochettes', label: 'Brochettes de bœuf', price: 2000, needs: { faim: 30, moral: 3 } },
@@ -37,6 +37,9 @@ export const NIGHT_PLACES: readonly NightPlace[] = [
     { id: 'assiette', label: 'Assiette à partager', detail: 'Accras, beignets de crevettes, plantain', price: 3000, needs: { faim: 34, moral: 5, social: 3 } },
   ] },
 ];
+
+/** The places whose venue stands on the night street (Le Comptoir de Ngor has no ground in the combined game: the Plage de Ngor has it). */
+export const NIGHT_PLACES: readonly NightPlace[] = ALL_PLACES.filter(p => NIGHT_VENUES.some(v => v.kind === p.kind));
 
 /** Where a counter is served: on the promenade, a step in front of the venue's door. */
 export function counterOf(p: NightPlace) {
