@@ -11,7 +11,7 @@
 // Usage: node scripts/check-almadies-journey.mjs <baseUrl> <outDir>
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { realTouch, pilot, boardVehicle, walkTo } from './lib/realTouch.mjs';
+import { realTouch, pilot, boardVehicle, walkTo, playDance } from './lib/realTouch.mjs';
 
 const [base = 'http://127.0.0.1:4650/', out = '/tmp/claude-0/m4/journey'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -34,15 +34,16 @@ const A = () => d(() => window.__dakar.almadies.info());
 const S = () => d(() => ({ wallet: window.__dakar.state.wallet, n: { ...window.__dakar.state.data.needs }, c: { ...window.__dakar.state.data.counters }, ledger: window.__dakar.state.data.ledger.length }));
 let t;
 async function tapItem(re) {
-  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, re);
+  // the sheet slides in: wait until the row stops moving (up to ~6 s on a slow page), and tap only where the row itself is under the finger
+  const rowAt = () => d(r => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(r).test(x.textContent.replace(/\s+/g, ' ').trim())); if (!e) return null; e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(), x = b.x + b.width / 2, y = b.y + b.height / 2, hit = document.elementFromPoint(x, y); return { x, y, on: !!hit && e.contains(hit) }; }, re);
   const before = await sheet();
-  for (let n = 0; n < 2; n++) {
+  for (let n = 0; n < 4; n++) {
     let box = await rowAt();
-    for (let k = 0; k < 10 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) break; box = again; }
+    for (let k = 0; k < 50 && box; k++) { await page.waitForTimeout(120); const again = await rowAt(); if (again && again.on && Math.abs(again.x - box.x) < 0.5 && Math.abs(again.y - box.y) < 0.5) { box = again; break; } box = again; }
     if (!box) { if (n) return; throw new Error(`no sheet row matches /${re}/: ${JSON.stringify(await items())}`); }
-    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(700);
+    await t.down(5, box.x, box.y); await page.waitForTimeout(60); await t.up(5); await page.waitForTimeout(900);
     if ((await sheet()) !== before) return;
-    log(`tap on /${re}/ not taken, once more`);
+    log(`tap on /${re}/ not taken (row ${box.on ? 'under the finger' : 'not under the finger'} at ${Math.round(box.y)}), once more`);
   }
 }
 /** The action button for a focus id: tapped once it is offered. */
@@ -71,14 +72,16 @@ const st0 = await S();
 check('a new evening: nothing of M4 is remembered yet', Object.keys(st0.c).filter(k => k.startsWith('al_') && st0.c[k] !== 0).length === 0 && (await A()).stages === 0, JSON.stringify((await A()).counters));
 check('the Terrasse de Ngor has a door in the Almadies streets, and Awa Sy stands on its terrace', !!info && info.hub === 'almadies' && (await A()).awa?.doorId === info.door.id, JSON.stringify({ door: info.door, awa: (await A()).awa }));
 
-// ---------------------------------------------------------------- 1. the car, to the road nearest the door
-const R = info.door, rv = Math.round(R.x / 60) * 60, rh = Math.round(R.z / 60) * 60, vert = Math.abs(R.x - rv) <= Math.abs(R.z - rh);
-const side = Math.sign(vert ? R.x - rv : R.z - rh) || 1, lane = 4.3;
-const startPt = vert ? { x: rv + side * lane, z: Math.min(118, R.z + 56) } : { x: Math.max(-118, R.x - 56), z: rh + side * lane };
-const endPt = vert ? { x: rv + side * lane, z: R.z } : { x: R.x, z: rh + side * lane };
-const parkingPt = { x: R.x, z: R.z - 4.4 }; // marked forecourt bay immediately in front of the Terrasse
-const yaw = vert ? Math.PI : Math.PI / 2, F = { x: Math.sin(yaw), z: Math.cos(yaw) }, L = { x: Math.cos(yaw), z: -Math.sin(yaw) };
-log('car at', JSON.stringify(startPt), '→', JSON.stringify(endPt), vert ? 'vertical road' : 'horizontal road');
+// ---------------------------------------------------------------- 1. the car, to the night street's car park across the road from the hotel
+const R = info.door;                                                  // the boutique hotel's stair door (LD2.0-E): the one Terrasse de Ngor
+const ns = await d(() => window.__dakar.district.nightStreet());
+// the target: a free bay of the car park nearest the hotel's door (its east end, by the alley), its west neighbour and the two to its east free too (a driver swings in on an arc from the east, heading west along the north lane)
+const BW = 2.6, eastBays = ns.bays.filter(b => b.lot === 'west'), isFree = x => eastBays.some(b => Math.abs(b.x - x) < 0.3 && b.free);
+const bay = eastBays.filter(b => b.free && isFree(b.x - BW) && isFree(b.x + BW) && isFree(b.x + 2 * BW)).sort((a, b) => Math.hypot(a.x - R.x, a.z - R.z) - Math.hypot(b.x - R.x, b.z - R.z))[0];
+check('the night street has a free bay in the car park across the road from the hotel, with room to swing in', !!bay && Math.hypot(bay.x - R.x, bay.z - R.z) < 45, JSON.stringify({ bay, door: R }));
+const laneZ = -124.3, yaw = -Math.PI / 2, F = { x: Math.sin(yaw), z: Math.cos(yaw) }, L = { x: Math.cos(yaw), z: -Math.sin(yaw) };   // the north lane, heading west
+const startPt = { x: bay.x + 34, z: laneZ }, parkingPt = { x: bay.x, z: bay.z };
+log('car at', JSON.stringify(startPt), '→ bay', JSON.stringify(parkingPt));
 // the Teranga's parking record moved to the start of the lane (a labelled shortcut, as in the Mermoz journey), the hub rebuilt around it
 await d(([x, z, y]) => { const A = window.__dakar, id = A.teranga.info().id, c = A.state.data.counters; c[`vehicle:${id}:hub`] = A.hubs.indexOf('almadies'); c[`vehicle:${id}:x`] = x; c[`vehicle:${id}:z`] = z; c[`vehicle:${id}:yaw`] = y; A.save?.(); A.teleport('corniche'); }, [startPt.x, startPt.z, yaw]);
 await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche' && window.__dakar.pos().mode === 'play', null, T);
@@ -87,30 +90,34 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && wind
 await page.waitForTimeout(1500);
 await boardVehicle(page, t, 'teranga');
 await shot('driving-to-the-terrace');
-// A driver does not aim at a bay 6 m to the side from the lane: the Teranga's turning radius is 5.2 m, so it swings in on an arc (a quarter circle from the lane into the bay, nose first).
-const TURN = 5.6, bayDir = Math.sign(parkingPt.z - endPt.z) || 1;
-const intoBay = vert ? [{ x: endPt.x, z: endPt.z + 8, tol: 3, speed: 5 }, { ...endPt, tol: 2, speed: 2.2 }, { ...parkingPt, tol: 1.0, speed: 1.1 }]
-  : [{ x: parkingPt.x - TURN - 10, z: endPt.z, tol: 2.5, speed: 4.5 }, { x: parkingPt.x - TURN - 2, z: endPt.z, tol: 1.0, speed: 2.2 },
-    ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: parkingPt.x - TURN - 2 + TURN * Math.sin(r), z: endPt.z + bayDir * TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
-    { x: parkingPt.x, z: parkingPt.z + bayDir * 0.7, tol: 0.9, speed: 1.0 }];   // aimed a little deeper than the bay's centre: the pilot counts a short last leg as passed, and the brake takes the car a metre or so (more on a slow page)
+// A driver does not aim at a bay 5 m to the side from the lane: the Teranga's turning radius is 5.2 m, so it swings in on an arc (a quarter circle from the lane into the bay, nose first, the bay's neighbours free).
+const TURN = 5.6, intoBay = [{ x: bay.x + TURN + 12, z: laneZ, tol: 2.5, speed: 4.5 }, { x: bay.x + TURN + 2, z: laneZ, tol: 1.0, speed: 2.2 },
+  ...[30, 60, 90].map(a => { const r = a * Math.PI / 180; return { x: bay.x + TURN + 2 - TURN * Math.sin(r), z: laneZ - TURN * (1 - Math.cos(r)), tol: 1.0, speed: 1.8 }; }),
+  { x: bay.x, z: parkingPt.z - 0.7, tol: 0.9, speed: 1.0 }];   // aimed a little deeper than the bay's centre: the pilot counts a short last leg as passed, and the brake takes the car a metre or so (more on a slow page)
 await pilot(page, t, 'teranga', intoBay, { brakeAtEnd: true, cruise: 5 });
+// a driver who stops short of the bay's back line eases forward a little (up to twice): the brake's reach depends on the page's frame rate
+for (let k = 0; k < 2; k++) {
+  const at = await d(() => window.__dakar.teranga.at());
+  if (at.z < -129.0 && Math.abs(at.x - bay.x) < 1.6) break;
+  await pilot(page, t, 'teranga', [{ x: bay.x, z: bay.z - 1.2, tol: 0.6, speed: 0.9 }], { brakeAtEnd: true, cruise: 1.5 });
+}
 const parked = await d(() => window.__dakar.teranga.at());
 await shot('parked');
 await t.tap('#ridepad .rp-off');
 await until(() => !window.__dakar.teranga.at().driving && window.__dakar.pos().mode === 'play', null, 60000);
 await page.waitForTimeout(1200);
 const car1 = await d(() => window.__dakar.teranga.info()), pk = await d(() => window.__dakar.teranga.at());
-// the stop is hand-steered and the brake's reach depends on the page's frame rate: the car's centre must be inside the bay's painted rectangle (7.2 × 5.0 m), shrunk 0.5 m
-const inBay = Math.abs(pk.x - parkingPt.x) <= 3.1 && Math.abs(pk.z - parkingPt.z) <= 2.0;
-check('driven with the pedal stick into the marked Terrasse visitor bay (centre inside its painted lines) and parked within 25 m of the door', inBay && Math.hypot(pk.x - R.x, pk.z - R.z) < 25, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [+parkingPt.x.toFixed(1), +parkingPt.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
+// the stop is hand-steered and the brake's reach depends on the page's frame rate: the car's centre must be in the bay's painted column (2.6 m: its free neighbours leave the rest) and the whole car off the carriageway
+const inBay = Math.abs(pk.x - parkingPt.x) <= 1.3 && Math.abs(pk.z - parkingPt.z) <= 2.4 && pk.z < -128.6;
+check('driven with the pedal stick into a free painted bay of the night street\'s car park (centre inside its lines, the whole car off the carriageway), within 45 m of the hotel\'s door', inBay && Math.hypot(pk.x - R.x, pk.z - R.z) < 45, JSON.stringify({ at: [+pk.x.toFixed(1), +pk.z.toFixed(1)], bay: [+parkingPt.x.toFixed(1), +parkingPt.z.toFixed(1)], door: [+R.x.toFixed(1), +R.z.toFixed(1)] }));
 check('stepped out: the car stays where it was left, saved as parked in Almadies', car1.owned && !pk.driving && car1.record?.hub === 'almadies' && Math.hypot(car1.record.x - pk.x, car1.record.z - pk.z) < 0.5, JSON.stringify(car1.record));
 
 // ---------------------------------------------------------------- 2. on foot to the door, up the stairs
-// the stick is steered by hand toward the door: clear the parked car first (it is solid), then cross the forecourt to the entrance
-const me0 = await d(() => window.__dakar.pos()), around = vert ? [{ x: me0.x, z: pk.z + 4.4 }, { x: rv + side * 6.5, z: pk.z + 4.4 }] : [{ x: pk.x - 4.4, z: me0.z }, { x: pk.x - 4.4, z: rh + side * 6.5 }];
-for (const w of around) await walkTo(page, t, w.x, w.z, { tol: 0.9, ms: 40000 });
+// the stick is steered by hand: out between the bays to the road's edge, along the verge to the zebra at x −30 (the way between the alley and the hotel's forecourt), across it, in by the forecourt's gap and to the stair door
+const me0 = await d(() => window.__dakar.pos());
+for (const w of [{ x: me0.x, z: -126.2 }, { x: -30, z: -126.2 }, { x: -30, z: -114.0 }, { x: -30, z: -111.4 }, { x: -37.5, z: -108.2 }]) await walkTo(page, t, w.x, w.z, { tol: 0.9, ms: 60000 });
 const dWalk = await walkTo(page, t, R.x, R.z, { tol: 1.2, ms: 90000 });
-check('from the car to the terrace’s door on foot: nothing in the way', dWalk < 1.6, `${dWalk.toFixed(2)} m left, at ${JSON.stringify(await d(() => window.__dakar.pos()))}, car ${JSON.stringify(pk)}`);
+check('from the car across the road to the hotel’s stair door on foot: nothing in the way', dWalk < 1.6, `${dWalk.toFixed(2)} m left, at ${JSON.stringify(await d(() => window.__dakar.pos()))}, car ${JSON.stringify(pk)}`);
 if (dWalk >= 1.6) await shot('walk-blocked');
 check('« Entrer » is offered at the door', await act(info.door.id));
 await until(() => window.__dakar.pos().x > 3000, null, 60000);
@@ -175,8 +182,8 @@ await until(() => window.__dakar.pos().x < 1000, null, 60000); await page.waitFo
 await d(() => window.__dakar.setHour(21.5));                                              // labelled shortcut: the club opens at 21 h
 const club = await d(() => { const c = window.__dakar.venues().find(v => v.type === 'club'); return { door: c.anchors.find(a => /door$/.test(a.id)), floor: c.anchors.find(a => /floor$/.test(a.id)), exit: c.anchors.find(a => /exit$/.test(a.id)) }; });
 await d(() => window.__dakar.clubShift?.(0));
-// on foot from the terrace's door to La Vague by the streets (the villa lots lie between): back round the car, up the road, along the Ngor road to the gate
-for (const w of [{ x: rv + side * 6.5, z: pk.z + 4.4 }, { x: rv - 2, z: pk.z + 4.4 }, { x: rv - 2, z: -122 }, { x: club.door.x + 5, z: -122 }]) await walkTo(page, t, w.x, w.z, { tol: 1.2, ms: 90000 });
+// on foot from the hotel's door to La Vague: out by the forecourt's gap, over the zebra, up the alley (the same way as the car park's)
+for (const w of [{ x: -37.5, z: -108.2 }, { x: -30, z: -111.4 }, { x: -30, z: -114.0 }, { x: -30, z: -126.0 }, { x: club.door.x, z: -127.6 }]) await walkTo(page, t, w.x, w.z, { tol: 1.2, ms: 90000 });
 await walkTo(page, t, club.door.x, club.door.z, { tol: 1.2, ms: 120000 });
 check('at the club’s door: « Entrer »', await act(`almadies:venue:club:${club.door.id}`));
 const askT = await sheet();
@@ -189,9 +196,12 @@ await walkTo(page, t, club.floor.x, club.floor.z, { tol: 1.2, ms: 120000 });
 check('on the floor: « Danser »', await act(`almadies:venue:club:${club.floor.id}`));
 await until(() => !!window.__dakar.gesture() && /^Dance_/.test(window.__dakar.clip() ?? ''), null, 30000);
 await shot('dancing');
-await until(() => { if (window.__dakar.gesture()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 120000);   // the beat game: the existing debug finish
+const played = await playDance(page, t);                                                   // the beat game, played with real touches on the music's beat (no debug finish)
+log('danced:', JSON.stringify(played));
 await page.waitForTimeout(1500);
+await until(() => (window.__dakar.almadies.info().stages & 4) === 4, null, 30000);          // the evening's module reads the club's counter on its own frame: a slow page may take a moment
 const sd = await S();
+check('the beat game was played with real touches on the beat (cues touched, a card at the end)', played.touches >= 8 && played.performances >= 2, JSON.stringify(played));
 check('one dance counted by La Vague, and the evening knows it', (sd.c['club:almadies:venue:club:danses'] ?? 0) === 1 && ((await A()).stages & 4) === 4, JSON.stringify((await A()).counters));
 
 // ---------------------------------------------------------------- 6. the way out: the evening card, once

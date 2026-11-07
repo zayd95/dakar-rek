@@ -31,8 +31,8 @@ const PARKED_MIX_BUSY: Partial<Record<HubWorld['id'], [VehicleKind, number][]>> 
 const BUSY_SHARE: Partial<Record<HubWorld['id'], number>> = { mermoz: 0.6 };
 /** Distance from the road centre line to the parked vehicle's centre (sidewalks start at 5 m). */
 /**
- * Kerb that stays free of parked cars: the coast road in front of the Almadies' hospitality strip (blocks (0,0) and (1,0): x −113…−7), where a driver comes up to the Terrasse de Ngor's visitor bay
- * and the car parks' ways in (check-almadies-journey drives that lane). The strip has its own authored cars; the district's busy streets (LD2.0-E round 3) park the rest of the road.
+ * Kerb that stays free of parked cars: the coast road in front of the Almadies' hotels and the night street (x −121…−6), where a driver comes up to the night street's car parks and taxi bay
+ * (src/world/nightStreet.ts; check-nightlife-journey drives that lane). The night street has its own authored cars; the district's busy streets (LD2.0-E round 3) park the rest of the road.
  */
 const KERB_FREE: Partial<Record<HubWorld['id'], { x0: number; z0: number; x1: number; z1: number }[]>> = { almadies: [{ x0: -121, z0: -119.2, x1: -6, z1: -112 }] };
 export const PARK_OFFSET = 4.3;

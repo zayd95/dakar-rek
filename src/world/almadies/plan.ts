@@ -22,18 +22,18 @@ const union = (i: number, j: number, lots: readonly number[]): Rect => {
 };
 /** The lots the district leaves to their own builders: block → lots. */
 export const KEPT_LOTS: Record<string, number[]> = { '0,1': [0], '3,1': [1], '1,1': [3] };
-/**
- * Blocks that are not the district's at all in this game: the north hospitality strip (src/world/hospitalityStrip.ts, M4: the restaurants, La Vague, the Terrasse de Ngor and its car
- * parks) takes blocks (0,0) and (1,0); the district's hotels there (the first branch's plan, drawn before the strip existed) are left out. The port (2,0) and the others are as before.
- */
-export const STRIP_BLOCKS = new Set(['0,0', '1,0']);
 
 interface Row { at: [number, number]; lots: number[]; kind: SiteKind; variant: number; palette: PaletteName; storeys: number; facing?: Facing; mirror?: boolean; name?: string; gate?: GateSide }
 const R = (at: [number, number], lots: number[], kind: SiteKind, variant: number, palette: PaletteName, storeys: number, o: Partial<Row> = {}): Row => ({ at, lots, kind, variant, palette, storeys, ...o });
 // the sea front (row 0), the avenues (rows 1 and 3): [block, lots, kind, variant, palette, storeys, options]
 const ROWS: Row[] = [
-  R([3, 0], [0, 1], 'hotel', 0, 'oak', 4, { name: 'HÔTEL LE FILAO', gate: 'right' }),             // the sea-front boutique hotel (the first plan had it on the strip's block (1,0))
-  R([3, 0], [2, 3], 'residence', 1, 'terracotta', 6, { name: 'RÉSIDENCE LES CORMORANS', gate: 'centre', mirror: true }),
+  R([0, 0], [0, 1, 2, 3], 'hotel', 0, 'azur', 5, { facing: 'south', name: 'HÔTEL BAOBAB AZUR', gate: 'right' }),
+  R([1, 0], [0, 1], 'hotel', 0, 'oak', 4, { name: 'HÔTEL LE FILAO', gate: 'right' }),
+  R([1, 0], [2], 'villa', 0, 'ivory', 2, { gate: 'right' }),
+  R([1, 0], [3], 'villa', 1, 'sand', 3, { mirror: true, gate: 'right' }),
+  R([3, 0], [0, 1], 'residence', 0, 'ivory', 6, { name: 'RÉSIDENCE LES ALIZÉS', gate: 'centre' }),
+  R([3, 0], [2], 'house', 0, 'greige', 2, { gate: 'left' }),
+  R([3, 0], [3], 'house', 1, 'oak', 2, { mirror: true, gate: 'left' }),
   R([0, 1], [1], 'villa', 2, 'terracotta', 2, { gate: 'right' }),
   R([0, 1], [2], 'house', 2, 'ivory', 2, { gate: 'left' }),
   R([0, 1], [3], 'house', 0, 'sand', 2, { mirror: true, gate: 'left' }),
@@ -54,7 +54,7 @@ const ROWS: Row[] = [
   R([2, 3], [0, 1], 'hotel', 1, 'ivory', 8, { name: 'HÔTEL OCÉANE', gate: 'right' }),
   R([2, 3], [2], 'villa', 2, 'greige', 2, { gate: 'right' }),
   R([2, 3], [3], 'villa', 0, 'azur', 3, { mirror: true, gate: 'right' }),
-  R([3, 3], [0, 1], 'residence', 0, 'ivory', 6, { name: 'RÉSIDENCE LES ALIZÉS', gate: 'centre' }),
+  R([3, 3], [0, 1], 'residence', 1, 'terracotta', 6, { name: 'RÉSIDENCE LES CORMORANS', gate: 'centre', mirror: true }),
   R([3, 3], [2], 'house', 2, 'sand', 2, { gate: 'left' }),
   R([3, 3], [3], 'house', 0, 'ivory', 2, { mirror: true, gate: 'left' }),
 ];

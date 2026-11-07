@@ -46,20 +46,20 @@ describe('the rooftop restaurant\'s stair door', () => {
 });
 
 describe('in the hub', () => {
-  it('the hub carries the hotel\'s stair door as architecture, and the venue puts the Terrasse de Ngor\'s door where the strip has it: one Terrasse, never on the hotel', async () => {
+  it('the Almadies hub carries the door, and the venue uses it instead of its search', async () => {
     const { buildHub } = await import('../src/world/builder');
     const hub: HubWorld = buildHub('almadies', false);
     const f = hub.rooftopDoor!;
-    expect(f, 'the hub has the hotel\'s rooftop door').toBeTruthy();
-    const { RooftopModule, ROOFTOPS } = await import('../src/venues/rooftop');
+    expect(f, 'the hub has the rooftop door').toBeTruthy();
+    const { RooftopModule } = await import('../src/venues/rooftop');
     const ctx = { interactions: { add() {} }, addInterior() {} } as unknown as GameCtx;
     const before = hub.interactables.length;
     RooftopModule.hubLoaded?.(ctx, hub);
-    const doors = hub.interactables.slice(before).filter(i => i.id === 'almadies:rooftop:almadies');
-    expect(doors, 'one door for the Terrasse: no second one on the hotel').toHaveLength(1);
-    const site = ROOFTOPS.almadies!.site!;
-    expect(doors[0].x).toBeCloseTo(site.x, 6); expect(doors[0].z).toBeCloseTo(site.z, 6);
-    expect(Math.hypot(doors[0].x - f.x, doors[0].z - f.z), 'not the hotel\'s door').toBeGreaterThan(20);
+    const door = hub.interactables.slice(before).find(i => i.id === 'almadies:rooftop:almadies')!;
+    expect(door, 'the venue put its door in the hub').toBeTruthy();
+    expect(door.x).toBeCloseTo(f.x, 6); expect(door.z).toBeCloseTo(f.z, 6);
+    // not behind the hotel: the hotel's lot is x −53…−7, z −113…−91 (the sea road to the north): the door is in its north half
+    expect(door.z).toBeLessThan(-100); expect(door.x).toBeGreaterThan(-53); expect(door.x).toBeLessThan(-7);
   }, 120000);
   it('the other hubs keep the venue\'s own search (no door given)', async () => {
     const { buildHub } = await import('../src/world/builder');
@@ -71,7 +71,7 @@ describe('in the hub', () => {
  * Round 4 (« keep la terrasse where it is but put its name on top since it's a rooftop, and make it visible from the street and far »): the boutique hotel carries the sign on
  * its roof, over the street (one face each way) and across both ends, and the venue paints and lights it in one mesh; the door keeps only a plaque.
  */
-describe('the rooftop restaurant\'s name on the hotel\'s roof (the gantry the district draws)', () => {
+describe('the rooftop restaurant\'s name on the hotel\'s roof', () => {
   const sign = (s = hotel) => { const t = testKit(), dist = buildDistrict(t.kit, x => x.id === s.id); return { dist, panels: dist.rooftopSign!.panels, colliders: dist.colliders, tallest: Math.max(...dist.colliders.map(c => c.h)) }; };
   it('is given by the hotel: a board over the street with a face each way, a blade at each end, all above everything solid under them and inside the site', () => {
     const { panels, colliders } = sign(), r = hotel.rect, street = hotel.facing === 'north' ? -1 : 1;
@@ -101,28 +101,24 @@ describe('the rooftop restaurant\'s name on the hotel\'s roof (the gantry the di
       for (const p of b) expect(Math.sign(p.nx), 'faces outward').toBe(Math.sign(p.x - cx));
     }
   });
-  it('the venue lights two gantries: the Terrasse\'s own on the strip (the Terrasse de Ngor, once) and the hotel\'s, which carries the hotel\'s name', async () => {
+  it('the venue builds it as ONE lit mesh (five faces: the two of the board, the two blades, the door\'s plaque) and the door has no other sign', async () => {
     const { buildHub } = await import('../src/world/builder'), { RooftopModule } = await import('../src/venues/rooftop');
     const hub: HubWorld = buildHub('almadies', false);
     expect(hub.rooftopSign?.panels).toHaveLength(4);
-    expect(hub.rooftopSign?.name, 'the hotel names itself').toMatch(/HÔTEL|HOTEL/i);
-    const before = hub.signs.length;
+    const before = hub.signs.length, kids = hub.group.children.length;
     RooftopModule.hubLoaded?.({ interactions: { add() {} }, addInterior() {} } as unknown as GameCtx, hub);
     const added = hub.signs.slice(before);
-    expect(added, 'the Terrasse\'s gantry and the hotel\'s: two meshes, no door sign').toHaveLength(2);
-    for (const m of added) {
-      expect(m.name).toBe('rooftop-sign'); expect(m.geometry.type).toBe('BufferGeometry');
-      expect(m.geometry.attributes.position.count, '4 quads, 6 vertices each').toBe(24);
-      const mat = m.material as unknown as { emissiveMap: unknown; map: unknown };
-      expect(mat.emissiveMap).toBe(mat.map);                                                                              // lit at night with the hub's other signs
-    }
-    const at = (m: (typeof added)[number]) => { const pos = m.geometry.attributes.position; let sx = 0, miny = 1e9; for (let i = 0; i < pos.count; i++) { sx += pos.getX(i); miny = Math.min(miny, pos.getY(i)); } return { x: sx / pos.count, miny }; };
-    const [p, q] = added.map(at).sort((u, v) => u.x - v.x);
-    expect(p.x, 'the Terrasse\'s: over the strip, in the middle of its block').toBeGreaterThan(-45); expect(p.x).toBeLessThan(-15);
-    const hx = hub.rooftopSign!.panels.reduce((n, f) => n + f.x, 0) / 4;
-    expect(Math.abs(q.x - hx), 'the hotel\'s: on the hotel\'s roof').toBeLessThan(1);
-    expect(Math.abs(q.x - p.x), 'two buildings').toBeGreaterThan(40);
-    expect(p.miny, 'the Terrasse\'s faces stand above its roof terrace (6.4 m)').toBeGreaterThan(7);
+    expect(added, 'one sign: the door\'s old one is gone').toHaveLength(1);
+    const m = added[0];
+    expect(m.name).toBe('rooftop-sign'); expect(m.geometry.type).toBe('BufferGeometry');
+    expect(m.geometry.attributes.position.count, '5 quads, 6 vertices each').toBe(30);
+    expect(hub.group.children.length - kids, 'the door\'s frame batch and the sign: two meshes, the same as before').toBeLessThanOrEqual(2);
+    const mat = m.material as unknown as { emissiveMap: unknown; map: unknown; emissiveIntensity: number };
+    expect(mat.emissiveMap).toBe(mat.map);                                                                                  // lit at night with the hub's other signs
+    // the plaque (its last quad) is at the door, low; the four faces are up on the roof
+    const pos = m.geometry.attributes.position, ys = Array.from({ length: 30 }, (_, i) => pos.getY(i));
+    expect(Math.min(...ys.slice(24))).toBeGreaterThan(2.5); expect(Math.max(...ys.slice(24))).toBeLessThan(4);
+    expect(Math.min(...ys.slice(0, 24))).toBeGreaterThan(15);                                                              // the four faces are above the roof (13.7 m)
     const { debug } = RooftopModule as unknown as { debug: () => { rooftop: { info: () => { sign: { onRoof: boolean; top: number } | null } } } };
     expect(debug).toBeTypeOf('function');
   }, 120000);
@@ -153,14 +149,16 @@ function clear(eye: [number, number, number], to: [number, number, number], cols
   return true;
 }
 describe('seen from the street and from far', () => {
-  it('the Terrasse de Ngor\'s faces look at the viewer, with nothing solid between, from the sea road for 100 m either way and from the beach, and along the avenue and the cross street but beside the strip', async () => {
-    const { buildHub } = await import('../src/world/builder'), { ROOFTOPS } = await import('../src/venues/rooftop'), { VENUE_D, terrasseGantry } = await import('../src/world/hospitalityStrip');
-    const hub: HubWorld = buildHub('almadies', false), site = ROOFTOPS.almadies!.site!, panels = terrasseGantry(site.x, site.z + 0.08 + VENUE_D / 2, 0.12).panels, cols = hub.colliders;
+  it('a face looks at the viewer, with nothing solid between, from the sea road for 100 m either way, from the avenue behind, the cross street and the beach', async () => {
+    const { buildHub } = await import('../src/world/builder');
+    const hub: HubWorld = buildHub('almadies', false), panels = hub.rooftopSign!.panels, cols = hub.colliders;
     const eyeH = 1.7, views: { at: [number, number]; what: string }[] = [];
-    for (let x = -130; x <= 70; x += 10) views.push({ at: [x, -118], what: `the sea road at x ${x}` });                      // along the Route des Almadies, 100 m west and east of the Terrasse
-    for (let z = -60; z >= -118; z -= 8) views.push({ at: [0, z], what: `the avenue at z ${z}` });                           // down the Avenue du Littoral to the sea road
-    for (let z = -60; z >= -118; z -= 8) views.push({ at: [-60, z], what: `the cross street at z ${z}` });                   // the road at the strip's west end
-    for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push({ at: [x, -140], what: `the beach at x ${x}` });                    // the sea side
+    for (let x = -80; x <= 100; x += 10) views.push({ at: [x, -118], what: `the sea road at x ${x}` });                       // along the Route des Almadies, from 50 m west of the hotel's middle (the resort's wing stands in the way further) to 130 m east
+    for (let z = -60; z >= -118; z -= 8) views.push({ at: [0, z], what: `the avenue at z ${z}` });                           // down the whole Avenue du Littoral to the sea road, at the hotel's east side
+    for (let z = -60; z >= -118; z -= 8) views.push({ at: [-60, z], what: `the cross street at z ${z}` });                   // the road at the hotel's west end
+    // the sea side: the beach at z −140. West of x −43 that ground is the night street's venues' (their solid footprints run z −146.25…−136.75 from Le Patio to Le Comptoir de Ngor, packed side by side): nobody stands inside one, so
+    // there the sample is on the promenade in front of them (z −135), the walkable ground; from behind a 6.4 m venue the roof sign 60 m away is hidden, as it would be in the street
+    for (const x of [-90, -70, -50, -30, -10, 10, 40]) views.push({ at: [x, x < -43 ? -135 : -140], what: `the beach at x ${x}` });
     const centre = (p: { x: number; y: number; z: number }) => [p.x, p.y, p.z] as [number, number, number];
     const unseen: string[] = [];
     for (const v of views) {
@@ -171,7 +169,6 @@ describe('seen from the street and from far', () => {
       if (!ok) unseen.push(v.what);
     }
     expect(views.length).toBeGreaterThan(40);
-    // the neighbouring venues of the strip (the lounge to the west, the comptoir to the east) hide the blades from the two stretches of road right beside them: nothing else is hidden
-    expect(unseen).toEqual(['the avenue at z -92', 'the avenue at z -100', 'the cross street at z -84', 'the cross street at z -92', 'the cross street at z -100']);
+    expect(unseen, 'no viewpoint is without a sign it can see').toEqual([]);
   }, 120000);
 });

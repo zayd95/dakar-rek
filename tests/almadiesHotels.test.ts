@@ -94,11 +94,10 @@ describe('the hotels in the registry and the plan', () => {
     expect(VARIANTS.map(v => v.size)).toEqual(['M', 'M', 'L']);
     for (const v of VARIANTS) expect(typeof v.build).toBe('function');
   });
-  it('puts the boutique on the sea front (Le Filao, east of the port) and the tower on the mall\'s road (Océane); the resort (Baobab Azur) is kept in the registry, its block having gone to the hospitality strip', () => {
-    expect(hotels).toHaveLength(2);
+  it('puts the boutique on the sea front (Le Filao), the tower on the mall\'s road (Océane) and the resort on the corner block (Baobab Azur)', () => {
+    expect(hotels).toHaveLength(3);
     const byName = Object.fromEntries(hotels.map(s => [s.name!, variantOf(s).id]));
-    expect(byName).toEqual({ 'HÔTEL LE FILAO': 'hotel-boutique', 'HÔTEL OCÉANE': 'hotel-tower' });
-    expect(VARIANTS.map(v => v.id)).toContain('hotel-resort');
+    expect(byName).toEqual({ 'HÔTEL LE FILAO': 'hotel-boutique', 'HÔTEL OCÉANE': 'hotel-tower', 'HÔTEL BAOBAB AZUR': 'hotel-resort' });
     for (const s of hotels) expect(variant(s).size).toBe(sizeOf(s));
   });
 });

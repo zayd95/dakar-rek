@@ -1,0 +1,76 @@
+{
+ "quality": "medium",
+ "view": "390x844 phone page, SwiftShader",
+ "perf": {
+  "the gate from the road, night": {
+   "withPatio": {
+    "calls": 119,
+    "tris": 266066
+   },
+   "withoutPatio": {
+    "calls": 105,
+    "tris": 254838
+   },
+   "patio": {
+    "calls": 14,
+    "tris": 11228
+   }
+  },
+  "down the street, night": {
+   "withPatio": {
+    "calls": 111,
+    "tris": 261672
+   },
+   "withoutPatio": {
+    "calls": 101,
+    "tris": 250500
+   },
+   "patio": {
+    "calls": 10,
+    "tris": 11172
+   }
+  },
+  "inside the courtyard, night": {
+   "withPatio": {
+    "calls": 50,
+    "tris": 213180
+   },
+   "withoutPatio": {
+    "calls": 37,
+    "tris": 201956
+   },
+   "patio": {
+    "calls": 13,
+    "tris": 11224
+   }
+  },
+  "toward La Vague, night (the Patio behind)": {
+   "withPatio": {
+    "calls": 74,
+    "tris": 232138
+   },
+   "withoutPatio": {
+    "calls": 62,
+    "tris": 221478
+   },
+   "patio": {
+    "calls": 12,
+    "tris": 10660
+   }
+  },
+  "the gate from the road, day": {
+   "withPatio": {
+    "calls": 66,
+    "tris": 229990
+   },
+   "withoutPatio": {
+    "calls": 57,
+    "tris": 219088
+   },
+   "patio": {
+    "calls": 9,
+    "tris": 10902
+   }
+  }
+ }
+}

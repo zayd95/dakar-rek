@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { stubCanvas } from './hubstub';
 
 /**
- * The coast road in front of the Almadies' hospitality strip is kept free of parked cars (src/game/parkedVehicles.ts `KERB_FREE`): LD2.0-E round 3 made the district's busy streets
- * park a run of cars down the kerb, which put a car in the lane a driver takes to the Terrasse de Ngor's visitor bay (check-almadies-journey) and in front of the car parks' ways in.
+ * The coast road in front of the Almadies' hotels and the night street is kept free of parked cars (src/game/parkedVehicles.ts `KERB_FREE`): LD2.0-E round 3 made the district's busy streets
+ * park a run of cars down the kerb, which put a car in the lane a driver takes to the night street's car parks (check-nightlife-journey) and in front of their ways in.
  */
 stubCanvas();
-describe('the strip\'s kerb', () => {
-  it('has no parked car, on either preset\'s count, from the west end of the strip to its east end', async () => {
+describe('the night street\'s kerb', () => {
+  it('has no parked car, on either preset\'s count, from the west end of the hotels to the east end', async () => {
     const { buildHub } = await import('../src/world/builder'), { placeParked } = await import('../src/game/parkedVehicles');
     for (const [lite, count] of [[false, 40], [false, 60], [true, 28]] as const) {
       const hub = buildHub('almadies', lite), g = placeParked(hub, count);

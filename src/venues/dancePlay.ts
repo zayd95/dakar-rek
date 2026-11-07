@@ -4,13 +4,13 @@ import type { Gesture } from '../activity/types';
 import type { Humanoid } from '../actors/humanoid';
 import { focusActivity, type InWorldPlayer } from '../activity/inWorld';
 import {
-  GRADE_SCORE, PHRASE_BEATS, WINDOWS, danceLine, danceScore, grade, levelOf, matchTouch, nextDownbeat, routine, sectionAt,
-  type Cue, type CueKind, type Grade, type Phrase,
+  GRADE_SCORE, PHRASE_BEATS, VAGUE_WORDS, WINDOWS, danceLine, danceScore, grade, levelOf, matchTouch, nextDownbeat, routine, sectionAt,
+  type Cue, type CueKind, type DanceWords, type Grade, type Phrase,
 } from '../activity/danceRules';
 import { DanceBody } from '../actors/danceMoves';
 import { crowdCheer } from '../lamb/audio';
 import { VAGUE_TRACK } from './vagueTrack';
-import { BEAT, type VagueMusic } from './vagueMusic';
+import type { MusicTrack, VagueMusic } from './vagueMusic';
 import { FrameCam, Layer, esc } from './inWorldKit';
 
 /**
@@ -40,6 +40,10 @@ export interface DanceEnv {
   here(): boolean;
   /** Where the dancer stands (world, on the floor's clear spot) and faces (world yaw: toward the gate, the camera). */
   spot(): { x: number; z: number; yaw: number };
+  /** The track the cues sit on: the music's own (Le Patio plays its own piece), La Vague's when the music is. */
+  track?: MusicTrack;
+  /** The words the dance takes from its music (the break's footwork, the fill's line, the moves' names, the word to a low score): La Vague's sabar by default. */
+  words?: DanceWords;
 }
 
 interface Run {
@@ -81,7 +85,11 @@ export class DancePlay implements InWorldPlayer {
   /** Debug: the last touches as judged. */
   private log: { kind: CueKind; grade: Grade | null; dtMs: number | null; beat: number }[] = [];
 
-  constructor(private readonly env: DanceEnv) {}
+  /** The track the cues are laid on, and the seconds in its beat: the music player's own, else La Vague's. */
+  private readonly track: MusicTrack;
+  private readonly beatSec: number;
+  private readonly words: DanceWords;
+  constructor(private readonly env: DanceEnv) { this.track = env.track ?? env.music.track ?? VAGUE_TRACK; this.beatSec = 60 / this.track.bpm; this.words = env.words ?? VAGUE_WORDS; }
 
   accepts(g: Gesture) { return g.kind === 'dance' && this.env.here(); }
 
@@ -91,9 +99,9 @@ export class DancePlay implements InWorldPlayer {
     if (this.run?.clock !== 'page') {
       const a = this.env.music.beat(perf);
       if (a !== null) { this.lastA = { beat: a, perf }; return a; }
-      if (this.lastA) return this.lastA.beat + (perf - this.lastA.perf) / 1000 / BEAT;    // a hiccup of the audio: carried on from its last beat
+      if (this.lastA) return this.lastA.beat + (perf - this.lastA.perf) / 1000 / this.beatSec;    // a hiccup of the audio: carried on from its last beat
     }
-    return this.pageBeat0 + (perf - this.pageT0) / 1000 / BEAT;
+    return this.pageBeat0 + (perf - this.pageT0) / 1000 / this.beatSec;
   }
   private lastA: { beat: number; perf: number } | null = null;
 
@@ -128,8 +136,8 @@ export class DancePlay implements InWorldPlayer {
 
   private start(r: Run) {
     const now = this.beat();
-    r.startBeat = nextDownbeat(now, VAGUE_TRACK.beatsPerBar, 2.5);
-    const R = routine({ rounds: r.g.rounds, speed: r.g.speed, start: r.startBeat, seed: Math.floor(r.startBeat) * 31 + r.g.rounds, track: VAGUE_TRACK });
+    r.startBeat = nextDownbeat(now, this.track.beatsPerBar, 2.5);
+    const R = routine({ rounds: r.g.rounds, speed: r.g.speed, start: r.startBeat, seed: Math.floor(r.startBeat) * 31 + r.g.rounds, track: this.track, words: this.words });
     r.phrases = R.phrases; r.cues = R.cues;
     r.endBeat = r.cues.length ? r.cues[r.cues.length - 1].beat + 1.2 : r.startBeat + PHRASE_BEATS;
     r.phase = 'count';
@@ -140,7 +148,7 @@ export class DancePlay implements InWorldPlayer {
     r.ended = true; r.phase = 'over';
     const all = r.cues.map(c => r.scores.get(c.i) ?? 0);
     const score = forced ?? danceScore(all);
-    const line = danceLine(score), at = this.spotNow;
+    const line = danceLine(score, this.words), at = this.spotNow;
     this.layer?.showCard({ title: r.label, pct: score, line: line.text, top: line.mood === 'top',
       marks: r.cues.length <= 24 ? r.cues.map(c => (r.scores.get(c.i) ?? 0) >= 0.55) : undefined });
     if (score >= 0.8) { this.env.crowd.react(at, 8, 'celebrate'); crowdCheer(2.4, 0.14); }
@@ -213,7 +221,7 @@ export class DancePlay implements InWorldPlayer {
   private touch(kind: CueKind, perf: number) {
     const r = this.run; if (!r || r.phase === 'wait' || r.ended) return;
     const b = this.beat(perf);
-    const m = r.phase === 'dance' || r.phase === 'count' ? matchTouch(r.cues, r.judged, kind, b, BEAT) : null;
+    const m = r.phase === 'dance' || r.phase === 'count' ? matchTouch(r.cues, r.judged, kind, b, this.beatSec) : null;
     const move = m?.cue.move ?? r.phrases.find(p => b >= p.from - 0.5 && b < p.to)?.move ?? 'pas';
     let gr: Grade | null = null;
     if (m) {
@@ -268,7 +276,7 @@ export class DancePlay implements InWorldPlayer {
     // cues gone by unanswered: missed (a little after the window closes: a touch made in time on a phone that drew a slow frame still lands)
     for (const c of r.cues) {
       if (r.judged.has(c.i)) continue;
-      if ((b - c.beat) * BEAT <= WINDOWS.catch + 0.1) break;
+      if ((b - c.beat) * this.beatSec <= WINDOWS.catch + 0.1) break;
       r.judged.add(c.i); r.scores.set(c.i, 0); r.grades.set(c.i, 'raté'); r.streak = 0;
       const p = this.screenOf(c.kind); if (p) this.layer?.word(WORD.raté[0], WORD.raté[1], p.x, p.y - 30);
     }
@@ -331,16 +339,16 @@ export class DancePlay implements InWorldPlayer {
     const scr = (k: CueKind) => { const p = this.screenOf(k); return p ? { x: Math.round(p.x), y: Math.round(p.y) } : null; };
     return {
       phase: r?.phase ?? 'linger', clock: r?.clock ?? null, beat: +b.toFixed(3), startBeat: r?.startBeat ?? null, endBeat: r?.endBeat ?? null,
-      section: sectionAt(VAGUE_TRACK, b), level: r ? levelOf(r.g.speed) : null,
+      section: sectionAt(this.track, b), level: r ? levelOf(r.g.speed) : null,
       phrases: r?.phrases.map(p => ({ move: p.move, from: p.from, variation: p.variation })) ?? [],
-      cues: r?.cues.length ?? 0, judged: r?.judged.size ?? 0, next: next ? { kind: next.kind, beat: next.beat, inMs: Math.round((next.beat - b) * BEAT * 1000) } : null,
+      cues: r?.cues.length ?? 0, judged: r?.judged.size ?? 0, next: next ? { kind: next.kind, beat: next.beat, inMs: Math.round((next.beat - b) * this.beatSec * 1000) } : null,
       score: r ? +danceScore(r.cues.filter(c => r.judged.has(c.i)).map(c => r.scores.get(c.i) ?? 0)).toFixed(3) : null,
       grades: r ? Object.fromEntries((['parfait', 'bien', 'ok', 'à côté', 'raté'] as Grade[]).map(gk => [gk, [...r.grades.values()].filter(x => x === gk).length])) : null,
       streak: r?.streak ?? 0, energy: +this.body.energy.toFixed(2), body: this.body.last, log: this.log.slice(-8),
       screen: { L: scr('L'), R: scr('R') }, card: this.layer?.cardShown ?? false, stageLight: this.stageLight ? +this.stageLight.light.intensity.toFixed(2) : null,
       // for the checks' player: the coming cues and the page's clock at this beat (epoch ms), so a touch can be timed from outside
       upcoming: r ? r.cues.filter(c => !r.judged.has(c.i) && c.beat >= b - 0.3).slice(0, 6).map(c => ({ i: c.i, beat: c.beat, kind: c.kind })) : [],
-      epoch: performance.timeOrigin + performance.now(), beatSec: BEAT,
+      epoch: performance.timeOrigin + performance.now(), beatSec: this.beatSec,
     };
   }
 
