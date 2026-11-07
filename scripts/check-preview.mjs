@@ -32,8 +32,8 @@ const open = async (query) => {
   await context.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); } catch { /* */ } });
   const page = await context.newPage(); page.setDefaultTimeout(240000);
   const problems = []; page.on('pageerror', e => problems.push('pageerror: ' + e.message));
-  const optional = u => /car_rapide\.glb$/.test(u);          // an optional model the game asks for and does without (a 404 in every build and on every host)
-  page.on('console', m => { if ((m.type() === 'error' || /Refused to|Content Security Policy/.test(m.text())) && !optional(m.location().url ?? '')) problems.push('console: ' + m.text().slice(0, 200)); });
+  const optional = u => /car_rapide\.glb$|\/favicon\.ico$/.test(u);          // car_rapide.glb: an optional model the game asks for and does without (a 404 in every build and on every host); /favicon.ico: asked for when a host nests the page, whose icon link then sits in its body
+  page.on('console', m => { if ((m.type() === 'error' || /Refused to|Content Security Policy/.test(m.text())) && !optional(m.location().url ?? '')) problems.push('console: ' + m.text().slice(0, 160) + ' ' + (m.location().url ?? '').slice(-80)); });
   page.on('requestfailed', r => { if (!optional(r.url())) problems.push('requestfailed: ' + r.url().slice(-80)); });
   page.on('console', m => { if (/\[vehicles\].*did not load/.test(m.text())) problems.push('vehicle model fell back: ' + m.text().slice(0, 160)); });
   page.on('response', r => { if (/glb-bundle\.json$/.test(r.url()) && r.status() === 200) bundleServed.v = true; });
