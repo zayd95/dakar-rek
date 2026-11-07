@@ -21,7 +21,7 @@ async function scenario(lot, near, hour = 22) {
   const page = await context.newPage(); page.setDefaultTimeout(300000);
   page.on('pageerror', e => errors.push(e.message));
   const d = (fn, a) => page.evaluate(fn, a);
-  let n = 0; const shot = async name => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${lot}-${String(++n).padStart(2, '0')}-${name}.png` }); };
+  let n = 0; const shot = async name => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${lot}${near}-${String(++n).padStart(2, "0")}-${name}.png` }); };
   await page.goto(`${base}?debug&touch&heure=${hour}&argent=4500000`, { timeout: 180000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.teranga && window.__dakar.district, null, T);
   const t = await realTouch(page);
