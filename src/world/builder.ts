@@ -263,6 +263,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     for (let k = 0; k < NB; k++) {
       const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
       plain.box(0.7, 0.75, z1 - z0, CX, 0.05, (z0 + z1) / 2, 0xd8d2c4);
+      for (let z = z0 + 0.6; z < z1 - 1.2; z += 2.4) plain.box(0.73, 0.77, 1.2, CX, 0.05, z + 0.6, 0x26282c);   // painted black and white, as the Corniche's kerbs are
       wallC(CX - 0.35, z0, CX + 0.35, z1, 0.8);
       for (let z = z0 + 6; z < z1 - 3; z += 14) {
         lampPosts.cyl(0.1, 0.16, 9, CX, 0.8, z, 0xe08a1e, 6);
@@ -495,6 +496,40 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   };
   /** Which sides of lot (a, b) of a block face a street: lots on the outer half face -x/+x and -z/+z. */
   const lotFaces = (a: number, b: number): [number, number][] => [[a ? 1 : -1, 0], [0, b ? 1 : -1]];
+  /** A number in 0…1 from a building's own place (no random stream is drawn: the hub's layout does not move). */
+  const hashAt = (x: number, z: number, k: number) => { const v = Math.sin(x * 12.9898 + z * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); };
+  /**
+   * What stands on a Dakar roof besides its tank, seen from the street as the block's outline: the posts left standing for the floor to come (their
+   * irons out of the concrete) and a terrace's tin shelter. Not on Low. In the `plain` batch: no draw call.
+   */
+  const roofLife = (cx: number, cz: number, w: number, d: number, y: number, col: number) => {
+    if (lite) return;
+    if (hashAt(cx, cz, 1) < 0.5) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) {
+      if (hashAt(cx + sx, cz + sz, 2) < 0.25) continue;
+      const px = cx + sx * (w / 2 - 0.2), pz = cz + sz * (d / 2 - 0.2), ph = 0.9 + hashAt(px, pz, 3) * 0.9;
+      plain.box(0.32, ph, 0.32, px, y, pz, 0xb8b2a6); plain.box(0.07, 0.55, 0.07, px + 0.08, y + ph, pz - 0.06, 0x5c4e3f);
+    }
+    if (hashAt(cx, cz, 4) < 0.35) {
+      const tx = cx + (hashAt(cx, cz, 5) - 0.5) * (w - 6), tz = cz + (hashAt(cx, cz, 6) - 0.5) * (d - 6);
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) plain.box(0.1, 2.2, 0.1, tx + sx * 1.7, y, tz + sz * 1.3, 0x5a4a3a);
+      plain.slab(4.0, 0.06, 3.2, tx, y + 2.25, tz, pick([0x8f8478, 0x9a8f80, 0x7d6a58], () => hashAt(cx, cz, 7)), 0, 0.07);
+      plain.box(1.6, 0.7, 0.7, tx, y, tz, shade(col, 0.8));                       // a bench, a mat rolled against it
+    }
+  };
+  /**
+   * The vertical sun-breakers of an office front (the Plateau's 1960s blocks): a concrete fin at each bay line of a street face, from over the
+   * shops to the roof, standing out of the wall, so the front has a relief that catches the light as one walks by. Not on Low.
+   */
+  const officeFins = (cx: number, cz: number, w: number, d: number, h: number, faces: [number, number][]) => {
+    if (lite) return;
+    for (const [nx, nz] of faces) {
+      const len = nx ? d : w, n = Math.max(1, Math.floor(len / 3.4 + 0.02));
+      for (let c = 0; c <= n; c++) {
+        const t = (c - n / 2) * 3.4;
+        plain.box(nx ? 0.42 : 0.24, h - 3.5, nx ? 0.24 : 0.42, cx + nx * (w / 2 + 0.2) + (nz ? t : 0), G + 3.45, cz + nz * (d / 2 + 0.2) + (nx ? t : 0), 0xeeeae0);
+      }
+    }
+  };
 
   // ------------------------------------------------------------ buildings per block
   /** Yard wall; raw = bare breeze blocks (never rendered or painted). */
@@ -507,6 +542,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       plain.box(w + 0.05, 0.12, d + 0.12, x, G + h - 0.04, z, cap);
       plain.box(w + 0.02, 0.4, d + 0.04, x, G - 0.02, z, base);
     }
+  };
+  /** A villa's gate at night: a globe on each pier (the hub's lamp heads: dim by day, lit at night) and their light on the pavement before it. */
+  const gateLamps = (x: number, z: number, nz: number, h: number) => {
+    for (const s of [-1.45, 1.45]) { plain.box(0.5, 0.08, 0.55, x + s, G + h + 0.38, z, 0xd6cfc0); lampBulbs.box(0.26, 0.26, 0.26, x + s, G + h + 0.46, z, 0xffe9bd); }
+    pool(x, z + nz * 1.3, 2.6);
   };
   const GATES = [0x1e6fd9, 0x2f8f4e, 0xc0392b, 0x1d6f8a, 0x7a3f9a, 0xd98b1a];
   /** Painted metal gate set into a yard wall (normal nx, nz). */
@@ -550,6 +590,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, wc, 2.3);
       const gx = L.cx + (R() - 0.5) * 6, gzz = gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3;
       gate(gx, gzz, 0, gz, 2.4);
+      gateLamps(gx, gzz, gz, 2.4);
       const w = 12 + R() * 4, d = 10 + R() * 3, fl = 2 + (R() < 0.35 ? 1 : 0), h = fl * 3.2, cz = L.cz - gz * 2;
       // the house: tiled or modern fronts by its colour, a house's ground floor whose painted door stands behind the entrance
       const door = doorBay(w, 0, gz, w * 0.22, DOOR_COL[ROW.HOME_GROUND]), kind = Math.round(w * 7 + d * 3) % 3;
@@ -585,6 +626,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       entrance(front, cx + door.at, cz + gz * (d / 2), 0, gz, 1.8);
       wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xece6da, 1.2);
       gate(L.cx, gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, gz, 2.2);
+      gateLamps(L.cx, gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, gz, 2.2);
       if (!lite) for (let t = 2; t < LS - 2; t += 1.6) leaves.blob(0.55, L.x0 + t, G + 1.35, gz < 0 ? L.z0 + 0.9 : L.z1 - 0.9, 0x3f7a35, 0.8, 0);   // the hedge
       solidC(cx, cz, w, d, h);
       return;
@@ -732,6 +774,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
 
   /** The trade places' own solid boxes (M2), handed to the world after the hub's street dressing (`tradeLot`). */
   const tradeSolids: Collider[] = [];
+  /** Pikine's corner boutiques, solid once the street is dressed: every tree, stall and parked thing of the hub's own dressing stays where it was. */
+  const lotSolids: Collider[] = [];
   /**
    * M2's two places stand on lots of their own. The lot's ordinary building is still drawn from the hub's random stream and its solid boxes kept as
    * ghosts while the street dressing is placed, then the geometry is dropped: every later building, tree, palm and stall of the hub stays where it
@@ -824,15 +868,27 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           const len = Math.min(total - t, 2.5 + RP() * 4.5), m = t + len / 2, x = horiz ? x0 + m : x0, z = horiz ? z0 : z0 + m;
           const atGate = front && Math.abs(x - gx) < 1.6 + len / 2;
           if (!atGate && (front || RP() > 0.12)) {
-            const h = 0.9 + RP() * 0.55, c = RP() < 0.3 ? shade(wc, 0.85) : wc;
-            plain.box(horiz ? len : 0.3, h, horiz ? 0.3 : len, x, G - 0.02, z, c);
+            const h = 0.9 + RP() * 0.55, bare = RP() < 0.3;
+            // one length in three never got its render: bare breeze blocks between concrete posts (the facade atlas' unfinished row: no draw call)
+            if (bare) fac.facade(horiz ? len : 0.3, h, horiz ? 0.3 : len, x, G - 0.02, z, 0xb3ab9c, 0, { upper: ROW.UNFINISHED, ground: ROW.UNFINISHED, floors: Math.min(h / 3.2, 0.36), seed: Math.floor(t) });
+            else plain.box(horiz ? len : 0.3, h, horiz ? 0.3 : len, x, G - 0.02, z, wc);
             if (!lite && RP() < 0.5) plain.box(horiz ? len * 0.4 : 0.32, 0.4, horiz ? 0.32 : len * 0.4, x + (horiz ? (RP() - 0.5) * len * 0.5 : 0), G + 0.1 + RP() * (h - 0.5), z + (horiz ? 0 : (RP() - 0.5) * len * 0.5), 0xa59c8c);   // bare block patch
           } else if (atGate) { /* the gate's opening */ }
           t += len;
         }
       }
       gate(gx, gz, fx, fz, 1.9);
-      if (RP() < 0.4) shopfront(L.cx + (RP() < 0.5 ? -7 : 7), fz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, fz);
+      if (RP() < 0.4) {
+        // the boutique de quartier at the yard's corner, where a shutter in the wall stood: a room of its own on the street, its shop painted on its
+        // front (open, or the roller shutter down), a rusty tin awning over the pavement. Solid, but only once the street is dressed (`lotSolids`).
+        const side = RP() < 0.5 ? -1 : 1, bx = L.cx + side * 7.6, wz = fz < 0 ? L.z0 + 0.35 : L.z1 - 0.35, bw = 3.6, bd = 2.8, bh = 3.0, bz = wz + fz * 0.15 - fz * bd / 2;
+        shopfront(bx, wz, 0, fz, true);
+        const open = hashAt(bx, wz, 8), bc = sp.palette[Math.floor(hashAt(bx, wz, 9) * 8)];
+        fac.facade(bw, bh, bd, bx, G - 0.02, bz, bc, 0, { upper: ROW.CLASSIC, ground: ROW.SHOPS, back: ROW.HOME_GROUND, streets: [[0, fz]], floors: 1, seed: open < 0.55 ? 1 : open < 0.85 ? 0 : 3 });
+        plain.box(bw + 0.3, 0.2, bd + 0.3, bx, G + bh - 0.02, bz, 0x8e8a80);
+        if (!lite) { tin.slab(bw + 0.4, 0.05, 1.7, bx, G + 2.5, wz + fz * 1.0, pick([0x8a6a4a, 0x7a5a3c, 0x9a7a55], () => hashAt(bx, wz, 10)), 0, fz * 0.13); canopies.push({ x: bx, z: wz + fz * 1.0, r: 1.3, y0: G + 2.2, y1: G + 2.7 }); }
+        lotSolids.push({ x0: bx - bw / 2, x1: bx + bw / 2, z0: bz - bd / 2, z1: bz + bd / 2, h: bh });
+      }
       // yard clutter, seen over the low wall
       const yx = () => L.cx + (RP() - 0.5) * 12, yz = () => L.cz + (RP() - 0.5) * 12;
       if (RP() < 0.6) { const x = yx(), z = yz(); for (let k = 0; k < 3; k++) plain.box(1.8, 0.3, 1.2, x + (RP() - 0.5) * 0.3, G + k * 0.3, z, 0x9a8b72); }   // stacked breeze blocks
@@ -886,7 +942,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     } else {
       parapet(cx, cz, w + 0.5, d + 0.5, G + h + 0.26, shade(col, 0.92), 0.8);
       roofClutter(cx, cz, w, d, G + h + 0.28);
+      if (upper !== ROW.OFFICE) roofLife(cx, cz, w, d, G + h + 0.28, col);
     }
+    if (upper === ROW.OFFICE) officeFins(cx, cz, w, d, h, sides);
+    else if (!lite) for (let f = 1; f < fl; f++) plain.box(w + 0.22, 0.16, d + 0.22, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));   // flats: each floor's slab shows on the face, a line of shade under it
     if (tower) {
       plain.box(4, 3, 4, cx, G + h + 0.28, cz, 0xb8b2a6);                               // lift machine room
       for (let a = 0; a < 3; a++) plain.cyl(0.06, 0.06, 6 + a * 2, cx - 1 + a, G + h + 3.2, cz, 0x9a9a9a, 4);   // antennas
@@ -901,7 +960,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       for (let k = -2; k <= 2; k++) plain.box(0.5, 3.2, 0.5, cx + k * (w / 4.4), G, cz + fz * (d / 2 + 2.6), 0xe9e1cf);
       for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), cz + fz * (d / 2 + 0.05), 0, fz, true);   // (the shops under the arcade are the wall's own ground floor)
       if (fl >= 5) plain.box(4, 2, 4, cx, G + h + 0.3, cz, 0x9aa3a8);                     // roof plant
-      for (let f = 2; f < fl; f += 2) glassBalcony(front, cx + (f % 4 ? -1 : 1) * w * 0.2, cz + fz * (d / 2), 0, fz, w * 0.34, G + f * 3.2);   // glass balconies up the street face, every other floor
+      if (upper !== ROW.OFFICE) for (let f = 2; f < fl; f += 2) glassBalcony(front, cx + (f % 4 ? -1 : 1) * w * 0.2, cz + fz * (d / 2), 0, fz, w * 0.34, G + f * 3.2);   // flats: glass balconies up the street face, every other floor (an office front has its fins)
     } else {
       // student blocks: balconies with glass railings on the street side, and the entrance under them
       const fz = b ? 1 : -1;
@@ -1758,7 +1817,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     dress(x, z, () => stall(x, z));
   }
 
-  colliders.push(...tradeSolids);                                                  // M2's two places, now that the street dressing is placed (`tradeLot`)
+  colliders.push(...tradeSolids, ...lotSolids);                                    // M2's two places and Pikine's boutiques, now that the street dressing is placed (`tradeLot`)
   // The Médina (M2), after the hub's own street dressing so that every tree, palm and stall of the rest of the hub stays where it was: the shops' goods,
   // then the market streets: shade cloths strung high across the street at x = −60 and the street at z = 60 (well above the traffic: 5.5 m), on ropes
   // between poles at the block edges, the junctions left open to the sky; vendors along their kerbs. Own random stream; a spot already taken is skipped.
@@ -1850,6 +1909,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     streetscape = ss.placed;
   }
   for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
+  // Batches that share a material and a shadow flag are drawn as one mesh: the lamp posts with the plain batch, the pools' water with the glass
+  // (one draw call less each, and one less in the shadow pass). Not in the Almadies, whose street digest (tests/almadiesDistrict.test.ts) names each batch.
+  if (id !== 'almadies') { plain.absorb(lampPosts); glass.absorb(water); }
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {

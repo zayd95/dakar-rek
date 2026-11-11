@@ -20,7 +20,7 @@ export interface FacadeStyle {
   top?: number;
   /** Outward normals (the box's own axes, before its rotation) of the faces that see a street. */
   streets?: [number, number][];
-  /** Storeys in the wall's height: the rows are stretched to them (a 2.75 m storey in Pikine). Without it, 3.2 m a storey. */
+  /** Storeys in the wall's height: the rows are stretched to them (a 2.75 m storey in Pikine). Without it, 3.2 m a storey, and what is left over the last whole one is plain wall. */
   floors?: number;
   /** Shifts the ground floor's sequence of bays (door, shop, shop…) so two neighbours do not open their doors in step. */
   seed?: number;
@@ -118,7 +118,7 @@ export class Batch {
         const street = !style.streets || style.streets.some(([nx, nz]) => nx === normals[f][0] && nz === normals[f][1]);
         const ground = street ? style.ground : style.back ?? style.ground;
         const rows = style.upper + 16 * (ground === undefined ? 0 : ground + 1) + 256 * (style.top === undefined ? 0 : style.top + 1);
-        for (let k = 0; k < 4; k++) st.set([rows, (style.seed ?? 0) & 3, widths[f] / BAY, Math.max(1, Math.round(storeys))], (f * 4 + k) * 4);
+        for (let k = 0; k < 4; k++) st.set([rows, (style.seed ?? 0) & 3, widths[f] / BAY, Math.max(1, Math.floor(storeys + 0.2))], (f * 4 + k) * 4);
       }
       g.setAttribute('fstyle', new THREE.BufferAttribute(st, 4));
     }
@@ -140,6 +140,9 @@ export class Batch {
     const g = half ? new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.SphereGeometry(r, 12, 8);
     this.finish(g, color, x, y, z);
   }
+
+  /** Takes another batch's pieces (the same material: one mesh, one draw call instead of two); the other batch is left empty. */
+  absorb(other: Batch) { if (other === this) return; this.geos.push(...other.geos); this.count = this.geos.length; other.geos.length = 0; other.count = 0; }
 
   /** Triangles drawn so far (for the budgets: tests/helpers/siteCost.ts). */
   triangles() { let n = 0; for (const g of this.geos) n += g.index ? g.index.count / 3 : g.attributes.position.count / 3; return n; }

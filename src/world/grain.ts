@@ -120,7 +120,7 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
         vec2 fCell = floor(vMapUv), fIn = vMapUv - fCell;
         float fRows = floor(vFStyle.x + 0.5), fRow = mod(fRows, 16.0), fCol = 0.0, fShop = 0.0;
         if (vFStyle.z > 0.5) {
-          float fN = max(1.0, floor(vFStyle.z + 0.02)), fU = vMapUv.x - (vFStyle.z - fN) * 0.5;
+          float fN = floor(vFStyle.z + 0.02), fU = vMapUv.x - (vFStyle.z - fN) * 0.5;      // (a face narrower than a bay: fN 0, all of it margin)
           fCell.x = floor(fU); fIn.x = fU - fCell.x;
           float fGr = mod(floor(fRows / 16.0), 16.0), fTop = floor(fRows / 256.0);
           vec3 fT8 = floor(vColor * 31.0 + 0.5);
