@@ -1604,33 +1604,47 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         const W = (a: number, s2: number, u: number): [number, number, number] => [SX - a * k, top + u * k, cz - s2 * k];
         const L = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k, r1 * k, col);
         const ball = (P: [number, number, number], r: number, col = BRONZE) => { const [x, y, z] = W(...P); plain.sphere(r * k, x, y, z, col); };
-        const rock = (a: number, s2: number, u: number, w: number, h: number, d: number, rot: number) => { const [x, y, z] = W(a, s2, u); plain.box(w * k, h * k, d * k, x, y, z, ROCK, rot); };
-        // angular rock the figures rise out of, stepping down toward the stair, and the tall slab at the man's left
-        rock(0, 0.5, 0, 9, 3, 8, 0.1); rock(1.5, 0.2, 2.6, 6.5, 2.4, 6, -0.25); rock(2.6, -0.4, 4.6, 4.2, 2.2, 4.5, 0.35);
-        rock(1.0, 2.6, 2.4, 4, 2.6, 3.2, 0.6); rock(-1.2, -1.6, 2.8, 4.5, 3.4, 4, -0.4);
-        rock(-1.0, -4.4, 0, 2.6, 15.5, 2.4, 0.15); rock(-0.6, -4.9, 12, 1.8, 3.2, 1.6, 0.4);
-        // man
-        L([0.2, -0.7, 7.6], [2.3, -1.1, 6.1], 0.95, 0.85); L([2.3, -1.1, 6.1], [2.9, -1.2, 3.2], 0.85, 0.7);   // forward left leg, knee out of the rock
-        L([0.0, 0.7, 7.6], [-0.4, 0.9, 4.5], 0.95, 0.8);
-        L([0.0, 0, 7.2], [0.1, 0, 9.4], 1.75, 1.6, ROCK);                                                       // wrapped cloth
-        L([0.1, 0, 9.2], [0.45, 0, 14.0], 1.55, 2.15);                                                           // torso, broad chest
-        L([0.4, -2.1, 13.6], [0.4, 2.1, 13.6], 0.75, 0.75);                                                      // shoulders
-        L([0.45, 0, 14.2], [0.55, 0, 15.0], 0.6, 0.6); ball([0.65, 0, 15.9], 1.0);
-        L([0.6, 0, 16.5], [0.62, 0, 16.9], 0.92, 0.9, 0x5e4836);                                                 // headband
-        L([0.4, -2.2, 13.7], [0.9, -3.8, 16.3], 0.65, 0.55);                                                     // raised left upper arm
-        L([0.9, -3.8, 16.3], [1.0, -2.1, 17.4], 0.55, 0.45);                                                     // forearm back over the shoulder
-        L([0.3, 2.2, 13.4], [0.2, 3.0, 11.0], 0.6, 0.5); L([0.2, 3.0, 11.0], [-0.5, 3.4, 9.6], 0.5, 0.42);      // right arm round the woman
+        /** A crag: a tapered prism of four to six faces, leaning (`ta` toward the sea, `ts` toward the statue's right), its base at (a, s, u). */
+        const crag = (a: number, s2: number, u: number, rb: number, rt: number, h: number, seg: number, yaw = 0, ta = 0, ts = 0, col = ROCK) => { const [x, y, z] = W(a, s2, u); plain.cyl(rt * k, rb * k, h * k, x, y, z, col, seg, [ts, yaw, ta]); };
+        const ROCK_2 = 0x94785a;
+        // The rock the figures rise out of (the owner's photographs, 11 Nov): strata thrown up toward the man, in broken tiers, shards along its front, and the tall
+        // slab at his left. Prisms of four to six faces, leaning: nothing square.
+        crag(0.2, 0.4, -0.6, 6.4, 5.0, 3.6, 6, 0.3);
+        crag(1.6, 0.0, 2.4, 4.9, 3.5, 2.9, 5, 0.9, 0.08, 0, ROCK_2);
+        crag(2.5, -0.5, 4.6, 3.3, 2.1, 2.5, 5, 0.2, 0.12);
+        crag(0.8, 2.9, 2.2, 3.0, 1.9, 3.0, 5, 1.4, 0.05, -0.12, CRAG);
+        crag(-1.4, -1.5, 2.6, 3.4, 2.3, 4.2, 6, 0.6, -0.1, 0.06, ROCK_2);
+        crag(-2.6, 1.2, 1.4, 3.2, 1.8, 5.0, 5, 2.0, -0.16, -0.05, CRAG);
+        for (const [fa, fs, fu, rb, rt, h, yaw, ta, ts] of [[4.6, -1.8, 0.4, 1.5, 0.5, 4.6, 0.4, -0.3, 0.1], [4.9, 0.6, 0.2, 1.3, 0.4, 3.6, 1.1, -0.34, -0.05], [4.3, 2.6, 0.2, 1.4, 0.5, 4.0, 0.2, -0.28, -0.16],
+          [3.6, -3.2, 0.6, 1.3, 0.45, 5.4, 0.9, -0.24, 0.2], [3.4, 4.2, 0.0, 1.2, 0.4, 3.2, 1.7, -0.3, -0.22], [5.6, -0.6, -0.4, 1.1, 0.35, 2.8, 0.5, -0.4, 0]] as const)
+          crag(fa, fs, fu, rb, rt, h, 4, yaw, ta, ts, fa > 4.5 ? ROCK_2 : ROCK);                                // shards along the front, leaning back toward the group
+        crag(-1.0, -4.5, -0.4, 2.0, 1.5, 16.2, 4, 0.5, -0.03, 0.03);                                             // the tall slab at the man's left
+        crag(-0.5, -4.9, 14.6, 1.4, 0.5, 3.4, 4, 1.0, -0.08, 0.1, ROCK_2); crag(-2.2, -3.6, 0, 1.7, 1.0, 11.0, 4, 0.1, -0.05, -0.04, CRAG);
+        // man: broad and muscled (thighs, a chest in relief, shoulders, a thick neck), the cap
+        L([0.2, -0.7, 7.6], [2.3, -1.1, 6.1], 1.15, 0.95); L([2.3, -1.1, 6.1], [2.9, -1.2, 3.2], 0.9, 0.72); ball([2.3, -1.1, 6.1], 0.98);   // forward left leg, knee out of the rock
+        L([0.0, 0.7, 7.6], [-0.4, 0.9, 4.5], 1.15, 0.9);
+        L([0.0, 0, 7.2], [0.1, 0, 9.4], 1.85, 1.65, 0x775a3f);                                                   // wrapped cloth
+        L([0.1, 0, 9.2], [0.45, 0, 14.0], 1.6, 2.25);                                                            // torso, broad chest
+        ball([1.35, -0.95, 13.0], 1.05); ball([1.35, 0.95, 13.0], 1.05);                                         // the chest
+        L([0.4, -2.2, 13.6], [0.4, 2.2, 13.6], 0.85, 0.85); ball([0.4, -2.3, 13.7], 1.0); ball([0.4, 2.3, 13.7], 1.0);   // shoulders
+        L([0.45, 0, 14.2], [0.55, 0, 15.0], 0.75, 0.7); ball([0.65, 0, 15.9], 1.05);
+        L([0.6, 0, 16.4], [0.62, 0, 17.0], 0.98, 0.9, 0x5e4836);                                                 // the cap
+        L([0.4, -2.3, 13.7], [0.9, -3.8, 16.3], 0.85, 0.7); ball([0.9, -3.8, 16.3], 0.72);                       // raised left upper arm
+        L([0.9, -3.8, 16.3], [1.0, -2.1, 17.4], 0.68, 0.55);                                                     // forearm back over the shoulder
+        L([0.3, 2.3, 13.4], [0.2, 3.0, 11.0], 0.75, 0.6); L([0.2, 3.0, 11.0], [-0.5, 3.4, 9.6], 0.58, 0.48);    // right arm round the woman
         // child seated on the forearm, pointing out to sea
-        L([1.0, -2.8, 17.6], [1.2, -2.8, 19.3], 0.55, 0.5); ball([1.3, -2.8, 20.0], 0.5);
-        L([1.1, -2.6, 17.7], [1.8, -2.4, 16.9], 0.24, 0.2); L([1.1, -3.0, 17.7], [1.8, -3.2, 16.9], 0.24, 0.2); // dangling legs
-        L([1.3, -2.5, 19.2], [3.4, -3.5, 20.9], 0.2, 0.15);                                                     // pointing arm
+        L([1.0, -2.8, 17.5], [1.2, -2.8, 19.4], 0.75, 0.62); ball([1.3, -2.8, 20.2], 0.7);
+        L([1.1, -2.5, 17.7], [1.9, -2.3, 16.7], 0.34, 0.26); L([1.1, -3.1, 17.7], [1.9, -3.3, 16.7], 0.34, 0.26); // dangling legs
+        L([1.3, -2.4, 19.2], [3.6, -3.4, 21.0], 0.3, 0.2); ball([3.7, -3.45, 21.1], 0.26);                       // pointing arm
+        L([1.2, -3.2, 19.1], [0.9, -3.3, 18.0], 0.26, 0.22);                                                     // his other arm on the man's head
         // woman, leaning forward at his right
-        L([1.4, 3.2, 3.0], [-0.3, 3.6, 7.6], 0.75, 0.85);                                                        // leg out of the rock
-        L([-0.3, 3.6, 7.0], [-0.5, 3.7, 9.8], 1.25, 1.0, 0x725840);                                              // wrapped dress
-        L([-0.4, 3.8, 7.6], [-2.4, 4.4, 6.7], 0.8, 0.25, 0x725840);                                              // dress flowing back
-        L([-0.5, 3.7, 9.6], [-0.2, 3.6, 12.5], 1.0, 1.1); ball([0.0, 3.5, 13.5], 0.72);
-        L([-0.1, 3.5, 13.8], [-1.9, 3.9, 14.1], 0.5, 0.15);                                                      // hair streaming back
-        L([-0.3, 4.4, 12.0], [-2.0, 5.9, 10.8], 0.42, 0.38); L([-2.0, 5.9, 10.8], [-3.6, 7.2, 9.6], 0.38, 0.3);  // arm flung back
+        L([1.4, 3.2, 3.0], [-0.3, 3.6, 7.6], 0.85, 1.0);                                                         // leg out of the rock
+        L([-0.3, 3.6, 7.0], [-0.5, 3.7, 9.8], 1.4, 1.05, 0x775a3f);                                              // wrapped dress
+        L([-0.4, 3.8, 7.6], [-2.6, 4.5, 6.4], 0.95, 0.25, 0x775a3f);                                             // dress flowing back
+        L([-0.5, 3.7, 9.6], [-0.2, 3.6, 12.5], 1.05, 1.2); ball([0.45, 3.2, 11.9], 0.62); ball([0.45, 4.0, 11.9], 0.62);
+        L([-0.2, 3.6, 12.6], [0.0, 3.5, 13.1], 0.5, 0.45); ball([0.1, 3.5, 13.8], 0.8);
+        L([-0.1, 3.5, 14.1], [-2.2, 4.0, 14.3], 0.55, 0.15);                                                     // hair streaming back
+        ball([-0.3, 4.5, 12.1], 0.6); L([-0.3, 4.5, 12.0], [-2.0, 5.9, 10.8], 0.52, 0.44); L([-2.0, 5.9, 10.8], [-3.7, 7.3, 9.5], 0.44, 0.32); ball([-3.85, 7.4, 9.4], 0.36);  // arm flung back
         // hill collider: square plus cross approximate the round hill; the block corners stay free
         // The stair is walkable: a corridor |z - cz| < 3.3 from the foot (x0) to the summit terrace in front of the rock.
         // Everything else on the hill collides (square and cross approximate the round hill; block corners stay free).

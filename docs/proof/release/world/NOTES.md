@@ -264,3 +264,14 @@ Checked: `tests/cornicheEsplanade.test.ts` (the way down is clear, the disc is c
 The reference's other shots are Dakar's sunsets over the ocean. The game's sun already went down over the western sea; two things were added so that it is seen (`20`: the esplanade at 18 h and 19 h, clear sky):
 - `src/world/sky.ts`: a low sun is a larger, softer ball in a wider glow (it was a pin-point at every height). Every district's sky.
 - `src/world/builder.ts`: the Corniche's sea takes the sun (a specular term on the same mesh and colours): its light lies on the water under it. The Almadies' sea, to the north, is unchanged.
+
+## The monument on its hill (the owner's photographs, 11 November: « on a high mountain with stairs »)
+
+`src/world/builder.ts`, case `monument` (the Corniche's block « 1,0 »). It was a cone 12 m high with the group on its middle and a stair of 34 steps at 38°.
+
+- **The hill** is 17 m high and its summit stands toward the back of the block, so the sea side is one long slope and the back falls away steeply. Its flanks are broken ground (three uneven rings): dry grass and bougainvillea on the lower two thirds, bare rock above, outcrops breaking out of it, a crag north of the summit.
+- **The stair** is 9 m wide (7 before), 58 steps at about 35°, a paler tread every fifteen (the landings' line), white parapets, two-bar steel handrails, a lamp with a flat head every other post, bougainvillea and scrub along both sides. It is climbed on foot as before (the same ramp, longer).
+- **The group**: the rock it rises out of is thrown-up strata in tiers of leaning prisms with shards along its front and the tall slab at the man's left (it was seven boxes); the man is broad (thighs, a chest in relief, shoulders, neck, cap), the child larger, his arm on the man's head, the woman's bust, hand and hair. A warmer bronze.
+- The hub's random stream is not disturbed: the old vegetation loop draws exactly what it drew; everything new is placed from its own position.
+
+`21`, `22`: before | after from above and from the back (11 h). `23`: the stair and the group at 16 h. Checked with `scripts/check-monument-stair.mjs` (a real finger on the stick: up to the summit, the rock and the parapet hold, back down, the flank is closed: 8/8).
