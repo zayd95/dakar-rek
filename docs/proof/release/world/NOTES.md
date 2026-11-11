@@ -218,3 +218,24 @@ Texture memory goes the other way and is the cost of this pass: the facade textu
 - **Signs**: each painted sign is still its own mesh and texture (about 20 draw calls in the Plateau at most, far fewer in view). Merging them into one atlas mesh is the next real draw-call saving; it touches `HubWorld.signs`, the night emissive and the signage checks, so it was left for a pass of its own.
 - **Collision geometry**: unchanged except Pikine's corner boutiques (new solid boxes inside the yards, added after the street dressing so nothing else moves). Pikine's compound walls are still not solid, as before.
 - **Phone performance**: counts only. Nothing here was run on an iPhone; the new shader path (`textureGrad`, one extra vertex attribute on the facade mesh) and the larger texture should be checked on a real device.
+
+## Second pass (release branch, commit `399e485c`): skylines, roofs, the sea front
+
+Added after the first pass, in the same rules: everything goes into the districts' merged batches (**no draw call added**), every piece is placed from its building's own position (no random stream is drawn, so nothing else moves), and Ngor / Almadies is untouched.
+
+- **Plateau**: set-back last storeys, oversailing roof slabs (the concrete « casquette » of the 1960s blocks), stair heads, black tanks on steel legs, masts; glass balconies on the flats' loggia bays; a concrete canopy over the side-street shops.
+- **Pikine**: the floor to come (corner posts with their irons, a length of block wall already laid) on bare houses and one house in three; a blue tank on a steel stand on one house in five.
+- **Mermoz · Sacré-Cœur**: four villas in ten under a hipped tile roof (clay red, or the green glazed tile); piers with caps along the compound walls and a servants' door on the side street; tanks and stair heads on the blocks; balconies on their glass doors.
+- **Corniche**: a low whitewashed sea wall along the promenade with a pier and a globe at each arch (lit at night), open at the beach's way down; benches on the promenade facing the sea (solid: +8 colliders).
+
+Static scenery, whole district (`buildHub`, counted in a unit test, full / lite):
+
+| District | Meshes | Triangles before → after (full) | Triangles before → after (lite) | Colliders |
+|---|---|---|---|---|
+| Pikine | 66 → 66 | 133 507 → 135 919 (+1.8 %) | 105 632 → 107 840 | 711 → 711 |
+| Plateau | 49 → 49 | 66 636 → 69 986 (+5.0 %) | 49 704 → 51 888 | 266 → 266 |
+| Mermoz | 22 → 22 | 124 051 → 132 663 (+6.9 %) | 74 397 → 77 231 | 303 → 303 |
+| Corniche | 33 → 33 | 70 814 → 74 170 (+4.7 %) | 52 536 → 54 324 | 151 → 159 |
+| Almadies | 97 → 97 | 213 804 → 213 804 | 168 374 → 168 374 | 1 009 → 1 009 |
+
+`13-second-pass-skylines.jpg`: seven raised views after the pass (Plateau ×2, Pikine, Mermoz ×2, Corniche ×2), phone viewport, Medium, hour 10, headless on a software renderer. Evidence of composition, not of phone frame rate.
