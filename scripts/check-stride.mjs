@@ -27,7 +27,9 @@ for (const [label, viewport, touch] of [['phone', { width: 390, height: 844 }, t
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.pos().mode === 'play', null, T);
   const start = async () => { await d(() => { window.__dakar.place(-42, -66, Math.PI / 2); window.__dakar.lookYaw(Math.PI / 2); }); await page.waitForTimeout(500); };
   /** The steadiest speed reached while `hold` is in force (the game steps at most 0.1 s a frame, so on a slow page it is the speed the body asks for that counts). */
-  const peak = async ms => { let v = 0; const t0 = Date.now(); while (Date.now() - t0 < ms) { v = Math.max(v, (await S()).speed); await page.waitForTimeout(120); } return v; };
+  /** The highest speed reached within `ms`; stops early once it passes `enough` (the page may run at one frame a second on a busy machine: the game steps at most 0.1 s a frame, so game time is what counts, not the clock). */
+  const peak = async (ms, enough = Infinity) => { let v = 0; const t0 = Date.now(); while (Date.now() - t0 < ms && v < enough) { v = Math.max(v, (await S()).speed); await page.waitForTimeout(120); } return v; };
+  const settle = (fn, ms = 30000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
   const ui = await d(() => ({
     gauge: !!document.getElementById('stamina'),
     words: /Courir|Footing|Sprint|Endurance/.test(document.getElementById('ui').innerText),
@@ -40,22 +42,22 @@ for (const [label, viewport, touch] of [['phone', { width: 390, height: 844 }, t
     const tt = await realTouch(page), jc = await tt.centre('#joy');
     const push = async f => { await tt.move(1, jc.x, jc.y - STICK * f, 4); };
     await start(); await tt.down(1, jc.x, jc.y);
-    await push(0.3); const light = await peak(3500), gLight = (await S()).gait;
+    await push(0.3); await settle(() => window.__dakar.stride().speed > 1.3); const light = await peak(2500), gLight = (await S()).gait;
     check('phone: a light push of the stick walks', light > 0.7 && light < 2.3 && gLight === 'walk', JSON.stringify({ light, gLight }));
-    await push(1); const full = await peak(6000), sFull = await S();
+    await push(1); const full = await peak(45000, 6.9), sFull = await S();
     check('phone: a strong push runs on its own (no button), tired or not', full > 5.5 && sFull.gait === 'sprint' && sFull.running, JSON.stringify({ full, gait: sFull.gait, energie: 5 }));
     await page.screenshot({ path: `${out}/phone-running.png` });
-    await push(0.3); await page.waitForTimeout(2500); const back = (await S()).speed;
+    await push(0.3); await settle(() => window.__dakar.stride().speed < 2.2); await page.waitForTimeout(800); const back = (await S()).speed;
     check('phone: easing the stick back eases to a walk (no lurch, no stop)', back > 0.6 && back < 2.6, JSON.stringify({ back }));
-    await tt.up(1); await page.waitForTimeout(1500);
+    await tt.up(1); await settle(() => window.__dakar.stride().speed < 0.3);
     check('phone: letting go stops', (await S()).speed < 0.3, JSON.stringify(await S()));
   } else {
     await start(); await page.keyboard.down('KeyW');
-    const first = (await S()).speed; const run = await peak(6000), sRun = await S();
+    const first = (await S()).speed; const run = await peak(45000, 6.5), sRun = await S();
     check('desktop: a direction key runs on its own after an instant', run > 5.5 && sRun.gait === 'sprint', JSON.stringify({ first, run, gait: sRun.gait }));
-    await page.keyboard.down('ShiftLeft'); await page.waitForTimeout(2500); const walk = await S();
+    await page.keyboard.down('ShiftLeft'); await settle(() => window.__dakar.stride().speed < 2.2 && window.__dakar.stride().gait === 'walk'); const walk = await S();
     check('desktop: Shift held keeps to a walk', walk.speed < 2.2 && walk.gait === 'walk', JSON.stringify(walk));
-    await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW'); await page.waitForTimeout(1200);
+    await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW'); await settle(() => window.__dakar.stride().speed < 0.3);
     check('desktop: releasing stops', (await S()).speed < 0.3);
     const hint = await d(() => document.getElementById('hint')?.innerText ?? '');
     check('desktop: the key hint says it (« ça court tout seul », Maj to walk)', /court tout seul/.test(hint) && /Maj/.test(hint), hint);
