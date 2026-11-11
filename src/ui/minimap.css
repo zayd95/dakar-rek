@@ -91,6 +91,11 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
 #phone .gm-pl { width:11px; height:11px; border-radius:50%; background:var(--c); box-shadow:0 0 0 2px #fff, 0 1px 3px rgba(0,0,0,.4); cursor:pointer; display:none; }
 #phone .gm.gm-close .gm-pl { display:block; }
 #phone .gm-pin { font-size:24px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+/* a name that would cover one that matters more is not drawn (src/ui/geoMap.ts fitLabels) */
+#phone .gm-off { visibility:hidden; pointer-events:none; }
+/* a fingertip's worth of room around a district's name and a road's marker (they are 20 px high) */
+#phone .gm-hub::after, #phone .gm-road::after { content:''; position:absolute; inset:-12px -4px; }
+#phone .gm-road::after { inset:-13px; }
 
 /* ---- the map screen: the map is the screen. The strip under it (shortcuts, vehicles, districts), then one short card for what was picked. No long text. */
 #phone .cm { display:flex; flex-direction:column; gap:12px; }
@@ -150,9 +155,13 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
   #phone .fm-cv, #phone .gm-map { height:max(170px, calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))); }
   #phone .cm-side { max-height:max(170px, calc(100dvh - 128px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))); overflow-y:auto; overscroll-behavior:contain; padding-right:2px; }
   #phone .fm-card, #phone .gm-card { order:-1; }                          /* the card first, then one row to swipe */
-  #phone .cm-chip { min-height:34px; font-size:13px; padding:0 11px 0 9px; }
+  #phone .cm-chip { min-height:44px; font-size:13px; padding:0 11px 0 9px; }
   #phone .fm-card { padding:12px 14px; }
   #phone .cm-top { left:6px; top:6px; } #phone .cm-tabs button { min-height:28px; padding:0 10px; font-size:12.5px; } #phone .cm-filter { min-height:34px; }
   #phone .cm-pop { top:46px; } #phone .gm-status { top:46px; right:50px; font-size:11.5px; padding:5px 9px; }
   #phone .fm-btns, #phone .gm-btns { gap:5px; } #phone .fm-btns button, #phone .gm-btns button { width:34px; height:34px; font-size:17px; }
+  /* drawn small, to leave the map in sight; a fingertip still finds them: 44 px to touch around each (the look does not change) */
+  #phone .cm-tabs button, #phone .cm-filter, #phone .fm-btns button, #phone .gm-btns button { position:relative; }
+  #phone .cm-tabs button::after { content:''; position:absolute; inset:-8px 0; }
+  #phone .cm-filter::after, #phone .fm-btns button::after, #phone .gm-btns button::after { content:''; position:absolute; inset:-5px; }
 }
