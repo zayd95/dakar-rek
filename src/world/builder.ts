@@ -1532,39 +1532,76 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // parapets, railings and lamps; at the top the group rises out of angular rock with a tall rock slab beside
         // the man: the man (bare-chested, wrapped cloth, headband) holds the child seated on his raised left arm,
         // the child points out to sea; the woman leans forward at his right, arm flung back, hair and dress flowing.
-        const HILL = 0xa8925f, STONE = 0xd9d4ca, BRONZE = 0x7a5f45, ROCK = 0x806549;
-        const R0 = 22, R1 = 7, HH = 12;                                         // hill base/top radius, height
-        const hAt = (r: number) => HH * THREE.MathUtils.clamp((R0 - r) / (R0 - R1), 0, 1);
-        plain.cyl(R1, R0, HH, cx, B - 0.05, cz, HILL, 28);                      // the hill (a frustum: straight slopes)
-        plain.cyl(R1 + 0.3, R1 + 0.3, 0.12, cx, B + HH - 0.05, cz, STONE, 24); // summit plaza
+        // (11 Nov, the owner's photographs of the hill and its stair: « on a high mountain with stairs ».) The hill is higher and no longer a cone with the group on
+        // its middle: its summit stands toward the back of the block, so the sea side is one long slope for the stair (58 steps at about 35°, where 34 climbed at 38°)
+        // and the back falls away in rock. Its flanks are broken ground (three rings, uneven), dry grass below and bare rock above, with outcrops.
+        const HILL = 0xa8925f, HILL_ROCK = 0x917651, STONE = 0xd9d4ca, BRONZE = 0x8a6747, ROCK = 0x84684b, CRAG = 0x6f5940;
+        const R0 = 22, R1 = 7, HH = 17, OFF = 7.5, SX = cx + OFF;               // hill base/top radius, height; the summit's centre is OFF east of the block's
+        const mh = (u: number, v: number) => { const q = Math.sin(u * 127.1 + v * 311.7) * 43758.5453; return q - Math.floor(q); };   // (from a place: the hub's random stream is not drawn)
+        /** The hill's section at the share t of its height: centre x and radius. */
+        const ringAt = (t: number) => ({ x: cx + OFF * t, r: R0 - (R0 - R1) * t });
+        /** Height of the hill's flank over (x, z): where the section's circle passes through the point. */
+        const hillY = (x: number, z: number) => { let lo = 0, hi = 1; for (let i = 0; i < 14; i++) { const t = (lo + hi) / 2, c = ringAt(t); if (Math.hypot(x - c.x, z - cz) < c.r) lo = t; else hi = t; } return HH * lo; };
+        {
+          const SEG = lite ? 20 : 30, T = [0, 0.34, 0.68, 1];
+          const pt = (i: number, j: number): [number, number, number] => {
+            const a = (i / SEG) * Math.PI * 2, t = T[j], c = ringAt(t);
+            const stair = Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.5;                 // the stair's side stays a true slope: the treads lie on it
+            const n = j === 0 || j === 3 || stair ? 0 : (mh(i, j) - 0.5) * 0.2 + (j === 2 ? 0.07 : 0.04);           // the middle rings swell and waver: a hill, not a cone
+            const rr = c.r * (1 + n);
+            return [c.x + Math.cos(a) * rr, B - 0.05 + HH * t + (j === 1 || j === 2 ? (mh(j, i) - 0.5) * (stair ? 0 : 0.9) : 0), cz + Math.sin(a) * rr];
+          };
+          for (const [j0, colour] of [[0, HILL], [1, HILL], [2, HILL_ROCK]] as const) {
+            const v: number[] = [];
+            for (let i = 0; i < SEG; i++) { const A = pt(i, j0), Bq = pt(i + 1, j0), C = pt(i, j0 + 1), D = pt(i + 1, j0 + 1); v.push(...A, ...C, ...Bq, ...Bq, ...C, ...D); }
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); plain.geometry(g, colour, 0, 0, 0);
+          }
+        }
+        plain.cyl(R1 + 0.3, R1 + 0.3, 0.12, SX, B + HH - 0.05, cz, STONE, 24); // summit plaza
         const top = B + HH;
         // stair up the sea side (west, -x): treads sit on the slope; parapets, railings and lamps on both sides
-        const SW = 7, steps = 34, x0 = cx - R0 - 0.6, x1 = cx - R1;
+        const SW = 9, steps = 58, x0 = cx - R0 - 0.6, x1 = SX - R1;
         for (let k = 0; k < steps; k++) {
-          const xa = x0 + ((x1 - x0) * k) / steps, ya = B + hAt(cx - xa) + 0.05;
-          plain.box((x1 - x0) / steps + 0.02, Math.max(0.12, ya - B + 0.35), SW, xa + (x1 - x0) / steps / 2, 0, cz, k % 2 ? 0xc9c4ba : 0xbdb8ae);
+          const xa = x0 + ((x1 - x0) * k) / steps, ya = B + (HH * k) / steps + 0.05;
+          const landing = k % 15 === 14;                                          // a paler tread every fifteen: the landings' line
+          plain.box((x1 - x0) / steps + 0.02, Math.max(0.12, ya - B + 0.35), SW, xa + (x1 - x0) / steps / 2, 0, cz, landing ? 0xd6d2c8 : k % 2 ? 0xc4c0b6 : 0xb9b5ab);
         }
         for (const sz of [-1, 1]) {
           const zz = cz + sz * (SW / 2 + 0.25);
           limb(plain, [x0, B + 0.5, zz], [x1, top + 0.5, zz], 0.32, 0.32, STONE, 4);        // white parapet
-          limb(plain, [x0, B + 1.4, zz - sz * 0.1], [x1, top + 1.4, zz - sz * 0.1], 0.04, 0.04, 0x9aa0a6, 4); // handrail
-          for (let k = 0; k <= 6; k++) {
-            const xa = x0 + ((x1 - x0) * k) / 6, ya = B + hAt(cx - xa);
-            plain.box(0.06, 1.0, 0.06, xa, ya + 0.4, zz - sz * 0.1, 0x9aa0a6);
-            if (k % 2 === 0) { lampPosts.box(0.12, 3.2, 0.12, xa, ya + 0.6, zz + sz * 0.6, 0xd9d4ca); lampBulbs.sphere(0.28, xa, ya + 3.9, zz + sz * 0.6, 0xfff1d0); }
+          for (const hy of [1.45, 1.05]) limb(plain, [x0, B + hy, zz - sz * 0.1], [x1, top + hy, zz - sz * 0.1], 0.035, 0.035, 0x9aa0a6, 4); // steel handrails, two bars
+          for (let k = 0; k <= 12; k++) {
+            const xa = x0 + ((x1 - x0) * k) / 12, ya = B + (HH * k) / 12;
+            plain.box(0.06, 1.05, 0.06, xa, ya + 0.4, zz - sz * 0.1, 0x9aa0a6);
+            if (k % 2 === 0) {                                                    // a lamp every other post: a pale mast and a flat head over the steps
+              lampPosts.box(0.12, 3.6, 0.12, xa, ya + 0.6, zz + sz * 0.6, 0xd9d4ca); lampPosts.box(0.16, 0.08, 1.0, xa, ya + 4.2, zz + sz * 0.2, 0xd9d4ca);
+              lampBulbs.box(0.3, 0.06, 0.5, xa, ya + 4.13, zz - sz * 0.05, 0xfff1d0);
+            }
           }
         }
         // vegetation on the slopes, kept off the stair
         for (let n = 0; n < 70; n++) {
           const a = R() * Math.PI * 2;
           if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.42) continue;
-          const r = R1 + 1 + R() * (R0 - R1 - 1.5), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-          leaves.blob(0.7 + R() * 0.9, x, B + hAt(r) - 0.1, z, R() < 0.3 ? pick([0xd2468a, 0xc2307a, 0xe05a9a], R) : pick([0x5f7a3a, 0x7a8a46, 0x4f6a32], R), 0.6, 0);
+          const r = R1 + 1 + R() * (R0 - R1 - 1.5), t = THREE.MathUtils.clamp((R0 - r) / (R0 - R1), 0, 1) * 0.62, c = ringAt(t), x = c.x + Math.cos(a) * c.r, z = cz + Math.sin(a) * c.r;   // (the lower two thirds: grass and bougainvillea; above it is rock)
+          leaves.blob(0.7 + R() * 0.9, x, B + HH * t - 0.1, z, R() < 0.3 ? pick([0xd2468a, 0xc2307a, 0xe05a9a], R) : pick([0x5f7a3a, 0x7a8a46, 0x4f6a32], R), 0.6, 0);
         }
         for (let n = 0; n < 6; n++) { const a = (n / 6) * Math.PI * 2 + 0.5; if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.6) continue; palm(cx + Math.cos(a) * (R1 + 1.2), cz + Math.sin(a) * (R1 + 1.2), 0.9); }
+        // bougainvillea and scrub along the stair's two sides, and rock breaking out of the upper flanks (a crag north of the summit, as on the hill)
+        for (let n = 0; n < (lite ? 10 : 22); n++) for (const sz of [-1, 1]) {
+          const f = (n + 0.5) / (lite ? 10 : 22), x = x0 + (x1 - x0) * f, z = cz + sz * (SW / 2 + 1.5 + mh(n, sz) * 1.6);
+          leaves.blob(0.6 + mh(n, sz + 2) * 0.7, x, B + hillY(x, z) + 0.15, z, mh(n, sz + 4) < 0.55 ? [0xd2468a, 0xc2307a, 0xe05a9a][n % 3] : [0x5f7a3a, 0x6f8440][n % 2], 0.6, 0);
+        }
+        for (let n = 0; n < (lite ? 8 : 18); n++) {
+          const a = mh(n, 21) * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.55) continue;
+          const t = 0.5 + mh(n, 22) * 0.42, c = ringAt(t), x = c.x + Math.cos(a) * (c.r + 0.3), z = cz + Math.sin(a) * (c.r + 0.3), w = 1.6 + mh(n, 23) * 2.4;
+          plain.box(w, 2.6 + mh(n, 24) * 2.2, w * (0.6 + mh(n, 25) * 0.5), x, B + HH * t - 2.3, z, n % 2 ? CRAG : ROCK, mh(n, 26) * 3);
+        }
+        for (const [dx, dz, w, h, d, rot] of [[-1.5, 9.5, 5, 4.6, 3.4, 0.5], [1.8, 10.6, 3.6, 6.2, 3, -0.3], [5, 9.2, 4.4, 3.4, 3.2, 0.9], [-4.2, 8.2, 3, 2.6, 2.6, 0.2]] as const)
+          plain.box(w, h + 3.4, d, SX + dx, top - 5.6, cz - dz, dx > 0 ? CRAG : ROCK, rot);
         // statue group, local axes: a = toward the sea (-x), s = the statue's right (-z), u = up from the summit
         const k = 1.25;
-        const W = (a: number, s2: number, u: number): [number, number, number] => [cx - a * k, top + u * k, cz - s2 * k];
+        const W = (a: number, s2: number, u: number): [number, number, number] => [SX - a * k, top + u * k, cz - s2 * k];
         const L = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k, r1 * k, col);
         const ball = (P: [number, number, number], r: number, col = BRONZE) => { const [x, y, z] = W(...P); plain.sphere(r * k, x, y, z, col); };
         const rock = (a: number, s2: number, u: number, w: number, h: number, d: number, rot: number) => { const [x, y, z] = W(a, s2, u); plain.box(w * k, h * k, d * k, x, y, z, ROCK, rot); };
@@ -1597,7 +1634,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // hill collider: square plus cross approximate the round hill; the block corners stay free
         // The stair is walkable: a corridor |z - cz| < 3.3 from the foot (x0) to the summit terrace in front of the rock.
         // Everything else on the hill collides (square and cross approximate the round hill; block corners stay free).
-        const SH = SW / 2 - 0.2, rockX = cx - 5.4;
+        const SH = SW / 2 - 0.2, rockX = SX - 5.4;
         solid(rockX, cz - 16, cx + 16, cz + 16, top + 2);
         solid(cx - 22, cz - 16, rockX, cz - SH, top + 2); solid(cx - 22, cz + SH, rockX, cz + 16, top + 2);
         solid(cx - 8, cz - 22, cx + 8, cz - 16, top); solid(cx - 8, cz + 16, cx + 8, cz + 22, top); solid(cx + 16, cz - 8, cx + 22, cz + 8, top);
