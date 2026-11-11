@@ -13,7 +13,7 @@ import type { DriveInput } from './drive';
 export interface DriveCmd { fwd: number; steer: number; boost: boolean; brake: boolean }
 
 /** Seconds the brake must stay held at a standstill before a car starts to reverse (a deliberate hold, never a brush of the thumb). */
-export const REVERSE_DELAY = 0.45;
+export const REVERSE_DELAY = 0.55;
 /**
  * The same hold right after the vehicle was stopped by something in its way (`DriveControls.stoppedBy`, within `EAGER_FOR` s): the driver's thumb goes to the brake to back
  * out, and the car answers almost at once. Still a hold, so a tap does nothing.

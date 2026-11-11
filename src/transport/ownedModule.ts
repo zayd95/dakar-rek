@@ -296,7 +296,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0, kickX: 0, kickZ: 0 };
   private readonly contact = new ContactTracker();
   /** What contacts did (the checks): each bump / hit with its speed and strength, the frames spent scraping, the largest shake and camera kick seen. */
-  private feelLog = { impacts: [] as { kind: string; speed: number; strength: number; headOn: boolean }[], shakePeak: 0, kickPeak: 0 };
+  private feelLog = { impacts: [] as { kind: string; speed: number; strength: number; headOn: boolean; t?: number; x?: number; z?: number; yaw?: number }[], shakePeak: 0, kickPeak: 0 };
   private scrapeFrames = 0;
 
   readonly def: OwnedDef;
@@ -821,7 +821,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.jolt(im.dir * (hit ? 0.025 + 0.065 * im.strength : 0.008), im.headOn ? 0 : -side * 0.05 * (0.4 + im.strength), hit ? 0.02 + 0.04 * im.strength : 0);
     buzz(impactBuzz(im.kind, im.strength));
     this.feelLog.shakePeak = Math.max(this.feelLog.shakePeak, this.fx.shake);      // read at the knock itself: the frame loop may be slow and decay it before it is seen
-    this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn }); if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
+    this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn, t: +this.simT.toFixed(2), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2) });   // (when and where, on the vehicle's own clock: a stall is explained from its log, not re-run) if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
   }
 
   /** A few centimetres of the camera, never the physics: it settles when the engine catches, dips under a hard brake, shakes at a contact (a tap a little, a crash more). */

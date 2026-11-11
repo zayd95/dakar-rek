@@ -44,16 +44,20 @@ await d(roll => {
 }, ROLL);
 const a0 = await d(() => window.__dakar.teranga.at());
 const closed = await closedZones(page);
-const toDrop = route({ x: a0.x, z: a0.z, yaw: a0.yaw }, DROP, { cruise: 7, avoid: closed });
+const CRUISE = Number(process.env.CRUISE ?? 5), UNSTICK = process.env.UNSTICK !== '0', driverLog = [];   // as the journey's last leg drives it (CRUISE=7 UNSTICK=0: as it did when it stalled)
+const toDrop = route({ x: a0.x, z: a0.z, yaw: a0.yaw }, DROP, { cruise: CRUISE, avoid: closed });
 console.log('start', JSON.stringify({ x: a0.x, z: a0.z, yaw: a0.yaw }), 'closed zones', JSON.stringify(closed));
 console.log('route', JSON.stringify(toDrop?.map(p => ({ x: +p.x.toFixed(1), z: +p.z.toFixed(1), speed: p.speed, tol: p.tol }))));
-if (toDrop) await pilot(page, t, 'teranga', toDrop, { cruise: 7, stall: 60000, ms: 600000, brakeAtEnd: true });
+if (toDrop) await pilot(page, t, 'teranga', toDrop, { cruise: CRUISE, stall: UNSTICK ? 8000 : 60000, ms: 600000, brakeAtEnd: true, unstick: UNSTICK, trace: driverLog });
+console.log('unsticks:', JSON.stringify(pilot.unsticks), 'driver loops:', driverLog.length, 'median loop ms:', driverLog.map(l => l.loop).sort((a, b) => a - b)[driverLog.length >> 1]);
 await page.waitForTimeout(1500);
 const tr = await d(() => { clearInterval(window.__trace); return { tr: window.__tr, imp: window.__imp, feel: window.__dakar.teranga.feel(), roadEvents: window.__dakar.roadEvents?.() ?? [], rolled: window.__rolled }; });
+tr.driver = driverLog; tr.unsticks = pilot.unsticks;
 const last = tr.tr.at(-1);
 console.log('end', JSON.stringify(last), 'distance to the drop-off', Math.hypot(last.x - DROP.x, last.z - DROP.z).toFixed(1), 'm');
 console.log('trace (every 2 s):', tr.tr.filter((_, i) => i % 8 === 0).map(p => `${p.t}:${p.x},${p.z},v${p.v}`).join(' '));
-console.log('impacts:', JSON.stringify(tr.imp));
+console.log('impacts (sampled):', JSON.stringify(tr.imp));
+console.log('impacts (the vehicle\'s own log, with the game time and the pose of each):', JSON.stringify(tr.feel.impacts));
 console.log('feel keys:', Object.keys(tr.feel).join(','));
 console.log('rolled:', JSON.stringify(tr.rolled));
 console.log('road events at the end (hour', HOUR, '):', JSON.stringify(tr.roadEvents.filter(e => e.on || e.built).map(e => ({ kind: e.kind, on: e.on, built: e.built, closed: e.closed, from: [e.edge.ax, e.edge.az], to: [e.edge.bx, e.edge.bz] }))));
