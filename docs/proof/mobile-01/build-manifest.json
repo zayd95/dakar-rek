@@ -1,0 +1,326 @@
+{
+ "commit": "804a19f40fe6b83d7a10e844e618ebee7653ef18",
+ "manifestSha256": "5e285497a06ebed0be6fec6a5c80798853efad65cf79476ba8c22f64ca9bc8c9",
+ "files": [
+  {
+   "path": "assets/audio/arena/bed-hype.mp3",
+   "bytes": 132623,
+   "sha256": "8392e9d659427ba67994a37844eca350391b78afd649b3699bd7f1255e30b39d"
+  },
+  {
+   "path": "assets/audio/arena/bed-roar.mp3",
+   "bytes": 132623,
+   "sha256": "af3e186561ba95273bb73ca91cdbb0ce4514eb7e3983a8132293f78b0c27165c"
+  },
+  {
+   "path": "assets/audio/arena/bed-stands.mp3",
+   "bytes": 156603,
+   "sha256": "3c27ca7a6f14b595ba3d3393c1af193f7c821da9aa40c94faf3cc71646da3d50"
+  },
+  {
+   "path": "assets/audio/arena/bed-street.mp3",
+   "bytes": 144534,
+   "sha256": "2d2f1c8acb943bbd7480ab7a2e9e6a4bd6e0cb9b48254ed69c4eb9a91e2ac13a"
+  },
+  {
+   "path": "assets/audio/arena/bed-tension.mp3",
+   "bytes": 132623,
+   "sha256": "7b91a9b274dddef5ceabb3f09ad454bc217aee8e8613e1cd265504453b2a3659"
+  },
+  {
+   "path": "assets/audio/arena/drums-bakk.mp3",
+   "bytes": 189649,
+   "sha256": "6d08df210c47c86c147ebbec50b47541ab0e8772826fb8eb6529d8e51991cb7d"
+  },
+  {
+   "path": "assets/audio/arena/drums-bout.mp3",
+   "bytes": 213786,
+   "sha256": "2da50037381b0434542bec4e166a6e40736e2ef7f26da9207880567b6d719202"
+  },
+  {
+   "path": "assets/audio/arena/drums-entrance.mp3",
+   "bytes": 207203,
+   "sha256": "01e60087ec6cd08f408bcc175c3b24f00b9747ab47f0f192f5dfe3a2439de4d8"
+  },
+  {
+   "path": "assets/audio/arena/drums-fete.mp3",
+   "bytes": 182125,
+   "sha256": "f9b86f180576659f81047dcf5afb9ab3cc8f40cf6c4e67d36de7a34aea76f476"
+  },
+  {
+   "path": "assets/audio/arena/drums-street.mp3",
+   "bytes": 220995,
+   "sha256": "6cea504f713fd0ae42cd53d6647946ef4e413549c62a267e3650657b47026640"
+  },
+  {
+   "path": "assets/audio/arena/manifest.json",
+   "bytes": 1756,
+   "sha256": "2106be9f67b0760c655e0ae03764def5853dd6e24bc9ebd699ecc0e1cf60121a"
+  },
+  {
+   "path": "assets/audio/arena/shot-applause.mp3",
+   "bytes": 25782,
+   "sha256": "8baf2efb883f937a9f61c35e389af37aa2a7330573e059b185a36be8a9595733"
+  },
+  {
+   "path": "assets/audio/arena/shot-cheer1.mp3",
+   "bytes": 16090,
+   "sha256": "7f4d962561729ce4f2346a48018e9640fd88891f60dcc9e1f3bd7174d439c376"
+  },
+  {
+   "path": "assets/audio/arena/shot-cheer2.mp3",
+   "bytes": 18833,
+   "sha256": "c69c55034f594ea1473e07e68ec7a6d84305adffc80f6ecca8d53a0efa14ac50"
+  },
+  {
+   "path": "assets/audio/arena/shot-cheerBig.mp3",
+   "bytes": 29987,
+   "sha256": "937a2a5723edb1a576d7e5236dad0a82c1231826d9da81e66719c32c8d978c92"
+  },
+  {
+   "path": "assets/audio/arena/shot-ooh.mp3",
+   "bytes": 17370,
+   "sha256": "af134264f4ec5fd241c12eb00e089ba83aee0d935dab723ea1f45e9710bc70a7"
+  },
+  {
+   "path": "assets/audio/arena/shot-ululation.mp3",
+   "bytes": 21576,
+   "sha256": "e581cb291370fd9f1400ee2a2378ce4f1cca94b75ef09172c7a179e6c3783240"
+  },
+  {
+   "path": "assets/audio/arena/shot-whistle.mp3",
+   "bytes": 10422,
+   "sha256": "47a7fd919cf039d489f81223e462ea5269da10382a621d85226ae6bc23c5dd81"
+  },
+  {
+   "path": "assets/audio/music/la-vague.mp3",
+   "bytes": 840977,
+   "sha256": "f189fdca31f57ee2d79c467a1564b21b585e99b0d738e2da810f11826ca50f09"
+  },
+  {
+   "path": "assets/audio/music/le-patio.mp3",
+   "bytes": 821571,
+   "sha256": "318076dd19e141a0d035f0afa6301f7e58806a249c3386741b9f5e9f08332a3f"
+  },
+  {
+   "path": "assets/audio/vehicles/car-idle.mp3",
+   "bytes": 47349,
+   "sha256": "c737691d9d945964b535c2af0d5dc148528c39064c5c145d8455a8725ecaac44"
+  },
+  {
+   "path": "assets/audio/vehicles/car-rev.mp3",
+   "bytes": 20349,
+   "sha256": "fc1a359c7e6719c918e13af49fd6d47cad1eb7ce98a5ce9bba1486ace2efd9af"
+  },
+  {
+   "path": "assets/audio/vehicles/crash.mp3",
+   "bytes": 22614,
+   "sha256": "ec5dcda88ffbc72892af2e1cab11e2c6e5cdcc8375738185b454c3b4b6adf51e"
+  },
+  {
+   "path": "assets/audio/vehicles/horn-car.mp3",
+   "bytes": 23867,
+   "sha256": "932c175956df7311db0db5ce5879be0fa7a4cfabe1715625509d3e65658e0f30"
+  },
+  {
+   "path": "assets/audio/vehicles/horn-moto.mp3",
+   "bytes": 23867,
+   "sha256": "b5f2895c70455666eb516f6f5f30beb44b73acc585c0d5f926ef8045f0298ac6"
+  },
+  {
+   "path": "assets/audio/vehicles/manifest.json",
+   "bytes": 1484,
+   "sha256": "e3a6789e11c44dcb87fa654d7ad05cd343adf99fd44576b80e28bed2c3b1dcd9"
+  },
+  {
+   "path": "assets/audio/vehicles/moto-idle.mp3",
+   "bytes": 47349,
+   "sha256": "7687ce29987caacde1ff064e68a5f548dc79ab0cc02c06dc52a2fca8b00af76f"
+  },
+  {
+   "path": "assets/audio/vehicles/squeal.mp3",
+   "bytes": 27629,
+   "sha256": "65ed1d330394b65d0f60f071d42db0935c02d544752fe53119f68f1f336345c2"
+  },
+  {
+   "path": "assets/audio/vehicles/start-car.mp3",
+   "bytes": 14409,
+   "sha256": "f251da7aea7bb34c6deabb41912f85eb7b479a8aae2c9719040b2f2b5339b1a1"
+  },
+  {
+   "path": "assets/audio/vehicles/thud.mp3",
+   "bytes": 5895,
+   "sha256": "804bbfb7194d20ec6bffc5d2ee4f7aec4ea0ea6e8f7166d201578d6d8d1d9f94"
+  },
+  {
+   "path": "assets/dakarData-BEZ4X2qm.js",
+   "bytes": 2488,
+   "sha256": "13c03aa7177c5873e989a8998ed039796f07b73f735ecb855b9ec19296a919bc"
+  },
+  {
+   "path": "assets/geoMap-DiupJ_3Q.js",
+   "bytes": 11654,
+   "sha256": "6c070dd288e356b17bc31ce28c11678dde4dc8df4692d2a7502ad6705a5b241b"
+  },
+  {
+   "path": "assets/glb-bundle.json",
+   "bytes": 12754282,
+   "sha256": "6622ecf03fe0e51cd70769e833fda97725586f97785e862f182e8ca4d6bd0754"
+  },
+  {
+   "path": "assets/index-9KSOV-u4.css",
+   "bytes": 171076,
+   "sha256": "c5e665a2f156655f8023d73c33103d62efbac8c1f39e4606eb132b90663c235a"
+  },
+  {
+   "path": "assets/index-DJDIreEt.js",
+   "bytes": 3641228,
+   "sha256": "f3502153da4a60b9412f6a21234d5eda0e80e8ca02b20d3ff939706c523c04dc"
+  },
+  {
+   "path": "assets/land-DDkxzaRD.js",
+   "bytes": 843,
+   "sha256": "bfa77375fc2df87e86bfbe3301c921343994e3132c03156cb509cc5f36434160"
+  },
+  {
+   "path": "assets/maplibre-gl-CKVhQEc2.js",
+   "bytes": 1095073,
+   "sha256": "f16ba357e52ee32fa2e4aa7384389e86bd922867dbeb89037a9714108e6b98e2"
+  },
+  {
+   "path": "assets/maplibre-gl-DdzJPxgI.js",
+   "bytes": 71557,
+   "sha256": "151c754dd0ce6f0222ad86a3a0530f820860e263b86a54f806541c7eb9076b17"
+  },
+  {
+   "path": "assets/maplibre-gl-worker-BrB25tGK.mjs",
+   "bytes": 518806,
+   "sha256": "1c69066368331aae63967ed24a9affcf962cf55fcc6d8f532a8b040f736dbcfa"
+  },
+  {
+   "path": "assets/maplibre-gl-worker-DrfVR4Sr.js",
+   "bytes": 97,
+   "sha256": "2fcc304dd311981400723c33e476038217105f72b897082c6683a7a00265bf96"
+  },
+  {
+   "path": "assets/meshy/preview_f.jpg",
+   "bytes": 13886,
+   "sha256": "411dae647e3d76b1e4f9e4cbc553ceeac54beb1e64f97f775bfd4c22ae92c6f5"
+  },
+  {
+   "path": "assets/meshy/preview_m.jpg",
+   "bytes": 13619,
+   "sha256": "8178c3d08524e8e040a37c3833953cc5ec63f296571cf91eea2e3fd07531d3ed"
+  },
+  {
+   "path": "assets/owned-BnHH9wNG.js",
+   "bytes": 159358,
+   "sha256": "a366235e5127608973433c3abfdf9bfaedbbf2437fd3d567199669b06c24dfba"
+  },
+  {
+   "path": "assets/start-C6APxtEN.js",
+   "bytes": 5465,
+   "sha256": "fcd4ee29426ecf49599b30296063068dca6e835525479beba139ffb144fb5f02"
+  },
+  {
+   "path": "assets/tex/asphalt.jpg",
+   "bytes": 89331,
+   "sha256": "d09c0481cd48e0eb73aff2002fe64b05f619b75c4d2320954cf5ec7b9ec61586"
+  },
+  {
+   "path": "assets/tex/clay_tiles.jpg",
+   "bytes": 58874,
+   "sha256": "a7d24ed62a8ac5ba1addb7b4f095df912c0ab74e9b698ab97dea784a2fde3580"
+  },
+  {
+   "path": "assets/tex/concrete.jpg",
+   "bytes": 93548,
+   "sha256": "c576fa6d7a77a14dc5df9176c3c915f88aea7de1a8dda9e3a2de09e545fa31ec"
+  },
+  {
+   "path": "assets/tex/corrugated.jpg",
+   "bytes": 54449,
+   "sha256": "2f37c9f0e0a3745a304c58a09c35d0ddc40a2a2d2bcbefed44fb9ce67f487bab"
+  },
+  {
+   "path": "assets/tex/corrugated_rusty.jpg",
+   "bytes": 118245,
+   "sha256": "6a135ab85ad2ec8f7c67d84a6f7f01966631ba6297c3444b19837fba953d0e37"
+  },
+  {
+   "path": "assets/tex/floor_tiles_terracotta.jpg",
+   "bytes": 74429,
+   "sha256": "b94757d12a442ae44431a7cb63bec2082d5f5288f421b179713a77ec48e2e7ab"
+  },
+  {
+   "path": "assets/tex/hollow_block.jpg",
+   "bytes": 115223,
+   "sha256": "761bbdd4dec8ebbdef208ca54066fbb3a74e76b7ec8705f634bd260dc391d8d2"
+  },
+  {
+   "path": "assets/tex/painted_metal.jpg",
+   "bytes": 64644,
+   "sha256": "9cadcaa93bb599de22730b9b27b82b73ee2ef54e19447ce006ed6d347feeca6b"
+  },
+  {
+   "path": "assets/tex/palm_trunk.jpg",
+   "bytes": 86203,
+   "sha256": "76ae212945a28682439155187bd3fcc7dd3e7b1d4d01a7c8597d54d3612caa94"
+  },
+  {
+   "path": "assets/tex/paving.jpg",
+   "bytes": 58098,
+   "sha256": "1962c653ff890529904cabba5310fe6b6f0cd98c24e245cb81b9a0e43e5fe1bd"
+  },
+  {
+   "path": "assets/tex/sand.jpg",
+   "bytes": 65332,
+   "sha256": "7f54f2694d4c2c95a4e290aeeea683faf9f16efbb8de442032660a6f9f54eed4"
+  },
+  {
+   "path": "assets/tex/sand_trampled.jpg",
+   "bytes": 56494,
+   "sha256": "77fc7c3c4fcc2d5ebfd8b8aca9d54b8fd145e568d6f1d4b2cd1d5f2a033c4fda"
+  },
+  {
+   "path": "assets/tex/terrazzo.jpg",
+   "bytes": 107027,
+   "sha256": "39b129a21770c129f88ebae14d317a71c0b35e0452c28dce5d03bca0a6da8474"
+  },
+  {
+   "path": "assets/tex/wood.jpg",
+   "bytes": 92363,
+   "sha256": "650096fea146485274de37e62863a99b81c52d85891ee2f7f3a2cf021ccfec9d"
+  },
+  {
+   "path": "assets/vehicles/compacte.json",
+   "bytes": 4826,
+   "sha256": "6c46aeb14479acd081f6eb7785318e6cdcc9ce073b62ef56a5d1a4cb95419b35"
+  },
+  {
+   "path": "assets/vehicles/gainde.json",
+   "bytes": 2932,
+   "sha256": "fda276a10a0167ae388a0d770a289a23a927b3ad176b6cdd3fcc80d5574aa8d9"
+  },
+  {
+   "path": "assets/vehicles/lamane.json",
+   "bytes": 2940,
+   "sha256": "af1f48095d669b1051d0ebb2198a3340b6f8b21389d848d75446cbf15e948c25"
+  },
+  {
+   "path": "assets/vehicles/rafet.json",
+   "bytes": 2910,
+   "sha256": "0414541441fd632658a7798c00c5d7ade385bb1b85b11ef6d552bef00e7dda3c"
+  },
+  {
+   "path": "assets/vehicles/teranga.json",
+   "bytes": 2903,
+   "sha256": "02cc6fd55606a4eca7aa572dd0c15bff3c7ac84cb3ef925c81f02e02534428ce"
+  },
+  {
+   "path": "index.html",
+   "bytes": 3073,
+   "sha256": "819f92c5ffe7e757d8ac8140286cc3116a1d48e9a032fdeac9c060a19e9bceab"
+  }
+ ]
+}

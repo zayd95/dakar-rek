@@ -1,4 +1,4 @@
-import { BUILD_ID } from '../core/build';
+import { BASE_COMMIT, BUILD_ID } from '../core/build';
 import { frameStats } from '../core/frameStats';
 
 /**
@@ -11,13 +11,13 @@ export function reportHeader(w: BetaWhere, now = new Date()): string {
   const screen = v ? `${v.innerWidth}×${v.innerHeight} @${v.devicePixelRatio || 1}x ${v.innerWidth > v.innerHeight ? 'paysage' : 'portrait'}` : '?';
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) : '?';
   return [
-    `Dakar Rek bêta · build ${BUILD_ID}`,
+    `Dakar Rek bêta · build ${BUILD_ID}${BASE_COMMIT ? ` · candidat accepté ${BASE_COMMIT.slice(0, 8)}` : ''}`,
     `Date : ${now.toISOString().slice(0, 16).replace('T', ' ')} UTC`,
     `Écran : ${screen} · qualité ${w.quality}`,
     `Appareil : ${ua}`,
     `Lieu : ${w.hub ?? 'chargement'} (${Math.round(w.x)}, ${Math.round(w.z)}) · ${w.playedMin} min de jeu${w.online ? ` · ${w.online}` : ''}`,
   ].join('\n');
 }
-export const betaFooter = () => `Dakar Rek · bêta · build ${BUILD_ID}`;
+export const betaFooter = () => `Dakar Rek · bêta · build ${BUILD_ID}${BASE_COMMIT ? ` · candidat accepté ${BASE_COMMIT.slice(0, 8)}` : ''}`;
 /** The report to fill in: the header above, then three questions (the same as docs/beta/FEEDBACK_TEMPLATE.md). */
 export const reportText = (w: BetaWhere) => `${[reportHeader(w), ...frameStats.reportLines()].join('\n')}\n\nCe que je faisais :\nCe qui s’est passé :\nCe que j’attendais :\n(une capture d’écran ou une vidéo aide beaucoup)`;
