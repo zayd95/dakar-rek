@@ -65,7 +65,8 @@ export function nightness(hour: number): number {
 
 export type PlaceKind = 'food' | 'shop' | 'transport' | 'arena' | 'mosque' | 'home' | 'work' | 'spot';
 export const KIND_LABEL: Record<PlaceKind, string> = {
-  food: 'Manger', shop: 'Boutiques', transport: 'Transport', arena: 'Arène', mosque: 'Mosquée', home: 'Logement', work: 'Travail', spot: 'Lieux',
+  // `arena` is where one goes out: the arène and the écurie, and the Almadies' and the Corniche's evenings (La Vague, Le Patio, the terraces on the roofs, the beach)
+  food: 'Manger', shop: 'Boutiques', transport: 'Transport', arena: 'Sorties', mosque: 'Mosquée', home: 'Logement', work: 'Travail', spot: 'Lieux',
 };
 export const KIND_COLOR: Record<PlaceKind, string> = {
   food: '#ff9f1c', shop: '#3fb6ff', transport: '#ffd23f', arena: '#ef476f', mosque: '#2dc98a', home: '#b388ff', work: '#9be15d', spot: '#cfd8dc',
@@ -77,7 +78,7 @@ export function placeKind(id: string, name = ''): PlaceKind {
   const s = (id + ' ' + name).toLowerCase();
   if (/:station\b|:port$/.test(id)) return 'transport';                       // the Almadies' quay is the Embarcadère de Ngor: crossings to the island
   if (/mosque|prière|priere/.test(s)) return 'mosque';
-  if (/:arena\b|:ecurie\b|écurie|city:club|\barène\b/.test(s) && !/:arena:/.test(id)) return 'arena';
+  if (/:arena\b|:ecurie\b|écurie|city:club|city:patio|:rooftop:|\barène\b/.test(s) && !/:arena:/.test(id)) return 'arena';
   if (/:home:|city:(villa|residence|jamm|maison|parcelles)/.test(id)) return 'home';
   if (/gargote|dibiterie|restaurant|maiga|cafe|juice|café/.test(s)) return 'food';
   if (/city:bank|garage|soumbedioune|débarquement/.test(s)) return 'work';
@@ -85,12 +86,29 @@ export function placeKind(id: string, name = ''): PlaceKind {
   return 'spot';
 }
 
+/**
+ * The kind of a place of the registry (src/activity/places.ts, by its template `type`) that the hub's own interactables do not list: a bus stop, the crossing, a restaurant,
+ * a café or a bar of a street of venues (Chez Binta, Le Comptoir de Ngor, Café du Phare, Lounge 221), a beach, a vehicle dealer. Null: not a place of the map (the hub lists
+ * it itself, or nobody walks to it).
+ */
+export function registryKind(type: string, id: string): PlaceKind | null {
+  if (/:dealer$/.test(id)) return 'shop';
+  return ({ stop: 'transport', traversee: 'transport', restaurant: 'food', cafe: 'food', bar: 'food', beach: 'arena' } as Record<string, PlaceKind>)[type] ?? null;
+}
+
 export interface MapPlace { id: string; name: string; x: number; z: number; kind: PlaceKind; what: string[] }
 
-/** Drops the sub-anchors of one place (an arena's rows, a villa listed twice 3 m apart): same kind within `r` metres. */
-export function dedupePlaces<T extends { x: number; z: number; kind: PlaceKind }>(list: T[], r = 8): T[] {
-  const out: T[] = [];
-  for (const p of list) if (!out.some(q => q.kind === p.kind && Math.hypot(q.x - p.x, q.z - p.z) < r)) out.push(p);
+/**
+ * Drops the second entries of one place: the same kind within `r` metres (an arena's rows, a villa listed twice 3 m apart), or the same name (before « · ») within
+ * `same` metres (a flat listed as a home and as a spot of the city, the quay listed by the hub at its gate and by the registry at its pontoon, a dealer's three
+ * counters). The first listed stays, unless it is a plain spot and the second says what the place is.
+ */
+export function dedupePlaces<T extends { x: number; z: number; kind: PlaceKind; name?: string }>(list: T[], r = 8, same = 60): T[] {
+  const out: T[] = [], short = (p: T) => p.name?.split(' · ')[0];
+  for (const p of list) {
+    const i = out.findIndex(q => { const d = Math.hypot(q.x - p.x, q.z - p.z); return (q.kind === p.kind && d < r) || (!!p.name && short(q) === short(p) && d < same); });
+    if (i < 0) out.push(p); else if (out[i].kind === 'spot' && p.kind !== 'spot') out[i] = p;
+  }
   return out;
 }
 
@@ -142,6 +160,24 @@ export function whereLabel(hubName: string, list: readonly { name: string; x: nu
   if (!n) return { district, street: 'Dans la rue' };
   const short = shortName(n.place.name);
   return { district, street: n.d < 14 ? short.charAt(0).toUpperCase() + short.slice(1) : nearPhrase(n.place.name) };
+}
+
+// ------------------------------------------------------------------ labels
+
+/** A label's box on the screen (pixels, `x`/`y` its centre) and how much it matters: the higher `rank` is placed first. */
+export interface LabelBox { x: number; y: number; w: number; h: number; rank: number }
+/**
+ * Which labels to draw so that none is drawn over another (the city map's districts, roads and quarters; the district map's place names): taken by rank, then in the
+ * order given, a label is kept when its box, grown by `gap` pixels, touches none of those already kept. Returns one flag per box, in the order given.
+ */
+export function declutter(boxes: readonly LabelBox[], gap = 3): boolean[] {
+  const order = boxes.map((_, i) => i).sort((i, j) => boxes[j].rank - boxes[i].rank || i - j), keep = boxes.map(() => false), placed: LabelBox[] = [];
+  for (const i of order) {
+    const b = boxes[i];
+    if (placed.some(q => Math.abs(q.x - b.x) * 2 < q.w + b.w + gap * 2 && Math.abs(q.y - b.y) * 2 < q.h + b.h + gap * 2)) continue;
+    keep[i] = true; placed.push(b);
+  }
+  return keep;
 }
 
 // ------------------------------------------------------------------ road path

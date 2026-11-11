@@ -4,7 +4,9 @@
 // Usage: node scripts/check-geomap.mjs [baseUrl] [outDir]   (needs a running build or dev server)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-const ROAD_COUNT = 3;                                   // the corridors: Pikine↔Almadies, Pikine↔Plateau, Corniche↔Plateau (the Almadies↔Corniche border street is not a corridor)
+// What the game has (src/core/types.ts HUB_IDS, src/road/graph.ts EDGES and CITY_HUBS): five districts; four roads (Pikine↔Almadies, Pikine↔Plateau, Corniche↔Plateau,
+// Corniche↔Mermoz) and the Almadies↔Corniche border street, each drawn with its marker; three districts planned (Ouakam, Yoff, Parcelles Assainies).
+const HUB_COUNT = 5, LINK_COUNT = 5, PLANNED_COUNT = 3;
 
 const base = process.argv[2] ?? 'http://localhost:4385/';
 const out = process.argv[3] ?? 'docs/screenshots/geomap';
@@ -58,7 +60,8 @@ async function session(variant) {
     const g = window.__geoMap, m = g.map, hubs = m.getSource('hubs'), pl = [...document.querySelectorAll('.gm-me')];
     const me = document.querySelector('.gm-me'), r = me?.getBoundingClientRect(), box = document.querySelector('.gm-map').getBoundingClientRect();
     return {
-      canvas: document.querySelectorAll('.maplibregl-canvas').length, hubMarkers: document.querySelectorAll('.gm-hub:not(.planned)').length, plannedMarkers: document.querySelectorAll('.gm-hub.planned').length, routeLayer: !!window.__geoMap?.map?.getLayer?.('route'), roadMarkers: document.querySelectorAll('.gm-road').length,
+      canvas: document.querySelectorAll('.maplibregl-canvas').length, hubMarkers: document.querySelectorAll('.gm-hub:not(.planned)').length, plannedMarkers: document.querySelectorAll('.gm-hub.planned').length, routeLayer: !!window.__geoMap?.map?.getLayer?.('route'), roadMarkers: document.querySelectorAll('.gm-road').length, links: m.getSource('corridors').serialize().data.features.map(f => f.properties.id).sort().join(),
+      hubsInView: [...document.querySelectorAll('.gm-hub:not(.planned):not(.gm-off)')].filter(e => { const q = e.getBoundingClientRect(); return q.left >= box.left && q.right <= box.right && q.top >= box.top && q.bottom <= box.bottom; }).length,
       layers: ['hubs-fill', 'hubs-line', 'corridors-casing', 'corridors'].map(id => !!m.getLayer(id)), land: !!m.getLayer('land'), refRoads: !!m.getLayer('ref-roads'),
       players: pl.length, meInside: !!r && r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom,
       center: m.getCenter().toArray(), zoom: m.getZoom(), status: document.querySelector('.gm-status')?.hidden ? '' : document.querySelector('.gm-status')?.textContent,
@@ -68,8 +71,9 @@ async function session(variant) {
   });
   console.log(tag, JSON.stringify(st));
   check(`${tag} one canvas, one WebGL context`, st.canvas === 1 && st.glMapLibre === 1);
-  check(`${tag} the playable layer is there: districts, the roads between them, 4 district markers, 3 road markers, the planned districts dimmed, a route layer`, st.layers.every(Boolean) && st.hubMarkers === 4 && st.roadMarkers === ROAD_COUNT && st.plannedMarkers === 4 && st.routeLayer, JSON.stringify(st.layers));
-  check(`${tag} the player is on the map, in view, and the map is centred on their district (Pikine)`, st.players === 1 && st.meInside && Math.abs(st.center[0] + 17.393) < 0.02 && Math.abs(st.center[1] - 14.754) < 0.02, JSON.stringify(st.center));
+  check(`${tag} the playable layer is there: districts, the ways between them (the four roads and the border street), ${HUB_COUNT} district markers, ${LINK_COUNT} road markers, the planned districts dimmed, a route layer`, st.layers.every(Boolean) && st.hubMarkers === HUB_COUNT && st.roadMarkers === LINK_COUNT && st.links === 'border:almadies~corniche,corniche-mermoz,corniche-plateau,pikine-almadies,pikine-plateau' && st.plannedMarkers === PLANNED_COUNT && st.routeLayer, JSON.stringify([st.layers, st.hubMarkers, st.roadMarkers, st.plannedMarkers, st.links]));
+  // (it used to open on the player's district alone, at zoom 12.4: the city view now opens on the city)
+  check(`${tag} the player is on the map, in view, and the map opens on the whole city: the five districts in view, each with its name`, st.players === 1 && st.meInside && st.hubsInView === HUB_COUNT, JSON.stringify([st.center, st.zoom, st.hubsInView]));
   check(`${tag} the scale note and the attribution are shown`, /condensés/.test(st.note) && /approximatifs/.test(st.attrib) && (variant === 'fixture' || /Natural Earth/.test(st.attrib)), st.attrib.slice(0, 120));
   if (variant === 'blocked') {
     check(`${tag} without the basemap: the bundled coast and reference roads draw, and the map says so`, !st.online && st.land && st.refRoads && /indisponible/i.test(st.status ?? ''), st.status);
@@ -86,6 +90,8 @@ async function session(variant) {
   const roadCard = await d(() => document.querySelector('.gm-card').textContent);
   check(`${tag} tapping a road gives its length, its real length and what it passes`, /à parcourir/.test(roadCard) && /en vrai/.test(roadCard) && /Patte d’Oie/.test(roadCard), roadCard.slice(0, 200));
   // places of the district: close in, a place card with « Marquer » that sets the game's waypoint
+  await page.evaluate(() => document.querySelector('#phone [data-gm="me"]').click());        // ◎: from the whole city to the player
+  await page.waitForTimeout(1200);
   await page.evaluate(() => window.__geoMap.map.jumpTo({ zoom: 14.5 }));
   await page.waitForTimeout(900);
   const pls = await d(() => document.querySelectorAll('.gm-pl').length);

@@ -1,5 +1,7 @@
 import type { HubId } from '../core/types';
 import { LINKS } from '../transport/hubLink';
+import { GRID, roadCentre } from '../transport/lines';
+import { roadsOf } from '../road/routes';
 import type { Leg } from '../road/graph';
 import { routePath, snapToRoad, type Edge } from '../ui/minimapMath';
 
@@ -16,6 +18,25 @@ const heading = (a: Pt, b: Pt) => Math.atan2(b.x - a.x, b.z - a.z);
 export function openEdges<E extends { ax: number; az: number; bx: number; bz: number }>(edges: readonly E[], shut: readonly ((ax: number, az: number, bx: number, bz: number) => boolean)[]): readonly E[] {
   return shut.length ? edges.filter(e => !shut.some(f => f(e.ax, e.az, e.bx, e.bz))) : edges;
 }
+
+/**
+ * The roads that leave a district, as street segments in its own frame (one every `step` metres along each centre line), each joined to the junction of the street grid
+ * its mouth opens on. Added to the district's streets, a way (the minimap's dotted route, the driver's next turn) follows the road while the player is out on it, instead
+ * of cutting across the open ground to the nearest street of the district.
+ */
+export function roadEdges(hub: HubId, step = 16): Edge[] {
+  const out: Edge[] = [], R = roadCentre(GRID.nb), clamp = (v: number) => Math.max(-R, Math.min(R, v));
+  for (const r of roadsOf(hub)) {
+    const off = r.offset(hub), at = (s: number) => { const p = r.spine.at(Math.min(s, r.length)); return { x: p.x + off.x, z: p.z + off.z }; };
+    let prev = at(0);
+    for (let s = step; ; s += step) { const q = at(s); out.push({ ax: prev.x, az: prev.z, bx: q.x, bz: q.z }); prev = q; if (s >= r.length) break; }
+    const mouth = hub === r.def.a ? at(0) : at(r.length);                // on the district's edge, a few metres past its perimeter street
+    out.push({ ax: mouth.x, az: mouth.z, bx: clamp(mouth.x), bz: clamp(mouth.z) });
+  }
+  return out;
+}
+/** Is a point past a district's streets (out on a road that leaves it)? */
+export const pastStreets = (p: Pt) => { const R = roadCentre(GRID.nb) + GRID.road / 2; return Math.abs(p.x) > R || Math.abs(p.z) > R; };
 
 /** Where a district is left for the next one on a leg (its own frame), and where the next one is entered (that one's frame). */
 export function legEnds(leg: Leg): { exit: Pt; entry: Pt } {

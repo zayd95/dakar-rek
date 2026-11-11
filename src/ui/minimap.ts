@@ -4,12 +4,13 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { HubWorld } from '../world/types';
 import type { HubId } from '../core/types';
 import { HUB_NAMES } from '../world/content';
-import { buildLayer, drawArrow, drawEdgeArrow, drawIcon, PALETTE, type Layer } from './minimapDraw';
+import { buildLayer, buildRoadPath, drawArrow, drawEdgeArrow, drawIcon, drawRoads, PALETTE, type Layer } from './minimapDraw';
 import {
-  approach, dedupePlaces, northAngle, nightness, onRing, placeKind, project, routePath, whereLabel, zoomRadius,
+  approach, dedupePlaces, northAngle, nightness, onRing, placeKind, project, registryKind, routePath, whereLabel, zoomRadius,
   type MapPlace, type Pt,
 } from './minimapMath';
-import { driverWay, openEdges } from '../game/navRules';
+import { driverWay, openEdges, pastStreets, roadEdges } from '../game/navRules';
+import type { Edge } from './minimapMath';
 import { closuresNow } from '../actors/npc';
 import { JOB, drawJobBadge, jobOf } from './jobMarks';
 
@@ -37,6 +38,8 @@ export const mapBridge = {
   hub: null as HubWorld | null,
   hubName: '',
   layer: null as Layer | null,
+  /** The roads that leave the district, in its frame (src/ui/minimapDraw.ts buildRoadPath): drawn past the static layer, on both maps. */
+  roads: null as Path2D | null,
   places: [] as MapPlace[],
   player: { x: 0, z: 0, yaw: 0, facing: 0, speed: 0, driving: false },
   guide: null as { name: string; x: number; z: number; job?: 'vtc' | 'delivery' } | null,
@@ -45,6 +48,12 @@ export const mapBridge = {
   /** The vehicles the player owns, wherever they are parked (wired by main.ts): the city map (src/ui/geoMap.ts) shows them. */
   owned: (): { asset: string; name: string; hub: HubId; x: number; z: number; yaw: number }[] => [],
   hour: 12,
+  /**
+   * The streets a way is found on, from `a` to `b`: the district's own, and the roads that leave it (src/game/navRules.ts roadEdges) when either end is out on one,
+   * so a way to or from a road follows it.
+   */
+  net(a: Pt, b: Pt): readonly Edge[] { return (pastStreets(a) || pastStreets(b)) && this.roadNet.length ? this.roadNet : this.hub?.edges ?? []; },
+  roadNet: [] as Edge[],
   /** The walking route to the current objective (along the roads), refreshed with the minimap. */
   route: null as { points: Pt[]; length: number } | null,
   version: 0,
@@ -101,10 +110,12 @@ export function minimapModule(): GameModule {
       if (i.npc || /:arena:/.test(i.id)) continue;
       list.push({ id: i.id, name: i.name, x: i.x, z: i.z, kind: placeKind(i.id, i.name), what: i.actions.map(a => a.label).slice(0, 4) });
     }
-    // the vehicle dealers (src/transport/ownedModule.ts) are places the modules add: on the map too, to walk to them (« Marquer »)
+    // the places the modules add in the street, which the hub does not list: the vehicle dealers (src/transport/ownedModule.ts), the bus stops, the restaurants, cafés and
+    // bars of a street of venues, the beach (src/ui/minimapMath.ts registryKind). On the map too, to find them and walk to them (« Marquer »)
     for (const pl of ctx.places.all()) {
-      const a = pl.anchors[0];
-      if (a && /:dealer$/.test(pl.id)) list.push({ id: pl.id, name: pl.name, x: a.x, z: a.z, kind: 'shop', what: ['Voir les articles', 'Essayer'] });
+      const kind = registryKind(pl.type, pl.id), a = kind ? pl.anchors.find(k => (k.space ?? pl.space) === 'street') : undefined;
+      if (!kind || !a) continue;
+      list.push({ id: pl.id, name: pl.name, x: a.x, z: a.z, kind, what: /:dealer$/.test(pl.id) ? ['Voir les articles', 'Essayer'] : (pl.offers[a.id] ?? []).map(o => o.label).slice(0, 4) });
     }
     mapBridge.places = dedupePlaces(list);
   };
@@ -154,6 +165,9 @@ export function minimapModule(): GameModule {
     const rm = radius * 1.04, K = lay.K;
     const sx0 = Math.max(0, (p.x - rm - lay.x0) * K), sy0 = Math.max(0, (p.z - rm - lay.z0) * K), sx1 = Math.min(lay.w, (p.x + rm - lay.x0) * K), sy1 = Math.min(lay.h, (p.z + rm - lay.z0) * K);
     if (sx1 > sx0 && sy1 > sy0) g.drawImage(lay.canvas, sx0, sy0, sx1 - sx0, sy1 - sy0, lay.x0 + sx0 / K, lay.z0 + sy0 / K, (sx1 - sx0) / K, (sy1 - sy0) / K);
+    // the roads out of the district, only when the view reaches past its streets (at its edge, or out on a road)
+    const hb = mapBridge.hub?.bounds;
+    if (mapBridge.roads && hb && (p.x - rm < hb.x0 || p.x + rm > hb.x1 || p.z - rm < hb.z0 || p.z + rm > hb.z1)) drawRoads(g, mapBridge.roads);
     g.restore();
     // the night tint follows the game hour
     const night = nightness(mapBridge.hour);
@@ -237,7 +251,8 @@ export function minimapModule(): GameModule {
     },
     hubLoaded(ctx, hub) {
       mapBridge.hub = hub; mapBridge.hubName = HUB_NAMES[hub.id];
-      mapBridge.layer = buildLayer(hub);
+      mapBridge.layer = buildLayer(hub); mapBridge.roads = buildRoadPath(hub.id);
+      const out = roadEdges(hub.id); mapBridge.roadNet = out.length ? [...hub.edges, ...out] : [];
       refreshPlaces(hub, ctx);
       tracked.clear(); mapBridge.vehicles = []; mapBridge.route = null; routeKey = ''; last = { x: NaN, z: NaN };
       mapBridge.version++;
@@ -267,12 +282,12 @@ export function minimapModule(): GameModule {
       else if ((routeT -= step) <= 0) {
         const shut = p.driving ? closuresNow() : [];   // at the wheel, as the goal line: off the streets closed to cars
         if (p.driving) {                                                     // at the wheel: the driver's way, as the goal line reads it (src/game/navRules.ts driverWay)
-          const way = driverWay(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, p.facing, { x: gd.x, z: gd.z }, wasBack);
+          const way = driverWay(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, p.facing, { x: gd.x, z: gd.z }, wasBack);
           wasBack = way.back; mapBridge.route = way; routeKey = '';
         } else {
           wasBack = null;
           const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
-          if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(hub.edges, shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+          if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
         }
         routeT = 0.5;
       }

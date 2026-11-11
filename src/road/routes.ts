@@ -143,13 +143,16 @@ export const ROUTES: readonly RouteDef[] = [
     nodes: [{ x: H, z: -60 }, { x: 240, z: -60 }, { x: 430, z: -180 }, { x: 520, z: -520 }, { x: 560, z: -800 }, { x: 700, z: -860 }, { x: 780, z: -860 }, { x: 860, z: -860 }, { x: 940, z: -860 }, { x: 985, z: -860 }],
     radius: 150,
     aMouth: { x: H, z: -60, yaw: Math.PI / 2 }, bMouth: { x: -H, z: 0, yaw: Math.PI / 2 },
+    // On the map (map data only: nothing here moves the road in the game). The line leaves the Corniche by its east edge, goes north through Point E clear of that district's
+    // rectangle, joins the VDN south-west of Mermoz · Sacré-Cœur and turns east into the district's west edge: it never runs across either district it joins
+    // (tests/cityMap.test.ts). The two ends are replaced by the districts' own mouths (src/geo/anchors.ts roadAnchors).
     anchors: [
-      { name: 'Corniche · Fann', node: 0, lngLat: [-17.4560, 14.6880] },
-      { name: 'Fann · Point E', node: 2, lngLat: [-17.4600, 14.6950] },
-      { name: 'VDN · Mermoz', node: 3, lngLat: [-17.4650, 14.7040] },
-      { name: 'Sacré-Cœur', node: 4, lngLat: [-17.4630, 14.7130] },
-      { name: 'BRT · Sacré-Cœur', node: 6, lngLat: [-17.4600, 14.7150] },
-      { name: 'Mermoz · Sacré-Cœur', node: 9, lngLat: [-17.4685, 14.7108] },
+      { name: 'Corniche · Fann', node: 0, lngLat: [-17.4541, 14.6907] },
+      { name: 'Fann · Point E', node: 2, lngLat: [-17.4528, 14.6965] },
+      { name: 'VDN · Mermoz', node: 3, lngLat: [-17.4705, 14.7030] },
+      { name: 'Sacré-Cœur', node: 4, lngLat: [-17.4722, 14.7078] },
+      { name: 'BRT · Sacré-Cœur', node: 6, lngLat: [-17.4722, 14.7110] },
+      { name: 'Mermoz · Sacré-Cœur', node: 9, lngLat: [-17.4699, 14.7112] },
     ],
     junctions: [
       { name: 'Fann · Point E', node: 2, arms: [{ side: 1, len: 45 }, { side: -1, len: 45 }] },

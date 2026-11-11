@@ -4,6 +4,8 @@
  * in the 3D scene.
  */
 import type { HubWorld } from '../world/types';
+import type { HubId } from '../core/types';
+import { ROAD_HALF, roadsOf } from '../road/routes';
 import { HALF, NB, PITCH, BLK, ROAD, hubLayout } from '../world/builder';
 import { KIND_COLOR, type PlaceKind } from './minimapMath';
 
@@ -58,6 +60,27 @@ export function buildLayer(hub: HubWorld, K = 2.5, margin = 80): Layer {
   if (hub.arena) { c.fillStyle = '#6a444a'; c.beginPath(); c.arc(hub.arena.cx, hub.arena.cz, hub.arena.r, 0, Math.PI * 2); c.fill(); c.fillStyle = '#8b5b52'; c.beginPath(); c.arc(hub.arena.cx, hub.arena.cz, hub.arena.r * 0.62, 0, Math.PI * 2); c.fill(); }
   if (hub.monument) { c.fillStyle = '#3e6a52'; c.beginPath(); c.arc(hub.monument.cx, hub.monument.cz, 14, 0, Math.PI * 2); c.fill(); }
   return { canvas, K, x0, z0, w, h };
+}
+
+/**
+ * The roads that leave a district (src/road/routes.ts), as one path in the district's own frame, in metres. The static layer stops 80 m past the district's streets
+ * and a road runs on for a kilometre and more: without it a driver out on a road is an arrow on an empty map. Null when no road leaves this district.
+ */
+export function buildRoadPath(hub: HubId): Path2D | null {
+  const roads = roadsOf(hub);
+  if (!roads.length || typeof Path2D === 'undefined') return null;
+  const path = new Path2D();
+  for (const r of roads) {
+    const off = r.offset(hub);
+    for (let s = 0; ; s += 10) { const p = r.spine.at(Math.min(s, r.length)); if (s) path.lineTo(p.x + off.x, p.z + off.z); else path.moveTo(p.x + off.x, p.z + off.z); if (s >= r.length) break; }
+  }
+  return path;
+}
+/** Strokes `buildRoadPath`'s roads (kerbs, then asphalt) under a transform in metres, in the static layer's own colours. */
+export function drawRoads(g: CanvasRenderingContext2D, path: Path2D) {
+  g.lineCap = 'butt'; g.lineJoin = 'round';
+  g.lineWidth = ROAD_HALF * 2 + 1.8; g.strokeStyle = PALETTE.kerb; g.stroke(path);
+  g.lineWidth = ROAD_HALF * 2; g.strokeStyle = PALETTE.road; g.stroke(path);
 }
 
 // ------------------------------------------------------------------ icons (24 × 24 grid, white on the kind's colour)

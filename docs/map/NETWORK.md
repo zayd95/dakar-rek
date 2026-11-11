@@ -1,4 +1,4 @@
-# The road network: four districts, one connected graph
+# The road network: five districts, one connected graph
 
 Branch `feature/driving-2-20261021` (from PR #59, `feature/maplibre-corridor-20261020`). The roads themselves: `CORRIDOR.md`. Map data and what is approximate: `PROVENANCE.md`.
 
@@ -9,23 +9,24 @@ graph LR
   P["Pikine"] ---|"corridor 1,48 km"| A["Almadies"]
   P ---|"corridor 1,18 km"| PL["Plateau"]
   A ---|"border street 0,24 km"| C["Corniche"]
-  C ---|"corridor 1,72 km (new)"| PL
+  C ---|"corridor 1,72 km"| PL
+  C ---|"corridor 1,39 km"| M["Mermoz · Sacré-Cœur"]
   O["Ouakam · à venir"] -.-> A
   Y["Yoff · à venir"] -.-> A
   PA["Parcelles Assainies · à venir"] -.-> P
-  M["Mermoz · Sacré-Cœur · à venir"] -.-> C
 ```
 
 Solid edges are drivable today; dotted ones are the *intended* neighbours of the planned districts, not roads (there is no edge, so nothing routes through them and no player is offered a way in).
 
-It is a ring, not a star: Pikine is only one of four equal nodes. Centre-to-centre driving distances (game metres, from `src/road/graph.ts`):
+It is a ring with one leaf, not a star: Pikine is only one of the nodes of the ring (Pikine, Almadies, Corniche, Plateau), and Mermoz · Sacré-Cœur (M1) hangs off the Corniche by its own road. Centre-to-centre driving distances (game metres, from `src/road/graph.ts`):
 
 | Trip | Route chosen | Metres |
 |---|---|---|
 | Pikine → Almadies | direct corridor | 1 731 |
 | Pikine → Plateau | direct corridor | 1 429 |
 | Almadies → Corniche | border street | 240 |
-| Corniche → Plateau | direct corridor (new) | 1 974 |
+| Corniche → Plateau | direct corridor | 1 974 |
+| Corniche → Mermoz | direct corridor | 1 643 |
 | Corniche → Pikine | Corniche → Almadies → Pikine | 1 971 |
 | Almadies → Plateau | Almadies → Corniche → Plateau | 2 214 |
 
@@ -36,7 +37,7 @@ Every playable district reaches every other (`connected()`), in both directions.
 * **One mechanism for every segment.** A corridor (`RouteDef` in `src/road/routes.ts`) and a border street (a `LINKS` entry in `src/transport/hubLink.ts`) are both edges; the swap, the vehicle carry, the staged build-ahead and the save are the same code for both. The border street used to cross with a loading hand-over; it now builds the district beyond ahead of the player (`approachLink`, prewarmed with the same 4 ms slices) and swaps without a stop.
 * **The vehicle is the same vehicle on every leg.** The owned vehicle is recorded as it crosses (uid, paint, condition), re-seated in the next frame, and saved parked in whichever district it stands in. A save made in Corniche, Almadies' south street or the Plateau loads there with the vehicle (`tests` + `check-corridor.mjs`).
 * **Frames close.** Each district's frame differs from its neighbour's by a translation; the four translations around the ring add up to zero (`graph.test.ts`), so a long trip has no drift and the map positions agree whichever district's frame is read.
-* **The city map reads the graph.** The district card says « Au volant · km · via X » from `planTrip`, the route is drawn over the corridors, and the planned districts are on the map, dimmed, « À venir », with no road.
+* **The city map reads the graph.** The district card says « Au volant · km · via X » from `planTrip`, the route is drawn over the ways it takes, and the planned districts are on the map, dimmed, « À venir », with no road. What the map draws between districts is `mapLinks()` (`src/geo/anchors.ts`): one line per edge of the graph, corridor or border street, and nothing else; `tests/cityMap.test.ts` holds it to `EDGES` (no way the game does not have, none missing), checks that the five rectangles stand apart, and that no line runs across a district.
 
 ## Adding a district (Ouakam, Yoff, Parcelles Assainies, Mermoz · Sacré-Cœur)
 

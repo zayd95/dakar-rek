@@ -3,11 +3,11 @@ import { tabsHtml } from './carteState';
 
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
-/** Markup of the city map (filled by `mountGeoMap`): the map, the tabs laid over its top left, its two buttons and its status line. */
+/** Markup of the city map (filled by `mountGeoMap`): the map, the tabs laid over its top left, its buttons (zoom, the player, the whole city) and its status line. */
 export function geoMapHtml(): string {
   return `<div class="gm" id="gm"><div class="gm-map" aria-label="Carte de Dakar"></div>
       <div class="cm-top">${tabsHtml()}</div>
-      <div class="gm-btns"><button type="button" data-gm="me" aria-label="Me recentrer">◎</button><button type="button" data-gm="all" aria-label="Vue d’ensemble">⌂</button></div>
+      <div class="gm-btns"><button type="button" data-gm="in" aria-label="Zoom avant">+</button><button type="button" data-gm="out" aria-label="Zoom arrière">−</button><button type="button" data-gm="me" aria-label="Me recentrer">◎</button><button type="button" data-gm="all" aria-label="Vue d’ensemble">⌂</button></div>
       <div class="gm-status" aria-live="polite">Chargement de la carte…</div></div>`;
 }
 

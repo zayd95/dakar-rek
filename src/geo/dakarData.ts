@@ -32,7 +32,7 @@ export const LANDMARKS: Landmark[] = [
   { id: 'plateau', name: 'Plateau', lngLat: [-17.4340, 14.6700], kind: 'district' },
   { id: 'medina', name: 'Médina', lngLat: [-17.4520, 14.6850], kind: 'district' },
   { id: 'fann', name: 'Fann · Point E', lngLat: [-17.4600, 14.6900], kind: 'district' },
-  { id: 'mermoz', name: 'Mermoz · Sacré-Cœur', lngLat: [-17.4690, 14.7110], kind: 'district' },
+  { id: 'mermoz', name: 'Mermoz · Sacré-Cœur', lngLat: [-17.4640, 14.7112], kind: 'district' },
   { id: 'ouakam', name: 'Ouakam', lngLat: [-17.4900, 14.7220], kind: 'district' },
   { id: 'yoff', name: 'Yoff', lngLat: [-17.4930, 14.7550], kind: 'district' },
   { id: 'ngor', name: 'Ngor', lngLat: [-17.5120, 14.7500], kind: 'district' },

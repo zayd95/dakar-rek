@@ -81,6 +81,8 @@ export const mapScreen: Screen = {
       else if (act.dataset.dealer) dealerAct(api, act);
       else if (act.dataset.walk) { const h = act.dataset.walk as HubId; api.launch(() => phoneHooks.walkTo?.(h)); }
     });
+    // the district changed while the map was open (the maps say so: src/ui/fullmap.ts, src/ui/geoMap.ts): the map, the strip and the cards are of the district that is gone
+    s.addEventListener('carte:stale', () => api.rerender(), { once: true });
     if (vehiclesOpen) lit(s.querySelector('[data-cm="dealers"]'));
     show(lastMapTab);
     return () => { off?.(); off = null; tab = null; };

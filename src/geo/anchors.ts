@@ -1,5 +1,6 @@
 import type { HubId } from '../core/types';
 import { ROADS, type LngLat, type Road } from '../road/routes';
+import { LINKS } from '../transport/hubLink';
 
 /**
  * Geographic anchors: how a position of the game is a place of the real map, and back. The 3D world is not a survey of Dakar and does not pretend to be.
@@ -24,7 +25,8 @@ export const HUB_ANCHORS: Record<HubId, HubAnchor> = {
   corniche: { hub: 'corniche', name: 'Corniche · Fann', lngLat: [-17.4600, 14.6880], half: 127 },
   almadies: { hub: 'almadies', name: 'Almadies · Ngor', lngLat: [-17.5130, 14.7450], half: 127 },
   pikine: { hub: 'pikine', name: 'Pikine', lngLat: [-17.3930, 14.7540], half: 127 },
-  mermoz: { hub: 'mermoz', name: 'Mermoz · Sacré-Cœur', lngLat: [-17.4685, 14.7108], half: 127 },
+  // its west edge is the VDN: the road from the Corniche comes up the VDN and turns east into the district (src/road/routes.ts corniche-mermoz), as it does in the game
+  mermoz: { hub: 'mermoz', name: 'Mermoz · Sacré-Cœur', lngLat: [-17.4640, 14.7112], half: 127 },
 };
 
 const mPerDegLng = (lat: number) => M_PER_DEG * Math.cos((lat * Math.PI) / 180);
@@ -115,6 +117,83 @@ export function lngLatToGame(ll: LngLat, maxM = 2500): { hub: HubId; x: number; 
   }
   return null;
 }
+
+// ------------------------------------------------------------------ the city view: what the map draws of the playable world (pure, so it is tested: tests/cityMap.test.ts)
+
+const metresBetween = (a: LngLat, b: LngLat) => Math.hypot((a[0] - b[0]) * mPerDegLng((a[1] + b[1]) / 2), (a[1] - b[1]) * M_PER_DEG);
+
+/** The rectangle a district covers on the map (its streets, `half` either side of its anchor): a closed ring, north-west corner first. */
+export function hubFootprint(hub: HubId): LngLat[] {
+  const h = HUB_ANCHORS[hub].half;
+  return [[-h, -h], [h, -h], [h, h], [-h, h], [-h, -h]].map(([x, z]) => hubToLngLat(hub, x, z));
+}
+/** Is a place of the map inside a district's rectangle (`pad` game metres smaller, so its own edge does not count)? */
+export function inFootprint(hub: HubId, ll: LngLat, pad = 0): boolean {
+  const p = lngLatToHub(hub, ll), h = HUB_ANCHORS[hub].half - pad;
+  return Math.abs(p.x) < h && Math.abs(p.z) < h;
+}
+/** The box that holds every district: the city view opens on it, and « vue d’ensemble » comes back to it. [south-west, north-east]. */
+export function cityBounds(): [LngLat, LngLat] {
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+  for (const id of Object.keys(HUB_ANCHORS) as HubId[]) for (const [lng, lat] of hubFootprint(id)) { w = Math.min(w, lng); e = Math.max(e, lng); s = Math.min(s, lat); n = Math.max(n, lat); }
+  return [[w, s], [e, n]];
+}
+
+/**
+ * Room (pixels) the map screen keeps clear around `cityBounds` when it shows the whole city, for a map `height` pixels high: the tabs and a district's name above its
+ * rectangle (top), the credit line (bottom), half a name each side and the buttons (right). A landscape phone's map is low and its tabs are smaller: less is kept, so
+ * the districts are not drawn so small that two names meet.
+ */
+export const cityFitPad = (height: number) => (height < 320 ? { top: 66, bottom: 34, left: 42, right: 46 } : { top: 92, bottom: 52, left: 42, right: 46 });
+
+/**
+ * Where a border street (src/transport/hubLink.ts: two districts laid end to end in the game) runs on the real map, between the two district edges it joins.
+ * Almadies ↔ Corniche is the coast road: down past the Mamelles and along the Corniche Ouest, west of Mermoz (hand-placed, approximate, like the roads' anchors).
+ */
+const BORDER_VIA: Record<string, { name: string; lngLat: LngLat }[]> = {
+  'almadies~corniche': [{ name: 'Les Mamelles', lngLat: [-17.5010, 14.7230] }, { name: 'Corniche Ouest', lngLat: [-17.4830, 14.7010] }],
+};
+
+/** A way between two districts as the city map draws it: every corridor of src/road/routes.ts and every border street of src/transport/hubLink.ts, and nothing else. */
+export interface MapLink {
+  /** The id of its edge in the road graph (src/road/graph.ts EDGES): a corridor's road id, or `border:a~b`. */
+  id: string; kind: 'corridor' | 'border'; a: HubId; b: HubId;
+  /** Its line on the map, from `a`'s edge to `b`'s. */
+  line: LngLat[];
+  /** The named places it passes, in order from `a` (the card of a road). */
+  via: string[];
+  /** Real metres along its line. */
+  realMetres: number;
+  road?: Road;
+}
+const lineMetres = (line: LngLat[]) => line.reduce((sum, p, i) => (i ? sum + metresBetween(line[i - 1], p) : 0), 0);
+/** The centre line of a road on the map, every `step` game metres. */
+export function roadLine(road: Road, step = 12): LngLat[] {
+  const out: LngLat[] = [];
+  for (let s = 0; s < road.length; s += step) out.push(roadToLngLat(road, s).lngLat);
+  out.push(roadToLngLat(road, road.length).lngLat);
+  return out;
+}
+let links: MapLink[] | null = null;
+export function mapLinks(): readonly MapLink[] {
+  if (links) return links;
+  links = ROADS.map((r): MapLink => {
+    const line = roadLine(r);
+    return { id: r.id, kind: 'corridor', a: r.def.a, b: r.def.b, line, via: r.anchorS.slice(1, -1).map(x => x.name), realMetres: lineMetres(roadAnchors(r).map(x => x.lngLat)), road: r };
+  });
+  const seen = new Set<string>();
+  for (const l of LINKS) {
+    const [a, b] = [l.from, l.to].sort() as [HubId, HubId], key = `${a}~${b}`;
+    if (seen.has(key)) continue; seen.add(key);
+    const fwd = l.from === a ? l : LINKS.find(k => k.from === a && k.to === b) ?? l, via = BORDER_VIA[key] ?? [];
+    // the street's own crossing points, each on its district's edge of the map
+    const line: LngLat[] = [hubToLngLat(a, fwd.x, fwd.from === a ? fwd.at : fwd.arrive), ...via.map(v => v.lngLat), hubToLngLat(b, fwd.x, fwd.from === a ? fwd.arrive : fwd.at)];
+    links.push({ id: `border:${key}`, kind: 'border', a, b, line, via: via.map(v => v.name), realMetres: lineMetres(line) });
+  }
+  return links;
+}
+/** The line of a link driven from `from` (one of its two districts): its points in travel order. */
+export const linkLineFrom = (link: MapLink, from: HubId): LngLat[] => (from === link.a ? link.line : [...link.line].reverse());
 
 /** The text of the map's footnote about scale (shown with the attribution). */
 export const SCALE_NOTE = 'Quartiers et routes condensés : un quartier jouable représente environ 1,3 km de ville, les routes entre quartiers sont raccourcies d’environ 9 fois. Les positions sont approximatives.';

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { UTURN_COST, driverWay, legEnds, navDistance, nextTurn, openEdges, turnText, type Pt } from '../src/game/navRules';
+import { UTURN_COST, driverWay, legEnds, navDistance, nextTurn, openEdges, pastStreets, roadEdges, turnText, type Pt } from '../src/game/navRules';
+import { HUB_IDS } from '../src/core/types';
+import { ROADS, roadsOf } from '../src/road/routes';
 import { roadCentre } from '../src/transport/lines';
 import { routePath } from '../src/ui/minimapMath';
 import { planTrip } from '../src/road/graph';
@@ -25,9 +27,9 @@ describe('driving directions', () => {
     expect(turnText({ dir: 'back', at: 0 }, 'X')).toBe('Fais demi-tour · X');
   });
   it('every leg of every trip has a way out of its district at its edge and a way into the next', () => {
-    const hubs = ['pikine', 'plateau', 'corniche', 'almadies'] as const;
-    for (const a of hubs) for (const b of hubs) {
-      const p = planTrip(a, b); if (!p) continue;
+    // all five districts (Mermoz was added after this test: it is in the game's list, so it is in here)
+    for (const a of HUB_IDS) for (const b of HUB_IDS) {
+      const p = planTrip(a, b); if (a !== b) expect(p, `${a} → ${b}`).not.toBeNull(); if (!p) continue;
       for (const l of p.legs) {
         const e = legEnds(l);
         expect(Math.max(Math.abs(e.exit.x), Math.abs(e.exit.z))).toBeGreaterThanOrEqual(119);
@@ -128,5 +130,45 @@ describe('a driver\'s way does not flicker (« Fais demi-tour » on every hub, t
   });
   it('the U-turn cost is a block\'s worth or so, not a whole district', () => {
     expect(UTURN_COST).toBeGreaterThanOrEqual(60); expect(UTURN_COST).toBeLessThanOrEqual(200);
+  });
+});
+
+describe('out on a road between districts the way follows the road', () => {
+  // a district's own streets, as the builder lays them: 5 × 5 junctions, 60 m apart
+  const grid = () => { const e = []; for (let a = 0; a <= 4; a++) for (let b = 0; b <= 4; b++) { if (a < 4) e.push({ ax: roadCentre(a), az: roadCentre(b), bx: roadCentre(a + 1), bz: roadCentre(b) }); if (b < 4) e.push({ ax: roadCentre(a), az: roadCentre(b), bx: roadCentre(a), bz: roadCentre(b + 1) }); } return e; };
+  it('every district has its roads as segments, each joined to a junction of its streets', () => {
+    for (const hub of HUB_IDS) {
+      const out = roadEdges(hub), streets = grid();
+      expect(out.length, hub).toBeGreaterThan(roadsOf(hub).length * 40);                                 // Mermoz too: it has the road from the Corniche
+      for (const r of roadsOf(hub)) {
+        // from 300 m out on the road to the middle of the district: a way exists and it is the road's own length to the mouth, then the streets (never the straight line across the ground)
+        const off = r.offset(hub), s = hub === r.def.a ? 300 : r.length - 300, at = r.spine.at(s), from = { x: at.x + off.x, z: at.z + off.z };
+        const way = routePath([...streets, ...out], from, { x: 0, z: 0 });
+        expect(way.points.length, `${hub} ${r.id}`).toBeGreaterThan(8);
+        expect(way.length, `${hub} ${r.id}`).toBeGreaterThan(300 + 120 - 2);
+        expect(way.length, `${hub} ${r.id}`).toBeLessThan(300 + 127 + 2 * 120 + 20);
+        // every point of the way out there is on the road's centre line
+        for (const q of way.points.slice(1)) if (pastStreets(q)) expect(Math.abs(r.spine.project(q.x - off.x, q.z - off.z).d), `${hub} ${r.id}`).toBeLessThan(1);
+        // (without the roads the way is two points out there: the straight line across the ground to the nearest street)
+        expect(routePath(streets, from, { x: 0, z: 0 }).points.filter(pastStreets)).toHaveLength(1);
+      }
+    }
+  });
+  it('and the other way: from the district to the far end of a road, the way leaves by the road’s mouth and runs along it', () => {
+    const r = ROADS.find(k => k.id === 'pikine-plateau')!, end = r.spine.at(r.length);
+    const way = routePath([...grid(), ...roadEdges('pikine')], { x: 0, z: 0 }, end);
+    expect(way.points.some(q => Math.hypot(q.x - r.def.aMouth.x, q.z - r.def.aMouth.z) < 1)).toBe(true);
+    expect(way.length).toBeGreaterThan(r.length); expect(way.length).toBeLessThan(r.length + 127 + 2 * 120);
+  });
+  it('a driver on the road is on it: straight on, no turn back to the district behind', () => {
+    const r = ROADS.find(k => k.id === 'pikine-plateau')!, at = r.spine.at(250), ahead = r.spine.at(254), end = r.spine.at(r.length);
+    const yaw = Math.atan2(ahead.x - at.x, ahead.z - at.z);
+    const way = driverWay([...grid(), ...roadEdges('pikine')], { x: at.x + 2.5, z: at.z }, yaw, end);       // in its lane, 2.5 m off the centre line
+    expect(way.back).toBe(false); expect(nextTurn(way.points, yaw).dir).toBe('straight');
+    expect(way.length).toBeGreaterThan(r.length - 250 - 5); expect(way.length).toBeLessThan(r.length - 250 + 25);
+  });
+  it('past the perimeter street is past the streets', () => {
+    expect(pastStreets({ x: 0, z: 0 })).toBe(false); expect(pastStreets({ x: -126, z: 60 })).toBe(false);
+    expect(pastStreets({ x: -140, z: -60 })).toBe(true); expect(pastStreets({ x: -60, z: 400 })).toBe(true);
   });
 });

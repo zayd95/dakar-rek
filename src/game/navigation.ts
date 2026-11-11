@@ -1,6 +1,7 @@
 import type { GameCtx, GameModule } from './modules';
 import type { HubId } from '../core/types';
 import { planTrip, type TripPlan } from '../road/graph';
+import type { Road } from '../road/routes';
 import { phoneHooks } from '../ui/phoneHooks';
 import { HUB_NAMES } from '../world/content';
 import { GRID, roadCentre } from '../transport/lines';
@@ -86,13 +87,16 @@ class Navigation implements GameModule {
     // out on a road between districts: straight on, the road's metres left
     const R = roadCentre(GRID.nb) + 7, onRoad = Math.abs(p.x) > R || Math.abs(p.z) > R;
     let glyph: string, text: string, remaining: number;
-    type View = { project?(x: number, z: number): { s: number }; road?: { length: number; def: { a: HubId; b: HubId; aMouth: Pt; bMouth: Pt } } };
+    type View = { project?(x: number, z: number): { s: number }; road?: Road };
     const cv = onRoad ? (w.corridors ?? []).find(c => c.contains(p.x, p.z, 2)) as unknown as View | undefined : undefined;
     if (onRoad && cv?.project && cv.road) {
       // which end of the road the trip makes for: this district (the swap happens at the road's middle) or the next one
       const d = cv.road.def, toward = g.hub === here || !plan ? here : plan.hubs[1], s = cv.project(p.x, p.z).s;
       const left = d.b === toward ? cv.road.length - s : s, mouth = d.b === here ? d.bMouth : d.aMouth;
       remaining = Math.max(0, left) + (g.hub === here ? gridMetres(mouth, local) : Math.max(0, beyond - cv.road.length));
+      // on the way to another district the point steered for is the end of this road, ahead (where it enters the next district, in this one's frame): the way out of this
+      // district is behind the car by now, and the minimap's route and the marker must not lead back to it
+      if (g.hub !== here && (d.a === toward || d.b === toward)) { const end = cv.road.spine.at(d.b === toward ? cv.road.length : 0), off = cv.road.offset(here); local = { x: end.x + off.x, z: end.z + off.z, name: local.name }; }
       glyph = TURN_GLYPH.straight; text = `Tout droit sur la route · ${g.name}`; this.wasBack = null;
     } else {
       // at the wheel the way keeps off the streets closed to cars (the arena's pedestrian zone, a road event)

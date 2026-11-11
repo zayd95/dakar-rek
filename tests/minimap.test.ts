@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  WALK_SPEED, approach, dedupePlaces, distText, nearPhrase, nearestPlace, nightness, northAngle, onRing, placeKind, project, rotate, routePath, shortName,
+  KIND_LABEL, WALK_SPEED, approach, dedupePlaces, distText, nearPhrase, nearestPlace, nightness, northAngle, onRing, placeKind, project, registryKind, rotate, routePath, shortName,
   snapToRoad, unproject, walkTime, whereLabel, zoomRadius, type Edge,
 } from '../src/ui/minimapMath';
 
@@ -82,6 +82,26 @@ describe('place kinds and names', () => {
   it('drops the duplicates of one place', () => {
     const l = [{ x: 0, z: 0, kind: 'home' as const }, { x: 3, z: 1, kind: 'home' as const }, { x: 3, z: 1, kind: 'food' as const }, { x: 40, z: 0, kind: 'home' as const }];
     expect(dedupePlaces(l)).toHaveLength(3);
+  });
+  it('one place listed twice under one name is one place of the map, and keeps the entry that says what it is', () => {
+    // Mermoz: the flat is a home (the hub's list) and a spot of the city, 3 m apart; the Almadies: the villa twice as a home, 11 m apart
+    const flat = dedupePlaces([{ id: 'mermoz:city:filaos', name: 'Appartement F3 · Résidence Les Filaos', x: 66, z: -35, kind: 'spot' as const }, { id: 'mermoz:home:filaos', name: 'Appartement F3 · Résidence Les Filaos', x: 69, z: -36, kind: 'home' as const }]);
+    expect(flat.map(p => p.id)).toEqual(['mermoz:home:filaos']);
+    expect(dedupePlaces([{ name: 'Villa avec piscine · Almadies', x: -21, z: -13, kind: 'home' as const }, { name: 'Villa avec piscine · Almadies', x: -14, z: -5, kind: 'home' as const }])).toHaveLength(1);
+    // the quay: the hub lists its gate, the registry its own anchor further along the pontoon (here 46 m on)
+    expect(dedupePlaces([{ id: 'almadies:port', name: 'Embarcadère de Ngor', x: 30, z: -109, kind: 'transport' as const }, { id: 'almadies:venue:embarcadere', name: 'Embarcadère de Ngor', x: 46, z: -152, kind: 'transport' as const }]).map(p => p.id)).toEqual(['almadies:port']);
+    // the same name far apart is two places (the four ways out of a district)
+    expect(dedupePlaces([{ name: 'Sortie du quartier · à pied', x: 0, z: -128, kind: 'spot' as const }, { name: 'Sortie du quartier · à pied', x: 128, z: 0, kind: 'spot' as const }])).toHaveLength(2);
+  });
+  it('lists the places the modules add in the street, each under its kind, and nothing that is not a destination', () => {
+    expect(registryKind('restaurant', 'almadies:night:binta')).toBe('food'); expect(registryKind('cafe', 'almadies:night:phare')).toBe('food'); expect(registryKind('bar', 'almadies:night:lounge')).toBe('food');
+    expect(registryKind('stop', 'stop:31:ngor')).toBe('transport'); expect(registryKind('traversee', 'almadies:venue:embarcadere')).toBe('transport');
+    expect(registryKind('beach', 'almadies:venue:plage')).toBe('arena'); expect(registryKind('shop', 'berline:dealer')).toBe('shop');
+    for (const t of ['home', 'billboard', 'stall', 'fighters', 'ticket', 'parking', 'shop']) expect(registryKind(t, 'x:y')).toBeNull();
+  });
+  it('where one goes out is one kind: the arène and the écurie, the dance terrace, the patio, the terraces on the roofs', () => {
+    for (const [id, name] of [['pikine:arena', 'Arène · làmb'], ['almadies:city:club', 'La Vague · terrasse dansante'], ['almadies:city:patio', 'Le Patio'], ['almadies:rooftop:almadies', 'Terrasse de Ngor'], ['corniche:rooftop:corniche', 'Sunset Lounge']]) expect(placeKind(id, name), id).toBe('arena');
+    expect(KIND_LABEL.arena).toBe('Sorties');
   });
   it('finds the nearest place within range', () => {
     const l = [{ name: 'A', x: 0, z: 0 }, { name: 'B', x: 30, z: 0 }];
