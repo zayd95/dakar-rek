@@ -114,6 +114,7 @@ import { setDistrictNight } from './world/almadies/night';
 import { SITES as DISTRICT_SITES } from './world/almadies/plan';
 import { sizeOf as districtSize } from './world/almadies/contract';
 import { frameStats, gpuName, memoryProbe } from './core/frameStats';
+import { textureSweep } from './core/textureSweep';
 import { updateFrameMeter } from './ui/frameMeter';
 /** Activity categories whose pay is work (a day worked): not leisure, prayer, travel or a social visit. */
 const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat']);
@@ -526,6 +527,7 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
   hubAt = performance.now();
   const hubLabel = (h: string) => (HUB_NAMES[h as HubId] ?? h).split(' · ')[0];
   frameStats.beginTransition(world ? hubLabel(world.id) : '(démarrage)', hubLabel(id), early ? 'route' : 'saut');   // MOBILE-01: « Mesure de fluidité » files the load
+  textureSweep.note(scene);                                 // what the district being left draws with: its textures are freed once the next one stands (src/core/textureSweep.ts)
   let lt = performance.now();
   const lap = (n: string) => { const t = performance.now(); staged?.log.push([n, t - lt]); lt = t; };
   const pause = function* (n: string) { lap(n); yield; lt = performance.now(); };
@@ -601,6 +603,7 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
   for (const m of MODULES) { if (early && m.critical) continue; yield* runModule(m); if (early) { yield; lt = performance.now(); } }
   if (!early) place();
   if (early && old) { old.dispose(); yield* pause('dispose old district'); }
+  textureSweep.sweep(scene);                                // the old district's textures the new scene does not use leave the graphics card
 }
 
 /** True if (x, z) is inside the rectangle. */
@@ -1903,6 +1906,7 @@ if (DEBUG) {
     avatar: () => ({ identity: state.data.avatar, appearance: state.data.appearance, drawn: playerBody?.appearance ?? null, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
+    textures: () => ({ onCard: renderer.info.memory.textures, freed: textureSweep.freed }),
     stride: () => ({ running: stride.running, sprinting: stride.sprinting, gait: stride.gait, forme: stride.forme, runSpeed: +stride.runSpeed().toFixed(2), speed: +speed.toFixed(2), forced: forcedGait }),
     strideToggle: (on: boolean | 0 | 1 | 2) => { forcedGait = on === true ? 1 : on === false ? 0 : on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
