@@ -24,3 +24,21 @@ describe('the chase camera of a car stays out of buildings', () => {
     expect(run([corner, facade], poses)).toBe(0);
   });
 });
+
+describe('the chase camera keeps up with a driven car (docs/DRIVING_FEEL.md)', () => {
+  /** The view's heading lag (rad) behind a car turning at `rate` rad/s, once settled. */
+  const lag = (rate: number, chaseK: number) => {
+    const cam = new THREE.PerspectiveCamera(66, 390 / 844), pc = new PassengerCamera(); let yaw = 0;
+    pc.begin(cam, { x: 0, y: 0, z: 0, yaw: 0 });
+    for (let i = 0; i < 180; i++) { yaw += rate / 60; pc.update(1 / 60, cam, { x: 0, y: 0, z: 0, yaw }, 0, chase, { yaw: 0, pitch: 0 }, [], 0.3, chaseK); }
+    // where the camera stands against where the anchor would put it with no lag: the angle between the two, seen from the car
+    const behind = Math.atan2(-cam.position.x, -cam.position.z);
+    return Math.abs(Math.atan2(Math.sin(yaw - behind), Math.cos(yaw - behind)));
+  };
+  it('in a tight corner (1.6 rad/s: full lock at 25 km/h) the view stays within 35° of straight behind the car; without the catch-up it fell a good 60° behind', () => {
+    expect(lag(1.6, 6.5)).toBeLessThan(0.61); expect(lag(1.6, 0)).toBeGreaterThan(1);
+  });
+  it('a gentle bend is followed as calmly as before (the catch-up is in proportion to the lag)', () => {
+    expect(lag(0.15, 6.5)).toBeGreaterThan(lag(0.15, 0) * 0.75);
+  });
+});

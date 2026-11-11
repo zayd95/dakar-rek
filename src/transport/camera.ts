@@ -87,7 +87,12 @@ export class PassengerCamera {
   /** Checks: turn the head at the wheel and hold it there `s` seconds before it comes back to the road. */
   holdLook(yaw: number, pitch: number, s = 30) { this.head.yaw = yaw; this.head.pitch = pitch; this.idle = 3 - s; }
 
-  update(dt: number, camera: THREE.PerspectiveCamera, v: WorldPose, bounce: number, anchor: CameraAnchor, drag: { yaw: number; pitch: number }, colliders: readonly Collider[], speedShare = 0) {
+  /**
+   * `chase` (driving only; 0 for a passenger's ride): how much faster the view's heading catches up per radian it is behind the vehicle's. A driven car turns far quicker than a
+   * bus on its line (a U-turn in a street, a junction taken at speed): with the calm swing alone the view fell a good 60° behind in a tight corner and the driver looked at the car's
+   * flank, not at the street they were turning into. Small corrections on a straight stay as calm as before (the extra is in proportion to the lag).
+   */
+  update(dt: number, camera: THREE.PerspectiveCamera, v: WorldPose, bounce: number, anchor: CameraAnchor, drag: { yaw: number; pitch: number }, colliders: readonly Collider[], speedShare = 0, chase = 0) {
     if (drag.yaw || drag.pitch) { this.orbit += drag.yaw; this.lift = Math.max(-1.5, Math.min(6, this.lift + drag.pitch * 6)); this.idle = 0; }
     else {
       this.idle += dt;
@@ -96,7 +101,8 @@ export class PassengerCamera {
     // speed: the view pulls back and widens a little as the vehicle goes faster (a sense of speed, room to see the road ahead), and its heading follows a touch more calmly
     this.speedK += (Math.max(0, Math.min(1, speedShare)) - this.speedK) * Math.min(1, dt * 1.5);
     const k = this.speedK;
-    this.yaw += wrapAngle(v.yaw - this.yaw) * Math.min(1, dt * (2.4 - 0.8 * k));      // a calm swing through a corner, calmer still at speed
+    const behind = wrapAngle(v.yaw - this.yaw);
+    this.yaw += behind * Math.min(1, dt * (2.4 - 0.8 * k + chase * Math.min(1.2, Math.abs(behind))));      // a calm swing through a corner, calmer still at speed; quicker the further behind (driving)
     anchorToWorld(v, this.yaw + this.orbit, anchor, this.lift, this.want, this.wantLook, camera.aspect < 1);
     if (!anchor.inside && k > 0.001) { const f = 1 + 0.24 * k; this.want.x = this.wantLook.x + (this.want.x - this.wantLook.x) * f; this.want.z = this.wantLook.z + (this.want.z - this.wantLook.z) * f; this.want.y += 0.5 * k; }
     this.want.y += bounce * 0.6;
@@ -105,7 +111,8 @@ export class PassengerCamera {
     if (kc < 1) this.want.lerpVectors(this.from, this.want, kc);
     this.want.x -= v.x; this.want.y -= v.y; this.want.z -= v.z;
     this.wantLook.x -= v.x; this.wantLook.y -= v.y; this.wantLook.z -= v.z;
-    const a = 1 - Math.exp(-dt * 4.2), b = 1 - Math.exp(-dt * 6);
+    const quick = chase * Math.min(1.2, Math.abs(behind));                            // (driving: the view's place round the car catches up with its heading the same way)
+    const a = 1 - Math.exp(-dt * (4.2 + quick)), b = 1 - Math.exp(-dt * (6 + quick));
     this.rel.lerp(this.want, a); this.relLook.lerp(this.wantLook, b);
     camera.position.set(v.x + this.rel.x, v.y + this.rel.y, v.z + this.rel.z);
     if (this.baseFov) { const fov = this.baseFov + (anchor.inside ? 3 : 9) * k; if (Math.abs(camera.fov - fov) > 0.02) { camera.fov = fov; camera.updateProjectionMatrix(); } }

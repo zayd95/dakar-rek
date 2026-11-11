@@ -69,11 +69,11 @@ describe('a hard brake is one event per braking', () => {
   it('a long full brake from speed counts once, a second one after the car has eased', () => {
     const f = new DriveFeel(); run(f, 20, 1);
     const got: DriveEvent[] = []; f.on(e => got.push(e));
-    let v = 20; for (let i = 0; i < 25; i++) { v = Math.max(0, v - 0.8); f.report(snap(v), 0.1); }   // 8 m/s² for 2.5 s: stopped
+    let v = 20; for (let i = 0; i < 25; i++) { v = Math.max(0, v - 1.1); f.report(snap(v), 0.1); }   // 11 m/s² (a car's full brake; it was 8 when the brakes were 7.5–8.5): stopped in under 2 s
     expect(got.filter(e => e.kind === 'hardBrake').length).toBe(1);
     run(f, 0, 1.2);                                                                                    // eased: the next braking can count
     for (let i = 0; i < 45; i++) { v = Math.min(20, v + 0.5); f.report(snap(v), 0.1); }
-    for (let i = 0; i < 25; i++) { v = Math.max(0, v - 0.8); f.report(snap(v), 0.1); }
+    for (let i = 0; i < 25; i++) { v = Math.max(0, v - 1.1); f.report(snap(v), 0.1); }
     expect(got.filter(e => e.kind === 'hardBrake').length).toBe(2);
   });
 });

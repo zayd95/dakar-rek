@@ -13,13 +13,18 @@ import type { DriveInput } from './drive';
 export interface DriveCmd { fwd: number; steer: number; boost: boolean; brake: boolean }
 
 /** Seconds the brake must stay held at a standstill before a car starts to reverse (a deliberate hold, never a brush of the thumb). */
-export const REVERSE_DELAY = 0.7;
+export const REVERSE_DELAY = 0.45;
+/**
+ * The same hold right after the vehicle was stopped by something in its way (`DriveControls.stoppedBy`, within `EAGER_FOR` s): the driver's thumb goes to the brake to back
+ * out, and the car answers almost at once. Still a hold, so a tap does nothing.
+ */
+export const REVERSE_DELAY_HIT = 0.15, EAGER_FOR = 2.5;
 /** Below this speed (m/s) the vehicle counts as stopped for the brake-to-reverse hold. */
 export const STOPPED = 0.35;
-/** Reverse acceleration (m/s²): gentle. */
-export const REVERSE_ACCEL = 1.6;
-/** The foot-paddle (a motorbike pushed backwards by its rider): at most a slow walk (m/s), eased in gently. */
-export const PADDLE_SPEED = 0.85, PADDLE_ACCEL = 0.9;
+/** Reverse acceleration (m/s²): it backs out of a bay or away from a wall without a wait, and stays easy to place. */
+export const REVERSE_ACCEL = 3.2;
+/** The foot-paddle (a motorbike pushed backwards by its rider): a walk at most (m/s), eased in gently. */
+export const PADDLE_SPEED = 1.15, PADDLE_ACCEL = 1.6;
 /** Boost builds up and fades over these times (s): the speed rises and falls smoothly, never in a step. */
 export const BOOST_UP = 0.9, BOOST_DOWN = 1.6;
 
@@ -41,8 +46,11 @@ export class DriveControls {
   private backing = false;
   private hold = 0;
   private paddle = false;
+  private eager = 0;
 
-  reset() { this.boost = 0; this.reversing = false; this.backing = false; this.hold = 0; }
+  reset() { this.boost = 0; this.reversing = false; this.backing = false; this.hold = 0; this.eager = 0; }
+  /** The vehicle has just been stopped by something in its way (a wall met square on): for a moment the brake backs it out after a much shorter hold. */
+  stoppedBy() { this.eager = EAGER_FOR; }
 
   /**
    * One step: the driver's command and the vehicle's speed in, what `driveStep` should do out. `canReverse`: true for a car (a gentle reverse),
@@ -50,6 +58,7 @@ export class DriveControls {
    */
   update(dt: number, c: DriveCmd, speed: number, d: DriveSpec, canReverse: boolean | 'paddle'): DriveInput {
     this.paddle = canReverse === 'paddle';
+    this.eager = Math.max(0, this.eager - dt);
     const top = d.boostSpeed ?? d.maxSpeed;
     const wantBoost = c.boost && !c.brake && speed > -STOPPED ? 1 : 0;
     this.boost += (wantBoost - this.boost) * Math.min(1, (dt / (wantBoost > this.boost ? BOOST_UP : BOOST_DOWN)) * 1.6);
@@ -59,7 +68,7 @@ export class DriveControls {
     if (c.brake) {
       if (!this.reversing && speed > STOPPED) { this.hold = 0; braking = true; }                    // moving forward: it brakes, however long the thumb stays
       else if (canReverse) {
-        if (!this.reversing) { this.hold += dt; if (this.hold >= REVERSE_DELAY) this.reversing = true; }
+        if (!this.reversing) { this.hold += dt; if (this.hold >= (this.eager > 0 ? REVERSE_DELAY_HIT : REVERSE_DELAY)) this.reversing = true; }
         if (this.reversing) target = this.paddle ? -PADDLE_SPEED : -d.reverseSpeed; else braking = true;   // stopped: held, waiting for the deliberate hold
       } else braking = true;                                                                         // no reverse at all: the brake holds it
     } else {

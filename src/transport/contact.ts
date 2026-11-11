@@ -29,7 +29,8 @@ export class ContactTracker {
     const speed = Math.abs(vBefore), headOn = vAfter * vBefore <= 0;                  // the bounce reverses the speed; a slide keeps its sign
     this.free = 0;
     let impact: Impact | null = null;
-    if (speed > 0.5 && (!this.inContact || (speed >= IMPACT_SPEED && this.since >= RE_HIT))) {
+    // (inside an episode only a contact that stops the vehicle knocks again: a long slide along a wall at speed is one knock and a scrape, not a knock every RE_HIT seconds)
+    if (speed > 0.5 && (!this.inContact || (headOn && speed >= IMPACT_SPEED && this.since >= RE_HIT))) {
       const kind: ContactKind = speed < IMPACT_SPEED ? 'bump' : 'hit';
       impact = { kind, speed, strength: kind === 'hit' ? strengthOf(speed) * (headOn ? 1 : 0.6) : 0, headOn, dir: vBefore >= 0 ? 1 : -1 };   // a glancing blow is softer than a head-on one
       this.since = 0;

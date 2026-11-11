@@ -20,6 +20,8 @@ export const FULL_AT = 0.4;
 export const gasPressure = (f: number) => Math.min(1, 0.35 + 0.65 * (Math.max(0, Math.min(1, f)) / FULL_AT));
 /** Full throttle (the thumb from the middle of the pedal down) held this long (s) opens the boosted speed range: the longer the foot stays down, the faster the car goes. */
 export const BOOST_AT = 0.97, BOOST_HOLD = 0.8;
+/** How fast the wheel asked of the car follows the thumb on the pad (1/s), and how fast it comes back when the thumb lifts: only enough to turn the finger's steps into a movement, not a lag. */
+export const PAD_FOLLOW = 16, PAD_BACK = 20;
 export interface PadOptions {
   /** A car: bigger buttons. */
   car?: boolean;
@@ -53,7 +55,7 @@ export const ridePad = {
   /** One frame of the pad's smoothing (the pad's owner only): the wheel and the throttle follow the thumbs, never in a step. */
   tick(by: Owner, dt: number) {
     if (owner !== by) return;
-    padSteer += (padTarget - padSteer) * Math.min(1, dt * (padTarget === 0 ? 12 : 9));
+    padSteer += (padTarget - padSteer) * Math.min(1, dt * (padTarget === 0 ? PAD_BACK : PAD_FOLLOW));
     if (Math.abs(padSteer) < 0.01) padSteer = 0;
     const want = this.gas ? gasRaw : 0;
     gasSm += (want - gasSm) * Math.min(1, dt * (want > gasSm ? 5 : 10));

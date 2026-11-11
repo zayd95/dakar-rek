@@ -91,10 +91,10 @@ export function kitCarSpec(o: KitCarOpts): VehicleSpec {
 }
 
 let cached: VehicleSpec | null = null;
-/** The modern sedan. Town driving: about 60 km/h flat out (the motorbike: 45), slower to pick up and to stop, a wide turning circle. */
+/** The modern sedan, the city cars' big sister: an easy 79 km/h cruise, a little slower to pick up and to turn than the Teranga, steadier at speed. */
 export function carSpec(): VehicleSpec {
   return (cached ??= kitCarSpec({
     id: 'car', name: 'Berline moderne', kind: 'sedan', seed: sedanSeed(), visual: glbCar,
-    drive: { maxSpeed: 19, boostSpeed: 42, reverseSpeed: 3, accel: 4, brake: 7.5, turnRadius: 5.6, steer: 2.8, grip: 9.5 },
+    drive: { maxSpeed: 22, boostSpeed: 45, reverseSpeed: 4.2, accel: 6, brake: 10.8, turnRadius: 4.8, steer: 5, grip: 13 },
   }));
 }

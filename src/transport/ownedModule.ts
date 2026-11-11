@@ -46,6 +46,11 @@ import { transport } from './module';
 import { driveFeel } from './driveFeel';
 import type { DriveSpec, VehicleSpec } from './spec';
 
+/** The brake (m/s²) the braking sound was mixed against (src/transport/vehicleAudio.ts `brakeIntensity`). */
+const BRAKE_AS_MIXED = 7.6;
+/** How much quicker the chase view's heading catches up per radian it is behind the driven vehicle's (src/transport/camera.ts `chase`). */
+const CAM_CHASE = 6.5;
+
 /**
  * A vehicle the player owns and drives (the Jakarta motorbike, the used saloon…), on the same vehicle framework as the
  * car rapide. One instance per catalogue item, described by an `OwnedDef`:
@@ -477,6 +482,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
     const z0 = this.st.z, hit = driveSteps(this.st, input, drv, dt, this.blocked);
+    if (hit && vs0 > 0 && this.st.speed <= 0) this.ctl.stoppedBy();          // run into something square on: the brake backs it out after a much shorter hold (src/transport/controls.ts)
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
     if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); if (cf.impact.kind === 'hit') driveFeel.crash(cf.impact.strength, cf.impact.speed); else driveFeel.bump(cf.impact.speed); }   // the people round the car feel it too (src/transport/driveFeel.ts)
@@ -489,7 +495,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     if (this.ctl.paddling) this.lean = 0;                                        // pushed backwards with the feet: the rider sits upright
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
-    const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
+    // (the squeal is judged against the brakes this was mixed with, 7.6 m/s²: the stronger brakes of today stop shorter, they are not louder; a full stop sounds as it did)
+    const bi = brakeIntensity((-this.st.accel * Math.sign(this.st.speed || 1) * BRAKE_AS_MIXED) / Math.max(1, drv.brake), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
     if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
     vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
@@ -864,7 +871,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     // at the wheel of a car: the eye sits in the car's own interior (src/transport/carInterior.ts), fixed in its frame; only the head turns
     const seat = a.inside && this.def.kit !== 'moto' ? this.interiorOf(m) : null;
     if (seat) this.cam.seat(Math.max(dt, real), cam, m.body, seat.eye, cam.aspect < 1 ? SEAT_PITCH_PORTRAIT : SEAT_PITCH, drag, m.pose);
-    else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)));
+    else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)), CAM_CHASE);
     this.feel(cam, Math.max(dt, real), !!a.inside);
     m.setCockpit(!!a.inside);                                  // a body not made to be seen from inside is not drawn in that view
     this.eyeAt(m, !!a.inside);                                 // nor its own cabin (seats, lining): the interior stands in for them

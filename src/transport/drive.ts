@@ -36,8 +36,18 @@ export const newDriveState = (x: number, z: number, yaw: number): DriveState => 
  * from about 30 km/h straight in proportion to the stick (predictable at speed). Full lock at full push always.
  */
 export const steerCurve = (x: number, speed = 0) => { const c = Math.max(-1, Math.min(1, x)), e = 1 + 0.25 * Math.max(0, 1 - Math.abs(speed) / 8); return Math.sign(c) * Math.abs(c) ** e; };
-/** The brake's build-up time (s) and the share it bites with at once. */
-export const BRAKE_RAMP = 0.3, BRAKE_START = 0.45;
+/** The brake's build-up time (s) and the share it bites with at once: a firm pedal from the first touch (the nose does not snap, but the car is clearly braking at once). */
+export const BRAKE_RAMP = 0.2, BRAKE_START = 0.55;
+/** How much the wheel's answer to the thumb calms with the speed (per m/s): quick in a street, measured on the open road. */
+export const STEER_CALM = 0.04;
+/**
+ * A contact, by the share of the heading that runs ALONG the wall (1: parallel, 0: square on). Below `NOSE_ON` (steeper than about 65°) the vehicle has run into it: it stops and
+ * rolls back a hand's width. Above it, it slides: it loses the part of its speed that went into the wall (`SCRAPE_LOSS`, per second of contact), and from `DEFLECT_FROM` (about 53°)
+ * its nose is turned along the wall, fully from `DEFLECT_FULL` (30°) at `DEFLECT` 1/s: a glancing touch at speed costs a little speed and a scrape, not the whole run-up.
+ */
+export const NOSE_ON = 0.42, SCRAPE_LOSS = 30, DEFLECT_FROM = 0.6, DEFLECT_FULL = 0.866, DEFLECT = 6, DEFLECT_MIN = 1.5;
+/** The roll back from a wall met square on (the share of the speed, and at most this many m/s): enough to clear the bumper, never a spring. */
+export const BOUNCE = 0.15, BOUNCE_MAX = 2.2;
 
 /**
  * « Descendre » asked while the vehicle still moves: brake to a standstill and no further. Asking for the other way instead overshoots on a slow frame (a
@@ -80,7 +90,7 @@ export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: numb
   // centre; and it comes back to straight more readily than it turns in (the self-centring of a real wheel), so letting go of the stick straightens the car
   const want = d.grip ? steerCurve(inp.steer, v0) : Math.max(-1, Math.min(1, inp.steer));
   const back = d.grip && Math.abs(want) < Math.abs(s.steer) && Math.sign(want) !== -Math.sign(s.steer);
-  const follow = (d.grip ? d.steer / (1 + 0.035 * v0) : d.steer) * (back ? 1.3 : 1);
+  const follow = (d.grip ? d.steer / (1 + STEER_CALM * v0) : d.steer) * (back ? 1.3 : 1);
   s.steer += (want - s.steer) * Math.min(1, follow * dt);
   const target = analog ? inp.target! : targetSpeed(d, s.speed, inp.throttle);
   const before = s.speed;
@@ -111,22 +121,47 @@ export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: numb
   // already touching something (left against a wall, a car pulled up beside): it may creep out, not go deeper in
   const stuck = hits(d, s.x, s.z, s.yaw, blocked);
   if (stuck ? !hits(d, nx, nz, yaw, blocked, 0.4) : !hits(d, nx, nz, yaw, blocked)) { s.x = nx; s.z = nz; s.yaw = yaw; s.odo += Math.abs(step); return false; }
-  // slide along the wall: keep the free component of the move, at reduced speed
-  if (!hits(d, nx, s.z, yaw, blocked)) { s.odo += Math.abs(nx - s.x); s.x = nx; s.yaw = yaw; s.speed *= 0.6; return true; }
-  if (!hits(d, s.x, nz, yaw, blocked)) { s.odo += Math.abs(nz - s.z); s.z = nz; s.yaw = yaw; s.speed *= 0.6; return true; }
+  // a contact. Which single axis is still free tells how the wall lies (the city's walls run along x or z), and so how squarely the vehicle met it
+  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  const freeX = !stuck && !hits(d, nx, s.z, yaw, blocked), freeZ = !stuck && !freeX && !hits(d, s.x, nz, yaw, blocked);
+  const along = freeX ? Math.abs(fx) : freeZ ? Math.abs(fz) : 0;
+  if (along >= NOSE_ON) {
+    // it slides along the wall: the free part of the move is kept, and the speed loses what went into the wall (by the time in contact, not by the frame)
+    if (freeX) { s.odo += Math.abs(nx - s.x); s.x = nx; } else { s.odo += Math.abs(nz - s.z); s.z = nz; }
+    s.yaw = yaw;
+    s.speed *= 1 - (1 - along) * Math.min(1, dt * SCRAPE_LOSS);
+    // a glancing touch turns the nose along the wall, and a hair past it, so the vehicle comes off the wall instead of grinding along it for good
+    const glance = Math.max(0, Math.min(1, (along - DEFLECT_FROM) / (DEFLECT_FULL - DEFLECT_FROM)));
+    if (glance > 0) {
+      const wrapA = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+      const par = freeX ? Math.atan2(Math.sign(fx) || 1, 0) : Math.atan2(0, Math.sign(fz) || 1), away = freeX ? Math.atan2(Math.sign(fx) || 1, -0.03 * Math.sign(fz)) : Math.atan2(-0.03 * Math.sign(fx), Math.sign(fz) || 1);
+      // (in proportion to what is left to turn, and never slower than DEFLECT_MIN rad/s: the last degree is turned in a frame or two, not in a long tail of touches)
+      const err = wrapA(away - s.yaw), by = Math.min(Math.abs(err), Math.max(Math.abs(err) * DEFLECT, DEFLECT_MIN) * dt * glance);
+      let turned = s.yaw + Math.sign(err) * by;
+      if (hits(d, s.x, s.z, turned, blocked)) { const e = wrapA(par - s.yaw); turned = s.yaw + Math.sign(e) * Math.min(Math.abs(e), by); }   // flush against it: the tail has no room to swing past parallel, so parallel it is (and parallel no longer touches)
+      if (!hits(d, s.x, s.z, turned, blocked)) s.yaw = turned;
+    }
+    return true;
+  }
+  // square on (or wedged: no way is free): it stops against it and rolls back a little, which also clears the bumper for the way out
   if (!hits(d, s.x, s.z, yaw, blocked)) s.yaw = yaw;
-  s.speed = -s.speed * 0.15;                                    // a small bounce back
+  s.speed = -Math.sign(s.speed) * Math.min(BOUNCE_MAX, Math.abs(s.speed) * BOUNCE);
   return true;
 }
 
 /** The longest stretch (m) a vehicle moves between two looks at what is in its way: a car at 200 km/h covers 5 m in a slow frame, more than a wall is thick. */
 export const MAX_STEP = 0.5;
 /**
- * `driveStep` in as many equal steps as the speed needs to keep each under MAX_STEP (at most 12 per call). It stops at the first contact: the rest of the frame is
- * dropped rather than bouncing again and again in one frame. Slow vehicles (a step under MAX_STEP) run exactly one `driveStep`, as before.
+ * `driveStep` in as many equal steps as the speed needs to keep each under MAX_STEP (at most 12 per call). It stops at the first contact that stops the vehicle (square on:
+ * the rest of the frame is dropped rather than bouncing again and again in one frame); a vehicle sliding along a wall keeps going for the rest of the frame (dropping it would
+ * cost a fast car most of its speed in a slow frame). Slow vehicles (a step under MAX_STEP) run exactly one `driveStep`, as before. True when it touched something.
  */
 export function driveSteps(s: DriveState, inp: DriveInput, d: DriveSpec, dt: number, blocked: Blocked): boolean {
   const n = Math.min(12, Math.max(1, Math.ceil((Math.abs(s.speed) * dt) / MAX_STEP))), h = dt / n;
-  for (let i = 0; i < n; i++) if (driveStep(s, inp, d, h, blocked)) return true;
-  return false;
+  let hit = false;
+  for (let i = 0; i < n; i++) {
+    const before = s.speed;
+    if (driveStep(s, inp, d, h, blocked)) { hit = true; if (s.speed * before <= 0) break; }
+  }
+  return hit;
 }

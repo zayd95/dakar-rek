@@ -3,13 +3,14 @@
  * (`crash`, `bump`); this turns them into the events the people around react to. The passenger of a ride (src/transport/vtcBanter.ts) says « Dawalal ndank » when the car is fast, and the
  * street (src/crowd/streetReact.ts) steps back and shouts when it passes close. One tracker for the page: the vehicle that is driven reports, anyone may listen.
  *
- * Speeds are m/s: a car cruises at 19 (68 km/h) and, with the foot held down, opens up to 45–55 (160–200 km/h). `FAST` (76 km/h) is above the cruising speed, `VERY_FAST` (119 km/h) is not a speed for a town street.
+ * Speeds are m/s: a car cruises at 21.5–24 (77–86 km/h; the motorbike 20) and, with the foot held down, opens up to 45–56 (160–200 km/h). `FAST` (94 km/h) is above every
+ * cruising speed, `VERY_FAST` (133 km/h) is not a speed for a town street.
  */
-export const FAST = 21, VERY_FAST = 33;
+export const FAST = 26, VERY_FAST = 37;
 /** Seconds above `FAST` / `VERY_FAST` before it counts (a burst is not speeding), and seconds below before it can count again. */
 export const FAST_FOR = 1.8, VERY_FAST_FOR = 0.9, CALM_AFTER = 2.5;
-/** Braking harder than this (m/s²) from at least this speed (m/s) is a hard brake. */
-export const HARD_BRAKE = 7.2, HARD_FROM = 8;
+/** Braking harder than this (m/s²) from at least this speed (m/s) is a hard brake: the pedal held firmly from a real speed (the brakes are 10–12.6 m/s² at their full bite), not a dab. */
+export const HARD_BRAKE = 10, HARD_FROM = 10;
 /** A crawl: moving, but slower than this (m/s) for this long (s); a stop is not a crawl. */
 export const CRAWL = 3.2, CRAWL_FOR = 7;
 /** Seconds of driving with none of the above before the ride counts as smooth, and between two such. */

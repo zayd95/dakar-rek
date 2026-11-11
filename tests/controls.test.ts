@@ -67,8 +67,8 @@ describe('forward: the stick sets the speed, « Accélérer » the boosted range
     expect(jakarta.maxSpeed).toBeGreaterThan(12.5 * 1.3); expect(jakarta.accel).toBeGreaterThan(car.accel);
     expect(berline.maxSpeed).toBeGreaterThan(suv.maxSpeed); expect(suv.turnRadius).toBeGreaterThan(berline.turnRadius); expect(suv.grip!).toBeLessThan(berline.grip!);
     expect(jakarta.turnRadius).toBeLessThan(car.turnRadius * 0.7);
-    const t = (d: DriveSpec) => run(d, { ...idle, fwd: 1 }, 5).s.speed;
-    expect(t(jakarta)).toBeGreaterThan(t(suv)); expect(t(berline)).toBeGreaterThan(t(suv));          // after 5 s: the bike and the berline are ahead of the heavy SUV
+    const t = (d: DriveSpec) => run(d, { ...idle, fwd: 1 }, 2).s.speed;
+    expect(t(jakarta)).toBeGreaterThan(t(suv)); expect(t(berline)).toBeGreaterThan(t(suv));          // after 2 s: the bike and the berline are ahead of the heavy SUV (it was 5 s: every vehicle is at its cruising speed by then now)
   });
   it('a worn vehicle is slower in both ranges, a dead one does not move', () => {
     const worn = scaledDrive(car, 40), dead = scaledDrive(car, 0);
