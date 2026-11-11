@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { stubCanvas } from './hubstub';
-import { Batch } from '../src/world/batch';
-import { FACADE_COLS, FACADE_ROWS, ROW, facadeAtlas } from '../src/world/facadeAtlas';
+import { Batch, facadeTextures } from '../src/world/batch';
+import { FACADE_ATLAS_SIZE, FACADE_COLS, FACADE_ROWS, ROW, facadeAtlas, facadeRowRect } from '../src/world/facadeAtlas';
 import type { HubId } from '../src/core/types';
 
 /**
@@ -14,13 +14,30 @@ const mesh = (b: Batch) => b.build(new THREE.MeshBasicMaterial())!;
 const style = (m: THREE.Mesh, i: number) => { const a = m.geometry.attributes.fstyle as THREE.BufferAttribute; return [a.getX(i), a.getY(i), a.getZ(i), a.getW(i)]; };
 
 describe('the facade atlas', () => {
+  it('lays its rows out without overlap, the two ground-floor rows at twice the others\' size', () => {
+    const rects = Object.values(ROW).map(r => ({ r, ...facadeRowRect(r) }));
+    for (const a of rects) {
+      expect(a.s).toBe(a.r === ROW.SHOPS || a.r === ROW.HOME_GROUND ? 0.25 : 0.125);
+      expect(a.u >= 0 && a.u + a.s * FACADE_COLS <= 1 && a.v >= 0 && a.v + a.s <= 1, `row ${a.r} inside the image`).toBe(true);
+      for (const b of rects) if (a !== b) expect(a.u + a.s * FACADE_COLS <= b.u || b.u + b.s * FACADE_COLS <= a.u || a.v + a.s <= b.v || b.v + b.s <= a.v, `rows ${a.r} / ${b.r}`).toBe(true);
+    }
+  });
+
+  it('is ONE pair of textures for the whole game: every facade material shares them, nobody\'s dispose frees them', () => {
+    const a = facadeTextures(), b = facadeTextures();
+    expect(b.map).toBe(a.map); expect(b.glow).toBe(a.glow);
+    expect(a.map.userData.shared).toBe(true); expect(a.glow.userData.shared).toBe(true);
+    expect(a.map.image).toBe(facadeAtlas().map);
+  });
+
   it('is eight rows of four bays, painted once (in node too: the canvas is a stub)', () => {
     expect([FACADE_COLS, FACADE_ROWS]).toEqual([4, 8]);
     expect(new Set(Object.values(ROW)).size).toBe(FACADE_ROWS);
     expect(Math.max(...Object.values(ROW))).toBe(FACADE_ROWS - 1);
     const a = facadeAtlas();
     expect(facadeAtlas()).toBe(a);
-    expect([a.map.width, a.map.height, a.glow.width, a.glow.height]).toEqual([512, 1024, 256, 512]);
+    expect([a.map.width, a.map.height, a.glow.width, a.glow.height]).toEqual([FACADE_ATLAS_SIZE, FACADE_ATLAS_SIZE, FACADE_ATLAS_SIZE / 2, FACADE_ATLAS_SIZE / 2]);
+    expect(FACADE_ATLAS_SIZE).toBe(1024);
   });
 
   it('a wall without a style is the box it always was: 36 vertices, bays by storeys in its uv, no style', () => {
@@ -51,10 +68,12 @@ describe('the facade atlas', () => {
     const b = new Batch(); b.styled = true;
     b.facade(8, 5.7, 8, 0, 0, 0, 0xffffff, 0, { upper: ROW.SELF_BUILT, floors: 2 });      // Pikine: two storeys of 2.85 m
     b.facade(14, 4.2, 8, 0, 0, 0, 0xffffff, 0, { upper: ROW.CLASSIC, ground: ROW.SHOPS }); // a kiosk: one storey and a parapet's worth of wall
+    b.facade(17, 9.6, 17, 0, 0, 0, 0xffffff, 0, { upper: ROW.TILED, stacked: true, seed: 7 });   // a block of flats: its bays in columns (the seed + 4)
     const m = mesh(b), uv = m.geometry.attributes.uv as THREE.BufferAttribute;
     let v0 = 0, v1 = 0; for (let i = 0; i < 36; i++) v0 = Math.max(v0, uv.getY(i)); for (let i = 36; i < 72; i++) v1 = Math.max(v1, uv.getY(i));
     expect(v0).toBeCloseTo(2, 5); expect(style(m, 0)[3]).toBe(2);
     expect(v1).toBeCloseTo(4.2 / 3.2, 5); expect(style(m, 36)[3]).toBe(1);
+    expect(style(m, 0)[1]).toBe(0); expect(style(m, 72)[1]).toBe(3 + 4);
   });
 });
 

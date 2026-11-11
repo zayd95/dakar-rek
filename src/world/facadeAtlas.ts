@@ -9,8 +9,13 @@
  * shutter, a green metal door, a shop's board, white aluminium frames, bare breeze blocks). The alpha channel says which: 1 = painted by the wall
  * colour, 0.5 = own colour (never below 0.5: a canvas stores its colours premultiplied, and half is where they still survive).
  *
- * A storey is 128 px for 3.4 m × 3.2 m (as the single window tile was). The left 8 px of every row's first bay are wall only: the shader paints the
- * margins of a face (what is left over once the whole bays are centred) from that strip, so the storey's bands run on to the corner.
+ * A storey is 128 px for 3.4 m × 3.2 m (as the single window tile was); the two ground-floor rows, which the player walks past at arm's length, are
+ * painted at twice that (256 px a bay: 1.3 cm a pixel). The left 8 px (of 128) of every row's first bay are wall only: the shader paints the margins
+ * of a face (what is left over once the whole bays are centred) from that strip, so the storey's bands run on to the corner.
+ *
+ * Layout (one 1024 × 1024 image, `facadeRowRect`): the two ground rows across the full width at the bottom (a quarter of the height each), the six
+ * others two to a line above them. ONE atlas for the whole game: `facadeTextures` (src/world/batch.ts) makes its two textures once and every
+ * district's and every road's facade material shares them.
  */
 export const FACADE_COLS = 4, FACADE_ROWS = 8;
 /** The rows. `CLASSIC` (row 0, bay 0) is the districts' old window, untouched: what every wall without a style shows. */
@@ -32,6 +37,26 @@ export const ROW = {
   /** Modern blocks (the university residences of Fann, new apartments): wide windows under sun-breakers, jalousies, loggias, claustras. */
   MODERN: 7,
 } as const;
+
+/** The atlas image's side (px). */
+export const FACADE_ATLAS_SIZE = 1024;
+/**
+ * Where a row lies in the atlas, in texture coordinates (v up from the image's bottom): the origin of its first bay and a bay's side. The ground
+ * rows (SHOPS, HOME_GROUND) are a quarter of the image a bay; the others an eighth, two rows to a line. The facade shader computes the same
+ * (`FACADE_ROW_GLSL`).
+ */
+export function facadeRowRect(row: number): { u: number; v: number; s: number } {
+  if (row === ROW.SHOPS || row === ROW.HOME_GROUND) return { u: 0, v: (row - ROW.SHOPS) * 0.25, s: 0.25 };
+  const i = row < ROW.SHOPS ? row : row - 2;
+  return { u: (i % 2) * 0.5, v: 0.5 + Math.floor(i / 2) * 0.125, s: 0.125 };
+}
+/** `vec3 fRowRect(float row)`: (u, v, bay side) of a row, as `facadeRowRect`. */
+export const FACADE_ROW_GLSL = /* glsl */ `
+vec3 fRowRect(float row) {
+  if (row > 1.5 && row < 3.5) return vec3(0.0, (row - 2.0) * 0.25, 0.25);
+  float i = row < 1.5 ? row : row - 2.0;
+  return vec3(mod(i, 2.0) * 0.5, 0.5 + floor(i * 0.5) * 0.125, 0.125);
+}`;
 
 type C2 = CanvasRenderingContext2D;
 const S = 128;
@@ -278,13 +303,13 @@ function unfinished(p: Painter, k: number) {
 // ---------------------------------------------------------------- row 7: modern blocks
 function modern(p: Painter, k: number) {
   plaster(p); slab(p);
-  if (k === 0 || k === 1) {                                               // a wide window under its concrete sun-breaker
+  if (k === 0 || k === 2) {                                               // a wide window under its concrete sun-breaker
     rect(p.o, '#f0ede5', 12, 20, 104, 6); rect(p.t, '#8f887c', 12, 26, 104, 4);
     rect(p.o, '#3a3f45', 16, 30, 96, 54); glassAt(p, 19, 33, 44, 48, 1, true); glassAt(p, 65, 33, 44, 48, 1, true);
-    if (k === 1) { p.o.fillStyle = '#9fb0bd'; for (let y = 36; y < 80; y += 5) p.o.fillRect(19, y, 44, 1.5); }    // glass jalousies (nako) on one side
+    if (k === 2) { p.o.fillStyle = '#9fb0bd'; for (let y = 36; y < 80; y += 5) p.o.fillRect(19, y, 44, 1.5); }    // glass jalousies (nako) on one side
     rect(p.t, '#cfc8ba', 14, 84, 100, 4);
     rect(p.t, '#d6cfc2', 16, 92, 96, 22); rect(p.t, '#c4bcae', 16, 92, 96, 1);                     // the spandrel panel
-  } else if (k === 2) {                                                   // a loggia: the balcony taken inside the wall
+  } else if (k === 1) {                                                   // a loggia: the balcony taken inside the wall (bay 1: the balcony's bay, as the tiled row's glass door)
     rect(p.o, '#1c2026', 12, 14, 104, S - 23); glassAt(p, 22, 26, 34, S - 44, 0.8, true); rect(p.o, '#2b3038', 62, 22, 44, S - 40);
     rect(p.o, '#f0ede5', 12, 80, 104, 3); p.o.fillStyle = '#e4e0d6'; for (let x = 14; x < 116; x += 6) p.o.fillRect(x, 83, 2, S - 92);
     rect(p.o, '#d2603a', 70, 52, 16, 20); rect(p.o, '#e9e4d8', 90, 48, 10, 26);                     // washing on the line inside
@@ -298,20 +323,21 @@ function modern(p: Painter, k: number) {
 const PAINT: ((p: Painter, k: number) => void)[] = [classic, office, shops, homeGround, tiled, selfBuilt, unfinished, modern];
 
 /**
- * Paints the atlas (once: the canvases are kept). `map`: RGBA, row r of the atlas is r storeys up from the image's bottom (a texture's v), so the
- * shader's (row + v) / FACADE_ROWS reads it. `glow`: the night mask, half the size.
+ * Paints the atlas (once: the canvases are kept). `map`: RGBA, each row where `facadeRowRect` puts it. `glow`: the night mask, half the size.
  */
 let painted: { map: HTMLCanvasElement; glow: HTMLCanvasElement } | null = null;
 export function facadeAtlas(): { map: HTMLCanvasElement; glow: HTMLCanvasElement } {
   if (painted) return painted;
-  const W = S * FACADE_COLS, H = S * FACADE_ROWS;
+  const W = FACADE_ATLAS_SIZE, H = FACADE_ATLAS_SIZE;
   const mk = (w: number, h: number) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return cv; };
   const map = mk(W, H), own = mk(W, H), glowFull = mk(W, H), glow = mk(W / 2, H / 2);
   const t = map.getContext('2d')!, o = own.getContext('2d')!, g = glowFull.getContext('2d')!;
+  t.fillStyle = '#fbfaf7'; t.fillRect(0, 0, W, H);
   g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
   for (let row = 0; row < FACADE_ROWS; row++) for (let col = 0; col < FACADE_COLS; col++) {
-    const x = col * S, y = (FACADE_ROWS - 1 - row) * S;
-    for (const c of [t, o, g]) { c.save(); c.beginPath(); c.rect(x, y, S, S); c.clip(); c.translate(x, y); }
+    const r = facadeRowRect(row), px = r.s * W, x = (r.u + col * r.s) * W, y = H - (r.v + r.s) * H;
+    // every bay is painted in its own 128 × 128 units, scaled to its place (twice for the ground rows: the same drawing, twice as fine)
+    for (const c of [t, o, g]) { c.save(); c.translate(x, y); c.scale(px / S, px / S); c.beginPath(); c.rect(0, 0, S, S); c.clip(); }
     PAINT[row]({ t, o, g, r: prng(977 + row * 131 + col * 17) }, col);
     for (const c of [t, o, g]) c.restore();
   }

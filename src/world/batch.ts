@@ -24,6 +24,12 @@ export interface FacadeStyle {
   floors?: number;
   /** Shifts the ground floor's sequence of bays (door, shop, shop…) so two neighbours do not open their doors in step. */
   seed?: number;
+  /**
+   * The upper storeys' bays in columns, as a block of flats is built: bay c of every storey is bay (c + seed) of the row, so the balcony doors, the
+   * bathrooms' tiles, the stairwell's claustra each run up the wall in a line (and a balcony can be hung on every door: the builder's `baysAt`). Without it
+   * each cell of the wall draws its bay (offices, old shuttered fronts, self-built walls).
+   */
+  stacked?: boolean;
 }
 
 /** Collects many coloured primitives and merges them into one draw call. */
@@ -118,7 +124,7 @@ export class Batch {
         const street = !style.streets || style.streets.some(([nx, nz]) => nx === normals[f][0] && nz === normals[f][1]);
         const ground = street ? style.ground : style.back ?? style.ground;
         const rows = style.upper + 16 * (ground === undefined ? 0 : ground + 1) + 256 * (style.top === undefined ? 0 : style.top + 1);
-        for (let k = 0; k < 4; k++) st.set([rows, (style.seed ?? 0) & 3, widths[f] / BAY, Math.max(1, Math.floor(storeys + 0.2))], (f * 4 + k) * 4);
+        for (let k = 0; k < 4; k++) st.set([rows, ((style.seed ?? 0) & 3) + (style.stacked ? 4 : 0), widths[f] / BAY, Math.max(1, Math.floor(storeys + 0.2))], (f * 4 + k) * 4);
       }
       g.setAttribute('fstyle', new THREE.BufferAttribute(st, 4));
     }
@@ -165,10 +171,14 @@ export class Batch {
  * it; the alpha channel marks what keeps its own colour (doors, shutters, boards, frames). Sampled by the facade shader (src/world/grain.ts,
  * `windows`), which reads a row and a bay of it for each cell of a wall: the textures themselves repeat nowhere.
  */
+let sharedFacade: { map: THREE.CanvasTexture; glow: THREE.CanvasTexture } | null = null;
 export function facadeTextures() {
+  // ONE pair of textures for the whole game: every district's facade material and every road's share them, so the atlas is uploaded once and
+  // stays on the card while any wall is on stage (`userData.shared`: nobody's dispose frees it; freed by a sweep, three.js uploads it again).
+  if (sharedFacade) return sharedFacade;
   const { map: mapCanvas, glow: glowCanvas } = facadeAtlas();
-  const mk = (cv: HTMLCanvasElement) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
-  return { map: mk(mapCanvas), glow: mk(glowCanvas) };
+  const mk = (cv: HTMLCanvasElement) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.shared = true; return t; };
+  return (sharedFacade = { map: mk(mapCanvas), glow: mk(glowCanvas) });
 }
 export { FACADE_COLS, FACADE_ROWS };
 

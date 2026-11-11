@@ -4,6 +4,7 @@ import type { Collider, HubWorld } from '../world/types';
 import type { Arm, Pt } from './network';
 import type { Footprint } from './traffic';
 import type { RoundSpec } from './roundabout';
+import { ROW } from '../world/facadeAtlas';
 
 /**
  * The BRT corridor of Sacré-Cœur, where the road to Mermoz crosses it (a junction with `brt: true`, src/road/routes.ts). After the real SUNUBRT line (Petersen ⇄ Guédiawaye,
@@ -86,8 +87,8 @@ const RED_ASPHALT = 0x9a4136, KERB = 0xd8d2c4, WHITE = 0xeeeae0, STEEL = 0x8a919
  * checkered paving, ticket gates), the car carriageways and pavements, zebras, bollards at the busway's mouths, the underpass mouths and the buildings that close the avenue.
  * Solid: kerbs, bollards, station, portals, buildings. People: a few waiting on the island.
  */
-export function buildBrtStatic(lay: BrtLayout, b: { plain: Batch; asphalt: Batch }, colliders: Collider[], people: HubWorld['people'], lite: boolean, R: () => number) {
-  const { plain, asphalt } = b, yaw = Math.atan2(lay.ux, lay.uz), Y = 0.08, MARK = 0.1;
+export function buildBrtStatic(lay: BrtLayout, b: { plain: Batch; asphalt: Batch; fac?: Batch }, colliders: Collider[], people: HubWorld['people'], lite: boolean, R: () => number) {
+  const { plain, asphalt, fac } = b, yaw = Math.atan2(lay.ux, lay.uz), Y = 0.08, MARK = 0.1;
   const P = (t: number, lat: number) => lay.at(t, lat);
   const solid = (t: number, lat: number, along: number, across: number, h: number) => {
     // an axis-aligned chain of boxes along the avenue (it runs at an angle in the road's frame)
@@ -150,7 +151,9 @@ export function buildBrtStatic(lay: BrtLayout, b: { plain: Batch; asphalt: Batch
     // the cross street beyond, and the apartment blocks that close the view down the avenue
     for (const e of [-1, 0, 1]) {
       const h = 14 + R() * 10, col = [0xf1e6d2, 0xe8d8b8, 0xdfe6e8, 0xd9a47c][Math.floor(R() * 4)];
-      box(plain, side * (lay.len + 18), e * 19, 14, 17, h, 0, col);
+      // (world pass: with the chunk's facade batch, the avenue's blocks show the facade atlas, src/world/facadeAtlas.ts: offices at its end, flats over shops along it)
+      if (fac) { const c = P(side * (lay.len + 18), e * 19); fac.facade(17, h, 14, c.x, 0, c.z, col, yaw, { upper: ROW.OFFICE, ground: ROW.SHOPS, seed: e + 1 }); }
+      else box(plain, side * (lay.len + 18), e * 19, 14, 17, h, 0, col);
       box(plain, side * (lay.len + 18), e * 19, 14.4, 17.4, 0.4, h, 0xd8d2c4);
       solid(side * (lay.len + 18), e * 19, 14, 17, h);
     }
@@ -158,7 +161,8 @@ export function buildBrtStatic(lay: BrtLayout, b: { plain: Batch; asphalt: Batch
     for (let t = D.front; t < lay.len - 14; t += 15 + R() * 4) for (const e of [-1, 1]) {
       const h = 3.2 * (3 + Math.floor(R() * 6)), w = 11 + R() * 3, col = [0xf1e6d2, 0xe9cfae, 0xdfe6e8, 0xf4efe6, 0xe3c9a6, 0xc7d5df][Math.floor(R() * 6)];
       const lat = e * (AVENUE_HALF + 2 + w / 2);
-      box(plain, side * t, lat, 12, w, h, 0, col);
+      if (fac) { const c = P(side * t, lat); fac.facade(w, h, 12, c.x, 0, c.z, col, yaw, { upper: Math.round(t) % 2 ? ROW.TILED : ROW.MODERN, ground: ROW.SHOPS, back: ROW.HOME_GROUND, streets: [[1, 0], [-1, 0]], stacked: true, seed: Math.round(t) }); }
+      else box(plain, side * t, lat, 12, w, h, 0, col);
       box(plain, side * t, lat, 12.3, w + 0.3, 0.3, h, 0xd8d2c4);
       if (!lite) for (let f = 1; f < h / 3.2; f++) box(plain, side * t, e * (AVENUE_HALF + 1.6), 7, 1.0, 0.15, f * 3.2, 0xd8d2c4);   // balconies
       box(plain, side * t, e * (AVENUE_HALF + 1.95), 10, 0.1, 0.6, 2.7, [0xd9482b, 0x1e6fd9, 0x2f8f4e, 0xf4c20d][Math.floor(R() * 4)]);   // shop boards
@@ -177,6 +181,9 @@ export function buildBrtStatic(lay: BrtLayout, b: { plain: Batch; asphalt: Batch
   for (let t = st0 + 2; t <= st1 - 2; t += 7.5) box(plain, t, 0, 0.3, 0.3, 3.6, Y + 0.32, 0x5c6066);
   box(plain, sm, 0, sl + 2, STN.half * 2 + 3.2, 0.25, Y + 3.9, 0xe6e2da);                                        // the canopy, wider than the island (it shelters the doors)
   box(plain, sm, 0, sl + 2.2, STN.half * 2 + 3.4, 0.35, Y + 4.15, 0x3b4048);
+  // (world pass) the line's colours on the station, as on its buses: a yellow band and a green line along both edges of the canopy, a green totem with a yellow cap at the gates
+  for (const e of [-1, 1]) { box(plain, sm, e * (STN.half + 1.72), sl + 2.3, 0.08, 0.3, Y + 3.86, 0xf2c21b); box(plain, sm, e * (STN.half + 1.73), sl + 2.3, 0.08, 0.09, Y + 3.74, 0x0f6b3a); }
+  box(plain, st0 - 0.6, -1.9, 0.5, 0.5, 4.4, Y + 0.32, 0x0f6b3a); box(plain, st0 - 0.6, -1.9, 0.56, 0.56, 0.5, Y + 4.72, 0xf2c21b);
   box(plain, st0 + 0.5, 0, 1, 2.6, 2.2, Y + 0.32, 0x5c6066);                                                     // the gates and the ticket machine at its end
   box(plain, st0 + 0.5, 0.9, 0.6, 0.7, 1.6, Y + 0.32, 0xd23a2a);
   box(plain, sm, 0, 3, 0.5, 1.0, Y + 2.8, 0x0f6b3a);                                                            // the name board under the canopy
