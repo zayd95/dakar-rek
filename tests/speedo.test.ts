@@ -41,10 +41,11 @@ describe('the compact speedometer', () => {
     speedo.hide(other); expect(speedo.active).toBe(true);                                // only the vehicle that holds it can hide it
     speedo.hide(me); expect(root.classes.has('on')).toBe(false); expect(speedo.text).toBe('');
   });
-  it('is small, legible and fixed in size on every phone: 60 px at 320 px wide, 66 at 390, 72 from 424 up; the number in tabular figures, the unit under it', () => {
-    const d = /--d: clamp\((\d+)px, (\d+)vw, (\d+)px\)/.exec(css)!;
-    const at = (w: number) => Math.max(+d[1], Math.min(+d[3], (w * +d[2]) / 100));
-    expect(at(320)).toBe(60); expect(Math.round(at(390))).toBe(66); expect(at(430)).toBe(72); expect(at(1280)).toBe(72);
+  it('is small, legible and fixed in size on every phone: 60 px at 320 px wide, 66 at 390, 72 from 424 up (and by the height on a phone held on its side); the number in tabular figures, the unit under it', () => {
+    const d = /--d: clamp\((\d+)px, min\((\d+)vw, (\d+)vh\), (\d+)px\)/.exec(css)!;
+    const at = (w: number, h: number) => Math.max(+d[1], Math.min(+d[4], (w * +d[2]) / 100, (h * +d[3]) / 100));
+    expect(at(320, 568)).toBe(60); expect(Math.round(at(390, 844))).toBe(66); expect(at(430, 932)).toBe(72); expect(at(1280, 720)).toBe(72);
+    expect(Math.round(at(568, 320))).toBe(61); expect(at(844, 390)).toBe(72);            // a phone on its side: sized by its height
     expect(css).toContain('tabular-nums'); expect(css).toMatch(/contain: strict/); expect(css).toMatch(/#speedo \{ display: none;/); expect(css).toMatch(/#speedo\.on \{ display: flex; \}/);
     expect(css).toMatch(/pointer-events: none/);                                          // never in the way of a thumb
   });
@@ -55,6 +56,10 @@ describe('the compact speedometer', () => {
     expect(+withPad[1]).toBe(+padGeom[1]); expect(+withPad[2]).toBe(+padGeom[2]);       // the pad's own bottom and height: the disc starts above its top edge
     expect(+withPad[3]).toBeGreaterThanOrEqual(12);                                       // and never closer than this to it
     expect(css).not.toMatch(/right:/); expect(css).not.toMatch(/\btop:/);
+    // a phone on its side: beside the pad's right end (the pad is 216 px wide there), low enough to stay under the speech bubbles' line (76 px from the bottom)
+    const side = /@media \(max-height: 500px\) and \(orientation: landscape\) \{\s*body\.ridepad #speedo \{ --d: (\d+)px; left: calc\(14px \+ (\d+)px \+ (\d+)px \+ var\(--sa-l\)\); bottom: calc\((\d+)px \+ var\(--sa-b\)\); \}/.exec(css)!;
+    expect(+side[2]).toBe(216); expect(+side[3]).toBeGreaterThanOrEqual(10); expect(+side[4] + +side[1]).toBeLessThanOrEqual(76);
+    expect(pad).toMatch(/#steerpad \{[^}]*width: min\(216px,/);
   });
   it('the driven vehicle feeds it what it really covered, hides it when nobody drives, and the speed is no longer written in the place chip (shown once)', () => {
     expect(own).toContain('speedo.show(this, speedOver(this.st.odo - odo0, dt), dt)');
