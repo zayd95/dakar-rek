@@ -83,7 +83,8 @@ await pilot(page, t, 'teranga', [{ ...inLane, tol: 3, speed: 5 }, { x: K.x - F.x
 const marks = await d(() => ({ ui: window.__dakar.uiMarkers(), mm: window.__dakar.minimap(), goal: document.getElementById('goal')?.dataset.job ?? null }));
 check('the pick-up is marked as a VTC ride: the green pin and car badge, its kerb bay on the road, the minimap and the goal line say « vtc »', marks.ui.job === 'vtc' && marks.mm.job === 'vtc' && marks.goal === 'vtc', JSON.stringify({ job: marks.ui.job, bay: marks.ui.bay, pin: marks.ui.pinColor, mm: marks.mm.job, goal: marks.goal }));
 const waiting = await V();
-check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && (waiting.phase === 'walk' || waiting.phase === 'seated'), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
+// (one sample, taken when the driver has stopped: by then the passenger may be walking, at the door as it opens, getting in, or already seated; the next two checks read the whole sequence)
+check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && ['walk', 'open', 'in', 'seated'].includes(waiting.phase), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
 await page.waitForTimeout(1200); await shot('passenger-walks');
 await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 240000 }).catch(() => {});   // walking up, the door, getting in: game time (the renderer is slow)
 const aboard = await V();
@@ -114,7 +115,9 @@ const a1 = await AT();
 const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
 await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
-await driveRoad(page, t, 'teranga', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
+// (cruise 9 m/s, was 11: the cars pick up twice as fast since the release tuning, and this driver looks at the road once or twice a second on a headless page; at 11 m/s it
+// rear-ended the road's traffic near the district's entry in one run out of two (a head-on at 41 km/h, 8 % of the car's health: the wear check below). A person sees the car.)
+await driveRoad(page, t, 'teranga', 'pikine-plateau', len - 40, { cruise: 9, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
 await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, { timeout: 240000 }).catch(() => {});
 const mid = await V();
 check('in the Plateau with the passenger aboard: the same ride, the person came with the car (rebuilt once, never copied)', (await d(() => window.__dakar.pos().hub)) === 'plateau' && mid.trip?.stage === 'aboard' && mid.person?.inCar && mid.persons === 1, JSON.stringify({ person: mid.person, persons: mid.persons, rebuilt: mid.log.rebuilt }));
