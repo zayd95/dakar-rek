@@ -4,7 +4,8 @@ import { newSave } from '../src/core/save';
 import { Relations } from '../src/social/relations';
 import { creditWork } from '../src/economy/streak';
 import { contextualShortcut, debtsNow, highlights, historyRows, missionNow, residenceLine, statRows, streakChip, streakView } from '../src/ui/phone/selectors';
-import { APPS, GROUPS } from '../src/ui/phone/registry';
+import { APPS, GROUPS, homeLayout } from '../src/ui/phone/registry';
+import { phoneHooks } from '../src/ui/phoneHooks';
 
 /** The phone's selectors (src/ui/phone/selectors.ts): what its screens show, read from the save — never a second copy of the game's numbers. */
 const fresh = () => { const s = new GameState(newSave(0)); s.data.play = { day: 1, city: 10 }; return s; };
@@ -55,5 +56,20 @@ describe('phone: the player\'s life hub', () => {
       expect(ids).toContain(id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(APPS.every(a => GROUPS.some(([g]) => g === a.group) && (!!a.screen !== !!a.hook))).toBe(true);
+  });
+
+  it('the home screen: a dock of four favourites, every other app in the grid (one tap), a hook app only with its module', () => {
+    expect(new Set(APPS.map(a => a.home)).size).toBe(APPS.length);           // one rank each: the order never depends on the registry's own
+    const bare = homeLayout();
+    expect(bare.dock.map(a => a.id)).toEqual(['carte', 'travailler', 'portefeuille', 'messages']);
+    expect(bare.grid.some(a => a.hook)).toBe(false);                         // no module registered here: no hook app, no empty tile
+    expect(bare.grid.slice(0, 3).map(a => a.id)).toEqual(['notifs', 'profil', 'logement']);
+    const keys = ['openVtc', 'openJobs', 'openAssets', 'openCredits', 'openBusiness', 'openHome', 'openPeople', 'openPlaces'] as const;
+    for (const k of keys) phoneHooks[k] = () => {};
+    try {
+      const { dock, grid } = homeLayout();
+      expect([...dock, ...grid].map(a => a.id).sort()).toEqual(APPS.map(a => a.id).sort());   // every app is on the home screen
+      expect(grid.slice(0, 8).map(a => a.id)).toEqual(['notifs', 'profil', 'logement', 'vtc', 'travail', 'biens', 'banque', 'reglages']);   // what is used all day first
+    } finally { for (const k of keys) delete phoneHooks[k]; }
   });
 });

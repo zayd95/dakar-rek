@@ -26,7 +26,10 @@ const rect = sel => d(s => { const e = document.querySelector(s); if (!e) return
 const shot = name => page.screenshot({ path: `${out}/${name}.png` });
 /** Frames drawn since the page loaded: a wait in frames is a wait in game time, whatever the renderer's speed. */
 const frames = async n => { const f0 = await d(() => window.__frames); await until(f => window.__frames >= f, f0 + n, 120000); };
-const acted = () => d(() => ({ modal: !!document.querySelector('#modal.on'), mode: window.__dakar.pos().mode, hub: window.__dakar.pos().hub }));
+/** What an action of the game leaves behind: a menu open, the game out of « play », or the player somewhere else (a door entered, a trip taken). */
+let ref = null;
+const acted = () => d(r => { const p = window.__dakar.pos(); return { modal: !!document.querySelector('#modal.on'), mode: p.mode, hub: p.hub, far: !!r && Math.hypot(p.x - r.x, p.z - r.z) > 3 }; }, ref);
+const quiet = a => !a.modal && !a.far;
 
 await page.goto(`${base}?debug&touch&argent=900000`, { waitUntil: 'load' });
 await until(() => window.__dakar?.pos().mode === 'play', null, 180000);
@@ -37,35 +40,31 @@ const tap = async sel => { await wait(450); await t.tap(sel); };
 await wait(1200);
 
 // ---- the player stands in front of something to act on (so a leaked action key or a leaked tap on the action button would show)
-const spot = await d(() => {
-  const D = window.__dakar, list = D.interactables();
-  for (const it of list) {
-    for (const [dx, dz] of [[0, 1.6], [1.6, 0], [0, -1.6], [-1.6, 0]]) {
-      D.place(it.x + dx, it.z + dz, Math.atan2(-dx, -dz));
-      return { name: it.name, x: it.x + dx, z: it.z + dz };
-    }
-  }
-  return null;
-});
-await frames(6);
-let focus = await d(() => window.__dakar.focus());
-if (!focus) {                                                              // the first one may be out of reach: try the others until the game offers an action
-  const n = await d(() => window.__dakar.interactables().length);
-  for (let i = 1; i < Math.min(n, 30) && !focus; i++) {
-    await d(i => { const D = window.__dakar, it = D.interactables()[i]; D.place(it.x, it.z + 1.6, Math.PI); }, i);
-    await frames(5); focus = await d(() => window.__dakar.focus());
-  }
+const start = await pos();
+const nearby = await d(() => { const k = window.__dakar, me = k.pos(); return k.interactables().map(i => ({ ...i, d: Math.hypot(i.x - me.x, i.z - me.z) })).filter(i => i.d < 150).sort((a, b) => a.d - b.d).slice(0, 12); });
+let focus = null, spot = null;
+for (const it of nearby) {                                                 // the nearest things of the street, until the game offers an action at one of them
+  await d(i => { const k = window.__dakar, me = k.pos(), a = Math.atan2(i.x - me.x, i.z - me.z); k.place(i.x - Math.sin(a) * 1.6, i.z - Math.cos(a) * 1.6, a); }, it);
+  if (await until(() => !!window.__dakar.focus()?.primary, null, 6000)) { focus = await d(() => window.__dakar.focus()); spot = it; break; }
 }
 const actBox = await rect('#act'), menuBox = await rect('#menuBtn'), joyBox = await rect('#joy');
 check('0. the player stands where the game offers an action (the control for what follows)', !!focus && !!actBox && actBox.w > 20, JSON.stringify({ spot: spot?.name, focus: focus?.name, primary: focus?.primary }));
 await shot('0-game-before');
 
 // control: with the phone CLOSED, the action key does act (else the « nothing fired » checks below would prove nothing)
-await page.keyboard.press('KeyE'); await frames(4);
+ref = await pos();
+await page.keyboard.press('KeyE'); await frames(6);
+await wait(1500); await until(() => !document.querySelector('#fade.on'), null, 20000);
 const control = await acted();
-check('0b. control: phone closed, the action key acts (a menu opens, or the game leaves « play »)', control.modal || control.mode !== 'play', JSON.stringify(control));
+check('0b. control: phone closed, the action key acts (a menu opens, the game leaves « play », or the player goes through the door)', control.modal || control.mode !== 'play' || control.far, JSON.stringify(control));
+// back to the same spot, in play, for the rest
 if (control.modal) { await page.keyboard.press('Escape'); await frames(4); }
-await until(() => window.__dakar.pos().mode === 'play' && !document.querySelector('#modal.on'), null, 20000);
+await until(() => window.__dakar.pos().mode === 'play' && !document.querySelector('#modal.on'), null, 30000);
+if (control.far) { await d(() => window.__dakar.exit()); await until(() => window.__dakar.pos().x < 900, null, 30000); await until(() => window.__dakar.pos().mode === 'play', null, 30000); await wait(800); }
+await d(r => window.__dakar.place(r.x, r.z, r.yaw), ref);
+const again0 = await until(() => !!window.__dakar.focus()?.primary, null, 15000);
+ref = await pos();
+check('0c. back at the same spot, the action offered again', again0 && ref.mode === 'play', JSON.stringify({ x: ref.x, z: ref.z, mode: ref.mode }));
 
 // ---- 1. open with a finger on ☰
 await t.tap('#menuBtn'); await until(() => window.__dakar.phoneInfo().open);
@@ -113,7 +112,7 @@ for (const k of ['KeyE', 'Space']) { await page.keyboard.press(k); await frames(
 await page.keyboard.down('KeyW'); await frames(8); await page.keyboard.up('KeyW');
 const during = await pos(), a2 = await acted();
 check('2. phone open: a thumb on the stick, a camera drag, a tap where the action button is, E, Espace and a held W — the player has not moved, the camera has not turned, nothing was triggered',
-  Math.hypot(during.x - before.x, during.z - before.z) < 0.05 && Math.abs(during.cam - before.cam) < 0.01 && !stick.on && !a2.modal && a2.mode === 'menu' && (await info()).open,
+  Math.hypot(during.x - before.x, during.z - before.z) < 0.05 && Math.abs(during.cam - before.cam) < 0.01 && !stick.on && quiet(a2) && a2.mode === 'menu' && (await info()).open,
   JSON.stringify({ moved: +Math.hypot(during.x - before.x, during.z - before.z).toFixed(3), cam: +(during.cam - before.cam).toFixed(4), stick, a2 }));
 
 // ---- 3. one tap from the home screen to an app; its header; scroll; a sub-screen; back finds the scroll again
@@ -195,20 +194,20 @@ await d(() => window.__dakar.phone('home')); await wait(600);
 await d(() => document.querySelector('#phone [data-nav="close"]').focus());
 await page.keyboard.press('Space'); await until(() => !window.__dakar.phoneInfo().open); await frames(5);
 const afterSpace = await acted();
-check('7. « Fermer » pressed with Entrée, then with Espace (the game’s action keys): the phone closes and nothing is triggered in the street', !afterEnter.modal && afterEnter.mode === 'play' && !afterSpace.modal && afterSpace.mode === 'play', JSON.stringify({ afterEnter, afterSpace }));
+check('7. « Fermer » pressed with Entrée, then with Espace (the game’s action keys): the phone closes and nothing is triggered in the street', quiet(afterEnter) && afterEnter.mode === 'play' && quiet(afterSpace) && afterSpace.mode === 'play', JSON.stringify({ afterEnter, afterSpace }));
 
 // ---- 8. back in play: the same place, nothing fired, and the stick works at once (no stuck stick either)
 const closed = await pos(), a8 = await acted();
-check('8. the phone closed: the player is where they stood, in play, no menu opened by anything above', Math.hypot(closed.x - before.x, closed.z - before.z) < 0.05 && closed.mode === 'play' && !a8.modal && closed.hub === before.hub, JSON.stringify({ closed, a8 }));
+check('8. the phone closed: the player is where they stood, in play, no menu opened by anything above', Math.hypot(closed.x - before.x, closed.z - before.z) < 0.05 && closed.mode === 'play' && quiet(a8) && closed.hub === before.hub, JSON.stringify({ closed, a8 }));
 await frames(6);
 const still = await pos();
 check('8b. nothing keeps walking after the phone (no stuck stick, no stuck key)', Math.hypot(still.x - closed.x, still.z - closed.z) < 0.05, `drift ${Math.hypot(still.x - closed.x, still.z - closed.z).toFixed(3)}`);
 await shot('5-closed-back-in-game');
-await d(() => window.__dakar.place(-6, -30, 0)); await frames(3);
+await d(([x, z]) => window.__dakar.place(x, z, 0), [start.x, start.z]); await frames(3);
 const w0 = await pos();
 await t.down(4, joyBox.cx, joyBox.cy); await t.move(4, joyBox.cx, joyBox.cy - 45, 4); await frames(10); await t.up(4);
 const w1 = await pos();
-check('8c. and the stick moves the player again', Math.hypot(w1.x - w0.x, w1.z - w0.z) > 0.3, `moved ${Math.hypot(w1.x - w0.x, w1.z - w0.z).toFixed(2)} m`);
+check('8c. and the stick moves the player again (a few steps, as a thumb asks)', Math.hypot(w1.x - w0.x, w1.z - w0.z) > 0.3 && Math.hypot(w1.x - w0.x, w1.z - w0.z) < 40, `moved ${Math.hypot(w1.x - w0.x, w1.z - w0.z).toFixed(2)} m`);
 
 // ---- 9. a held stick when the phone opens (☰ with the other thumb) is released, and stays released after closing
 await t.down(5, joyBox.cx, joyBox.cy); await t.move(5, joyBox.cx, joyBox.cy - 45, 4); await frames(3);
@@ -226,7 +225,18 @@ check('9. ☰ tapped while the other thumb holds the stick: the phone opens, the
 await d(() => window.__dakar.phone('travailler')); await wait(400); await d(() => window.__dakar.phoneClose());
 await t.tap('#menuBtn'); await until(() => window.__dakar.phoneInfo().open); await wait(500);
 check('10. closed on an app, the phone reopens on it', (await info()).screen === 'travailler');
-check('11. no page error', errors.length === 0, errors.join(' | '));
+// ---- 11. speed: what opening the phone and switching apps cost the page (the screens' own work: built once per visit, patched in place after)
+const cost = await d(() => {
+  const D = window.__dakar, ms = fn => { const t0 = performance.now(); fn(); return performance.now() - t0; };
+  const median = fn => { const t = Array.from({ length: 5 }, () => ms(fn)).sort((a, b) => a - b); return +t[2].toFixed(1); };
+  D.phoneClose();
+  const open = median(() => { D.phoneClose(); D.phone('home'); }), nodes = document.querySelectorAll('#phone *').length;
+  const apps = ['portefeuille', 'travailler', 'profil', 'reglages', 'notifs', 'logement', 'home'].map(a => [a, median(() => D.phone(a))]);
+  return { open, nodes, apps, map: !!document.querySelector('.maplibregl-map, .maplibregl-canvas') };
+});
+check('11. opening the phone and switching between seven apps (the median of five visits each): a few ms of script each, the home screen a small page, and no map engine loaded before the Carte is asked for',
+  cost.open < 50 && cost.apps.every(([, t]) => t < 50) && cost.nodes < 400 && !cost.map, JSON.stringify(cost));
+check('12. no page error', errors.length === 0, errors.join(' | '));
 
 await browser.close();
 const failed = checks.filter(c => !c.ok);
