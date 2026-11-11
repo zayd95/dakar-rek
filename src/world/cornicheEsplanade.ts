@@ -163,45 +163,15 @@ export function buildGamesDressing(k: { plain: Batch; sign(text: string, bg: str
 }
 
 /**
- * Two landmarks of the Corniche's shore (the owner's photograph of the Corniche road, 11 Nov: the twin minarets over the palms):
- *  • the **Mosquée de la Divinité** on the beach below the road, built in the hub's batch: two tall square white minarets side by side, tier on tier of small arched
- *    balconies, each under a green dome; the low white prayer hall behind them under its own green dome. Solid (one box).
- *  • the **Mamelles**: a hill of laterite out in the sea north of the esplanade, basalt at its foot; the lighthouse on it is a model (src/world/landmarks.ts).
- *    Out of reach: nothing to bump into.
+ * The **Mamelles**: a hill of laterite out in the sea north of the esplanade, basalt at its foot; the lighthouse on it is a model (src/world/landmarks.ts). Out of
+ * reach: nothing to bump into. (A Mosquée de la Divinité stood on the beach here for a few hours on 11 Nov; the owner had it removed.)
  */
-export const MOSQUE = { x: -147, z: 24, w: 14, d: 22 } as const;
 export const MAMELLES = { x: -226, z: -152, top: 15, lighthouse: 17 } as const;
 export function buildShoreLandmarks(k: { plain: Batch; lite: boolean }): Collider[] {
-  const { plain, lite } = k, M = MOSQUE, WHITE = 0xf5f2e9, SHADE = 0xe2dccb, GREEN = 0x1f8a55, DARK = 0x3b4a44;
-  // ---- the mosque
-  plain.box(M.w, 0.5, M.d, M.x, 0, M.z, 0xe6dfcc);                                                        // its terrace on the sand
-  const hx = M.x - 1.6, hz = M.z + 3.2;
-  plain.box(9.5, 5.6, 12.5, hx, 0.5, hz, WHITE); plain.box(9.9, 0.35, 12.9, hx, 6.1, hz, SHADE);           // the prayer hall and its cornice
-  plain.cyl(3.3, 3.3, 1.1, hx, 6.45, hz, WHITE, 12); plain.sphere(3.25, hx, 7.5, hz, GREEN, true); plain.cyl(0.05, 0.09, 1.3, hx, 10.7, hz, 0xd8b23a, 5);
-  for (const [dx, dz] of [[-3.6, -5], [3.6, -5], [-3.6, 5], [3.6, 5]]) { plain.cyl(0.95, 0.95, 0.5, hx + dx, 6.45, hz + dz, WHITE, 8); plain.sphere(0.95, hx + dx, 6.9, hz + dz, GREEN, true); }
-  for (let i = 0; i < 5; i++) { plain.box(0.08, 2.6, 1.2, hx + 4.78, 1.6, hz - 4.8 + i * 2.4, DARK); plain.cyl(0.6, 0.6, 0.08, hx + 4.78, 4.2, hz - 4.8 + i * 2.4, DARK, 8, [0, 0, Math.PI / 2]); }   // pointed windows on the road's side
-  plain.box(0.1, 3.2, 2.0, hx + 4.8, 0.5, hz - 7.6 + 12.5 / 2 + 1.35, 0x1d5c3c);                              // the door
-  // the two minarets, toward the road
-  for (const mz of [M.z - 7.4, M.z - 3.6]) {
-    const mx = M.x + 4.6, S = 2.5, TIER = 3.3, tiers = 6;
-    for (let t = 0; t < tiers; t++) {
-      const y = 0.5 + t * TIER, s = S - t * 0.09;
-      plain.box(s, TIER, s, mx, y, mz, t % 2 ? WHITE : 0xf1ede2);
-      plain.box(s + 0.9, 0.22, s + 0.9, mx, y + TIER - 0.22, mz, SHADE);                                  // the balcony's slab
-      if (!lite || t % 2 === 0) for (const [fx, fz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {               // an arched opening on each face
-        plain.box(fx ? 0.06 : 0.8, 1.5, fz ? 0.06 : 0.8, mx + fx * (s / 2 + 0.01), y + 0.9, mz + fz * (s / 2 + 0.01), DARK);
-        plain.box(fx ? 0.08 : s + 0.7, 0.5, fz ? 0.08 : s + 0.7, mx + fx * (s / 2 + 0.44), y + TIER, mz + fz * (s / 2 + 0.44), WHITE);   // the balcony's parapet
-      }
-    }
-    const top = 0.5 + tiers * TIER;
-    plain.cyl(1.15, 1.25, 1.4, mx, top, mz, WHITE, 8); plain.sphere(1.5, mx, top + 2.1, mz, GREEN); plain.cyl(0.04, 0.07, 1.2, mx, top + 3.5, mz, 0xd8b23a, 5);
-  }
-  const colliders: Collider[] = [{ x0: M.x - M.w / 2, x1: M.x + M.w / 2, z0: M.z - M.d / 2, z1: M.z + M.d / 2, h: 8 }];
-  // ---- the Mamelles: the hill in the sea, its rocks
-  const L = MAMELLES;
+  const { plain, lite } = k, L = MAMELLES;
   plain.cyl(8, 25, L.top, L.x, 0, L.z, 0xb9955c, lite ? 12 : 18); plain.cyl(7.6, 8.4, 0.4, L.x, L.top - 0.2, L.z, 0xcbb489, 12);
   plain.cyl(13, 22, 6, L.x + 16, 0, L.z + 20, 0xa98a54, lite ? 10 : 14);                                    // its lower twin
   for (let i = 0; i < (lite ? 10 : 22); i++) { const a = (i / (lite ? 10 : 22)) * Math.PI * 2, r = 24.5 + Math.sin(i * 7.3) * 1.2; plain.blob(1.1 + (Math.sin(i * 3.1) + 1) * 0.6, L.x + Math.cos(a) * r, 0.3, L.z + Math.sin(a) * r, i % 2 ? 0x3a3b40 : 0x4d4944, 0.6, 0); }
   for (let i = 0; i < (lite ? 6 : 14); i++) { const a = i * 2.4, r = 10 + (i % 5) * 2.6; plain.blob(1.3 + (i % 3) * 0.5, L.x + Math.cos(a) * r, L.top * (1 - (r - 8) / 17) - 0.3, L.z + Math.sin(a) * r, i % 3 ? 0x5f7a3a : 0x7a8a46, 0.55, 0); }   // scrub on its flanks
-  return colliders;
+  return [];
 }

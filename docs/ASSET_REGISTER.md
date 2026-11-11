@@ -142,6 +142,6 @@ The owner: « use my Meshy credits for all Dakar landmarks… buildings, roads, 
 | `phare_mamelles.glb` (0.68 MB, 5 403 triangles) | the lighthouse of the Mamelles, on its hill in the sea north of the Corniche's esplanade | Meshy text-to-3D (preview, texture) from a description of the lighthouse, remesh to 9 000 triangles. A lighthouse on a keeper's house, as the Mamelles' is; not a survey of it | 20 + 10 + 5 |
 | `baobab.glb` (0.59 MB, 4 873 triangles) | a baobab: two stand at the back corners of the monument's hill | Meshy text-to-3D (preview, texture), remesh to 6 000 triangles | 20 + 10 + 5 |
 
-Generated and **not used** (their previews are kept on the owner's Meshy account): a mosque (20 credits: an Ottoman mosque with one minaret, not the Mosquée de la Divinité, which is therefore built in code from the owner's photograph: `src/world/cornicheEsplanade.ts`) and a colonial railway station (20 credits: no place for it yet in the Plateau).
+Generated and **not used** (their previews are kept on the owner's Meshy account): a mosque (20 credits: an Ottoman mosque with one minaret, not the Mosquée de la Divinité; a mosque built in code stood on the Corniche's beach for a few hours and was removed at the owner's request) and a colonial railway station (20 credits: no place for it yet in the Plateau).
 
 Meshy balance: 985 before the first model, **840** after these (145 credits in all: the statue group 35, this set 110).

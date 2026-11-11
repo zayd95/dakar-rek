@@ -280,7 +280,7 @@ The reference's other shots are Dakar's sunsets over the ocean. The game's sun a
 
 « Use my Meshy credits for all Dakar landmarks… bring this Dakar world to life, incorporate few JOJ 2026 theme, act on your own. » A first set, all on the Corniche, none of it in the way of anything that was there:
 
-- **The Mosquée de la Divinité** on the beach below the road (the owner's photograph of the Corniche road: the twin minarets over the palms). Built in code, in the hub's batch: two square white minarets side by side, six tiers of arched balconies each under a green dome, the prayer hall behind under its own dome. Solid. (A generated mosque was tried and was the wrong building.)
+- ~~The Mosquée de la Divinité on the beach below the road~~ **Removed the same evening at the owner's request** (« remove the mosque at the corniche »). It had been built in code from the owner's photograph of the Corniche road; nothing of it is left in the game. Image `24` was taken again without it.
 - **The lighthouse of the Mamelles** on a hill of laterite out in the sea north of the esplanade: the hill in code, the lighthouse a model (`src/world/landmarks.ts`). Out of reach.
 - **Two baobabs** (a model, twice) at the back corners of the monument's hill, solid at the trunk.
 - **Dakar 2026**: a welcome arch over the way down to the esplanade (« DAKAR 2026 · JEUX DE LA JEUNESSE », « DALAL AK JÀMM · BIENVENUE » on the sea side), a line of thirteen nations' flags on masts in the rocks at the headland's seaward edge, a banner in the national colours either side of each lamp mast on the Corniche's median. **No emblem of the Games is drawn**: the rings, the logo and the mascot belong to the organisers; the dressing is the host city's own.
