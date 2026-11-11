@@ -4,7 +4,7 @@ import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture, signCanvasSize, type FacadeStyle } from './batch';
 import { ROW } from './facadeAtlas';
 import { ACTIONS, ENTER } from './content';
-import type { Canopy, Collider, HubWorld, Interactable, KeepClear, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, KeepClear, LandmarkSpot, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { lightPoolMaterial } from './lightBlend';
@@ -13,7 +13,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
-import { ESPLANADE, buildEsplanade } from './cornicheEsplanade';
+import { ESPLANADE, GAMES, MAMELLES, buildEsplanade, buildGamesDressing, buildShoreLandmarks } from './cornicheEsplanade';
 import { entrance, glassBalcony, type FrontKit } from './modernFront';
 import { NGOR_BEACH_KEEP_CLEAR, buildNgorBeach, ngorBeachSeats } from './ngorBeach';
 import { NIGHT_KEEP_CLEAR, buildNightStreet, inNightStreet } from './nightStreet';
@@ -230,6 +230,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const seaMat = new THREE.MeshLambertMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35 });
   yield;
   let esplanadePeople: HubWorld['people'] = [];
+  const landmarks: LandmarkSpot[] = [];
+  let gamesDressing: (() => void) | null = null;
   if (sp.sea === 'west') {
     const wallC = (x0: number, z0: number, x1: number, z1: number, h: number) => colliders.push({ x0, z0, x1, z1, h });
     // Corniche Ouest (after Habib's reference photos): dual carriageway with a concrete median, sidewalk with
@@ -298,6 +300,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     bounds.x0 = BAY.shoreX;
     const esplanade = buildEsplanade({ plain, G, lite });
     colliders.push(...esplanade.colliders); esplanadePeople = esplanade.people;
+    gamesDressing = () => colliders.push(...buildGamesDressing({ plain, sign: addSign, lite }));        // (once the hub's signs can be painted: below)
+    colliders.push(...buildShoreLandmarks({ plain, lite }));
+    landmarks.push({ name: 'phare', file: 'phare_mamelles.glb', x: MAMELLES.x, z: MAMELLES.z, y: MAMELLES.top - 0.1, height: MAMELLES.lighthouse, yaw: Math.PI / 2 });
     bounds.x0 = ESPLANADE.x0 - 1;                                                    // the headland is walked on; everywhere else the shore stops where it did (the esplanade's own walls)
     // concrete median with gaps at the crossings; tall orange double-arm lamps on it
     for (let k = 0; k < NB; k++) {
@@ -307,6 +312,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       wallC(CX - 0.35, z0, CX + 0.35, z1, 0.8);
       for (let z = z0 + 6; z < z1 - 3; z += 14) {
         lampPosts.cyl(0.1, 0.16, 9, CX, 0.8, z, 0xe08a1e, 6);
+        // Dakar 2026: a banner in the national colours either side of each mast (src/world/cornicheEsplanade.ts GAMES)
+        for (const sx of [-1, 1]) { plain.box(0.04, 0.75, 0.8, CX + sx * 0.5, 6.6, z, GAMES.green); plain.box(0.04, 0.75, 0.8, CX + sx * 0.5, 5.85, z, GAMES.yellow); plain.box(0.04, 0.75, 0.8, CX + sx * 0.5, 5.1, z, GAMES.red); plain.box(0.03, 0.05, 0.9, CX + sx * 0.5, 7.36, z, 0x555555); }
         for (const sx of [-1, 1]) {
           limb(lampPosts, [CX, 9.5, z], [CX + sx * 1.6, 9.9, z], 0.06, 0.06, 0xe08a1e, 5);
           lampPosts.box(0.9, 0.22, 0.5, CX + sx * 1.9, 9.7, z, 0xe08a1e);
@@ -427,6 +434,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
     m.position.set(x, y, z); m.rotation.y = rotY; group.add(m); signs.push(m);
   };
+  gamesDressing?.();                                                   // Dakar 2026 on the Corniche: the welcome arch's two signs (src/world/cornicheEsplanade.ts)
   const palm = (x: number, z: number, s = 1, whitewash = false) => {
     R(); // (was lean; kept so the hub layouts stay the same)
     const h = 6.2 * s;
@@ -1599,10 +1607,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         }
         for (const [dx, dz, w, h, d, rot] of [[-1.5, 9.5, 5, 4.6, 3.4, 0.5], [1.8, 10.6, 3.6, 6.2, 3, -0.3], [5, 9.2, 4.4, 3.4, 3.2, 0.9], [-4.2, 8.2, 3, 2.6, 2.6, 0.2]] as const)
           plain.cyl(Math.min(w, d) * 0.3, Math.max(w, d) * 0.6, h + 3.4, SX + dx, top - 5.6, cz - dz, dx > 0 ? CRAG : ROCK, 5, [0.1, rot, -0.08]);
-        // The group itself is a model (src/world/monumentGroup.ts: public/assets/monument/renaissance_group.glb, generated from a photograph of the monument; the
+        // The group itself is a model (src/world/landmarks.ts: public/assets/landmarks/renaissance_group.glb, generated from a photograph of the monument; the
         // owner, 11 Nov: « the monument is ugly… make it look realistic »): it is added to the hub once loaded, standing on the summit with its long side to the
         // stair, as it is seen from the steps. It is about 21 m long for a summit 14 m across: rock is built up under its two ends, and behind it.
         const GROUP = { x: SX + 0.6, z: cz, y: top - 0.35, height: 20 };
+        landmarks.push({ name: 'monument_group', file: 'renaissance_group.glb', x: GROUP.x, z: GROUP.z, y: GROUP.y, height: GROUP.height, yaw: -Math.PI / 2 });   // the side the photograph shows faces the stair (−x); the child points south
+        // two baobabs at the hill's back corners (models: src/world/landmarks.ts), solid at the trunk
+        for (const bx of [cx - 18.5, cx + 18.5]) { landmarks.push({ name: 'baobab', file: 'baobab.glb', x: bx, z: cz - 18.5, y: B - 0.1, height: 11 + (bx > cx ? 1.5 : 0), yaw: bx > cx ? 1.9 : 0.4 }); solidC(bx, cz - 18.5, 2.6, 2.6, 6); }
         for (const sz of [-1, 1]) {
           plain.cyl(2.6, 3.6, 7.0, GROUP.x + 0.2, top - 7.2, cz + sz * 8.8, sz > 0 ? ROCK : CRAG, 5, [0, 0.4 * sz, 0]);
           plain.cyl(1.6, 2.6, 6.0, GROUP.x - 1.6, top - 7.0, cz + sz * 11.2, CRAG, 5, [0.1 * sz, 1.1, 0]);
@@ -2170,7 +2181,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites, keepClear, rooftopDoor, rooftopSign, streetscape, nightStreet,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, landmarks, sites, keepClear, rooftopDoor, rooftopSign, streetscape, nightStreet,
     dispose() { disposeGroup(group); },
   };
 }

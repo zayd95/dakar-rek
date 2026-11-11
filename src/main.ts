@@ -25,7 +25,7 @@ import { inBand, type Action, type Collider, type HubWorld, type Interactable } 
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic } from './actors/npc';
 import { MonumentLife } from './actors/life';
-import { attachMonumentGroup } from './world/monumentGroup';
+import { attachLandmarks } from './world/landmarks';
 import { PlacedPeople } from './actors/placedPeople';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
@@ -583,7 +583,7 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
   for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
   ambient = new PlacedPeople(w, rand, h => extra.add(h.group));
   life?.dispose(); life = w.monument ? new MonumentLife(w.monument, rand, QUAL[quality].crowd) : null;
-  if (w.monument) void attachMonumentGroup(w, () => world === w);                // the statue group's model (src/world/monumentGroup.ts): added when it has loaded, if the player is still there
+  if (w.landmarks?.length) void attachLandmarks(w, () => world === w);           // the landmarks that are models (src/world/landmarks.ts): added as their files arrive, if the player is still there
   if (life) extra.add(life.group);
   npcLife.load(w, extra);                            // recurring cast on their daily routines
   if (early) yield* pause('people + cast');

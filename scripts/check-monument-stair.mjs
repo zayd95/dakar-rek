@@ -52,7 +52,7 @@ await page.evaluate(([x, z]) => window.__dakar.place(x, z, Math.PI / 2), [S.x0 -
 await walkTo(page, t, S.x0 + 12, S.z + 12, { tol: 0.5, ms: 30000 });
 const flank = await pos();
 check('the hill\'s flank is closed beside the stair', flank.x < S.x0 + 2.5 && flank.y < 0.6, `x ${flank.x.toFixed(2)} y ${flank.y.toFixed(2)}`);
-const group = await page.evaluate(() => { let m = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'monument_group') m = o; }); return m ? { tris: m.geometry.index.count / 3, y: +m.position.y.toFixed(1), map: !!m.material.map } : null; });
+const group = await page.evaluate(() => { let m = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'landmark_monument_group') m = o; }); return m ? { tris: m.geometry.index.count / 3, y: +m.position.y.toFixed(1), map: !!m.material.map } : null; });
 check('the statue group\'s model is in the scene, textured', !!group && group.tris > 5000 && group.map, JSON.stringify(group));
 check('no JavaScript errors', errors.length === 0, JSON.stringify(errors.slice(0, 3)));
 await browser.close();

@@ -86,9 +86,11 @@ export interface HubWorld {
   people: { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; y?: number; look?: PersonLook; walkTo?: { x: number; z: number } }[];
   /** Parked car rapides at the station (they get an apprentice calling for passengers). */
   rapides: THREE.Object3D[];
+  /** The landmarks that are models (src/world/landmarks.ts): where each stands, how tall, which way it faces. */
+  landmarks?: LandmarkSpot[];
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */
   monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[];
-    /** Where the statue group stands (its base's middle) and how tall it is: src/world/monumentGroup.ts puts the model there. */
+    /** Where the statue group stands (its base's middle) and how tall it is: src/world/landmarks.ts puts the model there. */
     group: { x: number; z: number; y: number; height: number } } | null;
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
@@ -118,3 +120,6 @@ export interface HubWorld {
 /** A rectangle of the ground kept open (HubWorld.keepClear). */
 export interface KeepClear { x0: number; z0: number; x1: number; z1: number; why: string }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }
+
+/** A model landmark's place in a hub (src/world/landmarks.ts): the file under public/assets/landmarks/, its base's middle, its height in metres, its facing. */
+export interface LandmarkSpot { name: string; file: string; x: number; z: number; y: number; height: number; yaw: number; tint?: number; shadow?: boolean }

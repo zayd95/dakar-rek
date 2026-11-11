@@ -127,8 +127,21 @@ Captures: `docs/screenshots/assets/` (`node scripts/shots-assets.mjs`).
 
 | File | What it is | How it was made | Cost |
 |---|---|---|---|
-| `public/assets/monument/renaissance_group.glb` (0.9 MB, 14 431 triangles, one 1024 colour texture) | the bronze group on the Corniche's hill: the man, the child he holds up, the woman, the rock they rise from | **Meshy** image-to-3D (standard model, textured) from **one photograph** of the monument's long side, then Meshy remesh to 14 000 triangles. In this repository: the normal and metal/roughness maps dropped (the game lights it as a matt surface), the colour map reduced from 2048 to 1024 and re-toned from the generator's dark olive to bronze, the file rewritten (`src/world/monumentGroup.ts` loads it) | 30 + 5 = **35 Meshy credits** of the owner's account (balance 985 before) |
+| `public/assets/landmarks/renaissance_group.glb` (0.9 MB, 14 431 triangles, one 1024 colour texture) | the bronze group on the Corniche's hill: the man, the child he holds up, the woman, the rock they rise from | **Meshy** image-to-3D (standard model, textured) from **one photograph** of the monument's long side, then Meshy remesh to 14 000 triangles. In this repository: the normal and metal/roughness maps dropped (the game lights it as a matt surface), the colour map reduced from 2048 to 1024 and re-toned from the generator's dark olive to bronze, the file rewritten (`src/world/landmarks.ts` loads it) | 30 + 5 = **35 Meshy credits** of the owner's account (balance 985 before) |
 
 - **Reference photograph**: « The African Renaissance Monument.jpg », Wikimedia Commons, licence CC BY 4.0 (https://commons.wikimedia.org/wiki/File:The_African_Renaissance_Monument.jpg). The photograph is not in the repository; the model was generated from a crop of it.
 - **What it is not**: a survey of the sculpture. The side away from the photograph is the generator's guess. The monument itself is a work by Pierre Goudiaby Atepa's studio built by Mansudae Overseas Projects (2010); it appears here as a landmark of the city, as it did before in hand-built form.
 - The Meshy task ids (image-to-3D `01a1ccb2-7e8a-73d4-9232-6cf89636a9a5`, remesh `01a1ccb4-4373-74ac-9564-d45a269703d0`) are kept so the full-detail model (28 MB) can be fetched again from the owner's account.
+
+## Landmarks that are models, second set (11 November 2026, evening)
+
+The owner: « use my Meshy credits for all Dakar landmarks… buildings, roads, busy streets, accessories ». Files under `public/assets/landmarks/`, loaded by `src/world/landmarks.ts`, made game-ready by `scripts/landmark-glb.py` (colour map only, 1024, JPEG).
+
+| File | What | How | Credits |
+|---|---|---|---|
+| `phare_mamelles.glb` (0.68 MB, 5 403 triangles) | the lighthouse of the Mamelles, on its hill in the sea north of the Corniche's esplanade | Meshy text-to-3D (preview, texture) from a description of the lighthouse, remesh to 9 000 triangles. A lighthouse on a keeper's house, as the Mamelles' is; not a survey of it | 20 + 10 + 5 |
+| `baobab.glb` (0.59 MB, 4 873 triangles) | a baobab: two stand at the back corners of the monument's hill | Meshy text-to-3D (preview, texture), remesh to 6 000 triangles | 20 + 10 + 5 |
+
+Generated and **not used** (their previews are kept on the owner's Meshy account): a mosque (20 credits: an Ottoman mosque with one minaret, not the Mosquée de la Divinité, which is therefore built in code from the owner's photograph: `src/world/cornicheEsplanade.ts`) and a colonial railway station (20 credits: no place for it yet in the Plateau).
+
+Meshy balance: 985 before the first model, **840** after these (145 credits in all: the statue group 35, this set 110).
