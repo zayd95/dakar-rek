@@ -44,8 +44,10 @@ export const STEER_CALM = 0.04;
  * A contact, by the share of the heading that runs ALONG the wall (1: parallel, 0: square on). Below `NOSE_ON` (steeper than about 65°) the vehicle has run into it: it stops and
  * rolls back a hand's width. Above it, it slides: it loses the part of its speed that went into the wall (`SCRAPE_LOSS`, per second of contact), and from `DEFLECT_FROM` (about 53°)
  * its nose is turned along the wall, fully from `DEFLECT_FULL` (30°) at `DEFLECT` 1/s: a glancing touch at speed costs a little speed and a scrape, not the whole run-up.
+ * A vehicle that only LEANS on something (under `PUSH` m/s: after the stop, the pedal still down) is not stopped again: it creeps sideways along it, however squarely it stands,
+ * so the corner of a wall or of a stopped car is slid off, slowly, without having to back up (as it always could).
  */
-export const NOSE_ON = 0.42, SCRAPE_LOSS = 30, DEFLECT_FROM = 0.6, DEFLECT_FULL = 0.866, DEFLECT = 6, DEFLECT_MIN = 1.5;
+export const NOSE_ON = 0.42, SCRAPE_LOSS = 30, DEFLECT_FROM = 0.6, DEFLECT_FULL = 0.866, DEFLECT = 6, DEFLECT_MIN = 1.5, PUSH = 1.2;
 /** The roll back from a wall met square on (the share of the speed, and at most this many m/s): enough to clear the bumper, never a spring. */
 export const BOUNCE = 0.15, BOUNCE_MAX = 2.2;
 
@@ -125,7 +127,7 @@ export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: numb
   const fx = Math.sin(yaw), fz = Math.cos(yaw);
   const freeX = !stuck && !hits(d, nx, s.z, yaw, blocked), freeZ = !stuck && !freeX && !hits(d, s.x, nz, yaw, blocked);
   const along = freeX ? Math.abs(fx) : freeZ ? Math.abs(fz) : 0;
-  if (along >= NOSE_ON) {
+  if (along >= NOSE_ON || ((freeX || freeZ) && Math.abs(s.speed) <= PUSH)) {
     // it slides along the wall: the free part of the move is kept, and the speed loses what went into the wall (by the time in contact, not by the frame)
     if (freeX) { s.odo += Math.abs(nx - s.x); s.x = nx; } else { s.odo += Math.abs(nz - s.z); s.z = nz; }
     s.yaw = yaw;

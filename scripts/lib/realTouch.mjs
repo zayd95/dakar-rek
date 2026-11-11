@@ -123,14 +123,17 @@ export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 
  * loop took; a stall can then be read (was the driver slow? did the page drop a finger?) instead of guessed.
  */
 export const UNSTICK_AFTER = 5, UNSTICK_HOLD = 3.5;
+/**
+ * How far down the gas pedal (0 the heel … 0.38: just short of full throttle, which held would open the boosted range) for a vehicle whose cruising speed is `top` m/s to settle
+ * at `v` m/s by itself: the inverse of the pad's `gasPressure` and of the controls' `throttleCurve` (src/transport/ridePad.ts, controls.ts). `heelSpeed`: what the heel alone gives.
+ */
+export const pedalFor = (v, top) => { const share = Math.max(0, Math.min(1, v / top)), g = (-0.35 + Math.sqrt(0.1225 + 2.6 * share)) / 1.3; return Math.max(0, Math.min(0.38, ((g - 0.35) / 0.65) * 0.4)); };
+export const heelSpeed = top => top * 0.35 * (0.35 + 0.65 * 0.35);
 export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5, boost = false, unstick = false, trace = null } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
   const R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5), t0 = Date.now();
   const drv = await page.evaluate(k => window.__dakar[k].info?.().drive ?? null, key).catch(() => null), top = drv?.maxSpeed ?? 21;
-  // how far down the pedal (0 the heel … 0.38: just short of full throttle, which held would open the boosted range) for the car to settle at `v` m/s: the inverse of the pad's
-  // `gasPressure` and of the controls' `throttleCurve` (src/transport/ridePad.ts, controls.ts)
-  const pedalFor = v => { const share = Math.max(0, Math.min(1, v / top)), g = (-0.35 + Math.sqrt(0.1225 + 2.6 * share)) / 1.3; return Math.max(0, Math.min(0.38, ((g - 0.35) / 0.65) * 0.4)); };
-  const heelSpeed = top * 0.35 * (0.35 + 0.65 * 0.35);                         // what the heel alone gives
+  const heel = heelSpeed(top);
   let gasOn = false, steerNow = 0;
   const stick = async () => rocker(steerNow);
   let gasLevel = 0.8;
@@ -183,8 +186,8 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       await brake(braking);                                              // a corner is taken slowly: the brake, then the gas again
       // the gas: to the floor with `boost`; else the toe where the car settles a little above the limit by itself; under what the heel gives, short touches of the heel (creeping to a kerb or into a bay: the car does not leap at the pedal)
       if (boost) await press(at.speed < limit, true);
-      else if (limit + 0.4 < heelSpeed) await press(at.speed < limit - 0.3, 0);
-      else await press(!braking, +pedalFor(limit + 0.4).toFixed(2));
+      else if (limit + 0.4 < heel) await press(at.speed < limit - 0.3, 0);
+      else await press(!braking, +pedalFor(limit + 0.4, top).toFixed(2));
       if (trace) { const now = Date.now(); trace.push({ w: +((now - t0) / 1000).toFixed(2), t: at.t, x: at.x, z: at.z, yaw: at.yaw, v: at.speed, wp: wi, steer: +steerNow.toFixed(2), gas: gasOn ? gasLevel : 0, brake: brakeOn, loop: now - loopAt }); loopAt = now; }
       await page.waitForTimeout(90);
     }

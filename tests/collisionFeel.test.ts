@@ -119,6 +119,14 @@ describe('recovering from a contact (docs/DRIVING_FEEL.md): a glancing touch cos
       expect(hits(car, s.x, s.z, s.yaw, blocked, 0.99)).toBe(false);
     }
   });
+  it('leaning on the corner of something (the rear corner of a stopped car, met almost square on): after the stop the pedal slides the car off it, slowly, without backing up', () => {
+    // a stopped car's rear: a box across the lane's right half; the driver comes at it 10° off square and keeps the pedal down
+    const box = (x: number, z: number, r: number) => { const cx = Math.max(-0.2, Math.min(x, 3)), cz = Math.max(30, Math.min(z, 34.5)); return Math.hypot(x - cx, z - cz) < r; };
+    const s = newDriveState(0.9, 20, -0.18), t = new ContactTracker(); s.speed = 6; let impacts = 0, headOn = false, entered = false, secs = 0;
+    while (s.z < 36 && secs < 60) { const v0 = s.speed, hit = driveSteps(s, gas, car, 1 / 60, box), f = t.step(1 / 60, hit, v0, s.speed); if (f.impact) { impacts++; headOn ||= f.impact.headOn; } if (hits(car, s.x, s.z, s.yaw, box, 0.99)) entered = true; secs += 1 / 60; }
+    expect(headOn).toBe(true); expect(impacts).toBeLessThanOrEqual(2); expect(entered).toBe(false);
+    expect(s.z, `after ${secs.toFixed(0)} s at x ${s.x.toFixed(2)}`).toBeGreaterThanOrEqual(36);    // it got past, on the pedal alone
+  });
   it('after it: the brake, held, backs the car 2.5 m clear of the wall in under two seconds (the hold is shorter right after a contact), and a tap never reverses', () => {
     const blocked = wall(-50, 50, 30, 30.3), s = newDriveState(0, 20, 0), ctl = new DriveControls(); s.speed = 9;
     const step = (cmd: DriveCmd) => { const v0 = s.speed, hit = driveSteps(s, ctl.update(1 / 60, cmd, s.speed, car, true), car, 1 / 60, blocked); if (hit && v0 > 0 && s.speed <= 0) ctl.stoppedBy(); return hit; };
