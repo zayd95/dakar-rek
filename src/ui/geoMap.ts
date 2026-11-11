@@ -1,7 +1,7 @@
 import type * as ML from 'maplibre-gl';
 import type { FeatureCollection } from 'geojson';
 import { HUB_NAMES } from '../world/content';
-import { CITY_FIT_PAD, HUB_ANCHORS, cityBounds, gameToLngLat, hubFootprint, hubToLngLat, inFootprint, linkLineFrom, mapLinks, type MapLink } from '../geo/anchors';
+import { HUB_ANCHORS, cityBounds, cityFitPad, gameToLngLat, hubFootprint, hubToLngLat, inFootprint, linkLineFrom, mapLinks, type MapLink } from '../geo/anchors';
 import { HUB_IDS, type HubId } from '../core/types';
 import { CITY_HUBS, planTrip, type TripPlan } from '../road/graph';
 import { mapBridge } from './minimap';
@@ -66,7 +66,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
     try {
       map = new ml.Map({
         // it opens on the whole city: the five districts, apart, each where it lies, and the roads between them (◎ goes to the player)
-        container: box, style: offlineStyle(night), bounds: cityBounds(), fitBoundsOptions: { padding: CITY_FIT_PAD }, minZoom: 9, maxZoom: 17.5, maxBounds: [[-17.75, 14.5], [-17.0, 15.0]],
+        container: box, style: offlineStyle(night), bounds: cityBounds(), fitBoundsOptions: { padding: cityFitPad(box.clientHeight) }, minZoom: 9, maxZoom: 17.5, maxBounds: [[-17.75, 14.5], [-17.0, 15.0]],
         attributionControl: false, dragRotate: false, pitchWithRotate: false, touchPitch: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), fadeDuration: 0, canvasContextAttributes: { antialias: false },
       } as ML.MapOptions);
     } catch { tell('La carte de la ville demande WebGL, indisponible ici. Le plan du quartier reste disponible.', 0); map = null; return; }
@@ -134,7 +134,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
         if (!l.w) { l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; }
         const p = m.project(l.ll);
         return { x: p.x, y: p.y + l.dy * (3 + l.h / 2), w: l.w, h: l.h, rank: l.rank };
-      }), 4);
+      }), 3);
       labs.forEach((l, i) => { if (keep[i] !== l.on) { l.on = keep[i]; l.el.classList.toggle('gm-off', !keep[i]); } });
     };
 
@@ -230,7 +230,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
       else if (dyn.pin) { dyn.pin.remove(); dyn.pin = undefined; }
     };
     const recenter = () => map?.easeTo({ center: gameToLngLat((mapBridge.hub?.id ?? 'pikine') as HubId, mapBridge.player.x, mapBridge.player.z).lngLat, zoom: Math.max(map.getZoom(), 13), duration: 400 });
-    const all = () => map?.fitBounds(cityBounds(), { padding: CITY_FIT_PAD, duration: 400 });
+    const all = () => map?.fitBounds(cityBounds(), { padding: cityFitPad(box.clientHeight), duration: 400 });
     root.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gm]'); if (!b) return;
       if (b.dataset.gm === 'me') recenter(); else if (b.dataset.gm === 'in') map?.zoomIn({ duration: 250 }); else if (b.dataset.gm === 'out') map?.zoomOut({ duration: 250 }); else all();

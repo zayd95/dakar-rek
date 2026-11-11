@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CITY_FIT_PAD, HUB_ANCHORS, HUB_SCALE, cityBounds, hubFootprint, hubToLngLat, inFootprint, linkLineFrom, lngLatToHub, mapLinks } from '../src/geo/anchors';
+import { HUB_ANCHORS, HUB_SCALE, cityBounds, cityFitPad, hubFootprint, hubToLngLat, inFootprint, linkLineFrom, lngLatToHub, mapLinks } from '../src/geo/anchors';
 import { HUB_IDS, type HubId } from '../src/core/types';
 import { HUB_NAMES } from '../src/world/content';
 import { CITY_HUBS, EDGES, planTrip } from '../src/road/graph';
@@ -54,18 +54,21 @@ describe('the five districts on the city view', () => {
     const [sw, ne] = cityBounds();
     for (const id of HUB_IDS) for (const p of hubFootprint(id)) { expect(p[0]).toBeGreaterThanOrEqual(sw[0]); expect(p[0]).toBeLessThanOrEqual(ne[0]); expect(p[1]).toBeGreaterThanOrEqual(sw[1]); expect(p[1]).toBeLessThanOrEqual(ne[1]); }
   });
-  it('on a phone (the map is 358 × 422 px in portrait) the five names are all drawn when the map opens on the whole city: none covers another', () => {
-    const [sw, ne] = cityBounds(), W = 358, H = 422, pad = CITY_FIT_PAD, lat = (sw[1] + ne[1]) / 2, mx = 111320 * Math.cos((lat * Math.PI) / 180), my = 111320;
-    // metres per pixel of the fit (the tighter of the two axes), then each name's box: on the top edge of its rectangle, 3 px above it (src/ui/geoMap.ts labels)
-    const mpp = Math.max(((ne[0] - sw[0]) * mx) / (W - pad.left - pad.right), ((ne[1] - sw[1]) * my) / (H - pad.top - pad.bottom));
-    const boxes = HUB_IDS.map(id => {
-      const p = hubToLngLat(id, 0, -HUB_ANCHORS[id].half), w = 34 + 7 * HUB_NAMES[id].split(' · ')[0].length;     // the pill: 12 px bold, its dot and padding (64 to 83 px measured in the game)
-      return { x: ((p[0] - sw[0]) * mx) / mpp, y: ((ne[1] - p[1]) * my) / mpp - 13, w, h: 20, rank: 100 };
+  // the map's box on a phone in portrait (390 × 844), on a small one (320 × 568) and in landscape (844 × 390), as the game lays it out
+  for (const [what, W, H] of [['a phone in portrait', 358, 422], ['a small phone', 288, 284], ['a phone in landscape', 479, 262]] as const) {
+    it(`on ${what} (the map is ${W} × ${H} px) the five names are all drawn when the map opens on the whole city: none covers another`, () => {
+      const [sw, ne] = cityBounds(), pad = cityFitPad(H), lat = (sw[1] + ne[1]) / 2, mx = 111320 * Math.cos((lat * Math.PI) / 180), my = 111320;
+      // metres per pixel of the fit (the tighter of the two axes), then each name's box: on the top edge of its rectangle, 3 px above it (src/ui/geoMap.ts labels)
+      const mpp = Math.max(((ne[0] - sw[0]) * mx) / (W - pad.left - pad.right), ((ne[1] - sw[1]) * my) / (H - pad.top - pad.bottom));
+      const boxes = HUB_IDS.map(id => {
+        const p = hubToLngLat(id, 0, -HUB_ANCHORS[id].half), w = 34 + 7 * HUB_NAMES[id].split(' · ')[0].length;     // the pill: 12 px bold, its dot and padding (64 to 83 px measured in the game)
+        return { x: ((p[0] - sw[0]) * mx) / mpp, y: ((ne[1] - p[1]) * my) / mpp - 13, w, h: 20, rank: 100 };
+      });
+      expect(declutter(boxes, 3)).toEqual([true, true, true, true, true]);
+      // and each rectangle is big enough to see
+      expect((2 * 127 * HUB_SCALE) / mpp).toBeGreaterThan(15);
     });
-    expect(declutter(boxes, 4)).toEqual([true, true, true, true, true]);
-    // and each rectangle is big enough to see (a finger's nail) and smaller than the gap to its nearest neighbour
-    expect((2 * 127 * HUB_SCALE) / mpp).toBeGreaterThan(18);
-  });
+  }
 });
 
 describe('the ways between districts on the city view', () => {

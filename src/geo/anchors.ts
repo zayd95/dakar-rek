@@ -139,8 +139,12 @@ export function cityBounds(): [LngLat, LngLat] {
   return [[w, s], [e, n]];
 }
 
-/** Room (pixels) the map screen keeps clear around `cityBounds` when it shows the whole city: the tabs and a district's name above its rectangle (top), the credit line (bottom), the buttons (right). */
-export const CITY_FIT_PAD = { top: 92, bottom: 52, left: 42, right: 46 };
+/**
+ * Room (pixels) the map screen keeps clear around `cityBounds` when it shows the whole city, for a map `height` pixels high: the tabs and a district's name above its
+ * rectangle (top), the credit line (bottom), half a name each side and the buttons (right). A landscape phone's map is low and its tabs are smaller: less is kept, so
+ * the districts are not drawn so small that two names meet.
+ */
+export const cityFitPad = (height: number) => (height < 320 ? { top: 66, bottom: 34, left: 42, right: 46 } : { top: 92, bottom: 52, left: 42, right: 46 });
 
 /**
  * Where a border street (src/transport/hubLink.ts: two districts laid end to end in the game) runs on the real map, between the two district edges it joins.

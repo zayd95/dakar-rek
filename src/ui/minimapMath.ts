@@ -100,13 +100,13 @@ export interface MapPlace { id: string; name: string; x: number; z: number; kind
 
 /**
  * Drops the second entries of one place: the same kind within `r` metres (an arena's rows, a villa listed twice 3 m apart), or the same name (before « · ») within
- * 3 `r` (a flat listed as a home and as a spot of the city, a quay listed by the hub and by the registry). The first listed stays, unless it is a plain spot and the
- * second says what the place is.
+ * `same` metres (a flat listed as a home and as a spot of the city, the quay listed by the hub at its gate and by the registry at its pontoon, a dealer's three
+ * counters). The first listed stays, unless it is a plain spot and the second says what the place is.
  */
-export function dedupePlaces<T extends { x: number; z: number; kind: PlaceKind; name?: string }>(list: T[], r = 8): T[] {
+export function dedupePlaces<T extends { x: number; z: number; kind: PlaceKind; name?: string }>(list: T[], r = 8, same = 60): T[] {
   const out: T[] = [], short = (p: T) => p.name?.split(' · ')[0];
   for (const p of list) {
-    const i = out.findIndex(q => { const d = Math.hypot(q.x - p.x, q.z - p.z); return (q.kind === p.kind && d < r) || (!!p.name && short(q) === short(p) && d < 3 * r); });
+    const i = out.findIndex(q => { const d = Math.hypot(q.x - p.x, q.z - p.z); return (q.kind === p.kind && d < r) || (!!p.name && short(q) === short(p) && d < same); });
     if (i < 0) out.push(p); else if (out[i].kind === 'spot' && p.kind !== 'spot') out[i] = p;
   }
   return out;

@@ -88,6 +88,8 @@ describe('place kinds and names', () => {
     const flat = dedupePlaces([{ id: 'mermoz:city:filaos', name: 'Appartement F3 · Résidence Les Filaos', x: 66, z: -35, kind: 'spot' as const }, { id: 'mermoz:home:filaos', name: 'Appartement F3 · Résidence Les Filaos', x: 69, z: -36, kind: 'home' as const }]);
     expect(flat.map(p => p.id)).toEqual(['mermoz:home:filaos']);
     expect(dedupePlaces([{ name: 'Villa avec piscine · Almadies', x: -21, z: -13, kind: 'home' as const }, { name: 'Villa avec piscine · Almadies', x: -14, z: -5, kind: 'home' as const }])).toHaveLength(1);
+    // the quay: the hub lists its gate, the registry its own anchor further along the pontoon (here 46 m on)
+    expect(dedupePlaces([{ id: 'almadies:port', name: 'Embarcadère de Ngor', x: 30, z: -109, kind: 'transport' as const }, { id: 'almadies:venue:embarcadere', name: 'Embarcadère de Ngor', x: 46, z: -152, kind: 'transport' as const }]).map(p => p.id)).toEqual(['almadies:port']);
     // the same name far apart is two places (the four ways out of a district)
     expect(dedupePlaces([{ name: 'Sortie du quartier · à pied', x: 0, z: -128, kind: 'spot' as const }, { name: 'Sortie du quartier · à pied', x: 128, z: 0, kind: 'spot' as const }])).toHaveLength(2);
   });

@@ -39,6 +39,8 @@ export function mountFullMap(host: HTMLElement): () => void {
   // every listener of this mount: the canvas outlives the tab (the map is mounted again each time « Quartier » opens), and a listener left on it would pan and draw a second, stale view
   const life = new AbortController(), sig = { signal: life.signal };
   const textW = new Map<string, number>();
+  /** The view stays on the player until the map is touched (and again after ◎): a district being loaded places the player a few frames after the map is drawn again. */
+  let follow = true;
 
   const resize = () => {
     const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
@@ -159,6 +161,7 @@ export function mountFullMap(host: HTMLElement): () => void {
   let moved = 0, pinch = 0;
   const local = (e: PointerEvent | WheelEvent) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   cv.addEventListener('pointerdown', e => {
+    follow = false;
     e.stopPropagation(); cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); moved = 0;
     if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
   }, sig);
@@ -199,7 +202,7 @@ export function mountFullMap(host: HTMLElement): () => void {
     switch (b.dataset.fm) {
       case 'in': zoomAt(W / 2, H / 2, 1.5); break;
       case 'out': zoomAt(W / 2, H / 2, 1 / 1.5); break;
-      case 'me': view.cx = mapBridge.player.x; view.cz = mapBridge.player.z; view.scale = Math.max(view.scale, fit * 1.6); clampView(); kick(); break;
+      case 'me': follow = true; view.cx = mapBridge.player.x; view.cz = mapBridge.player.z; view.scale = Math.max(view.scale, fit * 1.6); clampView(); kick(); break;
       case 'mark': if (selected) {
         if (mapBridge.destination() === selected.id) { mapBridge.walkTo(null); note = 'Repère retiré'; }
         else { mapBridge.walkTo(selected.id); note = 'Repère placé : suis le trait pointillé'; }
@@ -213,6 +216,7 @@ export function mountFullMap(host: HTMLElement): () => void {
   /** The strip under the map asks for a place or a district: this district's places are selected (and centred), anything else gets its card (how far, the button that goes there). */
   const onFocus = (e: Event) => {
     const f = (e as CustomEvent<Focus>).detail, pl = mapBridge.player;
+    follow = false;
     if (f.kind === 'place' && f.hub === here) {
       const p = mapBridge.places.find(q => q.id === f.id);
       if (p) {
@@ -235,6 +239,7 @@ export function mountFullMap(host: HTMLElement): () => void {
     if (mapBridge.hub !== hub || mapBridge.layer !== lay) { host.dispatchEvent(new Event('carte:stale')); return; }
     t += 0.1; resize();
     const pl = mapBridge.player;
+    if (follow && (view.cx !== pl.x || view.cz !== pl.z)) { view.cx = pl.x; view.cz = pl.z; clampView(); }
     if (selected && (selRoute?.points[0].x !== pl.x || selRoute?.points[0].z !== pl.z) && Math.hypot((selRoute?.points[0].x ?? 0) - pl.x, (selRoute?.points[0].z ?? 0) - pl.z) > 3) { selRoute = routePath(mapBridge.net(pl, selected), { x: pl.x, z: pl.z }, selected); }
     refreshCard(); draw();
   }, 100);
