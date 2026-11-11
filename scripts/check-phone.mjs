@@ -9,8 +9,9 @@ await fs.mkdir(out, { recursive: true });
 const checks = [];
 const check = (name, ok, detail = '') => { checks.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, detail); };
 const launch = { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] };
-const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-try { await fs.access(exe); launch.executablePath = exe; } catch { /* Playwright's own Chromium */ }
+for (const exe of ['/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome']) {
+  try { await fs.access(exe); launch.executablePath = exe; break; } catch { /* the next one, else Playwright's own Chromium */ }
+}
 const browser = await chromium.launch(launch);
 
 const APPS = [['portefeuille', 'Argent'], ['carte', 'Carte'], ['arene', 'Arène'], ['carnet', 'Carnet'], ['actus', 'Actus'], ['sante', 'Santé'], ['profil', 'Profil'], ['horloge', 'Horloge'], ['meteo', 'Météo'], ['calcul', 'Calculatrice'], ['aide', 'Aide'], ['reglages', 'Réglages']];
@@ -37,12 +38,21 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#menuBtn'); await waitPhone(true);
   let i = await info(), p = await pos();
   check(`${label}: ☰ opens the phone on the home screen`, i.open && i.screen === 'home' && p.mode === 'menu', JSON.stringify({ ...i, mode: p.mode }));
-  // the home screen: who and where (the city time), the wallet, the five destinations; every app in « Toutes les apps »
-  const status = (await page.locator('#phone .hm-when').innerText()).replace(/\s/g, ' ');
+  // the home screen of a smartphone: the status bar (the city's time and day, the energy), the widget (where, the wallet), every app one tap away
+  // (the dock's favourites, the grid), and the library (« Toutes les apps ») at the end of the dock
+  const status = (await page.locator('#phone .ph-status').innerText()).replace(/\s+/g, ' '), where = await page.locator('#phone .hm-when').innerText();
   const balance = (await page.locator('#phone .hm-chip.money').innerText()).replace(/\s/g, ' ');
   const dest = await page.locator('#phone .hm-dest [data-go]').evaluateAll(els => els.map(e => e.dataset.go));
-  check(`${label}: the home shows the city time, the FCFA balance and the five destinations`, /\d\d:\d\d/.test(status) && / F/.test(balance) && ['carte', 'travailler', 'profil', 'logement', 'portefeuille', 'apps'].every(g => dest.includes(g)), `${status} | ${balance} | ${dest.join(',')}`);
+  const dock = await page.locator('#phone .ph-dock .ph-app').evaluateAll(els => els.map(e => e.dataset.app ?? e.dataset.go));
+  check(`${label}: the status bar shows the city time and day, the home the district, the FCFA balance and every destination one tap away (the dock: Carte, Travailler, Argent, Messages, the library)`,
+    /\d\d:\d\d (Lun|Mar|Mer|Jeu|Ven|Sam|Dim)\./.test(status) && /Pikine/.test(where) && / F/.test(balance) && ['carte', 'travailler', 'profil', 'logement', 'portefeuille', 'reglages', 'notifs', 'apps'].every(g => dest.includes(g))
+    && dock.join() === 'carte,travailler,portefeuille,messages,apps', `${status} | ${where} | ${balance} | ${dest.join(',')}`);
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });
+  // one tap from the home screen opens an app; the home indicator returns to the home screen
+  await press('#phone .hm-grid [data-app="reglages"]');
+  const one = await info();
+  await press('#phone [data-nav="home"]');
+  check(`${label}: one tap on a home icon opens its app; the home indicator returns to the home screen`, one.screen === 'reglages' && one.depth === 1 && (await info()).screen === 'home', JSON.stringify(one));
   await press('#phone .hm-dest [data-go="apps"]');
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
   // A hook app shows exactly when its module registered the hook (economy, NPCs, city merge in over time). Messages is no hook app since LD2.0-B: it is
@@ -182,7 +192,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     await page.evaluate(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 7, clientX: x, clientY: y })), [x, y]);
     await page.waitForTimeout(500);
     await page.locator('#menuBtn').tap(); await waitPhone(true);
-    await page.locator('#phone [data-nav="close"]').tap(); await waitPhone(false);
+    await press('#phone [data-nav="close"]'); await waitPhone(false);          // (« Fermer » is where ☰ was: a second tap there at once is a double tap's, and is dropped)
     const s0 = await pos(); await page.waitForTimeout(1000); const s1 = await pos();
     check('phone: opening the phone releases a held joystick', Math.hypot(s1.x - s0.x, s1.z - s0.z) < 0.15);
     await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch', pointerId: 7 })));
@@ -191,8 +201,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     await page.evaluate(() => window.__dakar.phone('home')); await page.waitForTimeout(300);
     // measured once the handset's opening animation (a 20 px slide) has run
     await page.waitForFunction(() => [...document.querySelectorAll('#phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished')), null, { timeout: 30000 }).catch(() => {});
-    const box = await page.locator('#phone .ph-device').boundingBox(), dock = await page.locator('#phone .hm-dest').boundingBox();
-    check('phone: landscape phone fits the screen, the destinations in view', box.y + box.height <= 390 + 1 && box.width <= 844 && box.width > box.height && !!dock && dock.y + dock.height <= box.y + box.height, JSON.stringify({ box, dock }));
+    const box = await page.locator('#phone .ph-device').boundingBox(), dock = await page.locator('#phone .ph-dock').boundingBox(), grid = await page.locator('#phone .hm-grid').boundingBox();
+    check('phone: landscape phone fits the screen, the dock (on its side) and the grid in view', box.y + box.height <= 390 + 1 && box.width <= 844 && box.width > box.height && !!dock && dock.y >= box.y && dock.y + dock.height <= box.y + box.height
+      && dock.x + dock.width <= box.x + box.width + 1 && !!grid && grid.x + grid.width <= dock.x + 1, JSON.stringify({ box, dock, grid }));
     await page.screenshot({ path: `${out}/phone-landscape-home.png` });
     await page.evaluate(() => window.__dakar.phone('reglages')); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/phone-landscape-reglages.png` });

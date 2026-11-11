@@ -35,9 +35,6 @@
 #phone .mg-av.sm { width:32px; height:32px; font-size:13px; }
 #phone .mg-dot { position:absolute; right:0; bottom:0; width:13px; height:13px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 2.5px var(--ios-card); }
 
-/* two screens deep (a conversation, « Nouveau message »), the header also shows ⌂: « Fermer » keeps its icon only, so the title is never covered */
-#phone[data-screen="messages"] .ph-head-end:has(.ph-homebtn:not([hidden])) .ph-close-tx { display:none; }
-
 /* ---------------------------------------------------------------- « Nouveau message » */
 #phone .pg-messages .pk-sec > h3 small, #phone .mg-sheet .pk-sec > h3 small { text-transform:none; letter-spacing:0; font-weight:500; }
 #phone .mg-person .mg-av { width:40px; height:40px; font-size:15px; }

@@ -13,6 +13,8 @@ import { clock } from './home';
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const hubShort = (h: string | null) => (h ? HUB_NAMES[h as keyof typeof HUB_NAMES].split(' · ')[0] : 'Dakar');
+/** The sky of a city hour (Météo, and the phone's status bar): night from 19 h to 6 h, a low sun at dawn and dusk. */
+export const skyAt = (hour: number) => { const x = ((hour % 24) + 24) % 24; return x < 6 || x >= 19 ? '🌙' : x < 8 || x >= 17.5 ? '🌤️' : '☀️'; };
 
 export const healthScreen: Screen = {
   title: 'Santé',
@@ -58,7 +60,7 @@ export const lutteursScreen: Screen = {
         ${w.belt ? `<p class="lt-belt">🏆 ${esc(w.belt)}</p>` : ''}
         ${w.last.length ? `<ul class="lt-last">${w.last.map(r => `<li><i class="r${r.res}">${r.res}</i>${esc(r.vs)}<small>${r.title ? 'titre · ' : r.main ? 'combat principal · ' : ''}jour ${r.day}</small></li>`).join('')}</ul>` : '<p class="lt-none">Pas encore combattu cette saison</p>'}
       </section>`).join('')}</div>
-      ${note('Suivre un lutteur : « Ce soir » te dit quand il combat. Juste le plaisir de suivre.')}`;
+      ${note('Suivre un lutteur : « Ce soir » te dit quand il combat.')}`;
     if (arg) requestAnimationFrame(() => page.querySelector(`#lt-${CSS.escape(arg)}`)?.scrollIntoView({ block: 'start' }));
     page.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-follow]'); if (!b) return;
@@ -109,7 +111,7 @@ export const weatherScreen: Screen = {
   mount(page, api) {
     const t = cityTimeAt(api.ctx.now()), h = t.hourFloat;
     const temp = (hour: number) => Math.round(28.5 + 3 * Math.sin(((hour - 9) / 24) * Math.PI * 2));
-    const sky = (hour: number) => { const x = ((hour % 24) + 24) % 24; return x < 6 || x >= 19 ? '🌙' : x < 8 || x >= 17.5 ? '🌤️' : '☀️'; };
+    const sky = skyAt;
     const hours = Array.from({ length: 6 }, (_, i) => Math.floor(h) + i);
     const wind = 10 + (t.day * 7) % 12, humid = 62 + (t.day * 11) % 18;
     page.innerHTML = `<div class="ph-weather"><small>${esc(hubShort(api.ctx.hub()))}</small><b>${temp(h)}°</b>

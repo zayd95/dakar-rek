@@ -76,14 +76,14 @@ try {
   const i0 = await info(), w0 = await wallet();
   check('0. the simulated account answers: Teranga Money 3 000 F, two conversations, one unread, a friend code', i0.balance.amount === 3000 && i0.convs.length === 2 && i0.unread === 1 && i0.me.code === 'F00D-FEED-CAFE-0001' && w0 === 60000, JSON.stringify({ bal: i0.balance, n: i0.convs.length, unread: i0.unread, w0 }));
 
-  // 1 — home › « Toutes les apps » (badge) › Messages (badge) › the list › Awa
+  // 1 — home (Messages in the dock: its badge) › the library, « Toutes les apps » › Messages (its badge there too) › the list › Awa
   await d(() => window.__dakar.phone('home')); await until(() => window.__dakar.phoneInfo().screen === 'home');
   await wait(1200);
-  const homeBadge = await d(() => document.querySelector('#phone .hm-tile[data-go="apps"] .ph-badge')?.textContent ?? '');
+  const homeBadge = await d(() => document.querySelector('#phone .ph-dock .ph-app[data-app="messages"] .ph-badge')?.textContent ?? '');
   await tap('#phone .hm-tile[data-go="apps"]');
   await until(() => window.__dakar.phoneInfo().screen === 'apps'); await wait(600);
   const tileBadge = await d(() => document.querySelector('#phone .ph-app[data-app="messages"] .ph-badge')?.textContent ?? '');
-  check('1a. the unread message shows on « Toutes les apps » and on the Messages tile', homeBadge === '1' && tileBadge === '1', JSON.stringify({ homeBadge, tileBadge }));
+  check('1a. the unread message shows on the home screen’s Messages icon (the dock) and on its tile in « Toutes les apps »', homeBadge === '1' && tileBadge === '1', JSON.stringify({ homeBadge, tileBadge }));
   await tap('#phone .ph-app[data-app="messages"]');
   await until(() => window.__dakar.phoneInfo().screen === 'messages');
   const list = await screenText();

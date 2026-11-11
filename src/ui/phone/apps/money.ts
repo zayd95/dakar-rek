@@ -12,7 +12,8 @@ import './money.css';
 
 /**
  * Argent: the balance (one line at any size), Teranga Money (LD2.0-B: the server-held account, when this build is online), what the player owes and when
- * the next repayment falls, income and charges, the last movements (the full history on a tap), and the money apps (Épargne, Crédits, Biens, Affaires).
+ * the next repayment falls, then what they can DO (the money apps: Épargne, Crédits, Biens, Affaires), then the figures (income and charges) and the
+ * last movements (the full history on a tap).
  */
 function when(at: number): string {
   const d = new Date(at);
@@ -102,7 +103,7 @@ export const moneyScreen: Screen = {
     const apps = [
       row({ icon: '🏦', label: 'Épargne', sub: s.data.bank.opened >= 0 ? `${fcfa(s.data.bank.savings)} de côté · Banque Teranga` : 'Ouvrir un compte à la Banque Teranga', go: 'banque' }),
       phoneHooks.openCredits ? row({ icon: '💳', label: 'Crédits', sub: debt ? `${debt.count} en cours` : 'Aucune dette', act: 'credits' }) : '',
-      phoneHooks.openAssets ? row({ icon: '🔑', label: 'Biens', sub: 'Logements, terrains, panneau, annonces', app: 'biens' }) : '',
+      phoneHooks.openAssets ? row({ icon: '🔑', label: 'Biens', sub: 'Logements, véhicules, terrains, annonces', app: 'biens' }) : '',
       phoneHooks.openBusiness ? row({ icon: '🏢', label: 'Affaires', sub: 'Acheter et voir les revenus', app: 'affaires' }) : '',
     ].filter(Boolean);
     const recent = ledger === undefined ? empty('🧾', 'L’historique des gains et des dépenses arrive avec les métiers.')
@@ -110,7 +111,7 @@ export const moneyScreen: Screen = {
         : (() => { const list = ledger.slice().sort((a, b) => b.at - a.at); return ledgerRows(list.slice(0, 5)) + (list.length > 5 ? more(`Tout l’historique (${list.length})`, ledgerRows(list.slice(5)), 'mn-all') : ''); })();
     // Teranga Money: only in a build with the online account (hidden entirely without it)
     const tm = o ? section('Teranga Money', '<div class="tm-box"></div><div class="tm-lim"></div><h4 class="tm-h">Historique Teranga Money</h4><div class="tm-hist"></div>', ' data-slot="tm"') : '';
-    page.innerHTML = `${balance(api)}${tm}${debtHtml}${flows}${apps.length ? section('Gérer', rows(apps)) : ''}${section('Derniers mouvements', recent)}`;
+    page.innerHTML = `${balance(api)}${tm}${debtHtml}${apps.length ? section('Gérer', rows(apps)) : ''}${flows}${section('Derniers mouvements', recent)}`;
     page.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act="credits"]');
       if (b && phoneHooks.openCredits) api.launch(phoneHooks.openCredits);
