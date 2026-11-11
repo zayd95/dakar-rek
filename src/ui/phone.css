@@ -1,12 +1,14 @@
-/* The in-game phone (src/ui/phone.ts and src/ui/phone/*). On a phone it fills the screen (inside the safe areas); on a large screen it is a handset with
-   a status bar. One design language for every app:
+/* The in-game phone (src/ui/phone.ts and src/ui/phone/*): a smartphone. On a phone it fills the screen (inside the safe areas); on a large screen it is
+   a handset. Every screen has the status bar (the city's time and day, the sky, the energy as the battery, « Fermer ») and the home indicator at the
+   bottom (one tap: the home screen); an app adds its header (‹ back, title). One design language for every app:
    – type: title 22 · heading 17 · body 15 · secondary 13 · caption 12 (system font);
    – shapes: cards 16 px radius, rows in grouped lists, buttons 14 px radius and ≥ 44 px tall (48 for the main ones), pills for badges;
    – colour meanings: the sun yellow is THE action of a screen, blue is navigation (back, links), green a gain or « done », red a warning or danger,
-     grey the secondary text; the home screen is the wallpaper, the apps the light grouped style (dark at night). */
+     grey the secondary text; the home screen is the wallpaper and its icons, the apps the light grouped style (dark at night). */
 #phone { --ios-blue:#0a6cdf; --ios-bg:#f2f2f7; --ios-card:#fff; --ios-ink:#111114; --ios-sub:#5f5f66; --ios-sep:rgba(60,60,67,.14);
   --pk-sun:#ffc83d; --pk-sun-deep:#f0a800; --pk-sun-ink:#2b2000; --pk-gain:#047857; --pk-warn:#b42318; --pk-press:rgba(60,60,67,.12);
   --pk-r:16px; --pk-r-sm:14px; --pk-tap:44px;
+  --ph-wall:linear-gradient(180deg,#0a2440 0%,#0d4a73 36%,#12829a 68%,#e2a463 132%);   /* the wallpaper: the Corniche at the end of the afternoon */
   --ph-font:-apple-system, "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
   padding:max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -21,47 +23,67 @@
   box-shadow:0 0 0 2px #2b2b31, 0 30px 70px rgba(0,0,0,.55); animation:phIn .16s ease-out; }
 @keyframes phIn { from { transform:translateY(20px) scale(.97); } to { transform:none; } }   /* no fade: a slow frame never shows an empty dim */
 .ph-glass { position:relative; display:flex; flex-direction:column; height:100%; overflow:hidden; border-radius:45px; color:var(--ios-ink); background:var(--ios-bg); }
-#phone[data-look="home"] .ph-glass { color:#fff; background:linear-gradient(180deg,#071a33 0%,#0b3a5c 30%,#0f6f86 56%,#2bb3a6 76%,#f2d48b 100%); }
-.ph-wall { position:absolute; left:0; right:0; bottom:0; height:30%; pointer-events:none; display:none; }
+#phone[data-look="home"] .ph-glass { color:#fff; background:var(--ph-wall); }
+.ph-wall { position:absolute; left:0; right:0; bottom:0; height:24%; pointer-events:none; display:none; }
 #phone[data-look="home"] .ph-wall { display:block; }
 .ph-wall svg { width:100%; height:100%; display:block; fill:#06283a; }
-.ph-wall path, .ph-wall circle { opacity:.6; } .ph-wall .far { opacity:.25; }
+.ph-wall path, .ph-wall circle { opacity:.5; } .ph-wall .far { opacity:.22; }
 #phone[data-look="dark"] .ph-glass { background:#000; color:#fff; }
 
-/* Status line (large screens only: on a phone the device has its own) */
-.ph-status { position:relative; z-index:2; flex:none; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; height:44px; padding:0 28px;
-  font:600 15px/1 var(--ph-font); font-variant-numeric:tabular-nums; }
-.ph-island { width:104px; height:30px; border-radius:20px; background:#000; }
-.ph-sys { display:flex; justify-content:flex-end; align-items:center; }
-.ph-sys svg { fill:currentColor; } .ph-batt { width:26px; height:13px; }
+/* Status bar, on every screen: the city's time and day on the left; the sky of the hour, the online account, the energy (the battery) and « Fermer »
+   on the right. One 44 px row: « Fermer » keeps a finger-sized target in it. */
+.ph-top { position:relative; z-index:2; flex:none; }
+.ph-status { position:relative; display:flex; align-items:center; justify-content:space-between; gap:8px; height:44px; padding:0 8px 0 26px; font:600 14px/1 var(--ph-font); font-variant-numeric:tabular-nums; }
+.ph-st-l { display:flex; align-items:baseline; gap:6px; min-width:0; white-space:nowrap; }
+.ph-time { font-size:16px; font-weight:700; letter-spacing:-.2px; }
+.ph-day { font-size:13px; font-weight:600; opacity:.72; }
+.ph-island { position:absolute; left:50%; top:9px; width:88px; height:26px; margin-left:-44px; border-radius:16px; background:#000; }
+.ph-sys { display:flex; align-items:center; gap:7px; }
+.ph-sky { font-style:normal; font-size:14px; line-height:1; }
+.ph-net { flex:none; width:8px; height:8px; border-radius:50%; background:#9ca3af; } .ph-net[hidden] { display:none; }
+.ph-net.on { background:#22c55e; } .ph-net.wait { background:#f59e0b; } .ph-net.off { background:#ef4444; }
+.ph-energy { display:flex; } .ph-batt { width:26px; height:13px; fill:currentColor; } .ph-energy.low .lvl { fill:#ff453a; }
 
-/* Header: back (blue, the previous screen's name), the title, home (deep only) and close. Always the same place, always ≥ 44 px. */
-.ph-head { position:relative; z-index:2; flex:none; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:4px; min-height:52px; padding:2px 8px; }
-.ph-head h2 { margin:0; max-width:52vw; font-size:17px; font-weight:700; letter-spacing:-.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
+/* Navigation buttons: ‹ back (blue, the previous screen's name) in an app's header, « Fermer » in the status bar. Always the same place, always ≥ 44 px. */
 .ph-nav { display:inline-flex; align-items:center; justify-content:center; gap:2px; min-width:var(--pk-tap); min-height:var(--pk-tap); padding:0 8px; border:0; border-radius:12px; background:none;
   color:var(--ios-blue); font:500 16px/1 var(--ph-font); cursor:pointer; }
-.ph-nav:active { background:var(--pk-press); }
+.ph-backbtn:active { background:var(--pk-press); }
+/* « Fermer »: a 30 px pill drawn inside its 44 px target */
+.ph-close { position:relative; z-index:0; gap:5px; margin-left:1px; padding:0 11px; color:var(--ios-ink); font-weight:600; font-size:13px; }
+.ph-close::before { content:''; position:absolute; z-index:-1; inset:7px 0; border-radius:999px; background:var(--ios-card); box-shadow:0 0 0 1px var(--ios-sep) inset; }
+.ph-close:active::before { filter:brightness(.9); }
+.ph-close-tx { display:none; }                                    /* the handset: ✕ alone (Échap and a click outside close it too) */
+#phone[data-look="home"] .ph-close, #phone[data-look="dark"] .ph-close { color:#fff; }
+#phone[data-look="home"] .ph-close::before { background:rgba(255,255,255,.2); box-shadow:0 0 0 1px rgba(255,255,255,.28) inset; }
+#phone[data-look="dark"] .ph-close::before { background:#2c2c2e; box-shadow:none; }
+
+/* An app's header: back, the title. None on the home screen. */
+.ph-head { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:4px; min-height:44px; padding:0 8px 2px; }
+#phone[data-look="home"] .ph-head { display:none; }
+.ph-head h2 { margin:0; max-width:52vw; font-size:17px; font-weight:700; letter-spacing:-.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
 .ph-backbtn { justify-self:start; max-width:100%; padding-left:2px; }
 .ph-backbtn .ph-chev { font-size:30px; font-weight:400; line-height:.8; margin-top:-3px; }
-.ph-backbtn .ph-back { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ph-backbtn .ph-back { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.3; }   /* (room for the g of « Réglages ») */
 .ph-backbtn:disabled { visibility:hidden; }
-.ph-head-end { justify-self:end; display:flex; gap:2px; }
-.ph-homebtn { font-size:21px; }
-.ph-homebtn[hidden] { display:none; }
-.ph-close { gap:6px; padding:0 12px; background:var(--ios-card); color:var(--ios-ink); font-weight:600; font-size:15px; box-shadow:0 0 0 1px var(--ios-sep) inset; border-radius:999px; }
-#phone[data-look="home"] .ph-head { min-height:48px; }
-#phone[data-look="home"] .ph-close { background:rgba(255,255,255,.2); color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,.3) inset; }
-#phone[data-look="dark"] .ph-head h2 { color:#fff; }
-#phone[data-look="dark"] .ph-close { background:#2c2c2e; color:#fff; box-shadow:none; }
+#phone[data-look="dark"] .ph-head h2 { color:#fff; } #phone[data-look="dark"] .ph-backbtn { color:#4da3ff; }
 
 /* The screen: one scroll, no horizontal one, room under the last item */
 .ph-screen { position:relative; z-index:1; flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch;
-  padding:4px 16px 28px; }
+  padding:4px 16px 22px; }
 .ph-page { min-width:0; }
 .ph-page > :first-child { margin-top:0; }
 
+/* The home indicator, at the bottom of every screen: one tap returns to the home screen. A thin bar; the finger's target reaches 14 px above it (44 px). */
+.ph-homebar { position:relative; z-index:2; flex:none; display:grid; place-items:center; width:100%; height:30px; margin:0; padding:0; border:0; background:none; color:var(--ios-ink); cursor:pointer; }
+.ph-homebar::before { content:''; position:absolute; inset:-14px 22% 0; }
+.ph-homebar i { width:136px; max-width:38%; height:5px; border-radius:3px; background:currentColor; opacity:.3; transition:opacity .12s, transform .12s; }
+.ph-homebar:active i { opacity:.65; transform:scaleX(.92); }
+#phone[data-look="home"] .ph-homebar, #phone[data-look="dark"] .ph-homebar { color:#fff; }
+#phone[data-look="home"] .ph-homebar i { opacity:.75; }
+#phone:has(.mg-chat.kb) .ph-homebar { display:none; }             /* the keyboard is up: the conversation's field sits right above it */
+
 /* The in-phone confirmation (« Raccourci ajouté », « Partie sauvegardée »): a pill at the bottom of the glass, never over the header */
-.ph-toast { position:absolute; z-index:5; left:50%; bottom:calc(18px + env(safe-area-inset-bottom, 0px)); max-width:calc(100% - 40px); padding:10px 16px; border-radius:999px;
+.ph-toast { position:absolute; z-index:5; left:50%; bottom:calc(44px + env(safe-area-inset-bottom, 0px)); max-width:calc(100% - 40px); padding:10px 16px; border-radius:999px;
   background:rgba(17,17,20,.92); color:#fff; font:600 14px/1.3 var(--ph-font); text-align:center; transform:translate(-50%, 12px); opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; }
 .ph-toast.on { opacity:1; transform:translate(-50%, 0); }
 .ph-toast.on.ok::before { content:'✓ '; color:#4ade80; } .ph-toast.on.warn::before { content:'⚠︎ '; color:#fca5a5; }
@@ -129,43 +151,50 @@ button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { c
 .pk-confirm > i { font-style:normal; font-size:34px; }
 .pk-confirm p { margin:0 0 8px; font-size:15px; line-height:1.45; }
 
-/* ================================================================ home screen */
-.pg-home { display:flex; flex-direction:column; gap:12px; }
-.hm-sum { padding:12px 12px 12px 14px; border-radius:22px; background:rgba(255,255,255,.16); box-shadow:0 0 0 .5px rgba(255,255,255,.28) inset; color:#fff; }
-.hm-who { display:flex; align-items:center; gap:12px; }
-.hm-pic { flex:none; display:grid; place-items:center; width:48px; height:48px; border-radius:50%; object-fit:cover; background:#1d2438; font-style:normal; font-size:26px; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+/* ================================================================ home screen: a widget, the app grid (it scrolls when it does not fit), the dock */
+#phone[data-look="home"] .ph-screen { display:flex; padding:0; overflow:hidden; }
+.pg-home { flex:1; min-width:0; min-height:0; display:flex; flex-direction:column; }
+.hm-scroll { flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; padding:2px 14px 12px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; touch-action:pan-y;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.hm-scroll::-webkit-scrollbar { display:none; }
+.hm-scroll > * { flex:none; }
+/* the widget: who and where, the balance and the streak beside them when there is room (under them otherwise), the line of what is going on */
+.hm-sum { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; padding:10px 12px; border-radius:22px; background:rgba(255,255,255,.14); box-shadow:0 0 0 .5px rgba(255,255,255,.26) inset; color:#fff; }
+.hm-who { flex:1 1 140px; min-width:0; display:flex; align-items:center; gap:10px; min-height:var(--pk-tap); margin:0; padding:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.hm-pic { flex:none; display:grid; place-items:center; width:42px; height:42px; border-radius:50%; object-fit:cover; background:#1d2438; font-style:normal; font-size:23px; box-shadow:0 0 0 2px rgba(255,255,255,.7); }
 .hm-who > span { flex:1; min-width:0; display:flex; flex-direction:column; }
-.hm-name { font-size:18px; font-weight:750; line-height:1.2; overflow-wrap:anywhere; }
-.hm-when { font-size:13px; font-weight:600; opacity:.92; }
-.hm-when b { font-variant-numeric:tabular-nums; }
-.hm-bell { position:relative; flex:none; width:var(--pk-tap); height:var(--pk-tap); border:0; border-radius:50%; background:rgba(255,255,255,.18); color:#fff; font-size:19px; cursor:pointer; }
-.hm-bell em { position:absolute; top:-3px; right:-3px; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:#ff3b30; color:#fff; font:700 12px/20px var(--ph-font); font-style:normal; }
-.hm-chips { display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:8px; margin-top:10px; }
-.hm-chip { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-width:0; min-height:52px; padding:6px 12px; border:0; border-radius:14px; background:rgba(255,255,255,.92); color:#111114; text-align:left; cursor:pointer; }
-.hm-chip small { font-size:11.5px; font-weight:650; color:#5f5f66; }
-.hm-chip b { max-width:100%; font-size:18px; font-weight:800; line-height:1.15; letter-spacing:-.2px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.hm-name { font-size:16px; font-weight:750; line-height:1.2; overflow-wrap:anywhere; }
+.hm-when { font-size:13px; font-weight:600; line-height:1.3; opacity:.92; }
+.hm-chips { flex:0 0 auto; display:flex; gap:6px; }
+.hm-chip { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-height:var(--pk-tap); padding:4px 11px; border:0; border-radius:13px; background:rgba(255,255,255,.92); color:#111114; text-align:left; cursor:pointer; }
+.hm-chip small { font-size:11px; font-weight:650; line-height:1.15; color:#5f5f66; }
+.hm-chip b { font-size:15px; font-weight:800; line-height:1.2; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.hm-chip:active, .hm-who:active { opacity:.8; }
 .hm-chip.streak b { color:#6b6b73; } .hm-chip.streak.on b { color:#b45309; }
 .hm-chip.streak.on:not(.today) b { color:#8a6a3b; }
-.hm-now { margin:10px 2px 0; font-size:13.5px; font-weight:600; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.hm-short { display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:8px 14px; border:0; border-radius:18px; background:var(--pk-sun); color:var(--pk-sun-ink);
+.hm-now { flex:1 1 100%; margin:0 2px; font-size:13px; font-weight:600; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.hm-now.one { -webkit-line-clamp:1; }                             /* a shortcut follows: one line is enough */
+.hm-short { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:6px 14px; border:0; border-radius:18px; background:var(--pk-sun); color:var(--pk-sun-ink);
   text-align:left; box-shadow:0 3px 0 var(--pk-sun-deep), 0 6px 16px rgba(0,0,0,.18); cursor:pointer; }
-.hm-short i { flex:none; font-style:normal; font-size:24px; }
+.hm-short i { flex:none; font-style:normal; font-size:22px; }
 .hm-short > span:not(.pk-chev) { flex:1; min-width:0; display:flex; flex-direction:column; }
-.hm-short b { font-size:16px; font-weight:800; line-height:1.2; overflow-wrap:anywhere; }
+.hm-short b { font-size:15px; font-weight:800; line-height:1.2; overflow-wrap:anywhere; }
 .hm-short small { font-size:12.5px; font-weight:600; opacity:.8; line-height:1.3; overflow-wrap:anywhere; }
 .hm-short .pk-chev { color:var(--pk-sun-ink); opacity:.6; }
-.hm-dest { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
-.hm-tile { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:8px; min-width:0; min-height:100px; padding:12px; border:0; border-radius:20px;
-  background:rgba(255,255,255,.94); color:#111114; text-align:left; box-shadow:0 4px 14px rgba(0,0,0,.16); cursor:pointer; }
-.hm-tile:active { transform:scale(.97); }
-.hm-ic { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; background:var(--g); font-style:normal; font-size:23px; box-shadow:0 2px 6px rgba(0,0,0,.18); }
-.hm-tile > span { display:flex; flex-direction:column; min-width:0; max-width:100%; }
-.hm-tile b { font-size:16px; font-weight:750; line-height:1.2; overflow-wrap:anywhere; }
-.hm-tile small { margin-top:2px; font-size:12.5px; font-weight:500; line-height:1.3; color:#5f5f66; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.hm-dot { position:absolute; top:12px; right:12px; width:10px; height:10px; border-radius:50%; background:#ff3b30; box-shadow:0 0 0 2px #fff; }
-.hm-hint { display:flex; align-items:flex-start; gap:10px; padding:10px 8px 10px 14px; border-radius:16px; background:rgba(0,0,0,.35); color:#fff; font-size:13.5px; line-height:1.4; }
-.hm-hint p { flex:1; margin:4px 0; }
-.hm-hint button { flex:none; width:var(--pk-tap); height:var(--pk-tap); border:0; border-radius:50%; background:rgba(255,255,255,.18); color:#fff; font-size:15px; cursor:pointer; }
+/* the icons: four a row, white names on the wallpaper */
+.hm-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px 0; padding:4px 0 2px; }
+.ph-app.hm-tile { color:#fff; }
+.hm-tile > span { text-shadow:0 1px 2px rgba(0,0,0,.55); }
+.hm-tile .ph-ico { width:58px; height:58px; border-radius:15px; }
+.hm-tile .ph-badge { left:calc(50% + 16px); box-shadow:0 0 0 1.5px rgba(255,255,255,.85); }
+.hm-lib .ph-ico { background:rgba(255,255,255,.2); box-shadow:0 0 0 .5px rgba(255,255,255,.3) inset; }
+.hm-lib .ph-ico::after { display:none; }
+.hm-lib .ph-ico span { display:grid; grid-template-columns:repeat(2, 15px); gap:5px; font-size:0; }
+.hm-lib .ph-ico b { width:15px; height:15px; border-radius:4.5px; background:#7dd3fc; }
+.hm-lib .ph-ico b:nth-child(2) { background:#fcd34d; } .hm-lib .ph-ico b:nth-child(3) { background:#bef264; } .hm-lib .ph-ico b:nth-child(4) { background:#fda4af; }
+/* the dock, always in view: the four favourites and, set apart by a hairline, the app library */
+.ph-dock { flex:none; display:grid; grid-template-columns:repeat(var(--n, 5), minmax(0, 1fr)); margin:0 10px; padding:10px 4px 8px; border-radius:28px; background:rgba(255,255,255,.2); box-shadow:0 0 0 .5px rgba(255,255,255,.24) inset; }
+.ph-dock .hm-lib::before { content:''; position:absolute; left:0; top:6px; height:46px; border-left:1px solid rgba(255,255,255,.3); }
 
 /* « Toutes les apps » */
 .ph-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px 4px; padding:12px 4px; border-radius:var(--pk-r); background:var(--ios-card); }
@@ -175,7 +204,7 @@ button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { c
 .ph-ico::after { content:''; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 48%); pointer-events:none; }
 .ph-ico span { font-size:29px; line-height:1; }
 .ph-app:active .ph-ico { transform:scale(.92); filter:brightness(.92); }
-.ph-badge { position:absolute; top:-6px; left:calc(50% + 14px); min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#ff3b30; color:#fff; font:700 12px/20px var(--ph-font); text-align:center; }
+.ph-badge { position:absolute; top:-6px; left:calc(50% + 14px); min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#ff3b30; color:#fff; font:700 12px/20px var(--ph-font); text-align:center; text-shadow:none; }
 
 /* ================================================================ Profil */
 .pf-head { display:flex; align-items:center; gap:14px; }
@@ -285,6 +314,7 @@ button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { c
 .ph-weather span { font-size:14px; opacity:.95; }
 .ph-hours { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:4px; margin-bottom:12px; padding:12px 4px; border-radius:16px; background:var(--ios-card); text-align:center; }
 .ph-hours small { display:block; font-size:12px; color:var(--ios-sub); } .ph-hours i { display:block; margin:6px 0; font-style:normal; font-size:21px; } .ph-hours b { font-size:15px; }
+.pg-calcul { height:100%; }                                     /* the keys sit at the bottom of the screen, under the thumb */
 .ph-calc { display:flex; flex-direction:column; justify-content:flex-end; min-height:100%; }
 .ph-calc output { display:block; padding:0 10px 10px; text-align:right; font-size:60px; font-weight:300; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ph-calc > div { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; }
@@ -335,40 +365,59 @@ button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { c
 /* ================================================================ on a phone: the whole screen, inside the safe areas */
 @media (max-width:540px), (max-height:560px) {
   #phone { padding:0; background:var(--ios-bg); }
-  #phone[data-look="home"] { background:#071a33; } #phone[data-look="dark"] { background:#000; }
+  #phone[data-look="home"] { background:#0a2440; } #phone[data-look="dark"] { background:#000; }
   .ph-stage { width:100%; height:100%; }
   #phone .ph-device { padding:0; border-radius:0; background:none; box-shadow:none; animation:phUp .18s ease-out; }
   @keyframes phUp { from { transform:translateY(16px); } }
   .ph-glass { border-radius:0; }
-  .ph-status { display:none; }
-  .ph-head { padding:calc(2px + env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) 2px max(8px, env(safe-area-inset-left, 0px)); }
-  .ph-screen { padding:4px max(16px, calc(env(safe-area-inset-right, 0px) + 8px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(16px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+  .ph-island { display:none; }                                    /* the device has its own */
+  .ph-status { height:calc(44px + env(safe-area-inset-top, 0px)); padding:env(safe-area-inset-top, 0px) max(6px, env(safe-area-inset-right, 0px)) 0 max(18px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+  .ph-close-tx { display:inline; }
+  .ph-head { padding:0 max(8px, env(safe-area-inset-right, 0px)) 2px max(8px, env(safe-area-inset-left, 0px)); }
+  .ph-screen { padding:4px max(16px, calc(env(safe-area-inset-right, 0px) + 8px)) 22px max(16px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+  .hm-scroll { padding-left:max(14px, calc(env(safe-area-inset-left, 0px) + 6px)); padding-right:max(14px, calc(env(safe-area-inset-right, 0px) + 6px)); }
+  .ph-dock { margin-left:max(10px, env(safe-area-inset-left, 0px)); margin-right:max(10px, env(safe-area-inset-right, 0px)); }
+  .ph-homebar { height:calc(30px + env(safe-area-inset-bottom, 0px)); padding-bottom:env(safe-area-inset-bottom, 0px); }
   .pf-tabs { margin-left:min(-16px, calc(-8px - env(safe-area-inset-left, 0px))); margin-right:min(-16px, calc(-8px - env(safe-area-inset-right, 0px))); }
 }
-/* narrow phones (320–360 px): a smaller portrait and type, the tiles a little lower */
+/* narrow phones (320–360 px): smaller icons, portrait and type; « Fermer » keeps its ✕ only */
 @media (max-width:360px) {
   .ph-screen { padding-left:12px; padding-right:12px; }
+  .hm-scroll { padding-left:10px; padding-right:10px; } .ph-dock { margin-left:8px; margin-right:8px; }
   .pf-pic { width:72px; height:72px; font-size:36px; } .pf-head { gap:10px; } .pf-name { font-size:20px; }
-  .hm-tile { min-height:88px; padding:10px; gap:6px; } .hm-ic { width:38px; height:38px; font-size:21px; } .hm-tile b { font-size:15px; }
-  .hm-chip b { font-size:16px; } .hm-sum { padding:10px; }
-  .ph-ico { width:48px; height:48px; border-radius:13px; } .ph-ico span { font-size:26px; } .ph-grid { gap:12px 2px; }
+  .hm-sum { padding:10px; } .hm-chip b { font-size:14px; }
+  .ph-ico, .hm-tile .ph-ico { width:50px; height:50px; border-radius:13px; } .ph-ico span { font-size:26px; } .ph-grid { gap:12px 2px; }
+  .hm-lib .ph-ico span { grid-template-columns:repeat(2, 13px); gap:4px; } .hm-lib .ph-ico b { width:13px; height:13px; }
+  .hm-tile .ph-badge { left:calc(50% + 12px); }
+  .ph-dock .ph-app > span { display:none; } .ph-dock { padding:8px 2px; } .ph-dock .hm-lib::before { top:2px; }   /* five icons across 320 px: no names under them */
   .ph-close .ph-close-tx { display:none; }
   .pf-tabs { margin-left:-12px; margin-right:-12px; padding-left:12px; padding-right:12px; }
   .pk-seg button { font-size:13px; }
 }
-/* short portrait screens (iPhone SE): the home screen fits without scrolling */
+/* short portrait screens (iPhone SE, a browser with its bars): tighter rows, so more of the grid is in view */
 @media (max-height:700px) and (orientation:portrait) {
-  .pg-home { gap:10px; } .hm-tile { min-height:84px; } .hm-now { -webkit-line-clamp:1; margin-top:8px; } .hm-chips { margin-top:8px; } .hm-chip { min-height:48px; }
+  .hm-scroll { gap:10px; } .hm-grid { gap:10px 0; } .hm-now { -webkit-line-clamp:1; }
+  .hm-tile .ph-ico { width:52px; height:52px; border-radius:14px; } .hm-tile .ph-ico span { font-size:27px; }
+  .hm-lib .ph-ico span { font-size:0; }
+  .ph-dock { padding:8px 4px 6px; }
 }
-/* landscape phones: two columns — who and where on the left, the destinations on the right (three a row) */
+/* landscape phones: the status bar and the app's header share ONE row; the home screen keeps its dock on the right side, the grid eight a row */
 @media (orientation:landscape) and (max-height:560px) {
-  .ph-head { min-height:46px; }
-  #phone[data-look="home"] .ph-head { min-height:44px; }
-  .pg-home { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.35fr); grid-template-rows:auto 1fr; gap:10px 14px; align-items:start; }
-  .pg-home .hm-sum { grid-column:1; grid-row:1; } .pg-home .hm-short { grid-column:1; grid-row:2; }
-  .pg-home .hm-dest { grid-column:2; grid-row:1 / span 2; grid-template-columns:repeat(3, minmax(0, 1fr)); }
-  .pg-home .hm-hint { grid-column:1 / -1; }
-  .hm-tile { min-height:96px; }
+  .ph-top { display:flex; flex-direction:row-reverse; align-items:center; }
+  .ph-status { flex:none; height:calc(40px + env(safe-area-inset-top, 0px)); gap:14px; padding-left:10px; }
+  #phone[data-look="home"] .ph-status { flex:1; padding-left:max(18px, calc(env(safe-area-inset-left, 0px) + 8px)); }
+  .ph-head { flex:1; min-width:0; min-height:40px; grid-template-columns:auto minmax(0, 1fr); gap:10px; padding-bottom:0; }
+  .ph-head h2 { max-width:none; text-align:left; } .ph-head-end { display:none; }
+  .ph-homebar { height:calc(20px + env(safe-area-inset-bottom, 0px)); } .ph-homebar::before { inset:-24px 30% 0; }
+  .pg-home { flex-direction:row; }
+  .hm-scroll { gap:8px; padding-bottom:4px; }
+  .hm-sum { padding:6px 10px; } .hm-now { flex:1 1 200px; -webkit-line-clamp:1; }
+  .hm-grid { grid-template-columns:repeat(8, minmax(0, 1fr)); gap:8px 0; }
+  .hm-tile .ph-ico { width:50px; height:50px; border-radius:13px; } .hm-tile .ph-ico span { font-size:26px; }
+  .hm-lib .ph-ico span { grid-template-columns:repeat(2, 13px); gap:4px; font-size:0; } .hm-lib .ph-ico b { width:13px; height:13px; }
+  .ph-dock { grid-template-columns:minmax(0, 1fr); align-content:space-evenly; width:84px; margin:0 max(8px, env(safe-area-inset-right, 0px)) 0 0; padding:4px; border-radius:24px; }
+  .ph-dock .ph-app > span { display:none; }
+  .ph-dock .hm-lib::before { left:14px; right:14px; top:-3px; height:0; border-left:0; border-top:1px solid rgba(255,255,255,.3); }
   .ph-grid { grid-template-columns:repeat(8, minmax(0, 1fr)); }
   /* the Profile: who on the left (kept in view), the tabs and their page on the right */
   .pf { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1.35fr); column-gap:18px; align-items:start; }
@@ -377,22 +426,23 @@ button.pk-stat { cursor:pointer; font:inherit; } button.pk-stat small::after { c
   .pf > .pf-pane { grid-column:2; grid-row:2 / span 3; }
   .ph-weather b { font-size:44px; } .ph-calc output { font-size:40px; } .ph-calc > div { grid-template-columns:repeat(8, minmax(0, 1fr)); gap:6px; }
 }
-@media (prefers-reduced-motion:reduce) { #phone .ph-device, .ph-toast { animation:none; transition:none; } }
+@media (prefers-reduced-motion:reduce) { #phone .ph-device, .ph-toast, .ph-homebar i { animation:none; transition:none; } }
 
 /* ================================================================ night (body.theme-night: src/ui/theme.ts) */
-body.theme-night #phone { --ios-blue:#4da3ff; --ios-bg:#000; --ios-card:#1c1c1e; --ios-ink:#f5f5f7; --ios-sub:#a1a1a8; --ios-sep:rgba(235,235,245,.16); --pk-gain:#4ade80; --pk-warn:#ff8a80; --pk-press:rgba(255,255,255,.12); }
+body.theme-night #phone { --ph-wall:linear-gradient(180deg,#02040d 0%,#081230 42%,#16245c 78%,#3b2a6b 130%); --ios-blue:#4da3ff; --ios-bg:#000; --ios-card:#1c1c1e; --ios-ink:#f5f5f7; --ios-sub:#a1a1a8; --ios-sep:rgba(235,235,245,.16); --pk-gain:#4ade80; --pk-warn:#ff8a80; --pk-press:rgba(255,255,255,.12); }
 body.theme-night .pk-seg, body.theme-night #phone .seg { background:#1c1c1e; }
 body.theme-night .pk-seg button.on, body.theme-night #phone .seg button.on { background:#48484a; color:#fff; box-shadow:none; }
 body.theme-night .pk-toggle .pk-sw { background:#39393d; } body.theme-night .pk-toggle.on .pk-sw { background:#34c759; }
 body.theme-night .pk-badge { background:#2c2c2e; color:#f5f5f7; } body.theme-night .pk-badge.gain { background:#12372a; color:#7ee2b8; }
 body.theme-night .pk-badge.warn { background:#3d1714; color:#ffb4ab; } body.theme-night .pk-badge.sun { background:#3a2e0b; color:#ffd666; }
 body.theme-night .pk-bar { background:#3a3a3c; }
-body.theme-night .hm-tile { background:rgba(28,28,30,.94); color:#f5f5f7; } body.theme-night .hm-tile small { color:#a1a1a8; }
+body.theme-night .ph-wall svg { fill:#01030a; }
+body.theme-night #phone .ph-close { background:none; }           /* (theme.css paints the old pill: the pill is the ::before now) */
+body.theme-night #phone[data-look="app"] .ph-close::before { background:#2c2c2e; box-shadow:none; }
 body.theme-night .hm-chip { background:rgba(28,28,30,.92); color:#f5f5f7; } body.theme-night .hm-chip small { color:#a1a1a8; }
 body.theme-night .hm-chip.streak.on b { color:#ffc56b; }
 body.theme-night .pf-streak { background:#2c2c2e; color:#d1d1d6; } body.theme-night .pf-streak.on { background:#3a2e0b; color:#ffd666; }
 body.theme-night .pf-miles li { background:#2c2c2e; color:#a1a1a8; } body.theme-night .pf-miles li.on { background:var(--pk-sun); color:#2b2000; }
-body.theme-night .ph-close { background:#2c2c2e; color:#f5f5f7; }
 body.theme-night .ph-btn:active, body.theme-night .ph-table > button:active { background:#3a3a3c; }
 body.theme-night .ph-table .you { background:#2e2610; }
 body.theme-night .lt-follow { background:#2c2c2e; color:#d1d1d6; }

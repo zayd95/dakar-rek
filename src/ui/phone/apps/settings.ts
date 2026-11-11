@@ -98,6 +98,7 @@ export const settingsScreen: Screen = {
 /** « Nouvelle partie »: one clear question, « Annuler » first. */
 export const newGameScreen: Screen = {
   title: 'Nouvelle partie',
+  once: true,
   mount(page, api) {
     page.innerHTML = `<div class="pk-confirm"><i aria-hidden="true">⚠️</i><p>Effacer la partie enregistrée sur cet appareil ? Argent, relations et progression seront perdus. Cette action est définitive.</p>
       ${btn('Annuler', { act: 'cancel', kind: 'secondary' })}${btn('Effacer et recommencer', { act: 'wipe', kind: 'danger' })}</div>`;

@@ -10,6 +10,7 @@ export interface PhoneApi {
   /** Pushes a screen of the phone (`arg`: a tab, an item). */
   go(id: string, arg?: string): void;
   back(): void;
+  /** The home screen (the app in hand is found again where it was left). */
   home(): void;
   /** Opens an app of the registry: a screen of the phone, or another module's app (the phone closes and hands over). */
   openApp(id: string): void;
@@ -30,4 +31,6 @@ export interface Screen {
   tick?(page: HTMLElement, api: PhoneApi): void;
   /** 'home': the wallpaper and no app header; 'dark': a black app (the calculator). */
   look?: 'home' | 'app' | 'dark';
+  /** A one-time question (« Effacer la partie ? »): never found again when its app is reopened from the home screen. */
+  once?: boolean;
 }

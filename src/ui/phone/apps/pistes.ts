@@ -1,5 +1,5 @@
 import type { Screen } from '../types';
-import { btn, card, empty, esc, note } from '../kit';
+import { btn, card, empty, esc } from '../kit';
 import { phoneHooks } from '../../phoneHooks';
 
 /**
@@ -13,8 +13,7 @@ export const pistesScreen: Screen = {
     page.innerHTML = (list.length
       ? list.map(p => card(`<div class="pi-c"><i class="pi-ic" aria-hidden="true">${esc(p.icon)}</i><div class="pi-tx"><b>${esc(p.title)}</b><p>${esc(p.line)}</p></div></div>
           <div class="pi-acts">${btn('Y aller', { act: 'go', arg: p.id, kind: 'primary', inline: true })}${btn('Pas maintenant', { act: 'drop', arg: p.id, kind: 'quiet', inline: true })}</div>`, 'pi')).join('')
-      : empty('🧭', 'Pas de nouvelle piste pour l’instant. Travaille, sors, rencontre du monde : d’autres viendront.'))
-      + note('Des idées, jamais des obligations : tu choisis ta vie à Dakar.');
+      : empty('🧭', 'Pas de nouvelle piste pour l’instant. Travaille, sors, rencontre du monde : d’autres viendront.'));
     page.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]'); if (!b) return;
       const id = b.dataset.arg ?? '';

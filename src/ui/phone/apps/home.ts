@@ -1,25 +1,34 @@
 import type { Screen, PhoneApi } from '../types';
 import { esc } from '../kit';
-import { APPS, GROUPS, visibleApps, type AppDef } from '../registry';
-import { contextualShortcut, debtsNow, metCount, missionNow, perkKey, residenceLine, streakView, type Shortcut } from '../selectors';
+import { APPS, GROUPS, homeLayout, visibleApps, type AppDef } from '../registry';
+import { contextualShortcut, missionNow, perkKey, streakView, type Shortcut } from '../selectors';
 import { phoneHooks } from '../../phoneHooks';
-import { quietLog } from '../../quiet';
 import { suggestion } from '../../../social/beats';
 import { cityTimeAt } from '../../../core/clock';
 import { HUB_NAMES } from '../../../world/content';
 import { fcfaShort } from '../../../economy/format';
+import { weekday } from '../../../arena/exteriorRules';
 
 /**
- * The home screen: who and where the player is (a compact summary), at most ONE contextual shortcut (resume a ride, follow a parcel, repay what is due,
- * a streak privilege, going home; else « Mes pistes » when there are leads), then five big destinations — Carte, Travailler, Ma vie, Maison, Argent — and « Toutes les apps ».
+ * The home screen, a smartphone's: a small widget (who and where the player is, the balance, the streak, the one line of what is going on), at most ONE
+ * contextual shortcut (resume a ride, follow a parcel, repay what is due, a streak privilege, going home; else « Mes pistes » when there are leads),
+ * then EVERY app as an icon — the most used first — and a dock, always in view, with the four favourites (Carte, Travailler, Argent, Messages) and, set
+ * apart at its end, the app library (the same apps by theme). One tap opens anything; the grid scrolls under the widget when it does not fit.
  */
-const DAYS = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'];
+const DAYS_SHORT = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'];
+const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+/**
+ * The weekday of a city day, as the game counts it everywhere else (src/arena/exteriorRules.ts weekday: the HUD's place pill, the gala evenings): the
+ * phone used its own count and was a day behind the HUD.
+ */
+export const dayName = (day: number, short = false) => (short ? DAYS_SHORT : DAYS)[weekday(day)];
 export const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 const short = (name: string) => name.split(' · ')[0];
 
+/** Where and which day (the hour is in the status bar). */
 function when(api: PhoneApi) {
   const t = cityTimeAt(api.ctx.now()), hub = api.ctx.hub();
-  return `${hub ? esc(short(HUB_NAMES[hub])) + ' · ' : ''}${DAYS[(t.day - 1) % 7]} <b class="hm-clock">${clock(t.hour, t.minute)}</b>`;
+  return `${hub ? short(HUB_NAMES[hub]) + ' · ' : ''}${dayName(t.day)}`;
 }
 
 /** The one line of what is going on: the job in hand, else the next lead of the story. */
@@ -46,72 +55,57 @@ function runShortcut(api: PhoneApi, id: Shortcut['id']) {
   else if (id === 'home') { const h = phoneHooks.homeHub?.(); if (h && phoneHooks.walkTo) api.launch(() => phoneHooks.walkTo!(h)); }
 }
 
-function destinations(api: PhoneApi): string {
-  const s = api.ctx.state, hub = api.ctx.hub(), m = missionNow(s), st = streakView(s.data), debt = debtsNow(s), home = residenceLine(s);
-  const places = api.ctx.places().length;
-  const tiles: { go: string; icon: string; grad: string; title: string; sub: string; alert?: boolean }[] = [
-    { go: 'carte', icon: '🗺️', grad: '#7dd3fc,#2563eb', title: 'Carte', sub: hub ? `${short(HUB_NAMES[hub])}${places ? ` · ${places} lieux` : ''}` : 'La ville' },
-    { go: 'travailler', icon: '💼', grad: '#bef264,#4d7c0f', title: 'Travailler', sub: m ? (m.kind === 'vtc' ? 'Course en cours' : 'Livraison en cours') : 'VTC · Tiak Tiak · boulots', alert: !!m },
-    { go: 'profil', icon: '🧑🏾', grad: '#c4b5fd,#6d28d9', title: 'Ma vie', sub: `${st.run ? `🔥 ${st.run} j` : 'Série 0 j'} · ${metCount(api.ctx.rel)} relation${metCount(api.ctx.rel) > 1 ? 's' : ''}` },
-    { go: 'logement', icon: '🏠', grad: '#fda4af,#e11d48', title: 'Maison', sub: home.name },
-    { go: 'portefeuille', icon: '💰', grad: '#fcd34d,#f59e0b', title: 'Argent', sub: debt ? `${fcfaShort(s.wallet)} · crédit en cours` : fcfaShort(s.wallet), alert: !!debt && debt.late > 0 },
-    { go: 'apps', icon: '▦', grad: '#e5e7eb,#9ca3af', title: 'Toutes les apps', sub: `${visibleApps().length} apps` },
-  ];
-  return `<nav class="hm-dest" aria-label="Destinations">${tiles.map(t => `<button type="button" class="hm-tile" data-go="${t.go}"><i class="hm-ic" style="--g:linear-gradient(160deg,${t.grad})" aria-hidden="true">${t.icon}</i><span><b>${esc(t.title)}</b><small${t.go === 'portefeuille' ? ' class="hm-wallet"' : ''}>${esc(t.sub)}</small></span>${t.alert ? '<em class="hm-dot" aria-label="à voir"></em>' : ''}</button>`).join('')}</nav>`;
+/**
+ * One app tile: the emoji on its gradient, its name under it (two lines at most, never cut). Its count (unread messages, new notifications) is put on
+ * it by the shell, which keeps it up to date. On the home screen a tile also carries the screen it opens (`data-go`: the checks' and the links' name).
+ */
+export function appTile(a: AppDef, home = false): string {
+  return `<button type="button" class="ph-app${home ? ' hm-tile' : ''}" data-app="${a.id}"${home && a.screen ? ` data-go="${a.screen}"` : ''} aria-label="${esc(a.label)}"><i class="ph-ico" style="--g:linear-gradient(180deg,${a.grad})"><span>${a.emoji}</span></i><span>${esc(a.short ?? a.label)}</span></button>`;
 }
-
-const HINT_KEY = 'dakarrek.phone.hint';
-const hintSeen = () => { try { return localStorage.getItem(HINT_KEY) === 'seen'; } catch { return true; } };
-const seeHint = () => { try { localStorage.setItem(HINT_KEY, 'seen'); } catch { /* session only */ } };
+/** The library's tile: four small squares, as a folder of apps. */
+const LIBRARY = '<button type="button" class="ph-app hm-tile hm-lib" data-go="apps" aria-label="Toutes les apps, par thème"><i class="ph-ico"><span aria-hidden="true"><b></b><b></b><b></b><b></b></span></i><span>Apps</span></button>';
 
 export const homeScreen: Screen = {
   title: 'Accueil',
   look: 'home',
   mount(page, api) {
-    const s = api.ctx.state, st = streakView(s.data), pic = phoneHooks.profilePortrait?.() ?? null, sc = shortcutNow(api), unread = quietLog.unread;
+    const s = api.ctx.state, st = streakView(s.data), pic = phoneHooks.profilePortrait?.() ?? null, sc = shortcutNow(api);
     const name = phoneHooks.profileName?.() || 'Invité';
     const pi = sc ? [] : phoneHooks.pistes?.() ?? [];                          // « Mes pistes »: one row, only when no other shortcut takes the place
-    const hint = hintSeen() ? '' : `<div class="hm-hint" role="note"><p>Ton téléphone, c’est ta vie à Dakar : la carte, le travail, ta progression, ta maison et ton argent.</p><button type="button" data-act="hint" aria-label="Compris">✕</button></div>`;
-    page.innerHTML = `${hint}<header class="hm-sum">
-        <div class="hm-who">${pic ? `<img class="hm-pic" src="${pic}" alt="">` : '<i class="hm-pic" aria-hidden="true">🧑🏾</i>'}
-          <span><b class="hm-name">${esc(name)}</b><small class="hm-when">${when(api)}</small></span>
-          <button type="button" class="hm-bell" data-go="notifs" aria-label="Notifications${unread ? ` : ${unread} nouvelle${unread > 1 ? 's' : ''}` : ''}">🔔${unread ? `<em>${unread > 9 ? '9+' : unread}</em>` : ''}</button></div>
-        <div class="hm-chips"><button type="button" class="hm-chip money" data-go="portefeuille"><small>Solde</small><b class="hm-money">${esc(fcfaShort(s.wallet))}</b></button>
-          <button type="button" class="hm-chip streak${st.run ? ' on' : ''}${st.today ? ' today' : ''}" data-go="profil" data-arg="progression"><small>Série</small><b class="hm-streak">${esc(st.chip)}</b></button></div>
-        ${sc?.id === 'follow-job' || sc?.id === 'resume-vtc' ? '' : `<p class="hm-now">${esc(nowLine(api))}</p>`}
-      </header>
-      ${sc ? `<button type="button" class="hm-short" data-act="shortcut" data-id="${sc.id}"><i aria-hidden="true">${esc(sc.icon)}</i><span><b>${esc(sc.label)}</b>${sc.sub ? `<small>${esc(sc.sub)}</small>` : ''}</span><span class="pk-chev" aria-hidden="true">›</span></button>`
-        : pi.length ? `<button type="button" class="hm-short hm-pistes" data-go="pistes"><i aria-hidden="true">🧭</i><span><b>Mes pistes · ${pi.length}</b><small>${esc(pi[0].title)}${pi.length > 1 ? ` et ${pi.length - 1} autre${pi.length > 2 ? 's' : ''}` : ''}</small></span><span class="pk-chev" aria-hidden="true">›</span></button>` : ''}
-      ${destinations(api)}`;
+    const { dock, grid } = homeLayout();
+    page.innerHTML = `<div class="hm-scroll" data-scroll>
+        <header class="hm-sum">
+          <button type="button" class="hm-who" data-go="profil" aria-label="Profil de ${esc(name)}">${pic ? `<img class="hm-pic" src="${pic}" alt="">` : '<i class="hm-pic" aria-hidden="true">🧑🏾</i>'}
+            <span><b class="hm-name">${esc(name)}</b><small class="hm-when">${esc(when(api))}</small></span></button>
+          <div class="hm-chips"><button type="button" class="hm-chip money" data-go="portefeuille"><small>Solde</small><b class="hm-money">${esc(fcfaShort(s.wallet))}</b></button>
+            <button type="button" class="hm-chip streak${st.run ? ' on' : ''}${st.today ? ' today' : ''}" data-go="profil" data-arg="progression"><small>Série</small><b class="hm-streak">${esc(st.run ? st.chip : '0 j')}</b></button></div>
+          ${sc?.id === 'follow-job' || sc?.id === 'resume-vtc' ? '' : `<p class="hm-now${sc || pi.length ? ' one' : ''}">${esc(nowLine(api))}</p>`}
+        </header>
+        ${sc ? `<button type="button" class="hm-short" data-act="shortcut" data-id="${sc.id}"><i aria-hidden="true">${esc(sc.icon)}</i><span><b>${esc(sc.label)}</b>${sc.sub ? `<small>${esc(sc.sub)}</small>` : ''}</span><span class="pk-chev" aria-hidden="true">›</span></button>`
+          : pi.length ? `<button type="button" class="hm-short hm-pistes" data-go="pistes"><i aria-hidden="true">🧭</i><span><b>Mes pistes · ${pi.length}</b><small>${esc(pi[0].title)}${pi.length > 1 ? ` et ${pi.length - 1} autre${pi.length > 2 ? 's' : ''}` : ''}</small></span><span class="pk-chev" aria-hidden="true">›</span></button>` : ''}
+        <nav class="hm-dest hm-grid" aria-label="Applications">${grid.map(a => appTile(a, true)).join('')}</nav>
+      </div>
+      <nav class="hm-dest ph-dock" aria-label="Favoris" style="--n:${dock.length + 1}">${dock.map(a => appTile(a, true)).join('')}${LIBRARY}</nav>`;
     page.addEventListener('click', e => {
-      const t = e.target as HTMLElement;
-      if (t.closest('[data-act="hint"]')) { seeHint(); page.querySelector('.hm-hint')?.remove(); return; }
-      if (t.closest('[data-go]')) seeHint();                                   // the one-time hint: gone once the player went somewhere
-      const b = t.closest<HTMLElement>('[data-act="shortcut"]');
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act="shortcut"]');
       if (b) runShortcut(api, b.dataset.id as Shortcut['id']);
     });
   },
   tick(page, api) {
-    const w = page.querySelector('.hm-when'); if (w) w.innerHTML = when(api);
-    const m = page.querySelector('.hm-money'); if (m) m.textContent = fcfaShort(api.ctx.state.wallet);
-    const st = page.querySelector('.hm-streak'); if (st) st.textContent = streakView(api.ctx.state.data).chip;
+    const set = (sel: string, text: string) => { const el = page.querySelector(sel); if (el && el.textContent !== text) el.textContent = text; };
+    const st = streakView(api.ctx.state.data);
+    set('.hm-when', when(api)); set('.hm-money', fcfaShort(api.ctx.state.wallet)); set('.hm-streak', st.run ? st.chip : '0 j');
   },
 };
 
-/** One app tile: the emoji on its gradient, its name under it (two lines at most, never cut). */
-export function appTile(a: AppDef): string {
-  const n = a.id === 'notifs' ? quietLog.unread : 0;
-  return `<button type="button" class="ph-app" data-app="${a.id}" aria-label="${esc(a.label)}${n ? ` · ${n}` : ''}"><i class="ph-ico" style="--g:linear-gradient(180deg,${a.grad})"><span>${a.emoji}</span></i>${n ? `<b class="ph-badge" aria-hidden="true">${n > 9 ? '9+' : n}</b>` : ''}<span>${esc(a.short ?? a.label)}</span></button>`;
-}
-
-/** « Toutes les apps »: every app, grouped (Ma vie, Travail, Argent et biens, En ville, Outils). */
+/** The app library (« Toutes les apps »): the same apps as the home screen, by theme (Ma vie, Travail, Argent et biens, En ville, Outils). */
 export const appsScreen: Screen = {
   title: 'Toutes les apps',
   mount(page) {
     const shown = new Set(visibleApps().map(a => a.id));
     page.innerHTML = GROUPS.map(([g, title]) => {
       const list = APPS.filter(a => a.group === g && shown.has(a.id)).sort((x, y) => x.order - y.order);
-      return list.length ? `<section class="pk-sec"><h3>${esc(title)}</h3><div class="ph-grid">${list.map(appTile).join('')}</div></section>` : '';
+      return list.length ? `<section class="pk-sec"><h3>${esc(title)}</h3><div class="ph-grid">${list.map(a => appTile(a)).join('')}</div></section>` : '';
     }).join('');
   },
 };

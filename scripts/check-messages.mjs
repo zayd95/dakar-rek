@@ -76,14 +76,14 @@ try {
   const i0 = await info(), w0 = await wallet();
   check('0. the simulated account answers: Teranga Money 3 000 F, two conversations, one unread, a friend code', i0.balance.amount === 3000 && i0.convs.length === 2 && i0.unread === 1 && i0.me.code === 'F00D-FEED-CAFE-0001' && w0 === 60000, JSON.stringify({ bal: i0.balance, n: i0.convs.length, unread: i0.unread, w0 }));
 
-  // 1 — home › « Toutes les apps » (badge) › Messages (badge) › the list › Awa
+  // 1 — home (Messages in the dock: its badge) › the library, « Toutes les apps » › Messages (its badge there too) › the list › Awa
   await d(() => window.__dakar.phone('home')); await until(() => window.__dakar.phoneInfo().screen === 'home');
   await wait(1200);
-  const homeBadge = await d(() => document.querySelector('#phone .hm-tile[data-go="apps"] .ph-badge')?.textContent ?? '');
+  const homeBadge = await d(() => document.querySelector('#phone .ph-dock .ph-app[data-app="messages"] .ph-badge')?.textContent ?? '');
   await tap('#phone .hm-tile[data-go="apps"]');
   await until(() => window.__dakar.phoneInfo().screen === 'apps'); await wait(600);
   const tileBadge = await d(() => document.querySelector('#phone .ph-app[data-app="messages"] .ph-badge')?.textContent ?? '');
-  check('1a. the unread message shows on « Toutes les apps » and on the Messages tile', homeBadge === '1' && tileBadge === '1', JSON.stringify({ homeBadge, tileBadge }));
+  check('1a. the unread message shows on the home screen’s Messages icon (the dock) and on its tile in « Toutes les apps »', homeBadge === '1' && tileBadge === '1', JSON.stringify({ homeBadge, tileBadge }));
   await tap('#phone .ph-app[data-app="messages"]');
   await until(() => window.__dakar.phoneInfo().screen === 'messages');
   const list = await screenText();
@@ -417,7 +417,8 @@ try {
 
   // the phone's keyboard (simulated: the visual viewport loses 336 px at the bottom, as Safari's): the field rides above it
   await d(() => window.__dakar.phone('messages:b0b0000000000b02')); await until(() => window.__dakar.phoneInfo().arg === 'b0b0000000000b02'); await wait(600);
-  // (a loaded machine runs the phone's own animation late: the field is measured once it has stopped moving)
+  // (a loaded machine runs the phone's own opening slide late, and may hold it 16 px down for seconds: measured once it has run, and the field has stopped moving)
+  await page.waitForFunction(() => [...document.querySelectorAll('#phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished')), null, { timeout: 60000 }).catch(() => {});
   const settle = sel => d(s => new Promise(done => { let last = NaN, same = 0, n = 0; const t = setInterval(() => { const b = document.querySelector(s)?.getBoundingClientRect().bottom; same = b === last ? same + 1 : 0; last = b; if (same >= 2 || ++n > 50) { clearInterval(t); done(); } }, 100); }), sel);
   await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
   await wait(400); await settle('#phone .mg-field');

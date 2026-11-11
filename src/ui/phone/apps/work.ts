@@ -1,5 +1,5 @@
 import type { Screen } from '../types';
-import { badge, btn, card, esc, note, row, rows, section } from '../kit';
+import { badge, btn, card, esc, more, row, rows, section } from '../kit';
 import { missionNow, streakView } from '../selectors';
 import { phoneHooks } from '../../phoneHooks';
 import { fcfa } from '../../hud';
@@ -9,7 +9,7 @@ import { tableCard, waitingText } from '../../../economy/bana';
 /**
  * Travailler: the job in hand first (a VTC passenger, a Tiak Tiak parcel: what, where, the pay, « Suivre »), then the ways to earn — VTC rides with the
  * player's own car, Tiak Tiak deliveries and the paid services of the district, the ventures, the arena — each one row that opens its module's own app.
- * One line says whether today already counts for the streak.
+ * One line says whether today already counts for the streak; where a delivery can be taken is a detail shown on a tap.
  */
 export const workScreen: Screen = {
   title: 'Travailler',
@@ -27,7 +27,7 @@ export const workScreen: Screen = {
     page.innerHTML = `${mission}
       ${section('Gagner ta vie', rows(ways))}
       ${section('Série', card(`<div class="wk-streak"><b>${esc(st.chip)}</b>${st.today ? badge('Aujourd’hui compte ✓', 'gain') : badge('Un travail payé aujourd’hui la fait avancer', 'sun')}</div>`))}
-      ${m ? '' : note('Les livraisons se prennent aussi sur place : approche-toi d’une boutique avec le pictogramme 📦.')}`;
+      ${m ? '' : more('Où prendre une livraison ?', '<p>Dans l’app Tiak Tiak, ou sur place : approche-toi d’une boutique qui porte le pictogramme 📦.</p>')}`;
     page.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]'); if (!b) return;
       const a = b.dataset.act;
