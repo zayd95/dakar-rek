@@ -41,7 +41,7 @@ export class ChunkMats {
   }
   /** `night`: 0 (day) … 1. */
   setNight(night: number) { this.bulb.color.setScalar(0.45 + 0.55 * night); this.glow.visible = night > 0.3; this.facade.emissiveIntensity = this.facade.emissiveMap ? 0.9 * night : 0; }
-  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); this.facade.map?.dispose(); this.facade.emissiveMap?.dispose(); this.facade.dispose(); this.bulb.dispose(); this.glow.dispose(); }
+  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); this.facade.dispose();   /* (its two textures are the game's one facade atlas, shared: src/world/batch.ts facadeTextures) */ this.bulb.dispose(); this.glow.dispose(); }
 }
 
 export interface Chunk {
@@ -170,7 +170,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     if (j.round && here) buildRoundStatic(j.round, { plain, asphalt, fac }, colliders, people, o.lite, R, s => frame(road, s));     // (src/road/roundabout.ts)
     if (j.brt) {
       // the BRT avenue (src/road/brt.ts), built once by the chunk that holds the crossing; the main road's stop lines (and on a plain crossing its zebras) before it, both ways
-      if (here) buildBrtStatic(j.brt, { plain, asphalt }, colliders, people, o.lite, R);
+      if (here) buildBrtStatic(j.brt, { plain, asphalt, fac }, colliders, people, o.lite, R);
       const stop = brtDims(j.brt).mainStop;
       for (const dir of [1, -1]) {
         const f = frame(road, j.s - dir * stop), lane = RB_BASE + road.laneShift(j.s - dir * stop);                 // on a rond-point: across the ring's lane, before the busway

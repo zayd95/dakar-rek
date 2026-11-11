@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FACADE_COLS, FACADE_ROWS } from './facadeAtlas';
+import { FACADE_ROW_GLSL } from './facadeAtlas';
 
 /**
  * Procedural surface grain for flat-coloured materials: world-space value noise at three scales
@@ -115,7 +115,7 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
       // With a style the whole bays are centred on the face (what is left over at both ends is plain wall: no window cut by a corner), the
       // upper storeys draw one of the row's four bays per cell, the ground floor runs through its bays in order (shop, shop, door, shop…).
       // The gradients are those of the continuous uv: no seam where a cell jumps to another bay of the atlas.
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vFStyle;').replace('#include <map_fragment>', `
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vFStyle;' + FACADE_ROW_GLSL).replace('#include <map_fragment>', `
       #ifdef USE_MAP
         vec2 fCell = floor(vMapUv), fIn = vMapUv - fCell;
         float fRows = floor(vFStyle.x + 0.5), fRow = mod(fRows, 16.0), fCol = 0.0, fShop = 0.0;
@@ -125,16 +125,18 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
           float fGr = mod(floor(fRows / 16.0), 16.0), fTop = floor(fRows / 256.0);
           vec3 fT8 = floor(vColor * 31.0 + 0.5);
           float fH = gHash(fCell * 2.17 + fT8.rg * 0.413 + fT8.b * 0.291 + floor(vGrainN.xz + 0.5) * 3.1 + 1.5);
-          if (fCell.y < 0.5 && fGr > 0.5) { fRow = fGr - 1.0; fCol = mod(fCell.x + vFStyle.y + floor(vGrainN.x + 0.5) + 4.0, 4.0); fShop = 1.0; }
+          float fSeq = mod(fCell.x + mod(floor(vFStyle.y + 0.5), 4.0) + floor(vGrainN.x + 0.5) + 4.0, 4.0);   // the bays in order along the face
+          if (fCell.y < 0.5 && fGr > 0.5) { fRow = fGr - 1.0; fCol = fSeq; fShop = 1.0; }
           else {
             if (fTop > 0.5 && fCell.y > vFStyle.w - 1.5) fRow = fTop - 1.0;
-            fCol = fH < 0.42 ? 0.0 : fH < 0.68 ? 1.0 : fH < 0.86 ? 2.0 : 3.0;
+            fCol = vFStyle.y > 3.5 ? fSeq : fH < 0.42 ? 0.0 : fH < 0.68 ? 1.0 : fH < 0.86 ? 2.0 : 3.0;   // stacked (a block of flats: each bay runs up the wall), or a bay drawn per cell
           }
           if (fCell.x < 0.0 || fCell.x > fN - 0.5 || fCell.y > vFStyle.w - 0.5) { fIn.x = 0.02; fCol = 0.0; fShop = 0.0; }   // the face's margins, and what is left above its last whole storey: plain wall
         }
         fIn = clamp(fIn, 0.004, 0.996);
-        vec2 fAt = (vec2(fCol, fRow) + fIn) / vec2(${FACADE_COLS}.0, ${FACADE_ROWS}.0);
-        vec2 fDx = dFdx(vMapUv) / vec2(${FACADE_COLS}.0, ${FACADE_ROWS}.0), fDy = dFdy(vMapUv) / vec2(${FACADE_COLS}.0, ${FACADE_ROWS}.0);
+        vec3 fRect = fRowRect(fRow);                                  // where the row lies in the atlas (the ground rows are painted twice as fine)
+        vec2 fAt = fRect.xy + (vec2(fCol, 0.0) + fIn) * fRect.z;
+        vec2 fDx = dFdx(vMapUv) * fRect.z, fDy = dFdy(vMapUv) * fRect.z;
         vec4 sampledDiffuseColor = textureGrad(map, fAt, fDx, fDy);
         vec3 fOwn = sampledDiffuseColor.rgb;
         float fTint = clamp(sampledDiffuseColor.a * 2.0 - 1.0, 0.0, 1.0);
