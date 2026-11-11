@@ -111,7 +111,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ride(120000, 0, p => { const m = window.__dakar.moto.info(); return Math.hypot(m.x - p.x, m.z - p.z) > 5 && m.speed > 2; }, p0);
   i2 = await info();
   const moved = Math.hypot(i2.x - p0.x, i2.z - p0.z);
-  check(`${label}: the throttle moves the motorbike and the card shows the speed`, moved > 4 && /km\/h/.test(await d(() => window.__dakar.moto.card())), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.moto.card())}`);
+  check(`${label}: the throttle moves the motorbike and the speedometer shows the speed`, moved > 4 && /^\d+ km\/h$/.test(await d(() => window.__dakar.moto.speedo().text)), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.moto.card())}`);
   await shot('4-riding');
   const y0 = i2.yaw;
   await ride(120000, 1, y => window.__dakar.moto.info().yaw < y - 0.3, y0);

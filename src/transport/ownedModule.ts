@@ -44,6 +44,7 @@ import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
 import { transport } from './module';
 import { driveFeel } from './driveFeel';
+import { speedo, speedOver } from './speedo';
 import type { DriveSpec, VehicleSpec } from './spec';
 
 /** The brake (m/s²) the braking sound was mixed against (src/transport/vehicleAudio.ts `brakeIntensity`). */
@@ -317,7 +318,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const ui = document.getElementById('ui');
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
-    if (ui) ridePad.init(ui);
+    if (ui) { ridePad.init(ui); speedo.init(ui); }
     vehicleAudio.unlockOnGesture();
     mountAudioDiag();                              // the first tap or key lets the page play sound (iPhone Safari)
   }
@@ -430,7 +431,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   update(ctx: GameCtx, dt: number) {
     const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     if (this.floor.length) this.watchFloor(ctx, dt);
-    if (!this.driving) headlightPool.release(this);                              // on foot (or nobody at the wheel): no light on the road
+    if (!this.driving) { headlightPool.release(this); speedo.hide(this); }      // on foot (or nobody at the wheel): no light on the road, no speedometer
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     this.simT += dt;
     this.stepDoor(dt, m);
@@ -481,7 +482,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     transport.obstacles(this.obst, this.def.kit);
     vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
-    const z0 = this.st.z, hit = driveSteps(this.st, input, drv, dt, this.blocked);
+    const z0 = this.st.z, odo0 = this.st.odo, hit = driveSteps(this.st, input, drv, dt, this.blocked);
+    speedo.show(this, speedOver(this.st.odo - odo0, dt), dt);                    // the compact speedometer: what the vehicle really covered this frame (src/transport/speedo.ts)
     if (hit && vs0 > 0 && this.st.speed <= 0) this.ctl.stoppedBy();          // run into something square on: the brake backs it out after a much shorter hold (src/transport/controls.ts)
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
@@ -910,6 +912,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null } : null,
         card: () => this.card?.text ?? '',
+        /** Checks: what the compact speedometer reads (« 43 km/h », empty when hidden) and how many times its text was written. */
+        speedo: () => ({ text: speedo.text, on: speedo.active, writes: speedo.writes }),
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
         radio: () => radio.info(),
@@ -1289,7 +1293,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private getOff(normal: boolean) {
     if (this.def.kit !== 'moto') { radio.leave(); document.querySelector('#ridepad .rp-radio')?.classList.remove('on'); }   // never in the street
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
-    this.driving = false; this.leaving = false; ridePad.hide(this); driveFeel.idle();
+    this.driving = false; this.leaving = false; ridePad.hide(this); speedo.hide(this); driveFeel.idle();
     vehicleAudio.stop();
     const door = normal && m.hasDoor && ctx.mode() === 'play';
     if (!door && this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
@@ -1373,10 +1377,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private refreshCard() {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
-    const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
+    // (the speed is not in the chip any more: the compact speedometer shows it, once: src/transport/speedo.ts. The chip keeps the vehicle and its condition.)
     const hp = this.hp(), tag = healthTag(hp);
     const trialSub = !this.trial || this.errand ? null : !this.road.ok ? 'Essai à l’arrêt · frein à main du vendeur' : this.road.supervised ? (this.road.called ? 'Essai encadré · ramène-la au garage' : 'Essai encadré · un tour dans le quartier') : 'Essai sur route · reste dans le quartier';
-    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : trialSub ?? HINT, req: healthAlert(hp) });
+    this.card.show({ num: this.def.icon, title: `${this.label()}${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : trialSub ?? (ridePad.active ? '' : HINT), req: healthAlert(hp) });   // (the keys' hint means nothing under a thumb: none with the pad)
   }
 
   private upright() {
@@ -1396,7 +1400,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
-    this.box?.dispose(); this.box = null; if (!ride) ridePad.hide(this);
+    this.box?.dispose(); this.box = null; if (!ride) { ridePad.hide(this); speedo.hide(this); }
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();
