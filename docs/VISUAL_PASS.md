@@ -51,3 +51,7 @@ on real phone GPUs this should matter less, but that must be measured on actual 
 - Generated references and textures (Higgsfield) not done: see `HIGGSFIELD_PLAN.md`.
 - Dibiterie and Maïga-style venues, family home and apartment interiors: not built.
 - Real-phone frame rate and load time: not measured.
+
+## Release world pass (the facade atlas)
+
+Since the release sprint the districts' walls are no longer one window tile: one atlas of eight kinds of storey (`src/world/facadeAtlas.ts`), read row by row by each building through `FacadeStyle` (`src/world/batch.ts`) and the facade shader (`src/world/grain.ts`), still one texture, one material and one mesh per hub. What changed per hub, the before/after budget and what was left out: `docs/proof/release/world/NOTES.md`.
