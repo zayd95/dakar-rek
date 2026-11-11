@@ -260,3 +260,7 @@ Cost, whole district (`buildHub`): meshes 33 → 33 (**no draw call**: everythin
 Checked: `tests/cornicheEsplanade.test.ts` (the way down is clear, the disc is clear, the headland is closed on its three seaward sides, the water's edge stands everywhere else including the fish beach) and `scripts/check-corniche-esplanade.mjs` (a real finger on the stick: from the pavement through the opening onto the disc, against each edge, back up: 10/10).
 
 `14`–`16`: before | after pairs (raised view, from above, from the promenade). `17`: the promenade's paving. `18`: the sand pitch. `19`: the esplanade at 21 h. Headless on a software renderer, Medium: composition and counts, not phone frame rate.
+
+The reference's other shots are Dakar's sunsets over the ocean. The game's sun already went down over the western sea; two things were added so that it is seen (`20`: the esplanade at 18 h and 19 h, clear sky):
+- `src/world/sky.ts`: a low sun is a larger, softer ball in a wider glow (it was a pin-point at every height). Every district's sky.
+- `src/world/builder.ts`: the Corniche's sea takes the sun (a specular term on the same mesh and colours): its light lies on the water under it. The Almadies' sea, to the north, is unchanged.

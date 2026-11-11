@@ -237,7 +237,10 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const CX = roadC(0), PX = -HALF - 4.6;                                          // road centre, promenade centre
     plain.box(22, 0.05, size + 40, -HALF + 1, 0, 0, 0xd8c690);                     // ground under road and promenade (below the road top)
     plain.box(30, 0.04, size + 60, -HALF - 22, 0, 0, 0xe2d2a0);                    // wet sand
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(700, 1400), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(-HALF - 380, 0.05, 0); group.add(sea);
+    // the western sea takes the sun: the evening sun goes down over it (src/main.ts updateLighting), and its light lies on the water as a path toward the walker
+    // (a specular term on the sea's own colours; the same single mesh)
+    const westSea = new THREE.MeshPhongMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35, specular: 0xc08a58, shininess: 42 });
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(700, 1400), westSea); sea.rotation.x = -Math.PI / 2; sea.position.set(-HALF - 380, 0.05, 0); group.add(sea);
     plain.box(4, 0.06, size + 60, -HALF - 36, 0.02, 0, 0xf4f1e6);                  // surf line
     pave.box(2.4, G, size + 12, -HALF - 1.2, 0, 0, 0xd8d2c4);                      // sea-side sidewalk
     // The promenade's paving (the owner's drone reference of the Corniche Ouest, 11 Nov): bands of dark red and purple pavers with a yellow line between
