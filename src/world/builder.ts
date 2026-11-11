@@ -1535,7 +1535,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         // (11 Nov, the owner's photographs of the hill and its stair: « on a high mountain with stairs ».) The hill is higher and no longer a cone with the group on
         // its middle: its summit stands toward the back of the block, so the sea side is one long slope for the stair (58 steps at about 35°, where 34 climbed at 38°)
         // and the back falls away in rock. Its flanks are broken ground (three rings, uneven), dry grass below and bare rock above, with outcrops.
-        const HILL = 0xa8925f, HILL_ROCK = 0x917651, STONE = 0xd9d4ca, BRONZE = 0x8a6747, ROCK = 0x84684b, CRAG = 0x6f5940;
+        const HILL = 0xa8925f, HILL_ROCK = 0x917651, STONE = 0xd9d4ca, ROCK = 0x84684b, CRAG = 0x6f5940;
         const R0 = 22, R1 = 7, HH = 17, OFF = 7.5, SX = cx + OFF;               // hill base/top radius, height; the summit's centre is OFF east of the block's
         const mh = (u: number, v: number) => { const q = Math.sin(u * 127.1 + v * 311.7) * 43758.5453; return q - Math.floor(q); };   // (from a place: the hub's random stream is not drawn)
         /** The hill's section at the share t of its height: centre x and radius. */
@@ -1595,60 +1595,24 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         for (let n = 0; n < (lite ? 8 : 18); n++) {
           const a = mh(n, 21) * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.55) continue;
           const t = 0.5 + mh(n, 22) * 0.42, c = ringAt(t), x = c.x + Math.cos(a) * (c.r + 0.3), z = cz + Math.sin(a) * (c.r + 0.3), w = 1.6 + mh(n, 23) * 2.4;
-          plain.box(w, 2.6 + mh(n, 24) * 2.2, w * (0.6 + mh(n, 25) * 0.5), x, B + HH * t - 2.3, z, n % 2 ? CRAG : ROCK, mh(n, 26) * 3);
+          plain.cyl(w * 0.32, w * 0.62, 2.8 + mh(n, 24) * 2.4, x, B + HH * t - 2.3, z, n % 2 ? CRAG : ROCK, 4 + (n % 3), [(mh(n, 27) - 0.5) * 0.3, mh(n, 26) * 3, (mh(n, 28) - 0.5) * 0.3]);   // a leaning prism, not a box
         }
         for (const [dx, dz, w, h, d, rot] of [[-1.5, 9.5, 5, 4.6, 3.4, 0.5], [1.8, 10.6, 3.6, 6.2, 3, -0.3], [5, 9.2, 4.4, 3.4, 3.2, 0.9], [-4.2, 8.2, 3, 2.6, 2.6, 0.2]] as const)
-          plain.box(w, h + 3.4, d, SX + dx, top - 5.6, cz - dz, dx > 0 ? CRAG : ROCK, rot);
-        // statue group, local axes: a = toward the sea (-x), s = the statue's right (-z), u = up from the summit
-        const k = 1.25;
-        const W = (a: number, s2: number, u: number): [number, number, number] => [SX - a * k, top + u * k, cz - s2 * k];
-        const L = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k, r1 * k, col);
-        const ball = (P: [number, number, number], r: number, col = BRONZE) => { const [x, y, z] = W(...P); plain.sphere(r * k, x, y, z, col); };
-        /** A crag: a tapered prism of four to six faces, leaning (`ta` toward the sea, `ts` toward the statue's right), its base at (a, s, u). */
-        const crag = (a: number, s2: number, u: number, rb: number, rt: number, h: number, seg: number, yaw = 0, ta = 0, ts = 0, col = ROCK) => { const [x, y, z] = W(a, s2, u); plain.cyl(rt * k, rb * k, h * k, x, y, z, col, seg, [ts, yaw, ta]); };
-        const ROCK_2 = 0x94785a;
-        // The rock the figures rise out of (the owner's photographs, 11 Nov): strata thrown up toward the man, in broken tiers, shards along its front, and the tall
-        // slab at his left. Prisms of four to six faces, leaning: nothing square.
-        crag(0.2, 0.4, -0.6, 6.4, 5.0, 3.6, 6, 0.3);
-        crag(1.6, 0.0, 2.4, 4.9, 3.5, 2.9, 5, 0.9, 0.08, 0, ROCK_2);
-        crag(2.5, -0.5, 4.6, 3.3, 2.1, 2.5, 5, 0.2, 0.12);
-        crag(0.8, 2.9, 2.2, 3.0, 1.9, 3.0, 5, 1.4, 0.05, -0.12, CRAG);
-        crag(-1.4, -1.5, 2.6, 3.4, 2.3, 4.2, 6, 0.6, -0.1, 0.06, ROCK_2);
-        crag(-2.6, 1.2, 1.4, 3.2, 1.8, 5.0, 5, 2.0, -0.16, -0.05, CRAG);
-        for (const [fa, fs, fu, rb, rt, h, yaw, ta, ts] of [[4.6, -1.8, 0.4, 1.5, 0.5, 4.6, 0.4, -0.3, 0.1], [4.9, 0.6, 0.2, 1.3, 0.4, 3.6, 1.1, -0.34, -0.05], [4.3, 2.6, 0.2, 1.4, 0.5, 4.0, 0.2, -0.28, -0.16],
-          [3.6, -3.2, 0.6, 1.3, 0.45, 5.4, 0.9, -0.24, 0.2], [3.4, 4.2, 0.0, 1.2, 0.4, 3.2, 1.7, -0.3, -0.22], [5.6, -0.6, -0.4, 1.1, 0.35, 2.8, 0.5, -0.4, 0]] as const)
-          crag(fa, fs, fu, rb, rt, h, 4, yaw, ta, ts, fa > 4.5 ? ROCK_2 : ROCK);                                // shards along the front, leaning back toward the group
-        crag(-1.0, -4.5, -0.4, 2.0, 1.5, 16.2, 4, 0.5, -0.03, 0.03);                                             // the tall slab at the man's left
-        crag(-0.5, -4.9, 14.6, 1.4, 0.5, 3.4, 4, 1.0, -0.08, 0.1, ROCK_2); crag(-2.2, -3.6, 0, 1.7, 1.0, 11.0, 4, 0.1, -0.05, -0.04, CRAG);
-        // man: broad and muscled (thighs, a chest in relief, shoulders, a thick neck), the cap
-        L([0.2, -0.7, 7.6], [2.3, -1.1, 6.1], 1.15, 0.95); L([2.3, -1.1, 6.1], [2.9, -1.2, 3.2], 0.9, 0.72); ball([2.3, -1.1, 6.1], 0.98);   // forward left leg, knee out of the rock
-        L([0.0, 0.7, 7.6], [-0.4, 0.9, 4.5], 1.15, 0.9);
-        L([0.0, 0, 7.2], [0.1, 0, 9.4], 1.85, 1.65, 0x775a3f);                                                   // wrapped cloth
-        L([0.1, 0, 9.2], [0.45, 0, 14.0], 1.6, 2.25);                                                            // torso, broad chest
-        ball([1.35, -0.95, 13.0], 1.05); ball([1.35, 0.95, 13.0], 1.05);                                         // the chest
-        L([0.4, -2.2, 13.6], [0.4, 2.2, 13.6], 0.85, 0.85); ball([0.4, -2.3, 13.7], 1.0); ball([0.4, 2.3, 13.7], 1.0);   // shoulders
-        L([0.45, 0, 14.2], [0.55, 0, 15.0], 0.75, 0.7); ball([0.65, 0, 15.9], 1.05);
-        L([0.6, 0, 16.4], [0.62, 0, 17.0], 0.98, 0.9, 0x5e4836);                                                 // the cap
-        L([0.4, -2.3, 13.7], [0.9, -3.8, 16.3], 0.85, 0.7); ball([0.9, -3.8, 16.3], 0.72);                       // raised left upper arm
-        L([0.9, -3.8, 16.3], [1.0, -2.1, 17.4], 0.68, 0.55);                                                     // forearm back over the shoulder
-        L([0.3, 2.3, 13.4], [0.2, 3.0, 11.0], 0.75, 0.6); L([0.2, 3.0, 11.0], [-0.5, 3.4, 9.6], 0.58, 0.48);    // right arm round the woman
-        // child seated on the forearm, pointing out to sea
-        L([1.0, -2.8, 17.5], [1.2, -2.8, 19.4], 0.75, 0.62); ball([1.3, -2.8, 20.2], 0.7);
-        L([1.1, -2.5, 17.7], [1.9, -2.3, 16.7], 0.34, 0.26); L([1.1, -3.1, 17.7], [1.9, -3.3, 16.7], 0.34, 0.26); // dangling legs
-        L([1.3, -2.4, 19.2], [3.6, -3.4, 21.0], 0.3, 0.2); ball([3.7, -3.45, 21.1], 0.26);                       // pointing arm
-        L([1.2, -3.2, 19.1], [0.9, -3.3, 18.0], 0.26, 0.22);                                                     // his other arm on the man's head
-        // woman, leaning forward at his right
-        L([1.4, 3.2, 3.0], [-0.3, 3.6, 7.6], 0.85, 1.0);                                                         // leg out of the rock
-        L([-0.3, 3.6, 7.0], [-0.5, 3.7, 9.8], 1.4, 1.05, 0x775a3f);                                              // wrapped dress
-        L([-0.4, 3.8, 7.6], [-2.6, 4.5, 6.4], 0.95, 0.25, 0x775a3f);                                             // dress flowing back
-        L([-0.5, 3.7, 9.6], [-0.2, 3.6, 12.5], 1.05, 1.2); ball([0.45, 3.2, 11.9], 0.62); ball([0.45, 4.0, 11.9], 0.62);
-        L([-0.2, 3.6, 12.6], [0.0, 3.5, 13.1], 0.5, 0.45); ball([0.1, 3.5, 13.8], 0.8);
-        L([-0.1, 3.5, 14.1], [-2.2, 4.0, 14.3], 0.55, 0.15);                                                     // hair streaming back
-        ball([-0.3, 4.5, 12.1], 0.6); L([-0.3, 4.5, 12.0], [-2.0, 5.9, 10.8], 0.52, 0.44); L([-2.0, 5.9, 10.8], [-3.7, 7.3, 9.5], 0.44, 0.32); ball([-3.85, 7.4, 9.4], 0.36);  // arm flung back
+          plain.cyl(Math.min(w, d) * 0.3, Math.max(w, d) * 0.6, h + 3.4, SX + dx, top - 5.6, cz - dz, dx > 0 ? CRAG : ROCK, 5, [0.1, rot, -0.08]);
+        // The group itself is a model (src/world/monumentGroup.ts: public/assets/monument/renaissance_group.glb, generated from a photograph of the monument; the
+        // owner, 11 Nov: « the monument is ugly… make it look realistic »): it is added to the hub once loaded, standing on the summit with its long side to the
+        // stair, as it is seen from the steps. It is about 21 m long for a summit 14 m across: rock is built up under its two ends, and behind it.
+        const GROUP = { x: SX + 0.6, z: cz, y: top - 0.35, height: 20 };
+        for (const sz of [-1, 1]) {
+          plain.cyl(2.6, 3.6, 7.0, GROUP.x + 0.2, top - 7.2, cz + sz * 8.8, sz > 0 ? ROCK : CRAG, 5, [0, 0.4 * sz, 0]);
+          plain.cyl(1.6, 2.6, 6.0, GROUP.x - 1.6, top - 7.0, cz + sz * 11.2, CRAG, 5, [0.1 * sz, 1.1, 0]);
+          plain.cyl(1.3, 2.2, 4.6, GROUP.x + 2.4, top - 5.4, cz + sz * 6.4, ROCK, 4, [0, 0.8, -0.12]);
+        }
+        plain.cyl(3.0, 4.4, 5.0, GROUP.x + 3.6, top - 5.6, cz - 1.5, CRAG, 6, [0, 0.3, 0]);                    // the back of the summit, where the hill falls away
         // hill collider: square plus cross approximate the round hill; the block corners stay free
         // The stair is walkable: a corridor |z - cz| < 3.3 from the foot (x0) to the summit terrace in front of the rock.
         // Everything else on the hill collides (square and cross approximate the round hill; block corners stay free).
-        const SH = SW / 2 - 0.2, rockX = SX - 5.4;
+        const SH = SW / 2 - 0.2, rockX = SX - 3.4;                                 // the terrace in front of the group: 3.6 m deep
         solid(rockX, cz - 16, cx + 16, cz + 16, top + 2);
         solid(cx - 22, cz - 16, rockX, cz - SH, top + 2); solid(cx - 22, cz + SH, rockX, cz + 16, top + 2);
         solid(cx - 8, cz - 22, cx + 8, cz - 16, top); solid(cx - 8, cz + 16, cx + 8, cz + 22, top); solid(cx + 16, cz - 8, cx + 22, cz + 8, top);
@@ -1664,7 +1628,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           plain.box(0.6, 1.1, 0.5, sp2.x + 2.2, B, sp2.z - 2.2, 0x1d1d1f); plain.box(0.6, 1.1, 0.5, sp2.x - 2.2, B, sp2.z - 2.2, 0x1d1d1f);
           for (let f = 0; f < 8; f++) plain.box(0.35, 0.45, 0.02, sp2.x - 2.6 + f * 0.75, 2.45, sp2.z + 2.6, [0x1a9d54, 0xf4c20d, 0xd9322b][f % 3]);
         }
-        monumentInfo = { cx, cz, stairX0: x0, stairX1: x1, stairZ: cz, y0: B + 0.35, y1: top + 0.05, spots };
+        monumentInfo = { cx, cz, stairX0: x0, stairX1: x1, stairZ: cz, y0: B + 0.35, y1: top + 0.05, spots, group: GROUP };
         break;
       }
       case 'gym': {

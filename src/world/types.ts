@@ -87,7 +87,9 @@ export interface HubWorld {
   /** Parked car rapides at the station (they get an apprentice calling for passengers). */
   rapides: THREE.Object3D[];
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */
-  monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[] } | null;
+  monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[];
+    /** Where the statue group stands (its base's middle) and how tall it is: src/world/monumentGroup.ts puts the model there. */
+    group: { x: number; z: number; y: number; height: number } } | null;
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
   seats: Seat[];

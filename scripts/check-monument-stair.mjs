@@ -40,7 +40,7 @@ check('the stair is climbed to the summit terrace', d < 0.8 && top.y > S.y1 - 0.
 await page.screenshot({ path: `${out}/03-summit.png` });
 await walkTo(page, t, S.x1 + 12, S.z, { tol: 0.5, ms: 30000 });
 const rock = await pos();
-check('the rock under the group stops the walker', rock.x < S.x1 + 2.6, `x ${rock.x.toFixed(2)}`);
+check('the group stops the walker at the far side of its terrace (3.6 m deep)', rock.x < S.x1 + 4.2 && rock.x > S.x1 + 1.5, `x ${rock.x.toFixed(2)}`);
 await walkTo(page, t, S.x1 - 4, S.z + 12, { tol: 0.5, ms: 30000 });
 const side = await pos();
 check('and the parapet keeps them on the stair', Math.abs(side.z - S.z) < 4.6, `z ${side.z.toFixed(2)}`);
@@ -52,6 +52,8 @@ await page.evaluate(([x, z]) => window.__dakar.place(x, z, Math.PI / 2), [S.x0 -
 await walkTo(page, t, S.x0 + 12, S.z + 12, { tol: 0.5, ms: 30000 });
 const flank = await pos();
 check('the hill\'s flank is closed beside the stair', flank.x < S.x0 + 2.5 && flank.y < 0.6, `x ${flank.x.toFixed(2)} y ${flank.y.toFixed(2)}`);
+const group = await page.evaluate(() => { let m = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'monument_group') m = o; }); return m ? { tris: m.geometry.index.count / 3, y: +m.position.y.toFixed(1), map: !!m.material.map } : null; });
+check('the statue group\'s model is in the scene, textured', !!group && group.tris > 5000 && group.map, JSON.stringify(group));
 check('no JavaScript errors', errors.length === 0, JSON.stringify(errors.slice(0, 3)));
 await browser.close();
 console.log(fails ? `${fails} FAILED` : 'all passed');
