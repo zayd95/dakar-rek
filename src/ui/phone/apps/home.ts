@@ -7,6 +7,7 @@ import { suggestion } from '../../../social/beats';
 import { cityTimeAt } from '../../../core/clock';
 import { HUB_NAMES } from '../../../world/content';
 import { fcfaShort } from '../../../economy/format';
+import { weekday } from '../../../arena/exteriorRules';
 
 /**
  * The home screen, a smartphone's: a small widget (who and where the player is, the balance, the streak, the one line of what is going on), at most ONE
@@ -14,15 +15,20 @@ import { fcfaShort } from '../../../economy/format';
  * then EVERY app as an icon — the most used first — and a dock, always in view, with the four favourites (Carte, Travailler, Argent, Messages) and, set
  * apart at its end, the app library (the same apps by theme). One tap opens anything; the grid scrolls under the widget when it does not fit.
  */
-export const DAYS_SHORT = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'];
+const DAYS_SHORT = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'];
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+/**
+ * The weekday of a city day, as the game counts it everywhere else (src/arena/exteriorRules.ts weekday: the HUD's place pill, the gala evenings): the
+ * phone used its own count and was a day behind the HUD.
+ */
+export const dayName = (day: number, short = false) => (short ? DAYS_SHORT : DAYS)[weekday(day)];
 export const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 const short = (name: string) => name.split(' · ')[0];
 
 /** Where and which day (the hour is in the status bar). */
 function when(api: PhoneApi) {
   const t = cityTimeAt(api.ctx.now()), hub = api.ctx.hub();
-  return `${hub ? short(HUB_NAMES[hub]) + ' · ' : ''}${DAYS[(t.day - 1) % 7]}`;
+  return `${hub ? short(HUB_NAMES[hub]) + ' · ' : ''}${dayName(t.day)}`;
 }
 
 /** The one line of what is going on: the job in hand, else the next lead of the story. */

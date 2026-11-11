@@ -417,7 +417,8 @@ try {
 
   // the phone's keyboard (simulated: the visual viewport loses 336 px at the bottom, as Safari's): the field rides above it
   await d(() => window.__dakar.phone('messages:b0b0000000000b02')); await until(() => window.__dakar.phoneInfo().arg === 'b0b0000000000b02'); await wait(600);
-  // (a loaded machine runs the phone's own animation late: the field is measured once it has stopped moving)
+  // (a loaded machine runs the phone's own opening slide late, and may hold it 16 px down for seconds: measured once it has run, and the field has stopped moving)
+  await page.waitForFunction(() => [...document.querySelectorAll('#phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished')), null, { timeout: 60000 }).catch(() => {});
   const settle = sel => d(s => new Promise(done => { let last = NaN, same = 0, n = 0; const t = setInterval(() => { const b = document.querySelector(s)?.getBoundingClientRect().bottom; same = b === last ? same + 1 : 0; last = b; if (same >= 2 || ++n > 50) { clearInterval(t); done(); } }, 100); }), sel);
   await d(() => { const vv = window.visualViewport; Object.defineProperty(vv, 'height', { configurable: true, get: () => innerHeight - 336 }); vv.dispatchEvent(new Event('resize')); });
   await wait(400); await settle('#phone .mg-field');

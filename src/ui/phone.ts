@@ -28,7 +28,7 @@ import type { Relations } from '../social/relations';
 import { phoneHooks } from './phoneHooks';
 import type { PhoneApi, Screen } from './phone/types';
 import { APPS, appById } from './phone/registry';
-import { homeScreen, appsScreen, clock, DAYS_SHORT } from './phone/apps/home';
+import { homeScreen, appsScreen, clock, dayName } from './phone/apps/home';
 import { online } from '../online/api';
 import { pistesScreen } from './phone/apps/pistes';
 import { profileScreen } from './phone/apps/profile';
@@ -321,7 +321,7 @@ export class Phone {
     if (key === this.statusShown) return;
     this.statusShown = key;
     this.timeEl.textContent = clock(t.hour, t.minute);
-    this.dayEl.textContent = DAYS_SHORT[(t.day - 1) % 7];
+    this.dayEl.textContent = dayName(t.day, true);
     this.skyEl.textContent = skyAt(t.hourFloat);
     this.netEl.hidden = !net;
     if (net) { this.netEl.className = `ph-net ${net[0]}`; this.netEl.setAttribute('aria-label', net[1]); this.netEl.title = net[1]; }

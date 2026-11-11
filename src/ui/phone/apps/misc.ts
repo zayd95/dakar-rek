@@ -4,13 +4,12 @@ import { phoneHooks } from '../../phoneHooks';
 import { cityTimeAt, CITY_DAY_MS } from '../../../core/clock';
 import { HUB_NAMES } from '../../../world/content';
 import { restSpotHere } from '../../../game/rest';
-import { clock } from './home';
+import { clock, dayName } from './home';
 
 /**
  * The smaller apps (Santé, Arène and Lutteurs, Ce soir, Actus, Météo, Horloge, Calculatrice, Aide), each one short screen made
  * of the shared pieces. They read the game; they never keep their own copy of it.
  */
-const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const hubShort = (h: string | null) => (h ? HUB_NAMES[h as keyof typeof HUB_NAMES].split(' · ')[0] : 'Dakar');
 /** The sky of a city hour (Météo, and the phone's status bar): night from 19 h to 6 h, a low sun at dawn and dusk. */
@@ -102,7 +101,7 @@ export const newsScreen: Screen = {
       (c.livraisons ?? 0) >= 3 ? ['Tiak Tiak', `${c.livraisons} livraisons pour un jeune livreur du quartier.`] : null,
       w >= 1e6 ? ['Économie', `Un jeune entrepreneur dépasse ${w >= 1e9 ? 'le milliard' : 'le million'} de FCFA.`] : null,
     ].filter(Boolean) as string[][];
-    page.innerHTML = `<p class="pk-note">Jour ${t.day} · ${DAYS[(t.day - 1) % 7]}</p>${[...mine, ...pick].map(([where, what], i) => `<article class="ph-news${i < mine.length ? ' me' : ''}"><small>${esc(where)}</small><p>${esc(what)}</p></article>`).join('')}`;
+    page.innerHTML = `<p class="pk-note">Jour ${t.day} · ${dayName(t.day)}</p>${[...mine, ...pick].map(([where, what], i) => `<article class="ph-news${i < mine.length ? ' me' : ''}"><small>${esc(where)}</small><p>${esc(what)}</p></article>`).join('')}`;
   },
 };
 
@@ -170,7 +169,8 @@ export const calcScreen: Screen = {
 export const helpScreen: Screen = {
   title: 'Aide',
   mount(page) {
-    page.innerHTML = section('Écran tactile', rows([row({ label: 'Marcher, conduire', value: 'Joystick à gauche' }), row({ label: 'Tourner la caméra', value: 'Glisser à droite' }), row({ label: 'Agir, parler, entrer', value: 'Bouton jaune' }), row({ label: 'Téléphone', value: 'Bouton 📱 en haut' })]))
+    page.innerHTML = section('Téléphone', rows([row({ label: 'Ouvrir une app', value: 'Touche son icône' }), row({ label: 'Écran d’accueil', value: 'La barre, tout en bas' }), row({ label: 'Revenir au jeu', value: '✕ Fermer · Échap' })]))
+      + section('Écran tactile', rows([row({ label: 'Marcher, conduire', value: 'Joystick à gauche' }), row({ label: 'Tourner la caméra', value: 'Glisser à droite' }), row({ label: 'Agir, parler, entrer', value: 'Bouton jaune' }), row({ label: 'Téléphone', value: 'Bouton 📱 en haut' })]))
       + section('Clavier et souris', rows([row({ label: 'Marcher', value: 'ZQSD, WASD, flèches' }), row({ label: 'Courir', value: 'Maj' }), row({ label: 'Tourner la caméra', value: 'Glisser · Q et R' }), row({ label: 'Agir, parler, entrer', value: 'E, Entrée, Espace' }), row({ label: 'Téléphone', value: 'Échap ou M' })]))
       + section('En ville', `<p class="pk-note">Approche-toi d’un lieu ou d’une personne : le bouton jaune dit ce que tu peux faire. Mange, dors, lave-toi et vois du monde : tes besoins baissent en jouant.</p><p class="pk-note">En ligne, le téléphone ne met pas la ville en pause.</p>`);
   },

@@ -49,7 +49,6 @@ for (const it of nearby) {                                                 // th
 }
 const actBox = await rect('#act'), menuBox = await rect('#menuBtn'), joyBox = await rect('#joy');
 check('0. the player stands where the game offers an action (the control for what follows)', !!focus && !!actBox && actBox.w > 20, JSON.stringify({ spot: spot?.name, focus: focus?.name, primary: focus?.primary }));
-await shot('0-game-before');
 
 // control: with the phone CLOSED, the action key does act (else the « nothing fired » checks below would prove nothing)
 ref = await pos();
@@ -77,10 +76,12 @@ const bar = await d(() => {
   const q = s => document.querySelector('#phone ' + s), box = e => { const r = e.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), bottom: Math.round(r.bottom) }; };
   return { time: q('.ph-time').textContent, day: q('.ph-day').textContent, sky: q('.ph-sky').textContent, energy: q('.ph-energy').getAttribute('aria-label'), net: !q('.ph-net').hidden,
     status: box(q('.ph-status')), close: box(q('[data-nav="close"]')), home: box(q('[data-nav="home"]')), homeTarget: (() => { const e = q('[data-nav="home"]'), r = e.getBoundingClientRect(), a = getComputedStyle(e, '::before'); return Math.round(r.height - parseFloat(a.top)); })(),
-    head: getComputedStyle(q('.ph-head')).display, clock: window.__dakar.clock?.() ?? null };
+    head: getComputedStyle(q('.ph-head')).display, hud: document.querySelector('#clock')?.textContent ?? '' };
 });
-check('1b. the status bar: the city’s time and day, the sky of the hour, the energy as the battery, « Fermer » (≥ 44 px); no app header on the home screen; the home indicator at the bottom (a 44 px target)',
-  /^\d\d:\d\d$/.test(bar.time) && /^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim)\.$/.test(bar.day) && /[☀🌤🌙]/u.test(bar.sky) && /^Énergie : \d+ %$/.test(bar.energy) && bar.status.top === 0 && bar.status.h <= 48
+// (the HUD's own pill, hidden under the phone, reads « 🌙 Lundi · 05:01 »: the same day, the same hour within a minute or two of city time)
+const hudDay = (bar.hud.match(/([A-Z][a-zé]+) · (\d\d):\d\d/) ?? []).slice(1);
+check('1b. the status bar: the city’s time and day (the HUD’s own), the sky of the hour, the energy as the battery, « Fermer » (≥ 44 px); no app header on the home screen; the home indicator at the bottom (a 44 px target)',
+  /^\d\d:\d\d$/.test(bar.time) && /^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim)\.$/.test(bar.day) && hudDay.length === 2 && (bar.day === hudDay[0].slice(0, 3) + '.' || bar.time.startsWith('00:')) && /[☀🌤🌙]/u.test(bar.sky) && /^Énergie : \d+ %$/.test(bar.energy) && bar.status.top === 0 && bar.status.h <= 48
   && bar.close.w >= 44 && bar.close.h >= 44 && bar.head === 'none' && bar.home.bottom === 844 && bar.homeTarget >= 44, JSON.stringify(bar));
 const home = await d(() => {
   const box = e => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, top: r.top, bottom: r.bottom, left: r.left }; };

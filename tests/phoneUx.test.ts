@@ -6,6 +6,8 @@ import { creditWork } from '../src/economy/streak';
 import { contextualShortcut, debtsNow, highlights, historyRows, missionNow, residenceLine, statRows, streakChip, streakView } from '../src/ui/phone/selectors';
 import { APPS, GROUPS, homeLayout } from '../src/ui/phone/registry';
 import { phoneHooks } from '../src/ui/phoneHooks';
+import { dayName } from '../src/ui/phone/apps/home';
+import { placeClock } from '../src/arena/eveningCall';
 
 /** The phone's selectors (src/ui/phone/selectors.ts): what its screens show, read from the save — never a second copy of the game's numbers. */
 const fresh = () => { const s = new GameState(newSave(0)); s.data.play = { day: 1, city: 10 }; return s; };
@@ -56,6 +58,15 @@ describe('phone: the player\'s life hub', () => {
       expect(ids).toContain(id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(APPS.every(a => GROUPS.some(([g]) => g === a.group) && (!!a.screen !== !!a.hook))).toBe(true);
+  });
+
+  it('the status bar names the day the HUD names (one weekday for the whole game)', () => {
+    for (let day = 1; day <= 15; day++) {
+      const hud = placeClock(day, 10, true).clock.split(' · ')[0];             // « Mardi » on day 1 (src/arena/eveningCall.ts)
+      expect(dayName(day)).toBe(hud);
+      expect(dayName(day, true)).toBe(hud.slice(0, 3) + '.');
+    }
+    expect(dayName(1)).toBe('Mardi');
   });
 
   it('the home screen: a dock of four favourites, every other app in the grid (one tap), a hook app only with its module', () => {
