@@ -98,7 +98,21 @@ PERF_TABLE
 
 ## Known issues
 
-KNOWN_ISSUES
+Severity: **high** blocks a player; **medium** is seen by a player and has a way round; **low** is cosmetic, rare, or only affects the checks.
+
+| # | Severity | What | Where it stands |
+|---|---|---|---|
+| 1 | medium | **Nothing was measured on a phone.** Frame rate, heat, loading time on a mobile network and touch feel are unknown from here. The Corniche is the heaviest it has been (about 110 000 triangles of scenery with its models; the Almadies is heavier still at about 234 000 in view) | « Mesure de fluidité » is in the build for the owner's device test (`docs/mobile/MOBILE-01.md`) |
+| 2 | medium | **Online play is verified against a local server only.** Presence in every district and a dropped connection coming back are checked by `check:online` on a local worker; messages, money transfers between players and home visits were not exercised on the public server | treat multiplayer on the public address as experimental until two phones have tried it |
+| 3 | low | The JavaScript heap still creeps by about 4 to 10 MB per district round trip after a forced collection; cause not found. The graphics-memory leak (the large one) is fixed | a very long session may slow down; a reload clears it |
+| 4 | low | `?debug` works on the public build, as on every earlier one: it lets anyone who types it change their own local save (hour, money, position). It exposes nobody else's data | to be removed or gated before a real launch |
+| 5 | low | On foot the goal line gives the distance as the crow flies; the minimap's dotted route and the map's card give the distance by the streets. The two figures differ | by design; `docs/proof/release/map/AUDIT.md` |
+| 6 | low | The esplanade's terraces and disc are painted flat (the ground has no height there); the statue group's far side is the generator's guess; the lighthouse is a lighthouse on a keeper's house, not a survey of the Mamelles' | `docs/proof/release/world/NOTES.md`, `docs/ASSET_REGISTER.md` |
+| 7 | low | Landmarks and Dakar 2026 dressing are on the Corniche only | the other districts are as they were |
+| 8 | low (checks) | The scripted drivers and walkers of the journeys are sensitive to a loaded machine: the trade journey's game day rolled over once while the machine was building something else; the night check's screenshot timed out once the same way. Both pass on a quiet machine | no change to the game |
+| 9 | low (hosting) | Cloudflare's preview builds for branches other than the production one have failed since 25 October (no log reachable from here; the account's Durable Object namespace limit is the likely cause) | previews are not needed for the public address |
+
+Fixed during this release, for the record: a thumb already on the stick when an activity ended did not move the player until it was lifted and put down again (found by the Almadies evening journey, red in two runs out of four; `scripts/check-thumb-after-activity.mjs`).
 
 ## Deployment
 
