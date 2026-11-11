@@ -1634,6 +1634,7 @@ function frame(now: number) {
     frameStats.tick(now, `${(HUB_NAMES[world.id] ?? world.id).split(' · ')[0]} · ${inside ? 'dans un logement' : document.body.classList.contains('ridepad') ? 'au volant' : 'à pied'}`, renderer.info.render.calls, renderer.info.render.triangles);
   }
   updateFrameMeter(now);
+  textureSweep.tick(scene, now);                            // (every 20 s: what the scene draws with, for the sweep at the next district change)
 }
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
@@ -1906,7 +1907,7 @@ if (DEBUG) {
     avatar: () => ({ identity: state.data.avatar, appearance: state.data.appearance, drawn: playerBody?.appearance ?? null, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
-    textures: () => ({ onCard: renderer.info.memory.textures, freed: textureSweep.freed }),
+    textures: () => ({ onCard: renderer.info.memory.textures, geometries: renderer.info.memory.geometries, freed: textureSweep.freed, by: { ...textureSweep.by } }),
     stride: () => ({ running: stride.running, sprinting: stride.sprinting, gait: stride.gait, forme: stride.forme, runSpeed: +stride.runSpeed().toFixed(2), speed: +speed.toFixed(2), forced: forcedGait }),
     strideToggle: (on: boolean | 0 | 1 | 2) => { forcedGait = on === true ? 1 : on === false ? 0 : on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */

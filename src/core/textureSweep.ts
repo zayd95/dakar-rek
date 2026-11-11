@@ -17,7 +17,8 @@
 interface TextureLike { isTexture?: boolean; isRenderTargetTexture?: boolean; isVideoTexture?: boolean; uuid: string; dispose(): void }
 interface MaterialLike { [k: string]: unknown; uniforms?: Record<string, { value: unknown }> }
 interface SkeletonLike { uuid: string; boneTexture?: unknown; dispose(): void }
-interface ObjectLike { material?: MaterialLike | MaterialLike[]; traverse(cb: (o: ObjectLike) => void): void; background?: unknown; environment?: unknown; isSkinnedMesh?: boolean; skeleton?: SkeletonLike }
+interface GeometryLike { isBufferGeometry?: boolean; uuid: string; dispose(): void }
+interface ObjectLike { material?: MaterialLike | MaterialLike[]; traverse(cb: (o: ObjectLike) => void): void; background?: unknown; environment?: unknown; isSkinnedMesh?: boolean; skeleton?: SkeletonLike; geometry?: GeometryLike }
 
 const isTex = (v: unknown): v is TextureLike => !!v && typeof v === 'object' && (v as TextureLike).isTexture === true;
 const keep = (t: TextureLike) => t.isRenderTargetTexture === true || t.isVideoTexture === true;
@@ -42,25 +43,43 @@ export function skeletonsIn(root: ObjectLike, into = new Map<string, SkeletonLik
   return into;
 }
 
+/** Every geometry drawn under `root`. */
+export function geometriesIn(root: ObjectLike, into = new Map<string, GeometryLike>()): Map<string, GeometryLike> {
+  root.traverse(o => { const g = o.geometry; if (g && g.isBufferGeometry) into.set(g.uuid, g); });
+  return into;
+}
+
 export class TextureSweep {
   /** Textures seen in the scene since the last sweep (those of the district being left, and what its life added). */
   private seen = new Map<string, TextureLike>();
   private seenBones = new Map<string, SkeletonLike>();
+  private seenGeo = new Map<string, GeometryLike>();
   /** How many textures the sweeps have freed in all (the playtest report and the checks read it). */
   freed = 0;
+  /** The same, by kind. */
+  readonly by = { textures: 0, bones: 0, geometries: 0 };
+
+  private notedAt = 0;
+  /** Called every frame with the page's clock (ms): notes the scene every `everyMs`, so that what comes and goes during a district's life is known to the next sweep. */
+  tick(scene: ObjectLike, now: number, everyMs = 20000) { if (now - this.notedAt < everyMs) return; this.notedAt = now; this.note(scene); }
 
   /** Note what the scene uses now. Called just before a district is left, and may be called at any quiet moment (a new sign, an interior entered). */
-  note(scene: ObjectLike) { texturesIn(scene, this.seen); skeletonsIn(scene, this.seenBones); }
+  note(scene: ObjectLike) { texturesIn(scene, this.seen); skeletonsIn(scene, this.seenBones); geometriesIn(scene, this.seenGeo); }
 
   /** The next district stands: free every noted texture (and bone texture) the scene no longer uses. Returns how many were freed. */
   sweep(scene: ObjectLike): number {
     const live = texturesIn(scene);
     let n = 0;
-    for (const [id, t] of this.seen) if (!live.has(id)) { t.dispose(); n++; }
+    for (const [id, t] of this.seen) if (!live.has(id)) { t.dispose(); n++; this.by.textures++; }
     this.seen = live;
     const bones = skeletonsIn(scene);
-    for (const [id, k] of this.seenBones) if (!bones.has(id) && k.boneTexture) { k.dispose(); n++; }   // (a skeleton never drawn has no bone texture to free)
+    for (const [id, k] of this.seenBones) if (!bones.has(id) && k.boneTexture) { k.dispose(); n++; this.by.bones++; }   // (a skeleton never drawn has no bone texture to free)
     this.seenBones = bones;
+    // geometries too: the district's own are freed by its dispose, but what its life added and removed (a marker, a bubble, a visitor's vehicle) was not; a shared
+    // template that is not on stage right now is uploaded again when it next is
+    const geo = geometriesIn(scene);
+    for (const [id, g] of this.seenGeo) if (!geo.has(id)) { g.dispose(); n++; this.by.geometries++; }
+    this.seenGeo = geo;
     this.freed += n;
     return n;
   }
