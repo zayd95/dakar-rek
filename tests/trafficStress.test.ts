@@ -102,7 +102,15 @@ function driver(opts: { lane?: number; boost?: boolean } = {}) {
     const tgt = at(p.s + dir * lookFor(v), lane);
     const err = wrapAngle(Math.atan2(tgt.x - m.s.x, tgt.z - m.s.z) - m.s.yaw);
     const steer = steerFor(err, Math.hypot(tgt.x - m.s.x, tgt.z - m.s.z), v, m.d);
-    if (mode === 'back') return { fwd: 0, steer: 0, boost: false, brake: true };
+    if (mode === 'back') {
+      // he looks behind while he backs (the cars reverse at 14 to 16 km/h now, and the road's traffic queues behind a stopped car): something close behind, he stops backing and
+      // pulls out from where he stands, as the moto (which cannot back) does
+      let behind = Infinity;
+      for (let dd = 2; dd < 4.5 + v * 1.2 && behind === Infinity; dd += 0.75) if (blockedAt(m.s.x - Math.sin(m.s.yaw) * dd, m.s.z - Math.cos(m.s.yaw) * dd)) behind = dd;
+      if (behind === Infinity) return { fwd: 0, steer: 0, boost: false, brake: true };
+      if (m.s.speed < -0.3) return { fwd: 0.5, steer: 0, boost: false, brake: false };
+      mode = 'pass'; modeT = 0; stuckFor = 0;
+    }
     const reach = 12 + v * 2.4, slow = own < reach ? Math.max(0, Math.min(1, (own - 6) / (reach - 6))) : 1;
     slowFor = slow;
     const safe = Math.sqrt(2 * 6 * Math.max(0, own - 5)), brake = m.s.speed > 0.5 && m.s.speed > safe + 0.5;        // a person brakes for what is ahead, not only lifts
