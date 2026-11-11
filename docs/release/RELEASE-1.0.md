@@ -60,12 +60,13 @@ Every build carries `version.json` next to the page (`name`, `commit`, `buildId`
 
 ### The look of Dakar
 
-Two passes (`docs/proof/release/world/NOTES.md`, with before/after pairs). All of it is in the districts' merged batches: **no draw call added**; the approved Ngor / Almadies layout, venues and parking are untouched.
+Three passes (`docs/proof/release/world/NOTES.md`, with before/after pairs). All of it is in the districts' merged batches: **no draw call added**; the approved Ngor / Almadies layout, venues and parking are untouched.
 
 - **Plateau**: offices over shops (ribbon windows, concrete fins), flats with loggias and balconies, arcades kept; on the roofs set-back storeys, oversailing slabs, stair heads, tanks and masts.
 - **Pikine**: houses with a house's ground floor, bare block walls, corner boutiques, the floor to come (posts with their irons), blue tanks.
 - **Mermoz · Sacré-Cœur**: tiled fronts over shops, villas under tile roofs, wall piers, gate globes lit at night.
 - **Corniche**: modern residences, the painted median, a whitewashed sea wall with globes, benches facing the sea.
+- **Corniche, after the owner's drone video of 11 November** (third pass): a headland of ochre laterite with the great **round esplanade** on it, reached on foot from the end of the street; wavy painted terraces in red, yellow and purple; black basalt along the shore; turquoise shallows and foam; the promenade paved in bands of red and purple with yellow lines; the pitch in sand inside a yellow kerb. The evening sun is a larger, softer ball as it goes down over the sea, and its light lies on the water.
 
 ### Memory and loading
 
