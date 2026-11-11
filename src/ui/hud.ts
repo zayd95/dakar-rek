@@ -154,29 +154,50 @@ export class Hud {
     this.resetTouch = reset;
     window.addEventListener('blur', reset);
     window.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
+    /** May this pointer take a control now? (the game takes input, it is a finger, it is not on a button, a sheet or another pad) */
+    const takes = (e: PointerEvent) => {
+      if (!this.input.enabled) return false;
+      if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return false;
+      const t = e.target as HTMLElement | null;
+      return !t?.closest?.('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev,#steerpad');
+    };
+    /** The finger takes the stick: on its base it drives it from its centre; anywhere else in the left zone the base moves under the finger. */
+    const grabStick = (e: PointerEvent) => {
+      joyId = e.pointerId; joy.style.transform = '';
+      const r = joy.getBoundingClientRect(); let cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      if (Math.hypot(e.clientX - cx, e.clientY - cy) > r.width / 2 + 10) {
+        // kept inside the safe areas (#ui is padded by them): in landscape the notch is on a side
+        const sa = getComputedStyle(joy.parentElement ?? document.body), saL = parseFloat(sa.paddingLeft) || 0, saB = parseFloat(sa.paddingBottom) || 0;
+        const h = r.width / 2 + 8, nx = Math.min(Math.max(e.clientX, h + saL), innerWidth * 0.45), ny = Math.min(Math.max(e.clientY, h + 60), innerHeight - h - saB);
+        joy.style.transform = `translate(${Math.round(nx - cx)}px,${Math.round(ny - cy)}px)`; cx = nx; cy = ny;
+      }
+      joy.dataset.cx = String(cx); joy.dataset.cy = String(cy);
+      joy.classList.add('on');
+      this.moveJoy(e, knob, R);
+    };
+    const inStickZone = (e: { clientX: number }) => e.clientX < innerWidth * 0.45 && !document.body.classList.contains('ridepad');   // not while driving: the steering rocker (src/transport/ridePad.ts) is under that thumb
+    // Every finger on the glass, wherever it went down and whether or not the game was taking the controls then: a thumb that is already resting where the stick
+    // is when the controls come back (the end of a dance, a sheet closing) takes the stick at once, without having to be lifted and put down again.
+    const fingers = new Map<number, PointerEvent>();
+    window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') fingers.set(e.pointerId, e); }, true);
+    window.addEventListener('pointermove', e => { if (fingers.has(e.pointerId)) fingers.set(e.pointerId, e); }, true);
+    const lift = (e: PointerEvent) => { fingers.delete(e.pointerId); };
+    window.addEventListener('pointerup', lift, true); window.addEventListener('pointercancel', lift, true);
+    this.input.onEnable = () => {
+      if (joyId >= 0) return;
+      for (const e of fingers.values()) if (e.pointerId !== camId && inStickZone(e) && takes(e)) { grabStick(e); break; }
+    };
     window.addEventListener('pointerdown', e => {
-      if (!this.input.enabled) return;
-      if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
-      const t = e.target as HTMLElement;
-      if (t.closest('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev,#steerpad')) return;
-      if (e.clientX < innerWidth * 0.45 && joyId < 0 && !document.body.classList.contains('ridepad')) {   // not while driving: the steering rocker (src/transport/ridePad.ts) is under that thumb
-        // Floating stick: a finger on the base drives it from its centre; anywhere else in the left zone moves the base under the finger.
-        joyId = e.pointerId; joy.style.transform = '';
-        const r = joy.getBoundingClientRect(); let cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        if (Math.hypot(e.clientX - cx, e.clientY - cy) > r.width / 2 + 10) {
-          // kept inside the safe areas (#ui is padded by them): in landscape the notch is on a side
-          const sa = getComputedStyle(joy.parentElement ?? document.body), saL = parseFloat(sa.paddingLeft) || 0, saB = parseFloat(sa.paddingBottom) || 0;
-          const h = r.width / 2 + 8, nx = Math.min(Math.max(e.clientX, h + saL), innerWidth * 0.45), ny = Math.min(Math.max(e.clientY, h + 60), innerHeight - h - saB);
-          joy.style.transform = `translate(${Math.round(nx - cx)}px,${Math.round(ny - cy)}px)`; cx = nx; cy = ny;
-        }
-        joy.dataset.cx = String(cx); joy.dataset.cy = String(cy);
-        joy.classList.add('on');
-        this.moveJoy(e, knob, R);
-      } else if (e.clientX >= innerWidth * 0.45 && camId < 0) { camId = e.pointerId; lx = e.clientX; ly = e.clientY; }
+      if (!takes(e)) return;
+      if (inStickZone(e) && joyId < 0) grabStick(e);
+      else if (e.clientX >= innerWidth * 0.45 && camId < 0) { camId = e.pointerId; lx = e.clientX; ly = e.clientY; }
     });
     window.addEventListener('pointermove', e => {
       if (e.pointerId === joyId) this.moveJoy(e, knob, R);
       else if (e.pointerId === camId) { this.input.dragYaw -= (e.clientX - lx) * 0.006; this.input.dragPitch += (e.clientY - ly) * 0.004; lx = e.clientX; ly = e.clientY; }
+      // A thumb that was already down when the game gave the controls back (the end of a dance, a sheet closing, a door) takes the stick as soon as it moves: it
+      // was put down while nothing was taken, or dropped when the sheet opened, and the player stood still until it was lifted and put down again.
+      else if (joyId < 0 && e.pointerType === 'touch' && inStickZone(e) && takes(e)) grabStick(e);
     });
     const up = (e: PointerEvent) => {
       if (e.pointerId === joyId) { joyId = -1; this.input.joy = { x: 0, y: 0 }; knob.style.transform = ''; joy.style.transform = ''; joy.classList.remove('on'); }

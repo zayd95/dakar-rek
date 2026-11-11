@@ -22,7 +22,13 @@ export class Layer {
     this.el = document.createElement('div');
     this.el.className = `iw ${cls}`;
     (document.getElementById('ui') ?? document.body).appendChild(this.el);
+    this.el.addEventListener('pointerdown', e => this.down.add(e.pointerId));
+    const off = (e: PointerEvent) => { this.down.delete(e.pointerId); if (this.gone && !this.down.size) this.el.remove(); };
+    this.el.addEventListener('pointerup', off); this.el.addEventListener('pointercancel', off);
   }
+  /** The fingers that went down on the layer and are still down. */
+  private down = new Set<number>();
+  private gone = false;
   add(cls: string, html = '', tag = 'div'): HTMLElement {
     const e = document.createElement(tag); e.className = cls; e.innerHTML = html; this.el.appendChild(e); return e;
   }
@@ -56,7 +62,17 @@ export class Layer {
     for (const w of this.words) { w.t += dt; const k = Math.min(1, w.t / 0.65); w.el.style.opacity = String(1 - k); w.el.style.marginTop = `${-34 * k}px`; if (k >= 1) w.el.remove(); }
     this.words = this.words.filter(w => w.t < 0.65);
   }
-  dispose() { this.el.remove(); this.card = null; }
+  /**
+   * Takes the layer away. A finger still down on it keeps its (emptied, invisible) element in the page until it lifts: a browser stops sending a touch's moves once the
+   * element it started on has left the page, so a thumb that tapped the last step of a dance and then pushed to walk moved nothing until it was lifted and put down
+   * again. With the element kept, its moves reach the window and the joystick takes the thumb (src/ui/hud.ts).
+   */
+  dispose() {
+    this.card = null; this.words = [];
+    if (!this.down.size) { this.el.remove(); return; }
+    this.gone = true; this.el.replaceChildren(); this.el.style.pointerEvents = 'none'; this.el.style.background = 'none';
+    setTimeout(() => this.el.remove(), 15000);                           // (a finger the page lost track of does not keep it for ever)
+  }
 }
 
 /** A framing camera: eases from the follow camera's view to the activity's, holds it. */

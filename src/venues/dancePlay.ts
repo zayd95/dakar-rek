@@ -120,6 +120,7 @@ export class DancePlay implements InWorldPlayer {
       focusActivity(true);
       addEventListener('keydown', this.onKey, true);
     }
+    if (this.layer) this.layer.el.style.pointerEvents = '';             // (a next performance on the same layer takes the touches again)
     const body = ctx.player.body(); if (body) body.overlay = this.overlay;
     this.env.music.ensure();
     this.pageT0 = performance.now(); this.pageBeat0 = 0;
@@ -156,6 +157,9 @@ export class DancePlay implements InWorldPlayer {
     this.linger = 2.2;
     if (this.run === r) this.run = null;
     r.done(score);                                    // the runner may start the next step's performance right away (play again)
+    // The dance is over and its card lingers a moment: the layer must not keep the screen. It covers the whole page (the pads), the joystick included: a thumb put
+    // back on the stick while the card was still up landed on the layer, and the player stood still until the thumb was lifted and put down again.
+    if (!this.run && this.layer) this.layer.el.style.pointerEvents = 'none';
   }
 
   private teardown() {
