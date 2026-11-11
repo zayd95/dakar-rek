@@ -60,14 +60,17 @@ const modelSpec = (id: string, name: string, model: CarModelId, drive: Parameter
   if (!s) { s = kitCarSpec({ id, name, kind: KIND[model], seed: paintSeedOf(0), model, visual: modelVisual(model), openable: true, drive }); specs.set(id, s); }
   return s;
 };
-/** Nimble and light: quick off the line, a tight circle. */
-export const terangaSpec = modelSpec('teranga', 'Teranga', 'teranga', { maxSpeed: 19, boostSpeed: 46, reverseSpeed: 3, accel: 4.2, brake: 7.6, turnRadius: 5.2, steer: 2.9, grip: 9.8 });
-/** The sporty one: a little more of everything. */
-export const rafetSpec = modelSpec('rafet', 'Rafet', 'rafet', { maxSpeed: 20, boostSpeed: 49, reverseSpeed: 3, accel: 4.6, brake: 7.9, turnRadius: 5.3, steer: 3.0, grip: 10.2 });
-/** Heavy and steady (the luxury SUV's numbers). */
-export const lamaneSpec = modelSpec('suv', 'Lamane Sport', 'lamane', { maxSpeed: 19.5, boostSpeed: 45, reverseSpeed: 3, accel: 3.8, brake: 7.4, turnRadius: 6.4, steer: 2.4, grip: 8.2 });
-/** The coupé SUV: as heavy, a little quicker. */
-export const gaindeSpec = modelSpec('gainde', 'Gaïndé', 'gainde', { maxSpeed: 20.5, boostSpeed: 51, reverseSpeed: 3, accel: 4.4, brake: 7.8, turnRadius: 6.2, steer: 2.5, grip: 8.8 });
+// Handling, one character each (docs/DRIVING_FEEL.md « Before and after » has the measured table; tests/driveAudit.test.ts holds the characters apart). Never one multiplier for all:
+// the city cars turn in a street's width and jump off the line, the sporty one has the most of everything a driver feels (pickup, brakes, grip, the quickest wheel), the two big
+// ones are heavier to launch, to stop and to turn, and steadier. Speeds in m/s (× 3.6 for km/h), accelerations in m/s², the circle in metres, the wheel's answer in 1/s.
+/** Nimble and light: quick off the line, the tightest circle of the cars (a U-turn inside a street), a light, quick wheel. */
+export const terangaSpec = modelSpec('teranga', 'Teranga', 'teranga', { maxSpeed: 21.5, boostSpeed: 46, reverseSpeed: 4.5, accel: 6.6, brake: 11, turnRadius: 4.2, steer: 5.6, grip: 13.5 });
+/** The sporty one: the strongest pickup and brakes, the most grip, the most direct wheel; stiff rather than nimble (a slightly wider circle than the Teranga). */
+export const rafetSpec = modelSpec('rafet', 'Rafet', 'rafet', { maxSpeed: 23.5, boostSpeed: 52, reverseSpeed: 4.5, accel: 7.8, brake: 12.6, turnRadius: 4.5, steer: 6.2, grip: 15.5 });
+/** Heavy and steady (the luxury SUV): the slowest to launch and to stop, the widest circle, a calm wheel, less grip (it leans on its tyres). */
+export const lamaneSpec = modelSpec('suv', 'Lamane Sport', 'lamane', { maxSpeed: 22, boostSpeed: 48, reverseSpeed: 4, accel: 5.4, brake: 10.2, turnRadius: 5.6, steer: 4.2, grip: 11.5 });
+/** The coupé SUV: as heavy in the turn, clearly quicker in a straight line. */
+export const gaindeSpec = modelSpec('gainde', 'Gaïndé', 'gainde', { maxSpeed: 23, boostSpeed: 53, reverseSpeed: 4, accel: 6.4, brake: 11.2, turnRadius: 5.4, steer: 4.6, grip: 12.5 });
 
 // ------------------------------------------------------------------------------------------------ Ndiaye Auto (Plateau): the showroom's three lots
 /** The showroom's lots, in order: 0 the modern sedan (src/transport/carModule.ts), 1 a Teranga, 2 a Rafet. */

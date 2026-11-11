@@ -1,6 +1,6 @@
 // Drives the owned car along one of the roads between districts (src/road) with the REAL touch controls (src/transport/ridePad.ts: the steering rocker, the gas pedal and, with `boost`, its toe to the floor, the brake pedal), steering by the road's own
 // centre line: the road's points are asked of the page in the frame of whichever district is loaded (`__dakar.road.at`), so the route needs no waypoint table and no shift when the district swaps.
-import { realTouch, padRig } from './realTouch.mjs';
+import { realTouch, padRig, pedalFor, heelSpeed } from './realTouch.mjs';
 
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 /** Pure pursuit in the vehicle's own turning model (the same law as tests/helpers/pilot.ts, proved on every road in tests/driveRoads.test.ts): the stick that gives the curvature toward the aim point. */
@@ -15,10 +15,20 @@ export async function driveRoad(page, t, key, road, toS, { cruise = 8, lane = 2.
   const drv = await page.evaluate(k => window.__dakar[k].info().drive, key);
   const brk = await t.centre('#ridepad .rp-brake'), R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(1), t0 = Date.now();
   let gasOn = false, brakeOn = false, last = null, at = null, bestT = Date.now(), bestS = null;
-  let steerNow = 0, boostOn = false;
+  let steerNow = 0, gasAt = null;
   const sendStick = async () => rocker(steerNow);
-  const press = async on => { if (on === gasOn) return; gasOn = on; await gasP(gasOn, boostOn); };
-  const boostBtn = async on => { if (on === boostOn) return; boostOn = on; await gasP(gasOn, boostOn); };
+  // the right toe: off (null), somewhere on the pedal (0 the heel … 0.38), or on the floor (true: the boosted range)
+  const setGas = async g => { if (g === gasAt) return; gasAt = g; gasOn = g !== null; await gasP(gasOn, g === null ? false : g); };
+  // The speed: the pedal is analog, so the toe goes where the vehicle settles a little above the wanted speed by itself. (It used to be the floor or a fixed place on the pedal,
+  // lifted at the limit and braked back: with the cars picking up twice as fast, that overshot an 11 m/s cruise to 16 between two looks at the road, and rear-ended the traffic.)
+  // Under what the heel gives: short touches of the heel. Only a cruise above what the pedal alone gives (`boost`, a drive at speed) takes the floor, lifted at the limit.
+  const top = drv?.maxSpeed ?? 21, heel = heelSpeed(top);
+  const throttle = async (limit, speed, braking) => {
+    if (braking) return setGas(null);
+    if (limit + 0.5 > top * 0.94) return boost ? setGas(speed < limit ? true : null) : setGas(0.38);
+    if (limit + 0.5 < heel) return setGas(speed < limit - 0.3 ? 0 : null);
+    return setGas(+pedalFor(limit + 0.5, top).toFixed(2));
+  };
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   let dir = 0, mode = 'lane', modeSince = Date.now(), stuckSince = 0, obstS = 0, movingPass = false, stat = { passes: 0, backs: 0, brakes: 0 };
   const canBack = drv && drv.reverseSpeed > 2;                                       // a motorbike's brake never reverses it
@@ -71,14 +81,14 @@ export async function driveRoad(page, t, key, road, toS, { cruise = 8, lane = 2.
     const steer = steerFor(err, Math.hypot(aim.x - at.x, aim.z - at.z), Math.abs(at.speed), drv);
     steerNow = steer; await sendStick();
     const limit = Math.min(cruise * (Math.abs(err) > 0.35 ? 0.45 : 1), vCap);
-    if (brakeHold) { steerNow = 0; await press(false); await sendStick(); await boostBtn(false); await brake(true); await page.waitForTimeout(90); continue; }       // backing off: the brake held at the standstill
+    if (brakeHold) { steerNow = 0; await setGas(null); await sendStick(); await brake(true); await page.waitForTimeout(90); continue; }       // backing off: the brake held at the standstill
     const braking = at.speed > limit + 1.5;
     if (braking && vCap < cruise) stat.brakes++;
     await brake(braking);
-    await press(at.speed < limit); await boostBtn(boost && gasOn && !braking);
+    await throttle(limit, at.speed, braking);
     await page.waitForTimeout(90);
   }
-  gasOn = false; boostOn = false; await gasP(false); steerNow = 0; await sendStick(); await brake(false);
+  await setGas(null); steerNow = 0; await sendStick(); await brake(false);
   if (brakeAtEnd) {
     // the brake pedal slows the car and, on a motorbike, goes on to reverse it: it is let go as soon as the vehicle has (nearly) stopped, and the vehicle then rolls the last bit
     await t.down(1, brk.x, brk.y);

@@ -24,10 +24,10 @@ export const BERLINE_DETAIL = 'Modèle provisoire · 4 portes · 5 places · se 
 export const SUV_DETAIL = 'Grand SUV de luxe · 5 places · toit noir flottant · se gare où tu le laisses';
 
 let berlineCache: ReturnType<typeof kitCarSpec> | null = null, suvCache: ReturnType<typeof kitCarSpec> | null = null;
-/** A little faster and softer than the modern sedan. */
+/** The grand saloon: the highest top speed of all and a long, strong pull, with a calmer wheel and a wider circle than the city cars (substantial, not nervous). */
 export const berlineSpec = () => (berlineCache ??= kitCarSpec({
   id: 'berline', name: 'Berline neuve', kind: 'luxury', seed: berlineSeed(), openable: true,
-  drive: { maxSpeed: 21, boostSpeed: 55, reverseSpeed: 3, accel: 4.6, brake: 8, turnRadius: 6, steer: 2.7, grip: 10 },
+  drive: { maxSpeed: 24, boostSpeed: 56, reverseSpeed: 4.2, accel: 7, brake: 12, turnRadius: 5.2, steer: 4.8, grip: 14.5 },
 }));
 /** The heaviest: slower to pick up, the widest circle. Its body is the Lamane Sport's own (src/transport/modelCars.ts). */
 export const suvSpec = lamaneSpec;

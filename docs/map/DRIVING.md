@@ -2,6 +2,8 @@
 
 Branch `feature/driving-2-20261021` (from PR #59). The roads: `CORRIDOR.md`. The network of districts: `NETWORK.md`. Data and what is approximate: `PROVENANCE.md`.
 
+> **Release note.** The handling numbers below are those of October. Since the release tuning every vehicle is quicker to pick up, to turn and to stop, the brake-to-reverse hold is 0.55 s (0.15 s right after a contact) and the reverse up to 14–16 km/h: the current, measured table is in `docs/DRIVING_FEEL.md` (« Before and after, measured »). The controls and the roads described here are unchanged.
+
 ## Controls (phone)
 
 One left thumb on the stick, two buttons under the right thumb. Nothing else to find.

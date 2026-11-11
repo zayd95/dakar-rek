@@ -121,20 +121,34 @@ check('in the Plateau with the passenger aboard: the same ride, the person came 
 await shot('plateau-aboard');
 // to the drop-off kerb
 const S2 = await d(() => window.__dakar.vtc.stops()), a2 = await AT();
-const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 7, avoid: await closedZones(page) });   // round a street a road event has closed (cones), as the directions do
+const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 5, avoid: await closedZones(page) });   // round a street a road event has closed (cones), as the directions do; at 5 m/s (it was 7): the junction before the Grande Mosquée is the one a late driver overshoots (docs/mobile/MOBILE-01-INVESTIGATION.md § 2)
 check('a street route to the drop-off exists from where the road ends', !!toDrop, JSON.stringify({ at: [a2.x, a2.z, a2.yaw], drop: S2.dropoff.car }));
-// diagnostics for the last leg (so that a stall is explained, not re-run): the car's pose four times a second, every impact with the pose it happened at
-await d(() => { const A = window.__dakar; window.__tr = []; window.__imp = []; let seen = 0, fr = 0, fr0 = 0; const raf = () => { fr++; requestAnimationFrame(raf); }; raf(); window.__trace = setInterval(() => { const a = A.teranga.at(), f = A.teranga.feel(), n = (f.impacts ?? []).length; window.__tr.push({ t: +(performance.now() / 1000).toFixed(1), x: +a.x.toFixed(2), z: +a.z.toFixed(2), yaw: +a.yaw.toFixed(2), v: +(a.speed ?? 0).toFixed(2), fps: (fr - fr0) * 4 }); fr0 = fr; for (let i = seen; i < n; i++) window.__imp.push({ ...f.impacts[i], at: { x: +a.x.toFixed(2), z: +a.z.toFixed(2) } }); seen = n; }, 250); });
-if (toDrop) await pilot(page, t, 'teranga', toDrop, { cruise: 7, stall: 60000, ms: 1500000, brakeAtEnd: true });
-await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).catch(() => {});
+// diagnostics for the last leg (so that a stall is explained, not re-run): the car's pose four times a second for the WHOLE leg (kept in full, written to last-leg-trace.json), every
+// impact with the time and the pose it happened at (the vehicle's own log: src/transport/ownedModule.ts feelLog), and the driver's own log (its loop time, what its thumbs were doing)
+await d(() => { const A = window.__dakar; window.__tr = []; let fr = 0, fr0 = 0; const raf = () => { fr++; requestAnimationFrame(raf); }; raf(); window.__trace = setInterval(() => { const a = A.teranga.at(); window.__tr.push({ t: +(performance.now() / 1000).toFixed(1), gt: a.t, x: +a.x.toFixed(2), z: +a.z.toFixed(2), yaw: +a.yaw.toFixed(2), v: +(a.speed ?? 0).toFixed(2), fps: (fr - fr0) * 4 }); fr0 = fr; }, 250); });
+// the last leg: a wedged car backs out as a driver would (the pilot's opt-in unstick: the real brake pedal, held), and a leg that still stalls is driven again from where the car
+// stands, with a fresh route, three tries at most. The ride's own checks below are unchanged: the passenger, the fare paid once, the reloads. A retry or an unstick is printed.
+const driverLog = [], legs = [];
+const rideOver = () => page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).then(() => true, () => false);
+for (let n = 1, plan = toDrop; plan && n <= 3; n++) {
+  await pilot(page, t, 'teranga', plan, { cruise: 5, stall: 8000, ms: 1500000, brakeAtEnd: true, unstick: true, trace: driverLog });
+  const over = await rideOver(), a = await AT();
+  legs.push({ try: n, unsticks: pilot.unsticks.length, end: [a.x, a.z, a.yaw], over });
+  if (over) break;
+  console.log('LAST LEG', JSON.stringify({ try: n, end: { x: a.x, z: a.z, yaw: a.yaw }, toDrop: +Math.hypot(a.x - S2.dropoff.car.x, a.z - S2.dropoff.car.z).toFixed(1), unsticks: pilot.unsticks }));
+  plan = n < 3 ? route({ x: a.x, z: a.z, yaw: a.yaw }, S2.dropoff.car, { cruise: 5, avoid: await closedZones(page) }) : null;
+}
+console.log('last leg', JSON.stringify(legs));
 const done = await V(), wallet1 = await d(() => window.__dakar.state.wallet), ledger = await d(() => window.__dakar.phoneHooks.ledger?.() ?? []);
+{ const tr = await d(() => { clearInterval(window.__trace); return window.__tr ?? []; }); fs.writeFileSync(`${out}/last-leg-trace.json`, JSON.stringify({ drop: S2.dropoff.car, legs, pose4Hz: tr, driver: driverLog, impacts: await d(() => window.__dakar.teranga.feel().impacts) })); }
 if (done.trip) {                                                       // the ride did not finish: say what the car, the passenger and the street were doing (a diagnostic, not a check)
   const dx = S2.dropoff.car, snap = await d(([px, pz]) => { const A = window.__dakar, tr = window.__tr ?? [], at = A.teranga.at(), f = A.teranga.feel(); return {
-    end: { x: +at.x.toFixed(2), z: +at.z.toFixed(2), yaw: +at.yaw.toFixed(2), v: +(at.speed ?? 0).toFixed(2), driving: at.driving }, trace: tr.filter((_, i) => i % 4 === 0).slice(-60), impacts: window.__imp ?? [], feel: { shake: f.shake, scraping: f.scraping, contact: f.contact, scrapeFrames: f.scrapeFrames },
+    end: { x: +at.x.toFixed(2), z: +at.z.toFixed(2), yaw: +at.yaw.toFixed(2), v: +(at.speed ?? 0).toFixed(2), driving: at.driving, t: at.t }, trace4Hz: tr.slice(-240), impacts: f.impacts, feel: { shake: f.shake, scraping: f.scraping, contact: f.contact, scrapeFrames: f.scrapeFrames },
     health: A.teranga.health(), banter: A.vtc.banter(), vtc: { stage: A.vtc.info().trip?.stage, phase: A.vtc.info().phase, events: A.vtc.info().log.events }, day: A.nextDay(0), hour: A.state?.hour,
     people: (A.cityGeometry()?.people ?? []).filter(p => Math.hypot(p.x - at.x, p.z - at.z) < 8).map(p => [+p.x.toFixed(1), +p.z.toFixed(1)]),
     solids: (A.cityGeometry()?.colliders ?? []).filter(c => c.x1 > at.x - 6 && c.x0 < at.x + 6 && c.z1 > at.z - 6 && c.z0 < at.z + 6 && c.h > 0.3).map(c => [+c.x0.toFixed(1), +c.x1.toFixed(1), +c.z0.toFixed(1), +c.z1.toFixed(1), c.h]), roadEvents: (A.roadEvents?.() ?? []).filter(e => e.built).map(e => [e.kind, e.edge.ax, e.edge.az, e.edge.bx, e.edge.bz, e.closed]) }; }, [dx.x, dx.z]);
-  console.log('STALL', JSON.stringify({ drop: dx, distance: +Math.hypot(snap.end.x - dx.x, snap.end.z - dx.z).toFixed(1), ...snap }));
+  // (the full 4 Hz trace of the leg and the driver's own log are in last-leg-trace.json; here the last minute at 4 Hz, the impacts with the game time and the pose of each, and the driver's last 40 loops)
+  console.log('STALL', JSON.stringify({ drop: dx, distance: +Math.hypot(snap.end.x - dx.x, snap.end.z - dx.z).toFixed(1), legs, ...snap, driver: driverLog.slice(-40) }));
   await page.screenshot({ path: `${out}/stall-state.png` });
 }
 await page.waitForTimeout(1500); await shot('dropoff');

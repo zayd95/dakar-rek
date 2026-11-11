@@ -4,6 +4,8 @@
  * « Wóoy ! » when it is about to hit, a shout and a raised hand when it passes close, a look when it goes by fast, a « Jërëjëf ! » when the driver slows for them.
  * Distances in metres, speeds in m/s; the car's frame: ahead = (sin yaw, cos yaw), right = (cos yaw, −sin yaw).
  */
+import { FAST } from '../transport/driveFeel';   // « fast » is one line for the passenger and the street: above every vehicle's cruising speed
+
 export interface CarState { x: number; z: number; yaw: number; speed: number; /** Half length and half width of the vehicle. */ hl: number; hw: number }
 export const CAR_DIMS = { car: { hl: 2.4, hw: 1.0 }, moto: { hl: 1.0, hw: 0.45 } };
 export type Level = 'none' | 'notice' | 'thanks' | 'close' | 'danger';
@@ -16,7 +18,7 @@ export function assess(car: CarState, p: { x: number; z: number }): Assessment {
   const base = { side, ahead, lateral };
   if (v >= 3.5 && reach < car.hw + 0.7 && ahead > -car.hl && ahead < car.hl + v * 1.05) return { level: 'danger', ...base };      // inside the car's path, within about a second of it
   if (v >= 4.5 && reach < car.hw + 1.7 && ahead > -car.hl - 0.5 && ahead < car.hl + v * 0.85) return { level: 'close', ...base };  // a metre or two from the bodywork
-  if (v >= 21 && reach < 6 && ahead > -3 && ahead < 16) return { level: 'notice', ...base };                                      // fast, and near enough to be heard
+  if (v >= FAST && reach < 6 && ahead > -3 && ahead < 16) return { level: 'notice', ...base };                                      // fast, and near enough to be heard
   if (v >= 0.8 && v <= 4.2 && reach < 3.2 && ahead > -car.hl && ahead < car.hl + 4) return { level: 'thanks', ...base };           // slow, close: the driver is being careful
   return { level: 'none', ...base };
 }

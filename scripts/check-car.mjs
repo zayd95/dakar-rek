@@ -158,7 +158,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await drive(120000, 0, p => { const m = window.__dakar.car.info(); return Math.hypot(m.x - p.x, m.z - p.z) > 6 && m.speed > 3; }, p0);
   i2 = await info();
   const moved = Math.hypot(i2.x - p0.x, i2.z - p0.z);
-  check(`${label}: the throttle moves the car and the card shows the speed`, moved > 5 && /km\/h/.test(await d(() => window.__dakar.car.card())), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.car.card())}`);
+  check(`${label}: the throttle moves the car and the speedometer shows the speed`, moved > 5 && /^\d+ km\/h$/.test(await d(() => window.__dakar.car.speedo().text)), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.car.card())}`);
   await shot('5-driving');
   // wheel animation: all four spin while it rolls (two readings a moment apart), the rear pair never turns
   const reads = []; for (let k = 0; k < 4; k++) { reads.push(await d(() => ({ rig: window.__rig(), speed: window.__dakar.car.info().speed }))); await d(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 150))))); }

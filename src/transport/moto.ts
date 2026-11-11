@@ -42,8 +42,8 @@ export function motoSpec(): VehicleSpec {
     ],
     cabin: 'open',
     sway: 1,
-    // town riding: about 45 km/h flat out, quick to stop, tight turns, leans into corners
-    drive: { maxSpeed: 17.5, boostSpeed: 36, reverseSpeed: 1.6, accel: 5.2, brake: 8.5, turnRadius: 3.2, steer: 4.2, grip: 12.5, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
+    // the quick, tight one: it leaves every car at the lights and turns in its own length, stops short, leans into corners; the cars pass it on the open road (a lower top speed)
+    drive: { maxSpeed: 20, boostSpeed: 39, reverseSpeed: 1.6, accel: 8.6, brake: 12, turnRadius: 2.5, steer: 7.5, grip: 16, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
     build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false, stand: !o?.ridden }).group,
   };
   return (cached = spec);

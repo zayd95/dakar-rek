@@ -44,7 +44,13 @@ import { GRID, roadCentre } from './lines';
 import { crossing } from './hubLink';
 import { transport } from './module';
 import { driveFeel } from './driveFeel';
+import { speedo, speedOver } from './speedo';
 import type { DriveSpec, VehicleSpec } from './spec';
+
+/** The brake (m/s²) the braking sound was mixed against (src/transport/vehicleAudio.ts `brakeIntensity`). */
+const BRAKE_AS_MIXED = 7.6;
+/** How much quicker the chase view's heading catches up per radian it is behind the driven vehicle's (src/transport/camera.ts `chase`). */
+const CAM_CHASE = 6.5;
 
 /**
  * A vehicle the player owns and drives (the Jakarta motorbike, the used saloon…), on the same vehicle framework as the
@@ -290,7 +296,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0, kickX: 0, kickZ: 0 };
   private readonly contact = new ContactTracker();
   /** What contacts did (the checks): each bump / hit with its speed and strength, the frames spent scraping, the largest shake and camera kick seen. */
-  private feelLog = { impacts: [] as { kind: string; speed: number; strength: number; headOn: boolean }[], shakePeak: 0, kickPeak: 0 };
+  private feelLog = { impacts: [] as { kind: string; speed: number; strength: number; headOn: boolean; t?: number; x?: number; z?: number; yaw?: number }[], shakePeak: 0, kickPeak: 0 };
   private scrapeFrames = 0;
 
   readonly def: OwnedDef;
@@ -312,7 +318,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const ui = document.getElementById('ui');
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
-    if (ui) ridePad.init(ui);
+    if (ui) { ridePad.init(ui); speedo.init(ui); }
     vehicleAudio.unlockOnGesture();
     mountAudioDiag();                              // the first tap or key lets the page play sound (iPhone Safari)
   }
@@ -425,7 +431,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   update(ctx: GameCtx, dt: number) {
     const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     if (this.floor.length) this.watchFloor(ctx, dt);
-    if (!this.driving) headlightPool.release(this);                              // on foot (or nobody at the wheel): no light on the road
+    if (!this.driving) { headlightPool.release(this); speedo.hide(this); }      // on foot (or nobody at the wheel): no light on the road, no speedometer
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     this.simT += dt;
     this.stepDoor(dt, m);
@@ -476,7 +482,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     transport.obstacles(this.obst, this.def.kit);
     vehicleAudio.traffic = this.trafficAround();                                  // the city's noise bed only where there is traffic (src/transport/vehicleAudio.ts)
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
-    const z0 = this.st.z, hit = driveSteps(this.st, input, drv, dt, this.blocked);
+    const z0 = this.st.z, odo0 = this.st.odo, hit = driveSteps(this.st, input, drv, dt, this.blocked);
+    speedo.show(this, speedOver(this.st.odo - odo0, dt), dt);                    // the compact speedometer: what the vehicle really covered this frame (src/transport/speedo.ts)
+    if (hit && vs0 > 0 && this.st.speed <= 0) this.ctl.stoppedBy();          // run into something square on: the brake backs it out after a much shorter hold (src/transport/controls.ts)
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
     if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); if (cf.impact.kind === 'hit') driveFeel.crash(cf.impact.strength, cf.impact.speed); else driveFeel.bump(cf.impact.speed); }   // the people round the car feel it too (src/transport/driveFeel.ts)
@@ -489,7 +497,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     if (this.ctl.paddling) this.lean = 0;                                        // pushed backwards with the feet: the rider sits upright
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
-    const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
+    // (the squeal is judged against the brakes this was mixed with, 7.6 m/s²: the stronger brakes of today stop shorter, they are not louder; a full stop sounds as it did)
+    const bi = brakeIntensity((-this.st.accel * Math.sign(this.st.speed || 1) * BRAKE_AS_MIXED) / Math.max(1, drv.brake), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
     if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
     vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
@@ -812,7 +821,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.jolt(im.dir * (hit ? 0.025 + 0.065 * im.strength : 0.008), im.headOn ? 0 : -side * 0.05 * (0.4 + im.strength), hit ? 0.02 + 0.04 * im.strength : 0);
     buzz(impactBuzz(im.kind, im.strength));
     this.feelLog.shakePeak = Math.max(this.feelLog.shakePeak, this.fx.shake);      // read at the knock itself: the frame loop may be slow and decay it before it is seen
-    this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn }); if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
+    this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn, t: +this.simT.toFixed(2), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2) });   // (when and where, on the vehicle's own clock: a stall is explained from its log, not re-run) if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
   }
 
   /** A few centimetres of the camera, never the physics: it settles when the engine catches, dips under a hard brake, shakes at a contact (a tap a little, a crash more). */
@@ -864,7 +873,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     // at the wheel of a car: the eye sits in the car's own interior (src/transport/carInterior.ts), fixed in its frame; only the head turns
     const seat = a.inside && this.def.kit !== 'moto' ? this.interiorOf(m) : null;
     if (seat) this.cam.seat(Math.max(dt, real), cam, m.body, seat.eye, cam.aspect < 1 ? SEAT_PITCH_PORTRAIT : SEAT_PITCH, drag, m.pose);
-    else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)));
+    else this.cam.update(Math.max(dt, real), cam, m.pose, m.bounce, a, drag, this.hub?.colliders ?? [], Math.min(1, Math.abs(this.st.speed) / Math.max(1, scaledDrive(this.spec.drive!, this.hp()).boostSpeed ?? this.spec.drive!.maxSpeed)), CAM_CHASE);
     this.feel(cam, Math.max(dt, real), !!a.inside);
     m.setCockpit(!!a.inside);                                  // a body not made to be seen from inside is not drawn in that view
     this.eyeAt(m, !!a.inside);                                 // nor its own cabin (seats, lining): the interior stands in for them
@@ -903,6 +912,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null } : null,
         card: () => this.card?.text ?? '',
+        /** Checks: what the compact speedometer reads (« 43 km/h », empty when hidden) and how many times its text was written. */
+        speedo: () => ({ text: speedo.text, on: speedo.active, writes: speedo.writes }),
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
         radio: () => radio.info(),
@@ -1282,7 +1293,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private getOff(normal: boolean) {
     if (this.def.kit !== 'moto') { radio.leave(); document.querySelector('#ridepad .rp-radio')?.classList.remove('on'); }   // never in the street
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
-    this.driving = false; this.leaving = false; ridePad.hide(this); driveFeel.idle();
+    this.driving = false; this.leaving = false; ridePad.hide(this); speedo.hide(this); driveFeel.idle();
     vehicleAudio.stop();
     const door = normal && m.hasDoor && ctx.mode() === 'play';
     if (!door && this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
@@ -1366,10 +1377,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private refreshCard() {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
-    const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
+    // (the speed is not in the chip any more: the compact speedometer shows it, once: src/transport/speedo.ts. The chip keeps the vehicle and its condition.)
     const hp = this.hp(), tag = healthTag(hp);
     const trialSub = !this.trial || this.errand ? null : !this.road.ok ? 'Essai à l’arrêt · frein à main du vendeur' : this.road.supervised ? (this.road.called ? 'Essai encadré · ramène-la au garage' : 'Essai encadré · un tour dans le quartier') : 'Essai sur route · reste dans le quartier';
-    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : trialSub ?? HINT, req: healthAlert(hp) });
+    this.card.show({ num: this.def.icon, title: `${this.label()}${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : trialSub ?? (ridePad.active ? '' : HINT), req: healthAlert(hp) });   // (the keys' hint means nothing under a thumb: none with the pad)
   }
 
   private upright() {
@@ -1389,7 +1400,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
-    this.box?.dispose(); this.box = null; if (!ride) ridePad.hide(this);
+    this.box?.dispose(); this.box = null; if (!ride) { ridePad.hide(this); speedo.hide(this); }
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();

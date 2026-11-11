@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { carSpec } from '../src/transport/car';
 import { berlineSpec, suvSpec } from '../src/transport/premiumCars';
 import { motoSpec } from '../src/transport/moto';
+import { gaindeSpec, rafetSpec, terangaSpec } from '../src/transport/modelCars';
 import { ROADS } from '../src/road/routes';
 import { lap } from './helpers/pilot';
 
-const vehicles = [['berline moderne', carSpec().drive!], ['berline neuve', berlineSpec().drive!], ['4×4', suvSpec().drive!], ['Jakarta', motoSpec().drive!]] as const;
+const vehicles = [['berline moderne', carSpec().drive!], ['berline neuve', berlineSpec().drive!], ['4×4', suvSpec().drive!], ['Jakarta', motoSpec().drive!], ['Teranga', terangaSpec().drive!], ['Rafet', rafetSpec().drive!], ['Gaïndé', gaindeSpec().drive!]] as const;
 
 describe('driving the real roads with the analog controls (simulated driver)', () => {
   for (const road of ROADS) for (const [name, d] of vehicles) for (const boost of [false, true]) {

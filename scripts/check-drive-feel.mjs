@@ -71,7 +71,7 @@ for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave
   void here;
   const hold = await brakeHold(label === 'Berline' ? 9000 : 6000);
   if (label === 'Berline') {
-    check(`${label}: the brake, held at the standstill, eases the car into a gentle reverse (min ${hold.minV.toFixed(2)} m/s, never faster than ${3} m/s)`, hold.minV < -0.6 && hold.minV > -3.2, JSON.stringify(hold));
+    check(`${label}: the brake, held at the standstill, eases the car into a reverse (min ${hold.minV.toFixed(2)} m/s, never faster than its ${4.2} m/s; it was 3 before the cars were given a reverse that gets out of a bay without a wait)`, hold.minV < -0.6 && hold.minV > -4.4, JSON.stringify(hold));
     check(`${label}: the subtle « R » shows while it really reverses`, hold.badge);
     await S.page.waitForFunction(() => !document.querySelector('#ridepad').classList.contains('reversing'), null, { timeout: 20000 }).catch(() => {});
     const after = await S.AT();
@@ -79,7 +79,8 @@ for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave
     check(`${label}: there is no separate R button`, (await S.d(() => document.querySelector('#ridepad .rp-rev'))) === null);
   } else {
     // no reverse gear on a motorbike: held at the standstill the brake has the rider push it backwards with the feet, at a slow walk at most, with no « R »
-    check(`${label}: the brake held at the standstill: the rider pushes the motorbike backwards with the feet (min ${hold.minV.toFixed(2)} m/s, a walk at most) and no « R » shows`, hold.minV < -0.3 && hold.minV > -0.95 && !hold.badge, JSON.stringify(hold));
+    check(`${label}: the brake held at the standstill: the rider pushes the motorbike backwards with the feet (min ${hold.minV.toFixed(2)} m/s, a walk at most) and no « R » shows`, hold.minV < -0.3 && hold.minV > -1.25 && !hold.badge,   // (PADDLE_SPEED 1.15 m/s, src/transport/controls.ts; it was 0.85)
+      JSON.stringify(hold));
     // half a second of game time (the sim's own clock: a loaded software renderer can draw a single frame in 600 ms of wall clock)
     { const t1 = (await S.AT()).t; await S.page.waitForFunction(([k, t]) => window.__dakar[k].at().t > t + 0.5, [key, t1], { timeout: 60000 }).catch(() => {}); }
     const after = await S.AT();

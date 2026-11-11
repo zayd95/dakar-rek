@@ -54,11 +54,16 @@ export async function padRig(page, t) {
     },
     /** A finger on the gas pedal: off, on in the pedal's upper part (cruising, no boost), `boost` true (the toe on the floor) or a number (how far down the pedal, 0 top … 1 toe; from 0.4 down it is full throttle and, held, opens the boost). Call it again as the wish changes. */
     gas(id) {
-      let on = false, f = 0;
+      let on = false, f = 0, held = null;
       return async (want, boost = false) => {
         const nf = typeof boost === 'number' ? boost : boost ? 0.97 : 0.25;
-        if (!want) { if (on) { await t.up(id); on = false; } return; }
-        if (!on) { await t.down(id, b.gx, b.gtop + nf * b.gh); on = true; f = nf; } else if (nf !== f) { await t.move(id, b.gx, b.gtop + nf * b.gh, 1); f = nf; }
+        if (!want) { if (on) { await t.up(id); on = false; held = null; } return; }
+        if (!on) {
+          await t.down(id, b.gx, b.gtop + nf * b.gh); on = true; f = nf;
+          // a pressed pedal tilts and shrinks (ridePad.css `.down`), and the page reads the toe against the pedal AS PRESSED: for an exact place on it (a number), the finger is set
+          // again against that rectangle (a toe « 4 % down » landed above the pressed pedal's top edge and read as the heel)
+          if (typeof boost === 'number') { held = await page.evaluate(() => { const r = document.querySelector('#ridepad .rp-gas').getBoundingClientRect(); return { top: r.top, h: r.height }; }); await t.move(id, b.gx, held.top + nf * held.h, 1); }
+        } else if (nf !== f) { const g = held ?? { top: b.gtop, h: b.gh }; await t.move(id, b.gx, g.top + nf * g.h, 1); f = nf; }
       };
     },
   };
@@ -102,28 +107,50 @@ export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 
 }
 
 /**
- * Drive a car through waypoints with real fingers on the stick (src/transport/ridePad.ts): the stick is pushed up and lifted for a tight turn or a close point (and the brake used),
- * and steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
- * Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
+ * Drive a car through waypoints with real fingers on the pad (src/transport/ridePad.ts): the left thumb steers toward the next point (the car's own heading error), the right one is
+ * on the gas pedal, lifted for the brake when the car is too fast for a tight turn or a close point. Each point is done within `tol` m. A stall (no progress for `stall` ms) moves on
+ * to the next point. Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
+ *
+ * The speed: the toe goes as far down the pedal as gives the car the wanted speed by itself (the pedal is analog: the car settles at what the toe asks, it does not have to be
+ * braked back from a full throttle; the cars pick up twice as fast as they did, and a driver who only knew « floor it, then brake » would lurch through every street). Below what
+ * the heel gives (about 4.5 m/s), the car creeps on short touches of the heel.
+ *
+ * `unstick` (opt-in; off by default, so every journey drives as before): a human who ends nose against a wall holds the brake and backs out; this driver had no reverse and sat
+ * there until its waypoints timed out (docs/mobile/MOBILE-01-INVESTIGATION.md § 2). With it on, after `UNSTICK_AFTER` game seconds without moving it does what the human does:
+ * lifts the gas, turns the wheel the other way and holds the REAL brake pedal until the car has backed about 4 m (at most `UNSTICK_HOLD` game seconds), then goes on. Each use is
+ * logged and counted (`pilot.unsticks`, reset at each call): a wedge is never hidden, it is survived and reported.
+ * `trace` (an array): the driver's own log, one entry a loop: the wall and game clocks, the car's pose and speed, what the thumbs were doing (wheel, pedal, brake) and how long the
+ * loop took; a stall can then be read (was the driver slow? did the page drop a finger?) instead of guessed.
  */
-export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5, boost = false } = {}) {
+export const UNSTICK_AFTER = 5, UNSTICK_HOLD = 3.5;
+/**
+ * How far down the gas pedal (0 the heel … 0.38: just short of full throttle, which held would open the boosted range) for a vehicle whose cruising speed is `top` m/s to settle
+ * at `v` m/s by itself: the inverse of the pad's `gasPressure` and of the controls' `throttleCurve` (src/transport/ridePad.ts, controls.ts). `heelSpeed`: what the heel alone gives.
+ */
+export const pedalFor = (v, top) => { const share = Math.max(0, Math.min(1, v / top)), g = (-0.35 + Math.sqrt(0.1225 + 2.6 * share)) / 1.3; return Math.max(0, Math.min(0.38, ((g - 0.35) / 0.65) * 0.4)); };
+export const heelSpeed = top => top * 0.35 * (0.35 + 0.65 * 0.35);
+export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5, boost = false, unstick = false, trace = null } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
   const R = await padRig(page, t), rocker = R.rocker(2), gasP = R.gas(5), t0 = Date.now();
+  const drv = await page.evaluate(k => window.__dakar[k].info?.().drive ?? null, key).catch(() => null), top = drv?.maxSpeed ?? 21;
+  const heel = heelSpeed(top);
   let gasOn = false, steerNow = 0;
   const stick = async () => rocker(steerNow);
   let gasLevel = 0.8;
-  // `boost`: the toe on the floor (the boosted range, for a drive at speed). Creeping to a kerb or into a bay (a limit under 3.2 m/s) is done with the heel, as a driver does: the car does not leap at the pedal.
-  const press = async (on, level = boost ? true : 0.8) => { if (on === gasOn && level === gasLevel) return; gasOn = on; gasLevel = level; await gasP(on, level); };
+  // `boost`: the toe on the floor (the boosted range, for a drive at speed).
+  const press = async (on, level = boost ? true : 0.8) => { if (on === gasOn && (!on || level === gasLevel)) return; gasOn = on; gasLevel = level; await gasP(on, level); };
   const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
-  let at = null, prev = null, last = null, seen = null;
+  const read = () => page.evaluate(k => window.__dakar[k].at(), key);
+  pilot.unsticks = [];
+  let at = null, prev = null, last = null, seen = null, still = null, loopAt = Date.now();
   points = points.map(p => ({ ...p }));                                     // written in the frame of the district the route starts in; a crossing into the next one (z jumps by a whole street grid) shifts the rest
-  for (const w of points) {
+  for (const [wi, w] of points.entries()) {
     let best = Infinity, lastGain = Date.now();
     while (Date.now() - t0 < ms) {
-      at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
+      at = await read(); if (!at) break;
       if (!prev) prev = { x: at.x, z: at.z };
-      if (seen && Math.abs(at.z - seen.z) > 100) { const dz = at.z - seen.z; for (const q of points) q.z += dz; prev.z += dz; best = Infinity; lastGain = Date.now(); last = null; }   // another district: same road, new coordinates
+      if (seen && Math.abs(at.z - seen.z) > 100) { const dz = at.z - seen.z; for (const q of points) q.z += dz; prev.z += dz; best = Infinity; lastGain = Date.now(); last = null; still = null; }   // another district: same road, new coordinates
       seen = { z: at.z };
       const d = Math.hypot(w.x - at.x, w.z - at.z);
       if (d < (w.tol ?? tol)) break;
@@ -131,6 +158,21 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       const gx = w.x - prev.x, gz = w.z - prev.z, gl = Math.hypot(gx, gz) || 1;
       if (((at.x - prev.x) * gx + (at.z - prev.z) * gz) / gl > gl - 1.5) break;
       if (d < best - 0.3) { best = d; lastGain = Date.now(); } else if (Date.now() - lastGain > stall) break;
+      // wedged (opt-in): no movement for a while on the game's own clock → back out as a driver does, with the real brake pedal and the wheel turned the other way
+      if (unstick) {
+        if (!still || Math.hypot(at.x - still.x, at.z - still.z) > 0.6) still = { t: at.t, x: at.x, z: at.z };
+        else if (at.t - still.t > UNSTICK_AFTER) {
+          const lock = Math.sign(steerNow) || 1, from = { t: at.t, x: at.x, z: at.z, yaw: at.yaw };
+          await press(false); steerNow = -lock; await stick(); await brake(true);
+          let cur = at;
+          while (cur && cur.t - from.t < UNSTICK_HOLD && Math.hypot(cur.x - from.x, cur.z - from.z) < 4 && Date.now() - t0 < ms) { await page.waitForTimeout(90); cur = await read(); }
+          await brake(false); steerNow = 0; await stick();
+          const use = { n: pilot.unsticks.length + 1, waypoint: wi, at: from, backed: cur ? +Math.hypot(cur.x - from.x, cur.z - from.z).toFixed(2) : null, held: cur ? +(cur.t - from.t).toFixed(2) : null };
+          pilot.unsticks.push(use); console.log('pilot: UNSTICK', JSON.stringify(use));
+          still = null; best = Infinity; lastGain = Date.now(); last = null;
+          continue;
+        }
+      }
       // pure pursuit: aim at a point 9 m ahead of the car's nearest point on the segment from the last waypoint to this one (the car holds the lane, it does not cut the corner)
       const sx = w.x - prev.x, sz = w.z - prev.z, sl = Math.hypot(sx, sz) || 1, u = Math.max(0, Math.min(sl, ((at.x - prev.x) * sx + (at.z - prev.z) * sz) / sl)), look = Math.min(sl, u + 14);
       const aim = { x: prev.x + (sx / sl) * look, z: prev.z + (sz / sl) * look };
@@ -140,8 +182,13 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       const steer = Math.max(-1, Math.min(1, -(1.7 * err - 0.55 * Math.max(-1.5, Math.min(1.5, rate)))));   // the stick to the right turns the car to the right: its yaw falls
       steerNow = steer; await stick();
       const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.5 ? 0.4 : 1) * (d < 9 ? 0.7 : 1);
-      await brake(at.speed > limit + 1.2);                               // a corner is taken slowly: the brake, then the gas again
-      await press(at.speed < limit, boost ? true : limit < 3.2 ? 0 : 0.8);
+      const braking = at.speed > limit + 1.2;
+      await brake(braking);                                              // a corner is taken slowly: the brake, then the gas again
+      // the gas: to the floor with `boost`; else the toe where the car settles a little above the limit by itself; under what the heel gives, short touches of the heel (creeping to a kerb or into a bay: the car does not leap at the pedal)
+      if (boost) await press(at.speed < limit, true);
+      else if (limit + 0.4 < heel) await press(at.speed < limit - 0.3, 0);
+      else await press(!braking, +pedalFor(limit + 0.4, top).toFixed(2));
+      if (trace) { const now = Date.now(); trace.push({ w: +((now - t0) / 1000).toFixed(2), t: at.t, x: at.x, z: at.z, yaw: at.yaw, v: at.speed, wp: wi, steer: +steerNow.toFixed(2), gas: gasOn ? gasLevel : 0, brake: brakeOn, loop: now - loopAt }); loopAt = now; }
       await page.waitForTimeout(90);
     }
     prev = { x: w.x, z: w.z };
