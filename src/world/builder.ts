@@ -13,6 +13,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { ESPLANADE, buildEsplanade } from './cornicheEsplanade';
 import { entrance, glassBalcony, type FrontKit } from './modernFront';
 import { NGOR_BEACH_KEEP_CLEAR, buildNgorBeach, ngorBeachSeats } from './ngorBeach';
 import { NIGHT_KEEP_CLEAR, buildNightStreet, inNightStreet } from './nightStreet';
@@ -228,6 +229,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };
   const seaMat = new THREE.MeshLambertMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35 });
   yield;
+  let esplanadePeople: HubWorld['people'] = [];
   if (sp.sea === 'west') {
     const wallC = (x0: number, z0: number, x1: number, z1: number, h: number) => colliders.push({ x0, z0, x1, z1, h });
     // Corniche Ouest (after Habib's reference photos): dual carriageway with a concrete median, sidewalk with
@@ -238,19 +240,28 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(700, 1400), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(-HALF - 380, 0.05, 0); group.add(sea);
     plain.box(4, 0.06, size + 60, -HALF - 36, 0.02, 0, 0xf4f1e6);                  // surf line
     pave.box(2.4, G, size + 12, -HALF - 1.2, 0, 0, 0xd8d2c4);                      // sea-side sidewalk
-    plain.box(3.6, G + 0.01, size + 12, PX, 0, 0, 0xb5563a);                       // red promenade path
+    // The promenade's paving (the owner's drone reference of the Corniche Ouest, 11 Nov): bands of dark red and purple pavers with a yellow line between
+    // them, not one red strip. One flat each on the ground slab (no overlay: nothing to flicker).
+    plain.box(3.6, G - 0.02, size + 12, PX, 0, 0, 0x8f4a36);
+    for (let z = -HALF - 6, i = 0; z < HALF + 6; i++) {
+      const len = Math.min(i % 2 ? 4.2 : 6.4, HALF + 6 - z);
+      plain.flat(3.6, len, PX, G + 0.01, z + len / 2, i % 2 ? 0x8b5a86 : 0xb5563a);
+      plain.flat(3.6, 0.28, PX, G + 0.03, z, 0xe9b93a);
+      z += len;
+    }
     plain.box(2.2, G, size + 12, PX - 2.9, 0, 0, 0x6f9a4a);                        // grass verge
     plain.box(1.2, G - 0.02, size + 12, -HALF - 3.0, 0, 0, 0x7aa556);
     const YEL = 0xf2b21b;
     for (const rx of [PX + 1.95, PX - 1.95]) {
       if (rx > PX) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);
-      else for (const [z0, z1] of [[-HALF - 6, BAY.z0], [BAY.z1, HALF + 6]]) {
+      else for (const [z0, z1] of [[-HALF - 6, ESPLANADE.gate0], [ESPLANADE.gate1, BAY.z0], [BAY.z1, HALF + 6]]) {
         plain.box(0.09, 0.09, z1 - z0, rx, 1.05, (z0 + z1) / 2, YEL);
         wallC(rx - 0.13, z0, rx + 0.13, z1, 1.1);
       }
     }
     for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) {
       if (rx < PX && z > BAY.z0 && z < BAY.z1) continue;
+      if (rx < PX && z > ESPLANADE.gate0 && z < ESPLANADE.gate1) continue;         // the way down to the esplanade
       plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
     }
     for (let z = -HALF; z <= HALF; z += 7.5) {                                     // arches over the path
@@ -261,12 +272,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     // The sea wall: a low whitewashed wall along the promenade's sea side, behind the verge, so the sea front has an edge (it ended in grass on
     // sand); a pier at each arch with a globe on it (the hub's lamp heads: lit at night, a line of lights along the sea); open at the beach's way down.
     const SW = PX - 4.2;
-    for (const [z0, z1] of [[-HALF - 6, BAY.z0], [BAY.z1, HALF + 6]]) {
+    for (const [z0, z1] of [[-HALF - 6, ESPLANADE.gate0], [ESPLANADE.gate1, BAY.z0], [BAY.z1, HALF + 6]]) {
       plain.box(0.42, 0.6, z1 - z0, SW, 0, (z0 + z1) / 2, 0xf1ede2); plain.box(0.56, 0.08, z1 - z0, SW, 0.6, (z0 + z1) / 2, 0xd9d3c5);
       wallC(SW - 0.22, z0, SW + 0.22, z1, 0.7);
     }
     for (let z = -HALF; z <= HALF; z += 7.5) {
       if (z > BAY.z0 - 2 && z < BAY.z1 + 2) continue;
+      if (z > ESPLANADE.gate0 - 1 && z < ESPLANADE.gate1 + 1) continue;
       plain.box(0.58, 1.05, 0.58, SW, 0, z, 0xf1ede2);
       if (Math.round((z + HALF) / 7.5) % 2 === 0) { lampBulbs.box(0.3, 0.3, 0.3, SW, 1.07, z, 0xffe9bd); pool(SW + 1.3, z, 2.6); }
     }
@@ -281,6 +293,9 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     for (let k = 0; k < NB; k++) wallC(PX + 1.8, roadC(k) + 3, PX + 2.1, roadC(k + 1) - 3, 1.1);
     wallC(PX + 1.8, -HALF - 30, PX + 2.1, roadC(0) - 3, 1.1); wallC(PX + 1.8, roadC(NB) + 3, PX + 2.1, HALF + 30, 1.1);
     bounds.x0 = BAY.shoreX;
+    const esplanade = buildEsplanade({ plain, G, lite });
+    colliders.push(...esplanade.colliders); esplanadePeople = esplanade.people;
+    bounds.x0 = ESPLANADE.x0 - 1;                                                    // the headland is walked on; everywhere else the shore stops where it did (the esplanade's own walls)
     // concrete median with gaps at the crossings; tall orange double-arm lamps on it
     for (let k = 0; k < NB; k++) {
       const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
@@ -1209,7 +1224,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     interactables.push({ id: `${id}:dibiterie:${k.i}${k.j}`, name: k.name, kind: 'actions', x: cx, z: at(0.6), radius: 3.6, actions: ACTIONS.dibiterie });
   };
   const smokeAt: { x: number; y: number; z: number }[] = [];
-  const people: HubWorld['people'] = [];
+  const people: HubWorld['people'] = [...esplanadePeople];
   const seats: HubWorld['seats'] = [];
   for (const [bx, bz] of seaBenches) seats.push(...benchSeats(`${id}:promenade:bench:${Math.round(bz)}`, bx, bz, -Math.PI / 2, 0.5, 'street', 1.8, 2));   // the Corniche's benches: two places each, facing the sea
   /** Sites left to the venues module (src/world/sites.ts): ground only, plus the place's identity interactable. */
@@ -1429,7 +1444,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const specialAt = (i: number, j: number, kind: Special) => {
     const bx = blockMin(i), bz = blockMin(j), cx = bx + BLK / 2, cz = bz + BLK / 2;
     const sandy = kind === 'pitch' || kind === 'arena' || kind === 'ecurie' || banlieue;
-    (sandy ? plain : pave).box(BLK, G + 0.02, BLK, cx, 0, cz, kind === 'pitch' ? 0x5aa84f : kind === 'arena' || kind === 'ecurie' ? 0xd9bb8a : banlieue ? 0xcfb48a : 0xc9c0ac);
+    (sandy ? plain : pave).box(BLK, G + 0.02, BLK, cx, 0, cz, kind === 'pitch' ? (sp.sea === 'west' ? 0xa9705a : 0x5aa84f) : kind === 'arena' || kind === 'ecurie' ? 0xd9bb8a : banlieue ? 0xcfb48a : 0xc9c0ac);
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
@@ -1609,6 +1624,19 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       case 'pitch': {
         const w = 40, d = 30;
+        if (sp.sea === 'west') {
+          // The Corniche's pitch is sand inside a yellow kerb, on an esplanade of red and purple pavers (the owner's drone reference, 11 Nov). Same size, same
+          // goals, same touchlines for the match (src/game/footballSim.ts PITCH): only what it is made of.
+          const YK = 0xf2c21b;
+          plain.box(w + 4, 0.02, d + 4, cx, B, cz, 0xd8bd8c);
+          for (let k = 0; k < 6; k++) plain.flat(5 + (k % 3) * 2.5, 3 + (k % 2) * 2, cx - 15 + k * 6.1, B + 0.04, cz - 8 + ((k * 7) % 5) * 4, 0xcdb07e, k * 0.5);   // trodden patches
+          for (const sz of [-1, 1]) plain.box(w + 4.8, 0.16, 0.4, cx, B, cz + sz * (d / 2 + 2.2), YK);
+          for (const sx of [-1, 1]) plain.box(0.4, 0.16, d + 4.8, cx + sx * (w / 2 + 2.2), B, cz, YK);
+          plain.box(w, 0.012, 0.18, cx, B + 0.055, cz - d / 2, 0xf3ead6); plain.box(w, 0.012, 0.18, cx, B + 0.055, cz + d / 2, 0xf3ead6);
+          plain.box(0.18, 0.012, d, cx - w / 2, B + 0.055, cz, 0xf3ead6); plain.box(0.18, 0.012, d, cx + w / 2, B + 0.055, cz, 0xf3ead6); plain.box(0.18, 0.012, d, cx, B + 0.055, cz, 0xf3ead6);
+          for (const sx of [-1, 1]) { plain.box(0.2, 2.4, 0.2, cx + sx * (w / 2), B, cz - 3, 0xffffff); plain.box(0.2, 2.4, 0.2, cx + sx * (w / 2), B, cz + 3, 0xffffff); plain.box(0.2, 0.2, 6, cx + sx * (w / 2), B + 2.4, cz, 0xffffff); }
+          break;
+        }
         plain.box(w + 4, 0.02, d + 4, cx, B, cz, 0x4e9a45);
         for (let k = 0; k < 8; k++) plain.box(w / 8, 0.01, d, cx - w / 2 + (k + 0.5) * (w / 8), B + 0.02, cz, k % 2 ? 0x5aa84f : 0x52a048); // mowing stripes
         plain.box(w + 2, 0.02, 0.3, cx, B + 0.03, cz - d / 2, 0xffffff); plain.box(w + 2, 0.02, 0.3, cx, B + 0.03, cz + d / 2, 0xffffff);

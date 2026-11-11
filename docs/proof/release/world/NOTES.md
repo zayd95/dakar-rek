@@ -239,3 +239,24 @@ Static scenery, whole district (`buildHub`, counted in a unit test, full / lite)
 | Almadies | 97 → 97 | 213 804 → 213 804 | 168 374 → 168 374 | 1 009 → 1 009 |
 
 `13-second-pass-skylines.jpg`: seven raised views after the pass (Plateau ×2, Pikine, Mermoz ×2, Corniche ×2), phone viewport, Medium, hour 10, headless on a software renderer. Evidence of composition, not of phone frame rate.
+
+## Third pass: the Corniche after the owner's drone reference (11 November)
+
+The owner sent a drone video of Dakar; its first ten seconds fly along the Corniche Ouest. What it shows, and what was built from it (the video itself is not in the repository: it is other photographers' work):
+
+| In the reference | In the game now |
+|---|---|
+| a great round concrete esplanade on a headland, people walking on it | `src/world/cornicheEsplanade.ts`: a headland of ochre laterite opposite the end of the street at z = −60, the round esplanade on it (a ring step round a disc, 30 m across), three people on it (none on Low). **It is walked on**: the promenade's railing and the sea wall are open there |
+| wavy painted terraces in red, yellow and purple between the road and the sea | five wavy painted bands between the promenade and the disc |
+| black basalt boulders at the foot of ochre banks, small beaches | basalt along the headland's edge (they mark where one can walk) and in heaps along the shore; an ochre bank at the foot of the sea wall |
+| turquoise water breaking white | three bands of shallows from turquoise to the sea's blue, two wavering lines of foam, the swell breaking round the headland |
+| a promenade paved in bands of dark red and purple with yellow lines | the promenade path: bands of red and purple pavers with a yellow line between them (it was one red strip) |
+| a sand pitch inside a yellow kerb | the Corniche's pitch is sand inside a yellow kerb, on red pavers (it was mown grass); same size, goals and lines for the evening match |
+
+Not built from the reference: the car park beside the esplanade, the palms in the median, the villas behind white walls on the land side, the red cycle lane. The terraces and the disc are painted flat: the game's ground has no height there.
+
+Cost, whole district (`buildHub`): meshes 33 → 33 (**no draw call**: everything is in the `plain` batch); triangles 74 170 → 77 500 (full), 54 324 → 56 550 (lite); colliders 159 → 168 (the headland's three walls, the water's edge either side of it, which was the district's bound before, and two stops on the grass strip). The district's bound moved from x = −155 to −177 for the headland only.
+
+Checked: `tests/cornicheEsplanade.test.ts` (the way down is clear, the disc is clear, the headland is closed on its three seaward sides, the water's edge stands everywhere else including the fish beach) and `scripts/check-corniche-esplanade.mjs` (a real finger on the stick: from the pavement through the opening onto the disc, against each edge, back up: 10/10).
+
+`14`–`16`: before | after pairs (raised view, from above, from the promenade). `17`: the promenade's paving. `18`: the sand pitch. `19`: the esplanade at 21 h. Headless on a software renderer, Medium: composition and counts, not phone frame rate.
