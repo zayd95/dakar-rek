@@ -4,7 +4,11 @@ import { newSave, LEDGER_MAX, MONEY_MAX } from './save';
 import { cityTimeAt } from './clock';
 
 /** Personal played time drains needs; it only advances while the game is actively played. */
-const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0.9, moral: 0, social: 0.8, hygiene: 0.6 };
+/**
+ * What merely living costs, per played minute. Energy is NOT in it (release 1.0): a character tires from what they do (work, sport, a night out: each activity
+ * has its own cost), never from time passing or from running about; hunger, company and cleanliness still wear with the day.
+ */
+const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0, moral: 0, social: 0.8, hygiene: 0.6 };
 
 export class GameState {
   data: SaveData;

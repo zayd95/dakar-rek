@@ -1,112 +1,109 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave } from '../src/core/save';
-import { Stride, ShiftTap, GAIT, METRES_PER_FORME, RUN_MIN_ENERGY, SPRINT_FORME, DOUBLE_TAP, jogDrain, sprintDrain } from '../src/game/stride';
+import { ANALOG, GAIT, KEYS, METRES_PER_FORME, Stride, analogSpeed, keysSpeed } from '../src/game/stride';
 
-const fresh = () => { const s = new GameState(newSave()); s.data.needs.energie = 90; return { s, st: new Stride(s) }; };
+const fresh = () => { const s = new GameState(newSave()); return { s, st: new Stride(s) }; };
+/** Holds the stick at `mag` for `secs`, 60 frames a second; returns the last target speed. */
+const hold = (st: Stride, mag: number, secs: number) => { let v = 0; for (let i = 0; i < Math.round(secs * 60); i++) v = st.analog(mag, 1 / 60); return v; };
 
-describe('on foot: walk, jog, sprint (always free)', () => {
-  it('a light push walks slowly, a full push (W) walks normally at 2 m/s, Shift jogs, a double-tapped Shift sprints', () => {
+describe('getting around on foot (src/game/stride.ts): the push sets the pace, running never tires', () => {
+  it('one smooth curve on the stick: slow walk, walk, jog, run; continuous and increasing', () => {
+    const run = GAIT.run;
+    expect(analogSpeed(0, run)).toBe(0);
+    let prev = 0;
+    for (let m = 0.01; m <= 1.0001; m += 0.01) {
+      const v = analogSpeed(m, run);
+      expect(v).toBeGreaterThanOrEqual(prev);
+      expect(v - prev).toBeLessThan(0.6);                          // no step anywhere on the curve
+      prev = v;
+    }
+    expect(analogSpeed(0.3, run)).toBeCloseTo(GAIT.walk, 5);
+    expect(analogSpeed(0.62, run)).toBeCloseTo(ANALOG.brisk, 5);
+    expect(analogSpeed(0.88, run)).toBeCloseTo(ANALOG.jog, 5);
+    expect(analogSpeed(1, run)).toBeCloseTo(run, 5);
+  });
+
+  it('a light push walks, a strong one runs on its own: no button, no gait to pick', () => {
     const { st } = fresh();
-    expect(GAIT.brisk).toBe(2.0); expect(GAIT.jog).toBe(4.2);
-    expect(st.target(0.3, 0, 0.1)).toBeCloseTo(GAIT.walk * 0.5, 5);
-    expect(st.target(1, 0, 0.1)).toBe(GAIT.brisk); expect(st.gait).toBe('walk');
-    expect(st.target(1, 1, 0.1)).toBeCloseTo(GAIT.jog, 5); expect(st.gait).toBe('jog'); expect(st.running).toBe(true); expect(st.sprinting).toBe(false);
-    expect(st.target(1, 2, 0.1)).toBeCloseTo(GAIT.run, 5); expect(st.gait).toBe('sprint'); expect(st.sprinting).toBe(true);
-    expect(st.target(0.3, 2, 0.1)).toBeLessThan(GAIT.brisk);               // no running on a light push
+    expect(hold(st, 0.3, 1)).toBeCloseTo(GAIT.walk, 2);
+    expect(st.gait).toBe('walk'); expect(st.running).toBe(false);
+    expect(hold(st, 0.85, 1)).toBeGreaterThan(3.5);
+    expect(st.gait).toBe('jog'); expect(st.running).toBe(true);
+    expect(hold(st, 1, 1)).toBeCloseTo(st.runSpeed(), 2);
+    expect(st.gait).toBe('sprint'); expect(st.sprinting).toBe(true);
   });
-  it('jogging is sustainable (minutes, a fraction of the sprint\'s drain) and does not refill; sprinting is a short burst', () => {
-    expect(jogDrain(0)).toBeLessThan(sprintDrain(0) / 8); expect(sprintDrain(0)).toBeGreaterThanOrEqual(14);
-    const a = fresh();
-    for (let i = 0; i < 600; i++) a.st.target(1, 1, 0.1);                    // a minute jogging
-    expect(a.st.stamina).toBeGreaterThan(5); expect(a.st.stamina).toBeLessThan(100); expect(a.st.winded).toBe(false);
-    const b = fresh();
-    for (let i = 0; i < 100; i++) b.st.target(1, 2, 0.1);                    // 10 s sprinting: spent
-    expect(b.st.gait).not.toBe('sprint');
-  });
-  it('the sprint falls back to a jog when stamina runs out (winded: no sprint until a third is back), then to a walk when the jog gives out', () => {
+
+  it('brushing the edge of the stick does not bolt: the run opens only once the stick has been fully out for a moment', () => {
     const { st } = fresh();
-    let n = 0; while (st.sprinting || n === 0) { st.target(1, 2, 0.1); if (++n > 400) break; }
-    expect(n).toBeLessThan(120);                                              // a short burst
-    expect(st.winded).toBe(true); expect(st.running).toBe(true);
-    expect(st.gait).toBe('jog'); expect(st.target(1, 2, 0.1)).toBeCloseTo(GAIT.jog, 5);   // still asked: held at a jog
-    for (let i = 0; i < 400 && st.running; i++) st.target(1, 2, 0.1);
-    expect(st.gait).toBe('walk'); expect(st.spent).toBe(true); expect(st.whyNot()).toBe('Essoufflé…');
-    expect(st.target(1, 1, 0.1)).toBe(GAIT.brisk);
-    for (let i = 0; i < 60; i++) st.target(0, 0, 0.1);                       // 6 s standing still
-    expect(st.winded).toBe(false); expect(st.spent).toBe(false);
-    expect(st.target(1, 2, 0.1)).toBeGreaterThan(GAIT.jog);
+    expect(hold(st, 1, ANALOG.sprintHold * 0.5)).toBeCloseTo(ANALOG.jog, 5);
+    expect(hold(st, 1, ANALOG.sprintHold)).toBeGreaterThan(ANALOG.jog + 1);
   });
-  it('an exhausted character cannot run', () => {
-    const { s, st } = fresh(); s.data.needs.energie = RUN_MIN_ENERGY - 1;
-    expect(st.target(1, 1, 0.1)).toBe(GAIT.brisk); expect(st.whyNot()).toMatch(/fatigué/);
-  });
-  it('jogging and sprinting build fitness (a sprinted metre counts more) and tire a little (the jog less); walking costs nothing', () => {
+
+  it('running for ten minutes costs no energy and no hygiene, and can go on for ever (no stamina, nobody out of breath)', () => {
     const { s, st } = fresh();
-    st.target(1, 0, 0.1); st.moved(1000);                                     // walking: free
-    expect(s.data.counters.forme ?? 0).toBe(0); expect(s.data.needs.energie).toBe(90); expect(s.wallet).toBe(newSave().wallet);
-    st.target(1, 1, 0.1); st.moved(METRES_PER_FORME * 3 + 10);
-    expect(s.data.counters.forme).toBe(3); expect(s.data.counters.course_m).toBe(METRES_PER_FORME * 3 + 10);
-    const jogCost = 90 - s.data.needs.energie; expect(jogCost).toBeGreaterThan(0);
-    const t = fresh(); t.st.target(1, 2, 0.1); t.st.moved(METRES_PER_FORME * 2);
-    expect(t.s.data.counters.forme).toBe(Math.floor(2 * SPRINT_FORME));
-    expect(90 - t.s.data.needs.energie).toBeGreaterThan(jogCost * 0.5 * (2 / 3));   // per metre, the sprint costs twice the jog
-    s.data.counters.forme = 50;
-    expect(st.maxStamina()).toBe(200); expect(st.runSpeed()).toBeGreaterThan(GAIT.run);
+    const before = { ...s.data.needs };
+    let dist = 0;
+    for (let i = 0; i < 600 * 30; i++) { const v = st.analog(1, 1 / 30); st.moved(v / 30); dist += v / 30; }
+    expect(st.gait).toBe('sprint');                                // still at the run after ten minutes
+    expect(dist).toBeGreaterThan(4000);
+    expect(s.data.needs.energie).toBe(before.energie);
+    expect(s.data.needs.hygiene).toBe(before.hygiene);
+    expect(Object.keys(st)).not.toContain('stamina');
   });
-});
 
-describe('Shift: held = jog, double-tapped and held = sprint', () => {
-  it('a single press is a jog; a second press within the delay, held, is a sprint; a slow second press a jog', () => {
-    const tap = new ShiftTap();
-    expect(tap.level(false)).toBe(0);
-    tap.press(10); expect(tap.level(true)).toBe(1);                              // held: a jog
-    tap.release(); expect(tap.level(false)).toBe(0);
-    tap.press(11); tap.release();                                                // a tap...
-    tap.press(11 + DOUBLE_TAP - 0.05); expect(tap.level(true)).toBe(2);          // ...and again, held: a sprint
-    tap.release(); expect(tap.level(false)).toBe(0);
-    tap.press(11 + DOUBLE_TAP - 0.05 + DOUBLE_TAP + 0.2); expect(tap.level(true)).toBe(1);   // too slow: a jog again
-  });
-  it('a double tap between two frames is not lost, releasing ends the sprint, key repeat does not count', () => {
-    const tap = new ShiftTap();
-    tap.press(5); tap.release(); tap.press(5.1);                                 // down, up, down before the frame is drawn
-    expect(tap.level(true)).toBe(2);
-    tap.press(5.15); expect(tap.level(true)).toBe(2);                            // auto-repeat while held
-    expect(tap.level(false)).toBe(0); expect(tap.level(true)).toBe(1);            // released without an event (window blur): back to a jog
-  });
-});
-
-describe('analog walking: the joystick\'s push is the speed, along one smooth curve', () => {
-  it('rises continuously from the lightest push to the full one: no jump anywhere, a slow walk, a normal walk, a jog, then the run', async () => {
-    const { ANALOG, analogSpeed } = await import('../src/game/stride');
-    let last = 0; for (let m = 0.001; m <= 1.0001; m += 0.001) { const v = analogSpeed(m, GAIT.run); expect(v).toBeGreaterThanOrEqual(last - 1e-9); expect(v - last).toBeLessThan(0.08); last = v; }
-    expect(analogSpeed(0, 7)).toBe(0);
-    expect(analogSpeed(0.05, 7)).toBeLessThan(0.7);                          // the lightest push creeps
-    expect(analogSpeed(0.3, 7)).toBeCloseTo(GAIT.walk, 5);                   // a small push: a slow walk through a shop
-    expect(analogSpeed(0.5, 7)).toBeGreaterThan(GAIT.walk); expect(analogSpeed(0.62, 7)).toBeCloseTo(ANALOG.brisk, 5);   // a moderate push: the normal walk of a market
-    expect(analogSpeed(0.88, 7)).toBeCloseTo(ANALOG.jog, 5);                  // a strong push: a jog
-    expect(analogSpeed(1, 7)).toBeCloseTo(7, 5);                              // fully extended: the sprint
-  });
-  it('a full push does not sprint at once (a held stick does, a brush of the edge does not), and the jog is sustainable', () => {
-    const { st } = fresh();
-    expect(st.analog(1, 0.05)).toBeLessThanOrEqual(ANALOG_JOG); expect(st.sprinting).toBe(false);
-    for (let i = 0; i < 10; i++) st.analog(1, 0.05);
-    expect(st.analog(1, 0.05)).toBeGreaterThan(ANALOG_JOG); expect(st.sprinting).toBe(true);
-    const b = fresh(); b.st.analog(1, 0.05); b.st.analog(0.7, 0.05); for (let i = 0; i < 12; i++) { b.st.analog(1, 0.05); b.st.analog(0.8, 0.05); }   // taps at the edge never accumulate
-    expect(b.st.sprinting).toBe(false);
-    const c = fresh(); for (let i = 0; i < 600; i++) c.st.analog(0.8, 0.1);   // a minute of jogging
-    expect(c.st.winded).toBe(false); expect(c.st.stamina).toBeGreaterThan(5);
-  });
-  it('stamina, exhaustion and fitness still apply: the sprint gives out into a jog, then a walk; an exhausted character walks; running builds fitness', () => {
+  it('an exhausted character can still run: energy is spent by what one does, not by getting there', () => {
     const { s, st } = fresh();
-    for (let i = 0; i < 400 && !st.winded; i++) st.analog(1, 0.1);
-    expect(st.winded).toBe(true); expect(st.analog(1, 0.1)).toBeLessThanOrEqual(ANALOG_JOG + 1e-6);
-    for (let i = 0; i < 500 && !st.spent; i++) st.analog(1, 0.1);
-    expect(st.spent).toBe(true); expect(st.analog(1, 0.1)).toBeLessThanOrEqual(2.1 + 1e-6); expect(st.whyNot()).toBe('Essoufflé…');
-    const t = fresh(); t.s.data.needs.energie = RUN_MIN_ENERGY - 1; expect(t.st.analog(1, 0.1)).toBeLessThanOrEqual(2.1 + 1e-6);
-    const u = fresh(); u.st.analog(0.8, 0.1); u.st.moved(METRES_PER_FORME * 2); expect(u.s.data.counters.forme).toBe(2);
-    const w = fresh(); w.st.analog(0.5, 0.1); w.st.moved(5000); expect(w.s.data.counters.forme ?? 0).toBe(0);   // walking, even briskly, is free
-    void s;
+    s.data.needs.energie = 0;
+    expect(hold(st, 1, 1)).toBeCloseTo(st.runSpeed(), 2);
+  });
+
+  it('time passing alone does not drain energy either; hunger, company and cleanliness still wear with the day', () => {
+    const { s } = fresh();
+    const before = { ...s.data.needs };
+    s.tick(30 * 60000);                                            // half an hour played
+    expect(s.data.needs.energie).toBe(before.energie);
+    expect(s.data.needs.faim).toBeLessThan(before.faim);
+    expect(s.data.needs.hygiene).toBeLessThan(before.hygiene);
+  });
+
+  it('what one does still tires: an activity’s cost is taken as before', () => {
+    const { s } = fresh();
+    const e = s.data.needs.energie;
+    s.adjust({ energie: -18 });                                    // (a garage shift: src/world/content.ts)
+    expect(s.data.needs.energie).toBe(e - 18);
+  });
+
+  it('keyboard: a direction key walks for an instant, then runs on its own; Shift keeps to a walk; indoors the keys walk', () => {
+    const { st } = fresh();
+    expect(st.keys(1, false, 0.1)).toBeCloseTo(ANALOG.brisk, 5);            // the first instant
+    let v = 0; for (let i = 0; i < 120; i++) v = st.keys(1, false, 1 / 60);  // two seconds held
+    expect(v).toBeCloseTo(st.runSpeed(), 2); expect(st.gait).toBe('sprint');
+    expect(st.keys(1, true, 1 / 60)).toBe(GAIT.walk); expect(st.gait).toBe('walk');   // Shift: a walk, at once
+    expect(st.keys(0, false, 1 / 60)).toBe(0);                               // released: the next press starts from the walk again
+    expect(st.keys(1, false, 0.1)).toBeCloseTo(ANALOG.brisk, 5);
+    const indoors = fresh().st; let w = 0; for (let i = 0; i < 120; i++) w = indoors.keys(1, false, 1 / 60, true);
+    expect(w).toBeCloseTo(ANALOG.brisk, 5);
+    // the keys' curve has no step either
+    let prev = keysSpeed(KEYS.runAfter, GAIT.run);
+    for (let t = KEYS.runAfter; t < KEYS.runAfter + KEYS.runIn + 0.2; t += 0.02) { const k = keysSpeed(t, GAIT.run); expect(k).toBeGreaterThanOrEqual(prev); expect(k - prev).toBeLessThan(0.35); prev = k; }
+  });
+
+  it('running far still builds fitness, and fitness makes the run a little faster', () => {
+    const { s, st } = fresh();
+    const v0 = st.runSpeed();
+    hold(st, 1, 1);
+    st.moved(METRES_PER_FORME / 1.5 + 1);                           // (a run metre counts 1.5)
+    expect(s.data.counters.forme).toBe(1);
+    s.data.counters.forme = 60;
+    expect(st.runSpeed()).toBeGreaterThan(v0);
+    expect(st.runSpeed()).toBeLessThanOrEqual(GAIT.run * 1.12 + 1e-9);
+  });
+
+  it('a gait forced by the debug API (the checks) is taken at once', () => {
+    const { st } = fresh();
+    expect(st.forced(1, 2)).toBeCloseTo(st.runSpeed(), 5); expect(st.gait).toBe('sprint');
+    expect(st.forced(1, 1)).toBeCloseTo(GAIT.jog, 5); expect(st.gait).toBe('jog');
+    expect(st.forced(0, 2)).toBe(0);
   });
 });
-const ANALOG_JOG = 4.4;

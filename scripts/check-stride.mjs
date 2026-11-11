@@ -1,6 +1,6 @@
-// On foot, always free. Desktop: a normal walk (2 m/s) by default, jog with Shift held, sprint with a double-tapped Shift. Phone: ONE analog joystick, the push sets the speed along a
-// smooth curve (a light push a slow walk, a moderate one the normal walk, a strong one a jog, the stick fully out for a moment a sprint), no Footing / Sprint buttons. The stamina gauge says
-// « Footing » / « Sprint »; the sprint gives out into a jog, then a walk; fitness from distance jogged and sprinted. Usage: node scripts/check-stride.mjs [baseUrl] [outDir]
+// On foot (release 1.0): the push sets the pace and running never tires. Phone: ONE analog joystick (a light push walks, a strong one runs on its own); desktop: a direction key walks
+// for an instant then runs, Shift keeps to a walk. No « Courir » / « Footing » / « Sprint » control and no stamina gauge anywhere; running costs no energy; the wallet stands alone
+// until a need is no longer fine. Usage: node scripts/check-stride.mjs [baseUrl] [outDir]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, STICK } from './lib/realTouch.mjs';
@@ -9,78 +9,72 @@ const base = process.argv[2] ?? 'http://localhost:4208/';
 const out = process.argv[3] ?? 'docs/screenshots/stride';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 180000 };
-const results = []; let failed = 0;
-const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
+let failed = 0, total = 0;
+const check = (name, ok, detail = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
-  const page = await (await browser.newContext({ viewport, hasTouch: touch, isMobile: touch })).newPage();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+for (const [label, viewport, touch] of [['phone', { width: 390, height: 844 }, true], ['desktop', { width: 1280, height: 720 }, false]]) {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  await context.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); } catch { /* */ } });
+  const page = await context.newPage(); page.setDefaultTimeout(180000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
-  await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+  await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.pos().mode === 'play', null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const S = () => d(() => window.__dakar.stride());
-  // a long straight street in Pikine, facing along it
-  await d(() => { const k = window.__dakar; k.teleport('pikine'); k.setHour(9); k.state.data.needs.energie = 90; k.state.data.wallet = 1234; });
-  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
-  await d(() => { window.__dakar.place(-42, -66, Math.PI / 2); window.__dakar.lookYaw(Math.PI / 2); });
-  await page.waitForTimeout(600);
+  // a long straight street in Pikine, facing along it; tired on purpose (energy 5): running must still work
+  await d(() => { const k = window.__dakar; k.teleport('pikine'); k.setHour(9); k.state.data.needs.energie = 5; k.state.data.needs.hygiene = 80; });
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.pos().mode === 'play', null, T);
+  const start = async () => { await d(() => { window.__dakar.place(-42, -66, Math.PI / 2); window.__dakar.lookYaw(Math.PI / 2); }); await page.waitForTimeout(500); };
+  /** The steadiest speed reached while `hold` is in force (the game steps at most 0.1 s a frame, so on a slow page it is the speed the body asks for that counts). */
+  const peak = async ms => { let v = 0; const t0 = Date.now(); while (Date.now() - t0 < ms) { v = Math.max(v, (await S()).speed); await page.waitForTimeout(120); } return v; };
+  const ui = await d(() => ({
+    gauge: !!document.getElementById('stamina'),
+    words: /Courir|Footing|Sprint|Endurance/.test(document.getElementById('ui').innerText),
+    runButton: [...document.querySelectorAll('#ui button, #ui [role=button]')].some(b => /Courir|Footing|Sprint/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') ?? ''))),
+  }));
+  check(`${label}: no run button, no « Footing » / « Sprint », no stamina gauge on the screen`, !ui.gauge && !ui.words && !ui.runButton, JSON.stringify(ui));
+  const needs0 = await d(() => ({ ...window.__dakar.state.data.needs }));
 
-  // the real fingers on the phone (the stick pushed up by a fraction of its radius); the keys on the desktop
-  const tt = touch ? await realTouch(page) : null, jc = touch ? await tt.centre('#joy') : null;
-  const push = async frac => { if (frac === null) await tt.up(2); else if (!pushed) { await tt.down(2, jc.x, jc.y); await tt.move(2, jc.x, jc.y - STICK * frac); pushed = true; } else await tt.move(2, jc.x, jc.y - STICK * frac); };
-  let pushed = false;
   if (touch) {
-    // analog walking: a series of pushes, the speed follows (slow walk < normal walk < jog), continuous, and the gauge stays quiet while it is only a walk
-    const speeds = [];
-    for (const frac of [0.2, 0.3, 0.5, 0.62]) {
-      await push(frac); await page.waitForTimeout(2500);
-      await page.waitForFunction(() => { const s = window.__dakar.stride(); return s.speed > 0.2; }, null, T).catch(() => {});
-      speeds.push(+(await S()).speed.toFixed(2));
-    }
-    check(`phone: a light push walks slowly, a stronger one faster, along a smooth curve (${speeds.join(' → ')} m/s)`, speeds[0] > 0.3 && speeds[0] < 1.6 && speeds.every((v, i) => i === 0 || v > speeds[i - 1] - 0.05) && speeds[3] > 1.8 && speeds[3] < 2.6, JSON.stringify(speeds));
-    check('phone: the walk is not a jog: the gauge says nothing and no gait switch happened', !(await S()).running);
-    await push(null); pushed = false; await page.waitForTimeout(800);
-    await d(() => { window.__dakar.place(-42, -66, Math.PI / 2); window.__dakar.lookYaw(Math.PI / 2); });
-    await page.waitForTimeout(400);
-    check('phone: there is no « Courir » button and no Footing / Sprint button', (await d(() => !document.getElementById('runBtn') && !document.querySelector('#runBtn small'))));
-    await push(0.3); await page.waitForTimeout(500);
-  } else await page.keyboard.down('KeyW');
-  if (!touch) {
-  await page.waitForFunction(() => window.__dakar.stride().speed > 1.9, null, T).catch(() => {});
-  const brisk = await S();
-  check(`${label}: holding forward walks at 2 m/s (free)`, brisk.speed > 1.9 && brisk.speed < 2.2 && !brisk.running, JSON.stringify(brisk));
+    const tt = await realTouch(page), jc = await tt.centre('#joy');
+    const push = async f => { await tt.move(1, jc.x, jc.y - STICK * f, 4); };
+    await start(); await tt.down(1, jc.x, jc.y);
+    await push(0.3); const light = await peak(3500), gLight = (await S()).gait;
+    check('phone: a light push of the stick walks', light > 0.7 && light < 2.3 && gLight === 'walk', JSON.stringify({ light, gLight }));
+    await push(1); const full = await peak(6000), sFull = await S();
+    check('phone: a strong push runs on its own (no button), tired or not', full > 5.5 && sFull.gait === 'sprint' && sFull.running, JSON.stringify({ full, gait: sFull.gait, energie: 5 }));
+    await page.screenshot({ path: `${out}/phone-running.png` });
+    await push(0.3); await page.waitForTimeout(2500); const back = (await S()).speed;
+    check('phone: easing the stick back eases to a walk (no lurch, no stop)', back > 0.6 && back < 2.6, JSON.stringify({ back }));
+    await tt.up(1); await page.waitForTimeout(1500);
+    check('phone: letting go stops', (await S()).speed < 0.3, JSON.stringify(await S()));
+  } else {
+    await start(); await page.keyboard.down('KeyW');
+    const first = (await S()).speed; const run = await peak(6000), sRun = await S();
+    check('desktop: a direction key runs on its own after an instant', run > 5.5 && sRun.gait === 'sprint', JSON.stringify({ first, run, gait: sRun.gait }));
+    await page.keyboard.down('ShiftLeft'); await page.waitForTimeout(2500); const walk = await S();
+    check('desktop: Shift held keeps to a walk', walk.speed < 2.2 && walk.gait === 'walk', JSON.stringify(walk));
+    await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW'); await page.waitForTimeout(1200);
+    check('desktop: releasing stops', (await S()).speed < 0.3);
+    const hint = await d(() => document.getElementById('hint')?.innerText ?? '');
+    check('desktop: the key hint says it (« ça court tout seul », Maj to walk)', /court tout seul/.test(hint) && /Maj/.test(hint), hint);
+    await page.screenshot({ path: `${out}/desktop.png` });
   }
-  // jog: Shift held on the desktop; a strong push on the phone
-  if (touch) await push(0.82); else await page.keyboard.down('ShiftLeft');
-  await page.waitForFunction(() => window.__dakar.stride().speed > 3.9, null, T).catch(() => {});
-  const jog = await S();
-  const gauge = await d(() => document.getElementById('stamina').classList.contains('on'));
-  const word = await d(() => document.querySelector('#stamina span').textContent);
-  check(`${label}: ${touch ? 'a strong push' : 'Shift'} jogs at about 4.2 m/s, the gauge says « Footing »`, jog.gait === 'jog' && jog.speed > 3.9 && jog.speed < 4.5 && gauge && word === 'Footing', JSON.stringify({ jog, word }));
-  // sprint: a double-tapped Shift, held / the stick fully out for a moment
-  if (touch) await push(1);
-  else { await page.keyboard.up('ShiftLeft'); await page.keyboard.down('ShiftLeft'); await page.keyboard.up('ShiftLeft'); await page.keyboard.down('ShiftLeft'); }
-  await page.waitForFunction(() => window.__dakar.stride().speed > 6.2, null, T).catch(() => {});
-  const run = await S();
-  const word2 = await d(() => document.querySelector('#stamina span').textContent);
-  check(`${label}: ${touch ? 'the stick fully out' : 'a double-tapped Shift'} sprints, the gauge says « Sprint »`, run.sprinting && run.speed > 6.2 && word2 === 'Sprint', JSON.stringify({ run, word2 }));
-  await page.screenshot({ path: `${out}/${label}-running.png` });
-  // out of breath: the sprint gives out into a jog (a reserve), then a walk
-  await page.waitForFunction(() => window.__dakar.stride().winded, null, { timeout: 600000 }).catch(() => {});
-  await page.waitForFunction(() => !window.__dakar.stride().sprinting && window.__dakar.stride().speed < 4.8, null, T).catch(() => {});
-  const tired = await S();
-  check(`${label}: out of breath, the sprint falls back (to a jog, then a walk)`, tired.winded && !tired.sprinting && tired.speed < 4.8, JSON.stringify(tired));
-  if (!touch) await page.keyboard.up('ShiftLeft');
-  if (touch) { await push(null); pushed = false; } else await page.keyboard.up('KeyW');
-  await page.waitForFunction(() => !window.__dakar.stride().winded, null, { timeout: 300000 }).catch(() => {});
-  const rested = await S();
-  const st = await d(() => ({ wallet: window.__dakar.state.wallet, forme: window.__dakar.state.data.counters.forme ?? 0, course: window.__dakar.state.data.counters.course_m ?? 0 }));
-  check(`${label}: breath comes back standing still; running cost nothing and counted the distance`, !rested.winded && st.wallet === 1234 && st.course > 20, JSON.stringify({ rested, st }));
-  check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
-  await page.context().close();                       // this view's page stops rendering before the next one boots
+  const needs1 = await d(() => ({ ...window.__dakar.state.data.needs }));
+  check(`${label}: running cost no energy (and the clock alone costs none)`, Math.abs(needs1.energie - needs0.energie) < 0.01, JSON.stringify({ before: needs0.energie, after: needs1.energie }));
+  // the wallet stands alone while every need is fine; a ring appears for the one that is not
+  const rings = async () => d(() => [...document.querySelectorAll('#stats .ring')].filter(r => getComputedStyle(r).display !== 'none').map(r => r.dataset.need));
+  await d(() => { const n = window.__dakar.state.data.needs; n.energie = 90; n.faim = 90; n.hygiene = 90; n.social = 90; n.moral = 90; }); await page.waitForTimeout(1500);
+  const fine = await rings();
+  await d(() => { window.__dakar.state.data.needs.energie = 20; }); await page.waitForTimeout(1500);
+  const tired = await rings();
+  check(`${label}: the wallet stands alone while all is fine; the energy ring appears only once energy is low`, fine.length === 0 && tired.includes('energie'), JSON.stringify({ fine, tired }));
+  const chip = await d(() => { const c = document.getElementById('streakChip'); return c ? getComputedStyle(c).display : 'missing'; });
+  check(`${label}: no « Série 0 j » chip while no run is on`, chip === 'none', chip);
+  check(`${label}: no JavaScript error`, errors.length === 0, errors.slice(0, 2).join(' | '));
+  await context.close();
 }
 await browser.close();
-fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
-console.log(`\n${results.length - failed}/${results.length} stride checks passed`);
+console.log(failed ? `${failed}/${total} FAILED` : `${total}/${total} passed`);
 process.exit(failed ? 1 : 0);

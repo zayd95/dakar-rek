@@ -106,7 +106,6 @@ import { GALA_DONE_COUNTER } from './arena/program';
 import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride, type RunLevel } from './game/stride';
-import { StrideUi } from './ui/stride';
 import { noteWork } from './economy/streakModule';
 import { STREAK, runOf } from './economy/streak';
 import { prayerPresence } from './actors/prayerPoses';
@@ -699,7 +698,8 @@ const inventory = new Inventory(state);
 const gestures = new GesturePlayer(document.getElementById('ui')!);
 /** On foot, always free: walk, brisk walk, run while stamina lasts (fitness = « forme »). */
 const stride = new Stride(state);
-const strideUi = new StrideUi(document.getElementById('ui')!, stride);
+/** A gait forced by the debug API (`__dakar.strideToggle`, the checks): 0 none. Nothing on screen: the push sets the pace (src/game/stride.ts). */
+let forcedGait: RunLevel = 0;
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => goSit(s), walking: () => approach !== null,   // walks round the tables to the seat first (src/interact/approach.ts)
@@ -1655,7 +1655,6 @@ function frameStep(now: number, dt: number, draw = true) {
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && (mode === 'play' || activities.running)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
-  { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   if (staged) stagedStep(STAGE_BUDGET_MS);                // a district swapped in by a road: its load finishes a few ms a frame
   if (profOn) for (const m of MODULES) { if (staged && !staged.done.has(m)) continue; const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
   else for (const m of MODULES) {
@@ -1690,13 +1689,13 @@ function frameStep(now: number, dt: number, draw = true) {
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
-    const shiftLevel = input.shift.level(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));       // Shift: jog; double-tapped and held: sprint
+    const walkHeld = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');                          // the keys run on their own; Shift keeps to a walk
     let keep = 1;
     if (mag > 0.05) { const t = turnStep(facing, Math.atan2(dx, dz), dt, speed); facing = t.facing; keep = t.keep; }   // turn first, pace follows the facing
     const keyed = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some(k => input.keys.has(k)), stick = Math.hypot(input.joy.x, input.joy.y);
-    const analog = stick > 0.01 && !keyed && strideUi.level === 0;                    // the phone's stick: the push is the speed, along one smooth curve (the keys keep walk / Shift jog / double-tap sprint)
-    const target = (analog ? stride.analog(stick, dt) : stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt)) * keep;
-    speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
+    const analog = stick > 0.01 && !keyed && forcedGait === 0;                        // the phone's stick: the push is the speed, along one smooth curve
+    const target = (analog ? stride.analog(stick, dt) : forcedGait ? stride.forced(mag, forcedGait) : stride.keys(mag, walkHeld, dt, !!inside)) * keep;
+    speed += (target - speed) * Math.min(1, dt * (target > speed ? 5 : 10));              // eased both ways: no lurch into the run, no dead stop out of it
     if (mag > 0.05) {
       let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders, pos.y);
@@ -1708,7 +1707,7 @@ function frameStep(now: number, dt: number, draw = true) {
       }
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
-    } else speed *= 0.8;
+    } else speed *= Math.exp(-dt * 12);                                                    // (the same easing at any frame rate)
     { const gy = 0.1 + (inside ? indoorGround(inside.int, pos.x, pos.z, pos.y) : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly (LD2.0-D: a home's floors and flights too)
     state.tick(dt * 1000);
   } else if (mode === 'busy') {
@@ -1904,8 +1903,8 @@ if (DEBUG) {
     avatar: () => ({ identity: state.data.avatar, appearance: state.data.appearance, drawn: playerBody?.appearance ?? null, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
-    stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
-    strideToggle: (on: boolean | 0 | 1 | 2) => { strideUi.level = on === true ? 1 : on === false ? 0 : on; },
+    stride: () => ({ running: stride.running, sprinting: stride.sprinting, gait: stride.gait, forme: stride.forme, runSpeed: +stride.runSpeed().toFixed(2), speed: +speed.toFixed(2), forced: forcedGait }),
+    strideToggle: (on: boolean | 0 | 1 | 2) => { forcedGait = on === true ? 1 : on === false ? 0 : on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
     gestureFinish: (score = 1) => gestures.finishNow(score),
     /** Procedural arm and torso gestures on the player's body (src/actors/gesture.ts), for the checks. */

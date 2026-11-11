@@ -116,7 +116,7 @@ export class ChatUi {
     if (tab === 'dm') { this.toMessages(peer); return; }
     this.opened = true; this.reportFor = null;
     this.panel.classList.add('on'); this.button.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('chat-open');            // the floating « Courir » steps aside while the panel is open (src/ui/stride.css)
+    document.body.classList.add('chat-open');            // (the HUD's floating controls step aside while the panel is open)
     this.dirty = true; this.render();
   }
   /**

@@ -47,7 +47,7 @@ try {
 
   // 2 — the HUD
   const chip = await d(() => { const c = document.getElementById('streakChip'); const r = c?.getBoundingClientRect(); return c ? { text: c.innerText.replace(/\s+/g, ' ').trim(), shown: r.width > 0 && getComputedStyle(c).display !== 'none' } : null; });
-  check('2. the HUD shows the streak chip at « Série 0 j »', chip?.shown && /Série\s*0\s*j/.test(chip.text), JSON.stringify(chip));
+  check('2. the HUD keeps the streak chip off the screen while no run is on (release 1.0: the game world first)', !!chip && !chip.shown, JSON.stringify(chip));
   await shot('2-hud');
 
   // 3 — the phone's home and the Profile

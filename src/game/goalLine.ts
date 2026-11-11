@@ -50,7 +50,7 @@ export function goalNow(o: {
   return { ...g, target, npc: g.kind === 'local' ? o.here?.npc ?? null : null, job: g.kind === 'local' && o.here?.id === 'goal_tiak' };
 }
 
-/** Energy under this: running stops at 12 (src/game/stride.ts) and every paid service needs more — rest first. */
+/** Energy under this: every paid service needs more — rest first. (Running never tires: src/game/stride.ts.) */
 export const TIRED = 15;
 /** Hunger under this (and money for a meal here): eat. */
 export const HUNGRY = 12;

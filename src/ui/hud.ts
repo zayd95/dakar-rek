@@ -101,7 +101,7 @@ export class Hud {
       <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
       <div id="wprompt" aria-hidden="true"><div class="wp"></div></div>
       <div id="joy"><i></i></div>
-      <div id="hint" class="card"><kbd>ZQSD</kbd> marcher · <kbd>glisser</kbd> caméra · <kbd>E</kbd> agir · <kbd>Échap</kbd> téléphone</div>
+      <div id="hint" class="card"><kbd>ZQSD</kbd> avancer (ça court tout seul) · <kbd>Maj</kbd> marcher · <kbd>glisser</kbd> caméra · <kbd>E</kbd> agir · <kbd>Échap</kbd> téléphone</div>
       <div id="progress" aria-live="polite"><i class="pg-ic" aria-hidden="true"></i><span class="pg-tx"><b id="progTitle"></b><small id="progLabel"></small></span><em id="progPct"></em><span class="pg-bar"><i id="progBar"></i></span></div>
       <div id="actbar">
         <button id="actMore" class="off" type="button" aria-label="Autres actions"><span aria-hidden="true">⋯</span></button>
