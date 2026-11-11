@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
-import { Batch, facadeTextures, signTexture, signCanvasSize } from './batch';
+import { Batch, facadeTextures, signTexture, signCanvasSize, type FacadeStyle } from './batch';
+import { ROW } from './facadeAtlas';
 import { ACTIONS, ENTER } from './content';
 import type { Canopy, Collider, HubWorld, Interactable, KeepClear, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
@@ -172,6 +173,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
+  fac.styled = true;                                 // the walls say which storeys of the facade atlas they show (src/world/facadeAtlas.ts)
   const pave = new Batch(), blocks = new Batch();   // world-space textured: paving slabs, raw breeze blocks
   const pools: THREE.BufferGeometry[] = [];
   const pool = (x: number, z: number, r: number, y = 0.16) => {
@@ -427,12 +429,27 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   };
   /** Rolling metal shutter of a ground-floor boutique, with a painted board above it. */
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
-  const shopfront = (x: number, z: number, nx: number, nz: number) => {
-    const rot = Math.atan2(nx, nz);
-    metal.box(2.6, 2.4, 0.08, x, G, z, R() < 0.5 ? 0x8a9096 : 0x6f8aa0, rot);
+  /** `painted`: the wall behind already shows its shops (the facade atlas' ground floor): nothing is drawn, the random draws are made all the same (the hub's layout stays). */
+  const shopfront = (x: number, z: number, nx: number, nz: number, painted = false) => {
+    const rot = Math.atan2(nx, nz), shutter = R() < 0.5 ? 0x8a9096 : 0x6f8aa0, board = pick(SHOP_BOARDS, R);
+    if (painted) return;
+    metal.box(2.6, 2.4, 0.08, x, G, z, shutter, rot);
     for (let k = 0; k < 3; k++) plain.box(2.6, 0.04, 0.1, x, G + 0.5 + k * 0.6, z, 0x5c6266, rot);
-    plain.box(3.0, 0.6, 0.1, x + nx * 0.03, G + 2.6, z + nz * 0.03, pick(SHOP_BOARDS, R), rot);
+    plain.box(3.0, 0.6, 0.1, x + nx * 0.03, G + 2.6, z + nz * 0.03, board, rot);
   };
+  /**
+   * Where the facade atlas' ground floor has its door on a face `len` long (outward normal nx, nz; the box not turned): the whole bays are centred on
+   * the face and counted along the face's own u (src/world/grain.ts). Returns the bay nearest `want` (metres from the face's middle, along +x on a
+   * ±z face, along +z on a ±x face), as that offset, and the `seed` of the style that puts the row's door bay (`doorCol`) there: a door of the kit
+   * (src/world/modernFront.ts) set at `at` stands in front of the painted one.
+   */
+  const doorBay = (len: number, nx: number, nz: number, want: number, doorCol: number) => {
+    const n = Math.max(1, Math.floor(len / 3.4 + 0.02)), dir = nz > 0 || nx < 0 ? 1 : -1;
+    const c = Math.min(n - 1, Math.max(0, Math.round((want * dir) / 3.4 + (n - 1) / 2)));
+    return { at: (c - (n - 1) / 2) * 3.4 * dir, seed: (((doorCol - c - Math.round(nx)) % 4) + 4) % 4 };
+  };
+  /** The door's bay in the atlas' ground rows. */
+  const DOOR_COL = { [ROW.SHOPS]: 2, [ROW.HOME_GROUND]: 1 } as Record<number, number>;
   /** Split air-conditioner box on a wall (nx, nz = outward normal). */
   const acUnit = (x: number, y: number, z: number, nx: number, nz: number) => {
     if (lite) return;
@@ -455,8 +472,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     }
   };
   /** Street-facing details for a box building: plinth, AC units, shutters. faces = outward normals that see a street. */
-  const dressBuilding = (cx: number, cz: number, w: number, d: number, h: number, col: number, faces: [number, number][], shops: boolean) => {
-    plain.box(w + 0.1, 0.75, d + 0.1, cx, G - 0.02, cz, shade(col, 0.68));              // dusty plinth band
+  const dressBuilding = (cx: number, cz: number, w: number, d: number, h: number, col: number, faces: [number, number][], shops: boolean, painted = false) => {
+    if (!painted) plain.box(w + 0.1, 0.75, d + 0.1, cx, G - 0.02, cz, shade(col, 0.68));   // dusty plinth band (a painted ground floor has its own, open at the doors)
     plain.box(w + 0.3, 0.18, d + 0.3, cx, G + h - 0.18, cz, shade(col, 0.88));          // cornice
     const floors = Math.round(h / 3.2);
     for (const [nx, nz] of faces) {
@@ -471,7 +488,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         const n = Math.max(1, Math.floor(len / 6));
         for (let k = 0; k < n; k++) if (R() < 0.7) {
           const t = -len / 2 + (k + 0.5) * (len / n);
-          shopfront(fx + (nz ? t : 0) + nx * 0.05, fz + (nx ? t : 0) + nz * 0.05, nx, nz);
+          shopfront(fx + (nz ? t : 0) + nx * 0.05, fz + (nx ? t : 0) + nz * 0.05, nx, nz, painted);
         }
       }
     }
@@ -512,12 +529,13 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     if (i === 0) {
       // Sacré-Cœur: the building fills the lot to its street edges; shops at the ground floor on both street faces, balconies above, a parapet, roof clutter
       const fl = 3 + Math.floor(R() * 3), w = LS - 1, d = LS - 1, h = fl * 3.2, col = pick(sp.palette, R), cx = L.cx, cz = L.cz;
-      fac.facade(w, h, d, cx, G - 0.02, cz, col);
+      // tiled fronts over a ground floor of shops (the atlas' rows); the party walls keep a house's ground floor
+      fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, { upper: (a + b + j) % 3 ? ROW.TILED : ROW.MODERN, ground: ROW.SHOPS, back: ROW.HOME_GROUND, streets: faces, seed: a + b * 2 + j });
       plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
       for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));    // the floor slabs show on the face: a line of shade under each
       parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.8);
       roofClutter(cx, cz, w, d, G + h + 0.28);
-      dressBuilding(cx, cz, w, d, h, col, faces, true);
+      dressBuilding(cx, cz, w, d, h, col, faces, true, true);
       for (const [nx, nz] of faces) for (let f = 1; f < fl; f++) {                                  // balconies on both street faces, every floor
         const along = nx ? d : w, bw = along * 0.6;
         glassBalcony(front, cx + nx * (w / 2), cz + nz * (d / 2), nx, nz, bw, G + f * 3.2);
@@ -533,12 +551,14 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       const gx = L.cx + (R() - 0.5) * 6, gzz = gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3;
       gate(gx, gzz, 0, gz, 2.4);
       const w = 12 + R() * 4, d = 10 + R() * 3, fl = 2 + (R() < 0.35 ? 1 : 0), h = fl * 3.2, cz = L.cz - gz * 2;
-      fac.facade(w, h, d, L.cx, G - 0.02, cz, hc);
+      // the house: tiled or modern fronts by its colour, a house's ground floor whose painted door stands behind the entrance
+      const door = doorBay(w, 0, gz, w * 0.22, DOOR_COL[ROW.HOME_GROUND]), kind = Math.round(w * 7 + d * 3) % 3;
+      fac.facade(w, h, d, L.cx, G - 0.02, cz, hc, 0, { upper: kind === 0 ? ROW.MODERN : kind === 1 ? ROW.TILED : ROW.CLASSIC, ground: ROW.HOME_GROUND, seed: door.seed });
       plain.box(w + 0.4, 0.28, d + 0.4, L.cx, G + h - 0.02, cz, 0xe2ddd2);
       parapet(L.cx, cz, w + 0.4, d + 0.4, G + h + 0.24, shade(hc, 0.92), 0.6);
       pick([0x2d3748, 0xf2efe8, 0x6b4a2e], R);                                                          // (the railing's colour draw: kept, so every later lot stays where it was)
       glassBalcony(front, L.cx - w * 0.15, cz + gz * (d / 2), 0, gz, w * 0.55, G + 3.2, 1.4);            // the balcony over the yard: glass railing on corbels
-      entrance(front, L.cx + w * 0.22, cz + gz * (d / 2), 0, gz);
+      entrance(front, L.cx + door.at, cz + gz * (d / 2), 0, gz);
       if (R() < 0.5) plain.cyl(0.7, 0.85, 1.1, L.cx + w * 0.3, G + h + 0.25, cz, 0xe9e6de, 8);              // a water tank
       for (let k = 0; k < (lite ? 1 : 3); k++) leaves.blob(0.8 + R() * 0.6, L.x0 + 1 + R() * (LS - 2), G + 2.3, gzz, pick([0xc2307a, 0xd94a8c, 0xe2588f, 0x3f7a35], R), 0.75, 0);   // bougainvillea over the wall
       if (R() < 0.6) tree(L.cx + (R() < 0.5 ? -1 : 1) * (LS / 2 - 3), L.cz + gz * (LS / 2 - 3.5), 0.9, R() < 0.25);
@@ -549,7 +569,8 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       // an apartment block, four to seven floors (Mermoz is low: villas, and a few blocks on the corners): balconies on the street sides, a vertical band of colour, a low wall and a hedge on the setback
       const fl = 4 + Math.floor(R() * 4), w = LS - 4, d = LS - 5, h = fl * 3.2, col = pick([0xf6f1e8, 0xf3e7d1, 0xe8d3b0, 0xd7e0e4], R), band = pick([0xc86b4f, 0x6f8fc0, 0x3f8a5a, 0xd98b1a, 0x9b3d3d], R);
       const cx = L.cx - fx * 0.5, cz = L.cz - fz * 0.5 + gz * 0.3;
-      fac.facade(w, h, d, cx, G - 0.02, cz, col);
+      const door = doorBay(w, 0, gz, -w * 0.3, DOOR_COL[ROW.HOME_GROUND]);
+      fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, { upper: (i + j + a + b) % 2 ? ROW.TILED : ROW.MODERN, ground: ROW.HOME_GROUND, seed: door.seed });
       plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
       for (let f = 1; f < fl; f++) plain.box(w + 0.24, 0.16, d + 0.24, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.86));
       parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.92), 0.9);
@@ -561,7 +582,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         glassBalcony(front, cx + nx * (w / 2) + (nz ? off : 0), cz + nz * (d / 2) + (nx ? off : 0), nx, nz, bw, y);
         if (!lite && R() < 0.4) acUnit(ox - nz * bw * 0.3, y + 1.6, oz - nx * bw * 0.3, nx, nz);
       }
-      entrance(front, cx - w * 0.3, cz + gz * (d / 2), 0, gz, 1.8);
+      entrance(front, cx + door.at, cz + gz * (d / 2), 0, gz, 1.8);
       wall(L.x0 + 0.3, L.z0 + 0.3, L.x1 - 0.3, L.z1 - 0.3, 0xece6da, 1.2);
       gate(L.cx, gz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, gz, 2.2);
       if (!lite) for (let t = 2; t < LS - 2; t += 1.6) leaves.blob(0.55, L.x0 + t, G + 1.35, gz < 0 ? L.z0 + 0.9 : L.z1 - 0.9, 0x3f7a35, 0.8, 0);   // the hedge
@@ -580,7 +601,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   /** Résidence Les Filaos (Mermoz): seven floors, white with a terracotta band and balconies, its gate and the gardien's booth on the street (x = 60). */
   const filaos = (L: ReturnType<typeof lotRect>) => {
     const x0 = L.x0, z0 = L.z0, z1 = L.z1 + LS + 2, cz = (z0 + z1) / 2, w = 18, d = z1 - z0 - 6, cx = x0 + 3 + w / 2, h = 7 * 3.2;
-    fac.facade(w, h, d, cx, G - 0.02, cz, 0xf6f1e8);
+    fac.facade(w, h, d, cx, G - 0.02, cz, 0xf6f1e8, 0, { upper: ROW.TILED, ground: ROW.HOME_GROUND });
     plain.box(w + 0.4, 0.35, d + 0.4, cx, G + h - 0.02, cz, 0xd9d3c8);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.3, 0xe6e0d6, 1.0);
     plain.box(0.14, h, 4, cx - w / 2 - 0.07, G, cz, 0xc86b4f);                                                // the terracotta band on the street face
@@ -700,7 +721,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const aw = w + 0.4, n = Math.max(6, Math.round(aw / 0.9));
     for (let k = 0; k < n; k++) tin.box(aw / n + 0.02, 0.06, 2.9, cx - aw / 2 + (k + 0.5) * (aw / n), G + 3.0 - (k % 2) * 0.05, wall + fz * 1.45, k % 2 ? 0xa9a59c : 0xc4bfb4);
     for (let k = -2; k <= 2; k++) plain.box(0.12, 3.0, 0.12, cx + k * (w / 4.4), G, wall + fz * 2.75, 0x5b4a3a);
-    for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), wall + fz * 0.05, 0, fz);
+    for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), wall + fz * 0.05, 0, fz, true);   // (the shops are the wall's own ground floor)
     for (let k = -1; k <= 1; k++) if (medinaSigns < 10 && MR() < 0.4) {
       medinaSigns++;
       addSign(pick(MEDINA_SHOPS, MR), pick(['#c0392b', '#1f5fa8', '#2f7d4a', '#e0a10b', '#6b3fa0'], MR), '#fbf6ea', cx + k * (w / 3.2), G + 2.9, wall + fz * 0.17, fz > 0 ? 0 : Math.PI, 3.0, 0.6);
@@ -781,9 +802,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
         const lim = (c: number, half: number, lo: number, hi: number) => Math.min(hi - 1.2 - half, Math.max(lo + 1.2 + half, c));
         const cx = lim(L.cx + ox + (RP() - 0.5) * 1.2, w / 2, L.x0, L.x1), cz = lim(L.cz + oz + (RP() - 0.5) * 1.6, d / 2, L.z0, L.z1);
         const tilt = (RP() - 0.5) * 0.12, col = pick(sp.palette, RP), raw = RP() < 0.25;   // some never got their paint
-        fac.facade(w, h, d, cx, G - 0.02, cz, raw ? 0xb3ab9c : col, tilt);
+        // self-built: a house's ground floor (its metal door, small barred windows, the dust on its foot: painted, so no splash band is laid over the
+        // door), small shuttered windows upstairs; a house that never got its render shows its blocks, and now and then the upper floor is still bare
+        const bare = Math.floor(Math.abs(cx * 3.7 + cz * 1.3)) % 3 === 0;
+        fac.facade(w, h, d, cx, G - 0.02, cz, raw ? 0xb3ab9c : col, tilt, { upper: raw ? ROW.UNFINISHED : ROW.SELF_BUILT, ground: ROW.HOME_GROUND, top: fl === 2 && bare ? ROW.UNFINISHED : undefined, floors: fl, seed: Math.floor(Math.abs(cx + cz)) });
         plain.box(w + 0.35, 0.25, d + 0.35, cx, G + h - 0.02, cz, 0x8e8a80, tilt);       // flat roof slab
-        plain.box(w + 0.08, 0.6, d + 0.08, cx, G - 0.02, cz, shade(raw ? 0xb3ab9c : col, 0.62), tilt);   // dirt splash band
         if (!lite) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) if (RP() < 0.75)   // rebar: the next floor, someday
           plain.box(0.16, 1.3 + RP() * 0.6, 0.16, cx + sx * (w / 2 - 0.25), G + h + 0.2, cz + sz * (d / 2 - 0.25), 0x5c4e3f);
         if (RP() < 0.35) plain.cyl(0.7, 0.9, 1.1, cx + (RP() - 0.5) * 2, G + h + 0.22, cz + (RP() - 0.5) * 2, 0xb0b8c0, 8);   // water tank
@@ -847,7 +870,14 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const w = tower0 ? 13 + R() * 3 : 15 + R() * 5, d = tower0 ? 13 + R() * 3 : 15 + R() * 5, h = fl * 3.2;
     const col = tower0 ? pick(med ? MEDINA_WALLS : [0xf1e6d2, 0xe8d8b8, 0xf4efe6, 0xe3c9a6, 0xd9773f], R) : pick(med ? MEDINA_WALLS : sp.palette, R);
     const cx = L.cx + (R() - 0.5) * 2, cz = L.cz + (R() - 0.5) * 2;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // What the walls show (the facade atlas' rows; no random draw). The Plateau's business blocks (its north row and its east column) and its towers are
+    // offices over shops; the rest of it is flats over shops, the old shuttered windows or a modern block; the Médina keeps its shutters, a floor still
+    // bare here and there. The Corniche's blocks are the modern residences of Fann, shops and their door at the foot.
+    const lotKind = (i * 5 + j * 3 + a * 2 + b * 7) % 4, sides = lotFaces(a, b);
+    const upper = sp.style !== 'dense' ? ROW.MODERN : med ? ROW.CLASSIC : tower || (!tiles && (j === 0 || i === 3) && lotKind !== 0) ? ROW.OFFICE : tiles || lotKind % 2 ? ROW.CLASSIC : ROW.MODERN;
+    const door = doorBay(w, 0, b ? 1 : -1, 0, DOOR_COL[ROW.SHOPS]);                 // (the Corniche's entrance stands on the painted door)
+    const style: FacadeStyle = { upper, ground: ROW.SHOPS, back: ROW.HOME_GROUND, streets: sides, top: med && !tiles && fl >= 3 && lotKind === 0 ? ROW.UNFINISHED : undefined, seed: sp.style === 'dense' ? lotKind : door.seed };
+    fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, style);
     plain.box(w + 0.5, 0.3, d + 0.5, cx, G + h - 0.02, cz, 0xd2cdc2);
     if (tiles) {
       // hipped roof in red clay tiles (4-sided pyramid, flattened)
@@ -862,20 +892,20 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       for (let a = 0; a < 3; a++) plain.cyl(0.06, 0.06, 6 + a * 2, cx - 1 + a, G + h + 3.2, cz, 0x9a9a9a, 4);   // antennas
       glass.box(w * 0.34, h - 4, 0.12, cx, G + 3.4, cz + (b ? 1 : -1) * (d / 2 + 0.07), 0x35607e);    // glazed stair core
     }
-    dressBuilding(cx, cz, w, d, h, col, lotFaces(a, b), sp.style === 'student');
+    dressBuilding(cx, cz, w, d, h, col, lotFaces(a, b), sp.style === 'student', true);
     if (med) for (const [nx] of lotFaces(a, b)) for (let f = fl; f < flDrawn; f++) for (let k = 1; k < Math.floor((nx ? d : w) / 3.4); k++) R();   // the AC draws of the floors the Médina took off: the stream goes on as before
     if (sp.style === 'dense' && med) medinaFront(i, j, a, b, cx, cz, w, d);
     else if (sp.style === 'dense') {
       const fz = b ? 1 : -1;
       plain.box(w, 0.3, 3, cx, 3.4, cz + fz * (d / 2 + 1.4), 0xb9ad98);                   // ground-floor arcade slab
       for (let k = -2; k <= 2; k++) plain.box(0.5, 3.2, 0.5, cx + k * (w / 4.4), G, cz + fz * (d / 2 + 2.6), 0xe9e1cf);
-      for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), cz + fz * (d / 2 + 0.05), 0, fz);
+      for (let k = -1; k <= 1; k++) shopfront(cx + k * (w / 3.2), cz + fz * (d / 2 + 0.05), 0, fz, true);   // (the shops under the arcade are the wall's own ground floor)
       if (fl >= 5) plain.box(4, 2, 4, cx, G + h + 0.3, cz, 0x9aa3a8);                     // roof plant
       for (let f = 2; f < fl; f += 2) glassBalcony(front, cx + (f % 4 ? -1 : 1) * w * 0.2, cz + fz * (d / 2), 0, fz, w * 0.34, G + f * 3.2);   // glass balconies up the street face, every other floor
     } else {
       // student blocks: balconies with glass railings on the street side, and the entrance under them
       const fz = b ? 1 : -1;
-      entrance(front, cx, cz + fz * (d / 2), 0, fz, 1.8);
+      entrance(front, cx + door.at, cz + fz * (d / 2), 0, fz, 1.8);
       for (let f = 1; f < fl; f++) {
         const bw = w * 0.42, bxc = cx + (f % 2 ? -1 : 1) * w * 0.22, y = G + f * 3.2, z = cz + fz * (d / 2 + 0.6);
         glassBalcony(front, bxc, cz + fz * (d / 2), 0, fz, bw, y);
@@ -1012,7 +1042,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
     // Garage Modou is an open workshop (the shop kit's 'garage': the bench, tools, a car on the lift, motorbikes for sale)
     const workshop = k.kind === 'garage';
-    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // the front under the awning is a ground floor of shops (the maïga's a house's, its painted door behind the strip curtain; the room's the old
+    // windows); what is left of the wall above one storey is plain: no window cut by the roof
+    const kStyle: FacadeStyle = small ? { upper: ROW.CLASSIC, ground: ROW.HOME_GROUND, seed: doorBay(w, 0, dir, -1.5, DOOR_COL[ROW.HOME_GROUND]).seed }
+      : { upper: ROW.CLASSIC, ground: k.kind === 'home' ? ROW.CLASSIC : ROW.SHOPS, back: ROW.CLASSIC, streets: [[0, dir]], seed: k.i + k.j * 2 + k.lot };
+    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, kStyle);
     else {
       for (const sx of [-1, 1]) plain.box(0.25, h, d, cx + sx * (w / 2 - 0.125), G - 0.02, cz, col);
       plain.box(w, h, 0.25, cx, G - 0.02, cz - dir * (d / 2 - 0.125), col);
@@ -1182,7 +1216,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
           buildLotBuilding(i, j, 0, 1); buildLotBuilding(i, j, 1, 1);
           for (const sx of [-1, 1]) {
             const w = 5.6 + MR() * 1.2, d = 7 + MR() * 1.5, h = 2.95, x = cx + sx * 18.6, z = bz + 14 + MR() * 3, col = pick(sp.palette, MR);
-            fac.facade(w, h, d, x, G - 0.02, z, col); plain.box(w + 0.35, 0.25, d + 0.35, x, G + h - 0.02, z, 0x8e8a80); plain.box(w + 0.08, 0.6, d + 0.08, x, G - 0.02, z, shade(col, 0.62));
+            fac.facade(w, h, d, x, G - 0.02, z, col, 0, { upper: ROW.SELF_BUILT, ground: ROW.HOME_GROUND, floors: 1, seed: sx + 1 }); plain.box(w + 0.35, 0.25, d + 0.35, x, G + h - 0.02, z, 0x8e8a80);
             for (const [qx, qz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) if (MR() < 0.7) plain.box(0.16, 1.3, 0.16, x + qx * (w / 2 - 0.25), G + h + 0.2, z + qz * (d / 2 - 0.25), 0x5c4e3f);
             solidC(x, z, w, d, h);
           }
@@ -1498,7 +1532,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
       }
       case 'ecurie': {
         const w = 18, d = 14;
-        fac.facade(w, 6, d, cx, B, cz + 6, 0xe0ad5a);
+        fac.facade(w, 6, d, cx, B, cz + 6, 0xe0ad5a, 0, { upper: ROW.CLASSIC, floors: 2 });
         plain.box(w + 0.1, 0.7, d + 0.1, cx, B, cz + 6, 0xa77a40);
         plain.box(w + 0.4, 0.3, d + 0.4, cx, B + 6, cz + 6, 0xc9bb9c);
         parapet(cx, cz + 6, w + 0.4, d + 0.4, B + 6.3, 0xd9a45a, 0.6);
