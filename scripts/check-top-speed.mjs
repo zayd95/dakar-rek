@@ -39,7 +39,7 @@ await page.waitForFunction(() => (window.__dakar.teranga.at()?.x ?? 0) > 100, nu
 const a = await AT(); seen.v = await d(() => window.__vmax);
 await shot('middle-of-the-pedal');
 await gasP(false);
-check('a thumb on the middle of the gas pedal takes the car past the town cruising speed (68 km/h = 19 m/s), not half of it', seen.v > 21.5, JSON.stringify({ kmh: Math.round(seen.v * 3.6), x: Math.round(a.x) }));
+check('a thumb on the middle of the gas pedal takes the car past the town cruising speed (77 km/h = 21.5 m/s for the Teranga; it was 68), not half of it', seen.v > 23, JSON.stringify({ kmh: Math.round(seen.v * 3.6), x: Math.round(a.x) }));
 // stop with the brake
 const brk = await t.centre('#ridepad .rp-brake'); await t.down(4, brk.x, brk.y); await page.waitForFunction(() => Math.abs(window.__dakar.teranga.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {}); await t.up(4);
 
