@@ -1,0 +1,132 @@
+[
+  {
+    "name": "desktop: on a fight evening Ligne 23 takes its evening route, with an « Arène » stop near the gate",
+    "ok": true,
+    "detail": "{\"day\":false,\"eve\":true,\"arene\":{\"x\":6,\"z\":-39},\"gate\":{\"x\":30,\"z\":-51.7}}"
+  },
+  {
+    "name": "desktop: no evening car rapide drives through the queue at the gate",
+    "ok": true,
+    "detail": "0 sightings"
+  },
+  {
+    "name": "desktop: the stops say whether they are served now and which car stands there (public API)",
+    "ok": true,
+    "detail": "{\"served\":{\"day\":false,\"eve\":true},\"dw\":{\"vehicle\":\"pikine:rapide:23s:0\",\"x\":64.0178485453977,\"z\":27.98832235415842,\"left\":6.213316622923713}}"
+  },
+  {
+    "name": "desktop: a taxi waits at the rank across the road from the arena (« Prendre un taxi »)",
+    "ok": true,
+    "detail": "{\"rank\":{\"x\":-4.3,\"z\":-45,\"yaw\":0,\"name\":\"Arène de Pikine\",\"taxi\":true},\"f1\":{\"id\":\"taxi:rank\",\"name\":\"Taxi\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Prendre un taxi\",\"all\":[\"Prendre un taxi\"]}}"
+  },
+  {
+    "name": "desktop: the menu lists La Vague (Ngor) with the fare",
+    "ok": true,
+    "detail": "🚕La Vague · NgorAlmadies · Ngor · Yoff · par la route5 000 F"
+  },
+  {
+    "name": "desktop: a confirmation shows the fare and the wallet before paying",
+    "ok": true,
+    "detail": "Taxi → La Vague · NgorPrix : 5 000 F · Ton argent : 20 000 F✅MonterTu t’assois devant, à côté du chauffeur−5 000 F↩️Pas "
+  },
+  {
+    "name": "desktop: paid once and seated in front: the taxi pulls out",
+    "ok": true,
+    "detail": "{\"ride\":{\"phase\":\"depart\",\"from\":\"pikine\",\"dest\":\"almadies\",\"s\":2.2,\"end\":174,\"drop\":null,\"speed\":2.2,\"x\":-3.755283811476018,\"z\":-42.868501870993114,\"yaw\":0.25020054777764067,\"view\":\"chase\"},\"paid\":1,\"w0\":20000,\"w1\":15000,\"led\":[{\"at\":1791627543801,\"label\":\"Taxi → La Vague · Ngor\",\"amount\":-5000}]}"
+  },
+  {
+    "name": "desktop: it drives through the streets (the card says where to)",
+    "ok": true,
+    "detail": "33 m · 🚕Taxi → La Vague · NgorOn sort de Pikine · Guédiawaye · Parcelles…"
+  },
+  {
+    "name": "desktop: the view from the front seat",
+    "ok": true,
+    "detail": "\"place\""
+  },
+  {
+    "name": "desktop: after a short fade the taxi comes into Almadies with the player on board",
+    "ok": true,
+    "detail": "{\"phase\":\"arrive\",\"from\":\"pikine\",\"dest\":\"almadies\",\"s\":22,\"end\":254,\"drop\":184,\"speed\":11,\"x\":114,\"z\":-122,\"yaw\":-1.5707963267948966,\"view\":\"place\"}"
+  },
+  {
+    "name": "desktop: out on the pavement by La Vague's rank, the trip done, charged once",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":-48.3,\"y\":0.1,\"z\":-126.2,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null},\"rank\":{\"x\":-36,\"z\":-124.3,\"yaw\":-1.5707963267948966,\"name\":\"La Vague · Ngor\",\"taxi\":true},\"owed\":null}"
+  },
+  {
+    "name": "desktop: reload mid-ride: the trip finishes at the Pikine rank, no second fare, never left in a car",
+    "ok": true,
+    "detail": "{\"mid\":\"depart\",\"me2\":{\"x\":-6.199999999999999,\"y\":0.1,\"z\":-33,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},\"owed\":null,\"w2\":10000,\"wallet\":10000}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: on a fight evening Ligne 23 takes its evening route, with an « Arène » stop near the gate",
+    "ok": true,
+    "detail": "{\"day\":false,\"eve\":true,\"arene\":{\"x\":6,\"z\":-39},\"gate\":{\"x\":30,\"z\":-51.7}}"
+  },
+  {
+    "name": "phone: no evening car rapide drives through the queue at the gate",
+    "ok": true,
+    "detail": "0 sightings"
+  },
+  {
+    "name": "phone: the stops say whether they are served now and which car stands there (public API)",
+    "ok": true,
+    "detail": "{\"served\":{\"day\":false,\"eve\":true},\"dw\":{\"vehicle\":\"pikine:rapide:23s:0\",\"x\":64.0178485453977,\"z\":27.98832235415842,\"left\":8.690569095378464}}"
+  },
+  {
+    "name": "phone: a taxi waits at the rank across the road from the arena (« Prendre un taxi »)",
+    "ok": true,
+    "detail": "{\"rank\":{\"x\":-4.3,\"z\":-45,\"yaw\":0,\"name\":\"Arène de Pikine\",\"taxi\":true},\"f1\":{\"id\":\"taxi:rank\",\"name\":\"Taxi\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Prendre un taxi\",\"all\":[\"Prendre un taxi\"]}}"
+  },
+  {
+    "name": "phone: the menu lists La Vague (Ngor) with the fare",
+    "ok": true,
+    "detail": "🚕La Vague · NgorAlmadies · Ngor · Yoff · par la route5 000 F"
+  },
+  {
+    "name": "phone: a confirmation shows the fare and the wallet before paying",
+    "ok": true,
+    "detail": "Taxi → La Vague · NgorPrix : 5 000 F · Ton argent : 20 000 F✅MonterTu t’assois devant, à côté du chauffeur−5 000 F↩️Pas "
+  },
+  {
+    "name": "phone: paid once and seated in front: the taxi pulls out",
+    "ok": true,
+    "detail": "{\"ride\":{\"phase\":\"depart\",\"from\":\"pikine\",\"dest\":\"almadies\",\"s\":0.3,\"end\":174,\"drop\":null,\"speed\":0.8,\"x\":-4.220928453357665,\"z\":-44.69058960009521,\"yaw\":0.894118247945668,\"view\":\"chase\"},\"paid\":1,\"w0\":20000,\"w1\":15000,\"led\":[{\"at\":1791627656275,\"label\":\"Taxi → La Vague · Ngor\",\"amount\":-5000}]}"
+  },
+  {
+    "name": "phone: it drives through the streets (the card says where to)",
+    "ok": true,
+    "detail": "26.5 m · 🚕Taxi → La Vague · NgorOn sort de Pikine · Guédiawaye · Parcelles…"
+  },
+  {
+    "name": "phone: the view from the front seat",
+    "ok": true,
+    "detail": "\"place\""
+  },
+  {
+    "name": "phone: after a short fade the taxi comes into Almadies with the player on board",
+    "ok": true,
+    "detail": "{\"phase\":\"arrive\",\"from\":\"pikine\",\"dest\":\"almadies\",\"s\":9.4,\"end\":254,\"drop\":184,\"speed\":10.8,\"x\":126.62363834599944,\"z\":-122,\"yaw\":-1.5707963267948966,\"view\":\"place\"}"
+  },
+  {
+    "name": "phone: out on the pavement by La Vague's rank, the trip done, charged once",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":-48.3,\"y\":0.1,\"z\":-126.2,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null},\"rank\":{\"x\":-36,\"z\":-124.3,\"yaw\":-1.5707963267948966,\"name\":\"La Vague · Ngor\",\"taxi\":true},\"owed\":null}"
+  },
+  {
+    "name": "phone: reload mid-ride: the trip finishes at the Pikine rank, no second fare, never left in a car",
+    "ok": true,
+    "detail": "{\"mid\":\"depart\",\"me2\":{\"x\":-6.199999999999999,\"y\":0.1,\"z\":-33,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},\"owed\":null,\"w2\":10000,\"wallet\":10000}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

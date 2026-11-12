@@ -1,0 +1,102 @@
+{
+ "note": "Authored offline by scripts/audio/render-arena.mjs (synthesis, no recordings). period: seconds between two copies of a loop; tail: what follows it (plays under the next copy).",
+ "drums": {
+  "street": {
+   "file": "drums-street.mp3",
+   "period": 17.142857,
+   "tail": 1.2,
+   "bpm": 112,
+   "bars": 8,
+   "bar": 2.142857
+  },
+  "entrance": {
+   "file": "drums-entrance.mp3",
+   "period": 16,
+   "tail": 1.2,
+   "bpm": 120,
+   "bars": 8,
+   "bar": 2
+  },
+  "bakk": {
+   "file": "drums-bakk.mp3",
+   "period": 14.545455,
+   "tail": 1.2,
+   "bpm": 132,
+   "bars": 8,
+   "bar": 1.818182
+  },
+  "bout": {
+   "file": "drums-bout.mp3",
+   "period": 16.551724,
+   "tail": 1.2,
+   "bpm": 116,
+   "bars": 8,
+   "bar": 2.068966
+  },
+  "fete": {
+   "file": "drums-fete.mp3",
+   "period": 13.913043,
+   "tail": 1.2,
+   "bpm": 138,
+   "bars": 8,
+   "bar": 1.73913
+  }
+ },
+ "beds": {
+  "street": {
+   "file": "bed-street.mp3",
+   "period": 22,
+   "tail": 2
+  },
+  "stands": {
+   "file": "bed-stands.mp3",
+   "period": 24,
+   "tail": 2
+  },
+  "hype": {
+   "file": "bed-hype.mp3",
+   "period": 20,
+   "tail": 2
+  },
+  "tension": {
+   "file": "bed-tension.mp3",
+   "period": 20,
+   "tail": 2
+  },
+  "roar": {
+   "file": "bed-roar.mp3",
+   "period": 20,
+   "tail": 2
+  }
+ },
+ "shots": {
+  "cheer1": {
+   "file": "shot-cheer1.mp3",
+   "length": 2.2
+  },
+  "cheer2": {
+   "file": "shot-cheer2.mp3",
+   "length": 2.6
+  },
+  "cheerBig": {
+   "file": "shot-cheerBig.mp3",
+   "length": 4.2
+  },
+  "ooh": {
+   "file": "shot-ooh.mp3",
+   "length": 2.4
+  },
+  "applause": {
+   "file": "shot-applause.mp3",
+   "length": 3.6
+  },
+  "whistle": {
+   "file": "shot-whistle.mp3",
+   "length": 1.4
+  },
+  "ululation": {
+   "file": "shot-ululation.mp3",
+   "length": 3
+  }
+ }
+}

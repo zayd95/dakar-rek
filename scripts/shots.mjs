@@ -9,14 +9,20 @@ const hubs = ['plateau', 'corniche', 'almadies', 'pikine'];
 const results = [];
 const check = (name, ok, extra = '') => { results.push({ name, ok, extra }); console.log(ok ? 'PASS' : 'FAIL', name, extra); };
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 
 for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const url = m.location().url;
+    // The optional Blender vehicle is absent until its export lands; the game uses its procedural car.
+    if (url.endsWith('/assets/car_rapide.glb') && m.text().includes('404')) return;
+    errors.push(`${m.text()} ${url}`);
+  });
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
   await page.waitForTimeout(1500);
@@ -41,9 +47,17 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.teleport('pikine'); });
   await page.waitForTimeout(500);
   const a = await page.evaluate(() => window.__dakar.pos());
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(3000); await page.keyboard.up('KeyW');
-  const b = await page.evaluate(() => window.__dakar.pos());
-  check('movement: W moves the character', Math.hypot(b.x - a.x, b.z - a.z) > 1, `moved ${Math.hypot(b.x - a.x, b.z - a.z).toFixed(1)}`);
+  // hold W until the character has walked a metre (wall clock, up to 12 s): a fixed 3 s hold measured the software
+  // renderer's frame rate on CI (0.6 m once, 1.7 m locally) rather than whether W moves the character
+  let moved = 0;
+  await page.keyboard.down('KeyW');
+  for (const t0 = Date.now(); moved <= 1 && Date.now() - t0 < 12000;) {
+    await page.waitForTimeout(400);
+    const b = await page.evaluate(() => window.__dakar.pos());
+    moved = Math.hypot(b.x - a.x, b.z - a.z);
+  }
+  await page.keyboard.up('KeyW');
+  check('movement: W moves the character', moved > 1, `moved ${moved.toFixed(1)}`);
   // walk into a wall for a long time: must stay inside the world and not tunnel
   await page.keyboard.down('KeyW'); await page.waitForTimeout(8000); await page.keyboard.up('KeyW');
   const c = await page.evaluate(() => window.__dakar.pos());
@@ -59,17 +73,117 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => window.__dakar.act());
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${out}/desktop-action-menu.png` });
+  // interiors: enter the starter room, walk into a wall, save while inside, exit
+  await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.enter('home'); });
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
+  const inRoom = await page.evaluate(() => window.__dakar.pos());
+  check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
+  const wallPos = await page.evaluate(() => window.__dakar.pos());
+  // the room sits where the home's interior is built (x ≈ 1600 since the asset model): stay within a few metres of the way in
+  check('interior: walls hold the player inside', wallPos.x > 900 && Math.abs(wallPos.x - inRoom.x) < 4.5 && Math.abs(wallPos.z - inRoom.z) < 4.5, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)} (in at ${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)})`);
+  await page.screenshot({ path: `${out}/desktop-interior-home.png` });
+  await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
+  const outPos = await page.evaluate(() => window.__dakar.pos());
+  check('interior: exit back to the street', outPos.x < 900 && outPos.hub === 'pikine', `${outPos.x.toFixed(1)},${outPos.z.toFixed(1)}`);
+  // dibiterie: walk in from the street to the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-18, -56, 0); });
+  await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
+  const dib = await page.evaluate(() => {
+    const d = window.__dakar, p = d.pos(), it = d.interactables().find(i => /Dibiterie/.test(i.name));
+    return { ...p, focus: d.focus()?.id ?? null, dist: it ? Math.hypot(it.x - p.x, it.z - p.z) : null };
+  });
+  // the Dibi is an open-air venue (src/venues): walking in from the street reaches its tables (benches may all be taken)
+  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? '') || /dibiterie:/.test(dib.focus ?? '') || (dib.dist !== null && dib.dist < 5), `${dib.z.toFixed(1)} ${dib.near ?? dib.focus ?? `${dib.dist?.toFixed(1)} m from the Dibi`}`);
+  // Maïga: enter and find the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
+  // the door's 350 ms fade runs after the hub's rebuild; on a CI runner's software renderer that rebuild and its first
+  // frame have held the main thread past 8 s (f4b843b): the wait is room for the machine, not what is checked
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 30000 }).catch(() => {});
+  const mg = await page.evaluate(() => window.__dakar.pos());
+  check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
+  // làmb bout against a local opponent: grabbing and pushing in the empoignade wins, the result is recorded
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.duel(); });
+  await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
+  // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
+  let bout = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 200000;) {             // 90 s once stopped at 96 % of the clinch (run 38006915021)
+    const inf = await page.evaluate(() => window.__dakar.duelInfo());
+    if (!inf) break;
+    bout = inf;
+    if (inf.phase === 'fall' || inf.phase === 'result') break;
+    await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100);
+  }
+  // the fall, the result and the way back to play run on game time: on a slow CI runner (well under 10 fps, frames capped
+  // at 0.1 s) that took more than 120 s of wall clock once (run 37864249615), so wait for the outcome itself, up to 4 min
+  await page.waitForFunction(() => window.__dakar.duelInfo() === null && window.__dakar.pos().mode === 'play', null, { timeout: 240000 }).catch(() => {});
+  const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
+  check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
+  // monument stair: standing half-way up puts the player well above the street
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
+  await page.waitForTimeout(400);
+  const st = await page.evaluate(() => window.__dakar.pos());
+  check('monument: stair height', st.y > 4 && st.y < 9, st.y.toFixed(2));
+  // géew (arena): gate passage, crowd on the raised tiers, sightlines and roof. Expected numbers mirror src/world/geew.ts.
+  const TIER_R = [17.9, 19.2, 20.5], TIER_TOP = [1.1, 2.0, 2.9], EYE = 1.55, HEAD = 1.75;
+  await page.evaluate(() => window.__dakar.teleport('pikine'));
+  await page.waitForTimeout(500);
+  const ar = await page.evaluate(() => { const a = window.__dakar.interactables().find(i => i.id.endsWith(':arena')); return { x: a.x, z: a.z + 24 }; });
+  // headless frame rates make walking slow (~0.5 m/s): start just outside the wall and walk past the stands and barriers
+  await page.evaluate(([x, z]) => window.__dakar.place(x, z, 0), [ar.x, ar.z - 23.5]);
+  await page.keyboard.down('KeyW');
+  // judged in game time (the save's played time), not the wall clock: a software renderer walks the same metres in more seconds, and how many depends on the
+  // runner and on the district's load (one runner covered 2.8 m in an old 27 s budget, another 8.9 m in 75 s); 25 s of play is about three times what the
+  // 9.5 m need at a walk, and the wall clock still stops it after 4 min
+  const g0 = await page.evaluate(() => window.__dakar.state.data.playedMs);
+  for (const t0 = Date.now(); Date.now() - t0 < 240000;) {
+    await page.waitForTimeout(300);
+    const p = await page.evaluate(() => ({ ...window.__dakar.pos(), played: window.__dakar.state.data.playedMs }));
+    if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14 || p.played - g0 > 25000) break;
+  }
+  await page.keyboard.up('KeyW');
+  const gp = await page.evaluate(() => window.__dakar.pos());
+  check('arena: walk in through the gate past the stands', Math.hypot(gp.x - ar.x, gp.z - ar.z) < 14.5, `${Math.hypot(gp.x - ar.x, gp.z - ar.z).toFixed(1)} m from the centre`);
+  const angles = [...Array(8)].map((_, k) => Math.PI / 8 + (k * Math.PI) / 4);
+  const at = (a, r, y) => [ar.x + Math.sin(a) * r, y, ar.z + Math.cos(a) * r];
+  const clearCount = async segs => (await page.evaluate(ss => ss.map(([p, q]) => window.__dakar.sightline(p, q)), segs)).filter(h => h.hit >= h.len - 0.05).length;
+  for (let t = 0; t < 3; t++) {
+    const n = await clearCount(angles.map(a => [at(a, TIER_R[t], TIER_TOP[t] + EYE), at(a, 8, 0.3)]));
+    check(`arena: tier ${t + 1} sees into the ring`, n >= 7, `${n}/8 clear`);
+  }
+  const fromRing = await clearCount(angles.map(a => [[ar.x, 0.14 + EYE, ar.z], at(a, TIER_R[2], TIER_TOP[2] + HEAD)]));
+  check('arena: top-tier heads visible from the ring', fromRing >= 7, `${fromRing}/8 clear`);
+  const roofed = 8 - await clearCount(angles.map(a => [at(a, TIER_R[2], TIER_TOP[2] + HEAD), at(a, TIER_R[2], 12)]));
+  check('arena: roof over the stands', roofed === 8, `${roofed}/8 covered`);
+  const gateOpen = await clearCount([[at(Math.PI, 9.8, 0.6), at(Math.PI, 26, 0.6)], [at(Math.PI, 19, 3.5), at(Math.PI, 19, 12)]]);
+  check('arena: gate open (no stands or roof)', gateOpen === 2, `${gateOpen}/2 clear`);
+  await page.evaluate(() => window.__dakar.scene('watch')); await page.waitForTimeout(300);
+  await page.evaluate(() => window.__dakar.scenePeek(3)); await page.waitForTimeout(500);
+  const crowd = await page.evaluate(() => window.__dakar.sceneCrowd());
+  const onTier = s => TIER_R.some((r, t) => Math.abs(s.r - r) < 0.05 && Math.abs(s.y - TIER_TOP[t]) < 0.05);
+  const inGate = s => Math.abs(Math.atan2(Math.sin(s.a - Math.PI), Math.cos(s.a - Math.PI))) < 0.3;
+  check('arena: crowd stands on the raised tiers, gate clear', crowd.length > 0 && crowd.every(onTier) && !crowd.some(inGate), `${crowd.length} spectators, ${crowd.filter(onTier).length} on tiers`);
+  await page.evaluate(() => window.__dakar.scenePeek(99));
+  await page.waitForFunction(() => window.__dakar.sceneInfo() === null, null, { timeout: 15000 }).catch(() => {});
+  const afterWatch = await page.evaluate(() => ({ s: window.__dakar.sceneInfo(), p: window.__dakar.pos() }));
+  check('arena: watch scene ends, back to play', afterWatch.s === null && afterWatch.p.mode === 'play', `${JSON.stringify(afterWatch.s)} ${afterWatch.p.mode}`);
+  await page.evaluate(() => window.__dakar.teleport('pikine'));
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));
-  await page.waitForTimeout(2500);
+  // wait for the arrival (fade + hub build take ~3 s under SwiftShader); still fails if the player never arrives
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 15000 }).catch(() => {});
   const t = await page.evaluate(() => window.__dakar.pos());
   check('travel: pikine -> corniche', t.hub === 'corniche', t.hub);
   // save + reload
   await page.evaluate(() => { window.__dakar.state.data.wallet += 1; });
   await page.waitForTimeout(9000);
-  const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save'));
-  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion === 2, saved ? `${saved.length} bytes` : 'none');
+  const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save.v6'));
+  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion >= 3, saved ? `${saved.length} bytes · v${JSON.parse(saved).schemaVersion}` : 'none');
   const walletBefore = await page.evaluate(() => window.__dakar.state.data.wallet);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
@@ -94,7 +208,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   const sug = await page.evaluate(() => window.__dakar.suggestion());
   check(`${label}: first suggested beat is Ibou`, sug === 'ibou_welcome', String(sug));
   if (label === 'desktop') await page.screenshot({ path: `${out}/desktop-pikine-goal.png` });
-  await page.evaluate(() => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
+  // the teleport rebuilds the hub and Ibou's menu opens only once he is in it: on a slow runner that takes longer than the pause above
+  await page.waitForFunction(() => { if (!document.querySelector('#modal.on')) window.__dakar.openNpc('ibou'); return !!document.querySelector('#modal.on'); }, null, { timeout: 60000, polling: 500 });
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-npc-menu.png` });
   await page.click('.item >> nth=0'); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-beat.png` });
@@ -105,7 +221,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { const d = window.__dakar; d.playBeat('ablaye_join', 'rejoindre'); d.state.count('lutte', 2); d.playBeat('ablaye_rival', 'pret'); d.playBeat('lamine_meet', 'respect'); d.setLook('indigo', 'rayures', ['taille', 'bras_d']); });
   await page.evaluate(() => window.__dakar.journal()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-journal.png` });
-  await page.keyboard.press('Escape'); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200);
+  // close the journal with its button, not Escape: since the UI lane, Escape also stops a làmb scene, and on a slow
+  // runner (~1 frame/s) the key is read only on the next frame — after the entrance scene below has started.
+  await page.evaluate(() => { document.querySelector('#modal.on .item.close')?.click(); document.querySelector('#modal')?.classList.remove('on'); }); await page.waitForTimeout(200);
   if (label === 'desktop') { await page.evaluate(() => window.__dakar.outfit()); await page.waitForTimeout(300); await page.screenshot({ path: `${out}/desktop-outfit.png` }); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200); }
   for (const [kind, times] of [['entrance', [3.5, 9, 13]], ['training', [3]], ['celebration', [3]], ['watch', [3]]]) {
     await page.evaluate(k => window.__dakar.scene(k), kind); await page.waitForTimeout(300);

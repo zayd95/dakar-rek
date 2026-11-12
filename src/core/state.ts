@@ -1,19 +1,40 @@
 import type { HubId, Needs, SaveData } from './types';
 import { clamp } from './rng';
-import { newSave } from './save';
+import { newSave, LEDGER_MAX, MONEY_MAX } from './save';
+import { cityTimeAt } from './clock';
 
 /** Personal played time drains needs; it only advances while the game is actively played. */
-const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0.9, moral: 0, social: 0.8, hygiene: 0.6 };
+/**
+ * What merely living costs, per played minute. Energy is NOT in it (release 1.0): a character tires from what they do (work, sport, a night out: each activity
+ * has its own cost), never from time passing or from running about; hunger, company and cleanliness still wear with the day.
+ */
+const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0, moral: 0, social: 0.8, hygiene: 0.6 };
 
 export class GameState {
   data: SaveData;
+  /** City hour 0–24, read by opening hours (src/world/content.ts `during`); the game wires the shared clock and the debug override. */
+  hour: () => number = () => cityTimeAt(Date.now()).hourFloat;
   constructor(data: SaveData = newSave()) { this.data = data; }
 
   get wallet() { return this.data.wallet; }
   canAfford(n: number) { return this.data.wallet >= n; }
 
-  /** Guest-only local wallet. Transferable money will live in the server ledger (PENDING). */
-  addMoney(n: number) { this.data.wallet = Math.max(0, Math.round(this.data.wallet + n)); }
+  /**
+   * Guest-only local wallet. Transferable money will live in the server ledger (PENDING).
+   * Every change is written to the device ledger (last 100) with what was actually applied (the wallet never goes below 0).
+   * No economic cap: amounts stay exact up to MONEY_MAX (≈ 9 × 10^15 F); a non-finite amount is ignored.
+   */
+  addMoney(n: number, label = 'Divers', at = Date.now()) {
+    const before = this.data.wallet;
+    if (!Number.isFinite(n)) return 0;
+    this.data.wallet = Math.min(MONEY_MAX, Math.max(0, Math.round(this.data.wallet + n)));
+    const amount = this.data.wallet - before;
+    if (amount !== 0) {
+      this.data.ledger.push({ at, label, amount });
+      if (this.data.ledger.length > LEDGER_MAX) this.data.ledger.splice(0, this.data.ledger.length - LEDGER_MAX);
+    }
+    return amount;
+  }
 
   adjust(delta: Partial<Needs>) {
     for (const k of Object.keys(delta) as (keyof Needs)[]) this.data.needs[k] = clamp(this.data.needs[k] + (delta[k] ?? 0), 0, 100);

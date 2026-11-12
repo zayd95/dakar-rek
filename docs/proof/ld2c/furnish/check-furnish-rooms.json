@@ -1,0 +1,174 @@
+{
+ "base": "http://127.0.0.1:4991/",
+ "failed": 0,
+ "results": [
+  {
+   "name": "the F2 is the player's home",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "five pieces bought by touch, each delivered to the F2 and set up in a room of its kind",
+   "ok": true,
+   "detail": "[[\"canape_wax\",{\"x\":-1.33,\"z\":0.5,\"rot\":0}],[\"table_basse\",{\"x\":-2.83,\"z\":0.32,\"rot\":0}],[\"tele_plate\",{\"x\":-4.16,\"z\":1.73,\"rot\":1}],[\"lit_bois\",{\"x\":-2.12,\"z\":-1.98,\"rot\":3}],[\"armoire_bois\",{\"x\":-2.73,\"z\":-0.37,\"rot\":2}]] · Canapé en tissu wax ✓  −95 000 F · livré et installé · Séjou | Table basse ✓  −6 000 F · livré et installé · SéjourTable ba | Télé écran plat ✓  −180 000 F · livré et installé · SéjourTé | Lit en bois, deux places ✓  −120 000 F · livré et installé · | Armoire en bois ✓  −110 000 F · livré et installé · ChambreA"
+  },
+  {
+   "name": "charged once for each, the catalogue's prices",
+   "ok": true,
+   "detail": "511000"
+  },
+  {
+   "name": "the placement mode opens in the F2 (by the « Aménager » button)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the room chips (🏠 Entrée Séjour Cuisine Chambre Salle de bain) fit the 390 px screen, clear of the toolbar and the HUD",
+   "ok": true,
+   "detail": "{\"rooms\":{\"l\":11.6328125,\"t\":112,\"r\":378.3671875,\"b\":156},\"bar\":{\"l\":8,\"t\":760,\"r\":382,\"b\":836},\"stats\":{\"l\":10,\"t\":10,\"r\":162,\"b\":72},\"menu\":{\"l\":336,\"t\":10,\"r\":380,\"b\":54},\"chips\":[\"🏠\",\"Entrée\",\"Séjour\",\"Cuisine\",\"Chambre\",\"Salle de bain\"],\"w\":390}"
+  },
+  {
+   "name": "with the list drawer open, the toolbar still stays below the chips",
+   "ok": true,
+   "detail": "{\"rooms\":156,\"bar\":660}"
+  },
+  {
+   "name": "« Séjour » frames the séjour: the camera looks at its centre",
+   "ok": true,
+   "detail": "{\"room\":\"sejour\",\"target\":{\"x\":1658.67,\"z\":1.73}}"
+  },
+  {
+   "name": "the list shows the séjour's pieces (the chosen room)",
+   "ok": true,
+   "detail": "🛋️ Canapé en tissu wax | 🫖 Table basse | 📺 Télé écran plat | Toutes les pièces+2 hors Séjour"
+  },
+  {
+   "name": "séjour: the table_basse dragged to its spot and turned, placed and saved there",
+   "ok": true,
+   "detail": "{\"at\":{\"x\":-2.25,\"z\":1.5,\"rot\":0},\"room\":\"sejour\",\"why\":null,\"drag\":{\"from\":{\"x\":109.18811071526319,\"y\":375.6188490162552},\"to\":{\"x\":141.70150940529675,\"y\":442.8938420575757},\"landed\":true}}"
+  },
+  {
+   "name": "séjour: the canape_wax dragged to its spot and turned, placed and saved there",
+   "ok": true,
+   "detail": "{\"at\":{\"x\":-2.25,\"z\":0.5,\"rot\":0},\"room\":\"sejour\",\"why\":null,\"drag\":{\"from\":{\"x\":194.99999999998695,\"y\":385.77205928687886},\"to\":{\"x\":142.26801363015332,\"y\":385.77205928687886},\"landed\":true}}"
+  },
+  {
+   "name": "séjour: the tele_plate dragged to its spot and turned, placed and saved there",
+   "ok": true,
+   "detail": "{\"at\":{\"x\":-2.25,\"z\":3,\"rot\":2},\"room\":\"sejour\",\"why\":null,\"drag\":{\"from\":{\"x\":30.643097229336654,\"y\":456.20588771816404},\"to\":{\"x\":140.82855675615,\"y\":530.9154479093067},\"landed\":true}}"
+  },
+  {
+   "name": "« Chambre » frames the bedroom",
+   "ok": true,
+   "detail": "{\"x\":1657.27,\"z\":-1.73}"
+  },
+  {
+   "name": "chambre: the lit_bois dragged to its spot and turned, placed and saved there",
+   "ok": true,
+   "detail": "{\"at\":{\"x\":-2.75,\"z\":-2.25,\"rot\":0},\"room\":\"chambre\",\"why\":null,\"drag\":{\"from\":{\"x\":257.01741376241876,\"y\":429.65647456672826},\"to\":{\"x\":192.97694029812595,\"y\":402.505409408437},\"landed\":true}}"
+  },
+  {
+   "name": "chambre: the armoire_bois dragged to its spot and turned, placed and saved there",
+   "ok": true,
+   "detail": "{\"at\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"room\":\"chambre\",\"why\":null,\"drag\":{\"from\":{\"x\":194.99999999997615,\"y\":597.4753288760307},\"to\":{\"x\":114.46867580937905,\"y\":583.535786165315},\"landed\":true}}"
+  },
+  {
+   "name": "dragged into the bedroom door's swing, the wardrobe is refused: « Il faut laisser la porte s’ouvrir », beside the piece and in the toolbar",
+   "ok": true,
+   "detail": "{\"why\":\"Il faut laisser la porte s’ouvrir\",\"pending\":{\"x\":-2,\"z\":-0.5,\"rot\":2},\"status\":\"🚪 Armoire en bois · Il faut laisser la porte s’ouvrir\",\"bubble\":\"Il faut laisser la porte s’ouvrir\"}"
+  },
+  {
+   "name": "« Poser » there is refused and the saved spot is kept",
+   "ok": true,
+   "detail": "{\"before\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"after\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"toast\":\"Il faut laisser la porte s’ouvrir\"}"
+  },
+  {
+   "name": "the five pieces stand in their rooms: three in the séjour, two in the chambre",
+   "ok": true,
+   "detail": "[{\"uid\":\"a3\",\"spec\":\"canape_wax\",\"at\":{\"x\":-2.25,\"z\":0.5,\"rot\":0},\"room\":\"sejour\"},{\"uid\":\"a4\",\"spec\":\"table_basse\",\"at\":{\"x\":-2.25,\"z\":1.5,\"rot\":0},\"room\":\"sejour\"},{\"uid\":\"a5\",\"spec\":\"tele_plate\",\"at\":{\"x\":-2.25,\"z\":3,\"rot\":2},\"room\":\"sejour\"},{\"uid\":\"a6\",\"spec\":\"lit_bois\",\"at\":{\"x\":-2.75,\"z\":-2.25,\"rot\":0},\"room\":\"chambre\"},{\"uid\":\"a7\",\"spec\":\"armoire_bois\",\"at\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"room\":\"chambre\"}]"
+  },
+  {
+   "name": "after a reload, the same five pieces at the same places and turns",
+   "ok": true,
+   "detail": "[{\"uid\":\"a3\",\"spec\":\"canape_wax\",\"at\":{\"x\":-2.25,\"z\":0.5,\"rot\":0}},{\"uid\":\"a4\",\"spec\":\"table_basse\",\"at\":{\"x\":-2.25,\"z\":1.5,\"rot\":0}},{\"uid\":\"a5\",\"spec\":\"tele_plate\",\"at\":{\"x\":-2.25,\"z\":3,\"rot\":2}},{\"uid\":\"a6\",\"spec\":\"lit_bois\",\"at\":{\"x\":-2.75,\"z\":-2.25,\"rot\":0}},{\"uid\":\"a7\",\"spec\":\"armoire_bois\",\"at\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2}}]"
+  },
+  {
+   "name": "… each in its room (found from where it stands)",
+   "ok": true,
+   "detail": "[{\"uid\":\"a3\",\"spec\":\"canape_wax\",\"at\":{\"x\":-2.25,\"z\":0.5,\"rot\":0},\"room\":\"sejour\"},{\"uid\":\"a4\",\"spec\":\"table_basse\",\"at\":{\"x\":-2.25,\"z\":1.5,\"rot\":0},\"room\":\"sejour\"},{\"uid\":\"a5\",\"spec\":\"tele_plate\",\"at\":{\"x\":-2.25,\"z\":3,\"rot\":2},\"room\":\"sejour\"},{\"uid\":\"a6\",\"spec\":\"lit_bois\",\"at\":{\"x\":-2.75,\"z\":-2.25,\"rot\":0},\"room\":\"chambre\"},{\"uid\":\"a7\",\"spec\":\"armoire_bois\",\"at\":{\"x\":-3.5,\"z\":-0.5,\"rot\":2},\"room\":\"chambre\"}]"
+  },
+  {
+   "name": "the models stand where they were saved",
+   "ok": true,
+   "detail": "[{\"uid\":\"a3\",\"spec\":\"canape_wax\",\"model\":\"kit_canape_wax\",\"x\":1657.75,\"z\":0.5,\"yaw\":0},{\"uid\":\"a4\",\"spec\":\"table_basse\",\"model\":\"kit_table_basse\",\"x\":1657.75,\"z\":1.5,\"yaw\":0},{\"uid\":\"a5\",\"spec\":\"tele_plate\",\"model\":\"kit_tele_plate\",\"x\":1657.75,\"z\":3,\"yaw\":3.141592653589793},{\"uid\":\"a6\",\"spec\":\"lit_bois\",\"model\":\"kit_lit_bois\",\"x\":1657.25,\"z\":-2.25,\"yaw\":0},{\"uid\":\"a7\",\"spec\":\"armoire_bois\",\"model\":\"kit_armoire_bois\",\"x\":1656.5,\"z\":-0.5,\"yaw\":3.141592653589793}]"
+  },
+  {
+   "name": "an F2 furnished by the older build (bed, sofa, table, wardrobe, rug in its open room) loads here with all five kept, each valid under the plan, every room reachable",
+   "ok": true,
+   "detail": "{\"old\":[[\"lit_bois\",{\"x\":0.75,\"z\":-2.2,\"rot\":0}],[\"canape_wax\",{\"x\":-1.5,\"z\":-2.82,\"rot\":0}],[\"table_manger\",{\"x\":-3.6,\"z\":0.25,\"rot\":1}],[\"armoire_bois\",{\"x\":-3.7,\"z\":1.75,\"rot\":1}],[\"tapis_tisse\",{\"x\":0,\"z\":0.25,\"rot\":0}]],\"now\":[[\"lit_bois\",{\"x\":-2.12,\"z\":-1.98,\"rot\":3},\"chambre\",null],[\"canape_wax\",{\"x\":-1.33,\"z\":0.5,\"rot\":0},\"sejour\",null],[\"table_manger\",{\"x\":-3.08,\"z\":0.47,\"rot\":0},\"sejour\",null],[\"armoire_bois\",{\"x\":-3.7,\"z\":1.75,\"rot\":1},\"sejour\",null],[\"tapis_tisse\",{\"x\":-1.33,\"z\":1.73,\"rot\":0},\"sejour\",null]],\"stored\":[],\"reachable\":{\"ok\":true,\"rooms\":[],\"openings\":[]}}"
+  },
+  {
+   "name": "… the pieces the plan refuses were moved by kind, the valid ones kept their spot; nothing charged",
+   "ok": true,
+   "detail": "{\"moved\":[\"lit_bois\",\"canape_wax\",\"table_manger\",\"tapis_tisse\"],\"wallet\":[34580000,34580000]}"
+  },
+  {
+   "name": "… and the same layout on the next load",
+   "ok": true,
+   "detail": "[[\"lit_bois\",{\"x\":-2.12,\"z\":-1.98,\"rot\":3}],[\"canape_wax\",{\"x\":-1.33,\"z\":0.5,\"rot\":0}],[\"table_manger\",{\"x\":-3.08,\"z\":0.47,\"rot\":0}],[\"armoire_bois\",{\"x\":-3.7,\"z\":1.75,\"rot\":1}],[\"tapis_tisse\",{\"x\":-1.33,\"z\":1.73,\"rot\":0}]]"
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "placed": [
+  [
+   "table_basse",
+   {
+    "x": -2.25,
+    "z": 1.5,
+    "rot": 0
+   },
+   "sejour"
+  ],
+  [
+   "canape_wax",
+   {
+    "x": -2.25,
+    "z": 0.5,
+    "rot": 0
+   },
+   "sejour"
+  ],
+  [
+   "tele_plate",
+   {
+    "x": -2.25,
+    "z": 3,
+    "rot": 2
+   },
+   "sejour"
+  ],
+  [
+   "lit_bois",
+   {
+    "x": -2.75,
+    "z": -2.25,
+    "rot": 0
+   },
+   "chambre"
+  ],
+  [
+   "armoire_bois",
+   {
+    "x": -3.5,
+    "z": -0.5,
+    "rot": 2
+   },
+   "chambre"
+  ]
+ ],
+ "errors": []
+}

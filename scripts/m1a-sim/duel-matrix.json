@@ -1,0 +1,522 @@
+{
+ "fresh": {
+  "novice": {
+   "babacar": {
+    "win": 0.1,
+    "loss": 0.9,
+    "draw": 0,
+    "mean": 12.9,
+    "median": 11
+   },
+   "lamine": {
+    "win": 0.025,
+    "loss": 0.975,
+    "draw": 0,
+    "mean": 10.6,
+    "median": 10
+   },
+   "ousmane": {
+    "win": 0.05,
+    "loss": 0.95,
+    "draw": 0,
+    "mean": 10.2,
+    "median": 10.1
+   },
+   "daouda": {
+    "win": 0.125,
+    "loss": 0.875,
+    "draw": 0,
+    "mean": 8.8,
+    "median": 6.1
+   },
+   "assane": {
+    "win": 0,
+    "loss": 1,
+    "draw": 0,
+    "mean": 15.4,
+    "median": 13.6
+   },
+   "malick": {
+    "win": 0.075,
+    "loss": 0.925,
+    "draw": 0,
+    "mean": 13.4,
+    "median": 12.5
+   },
+   "gora": {
+    "win": 0.275,
+    "loss": 0.725,
+    "draw": 0,
+    "mean": 29.2,
+    "median": 29.6
+   },
+   "pathe": {
+    "win": 0.225,
+    "loss": 0.775,
+    "draw": 0,
+    "mean": 17.8,
+    "median": 17.4
+   },
+   "birame": {
+    "win": 0.425,
+    "loss": 0.575,
+    "draw": 0,
+    "mean": 25.5,
+    "median": 24
+   },
+   "ndiaga": {
+    "win": 0.075,
+    "loss": 0.925,
+    "draw": 0,
+    "mean": 26.6,
+    "median": 21.2
+   },
+   "pape": {
+    "win": 0.325,
+    "loss": 0.675,
+    "draw": 0,
+    "mean": 20.7,
+    "median": 20
+   },
+   "saliou": {
+    "win": 0.225,
+    "loss": 0.775,
+    "draw": 0,
+    "mean": 28.9,
+    "median": 25.4
+   }
+  },
+  "decent": {
+   "babacar": {
+    "win": 0.125,
+    "loss": 0.875,
+    "draw": 0,
+    "mean": 14.4,
+    "median": 14.3
+   },
+   "lamine": {
+    "win": 0.1,
+    "loss": 0.9,
+    "draw": 0,
+    "mean": 11.6,
+    "median": 10.5
+   },
+   "ousmane": {
+    "win": 0.05,
+    "loss": 0.95,
+    "draw": 0,
+    "mean": 14.6,
+    "median": 13.3
+   },
+   "daouda": {
+    "win": 0.375,
+    "loss": 0.625,
+    "draw": 0,
+    "mean": 13,
+    "median": 11.6
+   },
+   "assane": {
+    "win": 0.1,
+    "loss": 0.9,
+    "draw": 0,
+    "mean": 21,
+    "median": 20.1
+   },
+   "malick": {
+    "win": 0.15,
+    "loss": 0.85,
+    "draw": 0,
+    "mean": 15.1,
+    "median": 13.4
+   },
+   "gora": {
+    "win": 0.45,
+    "loss": 0.55,
+    "draw": 0,
+    "mean": 28.5,
+    "median": 28.3
+   },
+   "pathe": {
+    "win": 0.45,
+    "loss": 0.55,
+    "draw": 0,
+    "mean": 21.3,
+    "median": 22.5
+   },
+   "birame": {
+    "win": 0.775,
+    "loss": 0.225,
+    "draw": 0,
+    "mean": 23.4,
+    "median": 20.7
+   },
+   "ndiaga": {
+    "win": 0.3,
+    "loss": 0.7,
+    "draw": 0,
+    "mean": 29.5,
+    "median": 26.3
+   },
+   "pape": {
+    "win": 0.7,
+    "loss": 0.3,
+    "draw": 0,
+    "mean": 22,
+    "median": 20.4
+   },
+   "saliou": {
+    "win": 0.35,
+    "loss": 0.65,
+    "draw": 0,
+    "mean": 35.8,
+    "median": 36.9
+   }
+  },
+  "expert": {
+   "babacar": {
+    "win": 0.475,
+    "loss": 0.525,
+    "draw": 0,
+    "mean": 15.1,
+    "median": 14.7
+   },
+   "lamine": {
+    "win": 0.55,
+    "loss": 0.45,
+    "draw": 0,
+    "mean": 15.2,
+    "median": 15.2
+   },
+   "ousmane": {
+    "win": 0.4,
+    "loss": 0.6,
+    "draw": 0,
+    "mean": 18.4,
+    "median": 18.1
+   },
+   "daouda": {
+    "win": 0.8,
+    "loss": 0.2,
+    "draw": 0,
+    "mean": 10.8,
+    "median": 9.7
+   },
+   "assane": {
+    "win": 0.525,
+    "loss": 0.475,
+    "draw": 0,
+    "mean": 22.3,
+    "median": 21.1
+   },
+   "malick": {
+    "win": 0.475,
+    "loss": 0.525,
+    "draw": 0,
+    "mean": 18.8,
+    "median": 17.9
+   },
+   "gora": {
+    "win": 0.875,
+    "loss": 0.125,
+    "draw": 0,
+    "mean": 21.3,
+    "median": 20.5
+   },
+   "pathe": {
+    "win": 0.875,
+    "loss": 0.125,
+    "draw": 0,
+    "mean": 16.7,
+    "median": 14.1
+   },
+   "birame": {
+    "win": 0.95,
+    "loss": 0.05,
+    "draw": 0,
+    "mean": 23,
+    "median": 21.8
+   },
+   "ndiaga": {
+    "win": 0.775,
+    "loss": 0.225,
+    "draw": 0,
+    "mean": 31.3,
+    "median": 28.1
+   },
+   "pape": {
+    "win": 1,
+    "loss": 0,
+    "draw": 0,
+    "mean": 21.1,
+    "median": 20.3
+   },
+   "saliou": {
+    "win": 0.9,
+    "loss": 0.1,
+    "draw": 0,
+    "mean": 27.3,
+    "median": 25.6
+   }
+  }
+ },
+ "trained": {
+  "novice": {
+   "babacar": {
+    "win": 0.35,
+    "loss": 0.65,
+    "draw": 0,
+    "mean": 12.9,
+    "median": 12.3
+   },
+   "lamine": {
+    "win": 0.2,
+    "loss": 0.8,
+    "draw": 0,
+    "mean": 11.9,
+    "median": 12.7
+   },
+   "ousmane": {
+    "win": 0.225,
+    "loss": 0.775,
+    "draw": 0,
+    "mean": 12.6,
+    "median": 12.4
+   },
+   "daouda": {
+    "win": 0.375,
+    "loss": 0.625,
+    "draw": 0,
+    "mean": 9.9,
+    "median": 7.5
+   },
+   "assane": {
+    "win": 0.225,
+    "loss": 0.775,
+    "draw": 0,
+    "mean": 16.5,
+    "median": 15.9
+   },
+   "malick": {
+    "win": 0.5,
+    "loss": 0.5,
+    "draw": 0,
+    "mean": 16.5,
+    "median": 14.8
+   },
+   "gora": {
+    "win": 0.925,
+    "loss": 0.075,
+    "draw": 0,
+    "mean": 20.2,
+    "median": 16.9
+   },
+   "pathe": {
+    "win": 0.7,
+    "loss": 0.3,
+    "draw": 0,
+    "mean": 14.6,
+    "median": 13
+   },
+   "birame": {
+    "win": 0.9,
+    "loss": 0.1,
+    "draw": 0,
+    "mean": 20.9,
+    "median": 19.7
+   },
+   "ndiaga": {
+    "win": 0.625,
+    "loss": 0.375,
+    "draw": 0,
+    "mean": 23.9,
+    "median": 21.2
+   },
+   "pape": {
+    "win": 0.825,
+    "loss": 0.175,
+    "draw": 0,
+    "mean": 19.1,
+    "median": 17
+   },
+   "saliou": {
+    "win": 0.775,
+    "loss": 0.225,
+    "draw": 0,
+    "mean": 25.3,
+    "median": 22.2
+   }
+  },
+  "decent": {
+   "babacar": {
+    "win": 0.625,
+    "loss": 0.375,
+    "draw": 0,
+    "mean": 13.9,
+    "median": 14.1
+   },
+   "lamine": {
+    "win": 0.45,
+    "loss": 0.55,
+    "draw": 0,
+    "mean": 12.7,
+    "median": 12.3
+   },
+   "ousmane": {
+    "win": 0.3,
+    "loss": 0.7,
+    "draw": 0,
+    "mean": 13.9,
+    "median": 13
+   },
+   "daouda": {
+    "win": 0.75,
+    "loss": 0.25,
+    "draw": 0,
+    "mean": 9.9,
+    "median": 8.6
+   },
+   "assane": {
+    "win": 0.5,
+    "loss": 0.5,
+    "draw": 0,
+    "mean": 20.4,
+    "median": 17.9
+   },
+   "malick": {
+    "win": 0.525,
+    "loss": 0.475,
+    "draw": 0,
+    "mean": 15.5,
+    "median": 15.5
+   },
+   "gora": {
+    "win": 0.95,
+    "loss": 0.05,
+    "draw": 0,
+    "mean": 21.8,
+    "median": 19.3
+   },
+   "pathe": {
+    "win": 0.925,
+    "loss": 0.075,
+    "draw": 0,
+    "mean": 15.3,
+    "median": 14.3
+   },
+   "birame": {
+    "win": 0.95,
+    "loss": 0.05,
+    "draw": 0,
+    "mean": 18.7,
+    "median": 17.4
+   },
+   "ndiaga": {
+    "win": 0.75,
+    "loss": 0.25,
+    "draw": 0,
+    "mean": 21.7,
+    "median": 20.3
+   },
+   "pape": {
+    "win": 0.925,
+    "loss": 0.075,
+    "draw": 0,
+    "mean": 18,
+    "median": 16.7
+   },
+   "saliou": {
+    "win": 0.825,
+    "loss": 0.175,
+    "draw": 0,
+    "mean": 22.7,
+    "median": 21.7
+   }
+  },
+  "expert": {
+   "babacar": {
+    "win": 0.875,
+    "loss": 0.125,
+    "draw": 0,
+    "mean": 12.3,
+    "median": 13
+   },
+   "lamine": {
+    "win": 0.825,
+    "loss": 0.175,
+    "draw": 0,
+    "mean": 13.9,
+    "median": 13.6
+   },
+   "ousmane": {
+    "win": 0.7,
+    "loss": 0.3,
+    "draw": 0,
+    "mean": 16.8,
+    "median": 16.2
+   },
+   "daouda": {
+    "win": 0.925,
+    "loss": 0.075,
+    "draw": 0,
+    "mean": 8.6,
+    "median": 8.1
+   },
+   "assane": {
+    "win": 0.85,
+    "loss": 0.15,
+    "draw": 0,
+    "mean": 19,
+    "median": 19.1
+   },
+   "malick": {
+    "win": 0.775,
+    "loss": 0.225,
+    "draw": 0,
+    "mean": 14.8,
+    "median": 15
+   },
+   "gora": {
+    "win": 0.975,
+    "loss": 0.025,
+    "draw": 0,
+    "mean": 16.6,
+    "median": 16.2
+   },
+   "pathe": {
+    "win": 0.95,
+    "loss": 0.05,
+    "draw": 0,
+    "mean": 10.6,
+    "median": 10.4
+   },
+   "birame": {
+    "win": 1,
+    "loss": 0,
+    "draw": 0,
+    "mean": 17.2,
+    "median": 17.3
+   },
+   "ndiaga": {
+    "win": 0.95,
+    "loss": 0.05,
+    "draw": 0,
+    "mean": 22.1,
+    "median": 20
+   },
+   "pape": {
+    "win": 0.975,
+    "loss": 0.025,
+    "draw": 0,
+    "mean": 18.2,
+    "median": 17.9
+   },
+   "saliou": {
+    "win": 0.975,
+    "loss": 0.025,
+    "draw": 0,
+    "mean": 21.3,
+    "median": 20.7
+   }
+  }
+ }
+}

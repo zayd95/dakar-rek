@@ -1,0 +1,29 @@
+{
+  "id": "compacte",
+  "standIn": false,
+  "provenance": {
+    "name": "Meshy text-to-3D, Stage A of the player-owned lineup (modern sedan): preview 01a14f1e-e984-7255-9109-4efc44219108, refine 01a14f21-3914-76c6-89f9-7b95abc0f673, remesh 01a14f22-c605-7513-8f6a-ad5d2d03a6f0 (35 credits)",
+    "licence": "Generated for the game's owner with the owner's Meshy account; Meshy's plan terms apply (not re-verified here). Original, unbranded design inspired by a class of car; badges and plates painted out (compacte.paintout.json).",
+    "prompt": "assets-src/vehicles/briefs.json modern_sedan",
+    "note": "The raw Meshy files stay private (assets-src/meshy_output/, git-excluded). Steps to rebuild: split-fused-body.mjs compacte.split.json, then this manifest."
+  },
+  "source": "../meshy_output/modern_sedan/split.glb",
+  "target": "target-compacte.json",
+  "rotateY": 0,
+  "wheelNodes": "^wheel",
+  "wheelFit": "own",
+  "bodyWidthPercentile": 0.01,
+  "limits": {
+    "maxTris": 8000,
+    "textureMax": 1024,
+    "maxKB": 1300
+  },
+  "out": "public/assets/vehicles/compacte.glb",
+  "simplifyError": 0.05,
+  "textureFormat": "jpeg",
+  "textureQuality": 85,
+  "_note": "Meshy's atlas is fragmented into tiny UV islands: decimating the shell wrecks the paint (a black wedge on a door), so the body is not simplified; instead 5 800 triangles nobody sees from outside are culled (compacte.visible.json), the wheels are simplified, normals are smoothed across the seams.",
+  "cockpit": true,
+  "cull": "compacte.visible.json",
+  "simplifyWheelTris": 450
+}

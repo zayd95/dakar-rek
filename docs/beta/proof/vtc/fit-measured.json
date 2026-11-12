@@ -1,0 +1,374 @@
+{
+ "teranga": {
+  "car": "teranga",
+  "cabin": {
+   "front": {
+    "roof": 1.42,
+    "floor": 0.21,
+    "legroom": 1.09
+   },
+   "rear": {
+    "roof": 1.418,
+    "floor": 0.21,
+    "legroom": 0.51
+   }
+  },
+  "seeThrough": true,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 2,
+   "glassOn": true,
+   "cabin": true,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.722,
+    0.232,
+    -1.268
+   ],
+   "max": [
+    -0.118,
+    1.385,
+    -0.051
+   ],
+   "head": 1.385,
+   "soles": 0.232,
+   "scale": 0.9746,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.064,
+    0.256,
+    -0.434
+   ],
+   "max": [
+    0.66,
+    1.39,
+    0.811
+   ],
+   "head": 1.39,
+   "soles": 0.256,
+   "scale": 0.9253,
+   "body": "meshy_m"
+  }
+ },
+ "rafet": {
+  "car": "rafet",
+  "cabin": {
+   "front": {
+    "roof": 1.342,
+    "floor": 0.19,
+    "legroom": 1.12
+   },
+   "rear": {
+    "roof": 1.357,
+    "floor": 0.19,
+    "legroom": 0.52
+   }
+  },
+  "seeThrough": true,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 2,
+   "glassOn": true,
+   "cabin": true,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.711,
+    0.212,
+    -1.235
+   ],
+   "max": [
+    -0.129,
+    1.324,
+    -0.061
+   ],
+   "head": 1.324,
+   "soles": 0.212,
+   "scale": 0.9401,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.079,
+    0.234,
+    -0.385
+   ],
+   "max": [
+    0.645,
+    1.312,
+    0.798
+   ],
+   "head": 1.312,
+   "soles": 0.234,
+   "scale": 0.8791,
+   "body": "meshy_m"
+  }
+ },
+ "suv": {
+  "car": "suv",
+  "cabin": {
+   "front": {
+    "roof": 1.796,
+    "floor": 0.37,
+    "legroom": 1.155
+   },
+   "rear": {
+    "roof": 1.779,
+    "floor": 0.37,
+    "legroom": 0.66
+   }
+  },
+  "seeThrough": true,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 2,
+   "glassOn": true,
+   "cabin": true,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.729,
+    0.449,
+    -1.257
+   ],
+   "max": [
+    -0.11,
+    1.632,
+    -0.008
+   ],
+   "head": 1.632,
+   "soles": 0.449,
+   "scale": 1,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.04,
+    0.453,
+    -0.295
+   ],
+   "max": [
+    0.684,
+    1.679,
+    1.051
+   ],
+   "head": 1.679,
+   "soles": 0.453,
+   "scale": 1,
+   "body": "meshy_m"
+  }
+ },
+ "gainde": {
+  "car": "gainde",
+  "cabin": {
+   "front": {
+    "roof": 1.678,
+    "floor": 0.35,
+    "legroom": 1.079
+   },
+   "rear": {
+    "roof": 1.616,
+    "floor": 0.35,
+    "legroom": 0.59
+   }
+  },
+  "seeThrough": true,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 2,
+   "glassOn": true,
+   "cabin": true,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.729,
+    0.4,
+    -1.207
+   ],
+   "max": [
+    -0.11,
+    1.583,
+    0.042
+   ],
+   "head": 1.583,
+   "soles": 0.4,
+   "scale": 1,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.04,
+    0.413,
+    -0.315
+   ],
+   "max": [
+    0.684,
+    1.639,
+    1.031
+   ],
+   "head": 1.639,
+   "soles": 0.413,
+   "scale": 1,
+   "body": "meshy_m"
+  }
+ },
+ "car": {
+  "car": "car",
+  "cabin": {
+   "front": {
+    "roof": 1.424,
+    "floor": 0.19,
+    "legroom": 1.1
+   },
+   "rear": {
+    "roof": 1.366,
+    "floor": 0.19,
+    "legroom": 0.56
+   }
+  },
+  "seeThrough": false,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 0,
+   "glassOn": false,
+   "cabin": false,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.713,
+    0.212,
+    -1.258
+   ],
+   "max": [
+    -0.126,
+    1.333,
+    -0.075
+   ],
+   "head": 1.333,
+   "soles": 0.212,
+   "scale": 0.9477,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.063,
+    0.256,
+    -0.385
+   ],
+   "max": [
+    0.661,
+    1.394,
+    0.864
+   ],
+   "head": 1.394,
+   "soles": 0.256,
+   "scale": 0.928,
+   "body": "meshy_m"
+  }
+ },
+ "berline": {
+  "car": "berline",
+  "cabin": {
+   "front": {
+    "roof": 1.4,
+    "floor": 0.24,
+    "legroom": 1.377
+   },
+   "rear": {
+    "roof": 1.4,
+    "floor": 0.24,
+    "legroom": 0.74
+   }
+  },
+  "seeThrough": true,
+  "view": {
+   "holders": [
+    "driver",
+    "vtc"
+   ],
+   "doorK": 0,
+   "doorSide": -1,
+   "glass": 0,
+   "glassOn": false,
+   "cabin": false,
+   "doors": 0,
+   "doorOpen": false,
+   "leafTris": 0
+  },
+  "passenger": {
+   "min": [
+    -0.709,
+    0.262,
+    -1.433
+   ],
+   "max": [
+    -0.13,
+    1.367,
+    -0.267
+   ],
+   "head": 1.367,
+   "soles": 0.262,
+   "scale": 0.9342,
+   "seat": "rearR"
+  },
+  "driver": {
+   "min": [
+    0.077,
+    0.284,
+    -0.367
+   ],
+   "max": [
+    0.647,
+    1.37,
+    0.824
+   ],
+   "head": 1.37,
+   "soles": 0.284,
+   "scale": 0.8857,
+   "body": "meshy_m"
+  }
+ }
+}

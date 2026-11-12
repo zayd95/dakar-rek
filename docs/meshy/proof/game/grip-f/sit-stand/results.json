@@ -1,0 +1,112 @@
+[
+  {
+    "name": "desktop: there are chairs at tables to try",
+    "ok": true,
+    "detail": "[{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P1:0\",\"x\":-24.86,\"z\":-48.1,\"yaw\":4.71238898038469},{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P1:1\",\"x\":-26.34,\"z\":-48.1,\"yaw\":1.5707963267948966},{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P2:0\",\"x\":-24.86,\"z\":-40.4,\"yaw\":4.71238898038469}]"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P1:0 stands up beside its own seat (0.32 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -24.54,-48.10 · nearest other seat 1.80 m (pikine:venue:dibiterie:11:P1:1 is 1.48 m from this one)"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P1:0 stands up smoothly: no step above 0.35 m in a frame (max 0.22)",
+    "ok": true,
+    "detail": "3 samples"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P1:0 the stick stands the player up, smoothly (max step 0.05 m), and he walks on",
+    "ok": true,
+    "detail": "5 samples"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P1:1 stands up beside its own seat (0.32 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -26.66,-48.10 · nearest other seat 1.80 m (pikine:venue:dibiterie:11:P1:0 is 1.48 m from this one)"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P1:1 stands up smoothly: no step above 0.35 m in a frame (max 0.22)",
+    "ok": true,
+    "detail": "7 samples"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P2:0 stands up beside its own seat (0.10 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -24.76,-40.40 · nearest other seat 1.58 m (pikine:venue:dibiterie:11:P2:1 is 1.48 m from this one)"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P2:0 stands up smoothly: no step above 0.35 m in a frame (max 0.10)",
+    "ok": true,
+    "detail": "5 samples"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P2:1 stands up beside its own seat (0.32 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -26.66,-40.40 · nearest other seat 1.80 m (pikine:venue:dibiterie:11:P2:0 is 1.48 m from this one)"
+  },
+  {
+    "name": "desktop: pikine:venue:dibiterie:11:P2:1 stands up smoothly: no step above 0.35 m in a frame (max 0.22)",
+    "ok": true,
+    "detail": "11 samples"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: there are chairs at tables to try",
+    "ok": true,
+    "detail": "[{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P1:0\",\"x\":-24.86,\"z\":-48.1,\"yaw\":4.71238898038469},{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P1:1\",\"x\":-26.34,\"z\":-48.1,\"yaw\":1.5707963267948966},{\"hub\":\"pikine\",\"id\":\"pikine:venue:dibiterie:11:P2:0\",\"x\":-24.86,\"z\":-40.4,\"yaw\":4.71238898038469}]"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P1:0 stands up beside its own seat (0.73 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -24.13,-48.10 · nearest other seat 2.21 m (pikine:venue:dibiterie:11:P1:1 is 1.48 m from this one)"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P1:0 stands up smoothly: no step above 0.35 m in a frame (max 0.25)",
+    "ok": true,
+    "detail": "5 samples"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P1:0 the stick stands the player up, smoothly (max step 0.10 m), and he walks on",
+    "ok": true,
+    "detail": "7 samples"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P1:1 stands up beside its own seat (0.73 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -27.07,-48.10 · nearest other seat 1.86 m (pikine:venue:dibiterie:11:tv-n:0 is 2.08 m from this one)"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P1:1 stands up smoothly: no step above 0.35 m in a frame (max 0.25)",
+    "ok": true,
+    "detail": "13 samples"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P2:0 stands up beside its own seat (0.66 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -24.20,-40.40 · nearest other seat 2.14 m (pikine:venue:dibiterie:11:P2:1 is 1.48 m from this one)"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P2:0 stands up smoothly: no step above 0.35 m in a frame (max 0.22)",
+    "ok": true,
+    "detail": "17 samples"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P2:1 stands up beside its own seat (0.76 m), nearer to it than to any other chair",
+    "ok": true,
+    "detail": "end -27.10,-40.40 · nearest other seat 2.24 m (pikine:venue:dibiterie:11:P2:0 is 1.48 m from this one)"
+  },
+  {
+    "name": "phone: pikine:venue:dibiterie:11:P2:1 stands up smoothly: no step above 0.35 m in a frame (max 0.25)",
+    "ok": true,
+    "detail": "26 samples"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

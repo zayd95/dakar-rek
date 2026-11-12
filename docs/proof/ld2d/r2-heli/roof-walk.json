@@ -1,0 +1,147 @@
+{
+ "base": "http://127.0.0.1:4986/",
+ "legs": [
+  [
+   3.6,
+   -3.9
+  ],
+  [
+   0.6,
+   -3.4
+  ],
+  [
+   -3.4,
+   -3.1
+  ],
+  [
+   2.9,
+   -3
+  ],
+  [
+   3.6,
+   3
+  ],
+  [
+   6.2,
+   3
+  ],
+  [
+   3.6,
+   3
+  ],
+  [
+   3.6,
+   -3.9
+  ]
+ ],
+ "went": [
+  {
+   "dist": 0.13256175750279908,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    3.47,
+    -3.9
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.019067633697385605,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    0.58,
+    -3.39
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.17457047687526528,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    -3.23,
+    -3.12
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.3196127106801623,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    3.19,
+    -2.87
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.2781282183889619,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    3.67,
+    3.27
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.04967354573788683,
+   "room": "terrasse_rue",
+   "level": "toit",
+   "at": [
+    6.19,
+    2.95
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.05176116334486412,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    3.61,
+    2.95
+   ],
+   "y": 6.9
+  },
+  {
+   "dist": 0.0740601784688252,
+   "room": "terrasse",
+   "level": "toit",
+   "at": [
+    3.59,
+    -3.97
+   ],
+   "y": 6.9
+  }
+ ],
+ "sheet": "L’hélicoptère\n\nSur le toit de ta villa\n\nModèleHélicoptère léger monoturbine, cinq places\nImmatriculation6V-ALM\nRotor9,4 m, trois pales\nLivréeblanc nacré métallisé, ventre bleu nuit, filet or\nVolsils arriveront avec l’aéroport\n\nPas de vol pour l’instant : les hélicoptères décolleront quand l’aéroport ouvrira.\n\n👍\nFermer\n✕",
+ "closest": 1.214534980011928,
+ "results": [
+  {
+   "name": "from the stair head onto the pad beside the helicopter (the acceptance's roof legs), with the joystick",
+   "ok": true
+  },
+  {
+   "name": "« Regarder l'hélicoptère » is offered there",
+   "ok": true
+  },
+  {
+   "name": "its sheet: the registration, a 9.4 m three-blade rotor, the flights that come with the airport",
+   "ok": true
+  },
+  {
+   "name": "round its tail to the street-side terrace and back to the stairs",
+   "ok": true
+  },
+  {
+   "name": "never inside the helicopter (closest 1.21 m from its cabin, boom or tail)",
+   "ok": true
+  },
+  {
+   "name": "no page errors",
+   "ok": true
+  }
+ ]
+}

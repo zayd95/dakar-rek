@@ -1,0 +1,438 @@
+{
+ "quality": "medium",
+ "hub": {
+  "meshes": 382,
+  "tris": 269938,
+  "verts": 777201,
+  "colliders": 980
+ },
+ "points": [
+  {
+   "name": "a01-junction",
+   "frameMs": 506.4,
+   "calls": 53,
+   "tris": 142837
+  },
+  {
+   "name": "a02-gateway",
+   "frameMs": 543.6,
+   "calls": 54,
+   "tris": 146365
+  },
+  {
+   "name": "a03-approach",
+   "frameMs": 541.6,
+   "calls": 50,
+   "tris": 140271
+  },
+  {
+   "name": "a04-lamb-shop-side",
+   "frameMs": 449.7,
+   "calls": 50,
+   "tris": 140839
+  },
+  {
+   "name": "a05-parvis",
+   "frameMs": 530,
+   "calls": 38,
+   "tris": 136775
+  },
+  {
+   "name": "a06-gate",
+   "frameMs": 663.5,
+   "calls": 69,
+   "tris": 143161
+  },
+  {
+   "name": "a07-east-parvis",
+   "frameMs": 520.8,
+   "calls": 47,
+   "tris": 132271
+  },
+  {
+   "name": "a08-east-end",
+   "frameMs": 441.2,
+   "calls": 31,
+   "tris": 121677
+  },
+  {
+   "name": "a09-from-east",
+   "frameMs": 498.9,
+   "calls": 113,
+   "tris": 174321
+  },
+  {
+   "name": "a10-from-parvis",
+   "frameMs": 556.6,
+   "calls": 92,
+   "tris": 161213
+  },
+  {
+   "name": "a11-gateway-east",
+   "frameMs": 539.4,
+   "calls": 89,
+   "tris": 160629
+  }
+ ],
+ "slice": {
+  "meanDeltaCalls": 0.9,
+  "meanDeltaTris": 13242.1,
+  "meanDeltaFrameMs": 22.1,
+  "perWaypoint": [
+   {
+    "name": "a01-junction",
+    "off": [
+     {
+      "frameMs": 546.9,
+      "calls": 67,
+      "tris": 141332
+     },
+     {
+      "frameMs": 510.8,
+      "calls": 64,
+      "tris": 142200
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 523.5,
+      "calls": 66,
+      "tris": 156033
+     },
+     {
+      "frameMs": 548.8,
+      "calls": 65,
+      "tris": 155079
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12879,
+    "dMs": 7.3
+   },
+   {
+    "name": "a02-gateway",
+    "off": [
+     {
+      "frameMs": 525,
+      "calls": 61,
+      "tris": 138426
+     },
+     {
+      "frameMs": 546.6,
+      "calls": 61,
+      "tris": 138306
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 596.2,
+      "calls": 62,
+      "tris": 151583
+     },
+     {
+      "frameMs": 553.9,
+      "calls": 62,
+      "tris": 152115
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13809,
+    "dMs": 39.3
+   },
+   {
+    "name": "a03-approach",
+    "off": [
+     {
+      "frameMs": 453.9,
+      "calls": 53,
+      "tris": 130980
+     },
+     {
+      "frameMs": 540.7,
+      "calls": 53,
+      "tris": 131214
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 498.7,
+      "calls": 54,
+      "tris": 144577
+     },
+     {
+      "frameMs": 528.9,
+      "calls": 54,
+      "tris": 144575
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13361,
+    "dMs": 16.5
+   },
+   {
+    "name": "a04-lamb-shop-side",
+    "off": [
+     {
+      "frameMs": 456,
+      "calls": 43,
+      "tris": 125854
+     },
+     {
+      "frameMs": 473.2,
+      "calls": 43,
+      "tris": 125880
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 429.8,
+      "calls": 44,
+      "tris": 138913
+     },
+     {
+      "frameMs": 463.9,
+      "calls": 44,
+      "tris": 139037
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13157,
+    "dMs": -17.8
+   },
+   {
+    "name": "a05-parvis",
+    "off": [
+     {
+      "frameMs": 490.4,
+      "calls": 37,
+      "tris": 125162
+     },
+     {
+      "frameMs": 442.9,
+      "calls": 37,
+      "tris": 125330
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 453,
+      "calls": 38,
+      "tris": 138487
+     },
+     {
+      "frameMs": 466.3,
+      "calls": 38,
+      "tris": 138389
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13059,
+    "dMs": -7
+   },
+   {
+    "name": "a06-gate",
+    "off": [
+     {
+      "frameMs": 601.7,
+      "calls": 73,
+      "tris": 130778
+     },
+     {
+      "frameMs": 570.8,
+      "calls": 73,
+      "tris": 130524
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 596,
+      "calls": 74,
+      "tris": 143753
+     },
+     {
+      "frameMs": 629.3,
+      "calls": 75,
+      "tris": 143893
+     }
+    ],
+    "dCalls": 2,
+    "dTris": 13369,
+    "dMs": 26.4
+   },
+   {
+    "name": "a07-east-parvis",
+    "off": [
+     {
+      "frameMs": 461.4,
+      "calls": 52,
+      "tris": 123162
+     },
+     {
+      "frameMs": 466.3,
+      "calls": 48,
+      "tris": 121910
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 532.2,
+      "calls": 53,
+      "tris": 135983
+     },
+     {
+      "frameMs": 463.3,
+      "calls": 49,
+      "tris": 134995
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13085,
+    "dMs": 33.9
+   },
+   {
+    "name": "a08-east-end",
+    "off": [
+     {
+      "frameMs": 402.2,
+      "calls": 30,
+      "tris": 108196
+     },
+     {
+      "frameMs": 384.2,
+      "calls": 30,
+      "tris": 108306
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 431.6,
+      "calls": 31,
+      "tris": 121161
+     },
+     {
+      "frameMs": 396.8,
+      "calls": 31,
+      "tris": 121285
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12979,
+    "dMs": 21
+   },
+   {
+    "name": "a09-from-east",
+    "off": [
+     {
+      "frameMs": 580.6,
+      "calls": 106,
+      "tris": 156086
+     },
+     {
+      "frameMs": 523.2,
+      "calls": 106,
+      "tris": 156256
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 600.9,
+      "calls": 106,
+      "tris": 169341
+     },
+     {
+      "frameMs": 572.4,
+      "calls": 106,
+      "tris": 169329
+     }
+    ],
+    "dCalls": 0,
+    "dTris": 13073,
+    "dMs": 34.7
+   },
+   {
+    "name": "a10-from-parvis",
+    "off": [
+     {
+      "frameMs": 522.2,
+      "calls": 89,
+      "tris": 147668
+     },
+     {
+      "frameMs": 522.8,
+      "calls": 89,
+      "tris": 147374
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 545.6,
+      "calls": 90,
+      "tris": 160339
+     },
+     {
+      "frameMs": 558.6,
+      "calls": 89,
+      "tris": 160265
+     }
+    ],
+    "dCalls": 0,
+    "dTris": 12891,
+    "dMs": 29.6
+   },
+   {
+    "name": "a11-gateway-east",
+    "off": [
+     {
+      "frameMs": 512.8,
+      "calls": 86,
+      "tris": 147430
+     },
+     {
+      "frameMs": 510.7,
+      "calls": 86,
+      "tris": 146610
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 555.6,
+      "calls": 87,
+      "tris": 160297
+     },
+     {
+      "frameMs": 586.3,
+      "calls": 87,
+      "tris": 160611
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 14001,
+    "dMs": 59.2
+   }
+  ]
+ },
+ "frameMedianMs": 530,
+ "callsMax": 113,
+ "trisMax": 174321,
+ "route": {
+  "metres": 191,
+  "blocked": [
+   {
+    "seg": 5,
+    "x": 23.5,
+    "z": -54.6,
+    "box": [
+     23.95,
+     -55.35,
+     25.65,
+     -54.05,
+     2.3,
+     0
+    ],
+    "slice": false
+   }
+  ],
+  "blockedBySlice": 0
+ },
+ "errors": []
+}

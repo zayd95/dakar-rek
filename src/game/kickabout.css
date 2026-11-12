@@ -1,0 +1,11 @@
+/* « Frappe »: the kickabout's shot button (src/game/football.ts), above the action button while the ball is at the
+   player's feet; held, it fills with the shot's power. Its own class only: nothing else of the HUD is restyled. */
+.kick-shot { display:none; position:relative; overflow:hidden; align-items:center; gap:7px; min-height:48px; padding:5px 14px 5px 5px; border:0; border-radius:999px;
+  background:#16181d; color:#fff; font:inherit; box-shadow:0 3px 0 #000, 0 6px 16px rgba(0,0,0,.28); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:pointer; }
+.kick-shot.on { display:flex; }
+.kick-shot .ks-fill { position:absolute; inset:0; width:var(--p, 0%); background:linear-gradient(90deg, #f2c12e, #e8743b); opacity:.9; pointer-events:none; }
+.kick-shot .ks-ic { position:relative; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.14); font-size:19px; }
+.kick-shot b { position:relative; font-size:14.5px; font-weight:800; letter-spacing:-.2px; }
+.kick-shot kbd { position:relative; font:700 11px/1 ui-monospace, monospace; padding:3px 5px; border-radius:5px; background:rgba(255,255,255,.18); }
+.kick-shot.charge { transform:translateY(2px); box-shadow:0 1px 0 #000, 0 4px 12px rgba(0,0,0,.28); }
+body.touch .kick-shot kbd { display:none; }

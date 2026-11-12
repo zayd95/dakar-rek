@@ -1,0 +1,62 @@
+[
+  {
+    "name": "invitation joins the requested hub and group",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "changing quality inside maiga keeps a working exit",
+    "ok": true,
+    "detail": "{\"x\":78,\"y\":0.1,\"z\":-5.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Maïga du marché\"}"
+  },
+  {
+    "name": "changing quality inside home keeps a working exit",
+    "ok": true,
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"}"
+  },
+  {
+    "name": "touch joystick actually moves the player",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "losing focus stops a held joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a new touch works after returning",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "profile survives a reconnect without changing invite group",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "small-phone presence button does not cover the neighbourhood header",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape profile panel scrolls with an actual touch gesture",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "an old off-map save recovers in the city without losing money",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no browser page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "full desktop and phone gameplay suite",
+    "ok": true,
+    "detail": ""
+  }
+]

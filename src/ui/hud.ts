@@ -1,39 +1,148 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
+import { stickMagnitude } from '../core/stick';
+import { Sheet, replay, type MenuItem, type SheetVariant } from './sheet';
+import { momentArrives, MOMENT_QUEUE, type MomentKind } from './moments';
+import { centreZone, lineMs, overlaps, quietLog, route, speechOf, type Rect } from './quiet';
+import { placeEvents } from './placeEvent';
+import { fcfaShort, fcfaText } from '../economy/format';
+import { glossed } from '../i18n/wolof';
+import { hudPrefs } from './hudPrefs';
+import { devMode } from './devMode';
 
-export interface MenuItem { label: string; detail?: string; right?: string; disabled?: boolean; onPick: () => void }
+export type { MenuItem } from './sheet';
 
-const NEED_LABELS: [keyof Needs, string][] = [['faim', 'Faim'], ['energie', 'Énergie'], ['moral', 'Moral'], ['social', 'Social'], ['hygiene', 'Hygiène']];
-export const fcfa = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' F';
+/**
+ * The light HUD (docs/UI.md): wallet and needs (rings, tap to open), place and time (and the event of the moment: the
+ * gala, the ride; src/ui/placeEvent.ts), the phone button (a badge: the quiet log's unseen notices), the goal hint, ONE
+ * transient line (a subtitle for spoken lines, or a refusal by the action button; src/ui/quiet.ts), one moment card at
+ * a time, the contextual action (primary verb with icon and price, « ⋯ » for the others, a diegetic bubble above the
+ * target), the activity progress pill, and the sheets (src/ui/sheet.ts). Nothing covers the middle of the screen
+ * (docs/UI_V2_PLAN.md §0 C). Every setter called per frame only touches the DOM when its content changed.
+ */
+
+const NEEDS: { k: keyof Needs; label: string; icon: string }[] = [
+  { k: 'faim', label: 'Faim', icon: '🍽️' }, { k: 'energie', label: 'Énergie', icon: '⚡' }, { k: 'moral', label: 'Moral', icon: '🙂' },
+  { k: 'social', label: 'Social', icon: '💬' }, { k: 'hygiene', label: 'Hygiène', icon: '🚿' },
+];
+const MOOD_FACE: Record<string, string> = { 'au top': '😄', bien: '🙂', bof: '😐', mal: '😟' };
+const ARROWS = '↑↗→↘↓↙←↖';
+const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+/** Full amount (menus, phone): « 1 250 000 000 F », exact at any size; the wallet chip shows the compact form (fcfaShort). */
+export const fcfa = (n: number) => fcfaText(n);
+/** « −500 F » / « +1 200 F ». */
+const signed = (n: number) => (n < 0 ? '−' : '+') + fcfa(Math.abs(n));
+/** A leading emoji in a label (« ✋ Arrêter ») becomes the button's icon. */
+const LEAD_ICON = /^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s+(.+)$/u;
+export function splitIcon(label: string): { icon: string; text: string } {
+  const m = LEAD_ICON.exec(label); return m ? { icon: m[1], text: m[2] } : { icon: '', text: label };
+}
+/** Toast parts: the game joins bits with two spaces (« Jus de bouye ✓  −500 F »); amounts become coloured chips. */
+export function toastParts(msg: string): { text: string; amount?: 'gain' | 'cost' }[] {
+  return msg.split(/\s{2,}/).filter(Boolean).map(text => {
+    const t = text.trim();
+    return /^[+−-]\s?\d[\d\s]*F$/.test(t) ? { text, amount: t[0] === '+' ? 'gain' as const : 'cost' as const } : { text };
+  });
+}
+const PHONE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10.5 5.2h3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="18.2" r="1.05" fill="currentColor"/></svg>';
+
+/** Optional details of the primary action and the diegetic bubble. */
+export interface PromptOpts {
+  icon?: string;
+  /** Price of the action (spent) or pay (earned), shown as « −500 F » / « +1 200 F ». */
+  cost?: number;
+  gain?: number;
+  /** Why it cannot be done now: the button greys out and says it. */
+  disabled?: string | null;
+  /** The running activity's « Arrêter » (white button, not the sun-coloured primary). */
+  stop?: boolean;
+}
+/** What the activity progress pill shows besides the step label. */
+export interface ProgressMeta { title?: string; icon?: string; step?: number; steps?: number }
+export type ToastKind = 'info' | 'warn';
 
 export class Hud {
-  private bars = new Map<string, HTMLElement>();
   private el: Record<string, HTMLElement> = {};
-  private toastT = 0;
+  private rings = new Map<keyof Needs, HTMLElement>();
+  private rows = new Map<keyof Needs, HTMLElement>();
+  private needShown: Partial<Record<keyof Needs, number>> = {};
+  private moodShown = '';
+  private placeKey = '';
+  private promptKey = '';
+  private wpKey = '';
+  private progKey = '';
+  private goalKey = '';
+  private wallet = { shown: NaN, from: 0, to: 0, t0: 0, raf: 0 };
+  private resetTouch: () => void = () => {};
+  private sheet: Sheet;
   onAction: () => void = () => {};
   onMenu: () => void = () => {};
+  /** « ⋯ » next to the action button: the other actions of the focused target. */
+  onMore: () => void = () => {};
+  /** « Arrêter » on the scene banner (a làmb scene the player may leave). */
+  onSceneStop: () => void = () => {};
+  /** The streak chip: the phone's Profile on its Progression tab. */
+  onStreak: () => void = () => {};
 
   constructor(root: HTMLElement, private input: Input) {
     root.innerHTML = `
-      <div id="stats" class="card"><div id="wallet"><span id="money">0 F</span></div><div id="mood"></div>${NEED_LABELS.map(([k, l]) => `<div class="need"><span>${l}</span><div class="bar"><i data-need="${k}"></i></div></div>`).join('')}</div>
-      <div id="place" class="card"><b id="hubName"></b><small id="clock"></small></div>
-      <div id="menuBtn" class="card" role="button" aria-label="Menu">☰</div>
-      <div id="toast" class="card"></div>
-      <div id="goal" class="card"></div>
-      <div id="sceneTag" class="card"></div>
-      <div id="progress" class="card"><span id="progLabel"></span><div class="bar"><i id="progBar" style="width:0"></i></div></div>
+      <div id="stats" class="card" role="button" tabindex="0" aria-expanded="false" aria-label="Portefeuille et besoins">
+        <div id="wallet"><span id="money">0 F</span></div>
+        <div class="rings">${NEEDS.map(n => `<i class="ring" data-need="${n.k}" title="${n.label}"><b aria-hidden="true">${n.icon}</b></i>`).join('')}</div>
+        <div class="needs">
+          <div id="mood"></div>
+          ${NEEDS.map(n => `<div class="nrow" data-row="${n.k}"><b aria-hidden="true">${n.icon}</b><span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
+        </div>
+      </div>
+      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small><span id="placeEv" aria-live="polite"><i class="pev-tag"></i><span class="pev-tx"><span class="pev-line"></span><b class="pev-speed"></b><small class="pev-sub"></small></span></span><div id="placeMore"></div></div>
+      <div id="menuBtn" class="card" role="button" tabindex="0" aria-label="Téléphone">${PHONE_SVG}<b class="badge" hidden></b></div>
+      <button id="streakChip" class="card" type="button" aria-label="Série : aucun jour actif"><i class="sc-ic" aria-hidden="true">Série</i><b class="sc-n">0 j</b></button>
+      <div id="goal" class="card"><i class="gi" aria-hidden="true">➜</i><span class="gt"></span><em class="gd"></em></div>
+      <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
+      <div id="wprompt" aria-hidden="true"><div class="wp"></div></div>
       <div id="joy"><i></i></div>
-      <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · glisser : caméra · E : action · Échap : menu</div>
-      <button id="act" class="off">Action</button>
-      <div id="temp">v0.1 · ASSETS TEMPORAIRES — décor et personnages à remplacer (voir registre)</div>
+      <div id="hint" class="card"><kbd>ZQSD</kbd> avancer (ça court tout seul) · <kbd>Maj</kbd> marcher · <kbd>glisser</kbd> caméra · <kbd>E</kbd> agir · <kbd>Échap</kbd> téléphone</div>
+      <div id="progress" aria-live="polite"><i class="pg-ic" aria-hidden="true"></i><span class="pg-tx"><b id="progTitle"></b><small id="progLabel"></small></span><em id="progPct"></em><span class="pg-bar"><i id="progBar"></i></span></div>
+      <div id="actbar">
+        <button id="actMore" class="off" type="button" aria-label="Autres actions"><span aria-hidden="true">⋯</span></button>
+        <button id="act" class="off" type="button">Action</button>
+      </div>
+      <div id="temp"${new URLSearchParams(location.search).has('debug') ? '' : ' hidden'}>Dakar Rek · Alpha</div>
+      <div id="toast"><div class="sr" role="status" aria-live="polite"></div></div>
       <div id="fade"></div>
-      <div id="modal"><div class="panel"></div></div>`;
-    for (const id of ['money', 'mood', 'hubName', 'clock', 'toast', 'progress', 'progLabel', 'progBar', 'joy', 'act', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag']) this.el[id] = root.querySelector('#' + id)!;
-    root.querySelectorAll<HTMLElement>('[data-need]').forEach(b => this.bars.set(b.dataset.need!, b));
-    this.el.act.addEventListener('click', () => this.onAction());
-    this.el.menuBtn.addEventListener('click', () => this.onMenu());
-    this.el.modal.addEventListener('click', e => { if (e.target === this.el.modal) this.closeModal(); });
+      <div id="modal"></div>`;
+    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'placeEv', 'placeMore', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag', 'streakChip'])
+      this.el[id] = root.querySelector('#' + id)!;
+    this.el.sr = this.el.toast.querySelector('.sr')!;
+    this.el.badge = this.el.menuBtn.querySelector('.badge')!;
+    root.querySelectorAll<HTMLElement>('.ring').forEach(r => this.rings.set(r.dataset.need as keyof Needs, r));
+    root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
+    this.sheet = new Sheet(this.el.modal, { deny: r => this.toast(r, 'warn'), opened: () => this.resetTouch(), picked: () => this.markAct() });
+    // Tapped or clicked HUD buttons give the focus back: a focused button would also fire on Space/Enter, the game's action keys.
+    // A tap by a second finger (the other thumb on the stick: « Passer » while running) gets no click from the browser: its pointerup acts,
+    // and a click that might still follow it is not taken twice.
+    const tap = (e: HTMLElement, fn: () => void) => {
+      let second = -1, tookAt = -1e9;
+      e.addEventListener('pointerdown', ev => { second = ev.pointerType === 'touch' && !ev.isPrimary ? ev.pointerId : -1; });
+      e.addEventListener('pointerup', ev => { if (ev.pointerId !== second) return; second = -1; tookAt = performance.now(); e.blur(); fn(); });
+      e.addEventListener('click', () => { if (performance.now() - tookAt < 600) return; e.blur(); fn(); });
+    };
+    tap(this.el.act, () => this.onAction());
+    tap(this.el.actMore, () => this.onMore());
+    tap(this.el.menuBtn, () => this.onMenu());
+    tap(this.el.streakChip, () => this.onStreak());
+    tap(this.el.wprompt, () => this.onAction());                                      // tap the bubble in the world = act
+    this.el.sceneTag.querySelector('.st-stop')!.addEventListener('click', () => this.onSceneStop());
+    this.el.stats.addEventListener('click', () => this.toggleNeeds());
+    // the event of the moment in the place chip: a tap opens its details under the chip (and closes them)
+    this.el.place.addEventListener('click', () => this.toggleEvent());
+    quietLog.on(() => this.paintBadge());
+    placeEvents.on(() => this.paintEvent());
+    this.el.stats.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.toggleNeeds(); } });
+    try { if (localStorage.getItem('dakarrek.ui.needs') === 'open') this.toggleNeeds(true); } catch { /* storage blocked */ }
     if (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window || new URLSearchParams(location.search).has('touch')) document.body.classList.add('touch');
+    hudPrefs.apply();                                                                 // « HUD compact » (phone › Réglages), a device preference
+    devMode.apply();                                                                  // « Mode développeur »: the build tag, the preview's launchers
     this.setupTouch();
   }
 
@@ -41,21 +150,57 @@ export class Hud {
     const joy = this.el.joy, knob = joy.firstElementChild as HTMLElement;
     let joyId = -1, camId = -1, lx = 0, ly = 0;
     const R = 50;
+    const reset = () => { joyId = camId = -1; this.input.reset(); knob.style.transform = ''; joy.style.transform = ''; joy.classList.remove('on'); };
+    this.resetTouch = reset;
+    window.addEventListener('blur', reset);
+    window.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
+    /** May this pointer take a control now? (the game takes input, it is a finger, it is not on a button, a sheet or another pad) */
+    const takes = (e: PointerEvent) => {
+      if (!this.input.enabled) return false;
+      if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return false;
+      const t = e.target as HTMLElement | null;
+      return !t?.closest?.('#act,#actMore,#actbar,#menuBtn,#streakChip,#modal,#stats,#wprompt,#sceneTag,#place.ev,#steerpad');
+    };
+    /** The finger takes the stick: on its base it drives it from its centre; anywhere else in the left zone the base moves under the finger. */
+    const grabStick = (e: PointerEvent) => {
+      joyId = e.pointerId; joy.style.transform = '';
+      const r = joy.getBoundingClientRect(); let cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      if (Math.hypot(e.clientX - cx, e.clientY - cy) > r.width / 2 + 10) {
+        // kept inside the safe areas (#ui is padded by them): in landscape the notch is on a side
+        const sa = getComputedStyle(joy.parentElement ?? document.body), saL = parseFloat(sa.paddingLeft) || 0, saB = parseFloat(sa.paddingBottom) || 0;
+        const h = r.width / 2 + 8, nx = Math.min(Math.max(e.clientX, h + saL), innerWidth * 0.45), ny = Math.min(Math.max(e.clientY, h + 60), innerHeight - h - saB);
+        joy.style.transform = `translate(${Math.round(nx - cx)}px,${Math.round(ny - cy)}px)`; cx = nx; cy = ny;
+      }
+      joy.dataset.cx = String(cx); joy.dataset.cy = String(cy);
+      joy.classList.add('on');
+      this.moveJoy(e, knob, R);
+    };
+    const inStickZone = (e: { clientX: number }) => e.clientX < innerWidth * 0.45 && !document.body.classList.contains('ridepad');   // not while driving: the steering rocker (src/transport/ridePad.ts) is under that thumb
+    // Every finger on the glass, wherever it went down and whether or not the game was taking the controls then: a thumb that is already resting where the stick
+    // is when the controls come back (the end of a dance, a sheet closing) takes the stick at once, without having to be lifted and put down again.
+    const fingers = new Map<number, PointerEvent>();
+    window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') fingers.set(e.pointerId, e); }, true);
+    window.addEventListener('pointermove', e => { if (fingers.has(e.pointerId)) fingers.set(e.pointerId, e); }, true);
+    const lift = (e: PointerEvent) => { fingers.delete(e.pointerId); };
+    window.addEventListener('pointerup', lift, true); window.addEventListener('pointercancel', lift, true);
+    this.input.onEnable = () => {
+      if (joyId >= 0) return;
+      for (const e of fingers.values()) if (e.pointerId !== camId && inStickZone(e) && takes(e)) { grabStick(e); break; }
+    };
     window.addEventListener('pointerdown', e => {
-      if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
-      const t = e.target as HTMLElement;
-      if (t.closest('#act,#menuBtn,#modal,#stats')) return;
-      if (e.clientX < innerWidth * 0.45 && joyId < 0) {
-        joyId = e.pointerId; const r = joy.getBoundingClientRect(); joy.dataset.cx = String(r.left + r.width / 2); joy.dataset.cy = String(r.top + r.height / 2);
-        this.moveJoy(e, knob, R);
-      } else if (e.clientX >= innerWidth * 0.45 && camId < 0) { camId = e.pointerId; lx = e.clientX; ly = e.clientY; }
+      if (!takes(e)) return;
+      if (inStickZone(e) && joyId < 0) grabStick(e);
+      else if (e.clientX >= innerWidth * 0.45 && camId < 0) { camId = e.pointerId; lx = e.clientX; ly = e.clientY; }
     });
     window.addEventListener('pointermove', e => {
       if (e.pointerId === joyId) this.moveJoy(e, knob, R);
       else if (e.pointerId === camId) { this.input.dragYaw -= (e.clientX - lx) * 0.006; this.input.dragPitch += (e.clientY - ly) * 0.004; lx = e.clientX; ly = e.clientY; }
+      // A thumb that was already down when the game gave the controls back (the end of a dance, a sheet closing, a door) takes the stick as soon as it moves: it
+      // was put down while nothing was taken, or dropped when the sheet opened, and the player stood still until it was lifted and put down again.
+      else if (joyId < 0 && e.pointerType === 'touch' && inStickZone(e) && takes(e)) grabStick(e);
     });
     const up = (e: PointerEvent) => {
-      if (e.pointerId === joyId) { joyId = -1; this.input.joy = { x: 0, y: 0 }; knob.style.transform = ''; }
+      if (e.pointerId === joyId) { joyId = -1; this.input.joy = { x: 0, y: 0 }; knob.style.transform = ''; joy.style.transform = ''; joy.classList.remove('on'); }
       if (e.pointerId === camId) camId = -1;
     };
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -65,58 +210,471 @@ export class Hud {
     let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy);
     if (l > R) { dx = (dx / l) * R; dy = (dy / l) * R; }
     knob.style.transform = `translate(${dx}px,${dy}px)`;
-    this.input.joy = { x: dx / R, y: -dy / R };
+    const raw = Math.hypot(dx, dy) / R, gain = raw > 0 ? stickMagnitude(raw) / raw : 0;
+    this.input.joy = { x: (dx / R) * gain, y: (-dy / R) * gain };
   }
 
+  // ---------------------------------------------------------------- wallet, needs, place
+  /** Called a few times per second: animates wallet changes and only repaints the needs that moved. */
   setStats(wallet: number, needs: Needs, mood: string) {
-    this.el.money.textContent = fcfa(wallet);
-    this.el.mood.textContent = 'Humeur : ' + mood;
-    for (const [k] of NEED_LABELS) {
-      const b = this.bars.get(k)!, v = needs[k];
-      b.style.width = v + '%'; b.className = v < 25 ? 'low' : v < 50 ? 'mid' : '';
+    this.showWallet(wallet);
+    if (mood !== this.moodShown) {
+      this.moodShown = mood;
+      this.el.mood.textContent = `${MOOD_FACE[mood] ?? '🙂'} Humeur : ${mood}`;
+      (this.rings.get('moral')!.firstElementChild as HTMLElement).textContent = MOOD_FACE[mood] ?? '🙂';
+    }
+    for (const { k, label } of NEEDS) {
+      const v = Math.round(Math.max(0, Math.min(100, needs[k])));
+      if (this.needShown[k] === v) continue;
+      this.needShown[k] = v;
+      const level = v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
+      const ring = this.rings.get(k)!, row = this.rows.get(k)!;
+      ring.style.setProperty('--v', String(v)); ring.dataset.level = level; ring.setAttribute('aria-label', `${label} ${v} %`);
+      row.dataset.level = level; (row.querySelector('.bar > i') as HTMLElement).style.transform = `scaleX(${v / 100})`;
+      (row.querySelector('em') as HTMLElement).textContent = `${v} %`;
     }
   }
-  setPlace(name: string, clock: string, night: boolean) { this.el.hubName.textContent = name; this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock; }
-  setPrompt(label: string | null, sub = '') {
-    this.el.act.className = label ? '' : 'off';
-    this.el.act.innerHTML = label ? `${label}<small>${sub || 'Appuyer / E'}</small>` : 'Action';
+  private toggleNeeds(force?: boolean) {
+    const open = this.el.stats.classList.toggle('open', force);
+    this.el.stats.setAttribute('aria-expanded', String(open));
+    try { localStorage.setItem('dakarrek.ui.needs', open ? 'open' : 'closed'); } catch { /* storage blocked */ }
   }
-  /** One suggested next step at most (nothing is compulsory). */
-  setGoal(text: string | null) { this.el.goal.textContent = text ? '➜ ' + text : ''; this.el.goal.classList.toggle('on', !!text); }
-  /** Scene banner: makes training, entrance and combat clearly distinct. */
-  setScene(label: string | null, note = '') {
-    this.el.sceneTag.innerHTML = label ? `<b></b><small></small>` : '';
-    if (label) { (this.el.sceneTag.querySelector('b') as HTMLElement).textContent = label; (this.el.sceneTag.querySelector('small') as HTMLElement).textContent = note; }
-    this.el.sceneTag.classList.toggle('on', !!label); document.body.classList.toggle('inscene', !!label);
+  /** Wallet: counts to the new amount and floats the difference (+/− F) beside it. */
+  private showWallet(w: number) {
+    const s = this.wallet;
+    if (Number.isNaN(s.shown)) { s.shown = s.to = w; this.el.money.textContent = fcfaShort(w); this.el.money.setAttribute('aria-label', fcfa(w)); return; }
+    if (w === s.to) return;
+    this.el.money.setAttribute('aria-label', fcfa(w));
+    const delta = w - s.to;
+    s.from = s.shown; s.to = w; s.t0 = performance.now();
+    if (!s.raf) s.raf = requestAnimationFrame(this.tickWallet);
+    const fx = document.createElement('span');
+    fx.className = 'mfx ' + (delta > 0 ? 'gain' : 'cost'); fx.textContent = signed(delta); fx.setAttribute('aria-hidden', 'true');
+    const old = this.el.wallet.querySelectorAll('.mfx'); if (old.length > 2) old[0].remove();
+    this.el.wallet.appendChild(fx);
+    fx.addEventListener('animationend', () => fx.remove(), { once: true });
+    setTimeout(() => fx.remove(), 2400);
+    replay(this.el.stats, delta > 0 ? 'bump-up' : 'bump-down');
   }
-  toast(msg: string) {
-    this.el.toast.textContent = msg; this.el.toast.classList.add('on');
-    clearTimeout(this.toastT); this.toastT = window.setTimeout(() => this.el.toast.classList.remove('on'), 2600);
+  private tickWallet = (now: number) => {
+    const s = this.wallet, k = Math.min(1, (now - s.t0) / 650), e = 1 - (1 - k) ** 3;
+    s.shown = Math.round(s.from + (s.to - s.from) * e);
+    this.el.money.textContent = fcfaShort(s.shown);
+    s.raf = k < 1 ? requestAnimationFrame(this.tickWallet) : 0;
+  };
+
+  /**
+   * Place pill: the hub's name (on a phone only its first part, « Pikine »), the weekday and time, and an evening tag
+   * (« Gala ce soir ») when there is one.
+   */
+  setPlace(name: string, clock: string, night: boolean, tag: string | null = null) {
+    const key = name + '|' + clock + '|' + night + '|' + tag;
+    if (key === this.placeKey) return; this.placeKey = key;
+    const [head, ...rest] = name.split(' · ');
+    const more = document.createElement('span'); more.className = 'pl-more'; more.textContent = rest.length ? ' · ' + rest.join(' · ') : '';
+    this.el.hubName.replaceChildren(head, more);
+    this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    this.el.placeTag.textContent = tag ?? ''; this.el.placeTag.classList.toggle('on', !!tag);
   }
-  progress(on: boolean, pct = 0, label = '') {
-    this.el.progress.style.display = on ? 'block' : 'none'; this.el.progLabel.textContent = label;
-    (this.el.progBar as HTMLElement).style.width = pct * 100 + '%';
+  /** The event of the moment (src/ui/placeEvent.ts) under the place and the time: its tag and one short line. */
+  private paintEvent() {
+    const c = placeEvents.current(), p = this.el.place, ev = this.el.placeEv;
+    p.classList.toggle('ev', !!c);
+    if (!c) { this.toggleEvent(false); p.removeAttribute('role'); p.removeAttribute('tabindex'); return; }
+    p.setAttribute('role', 'button'); p.setAttribute('tabindex', '0');
+    const tag = ev.querySelector('.pev-tag') as HTMLElement;
+    tag.textContent = c.ev.tag; tag.dataset.tone = c.ev.tone ?? '';
+    (ev.querySelector('.pev-line') as HTMLElement).textContent = c.ev.line;
+    // at the wheel, the chip leads with what matters while driving: the speed and the condition (« 23 km/h · Cabossée »), not the vehicle's name
+    const parts = c.ev.tone === 'ride' ? c.ev.line.split(' · ') : [], at = parts.findIndex(x => /\d+ km\/h$/.test(x));
+    (ev.querySelector('.pev-speed') as HTMLElement).textContent = at >= 0 ? parts.slice(at).join(' · ') : '';
+    p.classList.toggle('speed', at >= 0);
+    (ev.querySelector('.pev-sub') as HTMLElement).textContent = c.ev.alert ?? c.ev.sub ?? '';
+    p.classList.toggle('alert', !!c.ev.alert);
+    const more = this.el.placeMore;
+    more.replaceChildren(...[c.ev.line, c.ev.sub ?? '', ...(c.ev.more ?? []), c.ev.alert ?? ''].filter((l, i, a) => l && a.indexOf(l) === i).map((l, i, a) => {
+      const e = document.createElement('span'); e.textContent = l; if (l === c.ev.alert && i === a.length - 1) e.className = 'alert'; return e;
+    }));
+  }
+  private evTimer = 0;
+  private toggleEvent(force?: boolean) {
+    const p = this.el.place;
+    if (force === undefined && !p.classList.contains('ev')) return;
+    const open = p.classList.toggle('open', force);
+    p.setAttribute('aria-expanded', String(open));
+    clearTimeout(this.evTimer);
+    if (open) this.evTimer = window.setTimeout(() => this.toggleEvent(false), 10000);   // the details close by themselves
+  }
+  /** The badge on the phone button: notices of the quiet log the player has not opened yet. */
+  private paintBadge() {
+    const n = quietLog.unread, b = this.el.badge;
+    b.hidden = !n; b.textContent = n > 9 ? '9+' : String(n);
+    this.el.menuBtn.setAttribute('aria-label', n ? `Téléphone · ${n} notification${n > 1 ? 's' : ''}` : 'Téléphone');
+  }
+
+  /**
+   * The streak chip (top right, under the phone button): « Série 0 j » without a run, « 🔥 N j » with one (src/economy/streak.ts, read by main.ts a few
+   * times a second: it follows a qualifying job at once, and the start of the player's next day). Dimmed while today does not count yet; a milestone
+   * (2, 3, 5, 7 days) pulses it once — a CSS animation on the chip only, nothing over the road.
+   */
+  setStreak(run: number, today: boolean, milestone = false) {
+    const key = `${run}|${today}`;
+    if (key === this.streakKey) return;
+    const grew = this.streakRun >= 0 && run > this.streakRun;
+    this.streakKey = key; this.streakRun = run;
+    const c = this.el.streakChip;
+    (c.querySelector('.sc-ic') as HTMLElement).textContent = run > 0 ? '🔥' : 'Série';
+    (c.querySelector('.sc-n') as HTMLElement).textContent = `${run} j`;
+    c.classList.toggle('on', run > 0); c.classList.toggle('today', today);
+    c.setAttribute('aria-label', run > 0 ? `Série : ${run} jour${run > 1 ? 's' : ''} d’affilée${today ? ', aujourd’hui compte' : ''}` : 'Série : aucun jour actif');
+    if (grew) replay(c, milestone ? 'milestone' : 'bump-up');
+  }
+  private streakKey = '';
+  private streakRun = -1;
+
+  // ---------------------------------------------------------------- contextual action
+  /**
+   * Main action button: the focused target's primary verb (`label`, a leading emoji becomes the icon), what it applies
+   * to or why it is unavailable (`sub`), « ⋯ » when the target has other actions (`more`), and its price (`opt`).
+   * Called every frame: the DOM changes only when the content does.
+   */
+  setPrompt(label: string | null, sub = '', more: boolean | number = false, opt: PromptOpts = {}) {
+    // focus « prayer » (document.body.dataset.focus, see style.css): the running activity's stop is one small, quiet « Quitter », nothing else
+    if (document.body.dataset.focus === 'prayer' && label && opt.stop) { label = 'Quitter'; sub = ''; more = false; opt = { stop: true, icon: '' }; }
+    const key = JSON.stringify([label, sub, !!more, opt.icon, opt.cost, opt.gain, opt.disabled, opt.stop]);
+    if (key === this.promptKey) return; this.promptKey = key;
+    const act = this.el.act;
+    this.el.actMore.className = label && more ? '' : 'off';
+    if (!label) { act.className = 'off'; act.innerHTML = 'Action'; act.removeAttribute('aria-label'); return; }
+    const { icon, text } = opt.icon ? { icon: opt.icon, text: label } : opt.icon === '' ? { icon: '', text: label } : splitIcon(label);
+    const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
+    act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
+    act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
+      + (price && !opt.stop ? `<em class="a-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '') + '<kbd aria-hidden="true">E</kbd>';
+    act.setAttribute('aria-label', glossed([text, sub, price].filter(Boolean).join(' · ')));   // no invisible gloss marks read aloud
+  }
+  /** Diegetic bubble above the focused target (screen position in CSS pixels), or hidden. */
+  setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}) {
+    const w = this.el.wprompt;
+    if (!at) { if (this.wpKey) { w.classList.remove('on'); this.wpKey = ''; } return; }
+    const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
+    const key = [icon, label, price, opt.disabled ?? ''].join('|');
+    if (key !== this.wpKey) {
+      const changed = !!this.wpKey;
+      this.wpKey = key;
+      const wp = w.firstElementChild as HTMLElement;
+      // unavailable: the reason in full under the verb, where the eye already is (the button's line is cut short on a
+      // phone, « Ton billet est pour la tribune… »): the pill becomes a small card
+      const why = opt.disabled ?? '';
+      wp.className = 'wp' + (why ? ' dis why' : '');
+      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
+      this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
+      if (changed || !w.classList.contains('on')) replay(wp, 'pop');
+    }
+    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
+    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
+    w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
+    w.classList.add('on');
+  }
+  private wpHalf = 0;
+  private wpTail = 0;
+  /** The action is unavailable: shake the button and say why. */
+  deny(reason: string) {
+    if (!this.el.act.classList.contains('off')) replay(this.el.act, 'deny');
+    this.toast(reason, 'warn');
+  }
+
+  // ---------------------------------------------------------------- hints, scene, toasts, progress
+  /**
+   * Driving directions (src/game/navigation.ts): while set, the goal line is the next turn (its glyph, unturned), the goal's name and the distance left by
+   * road; the walking compass and the goal text wait underneath and come back when it is cleared.
+   */
+  setNav(n: { glyph: string; text: string; dist: string } | null) {
+    const key = n ? `${n.glyph}|${n.text}|${n.dist}` : '';
+    if (key === this.navKey) return; this.navKey = key;
+    const g = this.el.goal, gi = g.querySelector('.gi') as HTMLElement, gt = g.querySelector('.gt') as HTMLElement, gd = g.querySelector('.gd') as HTMLElement;
+    this.navOn = !!n;
+    g.classList.toggle('nav', !!n);
+    if (n) { g.classList.add('on'); gi.style.transform = ''; gi.textContent = n.glyph; gt.textContent = n.text; gd.textContent = n.dist; return; }
+    // back to the goal line and the compass as they stand
+    this.guideOn = false; this.guideDeg = NaN; this.guideDist = -1; gi.textContent = '➜';
+    const text = this.goalText; this.goalKey = '\u0001'; this.setGoal(text);
+  }
+  private navOn = false; private navKey = ''; private goalText: string | null = null;
+  /** One suggested next step at most (nothing is compulsory). A leading direction arrow becomes the compass badge. */
+  setGoal(text: string | null) {
+    this.goalText = text;
+    if (this.navOn) return;
+    const key = text ?? '';
+    if (key === this.goalKey) return; this.goalKey = key;
+    const g = this.el.goal;
+    g.classList.toggle('on', !!text);
+    const arrow = !!text && ARROWS.includes(text[0]) && text[1] === ' ';
+    // a distance at the end of the line (« … · 72 m ») goes to the right-hand slot, never wrapped away from its number
+    const { text: line, dist } = goalParts(text ? (arrow ? text.slice(2) : text) : '');
+    this.textDist = dist;
+    const gt = g.querySelector('.gt') as HTMLElement;
+    gt.textContent = line;
+    if (dist) { const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = ' · '; gt.appendChild(sep); }   // read, not shown
+    if (!this.guideOn) (g.querySelector('.gi') as HTMLElement).textContent = arrow ? text![0] : '➜';
+    g.classList.toggle('walk', arrow || this.guideOn);
+    this.paintGuideDistance();
+  }
+  /**
+   * Way-finding for the goal hint: direction of the next-step place relative to the camera (radians, 0 = straight
+   * ahead, clockwise) and its distance in metres; null when there is no place to walk to. Called every frame.
+   */
+  setGuide(dir: { angle: number; dist: number } | null) {
+    if (this.navOn) return;
+    const g = this.el.goal, gi = g.querySelector('.gi') as HTMLElement;
+    if (!dir) {
+      if (this.guideOn) { this.guideOn = false; gi.style.transform = ''; gi.textContent = '➜'; this.goalKey = '\u0000'; this.guideDist = -1; this.paintGuideDistance(); }
+      return;
+    }
+    if (!this.guideOn) { this.guideOn = true; gi.textContent = '↑'; g.classList.add('walk'); }
+    const deg = Math.round((dir.angle * 180) / Math.PI / 3) * 3;
+    if (deg !== this.guideDeg) { this.guideDeg = deg; gi.style.transform = `rotate(${deg}deg)`; }
+    const m = Math.round(dir.dist);
+    if (m !== this.guideDist) { this.guideDist = m; this.paintGuideDistance(); }
+  }
+  private guideOn = false;
+  private guideDeg = NaN;
+  private guideDist = -1;
+  private textDist = '';
+  private paintGuideDistance() {
+    const gd = this.el.goal.querySelector('.gd') as HTMLElement;
+    const v = this.guideOn && this.guideDist >= 0 ? `${this.guideDist} m` : this.textDist;
+    if (gd.textContent !== v) gd.textContent = v;
+  }
+  /** Scene banner: makes training, entrance and combat clearly distinct; `stoppable` adds « Arrêter » (onSceneStop). */
+  setScene(label: string | null, note = '', stoppable = false) {
+    const t = this.el.sceneTag;
+    (t.querySelector('b') as HTMLElement).textContent = label ?? ''; (t.querySelector('small') as HTMLElement).textContent = label ? note : '';
+    t.classList.toggle('on', !!label); t.classList.toggle('stoppable', !!label && stoppable);
+    document.body.classList.toggle('inscene', !!label);
+  }
+  /**
+   * What the game says (src/ui/quiet.ts `route`): a spoken line becomes the subtitle at the bottom (the speaker's name
+   * first); a refusal, or the answer to what the player just did, one line by the action button; everything else goes to
+   * the quiet log (the phone's Notifications, a badge). One line on screen at most: the next replaces it. Every message
+   * is also read out to screen readers (a hidden live list). Parts separated by two spaces (« Jus de bouye ✓  −500 F »)
+   * are laid out as chips; amounts are coloured.
+   */
+  toast(msg: string, kind: ToastKind = 'info') {
+    this.readOut(msg);
+    const r = route(msg, kind, performance.now() - this.actedAt);
+    if (r === 'log') { quietLog.add(msg, kind); return; }
+    const box = this.el.toast;
+    const cur = box.querySelector(':scope > .t:not(.out)') as HTMLElement | null;
+    if (cur && cur.dataset.msg === msg) { this.armToast(cur, msg); replay(cur, 'again'); return; }
+    if (cur) this.dropToast(cur);
+    const t = document.createElement('div');
+    t.className = `t ${r} ${kind}` + (/✓/.test(msg) ? ' ok' : ''); t.dataset.msg = msg; t.setAttribute('aria-hidden', 'true');
+    const sp = r === 'say' ? speechOf(msg) : null;
+    const span = (cls: string, text: string, tag: 'span' | 'b' | 'i' = 'span') => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; };
+    if (sp) {
+      if (sp.icon) t.append(span('say-ic', sp.icon, 'i'), ' ');
+      t.append(span('who', sp.who, 'b'), sp.sep, span('said', sp.line));
+    } else toastParts(msg).forEach((p, i) => {
+      if (i) t.appendChild(document.createTextNode(' '));
+      t.appendChild(span(p.amount ? 'amt ' + p.amount : '', p.text));
+    });
+    box.appendChild(t);
+    this.armToast(t, msg);
+  }
+  /** The player acted (the button, E, a sheet's row): what the game says next is its answer, shown by the button. */
+  markAct() { this.actedAt = performance.now(); }
+  private actedAt = -Infinity;
+  /** Screen readers hear every message (the subtitle and the line on screen are hidden from them: no double reading). */
+  private readOut(msg: string) {
+    const sr = this.el.sr, p = document.createElement('p');
+    p.textContent = msg; sr.appendChild(p);
+    while (sr.children.length > 6) sr.firstElementChild!.remove();
+    setTimeout(() => p.remove(), 8000);
+  }
+  /**
+   * A moment card (progress made visible: a bout's recap, a new word on a gauge): icon, title and a few short lines, at
+   * the side (the top on a phone in portrait), never over the middle of the screen, the action button or the joystick.
+   * A tap anywhere on it or on ✕ dismisses it; it leaves by itself after a few seconds. One at a time (src/ui/moments.ts).
+   */
+  moment(m: { icon: string; title: string; lines: string[] }, ms = Math.min(12000, 6000 + 900 * m.lines.length)) {
+    return this.momentCard('mo', m.icon, m.title, tx => {
+      if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    }, ms);
+  }
+  /**
+   * An offer (« Mes pistes », src/economy/pistesModule.ts): a moment card with one line and up to two buttons (e.g. « Y aller », « Plus tard »). Same rules as a
+   * moment: never modal, never over the middle of the screen or the controls, a tap elsewhere on it or ✕ dismisses it (`onClose`), it leaves by itself.
+   */
+  offer(m: { icon: string; title: string; line: string; actions: { label: string; primary?: boolean; run: () => void }[]; onClose?: () => void }, ms = 12000) {
+    let acted = false;
+    const c = this.momentCard('mo of', m.icon, m.title, tx => {
+      const p = document.createElement('p'); p.className = 'of-line'; p.textContent = m.line; tx.appendChild(p);
+      const row = document.createElement('div'); row.className = 'of-acts';
+      for (const a of m.actions) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = a.primary ? 'of-b on' : 'of-b'; b.textContent = a.label;
+        b.addEventListener('click', () => { acted = true; a.run(); });         // the card's own click then drops it
+        row.appendChild(b);
+      }
+      tx.appendChild(row);
+    }, ms);
+    c.addEventListener('click', () => { if (!acted) m.onClose?.(); });
+    return c;
+  }
+  /**
+   * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
+   * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
+   * « Ensuite » and the next bill or step. Same rules as a moment (tap to dismiss, never over the middle of the screen,
+   * the action button or the joystick); it replaces the card on screen and the moments that follow wait for it to go;
+   * it stays longer (16–24 s).
+   */
+  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
+    ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
+    const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
+      const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
+    };
+    return this.momentCard('mo bc', card.icon, card.title, tx => {
+      add(tx, 'small', 'bc-sub', card.sub);
+      const dl = add(tx, 'dl', 'bc-rows');
+      for (const r of card.rows) {
+        const row = add(dl, 'div', 'bc-r');
+        add(row, 'dt', '', r.k);
+        const dd = add(row, 'dd', '');
+        add(dd, 'span', 'bc-v', r.v);
+        if (r.note) add(dd, 'small', 'bc-note', r.note);
+        add(row, 'em', `bc-d ${r.tone ?? ''}`.trim(), r.d ?? '');
+      }
+      if (card.next.length) {
+        const nx = add(tx, 'div', 'bc-next');
+        add(nx, 'b', '', 'Ensuite');
+        for (const l of card.next) add(nx, 'span', '', l);
+      }
+    }, ms);
+  }
+  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number) {
+    const c = document.createElement('div');
+    c.className = cls; c.setAttribute('role', 'status');
+    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = icon;
+    const tx = document.createElement('div'); tx.className = 'mo-tx';
+    const b = document.createElement('b'); b.textContent = title; tx.appendChild(b);
+    fill(tx);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'mo-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕';
+    c.append(ic, tx, x);
+    c.addEventListener('pointerdown', e => e.stopPropagation());
+    c.addEventListener('click', e => { e.stopPropagation(); (document.activeElement as HTMLElement | null)?.blur?.(); this.dropToast(c); });
+    c.dataset.ms = String(ms);
+    // one at a time: it replaces the card on screen, or waits for the after-bout card to go (src/ui/moments.ts)
+    const kind: MomentKind = c.classList.contains('bc') ? 'bout' : 'moment';
+    if (momentArrives(this.moShown?.kind ?? null, kind) === 'wait') {
+      this.moQueue.push(c);
+      while (this.moQueue.length > MOMENT_QUEUE) { const old = this.moQueue.shift()!; quietLog.add(old.querySelector('.mo-tx')?.textContent ?? title); }
+      return c;
+    }
+    this.showMoment(c, kind);
+    return c;
+  }
+  private moShown: { el: HTMLElement; kind: MomentKind } | null = null;
+  private moQueue: HTMLElement[] = [];
+  private showMoment(c: HTMLElement, kind: MomentKind) {
+    if (this.moShown) this.dropToast(this.moShown.el);
+    this.moShown = { el: c, kind };
+    this.el.toast.appendChild(c);
+    c.dataset.timer = String(window.setTimeout(() => this.dropToast(c), Number(c.dataset.ms)));
+  }
+  private armToast(t: HTMLElement, msg: string) {
+    clearTimeout(Number(t.dataset.timer));
+    t.dataset.timer = String(window.setTimeout(() => this.dropToast(t), lineMs(msg)));
+  }
+  private dropToast(t: HTMLElement) {
+    clearTimeout(Number(t.dataset.timer));
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 220);
+    if (this.moShown?.el === t) {                                                    // the card on screen went: the next waiting one
+      this.moShown = null;
+      const next = this.moQueue.shift();
+      if (next) this.showMoment(next, next.classList.contains('bc') ? 'bout' : 'moment');
+    }
+  }
+  /** Activity progress: a slim pill above the action button (title, step label, step n/m, bar). */
+  progress(on: boolean, pct = 0, label = '', meta: ProgressMeta = {}) {
+    const p = this.el.progress;
+    if (!on) { if (this.progKey) { p.classList.remove('on'); this.progKey = ''; } return; }
+    const title = meta.title && meta.title !== label ? meta.title : '';
+    const key = [title, label, meta.icon ?? '', meta.step ?? '', meta.steps ?? ''].join('|');
+    if (key !== this.progKey) {
+      this.progKey = key;
+      (p.querySelector('.pg-ic') as HTMLElement).textContent = meta.icon ?? '⏳';
+      this.el.progTitle.textContent = title || label;
+      this.el.progLabel.textContent = title ? label + (meta.steps && meta.steps > 1 ? ` · ${meta.step}/${meta.steps}` : '') : '';
+      p.classList.add('on');
+    }
+    const v = Math.max(0, Math.min(1, pct));
+    this.el.progBar.style.transform = `scaleX(${v})`;
+    const txt = Math.round(v * 100) + ' %';
+    if (this.el.progPct.textContent !== txt) this.el.progPct.textContent = txt;
   }
   fade(on: boolean, text = '') { this.el.fade.textContent = text; this.el.fade.classList.toggle('on', on); }
-  get modalOpen() { return this.el.modal.classList.contains('on'); }
-  closeModal() { this.el.modal.classList.remove('on'); }
+  /** Drop held keys, joystick finger and camera drag (opening the phone or a menu). */
+  resetControls() { this.resetTouch(); }
 
-  openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
-    const panel = this.el.modal.querySelector('.panel') as HTMLElement;
-    panel.innerHTML = `<h2></h2><p></p>${extraHtml}<div class="list"></div>`;
-    (panel.querySelector('h2') as HTMLElement).textContent = title; (panel.querySelector('p') as HTMLElement).textContent = subtitle;
-    const list = panel.querySelector('.list') as HTMLElement;
-    for (const it of items) {
-      const b = document.createElement('button'); b.className = 'item' + (it.disabled ? ' dis' : '');
-      const l = document.createElement('div'); l.textContent = it.label;
-      if (it.detail) { const s = document.createElement('small'); s.textContent = it.detail; l.appendChild(s); }
-      b.appendChild(l);
-      if (it.right) { const r = document.createElement('em'); r.textContent = it.right; b.appendChild(r); }
-      if (!it.disabled) b.addEventListener('click', () => it.onPick());
-      list.appendChild(b);
+  /**
+   * The quiet screen as the checks measure it (docs/UI_V2_PLAN.md §0 C 6): the middle of the screen, every HUD overlay
+   * on screen with its box, those over the middle, how many transient lines and moment cards are visible. Not counted:
+   * what the player opened (a sheet, the phone, the chat panel, the needs panel, the event's details), what is anchored
+   * in the world (the bubble over the target), the controls (the joystick), the playable UIs (a duel, a trade's
+   * gesture, the furniture placer), the black fade of a transition and the hidden list read to screen readers.
+   */
+  measureQuiet() {
+    const zone = centreZone(innerWidth, innerHeight);
+    const SKIP = '#modal, #fade, #wprompt, #joy, #toast, #toast > .sr, #gesture, #placer, #chatPanel, #placeMore';
+    // `fading`: a line or card that is still fading in counts (its opacity is read on the last painted frame, which
+    // on a slow machine can still be 0 a second after it appeared); a fading-out one carries `.out`
+    const shown = (e: Element, fading = false) => {
+      const cs = getComputedStyle(e), r = e.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && (fading || Number(cs.opacity) > 0.05) && r.width > 1 && r.height > 1 && !e.classList.contains('out') ? r : null;
+    };
+    const list: { id: string; box: Rect }[] = [];
+    for (const e of document.querySelectorAll('#ui > *, #toast > *')) {
+      if (e.matches(SKIP) || (e.id === 'stats' && e.classList.contains('open'))) continue;
+      const r = shown(e); if (!r) continue;
+      // the place chip with its details open (a tap): the chip itself only, the details are the player's
+      const bottom = e.id === 'place' && e.classList.contains('open') ? this.el.placeMore.getBoundingClientRect().top : r.bottom;
+      const box = { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(bottom) };
+      list.push({ id: e.id ? '#' + e.id : '.' + [...e.classList].join('.'), box });
     }
-    const c = document.createElement('button'); c.className = 'item close'; c.textContent = 'Fermer'; c.addEventListener('click', () => this.closeModal()); list.appendChild(c);
-    this.el.modal.classList.add('on');
-    afterRender?.(panel);
+    const over = list.filter(o => overlaps(o.box, zone)).map(o => o.id);
+    const lines = [...this.el.toast.querySelectorAll(':scope > .t:not(.out)')].filter(e => shown(e, true)).length;
+    const moments = [...this.el.toast.querySelectorAll(':scope > .mo:not(.out)')].filter(e => shown(e, true)).length;
+    return { w: innerWidth, h: innerHeight, zone, overlays: list, over, lines, moments, log: quietLog.unread, phone: !!document.querySelector('#phone.on'), sheet: this.sheet.isOpen };
   }
+
+  // ---------------------------------------------------------------- sheets
+  get modalOpen() { return this.sheet.isOpen; }
+  closeModal() { this.sheet.close(); }
+  /** A menu as a bottom sheet (phones) or a floating card (desktop). Same contract as before the sheets. */
+  openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void, variant?: SheetVariant) {
+    this.sheet.open('menu', title, subtitle, items, extraHtml, afterRender, variant);
+  }
+  /** Quick actions of a target (« ⋯ »): an icon grid near the action button, prices and disabled reasons included. */
+  openQuick(title: string, items: MenuItem[], subtitle = '') {
+    this.sheet.open('quick', title, subtitle, items);
+  }
+}
+
+/**
+ * Where the bubble's centre goes so a card of half-width `half` stays on a screen `width` wide (8 px margins), as close
+ * to the target's `x` as it can, and how far aside its tail moves to point at the target (at most `half − 16` px: the
+ * card stays readable first).
+ */
+export function bubbleX(x: number, half: number, width: number): { x: number; tail: number } {
+  const lo = half + 8, hi = width - half - 8;
+  const c = lo > hi ? width / 2 : Math.min(hi, Math.max(lo, x)), m = Math.max(0, half - 16);
+  return { x: c, tail: Math.round(Math.min(m, Math.max(-m, x - c))) };
+}
+
+/** A goal line split into its words and the distance at its end (« 72 m », shown in the right-hand slot), if any. */
+export function goalParts(text: string): { text: string; dist: string } {
+  const m = /\s·\s(\d+)\s?m$/.exec(text);
+  return m ? { text: text.slice(0, m.index), dist: `${m[1]} m` } : { text, dist: '' };
 }

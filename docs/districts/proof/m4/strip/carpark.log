@@ -1,0 +1,4 @@
+PASS: driven with the pedal stick from the road, through the way in, to the aisle between the rows of bays {"x":-35.5,"z":-85.8}
+PASS: the car is still a car (not stuck on a solid): it moved well into the lot {"from":{"x":-2,"z":-63.7},"to":[-35.5,-85.8]}
+PASS: no JavaScript errors 
+car park checks passed

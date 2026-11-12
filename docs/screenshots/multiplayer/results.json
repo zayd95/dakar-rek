@@ -1,0 +1,87 @@
+[
+  {
+    "name": "worker health and protocol",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "two independent clients see each other",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "remote avatar rendered on phone",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "movement replicated",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "typing a name keeps the menu open",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "profile update reconnects without a duplicate player",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "emote pose shared with the second player",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "personal home hides the guest avatar from the street",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "public Maiga interior is shared",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hub membership follows travel: plateau",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hub membership follows travel: corniche",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hub membership follows travel: almadies",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "hub membership follows travel: pikine",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "network reconnect keeps local money and no duplicate peer",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "full room automatically opens another group",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "server rejects malformed positions",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no browser page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

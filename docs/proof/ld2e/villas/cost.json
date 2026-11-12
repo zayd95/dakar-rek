@@ -1,0 +1,174 @@
+{
+ "at": "2026-10-27T22:19:24.349Z",
+ "cost": {
+  "house-m1": {
+   "name": "Maison empilée",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 132,
+    "street": 132,
+    "back": 141,
+    "night": 87
+   },
+   "medium": {
+    "calls": 10,
+    "tris": 2060
+   },
+   "info": {
+    "colliders": 15,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 10,
+    "tris": 1736
+   }
+  },
+  "house-m2": {
+   "name": "Maison en L",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 126,
+    "street": 125,
+    "back": 151,
+    "night": 83
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 1918
+   },
+   "info": {
+    "colliders": 13,
+    "signs": 0,
+    "tallest": 7.199999999999999
+   },
+   "low": {
+    "calls": 9,
+    "tris": 1652
+   }
+  },
+  "house-m3": {
+   "name": "Maison à gradins",
+   "kind": "house",
+   "size": "S",
+   "views": {
+    "front": 152,
+    "street": 154,
+    "back": 139,
+    "night": 93
+   },
+   "medium": {
+    "calls": 9,
+    "tris": 1926
+   },
+   "info": {
+    "colliders": 14,
+    "signs": 0,
+    "tallest": 9.7
+   },
+   "low": {
+    "calls": 9,
+    "tris": 1626
+   }
+  },
+  "villa-c1": {
+   "name": "Villa Porte-à-faux",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 160,
+    "street": 175,
+    "back": 136,
+    "night": 104
+   },
+   "medium": {
+    "calls": 11,
+    "tris": 3064
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 11,
+    "tris": 2598
+   }
+  },
+  "villa-c2": {
+   "name": "Villa des Arcades",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 194,
+    "street": 196,
+    "back": 163,
+    "night": 123
+   },
+   "medium": {
+    "calls": 11,
+    "tris": 2986
+   },
+   "info": {
+    "colliders": 20,
+    "signs": 0,
+    "tallest": 10.7
+   },
+   "low": {
+    "calls": 11,
+    "tris": 2544
+   }
+  },
+  "villa-c3": {
+   "name": "Villa des Pavillons",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 147,
+    "street": 135,
+    "back": 146,
+    "night": 98
+   },
+   "medium": {
+    "calls": 11,
+    "tris": 3028
+   },
+   "info": {
+    "colliders": 18,
+    "signs": 0,
+    "tallest": 7.249999999999999
+   },
+   "low": {
+    "calls": 11,
+    "tris": 2562
+   }
+  },
+  "villa-c4": {
+   "name": "Villa de la Tour",
+   "kind": "villa",
+   "size": "S",
+   "views": {
+    "front": 237,
+    "street": 261,
+    "back": 151,
+    "night": 148
+   },
+   "medium": {
+    "calls": 11,
+    "tris": 3138
+   },
+   "info": {
+    "colliders": 15,
+    "signs": 0,
+    "tallest": 13.95
+   },
+   "low": {
+    "calls": 11,
+    "tris": 2614
+   }
+  }
+ },
+ "errors": []
+}

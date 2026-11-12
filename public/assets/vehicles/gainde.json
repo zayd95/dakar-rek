@@ -1,0 +1,145 @@
+{
+ "id": "gainde",
+ "standIn": false,
+ "name": "Gaïndé",
+ "provenance": {
+  "name": "Authored in code by scripts/vehicles/author (models.ts « gainde »): an original design that reads as a large German-style SUV coupé (sloping roof, big single grille, black wheels)",
+  "licence": "Original work made for this game; no third-party model, texture or photograph is used. The reference photographs only guided proportions and character.",
+  "tools": "three.js (geometry), sharp (atlas from SVG), @gltf-transform/core (GLB): local and free; no paid generation",
+  "sourceSha256": "70b46695fc1ac80d2e70e80df4b4cad98827248b63a652d9bdb3e44a7ba86a58"
+ },
+ "kit": {
+  "kind": "suv",
+  "model": "gainde"
+ },
+ "wheelFit": "own",
+ "length": 4.961,
+ "width": 2.37,
+ "bodyWidth": 2,
+ "height": 1.72,
+ "wheels": [
+  {
+   "id": "fl",
+   "x": 0.83,
+   "y": 0.4,
+   "z": 1.48,
+   "r": 0.4,
+   "width": 0.28,
+   "steer": true,
+   "bottom": 0
+  },
+  {
+   "id": "fr",
+   "x": -0.83,
+   "y": 0.4,
+   "z": 1.48,
+   "r": 0.4,
+   "width": 0.28,
+   "steer": true,
+   "bottom": 0
+  },
+  {
+   "id": "rl",
+   "x": 0.83,
+   "y": 0.4,
+   "z": -1.49,
+   "r": 0.4,
+   "width": 0.28,
+   "steer": false,
+   "bottom": 0
+  },
+  {
+   "id": "rr",
+   "x": -0.83,
+   "y": 0.4,
+   "z": -1.49,
+   "r": 0.4,
+   "width": 0.28,
+   "steer": false,
+   "bottom": 0
+  }
+ ],
+ "interior": false,
+ "door": {
+  "hinge": [
+   1,
+   0,
+   0.9400000000000001
+  ],
+  "zF": 0.9400000000000001,
+  "zR": -0.2
+ },
+ "body": {
+  "min": [
+   -1.185,
+   0.34,
+   -2.479
+  ],
+  "max": [
+   1.185,
+   1.72,
+   2.482
+  ]
+ },
+ "tris": 14397,
+ "drawCalls": 9,
+ "parts": {
+  "shell": 5216,
+  "decals": 5277,
+  "cabin": 1348,
+  "door": 531,
+  "wheel": 508
+ },
+ "textures": [
+  {
+   "size": [
+    1024,
+    1024
+   ],
+   "kB": 33
+  }
+ ],
+ "bytes": 307308,
+ "checks": [
+  {
+   "name": "body length 4.940 m = the kit's 4.94 (2 cm; 4.961 m with the plates and lamps)",
+   "ok": true
+  },
+  {
+   "name": "body width without mirrors 2.000 m = the kit's 2 (2 cm)",
+   "ok": true
+  },
+  {
+   "name": "height 1.72 m within 6 cm of the kit's roof 1.69",
+   "ok": true
+  },
+  {
+   "name": "head room at the driver: roof 1.69 m over the eye at 1.40 m (>= 0.10 m)",
+   "ok": true
+  },
+  {
+   "name": "four wheels, separate nodes (axle > wheel), named fl fr rl rr, on the kit axles, tyres on the ground",
+   "ok": true
+  },
+  {
+   "name": "the driver's door cut between z -0.2 and 0.9400000000000001 (the kit's), hinged at its front edge",
+   "ok": true
+  },
+  {
+   "name": "triangles drawn 13049 <= 13000 (14397 with the cabin, shown only while the door is open)",
+   "ok": false
+  },
+  {
+   "name": "draw calls 9 <= 9 (body 2, door 2, wheels 4; the cabin's 1 only while the door is open)",
+   "ok": true
+  },
+  {
+   "name": "file 300 kB <= 1300 kB",
+   "ok": true
+  },
+  {
+   "name": "no badge, emblem, lettering or plate number: grille and plates blank, every texture drawn by atlasSvg()",
+   "ok": true
+  }
+ ]
+}

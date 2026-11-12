@@ -1,0 +1,38 @@
+{
+  "low": {
+    "boardwalk and stalls": {
+      "calls": 53,
+      "tris": 98054
+    },
+    "sun beds": {
+      "calls": 33,
+      "tris": 83616
+    },
+    "embarkation": {
+      "calls": 36,
+      "tris": 86280
+    },
+    "lookout, the island": {
+      "calls": 34,
+      "tris": 85070
+    }
+  },
+  "medium": {
+    "boardwalk and stalls": {
+      "calls": 47,
+      "tris": 128016
+    },
+    "sun beds": {
+      "calls": 42,
+      "tris": 123156
+    },
+    "embarkation": {
+      "calls": 37,
+      "tris": 118538
+    },
+    "lookout, the island": {
+      "calls": 37,
+      "tris": 119276
+    }
+  }
+}

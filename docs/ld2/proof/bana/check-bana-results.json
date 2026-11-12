@@ -1,0 +1,162 @@
+{
+ "base": "http://127.0.0.1:4631/",
+ "failed": 0,
+ "results": [
+  {
+   "name": "1a. the table stands on the Maïga du marché’s lot, set back from the pavement (its front ≤ −7.5, the block’s edge is −7, the kerb −5): off the carriageway, nothing else solid on its ground",
+   "ok": true,
+   "detail": "{\"mine\":[[70.38,-8.99,72.02,-8.2]],\"others\":0,\"maiga\":{\"x\":78,\"z\":-5.5},\"way\":[],\"dna\":[]}"
+  },
+  {
+   "name": "1b. it blocks no way: the walk from the pavement to its front is clear, the Maïga’s door is 5 m away and the pavement in front of it is free",
+   "ok": true,
+   "detail": "{\"way\":[],\"doorX\":76.5,\"at\":{\"x\":71.2,\"z\":-8.6}}"
+  },
+  {
+   "name": "1c. before buying: an empty table, the seller, the « TABLE À CÉDER · 50 000 F » board",
+   "ok": true,
+   "detail": "{\"board\":\"sale:50000\",\"seller\":true,\"goods\":{\"arachides\":false,\"recharge\":false,\"mouchoirs\":false}}"
+  },
+  {
+   "name": "1d. walked from the Maïga’s pavement to the table: it is the focus, « Voir la table à céder », and the table, its board and its seller are drawn",
+   "ok": true,
+   "detail": "{\"w1\":0.696276601141527,\"w2\":0.22213404611524984,\"f\":{\"id\":\"pikine:bana\",\"name\":\"Table à céder\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir la table à céder\",\"all\":[\"Voir la table à céder\",\"Parler à Tata Dior\"],\"why\":[]},\"drawn\":12}"
+  },
+  {
+   "name": "2a. the table’s sheet explains it and offers the purchase: 50 000 F, +400 F per hour, what is left after",
+   "ok": true,
+   "detail": "{\"open\":true,\"title\":\"Table à céder\",\"sub\":\"Tata Dior : « Je pars vendre à Thiaroye. Ma table et mes clients, je te les cède. »\",\"extra\":\"Prix50 000 FRapporte+400 F par heure en villeIl te restera10 000 F\\n      La famille la tient quand tu n’es pas là. Quand tu la tiens toi-même : achète la marchandise, sers les clients, garde le bénéfice.\",\"rows\":[{\"text\":\"✅Reprendre la tableUne seule fois : pas de papiers, pas d’attente−50 000 F\",\"dis\":false},{\"text\":\"↩️Plus tard\",\"dis\":false}]}"
+  },
+  {
+   "name": "2b. one purchase, the venture’s: −50 000 F once, one « Achat : Table de bana-bana » line, one bana unit owned",
+   "ok": true,
+   "detail": "{\"w0\":60000,\"wB\":10000,\"led\":{\"at\":1792890609441,\"label\":\"Achat : Table de bana-bana\",\"amount\":-50000},\"owned\":{\"bana\":1}}"
+  },
+  {
+   "name": "2c. the table changes: the player’s own board, the cousin instead of the seller, its first customers waiting",
+   "ok": true,
+   "detail": "{\"board\":\"owned:\",\"seller\":false,\"cousin\":true,\"clients\":4}"
+  },
+  {
+   "name": "2d. the sheet is now « Ta table de bana-bana »",
+   "ok": true,
+   "detail": "[\"🧺Tenir la tablePas de marchandise : achètes-en d’abord [dis]\",\"🛒Acheter de la marchandiseLe grossiste du marché, au prix de gros\",\"🏢Mes affairesToutes tes affaires et leurs revenus\"]"
+  },
+  {
+   "name": "3a. three lots bought at cost: 10 × 50 F + 5 × 900 F + 10 × 60 F = 5 600 F, one ledger line each",
+   "ok": true,
+   "detail": "{\"spent\":5600,\"lines\":[{\"at\":1792890622466,\"label\":\"Marchandise · bana-bana : 10 cornets d’arachides\",\"amount\":-500},{\"at\":1792890628021,\"label\":\"Marchandise · bana-bana : 5 cartes de recharge\",\"amount\":-4500},{\"at\":1792890634416,\"label\":\"Marchandise · bana-bana : 10 paquets de mouchoirs\",\"amount\":-600}],\"stock\":[10,5,10]}"
+  },
+  {
+   "name": "3b. the goods are on the table in the world",
+   "ok": true,
+   "detail": "{\"arachides\":true,\"recharge\":true,\"mouchoirs\":true}"
+  },
+  {
+   "name": "4a. at the table, its action is now « Tenir la table »",
+   "ok": true,
+   "detail": "{\"id\":\"pikine:bana\",\"name\":\"Ta table de bana-bana\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Tenir la table\",\"all\":[\"Tenir la table\",\"Acheter de la marchandise\",\"Voir ma table\"],\"why\":[]}"
+  },
+  {
+   "name": "4b. the table opens: the player behind it, facing the street, a customer walking up",
+   "ok": true,
+   "detail": "{\"title\":\"Table ouverte\",\"me\":{\"x\":71,\"y\":0.1,\"z\":-9.549999999999999,\"hub\":\"pikine\",\"mode\":\"menu\",\"near\":\"Table de bana-bana\",\"yaw\":0,\"cam\":0},\"customer\":{\"name\":\"Malick\",\"good\":\"recharge\",\"qty\":1,\"amount\":1000,\"cost\":900},\"walkers\":[\"in\"]}"
+  },
+  {
+   "name": "4c. with the sheet closed the action button serves: « Servir <name> »",
+   "ok": true,
+   "detail": "{\"f\":{\"id\":\"pikine:bana\",\"name\":\"Ta table de bana-bana\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Servir Alioune\",\"all\":[\"Servir Alioune\",\"Fermer la table\",\"Voir la table\"],\"why\":[]},\"served\":1}"
+  },
+  {
+   "name": "4d. every customer served at the price of what they took; the till is the sum, nothing paid yet",
+   "ok": true,
+   "detail": "{\"served\":[\"Malick:1 recharge=1000\",\"Alioune:2 arachides=200\",\"Rokhaya:2 recharge=2000\",\"Astou:4 arachides=400\"],\"till\":{\"sales\":3600,\"cost\":3000,\"served\":4}}"
+  },
+  {
+   "name": "4e. nobody left: the sheet says so and offers « Fermer et encaisser » with the till",
+   "ok": true,
+   "detail": "{\"open\":true,\"title\":\"Table ouverte\",\"sub\":\"4 servis · personne n’attend\",\"extra\":\"🙌Plus de clients pour l’instantIls reviennent pendant que tu joues.Recette 3 600 F − marchandise 3 000 F = 600 F\",\"rows\":[{\"text\":\"🔒Fermer et encaisserLa recette va dans ton portefeuille+3 600 F\",\"dis\":false}]}"
+  },
+  {
+   "name": "4f. closed: the till paid once (one « Recette » line), and the sheet’s calculation is the money: recette − marchandise = bénéfice",
+   "ok": true,
+   "detail": "{\"paid\":3600,\"sales\":3600,\"cost\":3000,\"profit\":600,\"led5\":{\"at\":1792890730186,\"label\":\"Recette · Table de bana-bana (4 clients)\",\"amount\":3600},\"shown\":\"Recette+3 600 FMarchandise vendue (prix de gros)−3 000 FBénéfice600 F Aujourd’hui : 600 F de bénéfice · depuis l’achat : 600 F.\"}"
+  },
+  {
+   "name": "4g. paid once: nothing more after closing; nobody left to serve: « Tenir la table » says why",
+   "ok": true,
+   "detail": "{\"again\":8000,\"w5\":8000,\"clients\":0,\"why\":\"Personne pour l’instant : les clients reviennent pendant que tu joues (1 par heure en ville)\",\"f\":{\"id\":\"pikine:bana\",\"name\":\"Ta table de bana-bana\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Acheter de la marchandise\",\"all\":[\"Tenir la table\",\"Acheter de la marchandise\",\"Voir ma table\"],\"why\":[\"Personne pour l’instant : les clients reviennent pendant que tu joues (1 par heure en ville)\"]}}"
+  },
+  {
+   "name": "4h. an in-game hour of play later: one customer back, and the venture’s income unchanged (400 F per hour, one « Revenus · Table de bana-bana » line)",
+   "ok": true,
+   "detail": "{\"clients\":1,\"paid\":432,\"inc\":{\"at\":1792890747548,\"label\":\"Revenus · Table de bana-bana\",\"amount\":432},\"base\":400,\"perHour\":400}"
+  },
+  {
+   "name": "5a. Travailler shows the table’s state on the « Affaires » row, and the tap opens « Affaires »",
+   "ok": true,
+   "detail": "{\"workSub\":\"🏢AffairesTa table : 1 client attend›\",\"title\":\"Affaires\"}"
+  },
+  {
+   "name": "5b. Affaires at a glance: income per hour and earned, the table card (stock, customers, the last session’s calculation, today and since the purchase)",
+   "ok": true,
+   "detail": "Revenus par heure+400 FTotal gagné432 F🧺 Ta table de bana-bana+400 F/h 🥜 4/30📱 2/10🧻 10/20 Clients qui attendent : 1/12 Dernière fois : Recette 3 600 F − marchandise 3 000 F = bénéfice 600 F Ventes : aujourd’hui 600 F · depuis l’achat 600 FVariété : 1 activité → paie normale"
+  },
+  {
+   "name": "5c. its rows: « Y aller · ta table », the venture owned with its income, the next one with what is missing, the full ladder and the details on demand",
+   "ok": true,
+   "detail": "[\"📍Y aller · ta tableMarché de Pikine, à côté de la Maïga\",\"🏢Table de bana-bana ×1Encore une : 57 500 F+400 F/h\",\"✨KiosqueIl manque 291 568 F300 000 F [dis]\",\"📋Voir toutes les affaires (7)Prix, revenus, de la table au grand groupe\",\"ℹ️Comment ça marcheRevenus, variété des activités\"]"
+  },
+  {
+   "name": "5d. it fits a phone without a wall of text: no sideways overflow, a short screen, the table card and « Y aller » visible without scrolling",
+   "ok": true,
+   "detail": "{\"chars\":580,\"extraChars\":279,\"rows\":5,\"panelBottom\":844,\"panelTop\":371,\"cardBottom\":669,\"goBottom\":758,\"wide\":0,\"scroll\":148}"
+  },
+  {
+   "name": "5e. « Voir toutes les affaires »: the whole ladder, seven ventures with their income",
+   "ok": true,
+   "detail": "[\"Table de bana-bana ×1+400 F/h chacune · +400 F/h en tout · il manque 49 068 F57 500 F\",\"KiosqueCrédit téléphonique, café Touba et journaux · +2 200 F/h · il manque 291 568 F300 000 F\",\"Boutique de quartierRiz, huile, sucre, pain : le quartier passe chez toi · +10 500 F/h · il manque 1 491 568 F1 500 000 F\",\"Car rapideUne ligne, un chauffeur et un apprenti · +52 000 F/h · il manque 7 991 568 F8 000 000 F\",\"RestaurantDe la gargote à la grande salle : ceebu jën tous les midis · +245 000 F/h · il manque 39 991 568 F40 000 000 F\",\"Immeuble de rapportDes appartements loués en ville · +1 150 000 F/"
+  },
+  {
+   "name": "5f. « Comment ça marche »: the variety chips and the income rules, off the main screen",
+   "ok": true,
+   "detail": "Valeur des affaires50 000 FFortune totale58 432 F\n      Variété : 1 activité → paie normaleLivraisonsPetits boulots✓ Commerceencore 3 jLuttePêcheArtisanatVie so"
+  },
+  {
+   "name": "5g. « Y aller » marks the table: the walking marker and the goal line point at it",
+   "ok": true,
+   "detail": "{\"dest\":\"pikine:bana\",\"goal\":\"↑Table de bana-bana · 25 m\"}"
+  },
+  {
+   "name": "6a. Modou (the garage on the table’s block) acknowledges the table: one line, and the table remembers it",
+   "ok": true,
+   "detail": "{\"h\":[\"Modou : « C’est toi qui as repris la table à côté de la Maïga ? Bonne vente, voisin ! »\"],\"ack\":true,\"modou\":{\"id\":\"modou\",\"hub\":\"pikine\",\"here\":true,\"x\":98.84,\"z\":-11.1,\"y\":0.1,\"yaw\":0,\"act\":\"work\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"7-13\",\"place\":\"derrière son établi, au Garage Modou\",\"target\":{\"x\":98.84,\"z\":-11.1},\"left\":0,\"it\":{\"x\":98.84,\"z\":-11.1}}}"
+  },
+  {
+   "name": "6b. back an hour later: the line is not said again",
+   "ok": true,
+   "detail": "[\"Modou : « C’est toi qui as repris la table à côté de la Maïga ? Bonne vente, voisin ! »\"]"
+  },
+  {
+   "name": "7a. reloaded at the table with the table open: the same session, its till not paid yet, the same stock, customers and history",
+   "ok": true,
+   "detail": "{\"parts7a\":{\"open\":true,\"notPaid\":true,\"stock\":true,\"clients\":true,\"history\":true,\"drawn\":true},\"open\":{\"sales\":1000,\"cost\":900,\"served\":1},\"open7\":{\"sales\":1000,\"cost\":900,\"served\":1},\"stock\":[4,1,10],\"kept\":{\"arachides\":4,\"recharge\":1,\"mouchoirs\":10},\"new8\":[]}"
+  },
+  {
+   "name": "7b. walking away closes it: the till paid once (the cousin says so), nothing more",
+   "ok": true,
+   "detail": "{\"paid\":1000,\"till\":1000,\"led9\":{\"at\":1792890890952,\"label\":\"Recette · Table de bana-bana (1 client)\",\"amount\":1000},\"h\":[\"Mor : « Je reprends la table. Ta recette : +1 000 F, bénéfice 100 F. »\"]}"
+  },
+  {
+   "name": "7c. reload: the same ownership, stock, clientèle, last session, totals and acknowledgement; the table drawn as the player’s with its goods",
+   "ok": true,
+   "detail": "{\"parts7\":{\"units\":true,\"wallet\":true,\"stock\":true,\"clients\":true,\"last\":true,\"totals\":true,\"ack\":true,\"drawn\":true},\"stock\":{\"arachides\":4,\"recharge\":1,\"mouchoirs\":10},\"clients\":[0,0],\"last\":100,\"total\":700,\"goods\":{\"arachides\":true,\"recharge\":true,\"mouchoirs\":true}}"
+  },
+  {
+   "name": "no JavaScript errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

@@ -1,0 +1,29 @@
+{
+ "id": "berline",
+ "standIn": false,
+ "provenance": {
+  "name": "Meshy text-to-3D, Stage B of the player-owned lineup (sport sedan): preview/refine/remesh task ids to fill in",
+  "licence": "Generated for the game's owner with the owner's Meshy account; Meshy's plan terms apply (not re-verified here). Original, unbranded design inspired by a class of car; badges and plates painted out.",
+  "prompt": "assets-src/vehicles/briefs.json sport_sedan"
+ },
+ "source": "../meshy_output/sport_sedan/split.glb",
+ "target": "target-berline.json",
+ "rotateY": 0,
+ "wheelNodes": "^wheel",
+ "wheelFit": "own",
+ "bodyWidthPercentile": 0.01,
+ "limits": {
+  "maxTris": 9000,
+  "textureMax": 1024,
+  "maxKB": 1500
+ },
+ "out": "public/assets/vehicles/berline.glb",
+ "simplifyError": 0.05,
+ "textureFormat": "jpeg",
+ "textureQuality": 85,
+ "_note": "Meshy's atlas is fragmented into tiny UV islands: decimating the shell wrecks the paint (a black wedge on a door), so the body is not simplified; instead 5 800 triangles nobody sees from outside are culled (compacte.visible.json), the wheels are simplified, normals are smoothed across the seams.",
+ "cockpit": true,
+ "cull": "berline.visible.json",
+ "simplifyWheelTris": 450,
+ "_template": "TEMPLATE, not run by anything: copy to berline.pilot.json after the split step. Kit target luxury seed 1 (target-berline.json). The tuned values below are Stage A's; re-measure."
+}

@@ -6,7 +6,7 @@ import * as THREE from 'three';
  * items that will be chosen from validated references (gris-gris and related accessories) after review by
  * Habib and wrestling practitioners. No item carries any meaning or any gameplay effect.
  */
-export const REVIEW_STATUS = 'Brouillon non validé';
+export const REVIEW_STATUS = 'Tenue Dakar Rek';
 
 export const NGEMB_COLORS: { id: string; label: string; hex: number }[] = [
   { id: 'blanc', label: 'Blanc', hex: 0xf2efe6 },

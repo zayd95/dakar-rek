@@ -1,0 +1,72 @@
+{
+ "label": "before",
+ "at": "2026-10-27T12:13:15.183Z",
+ "cost": {
+  "buildSeconds": 11.9,
+  "aerial-south-east-day": {
+   "calls": 135,
+   "tris": 168042
+  },
+  "aerial-sea-front-day": {
+   "calls": 97,
+   "tris": 153086
+  },
+  "street-west-day": {
+   "calls": 106,
+   "tris": 159814
+  },
+  "street-north-day": {
+   "calls": 109,
+   "tris": 167776
+  },
+  "crossing-day": {
+   "calls": 90,
+   "tris": 162794
+  },
+  "villa-row-day": {
+   "calls": 85,
+   "tris": 141064
+  },
+  "corner-low-day": {
+   "calls": 114,
+   "tris": 178134
+  },
+  "sea-front-row-day": {
+   "calls": 39,
+   "tris": 113642
+  },
+  "aerial-south-east-night": {
+   "calls": 154,
+   "tris": 169218
+  },
+  "aerial-sea-front-night": {
+   "calls": 113,
+   "tris": 154230
+  },
+  "street-west-night": {
+   "calls": 109,
+   "tris": 160476
+  },
+  "street-north-night": {
+   "calls": 126,
+   "tris": 169268
+  },
+  "crossing-night": {
+   "calls": 99,
+   "tris": 163898
+  },
+  "villa-row-night": {
+   "calls": 94,
+   "tris": 140764
+  },
+  "corner-low-night": {
+   "calls": 130,
+   "tris": 183986
+  },
+  "sea-front-row-night": {
+   "calls": 44,
+   "tris": 114276
+  }
+ },
+ "errors": []
+}

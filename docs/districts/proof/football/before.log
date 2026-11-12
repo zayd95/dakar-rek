@@ -1,0 +1,25 @@
+PASS: acquire: running to a loose ball (to the side), the first touch comes at 2.10 s
+FAIL: acquire: carried on toward the goal, the ball stays within a stride {"within1_6":0.43,"max":3.37}
+FAIL: dribble straight at a walk: the ball stays within a stride and the touches have a human cadence {"max":0.66,"within1":1,"touchesPerS":0.8,"pace":1.9}
+FAIL: dribble straight at a jog: the ball stays within a stride and the touches have a human cadence {"max":0.64,"within1":1,"touchesPerS":0.8,"pace":3.2}
+PASS: dribble straight at a sprint: the ball stays within a stride and the touches have a human cadence {"max":0.59,"within1":1,"touchesPerS":1.8,"pace":7}
+FAIL: turn 45° at a jog: the ball goes with the player {"max":5.83,"within1_6":0.24}
+FAIL: turn 90° at a jog: the ball goes with the player {"max":9.92,"within1_6":0.13}
+FAIL: turn −90° at a jog: the ball goes with the player {"max":9.92,"within1_6":0.13}
+FAIL: turn 180° at a jog: the ball goes with the player {"max":13.58,"within1_6":0.09}
+FAIL: slalom (±0.8 rad each second): the ball stays with the player {"within1_6":0.23,"max":6.05}
+FAIL: stop from a jog: the ball ends at rest at the foot {"ballPace":0,"dist":3.3}
+FAIL: stop from a sprint: the ball ends at rest at the foot {"ballPace":3.11,"dist":13.02}
+FAIL: « Passer » is on the action button with the ball at the foot null
+FAIL: pass: the ball leaves at pace and travels by itself (no teleport, the body does not touch it again) {"startPace":2,"travelled40f":1.08,"maxJumpOverPace":0.001,"bodyTouches":0}
+PASS: regain: running onto the ball, possession comes back after 4.3 s
+FAIL: regain: stopped, the ball is at the foot at rest {"ballPace":0.64,"dist":6}
+PASS: « Frappe » is up with the ball at the foot 
+PASS: shot: the ball crossed the goal line and one goal is counted {"maxBallX":21.1,"goalLineX":20,"goals":1}
+PASS: shot: the goal is not counted again while the ball sits in the net or comes back goals 1
+PASS: wide shot: no goal, the ball stays on the grass inside the curb {"goals":0,"ball":{"x":15.9,"z":9}}
+PASS: after the miss the ball is still playable: the player takes it again 83 s
+PASS: leaving: the pitch lets go (no kickabout, no « Frappe »), and the stick walks the player as usual {"kickaboutBefore":true,"kickaboutAfter":false,"mode":"play","shot":false,"joy":true,"moved":3.3}
+PASS: one ball: no NPC match running over the kickabout 
+PASS: no page errors []
+11/24 checks passed, 5093 frames

@@ -1,0 +1,17 @@
+{
+ "sum": {
+  "route": "kerb",
+  "samples": 407,
+  "triangles": 9354,
+  "cameraHeight": [
+   4.68,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 0,
+  "minLens": 1.08,
+  "viewBlockedFrames": 0,
+  "errors": 0
+ },
+ "flagged": []
+}

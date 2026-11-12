@@ -1,0 +1,242 @@
+[
+ {
+  "name": "fresh save: first suggestion is still Ibou’s welcome",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "fresh save: empty ledger and no furniture",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "after the welcome, the chip points to Tiak Tiak",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "Pikine: every Tiak Tiak pick-up and drop-off is an existing city place",
+  "ok": true,
+  "extra": "12 ends"
+ },
+ {
+  "name": "furniture stall exists in Pikine",
+  "ok": true,
+  "extra": "Quincaillerie · meubles 87,-6"
+ },
+ {
+  "name": "pick-up point lists its delivery offers",
+  "ok": true,
+  "extra": "2 offers"
+ },
+ {
+  "name": "delivery accepted at the pick-up point (parcel in hand)",
+  "ok": true,
+  "extra": "{\"runId\":\"09421365-1-2466\",\"routeId\":\"pk_mame_boutique\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":2466.600000000002,\"limitMs\":121116}"
+ },
+ {
+  "name": "the city walking marker follows the parcel",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "HUD line \"Livraison → <place>, X m\"",
+  "ok": true,
+  "extra": "Livraison → Boutique Diallo, 22 m  · 2:01"
+ },
+ {
+  "name": "the city direction chip points to the drop-off",
+  "ok": true,
+  "extra": "➜ ↑ Boutique Diallo · 22 m"
+ },
+ {
+  "name": "world marker on the drop-off",
+  "ok": true,
+  "extra": "{\"visible\":true,\"x\":-101,\"z\":85.7}"
+ },
+ {
+  "name": "walked to the drop-off: delivery paid",
+  "ok": true,
+  "extra": "3000 → 4200 · Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, du Salon Awa. Elle te recommandera."
+ },
+ {
+  "name": "first client met, recommended run unlocked",
+  "ok": true,
+  "extra": "Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, du Salon Awa. Elle te recommandera."
+ },
+ {
+  "name": "completing the same run id twice pays once",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the city marker is cleared after the hand-over",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "second run: complete twice → one payment",
+  "ok": true,
+  "extra": "{\"runId\":\"09421365-2-4383\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
+ },
+ {
+  "name": "cancel: no payment, no double effect",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "ledger records the deliveries (newest first)",
+  "ok": true,
+  "extra": "[{\"at\":1791500150478,\"label\":\"Livraison Tiak Tiak → Salon Awa\",\"amount\":1000},{\"at\":1791500143969,\"label\":\"Livraison Tiak Tiak → Boutique Diallo\",\"amount\":1200}]"
+ },
+ {
+  "name": "jobs app lists Tiak Tiak offers and the city’s paid services",
+  "ok": true,
+  "extra": "9 rows: Aider à ranger le stockBoutique Diallo · −15 énergie · 3 m+1 500 F | Livrer les dossiers de l’agenceBanque Teranga · Pikine · −20 énergie · 118 m+2 400 F | Aider le mécanicienGarage Modou · −18 énergie · 224 m+2 000 F"
+ },
+ {
+  "name": "service rows show pay, energy cost and distance",
+  "ok": true,
+  "extra": "Aider à ranger le stockBoutique Diallo · −15 énergie · 3 m+1 500 F"
+ },
+ {
+  "name": "picking a city service sets the walking marker, no teleport",
+  "ok": true,
+  "extra": "pikine:city:bank"
+ },
+ {
+  "name": "a city service (Boutique Diallo stock) is in the ledger",
+  "ok": true,
+  "extra": "{\"at\":1791500173937,\"label\":\"Aider à ranger le stock · Boutique Diallo\",\"amount\":1500}"
+ },
+ {
+  "name": "Ibou’s delivery beat is suggested",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "Ibou sets the goal (radio)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the chip now points to buying the radio",
+  "ok": true,
+  "extra": "goal_buy"
+ },
+ {
+  "name": "bought the radio at the stall (charged once)",
+  "ok": true,
+  "extra": "6700 → 2700"
+ },
+ {
+  "name": "buying it again is refused (no double charge)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "radio is in the room with its action",
+  "ok": true,
+  "extra": "Petite radio"
+ },
+ {
+  "name": "« Écouter la radio » raises the mood",
+  "ok": true,
+  "extra": "74.1 → 84.1"
+ },
+ {
+  "name": "all six items can be bought; the room refreshes while inside",
+  "ok": true,
+  "extra": "[true,true,true,true,true]"
+ },
+ {
+  "name": "bed now offers the better sleep",
+  "ok": true,
+  "extra": "Lit · bon matelasQue veux-tu faire ?Dormir (bon matelas)Bien mieux reposéFermer"
+ },
+ {
+  "name": "Ibou’s furniture beat is suggested",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "reload: money persisted",
+  "ok": true,
+  "extra": "14200 / 14200"
+ },
+ {
+  "name": "reload: ledger persisted",
+  "ok": true,
+  "extra": "10 entries"
+ },
+ {
+  "name": "reload: furniture persisted",
+  "ok": true,
+  "extra": "radio,miroir,tapis,chaises,matelas,tele"
+ },
+ {
+  "name": "reload: completed runs and delivery count persisted",
+  "ok": true,
+  "extra": "2 runs, 2 deliveries"
+ },
+ {
+  "name": "save is schema v3",
+  "ok": true,
+  "extra": "3"
+ },
+ {
+  "name": "reload: Ibou’s furniture beat still available",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "after Ibou’s furniture beat the chip moves on",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: save loaded with furniture",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: accepted from the jobs app → pick-up stage",
+  "ok": true,
+  "extra": "{\"runId\":\"09421365-4-9866\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":9866.6,\"limitMs\":0}"
+ },
+ {
+  "name": "phone: walking to the pick-up point starts the delivery leg",
+  "ok": true,
+  "extra": "{\"runId\":\"09421365-4-9866\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":9966.6,\"limitMs\":60000}"
+ },
+ {
+  "name": "phone: HUD line visible",
+  "ok": true,
+  "extra": "Livraison → Garage Modou, 10 m  · 1:00"
+ },
+ {
+  "name": "Plateau: Tiak Tiak routes on existing city places",
+  "ok": true,
+  "extra": "4 offers"
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v3",
+  "ok": true,
+  "extra": "{\"p\":{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"},\"w\":7777,\"ledger\":0,\"owned\":0,\"ver\":3}"
+ },
+ {
+  "name": "old save: no page errors",
+  "ok": true,
+  "extra": ""
+ }
+]

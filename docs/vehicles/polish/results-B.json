@@ -1,0 +1,28 @@
+{
+ "journey": "B",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 11.6,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "Pape Sarr lets it go on the road: three days of work in a row (no errand, no money)",
+   "ok": true,
+   "detail": "{\"road\":{\"ok\":true,\"supervised\":false,\"line\":\"Tu travailles tous les jours, ça se voit : va l’essayer dans le quartier.\",\"saidHeld\":false,\"saidEdge\":false,\"t\":0,\"called\":false},\"trust\":0}"
+  },
+  {
+   "name": "a loop of the block on the real streets and back to its place on the lot",
+   "ok": false,
+   "detail": "{\"back\":[83.55,3.53],\"spot\":[80.8,4.299999999999999]}"
+  },
+  {
+   "name": "walked away: Pape Sarr has his car back on the lot (the same car); nothing paid, nothing owned",
+   "ok": true,
+   "detail": "[{\"slot\":0,\"state\":\"display\",\"x\":80.8,\"z\":4.299999999999999,\"stand\":{\"x\":83.72,\"z\":3.399999999999999},\"step\":{\"x\":80.92999999999999,\"z\":2.827499999999999},\"colour\":\"blanc nacré\",\"here\":true},{\"slot\":1,\"state\":\"display\",\"x\":87.4,\"z\":4.3,\"stand\":{\"x\":90.32000000000001,\"z\":3.4},\"step\":{\"x\":87.53,\"z\":2.8274999999999997},\"colour\":\"gris argent\",\"here\":true}]"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}
