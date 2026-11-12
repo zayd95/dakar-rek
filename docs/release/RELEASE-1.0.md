@@ -80,18 +80,63 @@ Three passes (`docs/proof/release/world/NOTES.md`, with before/after pairs). All
 
 ## Validation
 
-VALIDATION_SECTION
+Final run on a quiet machine, production build of the game code at `6a6b371f` (journeys) and `bcd12c3e` (the mosque's removal: unit suite, Corniche walk and smoke test run again). Headless Chromium, phone viewport, real touch events.
+
+| What | Result |
+|---|---|
+| Type check, production build, online build, `wrangler deploy --dry-run` | pass |
+| Unit suite | 253 files, 3 744 tests pass (4 skipped) |
+| Automatic walk/run; no Sprint, Footing or stamina control (`check-stride`) | 18/18 |
+| Phone (`check-phone-shell`) | 23/23 |
+| Map (`check-geomap`) | 32/32 |
+| Thumb held through the end of a dance (`check-thumb-after-activity`) | 6/6 |
+| Corniche esplanade on foot (`check-corniche-esplanade`) | 10/10 |
+| Monument stair (`check-monument-stair`) | 9/9 |
+| Smoke test of the build: stamp, first screen, HUD, stick, phone, map, five districts, save after reload (`check-public-smoke`) | 15/15 |
+| Journey: nightlife | 73/73 |
+| Journey: Almadies evening | 42/42 |
+| Journey: VTC ride (pick-up, cross-district drive, drop-off, pay) | 19/19 |
+| Journey: football match on the Corniche | 25/25 |
+| Journey: earning, guidance, bank | 27/27 |
+| Journey: day and night | 18/18 |
+| Almadies district plan and budgets | 19/19 |
+| Online: presence in every district, dropped connection and reconnection (local worker) | 46/46 |
+
+Run earlier the same day on the release before the Corniche work, not run again since (they do not touch the Corniche): Almadies parking 9/9, rooftop 43/43, Le Patio 61/61, Ngor beach 16/16, boats to the island 37/37, Mermoz 22/22, Mermoz home 11/11, Cité Jàmm house 6/6, trade 33/33.
+
+Not verified: anything on a real phone; driving feel beyond the scripted drivers; the public server's online features (see « Known issues »).
 
 ## Performance
 
 Measured with `scripts/perf-hubs.mjs` on a production build served locally, phone viewport 390 × 844, one page visiting the five districts in order at 10 h then 21 h. « Before » is `38aa8461` (the accepted candidate with the diagnostics and the CI split), « after » is the release.
 
-PERF_TABLE
+| Quality | District | Hour | Draw calls | Triangles | Geometries held | Textures held |
+|---|---|---|---|---|---|---|
+| medium | pikine | 10 h | 127 → 144 | 176,831 → 184,581 (+4.4 %) | 171 → 160 | 223 → 145 |
+| medium | pikine | 21 h | 182 → 186 | 209,695 → 215,031 (+2.5 %) | 204 → 181 | 362 → 255 |
+| medium | plateau | 10 h | 104 → 99 | 118,194 → 117,360 (-0.7 %) | 165 → 119 | 463 → 282 |
+| medium | plateau | 21 h | 107 → 110 | 115,444 → 116,300 (+0.7 %) | 171 → 124 | 492 → 228 |
+| medium | corniche | 10 h | 71 → 72 | 115,712 → 147,545 (+27.5 %) | 140 → 85 | 546 → 225 |
+| medium | corniche | 21 h | 82 → 84 | 115,916 → 150,121 (+29.5 %) | 152 → 92 | 599 → 236 |
+| medium | almadies | 10 h | 81 → 77 | 234,398 → 234,194 (-0.1 %) | 190 → 115 | 792 → 308 |
+| medium | almadies | 21 h | 82 → 84 | 232,876 → 234,674 (+0.8 %) | 196 → 118 | 936 → 321 |
+| medium | mermoz | 10 h | 62 → 62 | 174,421 → 181,951 (+4.3 %) | 161 → 74 | 956 → 206 |
+| medium | mermoz | 21 h | 61 → 68 | 165,149 → 182,869 (+10.7 %) | 161 → 79 | 978 → 210 |
+| low | pikine | 10 h | 122 → 125 | 144,301 → 145,159 (+0.6 %) | 145 → 131 | 110 → 55 |
+| low | pikine | 21 h | 146 → 143 | 152,495 → 150,807 (-1.1 %) | 176 → 149 | 138 → 59 |
+| low | plateau | 10 h | 98 → 98 | 91,468 → 88,474 (-3.3 %) | 147 → 102 | 153 → 53 |
+| low | plateau | 21 h | 109 → 105 | 92,364 → 88,444 (-4.2 %) | 153 → 105 | 168 → 47 |
+| low | corniche | 10 h | 72 → 70 | 91,126 → 116,679 (+28.0 %) | 124 → 73 | 184 → 47 |
+| low | corniche | 21 h | 74 → 77 | 90,110 → 117,619 (+30.5 %) | 132 → 77 | 199 → 46 |
+| low | almadies | 10 h | 72 → 70 | 180,436 → 181,044 (+0.3 %) | 144 → 80 | 219 → 49 |
+| low | almadies | 21 h | 75 → 77 | 179,790 → 181,734 (+1.1 %) | 142 → 83 | 244 → 54 |
+| low | mermoz | 10 h | 56 → 56 | 104,079 → 107,487 (+3.3 %) | 129 → 64 | 266 → 46 |
+| low | mermoz | 21 h | 64 → 62 | 105,133 → 107,881 (+2.6 %) | 133 → 67 | 288 → 46 |
 
 - **Textures and geometries held by the renderer** are the cumulative count as the tour goes on: before, they only grew (978 textures by the fifth district on Medium); after, they stay at what the current district uses.
 - **Three Plateau ↔ Corniche round trips** (Medium): textures 367 → 646 and growing before (about 52 MB of texture memory by the third trip); 162 → 177 and flat after (about 36 MB). Geometries flat at 115 to 118.
 - **Draw calls** include the people and vehicles in view, which differ from run to run; the scenery itself lost 0 to 2 calls per district in the first world pass and gained none in the second.
-- **Triangles**: Plateau, Corniche and Almadies are level or lower; Pikine +2 %, Mermoz +4 % at 10 h (the roofs and wall piers of the second pass).
+- **Triangles**: Plateau and Almadies are level or lower; Pikine +2 %, Mermoz +4 % at 10 h. **The Corniche is up about 27 %** (115 712 → 147 545 on Medium at 10 h): the esplanade, the monument's hill and stair, and the three models (statue 14 431, lighthouse 5 403, two baobabs 4 873 each). Its draw calls are level (71 → 72). It stays below Pikine (180 000) and the Almadies (234 000), which the accepted candidate already carried.
 - **First load**: Medium 38 files, 7 039 → 7 052 kB; Low 37 files, 6 368 → 6 381 kB (transferred). The whole build is 80 files, about 20 MB.
 - **Not measured here**: frames a second, frame time and heat on a phone. The facade shader uses `textureGrad` and one more vertex attribute; this is to be checked on a real device with « Mesure de fluidité ».
 - **Known, not fixed**: the JavaScript heap after a forced collection still creeps by about 4 to 10 MB per district round trip. The cause was not found; the graphics-memory leak, which was the large one, is closed.
@@ -116,4 +161,6 @@ Fixed during this release, for the record: a thumb already on the stick when an 
 
 ## Deployment
 
-DEPLOYMENT_SECTION
+- **How**: Cloudflare Workers Builds publishes every push to the production branch `wip/visual-pass` (`docs/LAUNCH.md`): `npm run build:online`, then `npx wrangler deploy`. Publication is a fast-forward of that branch to the validated commit of `release-1.0`; `main` is not touched.
+- **Rollback**: the tag `rollback/production-before-release-1.0` marks what was public before (`e6c678a0`, 11 October). The release adds a server class (`Social`, migration `v2-social`); Cloudflare cannot go back to a version from before a migration, so the practical way back is forward: push a commit that restores the game of the accepted candidate `92a6e2cf` (which already has that class) to `wip/visual-pass`.
+- **Status and the public address**: recorded in the pull request ([PR #91](https://github.com/zayd95/dakar-rek/pull/91)) at publication, with the deployed commit and the result of the smoke test against the public address.
