@@ -1,0 +1,459 @@
+{
+ "quality": "medium",
+ "hub": {
+  "meshes": 381,
+  "tris": 271993,
+  "verts": 783368,
+  "colliders": 943
+ },
+ "points": [
+  {
+   "name": "01-room-door",
+   "frameMs": 537.7,
+   "calls": 79,
+   "tris": 148937
+  },
+  {
+   "name": "02-road-west",
+   "frameMs": 766.3,
+   "calls": 53,
+   "tris": 145366
+  },
+  {
+   "name": "03-avenue-south-a",
+   "frameMs": 459.4,
+   "calls": 82,
+   "tris": 162595
+  },
+  {
+   "name": "04-avenue-south-b",
+   "frameMs": 543.1,
+   "calls": 135,
+   "tris": 205307
+  },
+  {
+   "name": "05-avenue-south-c",
+   "frameMs": 532.5,
+   "calls": 93,
+   "tris": 174757
+  },
+  {
+   "name": "06-gare-west-gate",
+   "frameMs": 542.1,
+   "calls": 209,
+   "tris": 243354
+  },
+  {
+   "name": "07-avenue-to-place",
+   "frameMs": 635.2,
+   "calls": 81,
+   "tris": 161069
+  },
+  {
+   "name": "08-road-east",
+   "frameMs": 597.9,
+   "calls": 102,
+   "tris": 160398
+  },
+  {
+   "name": "09-place-approach",
+   "frameMs": 509.1,
+   "calls": 89,
+   "tris": 153156
+  },
+  {
+   "name": "10-grand-place",
+   "frameMs": 670.8,
+   "calls": 130,
+   "tris": 176458
+  },
+  {
+   "name": "11-shops-court",
+   "frameMs": 486.2,
+   "calls": 48,
+   "tris": 148491
+  },
+  {
+   "name": "12-boutique-diallo",
+   "frameMs": 634.7,
+   "calls": 63,
+   "tris": 165832
+  }
+ ],
+ "slice": {
+  "meanDeltaCalls": 2,
+  "meanDeltaTris": 13635,
+  "meanDeltaFrameMs": 12.4,
+  "perWaypoint": [
+   {
+    "name": "01-room-door",
+    "off": [
+     {
+      "frameMs": 689.7,
+      "calls": 86,
+      "tris": 141865
+     },
+     {
+      "frameMs": 639.3,
+      "calls": 87,
+      "tris": 142605
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 640.6,
+      "calls": 87,
+      "tris": 155355
+     },
+     {
+      "frameMs": 668.9,
+      "calls": 88,
+      "tris": 155495
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12890,
+    "dMs": -9.8
+   },
+   {
+    "name": "02-road-west",
+    "off": [
+     {
+      "frameMs": 554.6,
+      "calls": 61,
+      "tris": 147310
+     },
+     {
+      "frameMs": 548.8,
+      "calls": 61,
+      "tris": 147504
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 541.5,
+      "calls": 62,
+      "tris": 160174
+     },
+     {
+      "frameMs": 523.7,
+      "calls": 62,
+      "tris": 160290
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12786,
+    "dMs": -19.1
+   },
+   {
+    "name": "03-avenue-south-a",
+    "off": [
+     {
+      "frameMs": 581.6,
+      "calls": 71,
+      "tris": 145589
+     },
+     {
+      "frameMs": 569.8,
+      "calls": 71,
+      "tris": 145711
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 589.8,
+      "calls": 72,
+      "tris": 158681
+     },
+     {
+      "frameMs": 572.5,
+      "calls": 65,
+      "tris": 154389
+     }
+    ],
+    "dCalls": -6,
+    "dTris": 8678,
+    "dMs": 5.4
+   },
+   {
+    "name": "04-avenue-south-b",
+    "off": [
+     {
+      "frameMs": 554.1,
+      "calls": 124,
+      "tris": 188177
+     },
+     {
+      "frameMs": 567.2,
+      "calls": 132,
+      "tris": 195865
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 579.4,
+      "calls": 123,
+      "tris": 202957
+     },
+     {
+      "frameMs": 603.9,
+      "calls": 136,
+      "tris": 212077
+     }
+    ],
+    "dCalls": 4,
+    "dTris": 16212,
+    "dMs": 31
+   },
+   {
+    "name": "05-avenue-south-c",
+    "off": [
+     {
+      "frameMs": 560.7,
+      "calls": 87,
+      "tris": 161801
+     },
+     {
+      "frameMs": 542.8,
+      "calls": 87,
+      "tris": 161873
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 580.1,
+      "calls": 88,
+      "tris": 174855
+     },
+     {
+      "frameMs": 563.9,
+      "calls": 88,
+      "tris": 175431
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13558,
+    "dMs": 20.3
+   },
+   {
+    "name": "06-gare-west-gate",
+    "off": [
+     {
+      "frameMs": 843.9,
+      "calls": 192,
+      "tris": 219520
+     },
+     {
+      "frameMs": 1021.4,
+      "calls": 191,
+      "tris": 219830
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 910.2,
+      "calls": 192,
+      "tris": 232760
+     },
+     {
+      "frameMs": 962.2,
+      "calls": 194,
+      "tris": 233110
+     }
+    ],
+    "dCalls": 3,
+    "dTris": 13280,
+    "dMs": 3.6
+   },
+   {
+    "name": "07-avenue-to-place",
+    "off": [
+     {
+      "frameMs": 480.2,
+      "calls": 86,
+      "tris": 153503
+     },
+     {
+      "frameMs": 521.3,
+      "calls": 80,
+      "tris": 149431
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 502.8,
+      "calls": 81,
+      "tris": 162041
+     },
+     {
+      "frameMs": 565.2,
+      "calls": 90,
+      "tris": 168495
+     }
+    ],
+    "dCalls": 10,
+    "dTris": 19064,
+    "dMs": 33.3
+   },
+   {
+    "name": "08-road-east",
+    "off": [
+     {
+      "frameMs": 550.5,
+      "calls": 101,
+      "tris": 148652
+     },
+     {
+      "frameMs": 585.4,
+      "calls": 107,
+      "tris": 153060
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 598.9,
+      "calls": 108,
+      "tris": 165934
+     },
+     {
+      "frameMs": 548.9,
+      "calls": 109,
+      "tris": 166000
+     }
+    ],
+    "dCalls": 2,
+    "dTris": 12940,
+    "dMs": 5.9
+   },
+   {
+    "name": "09-place-approach",
+    "off": [
+     {
+      "frameMs": 578.1,
+      "calls": 88,
+      "tris": 140628
+     },
+     {
+      "frameMs": 571,
+      "calls": 88,
+      "tris": 140658
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 650.8,
+      "calls": 89,
+      "tris": 153806
+     },
+     {
+      "frameMs": 594.3,
+      "calls": 89,
+      "tris": 153736
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 13078,
+    "dMs": 48
+   },
+   {
+    "name": "10-grand-place",
+    "off": [
+     {
+      "frameMs": 799.5,
+      "calls": 136,
+      "tris": 169750
+     },
+     {
+      "frameMs": 769.8,
+      "calls": 136,
+      "tris": 169626
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 753.8,
+      "calls": 137,
+      "tris": 182826
+     },
+     {
+      "frameMs": 788.9,
+      "calls": 141,
+      "tris": 184990
+     }
+    ],
+    "dCalls": 5,
+    "dTris": 15364,
+    "dMs": -13.3
+   },
+   {
+    "name": "11-shops-court",
+    "off": [
+     {
+      "frameMs": 585.1,
+      "calls": 47,
+      "tris": 136483
+     },
+     {
+      "frameMs": 569.1,
+      "calls": 47,
+      "tris": 136797
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 728.7,
+      "calls": 48,
+      "tris": 149635
+     },
+     {
+      "frameMs": 538.8,
+      "calls": 48,
+      "tris": 149585
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12788,
+    "dMs": 56.6
+   },
+   {
+    "name": "12-boutique-diallo",
+    "off": [
+     {
+      "frameMs": 757.4,
+      "calls": 63,
+      "tris": 153780
+     },
+     {
+      "frameMs": 697.8,
+      "calls": 63,
+      "tris": 153218
+     }
+    ],
+    "on": [
+     {
+      "frameMs": 721.9,
+      "calls": 64,
+      "tris": 166272
+     },
+     {
+      "frameMs": 707.1,
+      "calls": 64,
+      "tris": 166200
+     }
+    ],
+    "dCalls": 1,
+    "dTris": 12982,
+    "dMs": -13.1
+   }
+  ]
+ },
+ "frameMedianMs": 543.1,
+ "callsMax": 209,
+ "trisMax": 243354,
+ "route": {
+  "metres": 363,
+  "blocked": [],
+  "blockedBySlice": 0
+ },
+ "errors": []
+}

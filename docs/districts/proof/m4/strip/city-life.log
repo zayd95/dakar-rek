@@ -1,0 +1,41 @@
+PASS: desktop: corniche contains new active places 4 places
+PASS: desktop: corniche service positions are reachable 
+PASS: desktop: corniche has residents at its new places 
+PASS: desktop: almadies contains new active places 9 places
+PASS: desktop: almadies service positions are reachable 
+PASS: desktop: almadies has residents at its new places 
+PASS: desktop: plateau contains new active places 4 places
+PASS: desktop: plateau service positions are reachable 
+PASS: desktop: plateau has residents at its new places 
+PASS: desktop: pikine contains new active places 9 places
+PASS: desktop: pikine service positions are reachable 
+PASS: desktop: pikine has residents at its new places 
+PASS: desktop: Corniche crossing connects to the fishing beach {"ok":true}
+PASS: desktop: directory sets a walking destination 
+PASS: desktop: fishing service pays and consumes energy 
+PASS: desktop: an exhausted player cannot take the fishing job 
+PASS: desktop: mall purchase debits once and feeds the player 
+PASS: desktop: the mall entrance can be walked through 
+PASS: desktop: Terrasse de Ngor uses its authored hospitality frontage {"id":"almadies:rooftop:almadies","x":-30,"z":-105.1}
+PASS: desktop: the marked Terrasse visitor bay is free of static colliders 
+PASS: desktop: no JavaScript errors 
+PASS: phone: corniche contains new active places 4 places
+PASS: phone: corniche service positions are reachable 
+PASS: phone: corniche has residents at its new places 
+PASS: phone: almadies contains new active places 9 places
+PASS: phone: almadies service positions are reachable 
+PASS: phone: almadies has residents at its new places 
+PASS: phone: plateau contains new active places 4 places
+PASS: phone: plateau service positions are reachable 
+PASS: phone: plateau has residents at its new places 
+PASS: phone: pikine contains new active places 9 places
+PASS: phone: pikine service positions are reachable 
+PASS: phone: pikine has residents at its new places 
+PASS: phone: Corniche crossing connects to the fishing beach {"ok":true}
+PASS: phone: directory sets a walking destination 
+PASS: phone: fishing service pays and consumes energy 
+PASS: phone: an exhausted player cannot take the fishing job 
+PASS: phone: mall purchase debits once and feeds the player 
+PASS: phone: Terrasse de Ngor uses its authored hospitality frontage {"id":"almadies:rooftop:almadies","x":-30,"z":-105.1}
+PASS: phone: the marked Terrasse visitor bay is free of static colliders 
+PASS: phone: no JavaScript errors 

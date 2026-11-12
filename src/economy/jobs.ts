@@ -2,17 +2,20 @@ import type { HubId, ActiveJob } from '../core/types';
 import type { GameState } from '../core/state';
 import { DONE_JOBS_MAX } from '../core/save';
 import { ECONOMY } from './config';
+import { payPreview, workPay } from './polyvalence';
 
 /**
  * Tiak Tiak deliveries — data-driven routes and the pure job logic (no Three.js: unit-tested).
  * The courier walks for now (no driving physics). Places are found in the hub by interactable id fragment.
- * Client names and route texts are a PROVISIONAL DRAFT (fictional people; Habib to review).
+ * Client names and route texts are a draft (fictional people; Habib to review the texts). The pay table (config.ts) is the game's own.
  * Money is game money saved on this device: there is no shared or server economy yet.
  */
 export interface Place { frag: string; name: string }
 export interface Route {
   id: string; hub: HubId;
   from: Place; to: Place;
+  /** A delivery to another district (the parcel picked up in `hub`, handed over in `toHub`, by the roads: the Jakarta's work). */
+  toHub?: HubId;
   /** What is carried (shown in the offer). */
   what: string;
   /** Only offered once this flag is set (a client's recommendation). */
@@ -30,7 +33,7 @@ export const CLIENTS: Partial<Record<HubId, { name: string; flag: string }>> = {
  * the Banque Teranga agencies, the squares, Sandaga, Atelier Ndeye, Dakar Réparation): no new points are invented.
  * `frag` matches the place's interactable id (src/world/builder.ts kiosks, src/world/city.ts places).
  */
-const P = {
+export const P = {
   mame: { frag: ':gargote:', name: 'Gargote Mame Diarra' }, maiga: { frag: ':maiga:', name: 'Maïga du marché' },
   pathe: { frag: ':dibiterie:', name: 'Dibiterie Chez Pathé' }, garage: { frag: ':garage:', name: 'Garage Modou' },
   diallo: { frag: ':city:boutique', name: 'Boutique Diallo' }, salonAwa: { frag: ':city:salon-tech', name: 'Salon Awa' },
@@ -39,6 +42,7 @@ const P = {
   market: { frag: ':market', name: 'Étal de Sandaga' }, bankPl: { frag: ':city:bank', name: 'Banque Teranga · Plateau' },
   ndeye: { frag: ':city:boutique', name: 'Atelier Ndeye · couture' }, reparation: { frag: ':city:salon-tech', name: 'Dakar Réparation' },
   squarePl: { frag: ':city:square', name: 'Place de la Médina' },
+  pointe: { frag: ':restaurant:', name: 'Restaurant Le Pointe · Almadies' }, etudiants: { frag: ':gargote:', name: 'Gargote des étudiants · Fann' },
 } satisfies Record<string, Place>;
 
 export const ROUTES: Route[] = [
@@ -53,10 +57,20 @@ export const ROUTES: Route[] = [
   { id: 'pl_medina_square', hub: 'plateau', from: P.medina, to: P.squarePl, what: 'Dibi pour les joueurs de dames' },
   { id: 'pl_atelier_reparation', hub: 'plateau', from: P.ndeye, to: P.reparation, what: 'Housses de téléphone cousues' },
   { id: 'pl_reco_reparation_bank', hub: 'plateau', from: P.reparation, to: P.bankPl, what: 'Téléphones réparés (recommandée par M. Sarr)', needFlag: 'tiak_client_plateau' },
+  // between districts, by the roads (src/road/graph.ts): the parcel goes with the courier from one district to the other
+  { id: 'x_pk_pl_diallo_ndeye', hub: 'pikine', toHub: 'plateau', from: P.diallo, to: P.ndeye, what: 'Un rouleau de bazin pour l’Atelier Ndeye' },
+  { id: 'x_pl_pk_market_mame', hub: 'plateau', toHub: 'pikine', from: P.market, to: P.mame, what: 'Épices et poisson séché de Sandaga pour Mame Diarra' },
+  { id: 'x_pk_al_maiga_pointe', hub: 'pikine', toHub: 'almadies', from: P.maiga, to: P.pointe, what: 'Bissap et gingembre pour le Pointe' },
+  { id: 'x_pl_co_fatou_etudiants', hub: 'plateau', toHub: 'corniche', from: P.fatou, to: P.etudiants, what: 'Thiéboudienne pour la gargote des étudiants' },
 ];
+/** The district where a run's parcel is handed over. */
+export const deliveryHub = (r: Route): HubId => r.toHub ?? r.hub;
 
 export const routeById = (id: string) => ROUTES.find(r => r.id === id);
+/** Base pay of a route (the design table); what is paid is scaled by polyvalence at hand-over. */
 export const routePay = (r: Route) => ECONOMY.tiak.pay[r.id] ?? 1000;
+/** Pay of a route if delivered now, on time, with the polyvalence multiplier (offers and the HUD line). */
+export const payNow = (s: GameState, base: number) => payPreview(s, base, 'livraison');
 
 /** Offers in a hub: recommended (better-paid) runs first once unlocked. */
 export function offers(s: GameState, hub: HubId): Route[] {
@@ -118,18 +132,18 @@ export interface Completion { runId: string; route: Route; paid: number; late: b
 
 /**
  * Hand over the parcel. Pays once per run id: a run already completed (or not the one in progress, or cancelled)
- * pays nothing. Late deliveries pay less, never a negative amount.
+ * pays nothing. Late deliveries pay less, never a negative amount. The pay is scaled by polyvalence (a delivery counts).
  */
 export function completeJob(s: GameState, runId: string): Completion | null {
   const j = s.data.jobs, a = j.active;
-  if (!a || a.runId !== runId || a.stage !== 'deliver' || j.done.includes(runId)) return null;
+  if (!a || a.tour || a.runId !== runId || a.stage !== 'deliver' || j.done.includes(runId)) return null;   // a tour is handed over stop by stop (tour.ts)
   const route = routeById(a.routeId);
   j.active = null;
   j.done.push(runId);
   if (j.done.length > DONE_JOBS_MAX) j.done.splice(0, j.done.length - DONE_JOBS_MAX);
   if (!route) return null;
   const late = s.data.playedMs - a.startedMs > a.limitMs;
-  const pay = Math.max(0, Math.round(late ? a.pay * ECONOMY.tiak.latePayFactor : a.pay));
+  const pay = Math.max(0, workPay(s, late ? a.pay * ECONOMY.tiak.latePayFactor : a.pay, 'livraison'));
   const paid = s.addMoney(pay, `Livraison Tiak Tiak → ${route.to.name}${late ? ' (en retard)' : ''}`);
   s.adjust(ECONOMY.tiak.fatigue);
   s.count('livraisons'); s.count('actions');

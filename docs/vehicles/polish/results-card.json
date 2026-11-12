@@ -1,0 +1,28 @@
+{
+ "journey": "card",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 0.7,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "the card after a delivery: what was done, where, what it paid, the run of days",
+   "ok": true,
+   "detail": "🛵 Livraison réussie Maïga du marché → Garage Modou Payé 1 100 F +1 100 F Série 1 jour actif Premier jour actif ENSUITE Livré à l’heure. ✕"
+  },
+  {
+   "name": "the card is clear of the stick and the action button, and a tap puts it away",
+   "ok": true,
+   "detail": "{\"tapped\":true,\"gone\":true,\"over\":false}"
+  },
+  {
+   "name": "left alone, the card goes by itself (7 s of the page's time; longer on this software renderer)",
+   "ok": true,
+   "detail": "{\"shownForMs\":7457}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

@@ -33,9 +33,11 @@ const BY_ID: Record<string, [Kind, string?]> = {
   laver: ['wash'], ablutions: ['wash'], preparer: ['groom'], tapis: ['stretch'], radio: ['listen'], tele: ['tv'], dormir: ['sleep'], coiffure: ['haircut'],
 };
 
-function kindOf(id: string, step: Step, seated: boolean): [Kind, string?] | null {
+function kindOf(id: string, step: Step, seated: boolean, plain = false): [Kind, string?] | null {
+  if (step.gesture) return null;                                        // the shared timing gesture shows itself (src/activity/gestures.ts)
   const k = BY_ID[id];
   if (k) return k;
+  if (step.clip && !plain) return null;                                 // a venue's own pose (prayer, dance, a cook's Grab…): left to it
   if (step.primitive === 'sleep') return ['sleep'];
   if (seated) return null;                                              // meals at a table: src/game/meals.ts
   switch (step.primitive) {
@@ -46,7 +48,7 @@ function kindOf(id: string, step: Step, seated: boolean): [Kind, string?] | null
     case 'buy': case 'sell': return ['pay'];
     case 'wash': return ['wash'];
     case 'pray': case 'wait': return null;
-    default: return step.effects?.counters?.chats ? ['talk'] : ['watch'];
+    default: return !plain ? null : step.effects?.counters?.chats ? ['talk'] : ['watch'];
   }
 }
 
@@ -320,7 +322,7 @@ function carry(e: Env, type: string): Perf {
       const { fwd: F, right: Rt } = bodyAxes(h, AX.f, AX.r);
       const chest = h.bone('chest'), head = h.bone('head');
       if (inHands && chest && head) {
-        const belly = chest.getWorldPosition(tmp).addScaledVector(F, 0.36).addScaledVector(UP, -0.36);
+        const belly = chest.getWorldPosition(tmp).addScaledVector(F, 0.34).addScaledVector(UP, -0.46);
         const top = head.getWorldPosition(tmp2).addScaledVector(UP, 0.2);
         const at = lift <= 1 ? slot.clone().lerp(belly, lift) : belly.lerp(top, lift - 1);
         inHands.obj.position.copy(at); inHands.obj.rotation.y = h.group.rotation.y;
@@ -347,9 +349,10 @@ function carry(e: Env, type: string): Perf {
  * place's own table is used when there is one close by, else a small work table is set up.
  */
 function handwork(e: Env, type: string): Perf {
-  const walkMax = Math.min(3.5, e.seconds * 0.4 * 1.6);
+  // a brisk walk to the stall, at most 45 % of the step (the rest is work)
+  const walkMax = Math.min(3.6, e.seconds * 0.45 * 1.8);
   const b = counterAt(e, walkMax) ?? workTable(e);
-  const walkT = b.own ? Math.hypot(b.stand.x - e.O.x, b.stand.z - e.O.z) / 1.6 : 0;
+  const walkT = b.own ? Math.hypot(b.stand.x - e.O.x, b.stand.z - e.O.z) / 1.8 : 0;
   const workT = Math.max(0.5, e.seconds - walkT - 0.15);
   const n = Math.max(3, Math.min(8, Math.round(workT * 1.1))), each = workT / n;
   const left = b.at.clone().addScaledVector(b.right, -0.3), right = b.at.clone().addScaledVector(b.right, 0.3);
@@ -493,13 +496,15 @@ function look(e: Env): Perf {
 function sip(e: Env, type: string, eat: boolean): Perf {
   const { obj, fill, other, long } = held(type); e.scene.add(obj); if (other) e.scene.add(other);
   const full = fill.scale.clone(), base = fill.position.clone();
+  // a whole number of sips (or bites) in the step, at least one even in a short one (a café Touba is 1.5 s)
+  const cycle = e.seconds / Math.max(1, Math.round(e.seconds / 2.4));
   let k = 0, raise = 0;
   e.move(e.O.x, e.O.z, e.f, 0);
   if (e.body) e.body.hold = 'Idle';
   return {
     update(t) {
       k = Math.min(1, t / e.seconds);
-      const c = (t % 2.4) / 2.4; raise = c < 0.4 ? 0 : c < 0.56 ? smooth((c - 0.4) / 0.16) : c < 0.82 ? 1 : 1 - smooth((c - 0.82) / 0.16);
+      const c = (t % cycle) / cycle; raise = c < 0.4 ? 0 : c < 0.56 ? smooth((c - 0.4) / 0.16) : c < 0.82 ? 1 : 1 - smooth((c - 0.82) / 0.16);
       if (eat) { const s = 1 - 0.65 * k; obj.scale.set(s, 1, 1); }
       else { fill.scale.y = full.y * Math.max(0.08, 1 - 0.9 * k); fill.position.y = base.y - (1 - fill.scale.y / full.y) * (type === 'coffee' ? 0.035 : 0.06); }
     },
@@ -703,7 +708,7 @@ function stop(ctx: GameCtx) {
   cur.root.removeFromParent();
   cur.root.traverse(o => { const m = o as THREE.Mesh; if (m.geometry && !(o.parent instanceof THREE.Bone)) m.geometry.dispose(); });
   const b = ctx.player.body(); if (b) b.overlay = null;
-  ctx.player.drive(null);
+  ctx.player.drive?.(null);
   cur = null;
 }
 
@@ -712,9 +717,9 @@ const shown = (o: THREE.Object3D | null, root: THREE.Object3D) => { for (; o && 
 const grow = (c: Rect, m: number): Rect => ({ x0: c.x0 - m, z0: c.z0 - m, x1: c.x1 + m, z1: c.z1 + m });
 const within = (p: { x: number; z: number }, c: Rect) => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1;
 
-function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number } | undefined, key: string) {
+function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number } | undefined, key: string, plain = false) {
   const seated = !!ctx.player.seated();
-  const kind = kindOf(id, step, seated);
+  const kind = kindOf(id, step, seated, plain);
   if (!kind) return;
   const [k, type] = kind;
   if (seated && !['tv', 'sleep', 'haircut'].includes(k)) return;      // seated: the meal module does the rest
@@ -726,7 +731,7 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
   const space = inside ? inside.int.group : w?.group ?? null;
   const bounds = inside ? inside.int.bounds : w?.bounds ?? null;
   let f = at && Math.hypot(at.x - p.x, at.z - p.z) > 0.3 ? angleTo(p, at) : ctx.player.facing();
-  if ((!at || Math.hypot(at.x - p.x, at.z - p.z) <= 0.3) && ['drink', 'eat', 'pay', 'talk'].includes(k)) {
+  if ((!at || Math.hypot(at.x - p.x, at.z - p.z) <= 0.3) && ['drink', 'eat', 'pay', 'talk', 'watch'].includes(k)) {
     // standing on the place's own spot: turn to its counter when there is one close by
     let best = 3;
     for (const c of near) {
@@ -750,8 +755,9 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
     floor(x, z) {
       const feet = env.ground(x, z);
       if (!space) return feet;
-      ray.set(V(x, feet + 0.45, z), DOWN); ray.far = 1.2;
-      const hit = ray.intersectObject(space, true).find(i => shown(i.object, space) && i.point.y < feet + 0.2);
+      // up to knee height: a deck or a pier the feet go through (not a collider) still carries the piles
+      ray.set(V(x, feet + 0.8, z), DOWN); ray.far = 1.5;
+      const hit = ray.intersectObject(space, true).find(i => shown(i.object, space) && i.point.y < feet + 0.5);
       return hit ? hit.point.y : feet;
     },
     // a collider the walk starts in (standing against a counter) only blocks if the walk goes into it
@@ -762,7 +768,7 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
       const v = last && dt > 0 ? Math.hypot(x - last.x, z - last.z) / dt : 0;
       last = { x, z };
       ctx.player.pos.set(x, env.ground(x, z), z);
-      ctx.player.drive({ speed: v > 0.15 ? v : 0, facing: yaw });
+      ctx.player.drive?.({ speed: v > 0.15 ? v : 0, facing: yaw });
     },
   };
   const perf: Perf = k === 'carry' ? carry(env, type ?? 'carton') : k === 'handwork' ? handwork(env, type ?? 'parts') : k === 'run' ? run(env)
@@ -780,12 +786,14 @@ export const perform: GameModule = {
   hubLoaded: ctx => { stop(ctx); if (barber) { barber.dispose(); barber = null; } },
   spaceChanged: ctx => stop(ctx),
   update(ctx, dt) {
-    const c = ctx.activities.current;
+    // a composed activity's step, or a plain content action (one timed step: shown even without its own pose)
+    const a = ctx.activities.current;
+    const c = a ? { id: a.spec.id, step: a.step, t: a.t, at: a.ctx.at, key: `${a.spec.id}:${a.index}`, walking: a.walking, plain: !!a.spec.plain } : null;
     const timed = c && !c.walking && (c.step.seconds ?? 0) > 0 && ctx.mode() === 'busy';
-    const key = c ? `${c.spec.id}:${c.index}` : '';
+    const key = c ? c.key : '';
     if (cur && (!timed || cur.key !== key)) stop(ctx);
     if (!timed || !c) return;
-    if (!cur) begin(ctx, c.spec.id, c.step, c.ctx.at, key);
+    if (!cur) begin(ctx, c.id, c.step, c.at, key, c.plain);
     if (!cur) return;
     cur.perf.update(c.t, dt);
   },

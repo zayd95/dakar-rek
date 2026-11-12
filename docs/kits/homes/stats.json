@@ -1,0 +1,173 @@
+{
+ "errors": [],
+ "stats": {
+  "mini_studio": {
+   "id": "viewer_mini_studio_own_n_0",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 106485
+  },
+  "studio": {
+   "id": "viewer_studio_own_n_1",
+   "level": "",
+   "calls": 7,
+   "tris": 4996,
+   "area": 35,
+   "bytes": 95853
+  },
+  "f2": {
+   "id": "viewer_f2_own_n_2",
+   "level": "",
+   "calls": 10,
+   "tris": 7432,
+   "area": 63,
+   "bytes": 101756
+  },
+  "f3": {
+   "id": "viewer_f3_own_n_3",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 80922
+  },
+  "house": {
+   "id": "viewer_house_own_n_4",
+   "level": "rdc",
+   "calls": 16,
+   "tris": 8420,
+   "area": 216,
+   "bytes": 41828
+  },
+  "villa": {
+   "id": "viewer_villa_own_n_5",
+   "level": "rdc",
+   "calls": 18,
+   "tris": 9044,
+   "area": 311.75999999999993,
+   "bytes": 63441
+  },
+  "residence": {
+   "id": "viewer_residence_own_n_6",
+   "level": "etage",
+   "calls": 14,
+   "tris": 9518,
+   "area": 330,
+   "bytes": 42024
+  },
+  "house-etage": {
+   "id": "viewer_house_own_n_7",
+   "level": "etage",
+   "calls": 20,
+   "tris": 7066,
+   "area": 216,
+   "bytes": 54053
+  },
+  "villa-etage": {
+   "id": "viewer_villa_own_n_8",
+   "level": "etage",
+   "calls": 28,
+   "tris": 9626,
+   "area": 311.75999999999993,
+   "bytes": 74156
+  },
+  "mini_studio-pikine": {
+   "id": "viewer_mini_studio_pikine_n_9",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 106485
+  },
+  "mini_studio-mermoz": {
+   "id": "viewer_mini_studio_mermoz_n_10",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 106149
+  },
+  "mini_studio-plateau": {
+   "id": "viewer_mini_studio_plateau_n_11",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 94996
+  },
+  "mini_studio-corniche": {
+   "id": "viewer_mini_studio_corniche_n_12",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 105800
+  },
+  "mini_studio-almadies": {
+   "id": "viewer_mini_studio_almadies_n_13",
+   "level": "",
+   "calls": 7,
+   "tris": 4778,
+   "area": 26.68,
+   "bytes": 109928
+  },
+  "f3-pikine": {
+   "id": "viewer_f3_pikine_n_14",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 80922
+  },
+  "f3-mermoz": {
+   "id": "viewer_f3_mermoz_n_15",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 86166
+  },
+  "f3-plateau": {
+   "id": "viewer_f3_plateau_n_16",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 73655
+  },
+  "f3-corniche": {
+   "id": "viewer_f3_corniche_n_17",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 86179
+  },
+  "f3-almadies": {
+   "id": "viewer_f3_almadies_n_18",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 87499
+  },
+  "f3-mermoz-miroir": {
+   "id": "viewer_f3_mermoz_m_19",
+   "level": "",
+   "calls": 11,
+   "tris": 8906,
+   "area": 82.5,
+   "bytes": 85058
+  },
+  "studio-mermoz-nuit": {
+   "id": "viewer_studio_mermoz_n_20",
+   "level": "",
+   "calls": 7,
+   "tris": 4996,
+   "area": 35,
+   "bytes": 121291
+  }
+ }
+}

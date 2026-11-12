@@ -1,0 +1,77 @@
+[
+  {
+    "name": "a new player: no lead to chase",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "a Tiak delivery is paid",
+    "ok": true,
+    "detail": "{\"runId\":\"c38ce558-1-400\",\"paid\":1200,\"late\":false,\"newClient\":\"Awa, du Salon Awa\"}"
+  },
+  {
+    "name": "its work card is shown first",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no lead is offered over the work card",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "portrait: the offer's « Y aller » is whole (not cut by the card), 44 px tall, and the card ends above the middle",
+    "ok": true,
+    "detail": "{\"inside\":true,\"h\":44,\"card\":[128,306],\"mid\":422}"
+  },
+  {
+    "name": "then ONE lead is offered: Pape Sarr and a car on credit, in words that do not promise a loan",
+    "ok": true,
+    "detail": "🚗Une voiture à créditTu travailles sérieusement. Pape Sarr fait crédit aux gens qu’il connaît : va te présenter à Sarr Auto, il te dira ce qu’il attend.Y allerPlus tard✕"
+  },
+  {
+    "name": "« Y aller » marks Sarr Auto",
+    "ok": true,
+    "detail": "teranga:dealer:pikine"
+  },
+  {
+    "name": "the goal line leads there",
+    "ok": true,
+    "detail": "↑Sarr Auto · 144 m"
+  },
+  {
+    "name": "the followed lead is not offered or listed again with the same facts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the phone lists the open leads (no service this build lacks)",
+    "ok": true,
+    "detail": "Arranger chez toi · Voir du monde"
+  },
+  {
+    "name": "« Pas maintenant » keeps one away",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "never offered at the wheel",
+    "ok": true,
+    "detail": "{\"boarded\":true,\"driving\":true}"
+  },
+  {
+    "name": "…and offered once back on foot, from the facts as they are now (a car owned: no more car credit)",
+    "ok": true,
+    "detail": "🧺Ta première affaireAvec 4 034 200 F, tu peux t’offrir une table de bana-bana (50 000 F) : elle rapporte pendant que tu travailles ailleurs.Y allerPlus tard✕"
+  },
+  {
+    "name": "landscape: the offer's « Y aller » is whole and 44 px tall, the card clear of the joystick",
+    "ok": true,
+    "detail": "{\"fitL\":{\"inside\":true,\"h\":44,\"card\":[118,178],\"mid\":195},\"joy\":true}"
+  },
+  {
+    "name": "no JavaScript errors",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -2,17 +2,17 @@
   {
     "name": "desktop: ☰ opens the phone on the home screen",
     "ok": true,
-    "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+    "detail": "{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
   },
   {
-    "name": "desktop: status bar shows city time, home widget the FCFA balance",
+    "name": "desktop: the home shows the city time, the FCFA balance and the five destinations",
     "ok": true,
-    "detail": "03:22 4G | 💰 Solde 3 000 F"
+    "detail": "Pikine · Jeu. 19:01 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
   },
   {
     "name": "desktop: hook apps shown only with their module",
     "ok": true,
-    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+    "detail": "profil,notifs,carnet,sante,habitants,travailler,travail,vtc,affaires,arene,portefeuille,credits,logement,maison,biens,carte,quartier,cesoir,actus,meteo,horloge,calcul,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
   },
   {
     "name": "desktop: no movement while the phone is open",
@@ -22,12 +22,12 @@
   {
     "name": "desktop: app portefeuille opens",
     "ok": true,
-    "detail": "Portefeuille"
+    "detail": "Argent"
   },
   {
     "name": "desktop: app carte opens",
     "ok": true,
-    "detail": "Carte et déplacements"
+    "detail": "Carte"
   },
   {
     "name": "desktop: app arene opens",
@@ -42,7 +42,7 @@
   {
     "name": "desktop: app actus opens",
     "ok": true,
-    "detail": "Actus · Dakar"
+    "detail": "Actus"
   },
   {
     "name": "desktop: app sante opens",
@@ -80,9 +80,9 @@
     "detail": "Réglages"
   },
   {
-    "name": "desktop: map highlights the current hub and its places",
+    "name": "desktop: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide",
     "ok": true,
-    "detail": "{\"here\":\"pikine\",\"hubs\":4}"
+    "detail": "{\"hubs\":[\"plateau:60 min\",\"corniche:75 min\",\"almadies:105 min\"],\"card\":{\"text\":\"Plateau · Médina\\n\\n🚶 60 min · gratuit\\n🚌 Car rapide 700 F · ≈ 20 min\\n🛣️ Au volant · 1,4 km\\n\\n🚶 Y aller à pied\\n🚗 Itinéraire en voiture\",\"walks\":1}}"
   },
   {
     "name": "desktop: wallet shows game money and the ledger",
@@ -100,6 +100,11 @@
     "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
   },
   {
+    "name": "desktop: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf » seulMasquée\"},{\"s\":\"on\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf (merci) »Affichée\"}]"
+  },
+  {
     "name": "desktop: camera sensitivity setting",
     "ok": true,
     "detail": ""
@@ -110,14 +115,14 @@
     "detail": ""
   },
   {
-    "name": "desktop: save now",
+    "name": "desktop: save now (said in the phone)",
     "ok": true,
     "detail": ""
   },
   {
     "name": "desktop: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 0.56"
+    "detail": "moved 1.16"
   },
   {
     "name": "desktop: M reopens on the last app",
@@ -127,12 +132,12 @@
   {
     "name": "desktop: quality change inside the room keeps the player inside",
     "ok": true,
-    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
   },
   {
     "name": "desktop: exit still leads to the street after the change",
     "ok": true,
-    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"}"
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
   },
   {
     "name": "desktop: Messages tile closes the phone and calls its hook",
@@ -167,17 +172,17 @@
   {
     "name": "phone: ☰ opens the phone on the home screen",
     "ok": true,
-    "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+    "detail": "{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
   },
   {
-    "name": "phone: status bar shows city time, home widget the FCFA balance",
+    "name": "phone: the home shows the city time, the FCFA balance and the five destinations",
     "ok": true,
-    "detail": "06:56 4G | 💰 Solde 3 000 F"
+    "detail": "Pikine · Jeu. 20:33 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
   },
   {
     "name": "phone: hook apps shown only with their module",
     "ok": true,
-    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+    "detail": "profil,notifs,carnet,sante,habitants,travailler,travail,vtc,affaires,arene,portefeuille,credits,logement,maison,biens,carte,quartier,cesoir,actus,meteo,horloge,calcul,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
   },
   {
     "name": "phone: no movement while the phone is open",
@@ -187,12 +192,12 @@
   {
     "name": "phone: app portefeuille opens",
     "ok": true,
-    "detail": "Portefeuille"
+    "detail": "Argent"
   },
   {
     "name": "phone: app carte opens",
     "ok": true,
-    "detail": "Carte et déplacements"
+    "detail": "Carte"
   },
   {
     "name": "phone: app arene opens",
@@ -207,7 +212,7 @@
   {
     "name": "phone: app actus opens",
     "ok": true,
-    "detail": "Actus · Dakar"
+    "detail": "Actus"
   },
   {
     "name": "phone: app sante opens",
@@ -245,9 +250,9 @@
     "detail": "Réglages"
   },
   {
-    "name": "phone: map highlights the current hub and its places",
+    "name": "phone: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide",
     "ok": true,
-    "detail": "{\"here\":\"pikine\",\"hubs\":4}"
+    "detail": "{\"hubs\":[\"plateau:60 min\",\"corniche:75 min\",\"almadies:105 min\"],\"card\":{\"text\":\"Plateau · Médina\\n\\n🚶 60 min · gratuit\\n🚌 Car rapide 700 F · ≈ 20 min\\n🛣️ Au volant · 1,4 km\\n\\n🚶 Y aller à pied\\n🚗 Itinéraire en voiture\",\"walks\":1}}"
   },
   {
     "name": "phone: wallet shows game money and the ledger",
@@ -265,6 +270,11 @@
     "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
   },
   {
+    "name": "phone: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf » seulMasquée\"},{\"s\":\"on\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf (merci) »Affichée\"}]"
+  },
+  {
     "name": "phone: camera sensitivity setting",
     "ok": true,
     "detail": ""
@@ -275,14 +285,14 @@
     "detail": ""
   },
   {
-    "name": "phone: save now",
+    "name": "phone: save now (said in the phone)",
     "ok": true,
     "detail": ""
   },
   {
     "name": "phone: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.12"
+    "detail": "moved 1.30"
   },
   {
     "name": "phone: M reopens on the last app",
@@ -292,12 +302,12 @@
   {
     "name": "phone: quality change inside the room keeps the player inside",
     "ok": true,
-    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
   },
   {
     "name": "phone: exit still leads to the street after the change",
     "ok": true,
-    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"}"
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
   },
   {
     "name": "phone: Messages tile closes the phone and calls its hook",
@@ -325,9 +335,9 @@
     "detail": ""
   },
   {
-    "name": "phone: landscape device fits the screen",
+    "name": "phone: landscape phone fits the screen, the destinations in view",
     "ok": true,
-    "detail": "{\"x\":22.71820068359375,\"y\":31.921005249023438,\"width\":693.1104736328125,\"height\":382.89234924316406}"
+    "detail": "{\"box\":{\"x\":0,\"y\":0,\"width\":844,\"height\":390},\"dock\":{\"x\":369.5625,\"y\":52,\"width\":458.4375,\"height\":268.3125}}"
   },
   {
     "name": "phone: no page errors",

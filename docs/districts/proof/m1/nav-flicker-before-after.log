@@ -1,0 +1,15 @@
+# scripts/check-nav-flicker.mjs, before the fix (build 9aff7f0) and after it (this branch). Per run: [name, changes of the goal line, « Fais demi-tour » shown].
+## before
+plateau [["plateau north on x=-60",7,8],["plateau west on z=60",7,7]]
+pikine [["pikine north on x=-60",0,0],["pikine west on z=60",6,7]]
+almadies [["almadies north on x=-60",2,2],["almadies west on z=60",4,3]]
+corniche [["corniche north on x=-60",6,7],["corniche west on z=60",2,2]]
+mermoz [["mermoz north on x=-60",4,6],["mermoz west on z=60",5,3]]
+errors 0 []
+## after
+plateau [["plateau north on x=-60",8,0],["plateau west on z=60",8,0]]
+pikine [["pikine north on x=-60",7,0],["pikine west on z=60",7,0]]
+almadies [["almadies north on x=-60",8,0],["almadies west on z=60",7,0]]
+corniche [["corniche north on x=-60",7,0],["corniche west on z=60",8,0]]
+mermoz [["mermoz north on x=-60",7,0],["mermoz west on z=60",8,0]]
+errors 0 []

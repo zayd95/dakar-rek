@@ -1,0 +1,122 @@
+{
+ "quality": "medium",
+ "hub": {
+  "meshes": 381,
+  "tris": 257445,
+  "verts": 739746,
+  "colliders": 884
+ },
+ "points": [
+  {
+   "name": "01-room-door",
+   "frameMs": 620.4,
+   "calls": 82,
+   "tris": 134205
+  },
+  {
+   "name": "02-road-west",
+   "frameMs": 647.7,
+   "calls": 43,
+   "tris": 127722
+  },
+  {
+   "name": "03-avenue-south-a",
+   "frameMs": 1004.8,
+   "calls": 71,
+   "tris": 139147
+  },
+  {
+   "name": "04-avenue-south-b",
+   "frameMs": 717.8,
+   "calls": 121,
+   "tris": 179549
+  },
+  {
+   "name": "05-avenue-south-c",
+   "frameMs": 556.1,
+   "calls": 101,
+   "tris": 162697
+  },
+  {
+   "name": "06-gare-west-gate",
+   "frameMs": 569.5,
+   "calls": 200,
+   "tris": 224702
+  },
+  {
+   "name": "07-avenue-to-place",
+   "frameMs": 659.1,
+   "calls": 87,
+   "tris": 147945
+  },
+  {
+   "name": "08-road-east",
+   "frameMs": 622.7,
+   "calls": 98,
+   "tris": 148076
+  },
+  {
+   "name": "09-place-approach",
+   "frameMs": 590.8,
+   "calls": 98,
+   "tris": 146366
+  },
+  {
+   "name": "10-grand-place",
+   "frameMs": 630.2,
+   "calls": 58,
+   "tris": 126842
+  },
+  {
+   "name": "11-shops-court",
+   "frameMs": 633.9,
+   "calls": 48,
+   "tris": 134353
+  },
+  {
+   "name": "12-boutique-diallo",
+   "frameMs": 717.6,
+   "calls": 63,
+   "tris": 153394
+  }
+ ],
+ "slice": null,
+ "frameMedianMs": 633.9,
+ "callsMax": 200,
+ "trisMax": 224702,
+ "route": {
+  "metres": 363,
+  "blocked": [
+   {
+    "seg": 8,
+    "x": -60,
+    "z": 82.5,
+    "box": [
+     -60.85,
+     82.75,
+     -60.35,
+     83.25,
+     0.7,
+     0
+    ],
+    "slice": false
+   },
+   {
+    "seg": 9,
+    "x": -60,
+    "z": 92,
+    "box": [
+     -60.85,
+     91.75,
+     -60.35,
+     92.25,
+     0.7,
+     0
+    ],
+    "slice": false
+   }
+  ],
+  "blockedBySlice": 0
+ },
+ "errors": []
+}

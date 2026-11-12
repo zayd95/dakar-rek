@@ -1,0 +1,117 @@
+[
+  {
+    "name": "0. the player stands where the game offers an action (the control for what follows)",
+    "ok": true,
+    "detail": "{\"spot\":\"Ma chambre\",\"focus\":\"Ma chambre\",\"primary\":\"Entrer\"}"
+  },
+  {
+    "name": "0b. control: phone closed, the action key acts (a menu opens, the game leaves « play », or the player goes through the door)",
+    "ok": true,
+    "detail": "{\"modal\":false,\"mode\":\"play\",\"hub\":\"pikine\",\"far\":true}"
+  },
+  {
+    "name": "0c. back at the same spot, the action offered again",
+    "ok": true,
+    "detail": "{\"x\":-42,\"z\":-56.1,\"mode\":\"play\"}"
+  },
+  {
+    "name": "1. a tap on ☰ opens the phone on its home screen, the game hands over (movement off)",
+    "ok": true,
+    "detail": "{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+  },
+  {
+    "name": "1b. the status bar: the city’s time and day (the HUD’s own), the sky of the hour, the energy as the battery, « Fermer » (≥ 44 px); no app header on the home screen; the home indicator at the bottom (a 44 px target)",
+    "ok": true,
+    "detail": "{\"time\":\"10:09\",\"day\":\"Lun.\",\"sky\":\"☀️\",\"energy\":\"Énergie : 85 %\",\"net\":false,\"status\":{\"w\":390,\"h\":44,\"top\":0,\"bottom\":44},\"close\":{\"w\":83,\"h\":44,\"top\":0,\"bottom\":44},\"home\":{\"w\":390,\"h\":30,\"top\":814,\"bottom\":844},\"homeTarget\":44,\"head\":\"none\",\"hud\":\"☀️ Lundi · 10:10\"}"
+  },
+  {
+    "name": "1c. the home screen: a dock always in view (Carte, Travailler, Argent, Messages, and the library) and EVERY app as an icon, one tap away (hook apps with their module); at least four rows in view above the dock; every tile a finger wide; nothing sideways",
+    "ok": true,
+    "detail": "{\"dock\":[\"carte\",\"travailler\",\"portefeuille\",\"messages\",\"apps\"],\"grid\":[\"notifs\",\"profil\",\"logement\",\"vtc\",\"travail\",\"biens\",\"banque\",\"reglages\",\"pistes\",\"affaires\",\"credits\",\"maison\",\"habitants\",\"carnet\",\"sante\",\"quartier\",\"cesoir\",\"actus\",\"meteo\",\"arene\",\"horloge\",\"calcul\",\"aide\"],\"dockSeen\":true,\"rowsSeen\":23,\"small\":0,\"first\":true,\"dockBottom\":814,\"hookOk\":true,\"label\":12,\"sideways\":false}"
+  },
+  {
+    "name": "2. phone open: a thumb on the stick, a camera drag, a tap where the action button is, E, Espace and a held W — the player has not moved, the camera has not turned, nothing was triggered",
+    "ok": true,
+    "detail": "{\"moved\":0,\"cam\":0,\"stick\":{\"on\":false},\"a2\":{\"modal\":false,\"mode\":\"menu\",\"hub\":\"pikine\",\"far\":false}}"
+  },
+  {
+    "name": "3. ONE tap on the dock’s « Argent » opens the app: its header says « ‹ Accueil · Argent »",
+    "ok": true,
+    "detail": "{\"i\":{\"open\":true,\"screen\":\"portefeuille\",\"arg\":null,\"depth\":1,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\"},\"head\":{\"title\":\"Argent\",\"back\":\"Accueil\",\"shown\":true}}"
+  },
+  {
+    "name": "3b. Réglages › Tester le son: the header says « ‹ Réglages »; « back » returns to Réglages scrolled where it was left",
+    "ok": true,
+    "detail": "{\"deep\":{\"back\":\"Réglages\",\"top\":0},\"backTop\":260}"
+  },
+  {
+    "name": "4. the home indicator returns to the home screen from two screens deep; Réglages, tapped again, is where it was left (Tester le son, and under it the list at its scroll)",
+    "ok": true,
+    "detail": "{\"atHome\":{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\"},\"again\":{\"open\":true,\"screen\":\"sontest\",\"arg\":null,\"depth\":2,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\"},\"againBack\":\"Réglages\",\"againTop\":260}"
+  },
+  {
+    "name": "4b. the home indicator on the home screen stays on the home screen (the phone stays open)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "5. the library lists every app by theme; Profil opened from it says « ‹ Toutes les apps » and returns there",
+    "ok": true,
+    "detail": "{\"lib\":{\"groups\":[\"Ma vie\",\"Travail\",\"Argent et biens\",\"En ville\",\"Outils\"],\"tiles\":27},\"fromLib\":\"Toutes les apps\"}"
+  },
+  {
+    "name": "6. a double tap on ☰ opens the phone and leaves it open, whether the second tap lands on « Fermer » (now under the finger) or still on ☰",
+    "ok": true,
+    "detail": "{\"dm\":{\"first\":{},\"second\":\"ph-close-tx\"},\"open1\":true,\"dm2\":{\"first\":{},\"second\":{}},\"open2\":true}"
+  },
+  {
+    "name": "6b. a double tap on « Fermer » closes the phone and leaves it closed (☰ is under the finger: the second tap is dropped); the game is back in play",
+    "ok": true,
+    "detail": "{\"dc\":{\"first\":\"ph-close-tx\",\"second\":\"menuBtn\"},\"afterDouble\":{\"open\":false,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\"},\"modeD\":\"play\"}"
+  },
+  {
+    "name": "6c. two separate taps stay two taps: ☰ opens the phone, « Fermer » (the same spot) closes it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "7. « Fermer » pressed with Entrée, then with Espace (the game’s action keys): the phone closes and nothing is triggered in the street",
+    "ok": true,
+    "detail": "{\"afterEnter\":{\"modal\":false,\"mode\":\"play\",\"hub\":\"pikine\",\"far\":false},\"afterSpace\":{\"modal\":false,\"mode\":\"play\",\"hub\":\"pikine\",\"far\":false}}"
+  },
+  {
+    "name": "8. the phone closed: the player is where they stood, in play, no menu opened by anything above",
+    "ok": true,
+    "detail": "{\"closed\":{\"x\":-42,\"y\":0.1,\"z\":-56.1,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":0,\"cam\":0},\"a8\":{\"modal\":false,\"mode\":\"play\",\"hub\":\"pikine\",\"far\":false}}"
+  },
+  {
+    "name": "8b. nothing keeps walking after the phone (no stuck stick, no stuck key)",
+    "ok": true,
+    "detail": "drift 0.000"
+  },
+  {
+    "name": "8c. and the stick moves the player again (a few steps, as a thumb asks)",
+    "ok": true,
+    "detail": "moved 0.80 m"
+  },
+  {
+    "name": "9. ☰ tapped while the other thumb holds the stick: the phone opens, the walk stops, and it does not resume when the phone closes with the thumb still down",
+    "ok": true,
+    "detail": "{\"opened\":true,\"open\":0,\"after\":0}"
+  },
+  {
+    "name": "10. closed on an app, the phone reopens on it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "11. opening the phone and switching between seven apps (the median of five visits each): a few ms of script each, the home screen a small page, and no map engine loaded before the Carte is asked for",
+    "ok": true,
+    "detail": "{\"open\":10.8,\"nodes\":186,\"apps\":[[\"portefeuille\",2.1],[\"travailler\",1.4],[\"profil\",2.9],[\"reglages\",2.9],[\"notifs\",0.4],[\"logement\",1],[\"home\",12.4]],\"map\":false}"
+  },
+  {
+    "name": "12. no page error",
+    "ok": true,
+    "detail": ""
+  }
+]

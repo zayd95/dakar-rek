@@ -32,6 +32,34 @@ describe('interactions: focus', () => {
     expect(sys.update('street', 0, 0, 0)?.id).toBe('x');
     expect(sys.all().map(a => a.id)).toEqual(['a', 'b']);
   });
+  it('a source holding the button (exclusive) is the only one focused: the player in a match never greets a passer-by', () => {
+    let holding = true, ball = true;
+    const passer = T('passante', 0.5, 0), sys = new Interactions();
+    sys.add({ name: 'people', collect: (_s, _x, _z, out) => out.push(passer) });
+    sys.add({ name: 'match', collect: (_s, _x, _z, out) => { if (ball) out.push(T('ball', 1.4, 0)); }, exclusive: () => holding });
+    sys.add({ name: 'seats', collect: (_s, _x, _z, out) => out.push(T('bench', 0.3, 0)) });
+    expect(sys.update('street', 0, 0, Math.PI / 2)?.id).toBe('ball');                  // farther than the passer-by and the bench, still the one
+    ball = false;
+    expect(sys.update('street', 0, 0, Math.PI / 2)).toBeNull();                         // the ball out of reach: nothing, not the passer-by
+    holding = false;
+    expect(sys.update('street', 0, 0, Math.PI / 2)?.id).toBe('bench');                  // out of the match: the ordinary focus again
+  });
+  it('an action pressed right after a sheet closed (no focus kept while it was up) picks the focus itself', () => {
+    // the arena's window: « Annuler » on the ticket sheet, then the button again before the next frame
+    let collected = 0;
+    const guichet = T('pikine:arena:guichet:guichet', 0.4, 1.2);
+    const sys = new Interactions(); sys.add({ name: 'places', collect: (_s, _x, _z, out) => { collected++; out.push(guichet); } });
+    expect(sys.update('street', 0, 0, 0)?.id).toBe(guichet.id);
+    sys.focus = null;                                                                   // the sheet was up (main.ts: no focus in menu mode)
+    expect(sys.primary()).toBeNull();                                                   // what the button used to run: nothing
+    expect(sys.current('street', 0, 0, 0)?.id).toBe(guichet.id);
+    expect(sys.primary()?.label).toBe(guichet.id);
+    const n = collected;
+    expect(sys.current('street', 0, 0, 0)?.id).toBe(guichet.id);                        // a focus kept: the frame's, nothing collected again
+    expect(collected).toBe(n);
+    sys.focus = null;
+    expect(sys.current('street', 20, 20, 0)).toBeNull();                               // nothing in reach: still nothing
+  });
 });
 
 describe('seats', () => {

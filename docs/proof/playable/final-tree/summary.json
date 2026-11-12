@@ -1,0 +1,184 @@
+{
+ "base": "http://127.0.0.1:4176/",
+ "at": "2026-11-07T04:05:54.887Z",
+ "results": [
+  {
+   "name": "nightlife",
+   "script": "check-nightlife-journey.mjs",
+   "exit": 0,
+   "passes": 73,
+   "fails": 0,
+   "cut": false,
+   "seconds": 724,
+   "firstFails": []
+  },
+  {
+   "name": "almadies-parking",
+   "script": "check-almadies-parking.mjs",
+   "exit": 0,
+   "passes": 9,
+   "fails": 0,
+   "cut": false,
+   "seconds": 211,
+   "firstFails": []
+  },
+  {
+   "name": "almadies-evening",
+   "script": "check-almadies-journey.mjs",
+   "exit": 0,
+   "passes": 42,
+   "fails": 0,
+   "cut": false,
+   "seconds": 442,
+   "firstFails": []
+  },
+  {
+   "name": "rooftop",
+   "script": "check-rooftop.mjs",
+   "exit": 0,
+   "passes": 43,
+   "fails": 0,
+   "cut": false,
+   "seconds": 158,
+   "firstFails": []
+  },
+  {
+   "name": "patio",
+   "script": "check-patio.mjs",
+   "exit": 0,
+   "passes": 61,
+   "fails": 0,
+   "cut": false,
+   "seconds": 527,
+   "firstFails": []
+  },
+  {
+   "name": "ngor-beach",
+   "script": "check-ngor-beach.mjs",
+   "exit": 0,
+   "passes": 16,
+   "fails": 0,
+   "cut": false,
+   "seconds": 168,
+   "firstFails": []
+  },
+  {
+   "name": "traversee",
+   "script": "check-traversee.mjs",
+   "exit": 0,
+   "passes": 37,
+   "fails": 0,
+   "cut": false,
+   "seconds": 700,
+   "firstFails": []
+  },
+  {
+   "name": "mermoz",
+   "script": "check-mermoz-journey.mjs",
+   "exit": 0,
+   "passes": 22,
+   "fails": 0,
+   "cut": false,
+   "seconds": 721,
+   "firstFails": []
+  },
+  {
+   "name": "mermoz-home",
+   "script": "check-mermoz-home.mjs",
+   "exit": 0,
+   "passes": 11,
+   "fails": 0,
+   "cut": false,
+   "seconds": 177,
+   "firstFails": []
+  },
+  {
+   "name": "cite-maison",
+   "script": "check-cite-maison.mjs",
+   "exit": 0,
+   "passes": 6,
+   "fails": 0,
+   "cut": false,
+   "seconds": 31,
+   "firstFails": []
+  },
+  {
+   "name": "trade",
+   "script": "check-trade-journey.mjs",
+   "exit": 0,
+   "passes": 33,
+   "fails": 0,
+   "cut": false,
+   "seconds": 858,
+   "firstFails": []
+  },
+  {
+   "name": "match",
+   "script": "check-match-journey.mjs",
+   "exit": 0,
+   "passes": 25,
+   "fails": 0,
+   "cut": false,
+   "seconds": 313,
+   "firstFails": []
+  },
+  {
+   "name": "ld2a",
+   "script": "check-ld2a-journey.mjs",
+   "exit": 0,
+   "passes": 27,
+   "fails": 0,
+   "cut": false,
+   "seconds": 135,
+   "firstFails": []
+  },
+  {
+   "name": "vtc",
+   "script": "check-vtc-ride.mjs",
+   "exit": 1,
+   "passes": 14,
+   "fails": 5,
+   "cut": false,
+   "seconds": 792,
+   "firstFails": [
+    "FAIL: at the drop-off the passenger gets out and walks off; the fare is paid ONCE (one wallet line) {\"paid\":0,\"fare\":3500,\"lines\":0,\"events\":[]}",
+    "FAIL: getting out is played out on the pavement side: the door opens, out, onto the pavement {\"phases\":\"seated\",\"events\":[]}",
+    "FAIL: the passenger walked off along the pavement and faded only once well away or out of view (never at the door) {\"leftAt\":null,\"walked\":0}",
+    "FAIL: the passenger walked away and is gone; nobody left in the car {\"persons\":1,\"phase\":\"seated\"}"
+   ]
+  },
+  {
+   "name": "night",
+   "script": "check-night.mjs",
+   "exit": 0,
+   "passes": 18,
+   "fails": 0,
+   "cut": false,
+   "seconds": 264,
+   "firstFails": []
+  },
+  {
+   "name": "district",
+   "script": "check-district.mjs",
+   "exit": 1,
+   "passes": 17,
+   "fails": 2,
+   "cut": false,
+   "seconds": 33,
+   "firstFails": [
+    "FAIL: (medium) the name is seen from the street and from far: a face looks at each of 42 viewpoints, with nothing solid between [\"the beach at x -70\"]",
+    "FAIL: (medium) integrated hub: within the sum of the accepted budgets of LD2.0-E, M4 and Le Patio (+46 meshes = draw calls) {\"now\":230,\"was\":174,\"dMeshes\":56}"
+   ]
+  },
+  {
+   "name": "online",
+   "script": "check-multiplayer.mjs",
+   "exit": 1,
+   "passes": 1,
+   "fails": 0,
+   "cut": false,
+   "seconds": 29,
+   "firstFails": []
+  }
+ ]
+}

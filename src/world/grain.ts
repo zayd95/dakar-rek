@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FACADE_ROW_GLSL } from './facadeAtlas';
 
 /**
  * Procedural surface grain for flat-coloured materials: world-space value noise at three scales
@@ -12,6 +13,31 @@ float gHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32
 float gNoise(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y);
+}`;
+
+/**
+ * The player's headlights on the street at night (src/transport/headlightPool.ts sets these each frame; strength 0 by day and on foot): every grain
+ * material — the carriageway, its markings, the kerbs and pavements, the walls by the road — is lit by them as by a lamp, its own colour times
+ * the light, so the white markings and the pale kerbs come out of the dark asphalt. No light source, no shadow, no draw call: a few operations per
+ * pixel of these materials, the same uniforms shared by all of them (`HEADLIGHT_UNIFORMS`).
+ */
+export const HEADLIGHT_UNIFORMS = {
+  /** The lamps (world: the middle of the front bumper, at the lamps' height), the heading (x, z unit), the reach (m), the strength (0: off) and colour. */
+  uHlPos: { value: new THREE.Vector3() }, uHlDir: { value: new THREE.Vector2(0, 1) }, uHlReach: { value: 36 }, uHlK: { value: 0 }, uHlColor: { value: new THREE.Color(0xfff0d8) },
+  /** The beam's half width at the bumper (m) and how fast it widens (m per m ahead). */
+  uHlWidth: { value: new THREE.Vector2(1.2, 0.3) },
+};
+const HEADLIGHT_GLSL = /* glsl */ `
+uniform vec3 uHlPos; uniform vec2 uHlDir; uniform float uHlReach; uniform float uHlK; uniform vec3 uHlColor; uniform vec2 uHlWidth;
+float hlBeam(vec3 p, vec3 n) {
+  vec3 d = p - uHlPos;
+  float a = dot(d.xz, uHlDir), l = dot(d.xz, vec2(uHlDir.y, -uHlDir.x)), w = uHlWidth.x + uHlWidth.y * max(a, 0.0);
+  float beam = smoothstep(0.0, 1.5, a) * (1.0 - smoothstep(uHlReach * 0.5, uHlReach, a)) * (1.0 - smoothstep(w * 0.55, w, abs(l)));
+  float fall = 1.0 / (1.0 + a * a / 260.0);
+  vec3 L = normalize(-d);
+  // the road and the pavements (up-facing) take the beam at a grazing angle but still read; a face toward the car takes it fully; nothing above 3 m
+  float face = max(dot(n, L), 0.0), lit = n.y > 0.5 ? max(face, 0.55) : face;
+  return beam * fall * lit * (1.0 - smoothstep(1.6, 3.2, d.y));
 }`;
 
 /** Low quality switches off procedural noise and the world-space detail textures (both per-pixel costs). Read when a hub is built. */
@@ -34,12 +60,19 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
     shader.uniforms.uDetailSize = { value: detailSize };
     shader.uniforms.uRelief = { value: relief };
     shader.uniforms.uGrainScale = { value: scale };
+    Object.assign(shader.uniforms, HEADLIGHT_UNIFORMS);                           // shared objects: one update a frame lights every grain material
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vGrainPos;\nvarying vec3 vGrainN;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vGrainN = normalize(mat3(modelMatrix) * objectNormal);');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGrainPos;\nvarying vec3 vGrainN;' + (windows ? '\nattribute vec4 fstyle;\nvarying vec4 vFStyle;' : ''))
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGrainPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vGrainN = normalize(mat3(modelMatrix) * objectNormal);' + (windows ? '\nvFStyle = fstyle;' : ''));
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uGrain;\nuniform float uGrainScale;\n' + (detail ? 'uniform sampler2D uDetail;\nuniform float uDetailSize;\nuniform float uRelief;\n' : '') + NOISE)
+      .replace('#include <common>', '#include <common>\nuniform float uGrain;\nuniform float uGrainScale;\n' + (detail ? 'uniform sampler2D uDetail;\nuniform float uDetailSize;\nuniform float uRelief;\n' : '') + NOISE + HEADLIGHT_GLSL)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+      if (uHlK > 0.0) reflectedLight.directDiffuse += diffuseColor.rgb * uHlColor * (uHlK * hlBeam(vGrainPos, normalize(vGrainN)));`)
       .replace('#include <color_fragment>', `#include <color_fragment>
+      ${windows ? `
+      #ifdef USE_MAP
+        diffuseColor.rgb = mix(fOwn, diffuseColor.rgb, fTint);       // doors, shutters, boards, frames: their own colour, not the wall's paint
+      #endif` : ''}
       {
         vec3 gp = vGrainPos * uGrainScale;
         vec2 q = abs(vGrainN.y) > 0.5 ? gp.xz : (abs(vGrainN.x) > 0.5 ? gp.zy : gp.xy);
@@ -76,21 +109,58 @@ export function addGrain(mat: THREE.Material, strength = 1, scale = 1, windows =
       }`);
     }
     if (windows) {
-      // Night windows: only some are lit, at varying brightness, a few with cool fluorescent light.
+      // The facade atlas (src/world/facadeAtlas.ts). The wall's uv counts bays and storeys; each cell of that grid reads one bay of one row of
+      // the atlas. `fstyle` (constant on a face) = (rows packed: upper + 16 (ground + 1) + 256 (top + 1), the ground sequence's shift, the
+      // face's width in bays, its storeys); all zero on a wall without a style: row 0, bay 0 in every cell, the classic window as it always was.
+      // With a style the whole bays are centred on the face (what is left over at both ends is plain wall: no window cut by a corner), the
+      // upper storeys draw one of the row's four bays per cell, the ground floor runs through its bays in order (shop, shop, door, shop…).
+      // The gradients are those of the continuous uv: no seam where a cell jumps to another bay of the atlas.
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vFStyle;' + FACADE_ROW_GLSL).replace('#include <map_fragment>', `
+      #ifdef USE_MAP
+        vec2 fCell = floor(vMapUv), fIn = vMapUv - fCell;
+        float fRows = floor(vFStyle.x + 0.5), fRow = mod(fRows, 16.0), fCol = 0.0, fShop = 0.0;
+        if (vFStyle.z > 0.5) {
+          float fN = floor(vFStyle.z + 0.02), fU = vMapUv.x - (vFStyle.z - fN) * 0.5;      // (a face narrower than a bay: fN 0, all of it margin)
+          fCell.x = floor(fU); fIn.x = fU - fCell.x;
+          float fGr = mod(floor(fRows / 16.0), 16.0), fTop = floor(fRows / 256.0);
+          vec3 fT8 = floor(vColor * 31.0 + 0.5);
+          float fH = gHash(fCell * 2.17 + fT8.rg * 0.413 + fT8.b * 0.291 + floor(vGrainN.xz + 0.5) * 3.1 + 1.5);
+          float fSeq = mod(fCell.x + mod(floor(vFStyle.y + 0.5), 4.0) + floor(vGrainN.x + 0.5) + 4.0, 4.0);   // the bays in order along the face
+          if (fCell.y < 0.5 && fGr > 0.5) { fRow = fGr - 1.0; fCol = fSeq; fShop = 1.0; }
+          else {
+            if (fTop > 0.5 && fCell.y > vFStyle.w - 1.5) fRow = fTop - 1.0;
+            fCol = vFStyle.y > 3.5 ? fSeq : fH < 0.42 ? 0.0 : fH < 0.68 ? 1.0 : fH < 0.86 ? 2.0 : 3.0;   // stacked (a block of flats: each bay runs up the wall), or a bay drawn per cell
+          }
+          if (fCell.x < 0.0 || fCell.x > fN - 0.5 || fCell.y > vFStyle.w - 0.5) { fIn.x = 0.02; fCol = 0.0; fShop = 0.0; }   // the face's margins, and what is left above its last whole storey: plain wall
+        }
+        fIn = clamp(fIn, 0.004, 0.996);
+        vec3 fRect = fRowRect(fRow);                                  // where the row lies in the atlas (the ground rows are painted twice as fine)
+        vec2 fAt = fRect.xy + (vec2(fCol, 0.0) + fIn) * fRect.z;
+        vec2 fDx = dFdx(vMapUv) * fRect.z, fDy = dFdy(vMapUv) * fRect.z;
+        vec4 sampledDiffuseColor = textureGrad(map, fAt, fDx, fDy);
+        vec3 fOwn = sampledDiffuseColor.rgb;
+        float fTint = clamp(sampledDiffuseColor.a * 2.0 - 1.0, 0.0, 1.0);
+        diffuseColor.rgb *= sampledDiffuseColor.rgb;
+      #endif`);
+      // Night windows: only some are lit, at varying brightness, a few with cool fluorescent light; a shop's ground floor is lit more often.
       // The seed mixes the window's bay/storey cell with the building's tint and the face direction.
-      shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-      {
-        vec2 cell = floor(vEmissiveMapUv);
-        // quantise every input: interpolated values differ by tiny amounts per pixel and would turn the hash into noise
-        vec3 tint8 = floor(vColor * 31.0 + 0.5);
-        float hs = gHash(cell * 1.37 + tint8.rg * 0.731 + tint8.b * 0.173 + floor(vGrainN.xz + 0.5) * 5.3 + 0.5);
-        float lit = step(0.5, hs) * (0.55 + 0.7 * fract(hs * 7.31));
-        vec3 tint = fract(hs * 13.7) > 0.8 ? vec3(0.75, 0.95, 1.35) : vec3(1.0);
-        totalEmissiveRadiance *= lit * tint;
-      }`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `
+      #ifdef USE_EMISSIVEMAP
+        totalEmissiveRadiance *= textureGrad(emissiveMap, fAt, fDx, fDy).rgb;
+        {
+          vec2 cell = fCell;
+          // quantise every input: interpolated values differ by tiny amounts per pixel and would turn the hash into noise
+          vec3 tint8 = floor(vColor * 31.0 + 0.5);
+          float hs = gHash(cell * 1.37 + tint8.rg * 0.731 + tint8.b * 0.173 + floor(vGrainN.xz + 0.5) * 5.3 + 0.5);
+          float lit = step(0.5 - 0.25 * fShop, hs) * (0.55 + 0.7 * fract(hs * 7.31));
+          vec3 tint = fract(hs * 13.7) > 0.8 ? vec3(0.75, 0.95, 1.35) : vec3(1.0);
+          totalEmissiveRadiance *= lit * tint;
+        }
+      #endif`);
+      (mat as THREE.Material & { defaultAttributeValues?: Record<string, number[]> }).defaultAttributeValues = { fstyle: [0, 0, 0, 0] };   // a wall drawn by a batch without styles: the classic window
     }
   };
   // strength, scale, relief and the texture are uniforms: materials share one program per variant (faster start-up)
-  mat.customProgramCacheKey = () => `grain-${noise}-${windows}-${!!detail}-${bump}`;
+  mat.customProgramCacheKey = () => `grain-hl-${noise}-${windows ? 'atlas' : false}-${!!detail}-${bump}`;
   return mat;
 }

@@ -1,0 +1,30 @@
+{
+  "low": {
+    "street at the terrace door": {
+      "calls": 64,
+      "tris": 71992
+    },
+    "terrace, at the bar": {
+      "calls": 21,
+      "tris": 27250
+    },
+    "terrace, at the stairs": {
+      "calls": 16,
+      "tris": 26778
+    }
+  },
+  "medium": {
+    "street at the terrace door": {
+      "calls": 69,
+      "tris": 94316
+    },
+    "terrace, at the bar": {
+      "calls": 21,
+      "tris": 33562
+    },
+    "terrace, at the stairs": {
+      "calls": 16,
+      "tris": 33090
+    }
+  }
+}

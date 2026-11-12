@@ -1,0 +1,30 @@
+01:32:28 boot
+PASS: a new save: nothing about Mermoz remembered yet {"pape":null,"said":[],"recognised":0,"thanked":0,"flags":[],"counters":{},"rel":0}
+PASS: « Courses VTC » on the Corniche: Mme Ndiaye’s ride to Résidence Les Filaos is listed first, with the ordinary rides after it (the player may pick any, or none) ["mz:first Campus de l’université→Résidence Les Filaos 3500","1144:17:corniche:0 Gare de Fann→Rue de la Mosquée 4000","1144:17:corniche:1 Campus de l’université→Boulangerie de Sacré-Cœur 3500","1144:17:corniche:2 Café Touba · Fann→Esplanade du Monument 1000"]
+PASS: accepted with a tap: Corniche → Mermoz, the fare fixed and saved {"id":"V1","from":"corniche","to":"mermoz","pickup":{"x":75,"z":-40,"name":"Campus de l’université"},"dropoff":{"x":69,"z":-30,"name":"Résidence Les Filaos"},"fare":3500,"stage":"pickup","passenger":{"name":"Aminata Ndiaye","seed":41},"acceptedMs":1033.2999999999993}
+01:32:52 to the pick-up
+PASS: Mme Ndiaye walks to the car and sits in the back {"stage":"aboard","phase":"seated"}
+01:33:26 to the road
+PASS: the directions from the campus to the VDN road exist on the Corniche’s streets 
+PASS: the Corniche → Mermoz road is there, of a believable length 1289 m
+PASS: in Mermoz with Mme Ndiaye aboard: the district came in along the road, no loading screen (the same ride, one person) {"hubMid":"mermoz","rebuilt":1}
+PASS: the BRT at Sacré-Cœur was live while the car was near: signal phases cycled, buses moved (approach / dwell / away), never two buses on one spot {"phases":["main","mainAmber","allRed","bus","busEnd"],"busStates":["hidden","run","dwell"],"crossings":3,"dwells":4,"heldCars":2,"samples":286,"overlap":0}
+01:38:55 to the drop-off
+PASS: a street route from the end of the road to the Filaos exists (the Sacré-Cœur street, then the quiet Mermoz streets) {"at":[-154.22,2.96],"drop":{"x":64.3,"z":-30,"yaw":3.141592653589793}}
+PASS: stopped at the kerb bay by the gate: the fare is paid ONCE through the existing payment (one wallet line) {"paid":3500,"fare":3500,"lines":1}
+PASS: the completion card comes up for this ride [{"title":"Course terminée · Aminata Ndiaye","rows":["Payé: 3 500 F","Durée: 4 min 58 s","Distance: 1,6 km","Série: 1 jour actif (Premier jour actif)"],"next":["À l’heure."]}]
+PASS: Pape Diouf, at his gate, thanks the driver (once), and the save remembers it in flags and counters {"pape":{"x":66.2,"z":-26.6,"visible":true},"said":["Mme Ndiaye est bien arrivée ? Jërëjëf, chauffeur. Moi c’est Pape, le gardien des Filaos."],"recognised":0,"thanked":1,"flags":["mz_first_ride"],"counters":{"mz_filaos_rides":1,"mz_pape_met":27498},"rel":3}
+PASS: the first ride is not offered again; nothing from Pape yet on the Mermoz list ["1145:17:mermoz:0","1145:17:mermoz:1","1145:17:mermoz:2"]
+01:40:43 reload, next day
+PASS: reloaded: still in Mermoz, nothing paid twice, the memory kept {"hub":"mermoz","wallet":503500,"m":{"pape":{"x":66.2,"z":-26.6,"visible":true},"said":[],"recognised":0,"thanked":0,"flags":["mz_first_ride"],"counters":{"mz_filaos_rides":1,"mz_pape_met":27498},"rel":3}}
+PASS: a later visit: Pape recognises the player once and passes on Mme Ndiaye’s bank ride {"day":1146,"m2":{"pape":{"x":66.2,"z":-26.6,"visible":true},"said":["Eh, le chauffeur de Mme Ndiaye ! Na nga def ? Tu reviens nous voir.","Justement : Mme Ndiaye doit descendre à sa banque au Plateau. Je lui ai donné ton numéro, regarde « Courses VTC »."],"recognised":1,"thanked":0,"flags":["mz_first_ride","mz_ndiaye_offer"],"counters":{"mz_filaos_rides":1,"mz_pape_met":27498,"mz_pape_seen_day":1147,"seen_pape_filaos":27521,"visit_pape_filaos":1},"rel":5}}
+PASS: the new ride is on the phone in Mermoz: Résidence Les Filaos → Banque Teranga · Plateau ["mz:ndiaye Résidence Les Filaos→Banque Teranga · Plateau","1146:17:mermoz:0 Résidence Les Filaos→Dakar Réparation","1146:17:mermoz:1 Boulangerie de Sacré-Cœur→Gargote des étudiants","1146:17:mermoz:2 Résidence Les Filaos→Boulangerie de Sacré-Cœur"]
+PASS: « Parler à Pape » at his gate: he answers, but recognises the player only once a day {"focus":"mermoz:pape","said":["Mme Ndiaye t’attend pour le Plateau : la course est dans ton téléphone."]}
+01:41:33 drive home
+PASS: from the Filaos back to the road on Mermoz’s streets 
+PASS: back on the Corniche, no ride in hand: one district swap on the way, the camera kept behind the car (no jump) {"swaps":1,"maxJump":0.37,"samples":668}
+PASS: free exploration on foot afterwards (no job): the player walks {"p0":{"x":156.33287887096893,"y":0.1,"z":-58.469877415878976,"hub":"corniche","mode":"play","near":null,"yaw":5.018619058688678,"cam":5.018619058688678},"p1":{"x":163.61233097009534,"y":0.1,"z":-59.009918089215645,"hub":"corniche","mode":"play","near":null,"yaw":7.61287567339921,"cam":7.373818710472052}}
+PASS: the whole journey paid one fare only 503500 vs 503500
+PASS: no JavaScript error 
+22/22 passed
+EXIT 0

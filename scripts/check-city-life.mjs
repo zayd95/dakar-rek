@@ -90,13 +90,28 @@ try {
     check(`${label}: mall purchase debits once and feeds the player`, (await page.evaluate(() => window.__dakar.state.wallet)) === wallet - 500 && (await page.evaluate(() => window.__dakar.state.data.needs.faim)) > 39);
     if (!touch) {
       await page.evaluate(() => window.__dakar.place(30, 55, Math.PI));
-      await page.keyboard.down('KeyW');
-      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 20000 }); }
-      finally { await page.keyboard.up('KeyW'); }
+      // jog (Shift) through the entrance: the default walk is slower, and CI renders a frame every second or so.
+      // A frame moves the game at most 0.1 s (src/main.ts), so the 8.5 m take ~20 drawn frames: ~50 s on a usual runner, over 60 s on a slow one
+      await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
+      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 150000 }); }
+      finally { await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft'); }
       check('desktop: the mall entrance can be walked through', true);
     }
     await page.evaluate(() => { const d = window.__dakar; d.place(30, 47, Math.PI); d.setHour(21); d.cam([60, 16, 60], [30, 2, 26]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-mall-night.jpg`, type: 'jpeg', quality: 88 });
+    // M4 × LD2.0-E integration (docs/districts/ALMADIES-NIGHTLIFE.md): the one Terrasse de Ngor is the boutique hotel's roof; the night street (the venues, the car parks, the alley) is on the beach side of the coast road across from it
+    await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.setHour(20); });
+    await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.rooftop.info()?.hub === 'almadies', null, { timeout: 30000 });
+    await page.evaluate(() => window.__dakar.cam([-30, 2.2, -126], [-30, 14, -104]));
+    await page.waitForTimeout(500);
+    const terraceSite = await page.evaluate(() => window.__dakar.rooftop.info());
+    check(`${label}: Terrasse de Ngor is the boutique hotel's roof: its stair door beside the lobby, its name lit on the roof`, !!terraceSite && Math.abs(terraceSite.door.x + 40) < 0.1 && Math.abs(terraceSite.door.z + 105.6) < 0.1 && terraceSite.sign?.onRoof === true, JSON.stringify({ door: terraceSite?.door, sign: terraceSite?.sign && { onRoof: terraceSite.sign.onRoof, faces: terraceSite.sign.faces } }));
+    const night = await page.evaluate(() => window.__dakar.district.nightStreet());
+    check(`${label}: the night street's car park: at least 20 bays, at least 8 free (the player's four cars and the next night's) and at least 3 with an NPC car (a lot with life), and every free bay is free of static colliders`, !!night && night.bays.length >= 20 && night.bays.filter(b => b.free).length >= 8 && night.bays.filter(b => !b.free).length >= 3 && await page.evaluate(n => { const c = window.__dakar.cityGeometry().colliders; return n.bays.filter(b => b.free).every(b => !c.some(v => v.x0 < b.x + 0.95 && v.x1 > b.x - 0.95 && v.z0 < b.z + 2.2 && v.z1 > b.z - 2.2)); }, night), `${night?.bays.length} bays, ${night?.bays.filter(b => b.free).length} free`);
+    await page.screenshot({ path: `${out}/${label}-almadies-hotel-terrasse.jpg`, type: 'jpeg', quality: 88 });
+    await page.evaluate(() => { window.__dakar.cam([-96, 22, -112], [-62, 2, -140]); });
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: `${out}/${label}-almadies-night-street.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('plateau'); d.place(90, -28.5, Math.PI); d.setHour(13); d.cam([110, 8, -5], [90, 2.2, -35]); });
     await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-bank.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-19.5, 93, Math.PI); d.setHour(17); d.cam([-4, 12, 115], [-30, 1.5, 89]); });

@@ -30,6 +30,7 @@ const DISHES: Record<string, Dish> = {
   sandwich: { base: null, paper: true, top: [[0xd9a35a, 0.07, -0.04, 0.0], [0xd9a35a, 0.07, 0.05, 0.0], [0x7a3a1e, 0.04, 0.0, 0.02]] },
   bissap: { base: null, top: [], glass: 0x8b1a2b },
   jus: { base: null, top: [], glass: 0xd98b2a },
+  attaya: { base: null, top: [], glass: 0x7a4a1a },
   drink: { base: null, top: [], glass: 0xc94a2a },
   plate: { base: 0xe8dcc0, top: [[0x9a6a3a, 0.06, 0.0, 0.0]] },
 };

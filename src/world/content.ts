@@ -1,13 +1,21 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
-import { order } from '../activity/primitives';
+import { order, trade } from '../activity/primitives';
+import { G } from '../activity/gestures';
+import { haggler } from '../i18n/lines';
 import type { Primitive, SeatPick } from '../activity/types';
+import { isOpen } from '../activity/places';
+import type { GameState } from '../core/state';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
 const FRIEND_FLAG: Record<string, string> = { pikine: 'mame_helped', plateau: 'fatou_friend' };
 const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_FLAG[s.data.hub] && s.data.flags.includes(FRIEND_FLAG[s.data.hub]);
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
+type Req = (s: GameState) => string | null;
+/** Only during city hours [from, to): the person the player helps is there (their routine, src/social/routines.ts). */
+const during = (from: number, to: number, why: string): Req => s => (isOpen([from, to], s.hour()) ? null : why);
+const both = (a: Req, b: Req): Req => s => a(s) ?? b(s);
 /**
  * A dish or a drink served at the table: pay, it is prepared, the player walks to a free seat, sits and eats (the plate
  * shows in front of them), and stays seated. Same steps everywhere (src/activity/primitives.ts `order`).
@@ -24,6 +32,11 @@ export const served = (a: Omit<Action, 'steps' | 'seconds'> & { cost: number; pr
 export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'): Action =>
   ({ ...a, steps: [{ label: a.label, primitive, seconds: a.seconds, seat, effects: { needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }] });
 
+/** Garage shift: hand Modou the tools he asks for, then tighten the wheel nuts in time. */
+const garageShift = (id: string, label: string, pay: number) => trade({ id, label, pay, needs: { energie: -18, hygiene: -14, faim: -6 }, counter: 'garage', category: 'artisanat', clip: 'Grab',
+  parts: [{ label: 'Passer les outils', gesture: G.tools(4), share: 1 }, { label: 'Serrer les écrous', gesture: G.bolts(4), share: 1 }] });
+const garage = during(7, 19, 'Garage fermé · Modou ouvre à 7 h');
+
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
     served({ id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour · servi à table', cost: 1000, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
@@ -39,19 +52,26 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'discuter', label: 'Rester discuter', detail: 'Gratuit', needs: { social: 12, moral: 4 }, seconds: 3 },
   ],
   market: [
-    { id: 'vendre', label: 'Vendre au marché (un service)', detail: '+2 500 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22) },
+    // A shift at the stall: a customer opens by discussing the price (« Ñaata la ? », « Wàññi ko tuuti ! »), then serve them all.
+    { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +4 080 F', gain: 3400, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: both(during(8, 18, 'L’étal est fermé · Adja revient à 8 h'), tired(22)),
+      steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 3400, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', line: haggler('sell', 1500, 'Une cliente'), parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
   ],
   gym: [
     { id: 'courir', label: 'Courir sur la Corniche', detail: 'Forme +1', needs: { energie: -20, moral: 10, hygiene: -10, faim: -8 }, seconds: 4, counter: 'forme', requires: tired(20) },
     { id: 'barres', label: 'Faire les barres', needs: { energie: -15, moral: 6, hygiene: -6 }, seconds: 3, counter: 'forme', requires: tired(15) },
   ],
   port: [
-    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: '+3 500 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: noFlag('ousmane_trust') },
-    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: '+4 500 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: flag('ousmane_trust') },
+    // the quay's fishing is Soumbédioune's now (Corniche): this is the Embarcadère de Ngor, whose crossings leave from the pier's end
+    // (src/venues/embarcadere.ts, docs/TRAVERSEE.md); here, by the sign, one stays a moment to look at the island
+    { id: 'ile', label: 'Regarder l’île de Ngor', detail: 'Les pirogues et la chaloupe d’Ousmane partent de la plage, à côté de la jetée', needs: { moral: 4 }, seconds: 3 },
   ],
   garage: [
-    { id: 'meca', label: 'Aider le mécanicien', detail: '+2 000 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: noFlag('modou_trust') },
-    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: '+2 800 F · recommandé par Ibou', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: flag('modou_trust') },
+    { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +3 600 F', gain: 3000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),
+      steps: garageShift('meca', 'Aider le mécanicien', 3000).steps },
+    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: 'Recommandé par Ibou · jusqu’à +5 040 F', gain: 4200, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: flag('modou_trust'),
+      steps: garageShift('meca_conf', 'Travailler au garage', 4200).steps },
+    { id: 'roue', label: 'Changer une roue', detail: 'Dans le bon ordre · jusqu’à +2 400 F', gain: 2000, needs: { energie: -12, hygiene: -10, faim: -4 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(12)),
+      steps: trade({ id: 'roue', label: 'Changer une roue', pay: 2000, needs: { energie: -12, hygiene: -10, faim: -4 }, counter: 'garage', category: 'artisanat', clip: 'Grab', parts: [{ label: 'Changer la roue', gesture: G.wheel() }] }).steps },
   ],
   home: [
     { id: 'dormir', label: 'Dormir', detail: 'Retrouver de l’énergie', needs: { energie: 70, faim: -10, moral: 4 }, seconds: 5 },
@@ -94,10 +114,13 @@ const legs: Record<string, TravelLeg> = {
   'plateau-corniche': { cost: 500, minutes: 10 }, 'plateau-almadies': { cost: 1500, minutes: 25 },
   'plateau-pikine': { cost: 700, minutes: 20 }, 'corniche-almadies': { cost: 1000, minutes: 18 },
   'corniche-pikine': { cost: 1200, minutes: 25 }, 'almadies-pikine': { cost: 2000, minutes: 35 },
+  // Mermoz · Sacré-Cœur (M1): by car rapide from Fann up the VDN, from the Plateau by Liberté
+  'corniche-mermoz': { cost: 400, minutes: 12 }, 'plateau-mermoz': { cost: 600, minutes: 18 }, 'almadies-mermoz': { cost: 800, minutes: 15 }, 'mermoz-pikine': { cost: 900, minutes: 22 },
 };
 export function travelLeg(a: HubId, b: HubId): TravelLeg {
   return legs[`${a}-${b}`] ?? legs[`${b}-${a}`] ?? { cost: 1000, minutes: 20 };
 }
 export const HUB_NAMES: Record<HubId, string> = {
   plateau: 'Plateau · Médina', corniche: 'Corniche · Fann · Mamelles', almadies: 'Almadies · Ngor · Yoff', pikine: 'Pikine · Guédiawaye · Parcelles',
+  mermoz: 'Mermoz · Sacré-Cœur',
 };

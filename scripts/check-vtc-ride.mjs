@@ -1,0 +1,178 @@
+// Journey E of the vehicles economy (docs/vehicles/ECONOMY.md): a VTC ride across districts with the player's own Teranga, real touch everywhere a player touches.
+// Also: the passenger's getting in and out played out (the rear door on the pavement side opens, they sit bottom-first, the door shuts; at the drop-off
+// they get out on the pavement side and walk off along it, fading only once away), both bodies inside the car's roof and floor (skinned vertices against
+// src/transport/cabinFit.ts), and the ride's markers green with the car (src/ui/jobMarks.ts) in the street, on the minimap and on the goal line.
+// The phone (☰ → « VTC ») lists the rides asked for in Pikine; the one to the Plateau is accepted by tapping it; the car is driven (real stick) to the passenger's kerb; the passenger,
+// a person standing on the pavement, walks to the car and sits in its right rear seat; the game is reloaded (the passenger is still in the back); the car is driven out of Pikine on
+// the Pikine → Plateau road, crosses into the Plateau with the passenger aboard (one person, never a copy), and to the drop-off kerb; the passenger gets out and walks off; the fare is
+// paid once (one wallet line), the ride is remembered (a reload never pays it again), and there is never more than one passenger in the scene.
+// Debug hooks: the start (a new game with money and the car bought, put in the street), the hour, reading state. Usage: node scripts/check-vtc-ride.mjs <baseUrl> <outDir>
+import { chromium } from 'playwright';
+import fs from 'node:fs';
+import { realTouch, pilot, boardVehicle } from './lib/realTouch.mjs';
+import { driveRoad } from './lib/roadDrive.mjs';
+import { route, runUp, closedZones } from './lib/gridRoute.mjs';
+
+const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-e'] = process.argv.slice(2);
+fs.mkdirSync(out, { recursive: true });
+let failed = 0, total = 0; const T = { timeout: 300000 };
+const check = (name, ok, detail = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+await context.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'low'); } catch { /* */ } });
+const page = await context.newPage(); page.setDefaultTimeout(300000);
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+const d = (fn, a) => page.evaluate(fn, a);
+let shotN = 0; const shot = async n => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${String(++shotN).padStart(2, '0')}-${n}.png` }); };
+const V = () => d(() => window.__dakar.vtc.info()), AT = () => d(() => window.__dakar.teranga.at());
+const ready = async () => { await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.vtc, null, T); };
+
+await page.goto(`${base}?debug&touch&heure=9&argent=4500000`, { timeout: 180000 });
+await ready();
+// DAY=<n> pins the city day (a labelled shortcut): the rides and the road events are seeded by the day, which follows the wall clock (24 real minutes a day), so two runs at different times are different journeys
+if (process.env.DAY) await d(n => { const A = window.__dakar; A.nextDay(n - A.nextDay(0)); }, Number(process.env.DAY));
+await ready();
+let t = await realTouch(page);
+// the car, bought (cash here; Journey A buys it on credit), then the ride the city asks for at this hour: the Pikine → Plateau one, with a pickup and a drop-off near the road
+await page.waitForFunction(() => window.__dakar.teranga.info().floor.length > 0, null, T);
+await d(() => window.__dakar.teranga.own());
+await page.waitForFunction(() => window.__dakar.teranga.info().owned && window.__dakar.teranga.info().here, null, T);
+const pick = await d(() => {
+  const A = window.__dakar, R = [-120, -60, 0, 60, 120], near = v => R.reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b);
+  const kerb = p => { const rx = near(p.x), rz = near(p.z), alongZ = Math.abs(p.x - rx) <= Math.abs(p.z - rz), side = Math.sign(alongZ ? p.x - rx : p.z - rz) || -1; return alongZ ? { x: rx + side * 4.3, z: p.z } : { x: p.x, z: rz + side * 4.3 }; };
+  let best = null;
+  for (let h = 8; h <= 18; h++) {
+    A.setHour(h);
+    A.vtc.requests().forEach((r, i) => {
+      if (r.to !== 'plateau') return;
+      const a = kerb(r.pickup), b = kerb(r.dropoff), cost = Math.abs(a.x + 60) + Math.abs(a.z - 127) + Math.abs(b.x + 60) + Math.abs(b.z + 127);
+      if (!best || cost < best.cost) best = { h, i, cost, r };
+    });
+  }
+  A.setHour(best.h); return best;
+});
+console.log('ride', JSON.stringify({ hour: pick.h, from: pick.r.pickup.name, to: pick.r.dropoff.name, fare: pick.r.fare, hubs: pick.r.hubs }));
+
+// accept it on the phone, by tapping
+await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
+// the phone opens where it was left: its home, then « Toutes les apps » › VTC; each tap waits out the phone's 320 ms settle on a new screen
+await page.waitForTimeout(600);
+if (await page.locator('#phone [data-nav="home"]').isVisible()) { await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(600); }
+await t.tap('#phone [data-go="apps"]'); await page.waitForTimeout(600);
+await t.tap('#phone [data-app="vtc"]'); await page.waitForSelector('#modal.on', T);
+await shot('phone-requests');
+const label = `${pick.r.pickup.name} → ${pick.r.dropoff.name}`;
+const item = page.locator('#modal .item', { hasText: label }).first();
+const box = await item.boundingBox(); await t.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await t.up(5);
+await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'pickup', null, { timeout: 20000 });
+const v0 = await V(), wallet0 = await d(() => window.__dakar.state.wallet), ledger0 = await d(() => window.__dakar.phoneHooks.ledger?.().length ?? 0);
+check('« Courses VTC » on the phone: the Pikine → Plateau ride accepted with a tap; fare fixed, saved', v0.trip && v0.trip.from === 'pikine' && v0.trip.to === 'plateau' && v0.trip.fare === pick.r.fare, JSON.stringify({ id: v0.trip?.id, fare: v0.trip?.fare }));
+
+// the car is put in the street the passenger's kerb is on, 60 m back (less near the district's edge); the player gets in with the real controls
+const stops = await d(() => window.__dakar.vtc.stops());
+const K = stops.pickup.car, F = { x: Math.sin(K.yaw), z: Math.cos(K.yaw) };
+const lane = runUp(K, 60);                                                          // never past the district's outer street
+await d(([x, z, yaw]) => window.__dakar.teranga.place(x, z, yaw), [lane.x, lane.z, K.yaw]);
+await d(([x, z]) => window.__dakar.place(x, z, 0), [lane.x + Math.cos(K.yaw) * 2.6, lane.z - Math.sin(K.yaw) * 2.6]);
+await page.waitForTimeout(800);
+await boardVehicle(page, t, 'teranga');
+const persons = []; const sample = setInterval(async () => { try { persons.push(await d(() => window.__dakar.vtc.info().persons)); } catch { /* reloading */ } }, 1500);
+// in the lane until 10 m short of the passenger, then into the kerb (a slant from far back meets the cars parked along it)
+const inLane = Math.abs(F.z) > 0.5 ? { x: lane.x, z: K.z - F.z * 10 } : { x: K.x - F.x * 10, z: lane.z };
+await pilot(page, t, 'teranga', [{ ...inLane, tol: 3, speed: 5 }, { x: K.x - F.x * 2.5, z: K.z - F.z * 2.5, tol: 2, speed: 2.4 }, { x: K.x + F.x * 1.5, z: K.z + F.z * 1.5, tol: 2, speed: 2 }], { brakeAtEnd: true, cruise: 5 });
+const marks = await d(() => ({ ui: window.__dakar.uiMarkers(), mm: window.__dakar.minimap(), goal: document.getElementById('goal')?.dataset.job ?? null }));
+check('the pick-up is marked as a VTC ride: the green pin and car badge, its kerb bay on the road, the minimap and the goal line say « vtc »', marks.ui.job === 'vtc' && marks.mm.job === 'vtc' && marks.goal === 'vtc', JSON.stringify({ job: marks.ui.job, bay: marks.ui.bay, pin: marks.ui.pinColor, mm: marks.mm.job, goal: marks.goal }));
+const waiting = await V();
+// (one sample, taken when the driver has stopped: by then the passenger may be walking, at the door as it opens, getting in, or already seated; the next two checks read the whole sequence)
+check('at the kerb: the passenger is a person on the pavement, walking to the car', waiting.person && ['walk', 'open', 'in', 'seated'].includes(waiting.phase), JSON.stringify({ phase: waiting.phase, person: waiting.person, car: await AT() }));
+await page.waitForTimeout(1200); await shot('passenger-walks');
+await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 240000 }).catch(() => {});   // walking up, the door, getting in: game time (the renderer is slow)
+const aboard = await V();
+check('the passenger sits in the car\'s right rear seat (the seat is taken, they ride in it)', aboard.trip?.stage === 'aboard' && aboard.trip.seat === 'rearR' && aboard.person?.inCar && aboard.persons === 1, JSON.stringify({ stage: aboard.trip?.stage, seat: aboard.trip?.seat, person: aboard.person, events: aboard.log.events }));
+const ph = aboard.log.phases.join('>');
+check('getting in is played out: to the rear door, the door opens (fully), in, seated', /walk>open>in>seated/.test(ph) && aboard.log.doorMax >= 0.95, JSON.stringify({ phases: ph, doorMax: aboard.log.doorMax }));
+await page.waitForFunction(() => window.__dakar.vtc.info().door.k === 0, null, { timeout: 90000 }).catch(() => {});
+const fit = await d(() => window.__dakar.vtc.fit());
+check('the passenger and the driver are inside the Teranga: heads under its roof, shoes over its floor', fit && fit.passenger && fit.driver && fit.passenger.head < fit.cabin.rear.roof && fit.passenger.soles >= fit.cabin.rear.floor && fit.driver.head < fit.cabin.front.roof && fit.driver.soles >= fit.cabin.front.floor, JSON.stringify({ cabin: fit?.cabin, passenger: fit?.passenger && [fit.passenger.head, fit.passenger.soles, fit.passenger.scale], driver: fit?.driver && [fit.driver.head, fit.driver.soles, fit.driver.scale, fit.driver.body] }));
+check('the passenger is seen through the glass while riding (the door shut)', fit?.seeThrough && fit.view.glassOn && fit.view.holders.includes('vtc') && !fit.view.doorOpen, JSON.stringify(fit?.view));
+await shot('passenger-aboard');
+
+// a reload with the passenger aboard: they are still in the back, one person
+await d(() => window.__dakar.save?.());
+await d(() => history.replaceState(null, '', location.href.replace(/&argent=\d+/, ''))); await page.reload(); await ready();
+t = await realTouch(page);
+await page.waitForFunction(() => window.__dakar.teranga.info().here, null, T);
+await page.waitForFunction(() => window.__dakar.vtc.info().person?.inCar, null, { timeout: 60000 }).catch(() => {});
+const re = await V();
+check('reloaded mid-ride: the passenger is still sitting in the car (one person, the same ride)', re.trip?.id === v0.trip.id && re.trip.stage === 'aboard' && re.person?.inCar && re.persons === 1, JSON.stringify({ trip: re.trip?.id, stage: re.trip?.stage, person: re.person, persons: re.persons }));
+await boardVehicle(page, t, 'teranga');
+const still = await V();
+check('back at the wheel, the passenger has not moved from the back seat', still.person?.inCar && still.persons === 1, JSON.stringify(still.person));
+
+// out of Pikine on the road to the Plateau
+const hpTrip0 = await d(() => { window.__dakar.teranga.feelReset?.(); return window.__dakar.teranga.health(); });   // (the impacts of the trip are listed if it wears the car)
+const a1 = await AT();
+const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
+await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
+const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
+// (cruise 9 m/s, was 11: the cars pick up twice as fast since the release tuning, and this driver looks at the road once or twice a second on a headless page; at 11 m/s it
+// rear-ended the road's traffic near the district's entry in one run out of two (a head-on at 41 km/h, 8 % of the car's health: the wear check below). A person sees the car.)
+await driveRoad(page, t, 'teranga', 'pikine-plateau', len - 40, { cruise: 9, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
+await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, { timeout: 240000 }).catch(() => {});
+const mid = await V();
+check('in the Plateau with the passenger aboard: the same ride, the person came with the car (rebuilt once, never copied)', (await d(() => window.__dakar.pos().hub)) === 'plateau' && mid.trip?.stage === 'aboard' && mid.person?.inCar && mid.persons === 1, JSON.stringify({ person: mid.person, persons: mid.persons, rebuilt: mid.log.rebuilt }));
+await shot('plateau-aboard');
+// to the drop-off kerb
+const S2 = await d(() => window.__dakar.vtc.stops()), a2 = await AT();
+const toDrop = route({ x: a2.x, z: a2.z, yaw: a2.yaw }, S2.dropoff.car, { cruise: 5, avoid: await closedZones(page) });   // round a street a road event has closed (cones), as the directions do; at 5 m/s (it was 7): the junction before the Grande Mosquée is the one a late driver overshoots (docs/mobile/MOBILE-01-INVESTIGATION.md § 2)
+check('a street route to the drop-off exists from where the road ends', !!toDrop, JSON.stringify({ at: [a2.x, a2.z, a2.yaw], drop: S2.dropoff.car }));
+// diagnostics for the last leg (so that a stall is explained, not re-run): the car's pose four times a second for the WHOLE leg (kept in full, written to last-leg-trace.json), every
+// impact with the time and the pose it happened at (the vehicle's own log: src/transport/ownedModule.ts feelLog), and the driver's own log (its loop time, what its thumbs were doing)
+await d(() => { const A = window.__dakar; window.__tr = []; let fr = 0, fr0 = 0; const raf = () => { fr++; requestAnimationFrame(raf); }; raf(); window.__trace = setInterval(() => { const a = A.teranga.at(); window.__tr.push({ t: +(performance.now() / 1000).toFixed(1), gt: a.t, x: +a.x.toFixed(2), z: +a.z.toFixed(2), yaw: +a.yaw.toFixed(2), v: +(a.speed ?? 0).toFixed(2), fps: (fr - fr0) * 4 }); fr0 = fr; }, 250); });
+// the last leg: a wedged car backs out as a driver would (the pilot's opt-in unstick: the real brake pedal, held), and a leg that still stalls is driven again from where the car
+// stands, with a fresh route, three tries at most. The ride's own checks below are unchanged: the passenger, the fare paid once, the reloads. A retry or an unstick is printed.
+const driverLog = [], legs = [];
+const rideOver = () => page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).then(() => true, () => false);
+for (let n = 1, plan = toDrop; plan && n <= 3; n++) {
+  await pilot(page, t, 'teranga', plan, { cruise: 5, stall: 8000, ms: 1500000, brakeAtEnd: true, unstick: true, trace: driverLog });
+  const over = await rideOver(), a = await AT();
+  legs.push({ try: n, unsticks: pilot.unsticks.length, end: [a.x, a.z, a.yaw], over });
+  if (over) break;
+  console.log('LAST LEG', JSON.stringify({ try: n, end: { x: a.x, z: a.z, yaw: a.yaw }, toDrop: +Math.hypot(a.x - S2.dropoff.car.x, a.z - S2.dropoff.car.z).toFixed(1), unsticks: pilot.unsticks }));
+  plan = n < 3 ? route({ x: a.x, z: a.z, yaw: a.yaw }, S2.dropoff.car, { cruise: 5, avoid: await closedZones(page) }) : null;
+}
+console.log('last leg', JSON.stringify(legs));
+const done = await V(), wallet1 = await d(() => window.__dakar.state.wallet), ledger = await d(() => window.__dakar.phoneHooks.ledger?.() ?? []);
+{ const tr = await d(() => { clearInterval(window.__trace); return window.__tr ?? []; }); fs.writeFileSync(`${out}/last-leg-trace.json`, JSON.stringify({ drop: S2.dropoff.car, legs, pose4Hz: tr, driver: driverLog, impacts: await d(() => window.__dakar.teranga.feel().impacts) })); }
+if (done.trip) {                                                       // the ride did not finish: say what the car, the passenger and the street were doing (a diagnostic, not a check)
+  const dx = S2.dropoff.car, snap = await d(([px, pz]) => { const A = window.__dakar, tr = window.__tr ?? [], at = A.teranga.at(), f = A.teranga.feel(); return {
+    end: { x: +at.x.toFixed(2), z: +at.z.toFixed(2), yaw: +at.yaw.toFixed(2), v: +(at.speed ?? 0).toFixed(2), driving: at.driving, t: at.t }, trace4Hz: tr.slice(-240), impacts: f.impacts, feel: { shake: f.shake, scraping: f.scraping, contact: f.contact, scrapeFrames: f.scrapeFrames },
+    health: A.teranga.health(), banter: A.vtc.banter(), vtc: { stage: A.vtc.info().trip?.stage, phase: A.vtc.info().phase, events: A.vtc.info().log.events }, day: A.nextDay(0), hour: A.state?.hour,
+    people: (A.cityGeometry()?.people ?? []).filter(p => Math.hypot(p.x - at.x, p.z - at.z) < 8).map(p => [+p.x.toFixed(1), +p.z.toFixed(1)]),
+    solids: (A.cityGeometry()?.colliders ?? []).filter(c => c.x1 > at.x - 6 && c.x0 < at.x + 6 && c.z1 > at.z - 6 && c.z0 < at.z + 6 && c.h > 0.3).map(c => [+c.x0.toFixed(1), +c.x1.toFixed(1), +c.z0.toFixed(1), +c.z1.toFixed(1), c.h]), roadEvents: (A.roadEvents?.() ?? []).filter(e => e.built).map(e => [e.kind, e.edge.ax, e.edge.az, e.edge.bx, e.edge.bz, e.closed]) }; }, [dx.x, dx.z]);
+  // (the full 4 Hz trace of the leg and the driver's own log are in last-leg-trace.json; here the last minute at 4 Hz, the impacts with the game time and the pose of each, and the driver's last 40 loops)
+  console.log('STALL', JSON.stringify({ drop: dx, distance: +Math.hypot(snap.end.x - dx.x, snap.end.z - dx.z).toFixed(1), legs, ...snap, driver: driverLog.slice(-40) }));
+  await page.screenshot({ path: `${out}/stall-state.png` });
+}
+await page.waitForTimeout(1500); await shot('dropoff');
+const hpTrip1 = await d(() => window.__dakar.teranga.health());
+check('a cross-district trip driven normally does not wear the car out (no garage needed after it)', hpTrip1 >= hpTrip0 - 8, JSON.stringify({ before: hpTrip0, after: hpTrip1, impacts: (await d(() => window.__dakar.teranga.feel().impacts)).slice(0, 8), at: await d(() => { const a = window.__dakar.teranga.at(); return { x: a.x, z: a.z }; }) }));
+const lines = ledger.filter(l => /Course VTC/.test(l.label));
+check('at the drop-off the passenger gets out and walks off; the fare is paid ONCE (one wallet line)', !done.trip && done.state.done.includes(v0.trip.id) && wallet1 - wallet0 === v0.trip.fare && lines.length === 1, JSON.stringify({ paid: wallet1 - wallet0, fare: v0.trip.fare, lines: lines.length, events: done.log.events }));
+await page.waitForFunction(() => window.__dakar.vtc.info().log.events.includes('faded'), null, { timeout: 240000 }).catch(() => {});
+const gone = await V(), outPh = gone.log.phases.slice(gone.log.phases.lastIndexOf('seated')).join('>');
+check('getting out is played out on the pavement side: the door opens, out, onto the pavement', /seated>unseat>out/.test(outPh) && gone.log.events.includes('stepped-out'), JSON.stringify({ phases: outPh, events: gone.log.events }));
+check('the passenger walked off along the pavement and faded only once well away or out of view (never at the door)', gone.log.leftAt && gone.log.leftAt.walked >= 8 && (gone.log.leftAt.camDist > 20 || !gone.log.leftAt.seen || gone.log.awayWalked > 25), JSON.stringify({ leftAt: gone.log.leftAt, walked: gone.log.awayWalked }));
+check('the passenger walked away and is gone; nobody left in the car', gone.persons === 0 && !gone.person && !gone.leaver, JSON.stringify({ persons: gone.persons, phase: gone.phase }));
+// a reload after the payment: nothing paid again
+await d(() => window.__dakar.save?.());
+await d(() => history.replaceState(null, '', location.href.replace(/&argent=\d+/, ''))); await page.reload(); await ready();
+await page.waitForTimeout(2500);
+const after = await d(() => ({ w: window.__dakar.state.wallet, v: window.__dakar.vtc.info() }));
+check('reloaded after the payment: no ride in hand, nothing paid twice', !after.v.trip && after.w === wallet1 && after.v.state.trips === 1, JSON.stringify({ wallet: after.w, trips: after.v.state.trips }));
+clearInterval(sample);
+check('never more than one passenger in the scene during the whole ride', persons.length > 5 && Math.max(...persons) <= 1, `${persons.length} samples, max ${Math.max(...persons)}`);
+check('no JavaScript error', errors.length === 0, errors.slice(0, 2).join(' | '));
+await browser.close();
+console.log(`${total - failed}/${total} passed`);
+process.exit(failed ? 1 : 0);

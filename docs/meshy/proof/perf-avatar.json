@@ -1,0 +1,377 @@
+{
+ "note": "headless Chromium + SwiftShader, CDP CPU throttle: relative cost only, not a phone",
+ "rows": [
+  {
+   "quality": "low",
+   "avatar": "v4",
+   "readyMs": 7046,
+   "bodyFiles": [],
+   "render": {
+    "dc": 96,
+    "tris": 132837
+   },
+   "heapMB": 187,
+   "body": {
+    "id": "v4",
+    "tris": 10432,
+    "verts": 5777,
+    "skinnedMeshes": 20,
+    "meshes": 20,
+    "textures": []
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.55,
+     "walk": 0.73,
+     "run": 0.6
+    },
+    "x4": {
+     "idle": 2.22,
+     "walk": 2.68,
+     "run": 3.1
+    },
+    "x6": {
+     "idle": 3.43,
+     "walk": 3.59,
+     "run": 4.08
+    }
+   }
+  },
+  {
+   "quality": "low",
+   "avatar": "homme",
+   "readyMs": 1915,
+   "bodyFiles": [
+    {
+     "file": "body_m_low.glb",
+     "kB": 656,
+     "ms": 18
+    }
+   ],
+   "render": {
+    "dc": 98,
+    "tris": 136997
+   },
+   "heapMB": 170,
+   "body": {
+    "id": "meshy_m",
+    "tris": 6240,
+    "verts": 7710,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "512x512"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.67,
+     "walk": 0.64,
+     "run": 0.78
+    },
+    "x4": {
+     "idle": 1.96,
+     "walk": 2.51,
+     "run": 3.12
+    },
+    "x6": {
+     "idle": 3.1,
+     "walk": 3.27,
+     "run": 4.43
+    }
+   }
+  },
+  {
+   "quality": "low",
+   "avatar": "femme",
+   "readyMs": 1697,
+   "bodyFiles": [
+    {
+     "file": "body_f_low.glb",
+     "kB": 1384,
+     "ms": 8
+    }
+   ],
+   "render": {
+    "dc": 87,
+    "tris": 138909
+   },
+   "heapMB": 135,
+   "body": {
+    "id": "meshy_f",
+    "tris": 12528,
+    "verts": 21625,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "512x512"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.67,
+     "walk": 0.66,
+     "run": 0.76
+    },
+    "x4": {
+     "idle": 2.23,
+     "walk": 2.44,
+     "run": 3.14
+    },
+    "x6": {
+     "idle": 3.12,
+     "walk": 4.01,
+     "run": 3.79
+    }
+   }
+  },
+  {
+   "quality": "medium",
+   "avatar": "v4",
+   "readyMs": 6983,
+   "bodyFiles": [],
+   "render": {
+    "dc": 113,
+    "tris": 163926
+   },
+   "heapMB": 223,
+   "body": {
+    "id": "v4",
+    "tris": 10432,
+    "verts": 5777,
+    "skinnedMeshes": 20,
+    "meshes": 20,
+    "textures": []
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.78,
+     "walk": 0.9,
+     "run": 0.83
+    },
+    "x4": {
+     "idle": 2.74,
+     "walk": 3,
+     "run": 4.16
+    },
+    "x6": {
+     "idle": 4.59,
+     "walk": 5.61,
+     "run": 4.9
+    }
+   }
+  },
+  {
+   "quality": "medium",
+   "avatar": "homme",
+   "readyMs": 1872,
+   "bodyFiles": [
+    {
+     "file": "body_m.glb",
+     "kB": 1136,
+     "ms": 10
+    }
+   ],
+   "render": {
+    "dc": 106,
+    "tris": 172034
+   },
+   "heapMB": 170,
+   "body": {
+    "id": "meshy_m",
+    "tris": 12482,
+    "verts": 14419,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "1024x1024"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.85,
+     "walk": 0.75,
+     "run": 0.99
+    },
+    "x4": {
+     "idle": 2.39,
+     "walk": 3.07,
+     "run": 3.91
+    },
+    "x6": {
+     "idle": 4.53,
+     "walk": 4.74,
+     "run": 4.01
+    }
+   }
+  },
+  {
+   "quality": "medium",
+   "avatar": "femme",
+   "readyMs": 1890,
+   "bodyFiles": [
+    {
+     "file": "body_f.glb",
+     "kB": 1456,
+     "ms": 12
+    }
+   ],
+   "render": {
+    "dc": 116,
+    "tris": 179156
+   },
+   "heapMB": 180,
+   "body": {
+    "id": "meshy_f",
+    "tris": 12528,
+    "verts": 21625,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "1024x1024"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.86,
+     "walk": 0.76,
+     "run": 0.91
+    },
+    "x4": {
+     "idle": 3.05,
+     "walk": 3.21,
+     "run": 3.64
+    },
+    "x6": {
+     "idle": 4.65,
+     "walk": 4.63,
+     "run": 5.7
+    }
+   }
+  },
+  {
+   "quality": "high",
+   "avatar": "v4",
+   "readyMs": 7002,
+   "bodyFiles": [],
+   "render": {
+    "dc": 105,
+    "tris": 166964
+   },
+   "heapMB": 230,
+   "body": {
+    "id": "v4",
+    "tris": 10432,
+    "verts": 5777,
+    "skinnedMeshes": 20,
+    "meshes": 20,
+    "textures": []
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 0.95,
+     "walk": 1.38,
+     "run": 1.05
+    },
+    "x4": {
+     "idle": 3.85,
+     "walk": 4.13,
+     "run": 4.09
+    },
+    "x6": {
+     "idle": 3.86,
+     "walk": 4.9,
+     "run": 6.3
+    }
+   }
+  },
+  {
+   "quality": "high",
+   "avatar": "homme",
+   "readyMs": 1988,
+   "bodyFiles": [
+    {
+     "file": "body_m.glb",
+     "kB": 1136,
+     "ms": 8
+    }
+   ],
+   "render": {
+    "dc": 145,
+    "tris": 211384
+   },
+   "heapMB": 230,
+   "body": {
+    "id": "meshy_m",
+    "tris": 12482,
+    "verts": 14419,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "1024x1024"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 1.12,
+     "walk": 0.95,
+     "run": 1.04
+    },
+    "x4": {
+     "idle": 3.35,
+     "walk": 3.34,
+     "run": 4.08
+    },
+    "x6": {
+     "idle": 5.3,
+     "walk": 4.46,
+     "run": 6.3
+    }
+   }
+  },
+  {
+   "quality": "high",
+   "avatar": "femme",
+   "readyMs": 1884,
+   "bodyFiles": [
+    {
+     "file": "body_f.glb",
+     "kB": 1456,
+     "ms": 9
+    }
+   ],
+   "render": {
+    "dc": 125,
+    "tris": 194046
+   },
+   "heapMB": 239,
+   "body": {
+    "id": "meshy_f",
+    "tris": 12528,
+    "verts": 21625,
+    "skinnedMeshes": 1,
+    "meshes": 1,
+    "textures": [
+     "1024x1024"
+    ]
+   },
+   "jsMsPerFrame": {
+    "x1": {
+     "idle": 1.03,
+     "walk": 0.88,
+     "run": 0.83
+    },
+    "x4": {
+     "idle": 2.81,
+     "walk": 3.81,
+     "run": 4.04
+    },
+    "x6": {
+     "idle": 5.14,
+     "walk": 4.65,
+     "run": 5.63
+    }
+   }
+  }
+ ]
+}

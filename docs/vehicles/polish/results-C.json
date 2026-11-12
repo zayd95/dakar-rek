@@ -1,0 +1,58 @@
+{
+ "journey": "C",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 9.9,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "Pape Sarr offers credit at this trust: a small advance, then 10 000 F a day of play, and a share of each VTC fare",
+   "ok": true,
+   "detail": "Pape Sarr · crédit pour une Teranga« D’accord. Une avance maintenant, le reste en plusieurs fois. » · Prix 4 000 000 F · Avance 200 000 F · puis 10 000 F par jour de jeu (380 versements), plus 30 % de chaque course VTC, ou plus quand tu veux🚗Signer · Teranga blanc nacréAvance 200 000 F maintenant ·"
+  },
+  {
+   "name": "signed: the Teranga is the player's, the debt is on the phone with its days",
+   "ok": true,
+   "detail": "{\"id\":\"L1\",\"lender\":\"sarr\",\"kind\":\"vehicle\",\"label\":\"Teranga blanc nacré · crédit Sarr Auto\",\"principal\":3800000,\"paid\":0,\"installment\":10000,\"every\":1,\"openedDay\":1,\"checkedDay\":1,\"missed\":0,\"status\":\"open\",\"clock\":\"play\",\"asset\":\"a2\",\"spec\":\"teranga\",\"share\":true,\"late\":0,\"behind\":0,\"left\":3800000,\"next\":10000,\"nextDay\":2,\"pct\":0}"
+  },
+  {
+   "name": "« Crédits »: the balance, what is repaid, the next payment, in plain sight",
+   "ok": true,
+   "detail": "Crédits1 crédit en cours · confiance : Pape Sarr 48, Modou 0🚗Teranga blanc nacré · crédit Sarr Autoprochain versement 10 000 F · remboursé 0 F sur 3 800 000 F (0 %) · 30 % de chaque course VTCreste 3 800 000 F↩️Fermer✕"
+  },
+  {
+   "name": "a ride inside Pikine is on offer, its fare shown before it is taken, in its band (1 000 – 2 000 F)",
+   "ok": true,
+   "detail": "{\"fare\":1000,\"from\":\"Maïga du marché\",\"to\":\"Gargote Mame Diarra\"}"
+  },
+  {
+   "name": "at the wheel with a ride in hand: the goal line gives the next turn and the distance to the passenger",
+   "ok": true,
+   "detail": "{\"text\":\"↱ À droite dans 40 m · Astou · Maïga du marché 50 m\",\"nav\":true}"
+  },
+  {
+   "name": "the passenger aboard: the directions turn to the drop-off by themselves",
+   "ok": true,
+   "detail": "{\"text\":\"↱ À droite dans 10 m · Gargote Mame Diarra · dépose 100 m\",\"nav\":true}"
+  },
+  {
+   "name": "dropped off: the fare paid once; Pape Sarr's 30 % taken off it toward the debt, the rest in the wallet",
+   "ok": true,
+   "detail": "{\"fare\":1000,\"toSarr\":300,\"wallet\":700}"
+  },
+  {
+   "name": "the card shows the fare, Pape Sarr's share and what is left to repay",
+   "ok": false,
+   "detail": "🚗 Course terminée · Astou Maïga du marché (Pikine) → Gargote Mame Diarra (Pikine) Payé 1 000 F +1 000 F Pape Sarr 300 F remboursés reste 3 799 700 F sur la Teranga −300 F Durée 1 min 32 s Distance 350 m Série 1 jour actif Premier jour actif ENSUITE Trajet sans accroc : le client était à l’aise. ✕"
+  },
+  {
+   "name": "the directions clear when the ride is over",
+   "ok": true,
+   "detail": "{\"text\":\"↑ Gagne ta vie : prends une livraison Tiak Tiak à la Gargote Mame Diarra (Pikine). 3 m\",\"nav\":false}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

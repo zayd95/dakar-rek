@@ -5,7 +5,11 @@ export class Input {
   dragYaw = 0; dragPitch = 0;
   actionPressed = false;
   menuPressed = false;
-  enabled = true;
+  /** Does the game take the player's controls? Off behind a sheet, the phone, an activity. `onEnable` runs when it comes back on (src/ui/hud.ts: a thumb already down takes the stick). */
+  get enabled() { return this.on; }
+  set enabled(v: boolean) { const was = this.on; this.on = v; if (v && !was) this.onEnable?.(); }
+  private on = true;
+  onEnable: (() => void) | null = null;
   private mouseDragging = false;
 
   constructor(el: HTMLElement) {
@@ -16,7 +20,7 @@ export class Input {
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;
       if (e.code === 'Escape' || e.code === 'KeyM') this.menuPressed = true;
     });
-    addEventListener('keyup', e => this.keys.delete(e.code));
+    addEventListener('keyup', e => { this.keys.delete(e.code); });
     addEventListener('blur', () => this.reset());
     addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
     addEventListener('focusin', e => { if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) this.reset(); });

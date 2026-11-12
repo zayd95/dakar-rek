@@ -1,0 +1,17 @@
+{
+ "sum": {
+  "route": "home",
+  "samples": 195,
+  "triangles": 7521,
+  "cameraHeight": [
+   5.1,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 0,
+  "minLens": 1.31,
+  "viewBlockedFrames": 0,
+  "errors": 0
+ },
+ "flagged": []
+}

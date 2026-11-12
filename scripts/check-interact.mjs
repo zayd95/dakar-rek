@@ -30,6 +30,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
     const f = await focus();
     check(`${label}: walking up to a bench focuses it with « S’asseoir »`, f?.kind === 'seat' && /asseoir/.test(f.primary ?? ''), JSON.stringify(f));
+    // the bubble is placed by the frame loop (projection of the target): wait for a frame that shows it (slow software rendering)
+    await page.waitForFunction(() => document.getElementById('wprompt')?.classList.contains('on'), null, T).catch(() => {});
     const prompt = await d(() => document.getElementById('wprompt')?.classList.contains('on') && document.getElementById('wprompt').textContent);
     check(`${label}: a diegetic prompt floats above the seat`, typeof prompt === 'string' && /asseoir/.test(prompt), String(prompt));
     await d(() => window.__dakar.act());
@@ -56,8 +58,13 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   check(`${label}: walking up to a person offers « Saluer » and « Demander son nom »`, greeted?.primary === 'Saluer' && greeted.all.includes('Demander son nom'), JSON.stringify(greeted));
   if (greeted) {
     await d(() => window.__dakar.act());
-    await page.waitForFunction(() => /Maleekum salaam/.test(document.getElementById('toast')?.textContent ?? ''), null, T).catch(() => {});
-    check(`${label}: greeting gets an answer`, /Maleekum salaam/.test(await d(() => document.getElementById('toast').textContent)));
+    // Wolof exchange (src/i18n/lines.ts), French typography with no-break spaces: « Toi : « Salaam aleekum ! » · Passant : « Maleekum salaam ! » »
+    // the line on screen (#toast > .t); #toast also holds the hidden screen-reader copy (.sr), which would read the exchange twice
+    const said = () => (document.querySelector('#toast > .t:not(.out)')?.textContent ?? '').replace(/[  ]/g, ' ');
+    await page.waitForFunction(src => new RegExp(src).test((document.querySelector('#toast > .t:not(.out)')?.textContent ?? '').replace(/[  ]/g, ' ')), 'Maleekum salaam', T).catch(() => {});
+    const answer = await d(said);
+    // (the toast may already show this person's follow-up: the greeting of the hour and « Jàmm rekk. »)
+    check(`${label}: greeting gets an answer (« Salaam aleekum ! » — « Maleekum salaam ! »)`, /^Toi : « Salaam aleekum ! » · Passan(t|te) : « Maleekum salaam ! »$|· Toi : « Jàmm rekk\. » \(tout va bien\)$/.test(answer), answer);
     await page.screenshot({ path: `${out}/${label}-greet.png` });
   }
 
@@ -130,9 +137,13 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   //    front → eat → stay seated. Gargote inside and out front, dibiterie, and the bed for sleeping.
   const audit = () => d(() => {
     const D = window.__dakar, geo = D.roomGeometry() ?? D.cityGeometry();
-    const tables = geo.colliders.filter(c => c.h <= 1.0 && (c.x1 - c.x0) * (c.z1 - c.z0) >= 0.6);
-    const under = (x, z) => tables.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
-    const bad = [], list = D.seatsHere();
+    const list = D.seatsHere(), inC = (c, x, z) => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1;
+    // a table: low, at least 0.4 m each way (not a wall), and used as one — a seat faces it or lays its plate on it
+    // (a low wall behind a bench or a sponsor board behind the judges' chairs is not a table)
+    const tables = geo.colliders.filter(c => c.h <= 1.0 && c.x1 - c.x0 >= 0.4 && c.z1 - c.z0 >= 0.4 && (c.x1 - c.x0) * (c.z1 - c.z0) >= 0.6)
+      .filter(c => list.some(s => (s.table && inC(c, s.table.x, s.table.z)) || inC(c, s.x + Math.sin(s.yaw) * 0.55, s.z + Math.cos(s.yaw) * 0.55)));
+    const under = (x, z) => tables.some(c => inC(c, x, z));
+    const bad = [];
     for (const s of list) {
       if (s.kind === 'bed') continue;
       const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
@@ -142,9 +153,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     return { n: list.length, plates: list.filter(s => s.table).length, bad };
   });
   const order = async (dish, where, seatRe, prop, shot) => {
-    await d(() => window.__dakar.more());
-    await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-    await page.locator('#modal .item', { hasText: dish }).first().click();
+    if ((await focus())?.primary === dish) await d(() => window.__dakar.act());          // the counter's own first action
+    else {
+      await d(() => window.__dakar.more());
+      await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+      await page.locator('#modal .item', { hasText: dish }).first().click();
+    }
     await page.waitForFunction(() => window.__dakar.approach(), null, { timeout: 120000 }).catch(() => {});
     const walk = await d(() => window.__dakar.approach());
     await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu manges', null, { timeout: 180000 }).catch(() => {});
@@ -184,10 +198,14 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => /Gargote/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
     await order('Ceebu jën', 'gargote front (from the street)', /:gargote:.*:bench:/, 'ceebu', 'gargote-front-eating');
   }
-  const dibi = (await d(() => window.__dakar.interactables())).find(i => /:dibiterie:/.test(i.id));
+  // the Dibi (a composed venue): stand at its counter, 0.6 m in front of it
+  const dibiV = await d(() => window.__dakar.venues?.().find(v => v.type === 'dibi') ?? null);
+  const counterA = dibiV?.anchors.find(a => a.id === 'counter');
+  const dibi = counterA ? { x: counterA.x - Math.sin(dibiV.yaw + Math.PI) * 0.6, z: counterA.z - Math.cos(dibiV.yaw + Math.PI) * 0.6, yaw: dibiV.yaw + Math.PI }
+    : (await d(() => window.__dakar.interactables())).find(i => /:dibiterie:/.test(i.id));
   if (dibi) {
-    await d(() => { window.__dakar.state.data.needs.faim = 20; });
-    await d(p => window.__dakar.place(p.x, p.z, 0), dibi);
+    await d(() => { const s = window.__dakar.state; s.data.wallet = Math.max(s.data.wallet ?? 0, 5000); s.data.needs.faim = 20; window.__dakar.setHour(12.5); });
+    await d(p => window.__dakar.place(p.x, p.z, p.yaw ?? 0), dibi);
     await page.waitForFunction(() => /:dibiterie:/.test(window.__dakar.focus()?.id ?? ''), null, T).catch(() => {});
     await order('Dibi mouton', 'dibiterie', /:dibiterie:/, 'dibi', 'dibiterie-eating');
   }
@@ -203,13 +221,23 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   }
   await d(() => { window.__dakar.teleport('pikine'); });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
-  // Salon Awa: « Se faire coiffer » happens in the hairdresser's chair; the grand-place: « Se poser à l’ombre » on a bench
-  for (const [re, what, seatRe] of [[/:city:salon-tech$/, 'Se faire coiffer', /:salon-chair$/], [/:city:square$/, 'Se poser à l’ombre', /:bench:/]]) {
+  // Salon Awa: a cut happens in the hairdresser's chair (the venue's chairs, reached by walking into the shop);
+  // the grand-place: « Se poser à l’ombre » on a bench
+  const salon = await d(() => !!window.__dakar.venues?.().some(v => v.type === 'salon'));
+  const SALON = salon ? [/:city:salon-tech$/, 'Coupe courte', /venue:salon:fauteuil/] : [/:city:salon-tech$/, 'Se faire coiffer', /:salon-chair$/];
+  for (const [re, what, seatRe] of [SALON, [/:city:square$/, 'Se poser à l’ombre', /:bench:/]]) {
     const p = (await d(() => window.__dakar.cityPlaces())).find(i => re.test(i.id));
     if (!p) { check(`${label}: ${what}: place found`, false); continue; }
-    await d(() => { window.__dakar.state.data.wallet = 9000; });
-    await d(q => window.__dakar.place(q.x, q.z, Math.PI), p);
-    await page.waitForFunction(id => window.__dakar.focus()?.id === id, p.id, T).catch(() => {});
+    await d(() => { window.__dakar.state.data.wallet = 9000; window.__dakar.setHour(11); });
+    if (salon && /salon/.test(p.id)) {                  // in from the street door, walking up to the chairs
+      await d(q => window.__dakar.place(q.x + 3.6, q.z + 1.2, Math.PI), p);
+      await page.keyboard.down('KeyW');
+      await page.waitForFunction(() => /venue:salon:chair$/.test(window.__dakar.focus()?.id ?? ''), null, { timeout: 30000, polling: 200 }).catch(() => {});
+      await page.keyboard.up('KeyW');
+    } else {
+      await d(q => window.__dakar.place(q.x, q.z, Math.PI), p);
+      await page.waitForFunction(id => window.__dakar.focus()?.id === id, p.id, T).catch(() => {});
+    }
     await d(() => window.__dakar.more());
     await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
     await page.locator('#modal .item', { hasText: what }).first().click();
@@ -232,7 +260,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.locator('#modal .item', { hasText: 'Dormir' }).first().click();
     await page.waitForFunction(() => window.__dakar.seated() && window.__dakar.lying() === 1 && window.__dakar.activity(), null, { timeout: 120000 }).catch(() => {});
     const lie = await d(() => ({ seated: window.__dakar.seated(), lying: window.__dakar.lying(), y: window.__dakar.pos().y, a: window.__dakar.activity() }));
-    check(`${label}: « Dormir » lies down on the bed`, /:home:bed$/.test(lie.seated ?? '') && lie.lying === 1 && lie.y > 0.6, JSON.stringify(lie));
+    check(`${label}: « Dormir » lies down on the bed`, /:home:(bed|lit)$/.test(lie.seated ?? '') && lie.lying === 1 && lie.y > 0.6, JSON.stringify(lie));
     await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-sleeping.png` });
     await page.waitForFunction(() => !window.__dakar.activity(), null, { timeout: 180000 }).catch(() => {});
     await d(() => window.__dakar.stand());
@@ -240,6 +268,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     check(`${label}: getting up from the bed stands on the floor`, up.lying === 0 && !up.seated && up.y < 0.2, JSON.stringify(up));
   }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
+  await page.context().close();                       // this view's page stops rendering before the next one boots
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));

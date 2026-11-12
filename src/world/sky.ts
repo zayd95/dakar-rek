@@ -23,7 +23,9 @@ void main() {
   vec3 col = mix(uHorizon, uZenith, pow(smoothstep(0.0, 0.62, y), 0.75));
   col = mix(col, uHaze, exp(-y * 14.0) * 0.75);                 // dusty band just above the horizon
   float s = max(dot(d, normalize(uSunDir)), 0.0);
-  col += uSunColor * (pow(s, 900.0) * 6.0 + pow(s, 24.0) * 0.32 + pow(s, 4.0) * 0.12);
+  // a low sun is a larger, softer ball in a wider glow (the dust of the horizon), as it goes down over the sea
+  float low = 1.0 - smoothstep(0.02, 0.38, normalize(uSunDir).y);
+  col += uSunColor * (pow(s, mix(900.0, 480.0, low)) * 6.0 + pow(s, 24.0) * (0.32 + 0.5 * low) + pow(s, 4.0) * (0.12 + 0.16 * low));
   if (uNight > 0.01 && d.y > 0.05) {
     vec3 c = floor(d * 260.0);
     float st = step(0.9965, h21(c));
@@ -49,6 +51,8 @@ const KEYS: Key[] = [
   [24, 0x040814, 0x0f1a34, 0x1a2440],
 ];
 
+const GREY_DAY = new THREE.Color(0x9aa2aa), GREY_NIGHT = new THREE.Color(0x2c3036);
+
 export class Sky {
   readonly mesh: THREE.Mesh;
   private u: Record<string, THREE.IUniform>;
@@ -62,6 +66,15 @@ export class Sky {
     const mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: vert, fragmentShader: frag, side: THREE.BackSide, depthWrite: false, fog: false });
     this.mesh = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), mat);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = -1;
+  }
+  /** Cloud cover 0–1 (src/city/weather.ts): the sky greys and the sun's disc fades. Call after update(). */
+  overcast(c: number, night: boolean) {
+    if (c <= 0.06) return;
+    const g = night ? GREY_NIGHT : GREY_DAY;
+    this.zenith.lerp(g, 0.92 * c); this.horizon.lerp(g, 0.85 * c);
+    (this.u.uZenith.value as THREE.Color).copy(this.zenith); (this.u.uHorizon.value as THREE.Color).copy(this.horizon);
+    (this.u.uHaze.value as THREE.Color).lerp(g, 0.85 * c);
+    (this.u.uSunColor.value as THREE.Color).multiplyScalar(1 - 0.85 * c);
   }
   update(hour: number, sunDir: THREE.Vector3, sunVisible: number, camPos: THREE.Vector3) {
     let i = 0; while (i < KEYS.length - 2 && hour > KEYS[i + 1][0]) i++;

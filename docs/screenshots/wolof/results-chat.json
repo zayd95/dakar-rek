@@ -1,0 +1,42 @@
+{
+  "when": "2026-10-09T08:38:48.989Z",
+  "base": "http://localhost:4247/",
+  "chat": "http://127.0.0.1:8797/",
+  "results": [
+    {
+      "name": "chat: street quick phrases at 9 h start with « Salaam aleekum » and « Na nga fanaane ? »",
+      "ok": true,
+      "detail": "Salaam aleekum | Na nga fanaane ? | Jërëjëf | Waaw | Déedéet | Amul solo | Lu bees ? | Maa ngi ñëw | Ba ci kanam"
+    },
+    {
+      "name": "chat: the French gloss is the tooltip",
+      "ok": true,
+      "detail": "bien dormi ?"
+    },
+    {
+      "name": "chat: a quick phrase arrives as written on the other screen",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "chat: inside a gargote the phrases offer « Neex na » and « Dama suur », greeting of the afternoon",
+      "ok": true,
+      "detail": "Salaam aleekum | Na nga def ? | Jërëjëf | Waaw | Déedéet | Amul solo | Neex na | Dama suur | Ba ci kanam"
+    },
+    {
+      "name": "chat: block / mute / report tools are still there (people list)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "chat desktop: no page errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "chat phone: no page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

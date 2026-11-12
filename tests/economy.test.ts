@@ -4,38 +4,39 @@ import { newSave, migrate, SCHEMA_VERSION, LEDGER_MAX } from '../src/core/save';
 import { Relations } from '../src/social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice } from '../src/social/beats';
 import { ROUTES, CLIENTS, offers, acceptJob, completeJob, cancelJob, pickUp, deliveryLimitMs, routePay, pickupFrags } from '../src/economy/jobs';
-import { FURNITURE, buyFurniture, goalItem, priceOf } from '../src/economy/furniture';
+import { FURNITURE, buyFurniture, goalItem, ownedFurnitureIds, priceOf } from '../src/economy/furniture';
 import { ECONOMY } from '../src/economy/config';
+import { ACTIONS } from '../src/world/content';
 
 const fresh = () => { const s = new GameState(newSave(0)); return { s, r: new Relations(s.data) }; };
 const play = (r: Relations, s: GameState, id: string, choice: string) => {
   const b = BEATS.find(x => x.id === id)!; return applyChoice(b, b.choices.find(c => c.id === choice)!, r, s);
 };
 
-describe('save schema v3', () => {
+describe('save schema v3 (now part of v5)', () => {
   it('a v2 save migrates with an empty ledger, no furniture and no delivery, keeping money and story', () => {
     const v2 = { schemaVersion: 2, guestId: 'g', hub: 'pikine', x: 1040, z: 0, wallet: 7777, flags: ['reco_modou'], beats: { ibou_welcome: 'oui' } };
     const m = migrate(v2)!;
-    expect(SCHEMA_VERSION).toBe(3);
-    expect(m.schemaVersion).toBe(3);
-    expect(m.ledger).toEqual([]); expect(m.furniture).toEqual([]);
+    expect(SCHEMA_VERSION).toBe(6);
+    expect(m.schemaVersion).toBe(6);
+    expect(m.ledger).toEqual([]); expect(ownedFurnitureIds(new GameState(m))).toEqual([]);
     expect(m.jobs).toEqual({ active: null, done: [], seq: 0 });
     expect(m.wallet).toBe(7777); expect(m.flags).toEqual(['reco_modou']); expect(m.beats.ibou_welcome).toBe('oui');
     expect(m.x).toBe(1040);              // off-map positions are recovered at load time (main.ts), not by the migration
   });
-  it('a v1 save also reaches v3', () => {
+  it('a v1 save also reaches the current schema', () => {
     const m = migrate({ schemaVersion: 1, wallet: 500 })!;
-    expect(m.schemaVersion).toBe(SCHEMA_VERSION); expect(m.ledger).toEqual([]); expect(m.furniture).toEqual([]);
+    expect(m.schemaVersion).toBe(SCHEMA_VERSION); expect(m.ledger).toEqual([]); expect(ownedFurnitureIds(new GameState(m))).toEqual([]);
   });
   it('sanitises ledger, furniture and jobs, and round-trips them', () => {
     const m = migrate({ schemaVersion: 3, ledger: [{ at: 1, label: 'ok', amount: 5 }, { label: 'bad' }, 'x'], furniture: ['radio', 'radio', 3], jobs: { active: { runId: 'r1', routeId: 'pk_mame_boutique', hub: 'mars' }, done: ['a', 2], seq: 'z' } })!;
     expect(m.ledger).toEqual([{ at: 1, label: 'ok', amount: 5 }]);
-    expect(m.furniture).toEqual(['radio']);
+    expect(ownedFurnitureIds(new GameState(m))).toEqual(['radio']);
     expect(m.jobs).toEqual({ active: null, done: ['a'], seq: 0 });
     const { s } = fresh();
     expect(buyFurniture(s, 'miroir')).toBe(true); s.addMoney(-100, 'Café Touba'); acceptJob(s, 'pk_mame_boutique', true, 60000);
     const back = migrate(JSON.parse(JSON.stringify(s.data)))!;
-    expect(back.ledger).toEqual(s.data.ledger); expect(back.furniture).toEqual(['miroir']); expect(back.jobs).toEqual(s.data.jobs);
+    expect(back.ledger).toEqual(s.data.ledger); expect(ownedFurnitureIds(new GameState(back))).toEqual(['miroir']); expect(back.jobs).toEqual(s.data.jobs);
   });
   it('drops a restored active run that was already completed', () => {
     const m = migrate({ schemaVersion: 3, jobs: { active: { runId: 'r1', routeId: 'pk_mame_boutique', hub: 'pikine', stage: 'deliver', pay: 1200, startedMs: 0, limitMs: 1 }, done: ['r1'], seq: 1 } })!;
@@ -62,14 +63,18 @@ describe('ledger', () => {
 describe('Tiak Tiak deliveries', () => {
   it('has 3–5 ordinary routes in Pikine and Plateau, each with a pay and a better-paid recommended follow-up', () => {
     for (const hub of ['pikine', 'plateau'] as const) {
-      const ordinary = ROUTES.filter(r => r.hub === hub && !r.needFlag);
+      const ordinary = ROUTES.filter(r => r.hub === hub && !r.needFlag && !r.toHub);
       expect(ordinary.length).toBeGreaterThanOrEqual(3); expect(ordinary.length).toBeLessThanOrEqual(5);
       expect(pickupFrags(hub).length).toBeGreaterThanOrEqual(2);
       const reco = ROUTES.find(r => r.hub === hub && r.needFlag)!;
       expect(reco.needFlag).toBe(CLIENTS[hub]!.flag);
       expect(Math.max(...ordinary.map(routePay))).toBeLessThan(routePay(reco));
     }
-    for (const r of ROUTES) { expect(ECONOMY.tiak.pay[r.id]).toBeGreaterThan(0); expect(r.from.frag).not.toBe(r.to.frag); }
+    for (const r of ROUTES) { expect(ECONOMY.tiak.pay[r.id]).toBeGreaterThan(0); if (!r.toHub) expect(r.from.frag).not.toBe(r.to.frag); }
+    // between districts: a ride on the roads, paid more than any delivery inside one
+    const cross = ROUTES.filter(r => r.toHub && r.toHub !== r.hub);
+    expect(cross.length).toBeGreaterThanOrEqual(3);
+    for (const r of cross) expect(routePay(r)).toBeGreaterThan(Math.max(...ROUTES.filter(x => !x.toHub).map(routePay)));
   });
   it('pays once: completing the same run id twice pays a single time', () => {
     const { s } = fresh();
@@ -185,5 +190,23 @@ describe('a close one reacts (Ibou) and the next step', () => {
     expect(suggestion(r, s)?.id).toBe('goal_buy');
     buyFurniture(s, 'chaises');
     expect(suggestion(r, s)?.id).toBe('modou_reco');                // back to the story once Ibou's goal is reached
+  });
+});
+
+describe('work hours', () => {
+  const job = (place: string, id: string) => ACTIONS[place].find(a => a.id === id)!;
+  it('helping someone is only offered while they are there (garage, Sandaga stall)', () => {
+    const { s } = fresh();
+    s.data.needs.energie = 100;
+    for (const [place, id, open, closed] of [['garage', 'meca', 10, 22], ['market', 'vendre', 10, 20]] as const) {
+      s.hour = () => open; expect(job(place, id).requires!(s)).toBeNull();
+      s.hour = () => closed; expect(job(place, id).requires!(s)).toBeTruthy();
+    }
+    s.hour = () => 10; s.data.needs.energie = 5;
+    expect(job('garage', 'meca').requires!(s)).toBe('Trop fatigué');
+  });
+  it('the Almadies\' quay offers no fishing any more: it is the Embarcadère de Ngor, whose crossings leave from the pier\'s end (docs/TRAVERSEE.md)', () => {
+    expect(ACTIONS.port.length).toBeGreaterThan(0);
+    for (const a of ACTIONS.port) { expect(a.gain ?? 0).toBe(0); expect(a.steps ?? []).toEqual([]); expect(a.label).not.toMatch(/pêche|pêcheurs|pirogue du matin/i); }
   });
 });

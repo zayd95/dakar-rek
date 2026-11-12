@@ -1,0 +1,110 @@
+{
+  "at": "2026-10-27T04:45:36.914Z",
+  "passed": 17,
+  "failed": 0,
+  "perf": {
+    "rdc": {
+      "calls": 17,
+      "tris": 24258
+    },
+    "etage": {
+      "calls": 22,
+      "tris": 24650
+    },
+    "toit": {
+      "calls": 29,
+      "tris": 32184
+    },
+    "furnished": {
+      "calls": 23,
+      "tris": 27714
+    }
+  },
+  "results": [
+    {
+      "name": "0. two players on the local Workers runtime, each online with their own account",
+      "ok": true,
+      "extra": "{\"a\":\"1290a88148c19b75\",\"b\":\"3cf4f41f841d23f7\"}"
+    },
+    {
+      "name": "the scene: Awa buys the villa for 400 000 000 F of game money (the catalogue's price) and makes it her principal residence",
+      "ok": true,
+      "extra": "{\"paid\":400000000,\"home\":\"villa_almadies\"}"
+    },
+    {
+      "name": "1a. walking up from the street, the main entrance opens for its owner (the car gate stays shut); she walks up the path and it shuts behind her",
+      "ok": true,
+      "extra": "{\"e1\":{\"e\":{\"k\":1,\"solid\":\"open\",\"collider\":{\"x0\":-21.71,\"z0\":-8.584999999999999,\"x1\":-21.59,\"z1\":-7.015000000000001,\"h\":2.77},\"angle\":1.5707963267948966,\"log\":{\"opened\":1,\"shut\":0}},\"gate\":{\"k\":0,\"solid\":true,\"collider\":{\"x0\":-16.5,\"z0\":-7.68,\"x1\":-11.5,\"z1\":-7.050000000000001,\"h\":2.25},\"panelX\":0},\"p\":{\"x\":-20.85,\"y\":0.1,\"z\":-5.587916666666669,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null,\"yaw\":3.141592653589793,\"cam\":3.141592653589793}},\"e2\":{\"e\":{\"k\":0,\"solid\":\"shut\",\"collider\":{\"x0\":-21.8,\"z0\":-7.300000000000001,\"x1\":-20.2,\"z1\":-7.050000000000001,\"h\":2.77},\"angle\":0,\"log\":{\"opened\":1,\"shut\":"
+    },
+    {
+      "name": "1b. « Entrer chez toi » at the front door",
+      "ok": true,
+      "extra": "{\"id\":\"villa_almadies:sign\",\"name\":\"Villa avec piscine\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez toi\",\"all\":[\"Entrer chez toi\",\"Gérer ton logement\"],\"why\":[]}"
+    },
+    {
+      "name": "1c. inside the villa, on the ground floor, in the entrée",
+      "ok": true,
+      "extra": "{\"level\":\"rdc\",\"room\":\"entree\"}"
+    },
+    {
+      "name": "2. the ground floor toured with the joystick: entrée, salon, the pool garden, salle à manger, cuisine, hall",
+      "ok": true,
+      "extra": "{\"missed\":[],\"rooms\":[\"entree\",\"salon\",\"jardin\",\"manger\",\"cuisine\",\"hall\"],\"levels\":[\"rdc\"]}"
+    },
+    {
+      "name": "3. up the first flight to the first floor: the landing, the salon familial, the master suite",
+      "ok": true,
+      "extra": "{\"missed\":[],\"rooms\":[\"hall\",\"palier\",\"salon_familial\",\"suite\"],\"levels\":[\"rdc\",\"etage\"]}"
+    },
+    {
+      "name": "4. up the second flight to the roof terrace, by the helicopter: « Regarder l'hélicoptère » (no flight: it comes with the airport)",
+      "ok": true,
+      "extra": "{\"roof\":{\"missed\":[],\"rooms\":[\"salon_familial\",\"palier\",\"edicule\",\"terrasse\"],\"levels\":[\"etage\",\"toit\"]},\"heli\":true,\"sheet\":\"L’hélicoptère\\n\\nSur le toit de ta villa\\n\\nModèleHélicoptère léger monoturbine, cinq places\\nImmatriculation6V-ALM\\nRotor9,4 \"}"
+    },
+    {
+      "name": "5. down both flights to the pool: « Se baigner » at its edge, swims where the joystick says (the stroke), treads at rest, « Sortir de l'eau », cleaner",
+      "ok": true,
+      "extra": "{\"swam\":3.64,\"stroked\":true,\"rest\":\"tread\",\"missed\":[],\"edge\":true,\"sw\":{\"i\":{\"swimming\":true,\"state\":\"tread\",\"how\":\"slide\",\"t\":8.1,\"x\":1.76,\"z\":-7.53,\"y\":-1.26,\"yaw\":-2.29,\"wx\":1781.76,\"wz\":-7.53,\"speed\":0.28,\"lean\":0.75,\"clip\":\"Tread\",\"rate\":0.62,\"box\":{\"x0\":0.55,\"x1\":2.76,\"z0\":-8.69,\"z1\":-6.56},\"fx\":{\"rings\":6,\"drops\":0,\"made\":{\"rings\":40,\"drops\":18},\"drawn\":1},\"seat\":{\"x\":1781.7557880327458,\"z\":-7.533858779077819,\"top\":-0.7769000000000001,\"yaw\":-2.2933024024219484},\"log\":{\"started\":1,\"ended\":0,\"full\":0,\"gains\":null,\"ins\":{\"slide\":1,\"steps\":0},\"outs\":{\"climb\":0,\"steps\":0,\"taken\":0}}},\"y\":-1"
+    },
+    {
+      "name": "6. the Lamane Sport: « Monter » in the street, driven in through the gate, « Garer à la villa »: in its bay and saved there",
+      "ok": true,
+      "extra": "{\"monter\":true,\"garer\":true,\"car\":{\"x\":-14.9,\"z\":-10.7,\"rec\":{\"asset\":\"tout_terrain\",\"hub\":\"almadies\",\"x\":-14.9,\"z\":-10.7,\"yaw\":3.142}}}"
+    },
+    {
+      "name": "7a. the Collection Almadies delivered and set out by the game in the villa (salon, salle à manger, suite)",
+      "ok": true,
+      "extra": "{\"delivered\":[],\"n\":13}"
+    },
+    {
+      "name": "7b. « Aménager »: the bouclé armchair chosen and moved with the editor's buttons, « Poser »: saved at its new spot",
+      "ok": true,
+      "extra": "{\"fa\":\"Aménager\",\"chosen\":true,\"moved\":[\"down\"],\"before\":{\"x\":-1.72,\"z\":-4.45,\"rot\":0},\"after\":{\"x\":-1.72,\"z\":-4.2,\"rot\":0},\"why\":null,\"save0\":{\"x\":-1.72,\"z\":-4.45,\"rot\":0},\"save1\":{\"x\":-1.72,\"z\":-4.2,\"rot\":0}}"
+    },
+    {
+      "name": "8a. « Inviter chez moi » from Messages names the villa; Moussa accepts and « Y aller » guides him there",
+      "ok": true,
+      "extra": "{\"sheet\":\"Inviter chez moi Fermer 🏠 Villa avec piscine · Almadies Almadies · Joueur sera guidé jusqu’à ta porte Peut s’asseoir et utiliser la télé Si\",\"home\":{\"spec\":\"villa_almadies\",\"hub\":\"almadies\",\"door\":\"almadies:home:villa\",\"name\":\"Villa avec piscine · Almadies\"},\"dest\":\"almadies:pin:visit\"}"
+    },
+    {
+      "name": "8b. the main entrance opens for the invited guest; up the path, at the front door « Entrer chez Awa (invité) »",
+      "ok": true,
+      "extra": "{\"entrance\":{\"k\":1,\"solid\":\"open\",\"collider\":{\"x0\":-21.71,\"z0\":-8.584999999999999,\"x1\":-21.59,\"z1\":-7.015000000000001,\"h\":2.77},\"angle\":1.5707963267948966,\"log\":{\"opened\":1,\"shut\":0}},\"focus\":{\"id\":\"visit:1290a88148c19b75\",\"name\":\"Chez Awa\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez Awa (invité)\",\"all\":[\"Entrer chez Awa (invité)\"],\"why\":[]}}"
+    },
+    {
+      "name": "8c. both in the villa: her furniture drawn for him (the same pieces), and each one's game draws the other there",
+      "ok": true,
+      "extra": "{\"inB\":true,\"piecesA\":13,\"piecesB\":13,\"seesA\":true,\"seesB\":true}"
+    },
+    {
+      "name": "9. after a reload: the villa still hers and her home, every piece where she left it (the armchair at its new spot), the Lamane Sport in its bay",
+      "ok": true,
+      "extra": "{\"home\":\"villa_almadies\",\"pieces\":13,\"same\":true,\"armchair\":{\"x\":-1.72,\"z\":-4.2,\"rot\":0},\"save1\":{\"x\":-1.72,\"z\":-4.2,\"rot\":0},\"car\":[-14.9,-10.7],\"carSaved\":{\"asset\":\"tout_terrain\",\"hub\":\"almadies\",\"x\":-14.9,\"z\":-10.7,\"yaw\":3.142}}"
+    },
+    {
+      "name": "no page errors in either game",
+      "ok": true,
+      "extra": "{\"a\":[],\"b\":[]}"
+    }
+  ]
+}

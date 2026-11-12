@@ -1,0 +1,43 @@
+{
+ "journey": "almadies",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 6.8,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "Almadies, from the Corniche road, south through four junctions: driven to the end, no stop on the way",
+   "ok": false,
+   "detail": "{\"end\":[-57.94,-97.55],\"slowest\":0,\"where\":[-57.9,46.6],\"rapideAhead\":3.6,\"impacts\":[{\"kind\":\"hit\",\"speed\":8.8,\"strength\":0.66,\"headOn\":true}]}"
+  },
+  {
+   "name": "Almadies, from the Corniche road, south through four junctions: nothing solid on the lane at any junction",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "Almadies, the coast road (z = −120) east past the pier: driven to the end, no stop on the way",
+   "ok": true,
+   "detail": "{\"end\":[98.54,-117.91],\"slowest\":2.63,\"where\":[4.4,-118],\"rapideAhead\":null,\"impacts\":[]}"
+  },
+  {
+   "name": "Almadies, the coast road (z = −120) east past the pier: nothing solid on the lane at any junction",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "Almadies, from Pikine, west through three junctions: driven to the end, no stop on the way",
+   "ok": true,
+   "detail": "{\"end\":[-38.39,-62.06],\"slowest\":2.42,\"where\":[56.8,-62.1],\"rapideAhead\":null,\"impacts\":[]}"
+  },
+  {
+   "name": "Almadies, from Pikine, west through three junctions: nothing solid on the lane at any junction",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+{
+ "info": {
+  "stats": {
+   "tris": 946,
+   "drawCalls": 5,
+   "wheels": [
+    {
+     "id": "fl",
+     "r": 0.31,
+     "steer": true
+    },
+    {
+     "id": "fr",
+     "r": 0.31,
+     "steer": true
+    },
+    {
+     "id": "rl",
+     "r": 0.31,
+     "steer": false
+    },
+    {
+     "id": "rr",
+     "r": 0.31,
+     "steer": false
+    }
+   ]
+  },
+  "kitX": 4000,
+  "glbX": 4034.5
+ },
+ "rig": {
+  "before": {
+   "axle_fl": {
+    "spinDeg": 0,
+    "steerDeg": 0
+   },
+   "axle_fr": {
+    "spinDeg": 0,
+    "steerDeg": 0
+   },
+   "axle_rl": {
+    "spinDeg": 0,
+    "steerDeg": 0
+   },
+   "axle_rr": {
+    "spinDeg": 0,
+    "steerDeg": 0
+   }
+  },
+  "after": {
+   "axle_fl": {
+    "spinDeg": 87.9,
+    "steerDeg": 28.6
+   },
+   "axle_fr": {
+    "spinDeg": 87.9,
+    "steerDeg": 28.6
+   },
+   "axle_rl": {
+    "spinDeg": 87.9,
+    "steerDeg": 0
+   },
+   "axle_rr": {
+    "spinDeg": 87.9,
+    "steerDeg": 0
+   }
+  },
+  "r": [
+   0.31,
+   0.31,
+   0.31,
+   0.31
+  ]
+ },
+ "errors": []
+}

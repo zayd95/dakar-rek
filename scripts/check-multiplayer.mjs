@@ -7,6 +7,16 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/** The presence sheet: the HUD's button where it is shown, else the phone's Réglages › « Jouer en ligne » (a touch phone keeps that button off the HUD). */
+async function openPresence(p, tap = false) {
+  if (await p.locator('#presenceBtn').isVisible()) { await (tap ? p.locator('#presenceBtn').tap() : p.click('#presenceBtn')); return; }
+  await p.evaluate(() => window.__dakar.phone('reglages'));
+  await p.waitForFunction(() => window.__dakar.phoneInfo().screen === 'reglages');
+  await p.waitForTimeout(600);                                   // the phone drops a tap in its first 320 ms on a new screen (a double tap's second half)
+  const row = p.locator('#phone [data-act="presence"]');
+  await (tap ? row.tap() : row.click());
+  await p.waitForSelector('#presenceName', { state: 'visible' });
+}
 const checks = [];
 function check(name, ok, detail = '') { checks.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`, detail); assert.ok(ok, name); }
 let base = process.argv[2], worker, logs = '';
@@ -39,8 +49,12 @@ try {
     }); contexts.push(ctx);
     await ctx.addInitScript(i => { localStorage.setItem('dakarrek.quality', 'low'); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: i ? 'Awa' : 'Moussa', look: i ? 1 : 0 })); }, i);
     const page = await ctx.newPage(); page.on('pageerror', e => pageErrors.push(e.message));
+    const t0 = Date.now();
     await page.goto(`${base}?debug${i === 0 ? '&touch' : ''}`);
-    await page.waitForFunction(() => window.__dakar?.presence().status === 'online', null, { timeout: 30000 });
+    // The second page boots while the first one renders on the same CPU (software WebGL): on a 2-core runner its world
+    // build alone took 39 s. Booting is not what is checked here, so it gets room; the time is logged to watch it.
+    await page.waitForFunction(() => window.__dakar?.presence().status === 'online', null, { timeout: 120000 });
+    console.log(`page ${i} online after ${Date.now() - t0} ms`);
   }
   const [a, b] = contexts.map(c => c.pages()[0]);
   await a.waitForFunction(() => window.__dakar.presence().peers.length === 1);
@@ -48,10 +62,28 @@ try {
   check('two independent clients see each other', (await a.evaluate(() => window.__dakar.presence().count)) === 2 && (await b.evaluate(() => window.__dakar.presence().count)) === 2);
   await a.waitForFunction(() => window.__dakar.presence().visible === 1);
   check('remote avatar rendered on phone', (await a.evaluate(() => window.__dakar.presence().visible)) === 1);
+  // the studio's look travels with the connection (`app`, src/actors/appearance.ts): B makes her character (femme, Doré, headwrap, Imprimé, Safran: what
+  // « Modifier mon personnage » saves), A gets her body and look and draws her in it; A, who never chose one, sends none
+  {
+    await b.evaluate(() => window.__dakar.character('femme', { skin: 1, hair: 'wrap', outfit: 2, color: 3 }));
+    await b.waitForFunction(() => window.__dakar.presence().status === 'online', null, { timeout: 60000 });
+    const appB = await b.evaluate(() => window.__dakar.presenceLook());
+    const seenApp = await a.waitForFunction(app => window.__dakar.presence().peers.some(p => p.name === 'Awa' && p.app === app), appB, { timeout: 30000 }).then(() => true).catch(() => false);
+    const onA = await b.evaluate(() => window.__dakar.presence().peers.map(p => p.app ?? null));
+    check('the studio look travels: A sees B as she made herself (femme, Doré, headwrap, Imprimé, Safran); A sends none', appB === 'f1w23' && seenApp && onA.every(x => x === null), JSON.stringify({ appB, onA }));
+  }
   await a.evaluate(() => window.__dakar.place(-4, -30, 0));
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Moussa' && Math.abs(p.x + 4) < 0.2 && Math.abs(p.z + 30) < 0.2));
   check('movement replicated', true);
-  await a.click('#presenceBtn'); await a.fill('#presenceName', 'Mame Moussa');
+  // who supports whom (src/arena/supporters.ts): A wears the Baobab scarf, B sees it on A's avatar (presence `fan` only)
+  {
+    const idA = await a.evaluate(() => window.__dakar.presence().id);
+    await a.evaluate(() => window.__dakar.supportersWear('echarpe_baobab'));
+    const fanSeen = await b.waitForFunction(id => { const p = window.__dakar.presence(), peer = p.peers.find(x => x.id === id); return peer?.fan?.e === 'baobab' && peer.fan.k === 'scarf' && p.gear?.[id] === 'baobab:scarf'; }, idA, { timeout: 30000 }).then(() => true).catch(() => false);
+    const seen = await b.evaluate(id => { const p = window.__dakar.presence(); return { fan: p.peers.find(x => x.id === id)?.fan ?? null, keys: Object.keys(p.peers.find(x => x.id === id) ?? {}), gear: p.gear }; }, idA);
+    check('écurie colours: B sees the Baobab scarf A wears (presence fan, on the avatar), and no price or inventory with it', fanSeen && !seen.keys.some(k => /price|wallet|owned|inventory|assets/.test(k)), JSON.stringify(seen));
+  }
+  await openPresence(a); await a.fill('#presenceName', 'Mame Moussa');
   check('typing a name keeps the menu open', await a.locator('#modal.on').count() === 1);
   await a.getByRole('button', { name: 'Enregistrer mon profil', exact: true }).click();
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Mame Moussa'));
@@ -77,6 +109,64 @@ try {
     await b.waitForFunction(() => window.__dakar.presence().peers.length === 1);
     check(`hub membership follows travel: ${hub}`, (await a.evaluate(() => window.__dakar.pos().hub)) === hub);
   }
+  // riding the free Tiak bike: the other player sees the rider astride a bike, still online while moving fast
+  await b.evaluate(() => window.__dakar.teleport('pikine')); await a.evaluate(() => window.__dakar.teleport('pikine'));
+  await b.waitForFunction(() => window.__dakar.tiak?.at(), null, { timeout: 60000 });
+  await b.evaluate(() => { const k = window.__dakar.tiak.at(); window.__dakar.place(k.x - Math.sin(k.yaw) * 1.6, k.z - Math.cos(k.yaw) * 1.6, k.yaw); });
+  // (an action presses what the HUD has in focus: wait for it to be the bike, not a fixed time — a slow frame left the last place's action there)
+  await b.waitForFunction(() => /Tiak/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 }); await b.keyboard.press('KeyE');
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === true, null, { timeout: 15000 });
+  await b.keyboard.down('KeyW');
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.speed > 8, null, { timeout: 25000 }).catch(async () => { console.log('RIDE STATE', JSON.stringify(await b.evaluate(() => ({ t: window.__dakar.tiak.at(), p: window.__dakar.pos(), status: window.__dakar.presence().status })))); });
+  const rideSeen = await a.waitForFunction(() => { const p = window.__dakar.presence(); return p.peers.some(x => x.clip === 'Ride') && p.bikes === 1; }, null, { timeout: 20000 }).then(() => true).catch(() => false);
+  check('a rider at speed stays online and the other player sees the rider on a bike', rideSeen, JSON.stringify(await a.evaluate(() => { const p = window.__dakar.presence(); return { peers: p.peers.map(x => [x.clip, x.speed]), bikes: p.bikes, status: p.status }; })));
+  // above the 6 m/s presence limit: the move stays valid (sent speed capped), the rider stays online and A still sees them on a bike
+  await b.evaluate(() => window.__dakar.tiak.boost(11));
+  const fast = [];
+  for (let i = 0; i < 8; i++) { await b.evaluate(() => window.__dakar.tiak.boost(11)); await sleep(250); fast.push(await b.evaluate(() => ({ bike: window.__dakar.tiak.at().speed, sent: window.__dakar.presence().move?.speed, status: window.__dakar.presence().status }))); }
+  check('riding above 6 m/s: bike speed > 8, sent speed capped at 6, still online', fast.some(f => f.bike > 8) && fast.every(f => f.sent <= 6 && f.status === 'online'), JSON.stringify(fast.slice(-2)));
+  const seenFast = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space, +x.speed.toFixed(1)]), status: p.status, visible: p.visible }; });
+  check('A sees B riding fast: Ride pose in the street, one bike drawn, A still online', seenFast.bikes === 1 && seenFast.peers.some(x => x[0] === 'Ride' && x[1] === 'street') && seenFast.status === 'online', JSON.stringify(seenFast));
+  await fs.mkdir('shots/multiplayer', { recursive: true }); await a.screenshot({ path: 'shots/multiplayer/other-player-riding.png' });
+  await b.keyboard.up('KeyW');
+  // get off again (the next steps place both players on foot)
+  await b.keyboard.down('KeyS'); await b.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.5, null, { timeout: 20000 }).catch(() => {}); await b.keyboard.up('KeyS');
+  await b.keyboard.press('KeyE');
+  // off and on foot: the dismount places the rider beside the bike when it ends, so B is moved only once it has (a slow runner took longer than the next step)
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false && !window.__dakar.tiak.info().exit && window.__dakar.pos().mode === 'play', null, { timeout: 15000 });
+  // a passenger in another vehicle (a car rapide) is not drawn on a bike for the other player
+  const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
+  await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
+  await b.waitForTimeout(1200);
+  await b.waitForFunction(() => /Arrêt/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 });   // (the stop in focus, not the bike just left)
+  const atStop = await b.evaluate(() => ({ focus: window.__dakar.focus()?.id ?? null, pos: window.__dakar.pos() }));
+  await b.evaluate(() => window.__dakar.act());
+  // waiting at the stop, or already taken by a car standing there (« Le 23 est là : on monte ! » boards within a frame, before a poll sees « waiting »)
+  await b.waitForFunction(() => ['waiting', 'boarding', 'riding'].includes(window.__dakar.transport.trip().phase), null, { timeout: 30000 }).catch(async e => {
+    console.log('STOP STATE', JSON.stringify({ atStop, after: await b.evaluate(() => ({ trip: window.__dakar.transport.trip(), focus: window.__dakar.focus(), pos: window.__dakar.pos(), toast: document.querySelector('.toast')?.textContent ?? null })) }));
+    throw e;
+  });
+  // `nextAt` reads the car's state as of the page's LAST frame and answers 0 for a car standing at the stop with time left to board. On a slow page (frames seconds apart) that car can
+  // leave before the next frame takes B; the next one is then a lap away (a single car at low quality, 120 s) and no wait of 60 s can succeed. So: read, warp to the next arrival, give
+  // it 20 s to take B; if B is still waiting, read again and warp again (at most 4 times). The proof is the same as before: B must still reach « riding » (the last wait), and a game that
+  // never takes a waiting passenger fails all four tries and that wait. (Found by simulating the real transport module at 0.03-8 s a frame: docs/mobile/MOBILE-01-INVESTIGATION.md.)
+  for (let tries = 0, taken = false; tries < 4 && !taken; tries++) {
+    const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
+    console.log(`rapide wait: try ${tries + 1}, next car in ${wait0 === null ? 'null' : wait0.toFixed(1)} s${wait0 > 8 ? ' (warped)' : wait0 === 0 ? ' (a car stands there now: the race this loop covers)' : ''}`);   // (so a CI log shows whether the race ever occurs)
+    if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
+    taken = await b.waitForFunction(() => window.__dakar.transport.trip().phase !== 'waiting', null, { timeout: 20000 }).then(() => true, () => false);
+  }
+  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 }).catch(async e => {   // on a miss, say where the line's cars were and why none took B
+    console.log('RAPIDE STATE', JSON.stringify(await b.evaluate(l => ({ trip: window.__dakar.transport.trip(), next: window.__dakar.transport.nextAt(l, 0), me: window.__dakar.pos(), cars: window.__dakar.transport.lines().find(x => x.id === l)?.vehicles.map(c => ({ x: +c.x.toFixed(1), z: +c.z.toFixed(1), s: +c.s.toFixed(1), v: +c.v.toFixed(2), dwell: c.dwell, next: c.next, free: c.free })) }), L0.id)));
+    throw e;
+  });
+  // B's seat reaches A with B's next presence frame: on a slow runner (a page there takes a minute to come online) that is seconds, not a fixed 1.5 s
+  const seatedAt = Date.now();
+  await a.waitForFunction(() => { const p = window.__dakar.presence(); return p.bikes === 0 && p.peers.some(x => /rapide/.test(x.space) && x.clip === 'Sit'); }, null, { timeout: 20000 }).catch(() => {});
+  const inCar = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space]) }; });
+  const bSends = await b.evaluate(() => { const p = window.__dakar.presence(); return { status: p.status, space: p.move?.space ?? null, clip: p.move?.clip ?? null, phase: window.__dakar.transport.trip().phase }; });
+  check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify({ ...inCar, waitedMs: Date.now() - seatedAt, bSends }));
+  await b.evaluate(() => window.__dakar.teleport('pikine')); await b.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 30000 });
   const before = await a.evaluate(() => ({ id: window.__dakar.presence().id, wallet: window.__dakar.state.wallet }));
   await contexts[0].setOffline(true);
   await a.waitForFunction(() => window.__dakar.presence().status === 'offline');
@@ -90,6 +180,138 @@ try {
   await sleep(500);
   await fs.mkdir('shots/multiplayer', { recursive: true });
   await a.screenshot({ path: 'shots/multiplayer/phone-online.png' }); await b.screenshot({ path: 'shots/multiplayer/desktop-online.png' });
+  // friends at the arena (src/arena/together.ts): two players seated in the stands see each other seated, one cheers,
+  // and they watch one bout — the one who sat down later joins the show of the one already there, phase and second
+  {
+    const ids = { a: await a.evaluate(() => window.__dakar.presence().id), b: await b.evaluate(() => window.__dakar.presence().id) };
+    const day = await a.evaluate(() => window.__dakar.arena.info()?.day);
+    for (const page of [a, b]) await page.evaluate(d => { const D = window.__dakar; D.setHour(18); D.state.data.counters.arena_ticket_day = d; D.arena.speed(4); }, day);
+    const centre = await a.evaluate(() => window.__dakar.arena.info().centre);
+    const sitNear = (page, x, z) => page.evaluate(([x, z]) => { const D = window.__dakar, s = D.arena.freeSeat(x, z); return s && D.sit(s.id) === s.id ? s : null; }, [x, z]);
+    const seatA = await sitNear(a, centre.x + 15.5, centre.z + 6);
+    check('arena: the first player takes a place in the stands', !!seatA, JSON.stringify(seatA));
+    // the second one sits down later, once the first one's show is clearly ahead (past the stands filling, a couple of
+    // seconds into the preliminaries or further): the later one must join the earlier one's show, never by chance
+    const ahead = await a.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['prelims', 'entrance', 'bout', 'result', 'leaving'].includes(i.phase) && (i.phase !== 'prelims' || i.prelims.i > 0 || i.t >= 2); }, null, { timeout: 120000 }).then(() => true).catch(() => false);
+    const aheadAt = await a.evaluate(() => { const i = window.__dakar.arena.info(); return [i.phase, i.prelims.i, i.t]; });
+    // the second one sees the first seated there (their place held on this device too), then sits beside them
+    const heldOnB = await b.waitForFunction(([id, seat]) => window.__dakar.together().held[seat] === id, [ids.a, seatA.id], { timeout: 60000 }).then(() => true).catch(() => false);
+    const seatB = await sitNear(b, seatA.x + 0.4, seatA.z - 0.4);
+    check('arena: the second player sees that place taken and sits beside them', heldOnB && !!seatB && seatB.id !== seatA.id, JSON.stringify({ heldOnB, seatB }));
+    const seen = async (page, id, clip) => page.waitForFunction(([id, clip]) => { const p = window.__dakar.presence(); return p.peers.some(x => x.id === id && x.clip === clip) && p.poses[id] === clip; }, [id, clip], { timeout: 60000 }).then(() => true).catch(() => false);
+    const both = [await seen(a, ids.b, 'Sit'), await seen(b, ids.a, 'Sit')];
+    const ys = await b.evaluate(id => window.__dakar.presence().peers.find(x => x.id === id)?.y, ids.a);
+    check('arena: each sees the other seated in the stands', both.every(Boolean) && Math.abs(ys - (seatA.top - 0.48)) < 0.05, JSON.stringify({ both, y: ys, top: seatA.top }));
+    // one show: the later one (who sat down behind) joined the earlier one's show, and both are on the same phase, a
+    // couple of seconds apart at most
+    let same = null;
+    for (const until = Date.now() + 180000; Date.now() < until && !same;) {
+      const [ia, ib, tb] = [await a.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.together())];
+      // the same phase, the same preliminary when it is one of them (src/arena/undercard.ts), a couple of seconds apart
+      if (tb.follows >= 1 && ia.phase === ib.phase && ['prelims', 'entrance', 'bout', 'result', 'leaving'].includes(ia.phase) && (ia.phase !== 'prelims' || ia.prelims.i === ib.prelims.i) && Math.abs(ia.t - ib.t) < 3)
+        same = { a: [ia.phase, ia.prelims.i, ia.t], b: [ib.phase, ib.prelims.i, ib.t] };
+      else await sleep(400);
+    }
+    const followed = await b.evaluate(() => window.__dakar.together());
+    check('arena: the later one joined the earlier one\'s show: same phase and time', ahead && !!same && followed.follows >= 1, JSON.stringify({ aheadAt, same, followed }));
+    check('arena: a seated player cheers (stands up, arms up) and the other sees it', await a.evaluate(() => window.__dakar.cheer(5)) && await seen(b, ids.a, 'Celebrate'));
+    // in the stands too, B sees A's colours; A wears Baobab's: in a Baobab section (B–C) the neighbours answered the cheer
+    const sup = await a.evaluate(() => window.__dakar.supporters());
+    const colours = await b.waitForFunction(id => window.__dakar.presence().gear?.[id] === 'baobab:scarf', ids.a, { timeout: 30000 }).then(() => true).catch(() => false);
+    check('arena: B sees A\'s scarf in the stands; in Baobab\'s section « Encourager » made the neighbours answer', colours && (sup.sectionEcurie !== 'baobab' || sup.answered >= 1), JSON.stringify(sup));
+    await b.screenshot({ path: 'shots/multiplayer/desktop-arena-together.png' });
+    // on to the main event (the first one skips the rest of the preliminaries; the second one follows)
+    await a.evaluate(() => { if (['filling', 'prelims'].includes(window.__dakar.arena.info().phase)) window.__dakar.arena.go('entrance'); });
+    let result = null;
+    for (const until = Date.now() + 240000; Date.now() < until && !result;) {
+      const [ra, rb] = [await a.evaluate(() => window.__dakar.arena.info().result), await b.evaluate(() => window.__dakar.arena.info().result)];
+      if (ra && ra === rb) result = ra; else await sleep(500);
+    }
+    check('arena: one result for both', !!result, result ?? '');
+    for (const [page, x, z, yaw] of [[a, -6, -30, 0], [b, -3, -26, Math.PI]]) await page.evaluate(([x, z, yaw]) => { const D = window.__dakar; D.stand(); D.arena.speed(1); D.setHour(16); D.place(x, z, yaw); }, [x, z, yaw]);
+    await a.waitForFunction(() => window.__dakar.presence().peers.some(p => Math.abs(p.x + 3) < 0.2 && Math.abs(p.z + 26) < 0.2));
+  }
+  // a friend who is tonight's main event themselves (src/arena/myGala.ts): their presence says so (arena.m = 1). A raw
+  // client plays them here (their own device, on a gala evening, is check-arena-fighter.mjs): the player in the stands
+  // sees their name on the card, their entrance and « Combat en cours », never a simulated ceremony or duel, their pose in
+  // the ring and the real result they send; nothing of it is recorded here; the server refuses any other value for `m`.
+  // Every step is reached through the show's own state (the debug API, the friend's presence), never by waiting on this
+  // device's game clock: on a slow runner it runs far behind the real one (the frame's dt is capped at 0.1 s).
+  {
+    const info = () => b.evaluate(() => window.__dakar.arena.info());
+    // a known state first: the evening before is closed (its result phase may still be running, the fête is long) through
+    // its leaving (which clears its watched bout) to its end, then a fresh evening, the next day, its doors open
+    await b.evaluate(() => { const D = window.__dakar; D.stand(); if (!['idle', 'over'].includes(D.arena.info().phase)) { D.arena.go('leaving'); D.arena.go('over'); } });
+    const closed = await b.waitForFunction(() => ['idle', 'over'].includes(window.__dakar.arena.info()?.phase), null, { timeout: 30000 }).then(() => true).catch(() => false);
+    const day = (await info()).day + 1;
+    await b.evaluate(d => { const D = window.__dakar; D.arena.day(d); D.setHour(18); D.state.data.counters.arena_ticket_day = d; D.arena.speed(1); }, day);
+    const fresh = await b.waitForFunction(d => { const i = window.__dakar.arena.info(); return i.day === d && i.phase === 'idle' && i.street === 'doors' && !i.galaDone; }, day, { timeout: 30000 }).then(() => true).catch(() => false);
+    await b.evaluate(() => {
+      window.__toasts = []; const box = document.getElementById('toast');
+      new MutationObserver(() => { for (const c of box.children) { const m = c.dataset?.msg; if (m && !window.__toasts.includes(m)) window.__toasts.push(m); } }).observe(box, { childList: true });
+    });
+    const centre = (await info()).centre;
+    const seatM = await b.evaluate(([x, z]) => { const D = window.__dakar, s = D.arena.freeSeat(x, z); return s && D.sit(s.id) === s.id ? s : null; }, [centre.x + 15.5, centre.z + 6]);
+    const running = await b.waitForFunction(() => ['filling', 'prelims'].includes(window.__dakar.arena.info()?.phase), null, { timeout: 60000 }).then(() => true).catch(() => false);
+    const i0 = await info();
+    check('arena, a friend\'s own gala: the evening before closed, a fresh one starts with the player seated', closed && fresh && !!seatM && running && i0.prelims.n >= 1,
+      JSON.stringify({ closed, fresh, seat: seatM?.id, phase: i0.phase, day: i0.day, prelims: i0.prelims.n }));
+    const REC = 'Adversaires réputés · 7-2 · Écurie Baobab';
+    const ndiaga = await connect({ hub: 'pikine', name: 'Ndiaga', rec: REC });
+    const nid = ndiaga.welcome.id;
+    const send = (dx, dz, arena, clip = 'Idle') => ndiaga.ws.send(JSON.stringify({ type: 'move', x: centre.x + dx, y: 0.1, z: centre.z + dz, yaw: 0, speed: 0, space: 'street', clip, arena }));
+    // in their corner inside the walls, their own show past its last preliminary: tonight's main event is them
+    const last = i0.prelims.n - 1;
+    send(6, 6, { d: day, p: 2, t: 120, i: last, m: 1 });
+    const known = await b.waitForFunction(id => window.__dakar.together().main === id && window.__dakar.arena.info().remote?.name === 'Ndiaga', nid, { timeout: 30000 }).then(() => true).catch(() => false);
+    const r0 = (await info()).remote;
+    check('arena, a friend\'s own gala: their presence makes them tonight\'s main event here, with their public record line', known && r0?.rec === REC, JSON.stringify(r0));
+    // this show joins theirs past the last preliminary, then waits for their entrance: the card names them, and the
+    // show's own time goes on (a few more seconds) without its entrance starting
+    // (joining it plays this device's preliminary to its end, a few seconds of bout per frame)
+    const waiting = await b.waitForFunction(() => /Ndiaga, combat de la soirée/.test(window.__dakar.arena.info().card), null, { timeout: 120000 }).then(() => true).catch(() => false);
+    const t0 = (await info()).t;
+    const onward = await b.waitForFunction(t0 => window.__dakar.arena.info().t >= t0 + 3 || window.__dakar.arena.info().phase !== 'prelims', t0, { timeout: 90000 }).then(() => true).catch(() => false);
+    const w1 = await info();
+    check('arena, a friend\'s own gala: after the preliminaries the stands wait for their entrance (not this device\'s clock)', waiting && onward && w1.phase === 'prelims' && w1.prelims.i === last && w1.t >= t0 + 3,
+      JSON.stringify({ phase: w1.phase, i: w1.prelims.i, t: [t0, w1.t], card: w1.card }));
+    // their entrance, 40 s in (past the ceremony's own 33 s): the card and the announcer name them (with their public
+    // line), nobody is drawn walking out for them, and this show does not go on to a bout by its clock
+    send(4, 4, { d: day, p: 3, t: 40, m: 1 }, 'Walk');
+    // (the card follows the show at its next frame: the friend's presence is read after the show's own update)
+    const entered = await b.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && /Entrée de Ndiaga/.test(i.card); }, null, { timeout: 30000 }).then(() => true).catch(() => false);
+    const heard = await b.waitForFunction(rec => window.__toasts.some(t => t.includes(`voici Ndiaga ! (${rec})`)), REC, { timeout: 15000 }).then(() => true).catch(() => false);
+    const [e1, toastsB] = [await info(), await b.evaluate(() => window.__toasts.slice())];
+    check('arena, a friend\'s own gala: « Entrée de Ndiaga », the announcer calls them with their public line, no wrestler simulated, the card\'s people wait in their corners',
+      entered && heard && /Entrée de Ndiaga/.test(e1.card) && !e1.ceremony && e1.entrance === 0 && e1.people?.quiet === true,
+      JSON.stringify({ card: e1.card, ceremony: e1.ceremony, entrance: e1.entrance, quiet: e1.people?.quiet, toasts: toastsB.filter(t => /Ndiaga/.test(t)) }));
+    const te = e1.t;
+    await b.waitForFunction(te => window.__dakar.arena.info().t >= te + 2 || window.__dakar.arena.info().phase !== 'entrance', te, { timeout: 60000 }).catch(() => {});
+    const e2 = await info();
+    check('arena, a friend\'s own gala: past the ceremony\'s time their bout still waits for them (not this device\'s clock)', e2.phase === 'entrance' && e2.t >= 33, JSON.stringify({ phase: e2.phase, t: e2.t }));
+    // their bout: in the ring in a fighting stance; the card says « Combat en cours : Ndiaga »; no duel is simulated here
+    send(1.5, 0, { d: day, p: 4, t: 0, m: 1 }, 'Stance');
+    const inBout = await b.waitForFunction(id => { const i = window.__dakar.arena.info(); return i.phase === 'bout' && /Combat en cours : Ndiaga/.test(i.card) && window.__dakar.presence().peers.some(p => p.id === id && p.clip === 'Stance'); }, nid, { timeout: 30000 }).then(() => true).catch(() => false);
+    const [b1, pb] = [await info(), await b.evaluate(id => { const p = window.__dakar.presence(); return { peer: p.peers.find(x => x.id === id), pose: p.poses[id] ?? null }; }, nid)];
+    check('arena, a friend\'s own gala: « Combat en cours : Ndiaga », seen in the ring in a fighting stance, no duel simulated here',
+      inBout && /Combat en cours : Ndiaga/.test(b1.card) && b1.bout === null && !!pb.peer && Math.hypot(pb.peer.x - centre.x, pb.peer.z - centre.z) < 3,
+      JSON.stringify({ card: b1.card, bout: b1.bout, pose: pb.pose, at: pb.peer && [+(pb.peer.x - centre.x).toFixed(2), +(pb.peer.z - centre.z).toFixed(2)] }));
+    await b.screenshot({ path: 'shots/multiplayer/desktop-friend-main-event.png' });
+    // their real result, as they send it, once: told here, applauded by the whole crowd, recorded nowhere on this device
+    const galas0 = await b.evaluate(() => window.__dakar.state.data.career?.galas?.length ?? 0);
+    send(1.5, 0, { d: day, p: 5, t: 0, m: 1, w: 1, o: 0 }, 'Celebrate');
+    const told = await b.waitForFunction(() => /Ndiaga l’emporte par chute/.test(window.__dakar.arena.info().result), null, { timeout: 30000 }).then(() => true).catch(() => false);
+    const [r1, galas1] = [await info(), await b.evaluate(() => window.__dakar.state.data.career?.galas?.length ?? 0)];
+    check('arena, a friend\'s own gala: their real result as they sent it (« Ndiaga l’emporte par chute ! »), nobody\'s corner here runs onto the sand, nothing recorded here',
+      told && r1.people?.won === null && !r1.party && galas1 === galas0, JSON.stringify({ result: r1.result, phase: r1.phase, won: r1.people?.won, party: !!r1.party, galas: [galas0, galas1] }));
+    // the field takes only the value 1: anything else closes the socket
+    const refusedM = new Promise(resolve => ndiaga.ws.addEventListener('close', e => resolve(e.code), { once: true }));
+    send(1.5, 0, { d: day, p: 5, t: 1, m: 2 });
+    check('server refuses any other value for « tonight\'s main event » (arena.m = 2)', await refusedM === 1008);
+    // back to the street, this evening closed too (a known state for what follows)
+    await b.evaluate(() => { const D = window.__dakar; D.stand(); if (!['idle', 'over'].includes(D.arena.info().phase)) { D.arena.go('leaving'); D.arena.go('over'); } D.arena.day(null); D.arena.speed(1); D.setHour(16); D.place(-3, -26, Math.PI); });
+    await a.waitForFunction(() => window.__dakar.presence().peers.some(p => Math.abs(p.x + 3) < 0.2 && Math.abs(p.z + 26) < 0.2));
+  }
   function connect(params) {
     return new Promise((resolve, reject) => {
       const url = new URL('/api/presence', base); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'; url.search = new URLSearchParams(params).toString();
@@ -99,6 +321,36 @@ try {
       ws.addEventListener('error', () => { clearTimeout(timer); reject(new Error('WebSocket error')); }, { once: true });
     });
   }
+  // held poses travel: a player lying on a bed, sitting on a mat, kneeling or riding is drawn so; anything else is refused
+  const fatou = await connect({ hub: 'pikine', name: 'Fatou' });
+  for (const clip of ['Lie', 'SitFloor', 'Kneel', 'Ride']) {
+    fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.62, z: -24, yaw: 0, speed: 0, space: 'street', clip }));
+    const seen = await b.waitForFunction(c => { const p = window.__dakar.presence(); return p.peers.some(x => x.name === 'Fatou' && x.clip === c) && Object.values(p.poses).includes(c); }, clip, { timeout: 30000 }).then(() => true).catch(() => false);
+    check(`remote pose shown: ${clip}`, seen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().poses)));
+    if (clip === 'Lie') await b.screenshot({ path: 'shots/multiplayer/desktop-remote-lying.png' });
+  }
+  // a remote player's colours travel as two words (écurie, item); B draws them on the avatar
+  fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'teranga', k: 'flag' } }));
+  const flagSeen = await b.waitForFunction(() => { const p = window.__dakar.presence(), f = p.peers.find(x => x.name === 'Fatou'); return f?.fan?.e === 'teranga' && f.fan.k === 'flag' && p.gear?.[f.id] === 'teranga:flag'; }, null, { timeout: 30000 }).then(() => true).catch(() => false);
+  check('remote colours shown: a Teranga flag in Fatou\'s hand', flagSeen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().gear)));
+  // a look in its strict shape is relayed; anything else is simply no look (the socket stays open: older and odd clients still play)
+  {
+    const aminata = await connect({ hub: 'pikine', name: 'Aminata', app: 'f5w15' }), badou = await connect({ hub: 'pikine', name: 'Badou', app: 'x<b>9' });
+    for (const [c, x] of [[aminata, -2], [badou, -1]]) c.ws.send(JSON.stringify({ type: 'move', x, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle' }));
+    const got = await b.waitForFunction(() => { const ps = window.__dakar.presence().peers, am = ps.find(x => x.name === 'Aminata'), ba = ps.find(x => x.name === 'Badou'); return am && ba ? { am: am.app ?? null, ba: ba.app ?? null } : null; }, null, { timeout: 30000 }).then(h => h.jsonValue()).catch(() => null);
+    check('a look in its shape is relayed, anything else dropped without closing the socket', got?.am === 'f5w15' && got?.ba === null && badou.ws.readyState === 1, JSON.stringify(got));
+    aminata.ws.close(); badou.ws.close();
+    await b.waitForFunction(() => !window.__dakar.presence().peers.some(x => x.name === 'Aminata' || x.name === 'Badou'), null, { timeout: 30000 }).catch(() => {});
+  }
+  // anything else in that field (a price, what is owned) closes the socket
+  const ibou = await connect({ hub: 'pikine', name: 'Ibou' });
+  const priced = new Promise(resolve => ibou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
+  ibou.ws.send(JSON.stringify({ type: 'move', x: -5, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'baobab', k: 'scarf', price: 2000 } }));
+  check('server refuses the colours field with a price in it', await priced === 1008);
+  const refused = new Promise(resolve => fatou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
+  fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Fall_Back' }));
+  check('server refuses a pose outside the list', await refused === 1008);
+  await b.waitForFunction(() => !window.__dakar.presence().peers.some(x => x.name === 'Fatou'), null, { timeout: 30000 }).catch(() => {});
   const joined = await Promise.all(Array.from({ length: 25 }, (_, i) => connect({ hub: 'pikine', name: `Guest ${i}` })));
   check('full room automatically opens another group', joined.some(s => s.welcome.room === 2) && joined.every(s => s.welcome.count <= 24));
   const invalid = joined.at(-1).ws;

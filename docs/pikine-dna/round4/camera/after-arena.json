@@ -1,0 +1,31 @@
+{
+ "sum": {
+  "route": "arena",
+  "samples": 169,
+  "triangles": 9354,
+  "cameraHeight": [
+   4.83,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 0,
+  "minLens": 1.05,
+  "viewBlockedFrames": 1,
+  "errors": 0
+ },
+ "flagged": [
+  {
+   "n": 111,
+   "x": 55.7,
+   "z": -61.5,
+   "cam": [
+    49.07,
+    5.07,
+    -68.89
+   ],
+   "body": 0,
+   "ahead": 2,
+   "near": 1.05
+  }
+ ]
+}

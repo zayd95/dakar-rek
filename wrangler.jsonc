@@ -6,14 +6,20 @@
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "durable_objects": { "bindings": [
     { "name": "ROOMS", "class_name": "CityRoom" },
-    { "name": "LOBBIES", "class_name": "HubLobby" }
+    { "name": "LOBBIES", "class_name": "HubLobby" },
+    // LD2.0-B: ONE class for the accounts (`acct:<tag>`) and the Teranga Money ledger (`ledger`): server/social.ts
+    { "name": "SOCIAL", "class_name": "Social" }
   ] },
-  "migrations": [{ "tag": "v1-presence", "new_sqlite_classes": ["CityRoom", "HubLobby"] }],
+  "migrations": [
+    { "tag": "v1-presence", "new_sqlite_classes": ["CityRoom", "HubLobby"] },
+    { "tag": "v2-social", "new_sqlite_classes": ["Social"] }
+  ],
   // Worker Previews (Workers Builds on non-production branches, `wrangler preview`): each Preview gets its own
   // Durable Object namespace and storage, so test players never join production rooms.
   "previews": { "durable_objects": { "bindings": [
     { "name": "ROOMS", "class_name": "CityRoom" },
-    { "name": "LOBBIES", "class_name": "HubLobby" }
+    { "name": "LOBBIES", "class_name": "HubLobby" },
+    { "name": "SOCIAL", "class_name": "Social" }
   ] } },
   "observability": { "enabled": true },
   "build": { "command": "npm run build:online" }

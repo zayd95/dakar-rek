@@ -1,0 +1,493 @@
+{
+ "base": "http://127.0.0.1:4966/",
+ "buy": [
+  "canape_courbe",
+  "lampadaire_champignon",
+  "enfilade_bronze",
+  "meuble_tv_laque",
+  "tapis_rond_jute",
+  "table_basse_marbre_noir",
+  "fauteuil_boucle",
+  "gueridon_marbre",
+  "pot_cannele",
+  "lustre_couronne",
+  "lit_capitonne_noir",
+  "banc_lit",
+  "chevet_greige",
+  "miroir_ovale"
+ ],
+ "ops": [
+  [
+   "meuble_tv_laque",
+   0,
+   [
+    [
+     "move",
+     -2,
+     0
+    ]
+   ]
+  ],
+  [
+   "tapis_rond_jute",
+   0,
+   [
+    [
+     "to",
+     -1.75,
+     2
+    ]
+   ]
+  ],
+  [
+   "table_basse_marbre_noir",
+   0,
+   [
+    [
+     "rot",
+     0
+    ],
+    [
+     "to",
+     -1.75,
+     2
+    ]
+   ]
+  ],
+  [
+   "fauteuil_boucle",
+   0,
+   [
+    [
+     "rot",
+     3
+    ],
+    [
+     "to",
+     -0.25,
+     2
+    ]
+   ]
+  ],
+  [
+   "gueridon_marbre",
+   0,
+   [
+    [
+     "to",
+     -0.25,
+     2.75
+    ]
+   ]
+  ],
+  [
+   "pot_cannele",
+   0,
+   [
+    [
+     "to",
+     -4,
+     3
+    ]
+   ]
+  ],
+  [
+   "lustre_couronne",
+   0,
+   [
+    [
+     "to",
+     -1.75,
+     2
+    ]
+   ]
+  ],
+  [
+   "chevet_greige",
+   0,
+   [
+    [
+     "store"
+    ]
+   ]
+  ],
+  [
+   "lit_capitonne_noir",
+   0,
+   [
+    [
+     "rot",
+     0
+    ],
+    [
+     "move",
+     -4,
+     0
+    ]
+   ]
+  ],
+  [
+   "chevet_greige",
+   0,
+   [
+    [
+     "auto"
+    ]
+   ]
+  ],
+  [
+   "banc_lit",
+   0,
+   [
+    [
+     "rot",
+     0
+    ],
+    [
+     "to",
+     -3.25,
+     -0.75
+    ]
+   ]
+  ],
+  [
+   "miroir_ovale",
+   0,
+   [
+    [
+     "to",
+     -4.3,
+     -0.5
+    ]
+   ]
+  ]
+ ],
+ "placed": [
+  [
+   "meuble_tv_laque",
+   "ok",
+   {
+    "x": -1.83,
+    "z": 3.16,
+    "rot": 2
+   }
+  ],
+  [
+   "tapis_rond_jute",
+   "ok",
+   {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   }
+  ],
+  [
+   "table_basse_marbre_noir",
+   "ok",
+   {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   }
+  ],
+  [
+   "fauteuil_boucle",
+   "ok",
+   {
+    "x": -0.25,
+    "z": 2,
+    "rot": 3
+   }
+  ],
+  [
+   "gueridon_marbre",
+   "ok",
+   {
+    "x": -0.25,
+    "z": 2.75,
+    "rot": 1
+   }
+  ],
+  [
+   "pot_cannele",
+   "ok",
+   {
+    "x": -4,
+    "z": 3,
+    "rot": 3
+   }
+  ],
+  [
+   "lustre_couronne",
+   "ok",
+   {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   }
+  ],
+  [
+   "chevet_greige",
+   "ok",
+   null
+  ],
+  [
+   "lit_capitonne_noir",
+   "ok",
+   {
+    "x": -3.22,
+    "z": -2.23,
+    "rot": 0
+   }
+  ],
+  [
+   "chevet_greige",
+   "ok",
+   {
+    "x": -1.73,
+    "z": -3.18,
+    "rot": 0
+   }
+  ],
+  [
+   "banc_lit",
+   "ok",
+   {
+    "x": -3.25,
+    "z": -0.75,
+    "rot": 0
+   }
+  ],
+  [
+   "miroir_ovale",
+   "ok",
+   {
+    "x": -4.36,
+    "z": -0.5,
+    "rot": 1
+   }
+  ]
+ ],
+ "rules": [
+  {
+   "spec": "canape_courbe",
+   "room": "sejour",
+   "at": {
+    "x": -1.83,
+    "z": 0.72,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lampadaire_champignon",
+   "room": "sejour",
+   "at": {
+    "x": -3.83,
+    "z": 0.3,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "enfilade_bronze",
+   "room": "sejour",
+   "at": {
+    "x": -4.15,
+    "z": 1.73,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "meuble_tv_laque",
+   "room": "sejour",
+   "at": {
+    "x": -1.83,
+    "z": 3.16,
+    "rot": 2
+   },
+   "why": null
+  },
+  {
+   "spec": "tapis_rond_jute",
+   "room": "sejour",
+   "at": {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "table_basse_marbre_noir",
+   "room": "sejour",
+   "at": {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "fauteuil_boucle",
+   "room": "sejour",
+   "at": {
+    "x": -0.25,
+    "z": 2,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "gueridon_marbre",
+   "room": "sejour",
+   "at": {
+    "x": -0.25,
+    "z": 2.75,
+    "rot": 1
+   },
+   "why": null
+  },
+  {
+   "spec": "pot_cannele",
+   "room": "sejour",
+   "at": {
+    "x": -4,
+    "z": 3,
+    "rot": 3
+   },
+   "why": null
+  },
+  {
+   "spec": "lustre_couronne",
+   "room": "sejour",
+   "at": {
+    "x": -1.75,
+    "z": 2,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "lit_capitonne_noir",
+   "room": "chambre",
+   "at": {
+    "x": -3.22,
+    "z": -2.23,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "banc_lit",
+   "room": "chambre",
+   "at": {
+    "x": -3.25,
+    "z": -0.75,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "chevet_greige",
+   "room": "chambre",
+   "at": {
+    "x": -1.73,
+    "z": -3.18,
+    "rot": 0
+   },
+   "why": null
+  },
+  {
+   "spec": "miroir_ovale",
+   "room": "chambre",
+   "at": {
+    "x": -4.36,
+    "z": -0.5,
+    "rot": 1
+   },
+   "why": null
+  }
+ ],
+ "stored": [],
+ "perf": {
+  "sejour-day": {
+   "calls": 31,
+   "tris": 29910
+  },
+  "sejour-tv-day": {
+   "calls": 29,
+   "tris": 29670
+  },
+  "chambre-day": {
+   "calls": 31,
+   "tris": 29744
+  },
+  "sejour-night": {
+   "calls": 31,
+   "tris": 29910
+  },
+  "sejour-tv-night": {
+   "calls": 29,
+   "tris": 29670
+  },
+  "chambre-night": {
+   "calls": 31,
+   "tris": 29744
+  }
+ },
+ "pictures": [
+  [
+   "f2-sejour-day",
+   307713
+  ],
+  [
+   "f2-sejour-tv-day",
+   288559
+  ],
+  [
+   "f2-chambre-day",
+   339656
+  ],
+  [
+   "f2-sejour-night",
+   300187
+  ],
+  [
+   "f2-sejour-tv-night",
+   286828
+  ],
+  [
+   "f2-chambre-night",
+   339403
+  ]
+ ],
+ "results": [
+  {
+   "name": "the line's 14 pieces bought, delivered and set out in the F2 by the game's rules",
+   "ok": true,
+   "detail": "[[\"meuble_tv_laque\",\"ok\",{\"x\":-1.83,\"z\":3.16,\"rot\":2}],[\"tapis_rond_jute\",\"ok\",{\"x\":-1.75,\"z\":2,\"rot\":0}],[\"table_basse_marbre_noir\",\"ok\",{\"x\":-1.75,\"z\":2,\"rot\":0}],[\"fauteuil_boucle\",\"ok\",{\"x\":-0.25,\"z\":2,\"rot\":3}],[\"gueridon_marbre\",\"ok\",{\"x\":-0.25,\"z\":2.75,\"rot\":1}],[\"pot_cannele\",\"ok\",{\"x\":-4,\"z\":3,\"rot\":3}],[\"lustre_couronne\",\"ok\",{\"x\":-1.75,\"z\":2,\"rot\":0}],[\"chevet_greige\",\"ok\",null],[\"lit_capitonne_noir\",\"ok\",{\"x\":-3.22,\"z\":-2.23,\"rot\":0}],[\"chevet_greige\",\"ok\",{\"x\":-1.73,\"z\":-3.18,\"rot\":0}],[\"banc_lit\",\"ok\",{\"x\":-3.25,\"z\":-0.75,\"rot\":0}],[\"miroir_ovale\",\"ok\",{\"x\":-4.36,\"z\":-0.5,\"rot\":1}]]"
+  },
+  {
+   "name": "every piece valid where it stands, every room reachable",
+   "ok": true,
+   "detail": "{\"stored\":[],\"bad\":[],\"reach\":{\"ok\":true,\"rooms\":[],\"openings\":[]}}"
+  },
+  {
+   "name": "each view of the furnished F2: ≤ 60 draw calls and ≤ 80k triangles (phone page)",
+   "ok": true,
+   "detail": "{\"sejour-day\":{\"calls\":31,\"tris\":29910},\"sejour-tv-day\":{\"calls\":29,\"tris\":29670},\"chambre-day\":{\"calls\":31,\"tris\":29744},\"sejour-night\":{\"calls\":31,\"tris\":29910},\"sejour-tv-night\":{\"calls\":29,\"tris\":29670},\"chambre-night\":{\"calls\":31,\"tris\":29744}}"
+  },
+  {
+   "name": "pictures of the séjour (two views) and the chambre by day and at 21 h, each PNG under 400 kB",
+   "ok": true,
+   "detail": "f2-sejour-day 308 kB, f2-sejour-tv-day 289 kB, f2-chambre-day 340 kB, f2-sejour-night 300 kB, f2-sejour-tv-night 287 kB, f2-chambre-night 339 kB"
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

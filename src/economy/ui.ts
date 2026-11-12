@@ -4,21 +4,42 @@ import type { HubId } from '../core/types';
 import { fcfa, type Hud, type MenuItem } from '../ui/hud';
 import { phoneHooks } from '../ui/phoneHooks';
 import type { Action, HubWorld, Interactable } from '../world/types';
-import { Batch, signTexture } from '../world/batch';
+import type { ShopDetail } from '../world/shopKit';
+import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, pickUp, pickupFrags, remainingMs, routeById, whyNot, type Completion, type Route } from './jobs';
-import { FURNITURE, buyFurniture, cannotBuy, furnitureById, owns, priceOf } from './furniture';
+import { ROUTES, acceptJob, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { planTrip } from '../road/graph';
+import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
+import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
+import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
+import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
+import { saveLine } from '../core/saveHealth';
 import { homeGoalLine } from './progress';
+import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
+import type { ActivityCategory } from '../activity/types';
+import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
+import { fcfaShort } from './format';
+import { BANA_PLACE, ownsTable, resultLine, tableCard, type TableCard } from './bana';
 import './economy.css';
+import './bana.css';
+import { streak } from './streakModule';
+import { addMissionGuide, type MissionTarget } from '../game/missionGuide';
+import { JOB, jobBadge } from '../ui/jobMarks';
 
 /**
- * Lot B runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
- * and the phone hooks (ledger, openJobs, openHome). Menus use hud.openMenu. Everything is saved on this device only.
+ * Economy runtime: Tiak Tiak offers and the delivery marker, the furniture shop (Pikine), the wallet history screen,
+ * the « Affaires » (ventures, hourly income, polyvalence) and the phone hooks (ledger, openJobs, openHome, openBusiness,
+ * wealth). Menus use hud.openMenu. Everything is saved on this device only.
  */
 export const JOBS_ACTION: Action = { id: 'tiak', label: 'Livraisons Tiak Tiak', detail: 'Porter des commandes dans le quartier', seconds: 0, special: 'jobs' };
-export const SHOP_ACTION: Action = { id: 'meubles', label: 'Voir les meubles', detail: 'Livrés dans ta chambre · prix provisoires', seconds: 0, special: 'shop' };
-const LOCAL_NOTE = 'Argent du jeu, sauvegardé sur cet appareil : pas encore de compte ni d’économie partagée.';
+export const SHOP_ACTION: Action = { id: 'meubles', label: 'Voir les meubles', detail: 'Livrés dans ta chambre', seconds: 0, special: 'shop' };
+/** At the Banque Teranga agencies: the ventures (same menu as the phone app). */
+export const BUSINESS_ACTION: Action = { id: 'affaires', label: 'Investir dans une affaire', detail: 'Bana-bana, kiosque, boutique… jusqu’à la grande entreprise', seconds: 0, special: 'business' };
+/** Game money, and where it is kept: only what the storage really did (src/core/saveHealth.ts). */
+const LOCAL_NOTE_OK = 'Argent virtuel du jeu, gardé sur cet appareil (pas encore de compte).';
+const localNote = () => (saveLine().tone === 'ok' ? LOCAL_NOTE_OK : 'Argent virtuel du jeu (pas encore de compte) · pense à copier ta sauvegarde (Réglages › Partie).');
+const INCOME_NOTE = 'Les affaires rapportent à chaque heure en ville (1 min de jeu), seulement pendant que tu joues : rien hors ligne.';
 
 export interface EconomyDeps {
   state: GameState;
@@ -27,54 +48,101 @@ export interface EconomyDeps {
   /** Called before a menu opens (main.ts switches to menu mode). */
   menu(): void;
   save(): boolean;
-  /** Rebuild the starter room so bought furniture appears. */
-  refreshHome(): void;
   /** Set (or clear) the city's walking marker — main.ts `destination`, the one "Les coins du quartier" uses. */
   walkTo(placeId: string | null): void;
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
+/** A stop as a card shows it: an icon and the place's short name (« Banque Teranga · Pikine » → « Banque Teranga »). */
+const SHORT: Record<string, string> = {
+  'Gargote Mame Diarra': 'Chez Mame', 'Gargote Chez Fatou': 'Chez Fatou', 'Dibiterie Chez Pathé': 'Chez Pathé', 'Dibiterie de la Médina': 'Dibiterie',
+  'Maïga du marché': 'Maïga', 'Garage Modou': 'Garage', 'Boutique Diallo': 'Boutique', 'Banque Teranga': 'Banque', 'Étal de Sandaga': 'Étal',
+  'Atelier Ndeye': 'Atelier Ndeye', 'Dakar Réparation': 'Réparation', 'Place de la Médina': 'Place', 'Grand-place de Pikine': 'Grand-place',
+};
+const shortName = (n: string) => { const base = n.split(' · ')[0]; return SHORT[base] ?? base; };
+const stopSpot = (st: TourStop): Spot => ({ icon: iconOf(st.place.frag), name: shortName(st.place.name) });
+const TOURS_BY = (id: string) => TOURS.find(t => t.id === id);
 const clock = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/** The bana-bana table on the « Affaires » screen: the goods, the customers waiting, the last session (sales − cost = profit), today and since the purchase. */
+function tableCardHtml(c: TableCard): string {
+  const stock = c.stock.map(g => `<span class="${g.n ? '' : 'out'}">${g.icon} ${g.n}/${g.max}</span>`).join('');
+  return `<div class="bana-card"><h3>🧺 Ta table de bana-bana${c.units > 1 ? ` ×${c.units}` : ''}<em>+${fcfa(c.perHour * c.units)}/h</em></h3>
+    <div class="bana-stock">${stock}</div>
+    <div class="bana-line">Clients qui attendent : <b>${c.clients}/${c.max}</b>${c.open ? ' · table ouverte' : ''}${c.family ? ` · ${c.family} autre${c.family > 1 ? 's' : ''} tenue${c.family > 1 ? 's' : ''} par la famille` : ''}</div>
+    ${c.last ? `<div class="bana-calc">Dernière fois : ${esc(resultLine(c.last))}</div>` : ''}
+    <div class="bana-line">Ventes : aujourd’hui <b>${fcfa(c.today)}</b> · depuis l’achat <b>${fcfa(c.total)}</b></div></div>`;
+}
 
 export class Economy {
   private world: HubWorld | null = null;
+  /** The shop the furniture catalogue was last opened from (its title). */
+  private shopAt: string | undefined;
   private marker = new THREE.Group();
-  private ringMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
-  private beamMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+  private ringMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  private beamMat = new THREE.MeshBasicMaterial({ color: JOB.delivery.hex, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
   private arrow: THREE.Mesh;
+  private badge: THREE.Sprite;
   private line: HTMLElement;
   private t = 0;
   private lineT = 0;
+  /** What the delivery line shows now (rebuilt only when it changes). */
+  private lineSig = '';
   /** Last player position seen (street position at the door when indoors), for distances in the jobs app. */
   private here = { x: 0, z: 0 };
   /** Run and stage the city walking marker was last set for (so it follows pick-up → drop-off once each). */
   private markedFor: string | null = null;
+  /** Counter signature of the activities other modules record (bouts, beats, chats…), read on the previous check. */
+  private sig: number[] | null = null;
+  private bizT = 0;
+  /** The first payout of a session gets a toast; the next ones only tint the wallet. */
+  private paidOnce = false;
 
   constructor(private d: EconomyDeps) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.55, 40), this.ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
     const disc = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), this.beamMat); disc.rotation.x = -Math.PI / 2; disc.position.y = 0.05;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 14, 10, 1, true), this.beamMat); beam.position.y = 7;
     this.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), this.ringMat); this.arrow.rotation.x = Math.PI; this.arrow.position.y = 3.2;
-    this.marker.add(ring, disc, beam, this.arrow); this.marker.visible = false; this.marker.renderOrder = 2;
+    // a Tiak Tiak delivery (src/ui/jobMarks.ts): orange, a round ring and the parcel's badge over the arrow, never taken for a VTC ride's green bay
+    this.badge = jobBadge('delivery'); this.badge.position.y = 4.3;
+    this.marker.add(ring, disc, beam, this.arrow, this.badge); this.marker.visible = false; this.marker.renderOrder = 2;
     d.scene.add(this.marker);
     this.line = document.createElement('div'); this.line.id = 'delivery'; this.line.className = 'card';
     (document.getElementById('ui') ?? document.body).appendChild(this.line);
     phoneHooks.ledger = () => [...d.state.data.ledger].reverse().map(e => ({ ...e }));   // newest first
     phoneHooks.openJobs = () => this.openJobs();
     phoneHooks.openHome = () => this.openShop(true);
+    phoneHooks.openBusiness = () => this.openBusiness();
+    phoneHooks.wealth = () => ({ assets: assetsValue(d.state), perHour: allIncome(d.state), charges: chargesPerHour(d.state), polyvalence: polyLine(d.state) });
+    addMissionGuide(() => this.jobTarget());
+  }
+
+  /** The parcel's next place, in any district (driving directions: src/game/navigation.ts); its coordinates when it is in the loaded district. */
+  private jobTarget(): MissionTarget | null {
+    const s = this.s, a = s.data.jobs.active; if (!a) return null;
+    const tc = currentTour(s), r = !a.tour ? routeById(a.routeId) : undefined;
+    const place = tc ? tc.stop.place : r ? (a.stage === 'pickup' ? r.from : r.to) : null; if (!place) return null;
+    const hub = (r && a.stage === 'deliver' ? deliveryHub(r) : a.hub) as HubId, w = this.world;
+    const it = w && w.id === hub ? this.placeOf(place.frag) : undefined;
+    return { name: place.name, hub, x: it?.x ?? 0, z: it?.z ?? 0, job: 'delivery' };
   }
 
   private get s() { return this.d.state; }
 
   // ---------------------------------------------------------------- hub dressing
-  /** Add the delivery action at pick-up points and, in Pikine, the furniture stall. Called after each hub build. */
-  decorateHub(world: HubWorld) {
+  /** Add the delivery action at pick-up points and, in Pikine, the furniture shop. Called after each hub build. */
+  decorateHub(world: HubWorld, detail?: ShopDetail) {
     this.world = world;
     for (const frag of pickupFrags(world.id)) {
       const it = this.placeOf(frag);
       if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
     }
-    if (world.id === 'pikine') this.buildShop(world);
+    for (const t of toursIn(world.id)) {                                 // a tour leaves from its own pick-up point too
+      const it = this.placeOf(t.pickup.frag);
+      if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
+    }
+    for (const it of world.interactables) if (it.id.startsWith(world.id + ':city:bank') && !it.actions.includes(BUSINESS_ACTION)) it.actions = [...it.actions, BUSINESS_ACTION];
+    if (world.id === 'pikine') this.buildShop(world, detail);
   }
 
   private placeOf(frag: string): Interactable | undefined {
@@ -82,33 +150,18 @@ export class Economy {
     return w?.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(frag));
   }
   private distance(r: Route): number | null {
+    if (r.toHub && r.toHub !== r.hub) return planTrip(r.hub, r.toHub)?.metres ?? 2000;     // between districts: the roads' length
     const a = this.placeOf(r.from.frag), b = this.placeOf(r.to.frag);
     return a && b && this.world?.id === r.hub ? Math.hypot(a.x - b.x, a.z - b.z) : null;
   }
 
-  /** "Quincaillerie · meubles": a covered stall beside the Maïga du marché, facing the street. */
-  private buildShop(world: HubWorld) {
+  /**
+   * "Quincaillerie · meubles": a small shop of the kit on the Maïga du marché's lot, beside it (src/economy/stall.ts);
+   * its sheet at the counter opens the same furniture catalogue.
+   */
+  private buildShop(world: HubWorld, detail?: ShopDetail) {
     const m = this.placeOf(':maiga:'); if (!m) return;
-    const sx = m.x + 8.5, sz = m.z - 2.9, G = 0.12;
-    const b = new Batch();
-    for (const [dx, dz] of [[-1.7, -0.75], [1.7, -0.75], [-1.7, 0.75], [1.7, 0.75]]) b.box(0.08, 2.4, 0.08, sx + dx, G, sz + dz, 0x6b5a4a);
-    b.box(3.8, 0.06, 2.0, sx, G + 2.4, sz, 0x1e6fd9); b.box(3.8, 0.25, 0.04, sx, G + 2.2, sz + 1.0, 0x1e6fd9);
-    b.box(2.6, 0.8, 0.7, sx, G, sz - 0.25, 0x8b6a47); b.box(2.7, 0.05, 0.8, sx, G + 0.8, sz - 0.25, 0x6b4a2e);
-    b.cyl(0.2, 0.2, 1.0, sx - 0.6, G + 0.85, sz - 0.3, 0x2f6fb3, 10, [0, 0, Math.PI / 2]);            // rolled mattress
-    b.box(0.5, 0.06, 0.35, sx + 0.35, G + 0.85, sz - 0.35, 0xb5452b); b.box(0.5, 0.05, 0.35, sx + 0.35, G + 0.91, sz - 0.35, 0xf2d16b); // folded rugs
-    b.box(0.34, 0.2, 0.14, sx + 0.95, G + 0.85, sz - 0.3, 0x2b2b33);                                    // radio
-    b.box(0.06, 1.2, 0.55, sx - 1.5, G, sz + 0.25, 0x6e4426); b.box(0.02, 1.05, 0.44, sx - 1.46, G + 0.08, sz + 0.25, 0xc8dce6); // mirror
-    const cols = [0x2a8fd1, 0xf2f2ee, 0x1a9d54, 0xd9322b];
-    for (let k = 0; k < 4; k++) {                                                                         // stacked monobloc chairs
-      b.box(0.46, 0.05, 0.44, sx + 1.25, G + 0.45 + k * 0.08, sz + 0.3, cols[k]); b.box(0.46, 0.42, 0.04, sx + 1.25, G + 0.5 + k * 0.08, sz + 0.1 - k * 0.02, cols[k]);
-    }
-    b.box(0.46, 0.45, 0.4, sx + 1.25, G, sz + 0.3, 0xe8e8e8);
-    const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) world.group.add(mesh);
-    const tex = signTexture('QUINCAILLERIE · MEUBLES', '#1f2937', '#fde68a', 768, 112);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.55), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 }));
-    sign.position.set(sx, G + 2.75, sz + 1.03); world.group.add(sign); world.signs.push(sign);
-    world.colliders.push({ x0: sx - 1.8, z0: sz - 0.85, x1: sx + 1.8, z1: sz + 0.55, h: 1.2 });
-    world.interactables.push({ id: `${world.id}:shop:meubles`, name: 'Quincaillerie · meubles', kind: 'actions', x: sx, z: sz + 2.4, radius: 2.6, actions: [SHOP_ACTION] });
+    buildQuincaillerie(world, m, SHOP_ACTION, detail);
   }
 
   // ---------------------------------------------------------------- deliveries and the jobs app
@@ -122,18 +175,49 @@ export class Economy {
     const w = this.world; if (!w) return;
     const s = this.s, a = s.data.jobs.active, hub = w.id;
     const fromHere = at && at.id.startsWith(hub + ':') ? (r: Route) => at.id.includes(r.from.frag) : null;
-    const items: MenuItem[] = [];
+    const items: MenuItem[] = [];                                   // plain rows: the city's paid services (phone app only)
+    const deck = cards();
     const away = (x: number, z: number) => Math.round(Math.hypot(x - this.here.x, z - this.here.z));
-    const tiakEnergy = `${ECONOMY.tiak.fatigue.energie} énergie`.replace('-', '−');
-    if (a) {
+    const spotOf = (p: Place): Spot => ({ icon: iconOf(p.frag), name: shortName(p.name) });
+    const energy = `⚡ ${ECONOMY.tiak.fatigue.energie}`.replace('-', '−');
+    const first = (s.data.counters.livraisons ?? 0) === 0;
+    if (a?.tour) {
+      const c = currentTour(s);
+      if (c) {
+        const left = tourRemainingMs(s);
+        const live = routeCard({ from: { icon: '🏍️', name: `Tournée ${c.run.leg + 1}/2` }, to: [stopSpot(c.stop)], reward: '+' + fcfa(payNow(s, a.pay)), chips: [c.run.departed ? (left >= 0 ? `⏱ ${clock(left)}` : '⏰ En retard') : '⏱ Chrono au départ'], cta: '', live: true, tour: true, onPick: () => {} });
+        deck.append(live);
+      }
+      deck.append(actionCard('🚪', 'Abandonner', () => { this.d.hud.closeModal(); this.openAbandon(); }));
+    } else if (a) {
       const r = routeById(a.routeId);
-      items.push({ label: `Tiak Tiak en cours : ${r?.from.name ?? '?'} → ${r?.to.name ?? '?'}`, detail: a.stage === 'pickup' ? 'Colis à récupérer' : this.limitText(), right: '+' + fcfa(a.pay), disabled: true, onPick: () => {} });
-      items.push({ label: 'Annuler la livraison', detail: 'Aucun paiement', onPick: () => { this.cancel(); this.d.hud.closeModal(); } });
+      const left = remainingMs(s);
+      deck.append(routeCard({ from: r ? spotOf(r.from) : { icon: '📦', name: '?' }, to: r ? [spotOf(r.to)] : [], reward: '+' + fcfa(payNow(s, a.pay)), chips: [a.stage === 'pickup' ? '📦 Colis à prendre' : left === Infinity ? '' : left >= 0 ? `⏱ ${clock(left)}` : '⏰ En retard'].filter(Boolean), cta: '', live: true, onPick: () => {} }));
+      deck.append(actionCard('✖', 'Annuler', () => { this.cancel(); this.d.hud.closeModal(); }));
     } else {
+      let badge = first;
       for (const r of offers(s, hub).filter(r => !fromHere || fromHere(r))) {
         const why = whyNot(s, r), dist = this.distance(r), start = this.placeOf(r.from.frag);
-        const parts = [r.what, tiakEnergy, dist !== null ? `trajet ≈ ${Math.round(dist)} m` : '', !fromHere && start ? `départ à ${away(start.x, start.z)} m` : ''].filter(Boolean);
-        items.push({ label: `${r.needFlag ? '★ ' : ''}Tiak Tiak · ${r.from.name} → ${r.to.name}`, detail: why ?? parts.join(' · '), right: '+' + fcfa(ECONOMY.tiak.pay[r.id] ?? 0), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); } });
+        const chips = [dist !== null ? `📏 ${Math.round(dist)} m` : '', energy, !fromHere && start ? `🚶 ${away(start.x, start.z)} m` : ''].filter(Boolean);
+        deck.append(routeCard({
+          from: spotOf(r.from), to: [spotOf(r.to)], reward: '+' + fcfa(payNow(s, routePay(r))), chips, cta: fromHere ? 'Livrer' : 'Y aller', blocked: why ?? undefined,
+          badge: r.needFlag ? '★ Client fidèle' : badge && !why ? '👍 Pour débuter' : undefined,
+          onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); },
+        }));
+        if (!r.needFlag) badge = false;
+      }
+      // the optional tour: two clients, the courier picks who is served first (at its pick-up point, or as a marker from the phone)
+      for (const t of fromHere ? toursAt(hub, at!.id) : toursIn(hub)) {
+        const why = whyNotTour(s, t), pays = paysOf(s, t), start = this.placeOf(t.pickup.frag);
+        deck.append(routeCard({
+          from: spotOf(t.pickup), to: t.stops.map(st => stopSpot(st)), reward: '+' + fcfa(payNow(s, pays[0] + pays[1] + t.bonus)),
+          chips: ['📍 2 arrêts', `🎁 Bonus +${fcfa(t.bonus)}`, !fromHere && start ? `🚶 ${away(start.x, start.z)} m` : ''].filter(Boolean), cta: fromHere ? 'Choisir' : 'Y aller', tour: true, blocked: why ?? undefined,
+          onPick: () => {
+            this.d.hud.closeModal();
+            if (fromHere) this.openTourOrder(t);
+            else if (start) { this.d.walkTo(start.id); this.d.hud.toast(`📍 ${t.pickup.name}`); }
+          },
+        }));
       }
     }
     if (!fromHere) {
@@ -142,25 +226,18 @@ export class Economy {
         .flatMap(it => it.actions.filter(x => x.gain && !x.special && (!x.visible || x.visible(s))).map(x => ({ it, x })))
         .sort((p, q) => away(p.it.x, p.it.z) - away(q.it.x, q.it.z));
       for (const { it, x } of services) {
-        const why = x.requires?.(s) ?? null, energy = x.needs?.energie ?? 0;
+        const why = x.requires?.(s) ?? null, en = x.needs?.energie ?? 0;
         items.push({
-          label: x.label, right: '+' + fcfa(x.gain!), disabled: !!why,
-          detail: [it.name, energy < 0 ? `−${-energy} énergie` : '', `${away(it.x, it.z)} m`, why ?? ''].filter(Boolean).join(' · '),
+          label: x.label, right: '+' + fcfa(this.workPreview(x, it)), disabled: !!why,
+          detail: [it.name, en < 0 ? `−${-en} énergie` : '', `${away(it.x, it.z)} m`, why ?? ''].filter(Boolean).join(' · '),
           onPick: () => { this.d.hud.closeModal(); this.d.walkTo(it.id); this.d.hud.toast(`Repère : ${it.name} · ${x.label}`); },
         });
       }
     }
-    const none = pickupFrags(hub).length === 0;
-    const sub = fromHere ? 'Commandes à livrer depuis ici. Temps large ; en retard, la course paie moins.'
-      : `${HUB_NAMES[hub]} · ${a ? 'une livraison à la fois' : none ? 'pas encore de Tiak Tiak ici (Pikine et Plateau)' : 'le colis se récupère au point de départ'}. Choisir un service pose un repère à suivre à pied.`;
-    const done = s.data.counters.livraisons ?? 0;
+    if (!deck.children.length && !items.length) deck.append(tip('📵', 'Pas de Tiak Tiak ici (Pikine et Plateau).'));
     this.d.menu();
-    this.d.hud.openMenu(fromHere ? 'Tiak Tiak · livraisons' : 'Petits boulots', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(LOCAL_NOTE)}</div><div class="draft">Trajets, clients et tarifs Tiak Tiak provisoires (à relire). À pied pour l’instant : pas encore de conduite.</div>`);
-  }
-
-  private limitText() {
-    const left = remainingMs(this.s);
-    return left === Infinity ? '' : left >= 0 ? `Temps restant ${clock(left)}` : 'En retard : la course paiera moins';
+    const hint = fromHere && first && !a && toursAt(hub, at!.id).length ? '👍 1re fois ? Commence simple.' : '';
+    this.d.hud.openMenu(fromHere ? 'Tiak Tiak' : 'Petits boulots', hint, items, '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
   }
 
   accept(routeId: string, atPickup: boolean) {
@@ -174,10 +251,83 @@ export class Economy {
   }
 
   cancel() {
+    if (this.s.data.jobs.active?.tour) return this.abandon();
     if (!cancelJob(this.s)) return false;
     this.unmark();
     this.d.hud.toast('Livraison annulée · aucun paiement'); this.d.save();
     return true;
+  }
+
+  // ---------------------------------------------------------------- the tour (src/economy/tour.ts)
+  /** What a client remembers, as one line in the offer: « ★★ · 2 à l’heure, 0 en retard · patience +8 % · paie +8 % ». */
+  private memoryLine(st: TourStop): string {
+    const tr = trustOf(this.s, st.id), h = historyOf(this.s, st.id), pct = (f: number) => Math.round((f - 1) * 100);
+    const seen = h.ok + h.late + h.dropped === 0 ? 'jamais servi' : `${h.ok} à l’heure, ${h.late} en retard${h.dropped ? `, ${h.dropped} abandonné${h.dropped > 1 ? 's' : ''}` : ''}`;
+    const pat = pct(patienceFactor(tr)), pay = pct(payFactor(tr));
+    return `${trustWord(tr)} · ${seen} · patience ${pat > 0 ? '+' : pat < 0 ? '−' : ''}${Math.abs(pat)} %${pay > 0 ? ` · paie +${pay} %` : ''}`;
+  }
+
+  /** The two orders of a tour as two cards: who is served first, each client's urgency, who will be on time. */
+  openTourOrder(t: Tour) {
+    const s = this.s, deck = cards();
+    const urgency = (limitS: number): 1 | 2 | 3 => (limitS <= 12 ? 3 : limitS <= 20 ? 2 : 1);
+    const mem = (st: TourStop) => { const tr = trustOf(s, st.id); return tr > 0 ? '★'.repeat(tr) : tr < 0 ? '😒' : ''; };
+    for (const order of ORDERS) {
+      const p = previewOrder(s, t, order);
+      deck.append(orderCard({
+        first: order[0], reward: '≈ +' + fcfa(payNow(s, p.pay)),
+        stops: order.map((i, k) => ({ spot: stopSpot(t.stops[i]), urgency: urgency(p.limit[k]), limit: `${Math.round(p.limit[k])} s`, ok: p.onTime[k], memory: mem(t.stops[i]) })),
+        onPick: () => { this.d.hud.closeModal(); this.acceptTourRun(t, order); },
+      }));
+    }
+    deck.append(disclosure('Si j’abandonne ?', 'Avant de partir : gratuit. Après : les stops livrés sont payés, pas de bonus, −1 ★ pour chaque client non livré. La confiance se regagne en livrant à l’heure.'));
+    this.d.menu();
+    this.d.hud.openMenu('Qui en premier ?', '⏱ Le chrono part quand tu démarres.', [], '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
+  }
+
+  acceptTourRun(t: Tour, order: Order) {
+    const job = acceptTour(this.s, t.id, order);
+    if (!job) { this.d.hud.toast(whyNotTour(this.s, t) ?? 'Tournée indisponible'); return null; }
+    this.d.hud.toast(`📦 → ${t.stops[order[0]].place.name} · chrono au départ`);
+    this.d.save();
+    return job;
+  }
+
+  /** Confirmation before abandoning a tour: two big buttons and what it costs, in a line. */
+  openAbandon() {
+    const s = this.s, c = currentTour(s);
+    if (!c) return;
+    const deck = cards();
+    const waiting = c.run.order.slice(c.run.leg).map(i => c.tour.stops[i]);
+    if (c.run.departed) deck.append(tip('⚠️', `Pas de bonus · −1 ★ : ${waiting.map(st => iconOf(st.place.frag)).join(' ')}`));
+    else deck.append(tip('👌', 'Pas encore parti : aucun coût.'));
+    deck.append(actionCard('🚪', 'Oui, abandonner', () => { this.d.hud.closeModal(); this.abandon(); }, true), actionCard('🏍️', 'Continuer', () => this.d.hud.closeModal()));
+    this.d.menu();
+    this.d.hud.openMenu('Abandonner ?', '', [], '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
+  }
+
+  abandon() {
+    const r = abandonTour(this.s);
+    if (!r) return false;
+    this.unmark();
+    this.d.hud.toast(r.free ? '🚪 Tournée annulée' : `🚪 Abandon · −1 ★ (${r.lost.length})`);
+    this.d.save();
+    return true;
+  }
+
+  /** Hand over the parcel of the stop being served (pays once per stop, the second pays the bonus too). */
+  finishStop(runId: string): TourCompletion | null {
+    const c = completeStop(this.s, runId);
+    if (!c) return null;
+    this.unmark();
+    const msg = [`${c.late ? '⏰' : '✓'} ${c.stop.place.name} +${fcfa(c.paid)}`];
+    if (c.finished) msg.push(`🎁 +${fcfa(c.bonus)}`);
+    else { const next = currentTour(this.s); if (next) msg.push(`→ ${next.stop.place.name}`); }
+    msg.push(c.trust > 0 ? `confiance ${c.trust}` : c.trust < 0 ? '😒' : '');
+    if (c.finished) streak.done(`tiak:${runId}`, { kind: 'tour', title: 'Tournée terminée', to: c.stop.place.name, paid: c.paid + c.bonus, late: c.late });
+    else this.d.hud.toast(msg.filter(Boolean).join(' · '));
+    this.d.save();
+    return c;
   }
 
   /** Hand over the parcel for this run id (pays once; a second call with the same id pays nothing). */
@@ -185,9 +335,9 @@ export class Economy {
     const c = completeJob(this.s, runId);
     if (!c) return null;
     this.unmark();
-    const msg = [`${c.late ? 'Livré en retard' : 'Livraison réussie'} ✓ +${fcfa(c.paid)}`];
-    if (c.newClient) msg.push(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
-    this.d.hud.toast(msg.join(' · '));
+    // the card says what was done (paid above, once): what, where, how long, how far, the run of days, how it went
+    streak.done(`tiak:${runId}`, { kind: 'tiak', title: c.late ? 'Livré en retard' : 'Livraison réussie', from: c.route.from.name, to: c.route.to.name, paid: c.paid, late: c.late });
+    if (c.newClient) this.d.hud.toast(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
     this.d.save();
     return c;
   }
@@ -198,21 +348,33 @@ export class Economy {
   update(dt: number, pos: THREE.Vector3, inside: boolean, playing: boolean, street: { x: number; z: number } = pos) {
     this.t += dt;
     this.here = { x: street.x, z: street.z };
+    this.bizT -= dt;
+    if (this.bizT <= 0) { this.bizT = 0.25; this.tickBusiness(); }
     const s = this.s, a = s.data.jobs.active, w = this.world;
-    const r = a ? routeById(a.routeId) : undefined;
-    if (a && !r) { cancelJob(s); this.d.save(); }        // a route removed from the design table: drop the run, pay nothing
-    const tgt = a && r && w && w.id === a.hub ? this.placeOf(a.stage === 'pickup' ? r.from.frag : r.to.frag) : undefined;
+    const tc = currentTour(s);                                           // the tour in hand (null for a delivery, or a tour removed from the table)
+    const r = a && !a.tour ? routeById(a.routeId) : undefined;
+    if (a && !a.tour && !r) { cancelJob(s); this.d.save(); }             // a route removed from the design table: drop the run, pay nothing
+    if (a?.tour && !tc) { abandonTour(s); this.d.save(); }               // a tour removed from the design table: same
+    const tgtPlace = tc ? tc.stop.place : a && r ? (a.stage === 'pickup' ? r.from : r.to) : null;
+    const tgtHub = a && r && a.stage === 'deliver' ? deliveryHub(r) : a?.hub;                // a parcel for another district is handed over there
+    const tgt = a && tgtPlace && w && w.id === tgtHub ? this.placeOf(tgtPlace.frag) : undefined;
     this.marker.visible = !!tgt && !inside;
     if (!a && this.markedFor) this.unmark();
-    if (tgt && `${a!.runId}:${a!.stage}` !== this.markedFor) { this.markedFor = `${a!.runId}:${a!.stage}`; this.d.walkTo(tgt.id); }   // the city's arrow follows the parcel
+    const mark = a ? `${a.runId}:${tc ? 'tour' + tc.run.leg : a.stage}` : '';
+    if (tgt && mark !== this.markedFor) { this.markedFor = mark; this.d.walkTo(tgt.id); }   // the city's arrow follows the parcel
+    if (tc && !tc.run.departed) {                                        // the clock of a tour starts when the courier leaves the pick-up point (or the hub)
+      const from = w && w.id === tc.tour.hub ? this.placeOf(tc.tour.pickup.frag) : undefined;
+      if (!from || Math.hypot(this.here.x - from.x, this.here.z - from.z) > ECONOMY.tiak.tour.departRadius) { depart(s); this.d.save(); }
+    }
     if (tgt && w) {
-      const col = a!.stage === 'pickup' ? 0x4fd1ff : 0xffc83d;
-      this.ringMat.color.setHex(col); this.beamMat.color.setHex(col);
+      // the delivery's colour at both stages (the parcel's badge says what it is; the HUD line says « 📦 » until it is picked up)
+      this.ringMat.color.setHex(JOB.delivery.hex); this.beamMat.color.setHex(JOB.delivery.hex);
       this.marker.position.set(tgt.x, w.heightAt(tgt.x, tgt.z) + 0.12, tgt.z);
-      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5;
+      this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5; this.badge.position.y = this.arrow.position.y + 1.1;
       const d = Math.hypot(pos.x - tgt.x, pos.z - tgt.z);
       if (playing && !inside && d < ECONOMY.tiak.arriveRadius) {
-        if (a!.stage === 'pickup') {
+        if (tc) { if (tc.run.departed) this.finishStop(a!.runId); }
+        else if (a!.stage === 'pickup') {
           const dist = this.distance(r!) ?? 120;
           pickUp(s, deliveryLimitMs(dist));
           this.d.hud.toast(`Colis récupéré ✓ → ${r!.to.name} · ${clock(s.data.jobs.active!.limitMs)} pour livrer`);
@@ -223,16 +385,38 @@ export class Economy {
     this.lineT -= dt;
     if (this.lineT > 0) return;
     this.lineT = 0.25;
-    const job = s.data.jobs.active, route = job ? routeById(job.routeId) : undefined;
-    if (!job || !route) { this.line.classList.remove('on'); return; }
-    const place = job.stage === 'pickup' ? route.from.name : route.to.name;
-    const dist = tgt ? `${Math.round(Math.hypot(pos.x - tgt.x, pos.z - tgt.z))} m` : HUB_NAMES[job.hub as HubId];
-    const left = remainingMs(s);
-    this.line.innerHTML = '';
-    const b = document.createElement('b'); b.textContent = `${job.stage === 'pickup' ? 'Colis à récupérer' : 'Livraison'} → ${place}, ${inside ? 'sors d’abord' : dist}`;
-    const small = document.createElement('small'); small.textContent = job.stage === 'pickup' ? `  +${fcfa(job.pay)}` : left >= 0 ? `  · ${clock(left)}` : '  · en retard';
-    this.line.append(b, small);
-    this.line.classList.toggle('late', left < 0);
+    const job = s.data.jobs.active, route = job && !job.tour ? routeById(job.routeId) : undefined, tour = job ? currentTour(s) : null;
+    if (!job || (!route && !tour)) { this.line.classList.remove('on'); return; }
+    const dist = tgt ? `${Math.round(Math.hypot(pos.x - tgt.x, pos.z - tgt.z))} m` : HUB_NAMES[(route && job.stage === 'deliver' ? deliveryHub(route) : job.hub) as HubId];
+    // the ride: only the next place, the progress and the countdown
+    let name: string, icon: string, progress = '', clockText: string, late = false, wait = false;
+    if (tour) {
+      const left = tourRemainingMs(s);
+      name = shortName(tour.stop.place.name); icon = iconOf(tour.stop.place.frag);
+      progress = tour.run.leg === 0 ? '●○' : '●●';
+      late = left < 0; wait = !tour.run.departed;
+      clockText = wait ? 'Va !' : late ? '⏰' : clock(left);
+    } else {
+      const left = remainingMs(s), stage = job.stage;
+      const place = stage === 'pickup' ? route!.from : route!.to;
+      name = shortName(place.name); icon = iconOf(place.frag);
+      late = left < 0; wait = stage === 'pickup';
+      clockText = stage === 'pickup' ? '📦' : left === Infinity ? '' : late ? '⏰' : clock(left);
+    }
+    const sig = `${name}|${inside ? 1 : 0}${dist}|${progress}|${clockText}|${late}|${wait}`;
+    if (sig !== this.lineSig) {
+      this.lineSig = sig;
+      this.line.innerHTML = '';
+      const ic = document.createElement('i'); ic.className = 'dv-ic'; ic.textContent = icon;
+      const main = document.createElement('div'); main.className = 'dv-main';
+      const b = document.createElement('b'); b.textContent = name;
+      const small = document.createElement('small'); small.textContent = inside ? 'Sors d’abord' : dist;
+      main.append(b, small);
+      this.line.append(ic, main);
+      if (progress) { const pr = document.createElement('span'); pr.className = 'dv-prog'; pr.textContent = progress; this.line.append(pr); }
+      if (clockText) { const ck = document.createElement('span'); ck.className = 'dv-clock' + (wait ? ' wait' : ''); ck.textContent = clockText; this.line.append(ck); }
+    }
+    this.line.classList.toggle('late', late);
     this.line.classList.add('on');
     const goal = document.getElementById('goal');
     const top = goal && goal.classList.contains('on') ? goal.offsetTop + goal.offsetHeight + 6 : goal ? parseFloat(getComputedStyle(goal).top) || 160 : 160;
@@ -240,25 +424,45 @@ export class Economy {
   }
 
   // ---------------------------------------------------------------- furniture and wallet
-  /** Furniture list: the shop stall (Pikine) or the phone's home app. Purchases are delivered to the starter room. */
-  openShop(fromPhone = false) {
-    const s = this.s;
+  /**
+   * The six starter pieces: the quincaillerie stall (Pikine) or the debug home list. Purchases are delivered to the home
+   * the player lives in and set up there (src/economy/assets.ts); the full catalogue is at Keur Meubles (estate.ts).
+   */
+  /** `where`: the shop it is opened from (« Maison Dakar » → « Maison Dakar · meubles »); the stall by the Maïga by default. */
+  openShop(fromPhone = false, where?: string) {
+    if (where !== undefined) this.shopAt = where;
+    const s = this.s, home = specOfAsset(currentHome(s)).name;
     const items: MenuItem[] = FURNITURE.map(f => {
       const mine = owns(s, f.id), why = cannotBuy(s, f.id);
-      return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.buy(f.id); } };
+      return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => this.confirmPiece(f.id, fromPhone) };
     });
     const owned = FURNITURE.filter(f => owns(s, f.id));
-    const html = `<div class="kv">${owned.length ? 'Dans ta chambre : ' + owned.map(f => esc(f.name)).join(', ') : 'Ta chambre est encore vide.'}<br>${esc(homeGoalLine(s))}</div>
-      <div class="draft">Prix provisoires · livré dans ta chambre (Pikine). ${esc(LOCAL_NOTE)}</div>`;
+    const short = home.split(' · ')[0];
+    const html = `<div class="kv">${owned.length ? `Chez toi (${esc(short)}) : ` + owned.map(f => esc(f.name)).join(', ') : `Rien encore chez toi (${esc(short)}).`}<br>${esc(homeGoalLine(s))}</div>
+      <div class="draft">Livré à ton domicile principal (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(localNote())}</div>`;
     this.d.menu();
-    this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : 'Quincaillerie · meubles', `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
+    const at = this.shopAt && !/meubles/i.test(this.shopAt) ? `${this.shopAt} · meubles` : 'Quincaillerie · meubles';
+    this.d.hud.openMenu(fromPhone ? `${short} · meubles` : at, `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
+  }
+
+  /** What a piece costs and brings, before the one confirmation (owner's rule: no surprise after paying). */
+  private confirmPiece(id: string, fromPhone: boolean) {
+    const s = this.s, f = furnitureById(id), price = priceOf(id), home = specOfAsset(currentHome(s)).name; if (!f) return;
+    const rows: [string, string][] = [['Prix', fcfa(price)], ['Ce qu’il apporte', f.effect], ['Livré', id === 'matelas' ? `sur ton lit (${home})` : `chez toi (${home}), installé où il y a de la place`], ['Il te restera', fcfa(Math.max(0, s.wallet - price))]];
+    const why = cannotBuy(s, id);
+    this.d.menu();
+    this.d.hud.openMenu(`Acheter : ${f.name}`, 'Vérifie avant de confirmer :', [
+      { icon: '✅', label: 'Acheter', right: '−' + fcfa(price), detail: why ?? 'Une seule fois : pas de papiers, pas d’attente', disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.buy(id); } },
+      { icon: '↩️', label: 'Retour', onPick: () => this.openShop(fromPhone) },
+    ], `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`);
   }
 
   buy(id: string): boolean {
-    const item = furnitureById(id);
-    if (!item || !buyFurniture(this.s, id)) { this.d.hud.toast(cannotBuy(this.s, id) ?? 'Achat impossible'); return false; }
-    this.d.refreshHome();
-    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré dans ta chambre`);
+    const item = furnitureById(id), piece = item ? deliverFurniture(this.s, id) : null;
+    if (!item || !piece) { this.d.hud.toast(cannotBuy(this.s, id) ?? 'Achat impossible'); return false; }
+    // the « bon matelas » goes on the room's own bed (never placed): it is not « stored for lack of room »
+    const where = id === 'matelas' ? 'sur ton lit' : `chez toi${piece.at === null ? ' (rangé : pas de place)' : ''}`;
+    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré ${where}`);
     this.d.save();
     return true;
   }
@@ -267,20 +471,139 @@ export class Economy {
   openWallet() {
     const s = this.s, rows = [...s.data.ledger].reverse().slice(0, 40);
     const when = (at: number) => { const d = new Date(at); return `${d.toLocaleDateString('fr-FR')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-    const html = `<h3>Historique</h3><div class="rel ledger">${rows.length ? rows.map(e => `<span>${esc(e.label)}<small>${when(e.at)}</small></span><em class="${e.amount >= 0 ? 'plus' : 'minus'}">${e.amount >= 0 ? '+' : '−'}${fcfa(Math.abs(e.amount))}</em>`).join('') : '<span>Aucun mouvement pour l’instant.</span><em></em>'}</div>
-      <div class="draft">${esc(LOCAL_NOTE)} Les 100 derniers mouvements sont gardés.</div>`;
+    const value = assetsValue(s);
+    const html = `<div class="kv">En poche : <b>${fcfa(s.wallet)}</b> · biens : ${fcfa(value)}<br>Fortune totale : <b>${fcfa(s.wallet + value)}</b><br>${esc(polyLine(s))}</div>
+      <h3>Historique</h3><div class="rel ledger">${rows.length ? rows.map(e => `<span>${esc(e.label)}<small>${when(e.at)}</small></span><em class="${e.amount >= 0 ? 'plus' : 'minus'}">${e.amount >= 0 ? '+' : '−'}${fcfa(Math.abs(e.amount))}</em>`).join('') : '<span>Aucun mouvement pour l’instant.</span><em></em>'}</div>
+      <div class="draft">${esc(localNote())} Les 100 derniers mouvements sont gardés.</div>`;
     this.d.menu();
     this.d.hud.openMenu('Portefeuille', `${fcfa(s.wallet)} · ${homeGoalLine(s)}`, [
       { label: 'Petits boulots', detail: 'Tiak Tiak et services payés du quartier', onPick: () => this.openJobs() },
-      { label: 'Ma chambre · meubles', detail: `${s.data.furniture.length}/${FURNITURE.length} meubles`, onPick: () => this.openShop(true) },
+      { label: 'Affaires', detail: unitsOwned(s) ? `${unitsOwned(s)} affaire${unitsOwned(s) > 1 ? 's' : ''} · +${fcfa(incomePerHour(s))} par heure` : firstVentureHint(s) ?? '', onPick: () => this.openBusiness() },
+      { label: `${specOfAsset(currentHome(s)).name.split(' · ')[0]} · meubles`, detail: `${furnitureCount(s)} meuble${furnitureCount(s) > 1 ? 's' : ''} · domicile principal`, onPick: () => this.openShop(true) },
     ], html);
+  }
+
+  // ---------------------------------------------------------------- polyvalence and ventures
+  /** A finished city action (main.ts runAction): records its activity and returns its pay scaled by the variety bonus (0 if unpaid). */
+  work(a: Action, it?: Interactable): number { return workPay(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
+  /** What `a` would pay if done now (menus). */
+  workPreview(a: Action, it?: Interactable): number { return payPreview(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
+  /** Activity framework (src/activity/effects.ts): a category practised, then the pay it brings, scaled by the variety bonus. */
+  practiseCategory(c: ActivityCategory) { const a = fromCategory(c); if (a) practise(this.s, a); }
+  scalePay(money: number, c: ActivityCategory | null) { return fromCategory(c) ? Math.round(money * multiplier(this.s)) : money; }
+  previewPay(money: number, c: ActivityCategory | null) { const a = fromCategory(c); return a ? payPreview(this.s, money, a) : money; }
+
+  /** Activities recorded by other modules (counters) and the assets' hourly income and charges. A few times per second. */
+  tickBusiness(): number {
+    const s = this.s;
+    this.sig = this.sig ? noticeActivities(s, this.sig) : signature(s.data);
+    const paid = accrue(s);
+    for (const n of takeNotices()) this.d.hud.toast(n);
+    if (paid > 0) {
+      const m = document.getElementById('money');
+      if (m) { m.classList.remove('up'); void m.offsetWidth; m.classList.add('up'); m.title = `Revenus des affaires : +${fcfa(paid)}`; }
+      if (!this.paidOnce) { this.paidOnce = true; this.d.hud.toast(`Tes affaires rapportent : +${fcfa(paid)} · chaque heure en ville`); }
+    }
+    return paid;
+  }
+
+  /**
+   * « Affaires » at a glance (phone first: the owner found the old screen overloaded on an iPhone). What the player owns and earns (two numbers), their
+   * bana-bana table when they have it (stock, customers, the last session's sales − cost = profit, today and since the purchase, « Y aller »), each venture
+   * owned with its income, the next one within reach (or the first one and what is missing), then the full ladder and the details (variety, how income
+   * works) on demand. One short line on variety. Picking a venture asks for confirmation, as before.
+   */
+  openBusiness() {
+    const s = this.s, units = unitsOwned(s), card = tableCard(s);
+    const items: MenuItem[] = [];
+    if (card.owned) items.push({ icon: '📍', label: 'Y aller · ta table', detail: 'Marché de Pikine, à côté de la Maïga', onPick: () => this.goTable() });
+    for (const v of VENTURES) {
+      const n = ownedOf(s, v.id); if (!n) continue;
+      items.push({ icon: '🏢', label: `${v.name} ×${n}`, detail: `Encore une : ${fcfa(nextPrice(s, v.id))}`, right: `+${fcfa(perHourOf(v.id) * n)}/h`, onPick: () => this.confirmVenture(v.id) });
+    }
+    const next = this.nextVenture();
+    if (next) {
+      const price = nextPrice(s, next.id), missing = price - s.wallet;
+      items.push({ icon: '✨', label: next.name, detail: `+${fcfa(perHourOf(next.id))}/h · acheter`, reason: missing > 0 ? `Il manque ${fcfa(missing)}` : undefined, right: fcfa(price), disabled: missing > 0, onPick: () => this.confirmVenture(next.id) });
+    }
+    if (!card.owned) items.push({ icon: '📍', label: 'Voir la table à céder', detail: 'Marché de Pikine, à côté de la Maïga', onPick: () => this.goTable() });
+    items.push({ icon: '📋', label: `Voir toutes les affaires (${VENTURES.length})`, detail: 'Prix, revenus, de la table au grand groupe', onPick: () => this.openAllBusiness() });
+    items.push({ icon: 'ℹ️', label: 'Comment ça marche', detail: 'Revenus, variété des activités', onPick: () => this.openBusinessHelp() });
+    const top = units ? `<div class="biz-top"><div><small>Revenus par heure</small><b class="gain">+${fcfa(incomePerHour(s))}</b></div><div><small>Total gagné</small><b>${fcfa(s.data.assets.earned)}</b></div></div>` : '';
+    const html = `${top}${card.owned ? tableCardHtml(card) : ''}<div class="biz-note">${esc(units ? polyLine(s) : 'Une affaire rapporte à chaque heure en ville, pendant que tu joues.')}</div>`;
+    this.d.menu();
+    this.d.hud.openMenu('Affaires', `${units ? `${units} affaire${units > 1 ? 's' : ''}` : 'Aucune affaire pour l’instant'} · en poche ${fcfa(s.wallet)}`, items, html);
+  }
+
+  /** The next venture to show on the main screen: the dearest one not owned yet that the player can pay now, else the cheapest not owned (and what is missing). */
+  private nextVenture() {
+    const s = this.s, open = VENTURES.filter(v => ownedOf(s, v.id) === 0 && !lockedWhy(s, v.id));
+    return [...open].reverse().find(v => s.canAfford(nextPrice(s, v.id))) ?? open[0] ?? null;
+  }
+
+  /** « Y aller »: the walking marker on the table (in Pikine now), or waiting in Pikine (from another district). */
+  private goTable() {
+    this.d.hud.closeModal();
+    if (this.world?.id === 'pikine') { this.d.walkTo(BANA_PLACE); this.d.hud.toast(`📍 Repère : ${ownsTable(this.s) ? 'ta table de bana-bana' : 'la table à céder'}`); }
+    else { phoneHooks.markPlace?.(BANA_PLACE, 'pikine', 'Table de bana-bana'); this.d.hud.toast('📍 La table est à Pikine, à côté de la Maïga : le repère t’y attend'); }
+  }
+
+  /** The full ladder: every venture, owned or not, its income, its next price (the old « Affaires » list). */
+  openAllBusiness() {
+    const s = this.s;
+    const items: MenuItem[] = VENTURES.map(v => {
+      const n = ownedOf(s, v.id), why = lockedWhy(s, v.id), price = nextPrice(s, v.id), each = perHourOf(v.id);
+      const missing = price - s.wallet;
+      const detail = why ?? [n ? `+${fcfa(each)}/h chacune · +${fcfa(each * n)}/h en tout` : `${v.what} · +${fcfa(each)}/h`, missing > 0 ? `il manque ${fcfa(missing)}` : 'acheter'].join(' · ');
+      return { label: `${v.name}${n ? ` ×${n}` : ''}`, detail, right: why ? 'Bloqué' : fcfa(price), disabled: !!why || missing > 0, onPick: () => this.confirmVenture(v.id) };
+    });
+    items.push({ icon: '↩️', label: 'Retour', onPick: () => this.openBusiness() });
+    this.d.menu();
+    this.d.hud.openMenu('Toutes les affaires', `En poche ${fcfa(s.wallet)}`, items, `<div class="biz-note">Chaque unité de plus coûte 15\u202f% plus cher. Aucune condition : une affaire s’achète dès que tu peux la payer.</div>`);
+  }
+
+  /** The details, on demand: how income works, and the variety bonus with its chips (moved off the main screen). */
+  openBusinessHelp() {
+    const s = this.s, value = venturesValue(s);
+    const chips = ACTIVITIES.map(a => {
+      const on = isRecent(s, a), known = s.data.activities.known.includes(a), days = Math.ceil((timeLeft(s, a) / (WINDOW_MS / ECONOMY.polyvalence.windowDays)) * 10) / 10;
+      return `<span class="${on ? 'on' : known ? 'old' : ''}" title="${esc(ACTIVITY_INFO[a].where)}">${on ? '✓ ' : ''}${esc(ACTIVITY_INFO[a].label)}${on ? `<small>encore ${String(days).replace('.', ',')} j</small>` : ''}</span>`;
+    }).join('');
+    const todo = ACTIVITIES.filter(a => !isRecent(s, a)).slice(0, 3).map(a => `${ACTIVITY_INFO[a].label} : ${ACTIVITY_INFO[a].where}`);
+    const html = `<div class="biz-top"><div><small>Valeur des affaires</small><b>${fcfa(value)}</b></div><div><small>Fortune totale</small><b>${fcfa(s.wallet + value)}</b></div></div>
+      <div class="poly"><b>${esc(polyLine(s))}</b><div class="chips">${chips}</div>
+        <small>Bonus facultatif : chaque activité différente pratiquée ces 3 derniers jours de jeu ajoute +5\u202f% à la paie (livraisons, petits boulots), jusqu’à +15\u202f%. Il ne change pas les revenus des affaires.${todo.length ? ' À essayer : ' + esc(todo.join(' · ')) + '.' : ''}</small></div>
+      <div class="draft">${esc(INCOME_NOTE)} Ta table de bana-bana rapporte en plus ce que tu vends quand tu la tiens toi-même.</div>`;
+    this.d.menu();
+    this.d.hud.openMenu('Comment ça marche', 'Revenus et variété', [{ icon: '↩️', label: 'Retour', onPick: () => this.openBusiness() }], html);
+  }
+
+  private confirmVenture(id: string) {
+    const s = this.s, v = VENTURES.find(x => x.id === id); if (!v) return;
+    const price = nextPrice(s, id), each = perHourOf(id);
+    this.d.menu();
+    this.d.hud.openMenu(`Acheter : ${v.name}`, `${v.what}.`, [
+      { label: 'Confirmer l’achat', detail: `Rapporte +${fcfa(each)} par heure en ville`, right: '−' + fcfa(price), disabled: !!cannotBuyVenture(s, id), onPick: () => { this.buyVenture(id); this.openBusiness(); } },
+      { label: 'Retour aux affaires', onPick: () => this.openBusiness() },
+    ], `<div class="kv">Prix : ${fcfa(price)} · il te restera ${fcfa(Math.max(0, s.wallet - price))}.<br>Tu en as ${ownedOf(s, id)} ; la suivante coûtera ${fcfa(unitPrice(id, ownedOf(s, id) + 1))}.</div>`);
+  }
+
+  /** Buy one unit (after confirmation in the menus; directly from debug). */
+  buyVenture(id: string): boolean {
+    const s = this.s, v = VENTURES.find(x => x.id === id), price = nextPrice(s, id);
+    if (!v || !buyVenture(s, id)) { this.d.hud.toast(cannotBuyVenture(s, id) ?? 'Achat impossible'); return false; }
+    this.d.hud.toast(`${v.name} ✓  −${fcfa(price)} · +${fcfa(perHourOf(id))} par heure`);
+    this.d.save();
+    return true;
   }
 
   /** Debug hooks (window.__dakar, ?debug only). */
   debug() {
     const s = this.s;
     return {
-      jobs: () => (this.world ? offers(s, this.world.id).map(r => ({ id: r.id, from: r.from.name, to: r.to.name, pay: ECONOMY.tiak.pay[r.id] ?? 0, recommended: !!r.needFlag, blocked: whyNot(s, r) })) : []),
+      jobs: () => (this.world ? offers(s, this.world.id).map(r => ({ id: r.id, from: r.from.name, to: r.to.name, pay: ECONOMY.tiak.pay[r.id] ?? 0, payNow: payNow(s, routePay(r)), recommended: !!r.needFlag, blocked: whyNot(s, r) })) : []),
+      /** What a place's action pays if done now (variety bonus included). */
+      servicePay: (placeId: string, actionId: string) => { const it = this.world?.interactables.find(i => i.id === placeId), a = it?.actions.find(x => x.id === actionId); return it && a ? this.workPreview(a, it) : null; },
       acceptJob: (id: string, atPickup = true) => { const j = this.accept(id, atPickup); return j ? { ...j } : null; },
       activeJob: () => (s.data.jobs.active ? { ...s.data.jobs.active } : null),
       /** Simulate arrival (pick-up then drop-off); with a run id, hands over that run only. */
@@ -292,11 +615,39 @@ export class Economy {
         return c ? { runId: c.runId, paid: c.paid, late: c.late, newClient: c.newClient } : null;
       },
       cancelJob: () => this.cancel(),
+      /** The tour(s) of this hub: what the order menu predicts, and what each client remembers (limits and pay are the ones an acceptance now would fix). */
+      tourOffer: () => toursIn(this.world?.id ?? s.data.hub).map(t => ({
+        id: t.id, pickup: t.pickup.name, why: whyNotTour(s, t), total: tourTotal(t), limits: limitsOf(s, t), pays: paysOf(s, t),
+        orders: ORDERS.map(o => { const p = previewOrder(s, t, o); return { first: t.stops[o[0]].id, arrive: p.arrive.map(x => +x.toFixed(1)), limit: p.limit, onTime: p.onTime, pay: p.pay }; }),
+        memory: t.stops.map(st => ({ id: st.id, client: st.client, trust: trustOf(s, st.id), history: historyOf(s, st.id), line: this.memoryLine(st) })),
+      })),
+      /** Accept the tour as the order menu would (first = index of the stop served first); null when refused. */
+      acceptTour: (id: string, first: 0 | 1 = 0) => { const t = toursIn(this.world?.id ?? s.data.hub).find(x => x.id === id); const j = t ? this.acceptTourRun(t, first === 0 ? [0, 1] : [1, 0]) : null; return j ? { ...j } : null; },
+      tourState: () => { const c = currentTour(s); return c ? { runId: c.job.runId, leg: c.run.leg, order: c.run.order, departed: c.run.departed, stop: c.stop.id, left: tourRemainingMs(s), leftOther: c.run.leg === 0 ? tourRemainingMs(s, 1) : null, clock: c.run.departed ? +((s.data.playedMs - c.job.startedMs) / 1000).toFixed(2) : null, late: [...c.run.late], limitS: c.run.limitS, pay: c.run.pay, parcel: c.job.stage } : null; },
+      abandonTour: () => this.abandon(),
+      /** The hub's solid boxes as built at run time (modules add theirs), for the bike's route planning (scripts/m1b-tour/legs.ts). */
+      colliders: () => (this.world ? this.world.colliders.map(c => [c.x0, c.z0, c.x1, c.z1, c.h]) : []),
+      tourMenu: (id?: string) => { const t = id ? TOURS_BY(id) : toursIn(this.world?.id ?? s.data.hub)[0]; if (t) this.openTourOrder(t); },
       jobsMenu: () => this.openJobs(),
       jobsApp: () => { this.openJobs(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); }, shop: () => this.openShop(false), homeApp: () => this.openShop(true), wallet: () => this.openWallet(),
       buy: (id: string) => this.buy(id),
-      furniture: () => ({ owned: [...s.data.furniture], items: FURNITURE.map(f => ({ id: f.id, name: f.name, price: priceOf(f.id), owned: owns(s, f.id) })) }),
+      furniture: () => ({ owned: ownedFurnitureIds(s), items: FURNITURE.map(f => ({ id: f.id, name: f.name, price: priceOf(f.id), owned: owns(s, f.id) })) }),
       ledger: () => phoneHooks.ledger?.() ?? [],
+      business: () => ({
+        owned: ownedVentures(s), base: baseIncome(s), perHour: incomePerHour(s), mult: multiplier(s), poly: polyvalence(s), line: polyLine(s),
+        value: venturesValue(s), earned: s.data.assets.earned, carry: s.data.assets.carryIn, played: s.data.playedMs, hourMs: HOUR_MS,
+        known: [...s.data.activities.known], next: Object.fromEntries(VENTURES.map(v => [v.id, { price: nextPrice(s, v.id), locked: lockedWhy(s, v.id) }])),
+      }),
+      businessApp: () => { this.openBusiness(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); },
+      /** The full ladder (« Voir toutes les affaires ») and the details (« Comment ça marche »): their rows. */
+      businessAll: () => { this.openAllBusiness(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); },
+      businessHelp: () => { this.openBusinessHelp(); return document.querySelector('#modal.on .panel')?.textContent ?? ''; },
+      buyVenture: (id: string) => this.buyVenture(id),
+      giveMoney: (n: number) => s.addMoney(n, 'Argent de test (debug)'),
+      /** Played time passes (no needs drain): the ventures' income is counted and paid. Returns what was paid. */
+      advancePlayed: (ms: number) => { s.data.playedMs += ms; return this.tickBusiness(); },
+      practise: (a: Activity | 'services') => { practise(s, a === 'services' ? 'service' : a); return polyLine(s); },
+      compact: (n: number) => fcfaShort(n),
       /** Every Tiak Tiak pick-up / drop-off of the current hub, resolved against the city's existing places. */
       routeEnds: () => (this.world ? ROUTES.filter(r => r.hub === this.world!.id).flatMap(r => [r.from, r.to]).map(p => ({ name: p.name, place: this.placeOf(p.frag)?.name ?? null })) : []),
       marker: () => ({ visible: this.marker.visible, x: this.marker.position.x, z: this.marker.position.z }),

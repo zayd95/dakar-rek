@@ -1,0 +1,127 @@
+[
+  {
+    "name": "phone: the pick-up's Tiak Tiak panel offers the tour as a card with no delivery done before",
+    "ok": true,
+    "detail": "{\"text\":\"☕ Café Touba 1 🏦 Banque 2 ♟️ Grand-place 📍 2 arrêts 🎁 Bonus +1 200 F Gain estimé +4 500 F Choisir ›\",\"h\":313,\"right\":376,\"dis\":false,\"late\":0,\"ok\":0,\"verdict\":\"\"}"
+  },
+  {
+    "name": "phone: the tour card is icons and numbers: pick-up, two stops, a big reward, the bonus, one action",
+    "ok": true,
+    "detail": "☕ Café Touba 1 🏦 Banque 2 ♟️ Grand-place 📍 2 arrêts 🎁 Bonus +1 200 F Gain estimé +4 500 F Choisir ›"
+  },
+  {
+    "name": "phone: a one-line hint recommends starting simple (with an icon)",
+    "ok": true,
+    "detail": "Tiak Tiak\n\n👍 1re fois ? Commence simple.\n\n☕\nCafé Touba\n1\n🏦\nBanque\n2\n♟️\nGrand-place\n📍 2 arrêts\n🎁 Bonus +1 200 F\nGain estimé\n+4 500 F\nChoisir ›\n✕"
+  },
+  {
+    "name": "phone: the delivery panel is short (14 words, no paragraph)",
+    "ok": true,
+    "detail": "Tiak Tiak\n\n👍 1re fois ? Commence simple.\n\n☕\nCafé Touba\n1\n🏦\nBanque\n2\n♟️\nGrand-place\n📍 2 arrêts\n🎁 Bonus +1 200 F\nGain estimé\n+4 500 F\nChoisir ›\n✕"
+  },
+  {
+    "name": "phone: the tour card is big enough to tap and inside the screen",
+    "ok": true,
+    "detail": "{\"h\":313,\"right\":376}"
+  },
+  {
+    "name": "phone: « Qui en premier ? » is two cards, one per order, each client with a 🔥 urgency and a ⏱ limit, a ✓ / ! verdict beside the price",
+    "ok": true,
+    "detail": "[\"1 🏦 Banque 🔥🔥🔥 ⏱ 12 s 2 ♟️ Grand-place 🔥🔥 ⏱ 17 s ! ≈ +3 700 F Partir ›\",\"1 ♟️ Grand-place 🔥🔥 ⏱ 17 s 2 🏦 Banque 🔥🔥🔥 ⏱ 12 s ! ≈ +3 980 F Partir ›\"]"
+  },
+  {
+    "name": "phone: each order shows one client on time and one late at trust 0 (red time, « ! » verdict) and the two pay differently: a real choice",
+    "ok": true,
+    "detail": "{\"orders\":[\"1 🏦 Banque 🔥🔥🔥 ⏱ 12 s 2 ♟️ Grand-place 🔥🔥 ⏱ 17 s ! ≈ +3 700 F Partir ›\",\"1 ♟️ Grand-place 🔥🔥 ⏱ 17 s 2 🏦 Banque 🔥🔥🔥 ⏱ 12 s ! ≈ +3 980 F Partir ›\"],\"pays\":[3700,3980]}"
+  },
+  {
+    "name": "phone: the panel has no paragraph and few words (13), memory is a ★ / 😒 mark and absent when neutral",
+    "ok": true,
+    "detail": "{\"p\":[],\"w\":13,\"trust\":[0,0],\"mark\":false}"
+  },
+  {
+    "name": "phone: the order cards are touch-sized and inside the screen",
+    "ok": true,
+    "detail": "[[233,376],[233,376]]"
+  },
+  {
+    "name": "phone: what abandoning costs is one tap away (hidden first, then one short line: stops paid, no bonus, −1 ★ per client not delivered, free before leaving)",
+    "ok": true,
+    "detail": "Avant de partir : gratuit. Après : les stops livrés sont payés, pas de bonus, −1 ★ pour chaque client non livré. La confiance se regagne en livrant à l’heure."
+  },
+  {
+    "name": "phone/agence first: accepted at the pick-up with both parcels in hand and the clock not started",
+    "ok": true,
+    "detail": "{\"runId\":\"d0971a86-1-983\",\"leg\":0,\"order\":[0,1],\"departed\":false,\"stop\":\"pk_agence\",\"left\":null,\"leftOther\":null,\"clock\":null,\"late\":[],\"limitS\":[12,17],\"pay\":[1300,2000],\"parcel\":\"deliver\"}"
+  },
+  {
+    "name": "phone/agence first: before leaving the HUD shows only the next place, the progress and « Va ! » (no countdown yet)",
+    "ok": true,
+    "detail": "{\"text\":\"🏦 Banque 46 m ●○ Va !\",\"name\":\"Banque\",\"prog\":\"●○\",\"clock\":\"Va !\",\"h\":46,\"right\":202}"
+  },
+  {
+    "name": "phone/agence first: while riding the HUD is the next place, ●○ progress and a countdown, in one short line",
+    "ok": true,
+    "detail": "{\"text\":\"🏦 Banque 13 m ●○ 0:10\",\"name\":\"Banque\",\"prog\":\"●○\",\"clock\":\"0:10\",\"h\":46,\"right\":213}"
+  },
+  {
+    "name": "phone/agence first: the real ride reached the first stop (tour clock 4.9 s) and it was handed over",
+    "ok": true,
+    "detail": "{\"seated\":true,\"ride\":{\"s\":2,\"played\":2,\"ok\":true,\"speedMax\":6.9,\"frames\":60,\"events\":[{\"stop\":0,\"at\":2,\"clock\":4.9}]},\"leg\":1,\"w0\":3000,\"w1\":4300}"
+  },
+  {
+    "name": "phone/agence first: the second stop handed over at tour clock 19.93 s, the run finished once, bonus paid",
+    "ok": true,
+    "detail": "{\"ride\":{\"s\":15.03,\"played\":15.03,\"ok\":true,\"speedMax\":12.2,\"frames\":451,\"events\":[{\"stop\":1,\"at\":15.03,\"clock\":19.93}]},\"end\":null,\"counters\":{\"livraisons\":2,\"tournees\":1,\"done\":1,\"active\":null}}"
+  },
+  {
+    "name": "phone/agence first: the money matches two stops and the bonus in the ledger, nothing paid twice",
+    "ok": true,
+    "detail": "{\"paid\":3700,\"led\":[\"Tournée complète : bonus (Tournée du Café Touba)\",\"Tournée Tiak Tiak → Grand-place de Pikine (en retard)\",\"Tournée Tiak Tiak → Banque Teranga · Pikine\"]}"
+  },
+  {
+    "name": "phone/dames first: accepted at the pick-up with both parcels in hand and the clock not started",
+    "ok": true,
+    "detail": "{\"runId\":\"d0971a86-2-27066\",\"leg\":0,\"order\":[1,0],\"departed\":false,\"stop\":\"pk_dames\",\"left\":null,\"leftOther\":null,\"clock\":null,\"late\":[],\"limitS\":[12,17],\"pay\":[1300,2000],\"parcel\":\"deliver\"}"
+  },
+  {
+    "name": "phone/dames first: before leaving the HUD shows only the next place, the progress and « Va ! » (no countdown yet)",
+    "ok": true,
+    "detail": "{\"text\":\"♟️ Grand-place 104 m ●○ Va !\",\"name\":\"Grand-place\",\"prog\":\"●○\",\"clock\":\"Va !\",\"h\":46,\"right\":236}"
+  },
+  {
+    "name": "phone/dames first: while riding the HUD is the next place, ●○ progress and a countdown, in one short line",
+    "ok": true,
+    "detail": "{\"text\":\"♟️ Grand-place 91 m ●○ 0:16\",\"name\":\"Grand-place\",\"prog\":\"●○\",\"clock\":\"0:16\",\"h\":46,\"right\":247}"
+  },
+  {
+    "name": "phone/dames first: the real ride reached the first stop (tour clock 10.2 s) and it was handed over",
+    "ok": true,
+    "detail": "{\"seated\":true,\"ride\":{\"s\":8.37,\"played\":8.37,\"ok\":true,\"speedMax\":12.2,\"frames\":251,\"events\":[{\"stop\":0,\"at\":8.37,\"clock\":10.23}]},\"leg\":1,\"w0\":3000,\"w1\":5000}"
+  },
+  {
+    "name": "phone/dames first: the second stop handed over at tour clock 24.56 s, the run finished once, bonus paid",
+    "ok": true,
+    "detail": "{\"ride\":{\"s\":14.33,\"played\":14.33,\"ok\":true,\"speedMax\":12.2,\"frames\":430,\"events\":[{\"stop\":1,\"at\":14.33,\"clock\":24.56}]},\"end\":null,\"counters\":{\"livraisons\":2,\"tournees\":1,\"done\":1,\"active\":null}}"
+  },
+  {
+    "name": "phone/dames first: the money matches two stops and the bonus in the ledger, nothing paid twice",
+    "ok": true,
+    "detail": "{\"paid\":3980,\"led\":[\"Tournée complète : bonus (Tournée du Café Touba)\",\"Tournée Tiak Tiak → Banque Teranga · Pikine (en retard)\",\"Tournée Tiak Tiak → Grand-place de Pikine\"]}"
+  },
+  {
+    "name": "phone: the two orders gave different outcomes (paid 3700 vs 3980; trust 1,-1 vs -1,1)",
+    "ok": true,
+    "detail": "3700/3980 1,-1/-1,1"
+  },
+  {
+    "name": "phone: a later offer remembers (limits, pay, and a ★★ / 😒 mark on the cards)",
+    "ok": true,
+    "detail": "{\"limits\":[13.4,16],\"pays\":[1404,2000],\"cards\":[\"1 🏦 Banque ★★ 🔥🔥 ⏱ 13 s 2 ♟️ Grand-place 😒 🔥🔥 ⏱ 16 s ! ≈ +3 804 F Partir ›\",\"1 ♟️ Grand-place 😒 🔥🔥 ⏱ 16 s 2 🏦 Banque ★★ 🔥🔥 ⏱ 13 s ! ≈ +4 042 F Partir ›\"]}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

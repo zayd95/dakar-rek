@@ -8,25 +8,43 @@ import { PROFILES, profileOf } from '../src/social/profiles';
 import { ROUTINES, routineOf, slotAt, currentPlan, resolvePlace, planPath, kioskDir, poseFor, LANE, type Anchor } from '../src/social/routines';
 import { REGULAR_AT, recordVisit, recordService, updateRegular, isRegular, greeting, introduction, applyIntroduction, lastMemory, hourStamp } from '../src/social/memory';
 import { SITUATIONS, situationFor, sitCtx, choicesFor, playSituation, favourFor } from '../src/social/situations';
+import { LEXICON, glossed } from '../src/i18n/wolof';
 
 const fresh = () => { const s = new GameState(newSave(0)); return { s, r: new Relations(s.data) }; };
 const play = (r: Relations, s: GameState, id: string, choice: string) => { const b = BEATS.find(x => x.id === id)!; return applyChoice(b, b.choices.find(c => c.id === choice)!, r, s); };
 const ids = new Set(CAST.map(c => c.id));
 
 describe('character sheets', () => {
-  it('every cast member has a draft sheet with two relations, reactions and no invented expressions', () => {
+  it('every cast member has a sheet with two relations, reactions and Wolof expressions from the lexicon', () => {
     for (const c of CAST) {
       const p = profileOf(c.id)!;
       expect(p, c.id).toBeTruthy();
-      expect(p.review).toBe('brouillon — à relire par Habib');
       expect(p.relations.length).toBeGreaterThanOrEqual(2);
       for (const [id] of p.relations) expect(ids.has(id), `${c.id} -> ${id}`).toBe(true);
       expect(p.reactions.length).toBeGreaterThan(2);
       expect(p.reactions[p.reactions.length - 1].when).toEqual({}); // always a fallback line
-      for (const e of p.expressions) expect(e.startsWith('TODO(Habib)') || e.includes('déjà dans le jeu')).toBe(true);
+      expect(p.expressions.length, c.id).toBeGreaterThanOrEqual(2);
+      for (const e of p.expressions) expect(LEXICON, `${c.id}: ${e.wo}`).toContain(e);
       for (const i of p.intros ?? []) expect(ids.has(i.to)).toBe(true);
     }
     expect(PROFILES.length).toBe(CAST.length);
+  });
+  it('the Peul shopkeeper greets his customers in Wolof; other languages stay in the French description', () => {
+    const m = profileOf('mamadou')!;
+    expect(m.languages).toMatch(/Pulaar en famille, wolof avec les clients/);
+    const lines = PROFILES.flatMap(p => p.reactions.map(r => r.line));
+    expect(lines.join(' ')).not.toMatch(/Jaaraama|TODO/i);
+    const { s, r } = fresh();
+    expect(glossed(greeting(m, { id: 'mamadou', s, r, hour: 10 }).line, false)).toMatch(/^Dalal ak jàmm !/);
+  });
+  it('the fallback greeting follows the hour (Ibou)', () => {
+    const { s, r } = fresh();
+    s.data.beats.ibou_welcome = 'oui';
+    const ibou = profileOf('ibou')!;
+    const at = (hour: number) => glossed(greeting(ibou, { id: 'ibou', s, r, hour }).line, false);
+    expect(at(8)).toMatch(/^Na nga fanaane \? Le quartier/);
+    expect(at(14)).toMatch(/^Na nga def \? Le quartier/);
+    expect(at(20)).toMatch(/^Na nga yendoo \? Le quartier/);
   });
   it('the Diallo family is Peul with different occupations, and one trader of another origin', () => {
     const [m, k, n] = ['mamadou', 'kadiatou', 'ndeye'].map(id => profileOf(id)!);
@@ -95,6 +113,17 @@ describe('places and walking', () => {
     const path = planPath({ x: 0, z: -54.5 }, { x: 50, z: -54.5 }, blocked);
     for (let k = 1; k < path.length; k++) expect(blocked(path[k - 1], path[k])).toBe(true);
     expect(path.some(p => Math.abs(p.z + 65) < 0.01)).toBe(true);   // crossed to the other side of the road
+  });
+  it('a walk asked again (the entries of its points kept per clear test) is the same walk, and calls the test far less', () => {
+    let calls = 0;
+    const blocked = (a: { x: number; z: number }, b: { x: number; z: number }) => { calls++; return !(Math.abs(a.z + 55) < 0.01 && Math.abs(b.z + 55) < 0.01 && Math.min(a.x, b.x) < 30 && Math.max(a.x, b.x) > 30); };
+    const first = planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, blocked), n1 = calls;
+    calls = 0;
+    const again = planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, blocked);
+    expect(again).toEqual(first);
+    expect(calls).toBeLessThan(n1);
+    // a new test (another hub) does not reuse them
+    expect(planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, (a, b) => blocked(a, b))).toEqual(first);
   });
   it('approach waypoints lead into a shop aisle', () => {
     const path = planPath({ x: -36, z: -54.5 }, { x: -105, z: 80.1, yaw: 0, sit: false, stool: false, approach: [[-95.5, 86], [-95.5, 79.6]] });

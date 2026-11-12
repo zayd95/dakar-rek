@@ -8,6 +8,7 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "build:online": "tsc --noEmit && vite build --mode online",
+    "build:showcase": "tsc --noEmit && VITE_OWNER_SHOWCASE=1 vite build --config vite.artifact.config.ts",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -20,12 +21,18 @@
     "check:chat": "node scripts/check-chat.mjs"
   },
   "dependencies": {
+    "maplibre-gl": "^6.15.0",
     "three": "^0.169.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261007.1",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "@types/three": "^0.169.0",
+    "meshoptimizer": "^1.3.0",
     "playwright": "^1.56.0",
+    "sharp": "^0.35.5",
     "typescript": "^5.6.0",
     "vite": "^5.4.0",
     "vitest": "^2.1.0",

@@ -4,10 +4,13 @@ on:
   pull_request:
 permissions:
   contents: read
+# The suites run as parallel jobs: the same commands as before, none dropped, none loosened. One runner running them one after another took 34-44 minutes and sat at its
+# 45-minute cap (three pull-request runs of PR #88 were cancelled by it, and a slow runner could decide a green or a red). Each job has its own cap now; the longest (`launch`)
+# sets the wall time. The `check` job at the end keeps the status name that the single job had: it is green only when every job above it is.
 jobs:
-  check:
+  unit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # city + two-player + full launch suites take 10–15 min on a runner; 15 cut runs off mid-check
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,18 +20,88 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck:server
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npm run build
+
+  city:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build          # the city check serves the build (vite preview)
       - run: npx playwright install --with-deps chromium
       - run: npm run check:city
-      - run: npm run check:online
-      - run: npm run check:launch
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: multiplayer-checks
+          name: city-life-shots
+          path: shots/city-life/
+          if-no-files-found: ignore
+
+  online:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:online   # builds the online bundle and starts its own local worker
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: multiplayer-shots
+          path: shots/multiplayer/
+          if-no-files-found: ignore
+
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:launch   # the launch controls, then the full desktop and phone gameplay suite
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-shots
           path: |
-            shots/multiplayer/
             shots/launch-controls/
             shots/launch-gameplay/
-            shots/city-life/
           if-no-files-found: ignore
+
+  check:
+    needs: [unit, build, city, online, launch]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every suite passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "unit build city online launch: $RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || { echo "a suite did not pass"; exit 1; }; done

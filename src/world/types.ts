@@ -4,6 +4,7 @@ import type { GameState } from '../core/state';
 import type { PersonLook } from '../actors/humanoid';
 import type { Seat } from '../interact/seats';
 import type { Step } from '../activity/types';
+import type { Site } from './sites';
 
 export interface Action {
   id: string;
@@ -20,20 +21,43 @@ export interface Action {
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
   /** Composed activity (src/activity): when present, the universal runner plays these steps (price = `cost`). */
   steps?: Step[];
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop';
+  /** With `steps`: no « ✓ » toast at the end (a hand-over that starts another system says what happens itself). */
+  quiet?: boolean;
+  /** One emoji for buttons and sheets when the verb's default does not fit (« 🤼 » for a bout, « 🥊 » for a drill). */
+  icon?: string;
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop' | 'business' | 'bank' | 'bankAdvice';
 }
 export interface Interactable {
   id: string;
   name: string;
-  kind: 'actions' | 'travel';
+  /** 'walk': a way out of the neighbourhood on foot (src/world/walk.ts: « Partir à pied », free). */
+  kind: 'actions' | 'travel' | 'walk';
   x: number; z: number; radius: number;
   actions: Action[];
   /** Short greeting/context spoken by the host of this place. */
   description?: string;
   /** Set when this interactable is a recurring cast member. */
   npc?: string;
+  /** How its action menu looks (presentation only): 'shop' = compact action rows of the shared UI primitives (src/ui/primitives.ts). */
+  menu?: 'shop';
 }
-export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
+export interface Collider {
+  x0: number; z0: number; x1: number; z1: number; h: number;
+  /**
+   * LD2.0-D: a collider that does not stand on the ground (a wall, a piece of furniture or a railing on an upper floor of the villa): it spans the
+   * heights `y0`…`h`, and a body whose feet are above its top (less a step) or whose head is under its bottom passes it (`inBand`, main.ts pushOut).
+   * Absent: from the ground up to `h`, as every collider before.
+   */
+  y0?: number;
+}
+/** LD2.0-D: a standing body's height (m) and the step it climbs: does a collider stop a body whose feet are at `y`? (Always, without `y0`.) */
+export const BODY_H = 1.6, BODY_STEP = 0.25;
+export const inBand = (c: Collider, y: number) => c.y0 === undefined || (y + BODY_H > c.y0 && y < c.h - BODY_STEP);
+/** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
+export interface Canopy { x: number; z: number; r: number; y0: number; y1: number }
+
+/** The ground of a road that leaves the district (src/road): beyond `bounds`, vehicles and walkers may stand where this says they may. */
+export interface RoadGround { contains(x: number, z: number, r: number): boolean }
 
 export interface HubWorld {
   id: HubId;
@@ -41,6 +65,8 @@ export interface HubWorld {
   colliders: Collider[];
   interactables: Interactable[];
   bounds: { x0: number; x1: number; z0: number; z1: number };
+  /** The roads between districts attached to this one (src/road/host.ts), once the district is loaded: their ground extends the walkable and drivable area beyond `bounds`. */
+  corridors?: RoadGround[];
   spawn: { x: number; z: number; yaw: number };
   edges: RoadEdge[];
   nodes: { x: number; z: number }[][];
@@ -60,13 +86,40 @@ export interface HubWorld {
   people: { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; y?: number; look?: PersonLook; walkTo?: { x: number; z: number } }[];
   /** Parked car rapides at the station (they get an apprentice calling for passengers). */
   rapides: THREE.Object3D[];
+  /** The landmarks that are models (src/world/landmarks.ts): where each stands, how tall, which way it faces. */
+  landmarks?: LandmarkSpot[];
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */
-  monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[] } | null;
+  monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[];
+    /** Where the statue group stands (its base's middle) and how tall it is: src/world/landmarks.ts puts the model there. */
+    group: { x: number; z: number; y: number; height: number } } | null;
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
   seats: Seat[];
+  /** Lots and blocks left to a gameplay module (src/world/sites.ts, composed by src/venues). */
+  sites?: Site[];
+  /** Where the rooftop restaurant has its stair door when the district's own building gives it one (the Almadies: the boutique hotel's street face): the spot in front of the face and the face's outward normal. src/venues/rooftop.ts. */
+  rooftopDoor?: { x: number; z: number; nx: number; nz: number };
+  /** The rooftop restaurant's sign up on the hotel's roof (src/world/almadies/contract.ts `RoofPanel`, in the hub): each face's centre, size and the horizontal normal it faces. The venue paints and lights them. */
+  rooftopSign?: { /** The hotel's name, for its gantry when the rooftop restaurant is not on this hotel (the Almadies' Terrasse is on the strip). */ name?: string; panels: { x: number; y: number; z: number; w: number; h: number; nx: number; nz: number; kind: 'front' | 'blade' }[] };
+  /** What the Almadies' streetscape put down (src/world/almadies/streetscape.ts): its kind and place, for the checks. */
+  streetscape?: { kind: string; x: number; z: number }[];
+  /** The Almadies' night street (src/world/nightStreet.ts): its painted bays, the free ones among them, the venues turned toward the road, Le Patio's site and the dépose-minute bay. */
+  nightStreet?: import('./nightStreet').NightStreetInfo;
+  /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
+  canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
-  roofs: Collider[];
+  roofs?: Collider[];
+  /**
+   * Ground kept open whatever the street dressing would put there: a shop's frontage and the walk to its door, a loading bay at the kerb. The builder's
+   * street trees and stalls, the street furniture (src/game/streetDress.ts), the painted walls (src/game/pikineDna.ts) and the parked cars
+   * (src/game/parkedVehicles.ts) keep off it. `why` names it (the checks).
+   */
+  keepClear?: KeepClear[];
   dispose(): void;
 }
+/** A rectangle of the ground kept open (HubWorld.keepClear). */
+export interface KeepClear { x0: number; z0: number; x1: number; z1: number; why: string }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }
+
+/** A model landmark's place in a hub (src/world/landmarks.ts): the file under public/assets/landmarks/, its base's middle, its height in metres, its facing. */
+export interface LandmarkSpot { name: string; file: string; x: number; z: number; y: number; height: number; yaw: number; tint?: number; shadow?: boolean }

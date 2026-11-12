@@ -1,0 +1,14 @@
+{
+ "_about": "TEMPLATE, not run by anything: copy to berline.split.json once the Stage B Meshy remesh exists (assets-src/meshy_output/sport_sedan/remesh.glb). Radius is in the source model's own units (measure the wheel on the preview); the boxes in the paintout and relax lists are in the SOURCE frame (find them with proof/vehicles/glbview.html: window.pick).",
+ "source": "../meshy_output/sport_sedan/remesh.glb",
+ "rotateY": 0,
+ "out": "../meshy_output/sport_sedan/split.glb",
+ "wheels": {
+  "radius": null,
+  "contact": 0.02,
+  "margin": 0.004,
+  "lateralPad": 0.04
+ },
+ "paintOut": "berline.paintout.json",
+ "relax": []
+}
