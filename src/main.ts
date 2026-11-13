@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { readTestParams } from './core/testParams';
+import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -1823,7 +1823,10 @@ async function start() {
 void start();
 
 if (DEBUG) {
-  (window as unknown as Record<string, unknown>).__dakar = {
+  // ?debug works on every host (the public smoke test uses it), but on the public game only the hooks that read and the smoke test's moves exist:
+  // what makes money or value, or changes the economy or a save's progress, is for test hosts only, like ?argent= (src/core/testParams.ts debugApiFor)
+  const testHost = isTestHost(location.hostname);
+  const api: Record<string, unknown> = {
     state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
     /** LD2.0-B: the player's online account as the UI sees it (src/online/api.ts), for the checks: status, me, balance, conversations, items, history. */
     account: () => online,
@@ -2028,7 +2031,8 @@ if (DEBUG) {
       return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
     },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.pin(); follow.yaw = facing + yawOff; void dist; },
-    ...economy.debug(),
+    ...(testHost ? economy.debug() : {}),
   };
-  for (const m of MODULES) Object.assign((window as unknown as { __dakar: Record<string, unknown> }).__dakar, m.debug?.(ctx));
+  if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
 }

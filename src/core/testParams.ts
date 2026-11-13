@@ -18,6 +18,26 @@ export function isTestHost(hostname: string): boolean {
   return PREVIEW_BUILD || hostname === 'localhost' || hostname === '127.0.0.1' || PREVIEW_HOST.test(hostname);
 }
 
+/**
+ * What the `?debug` API (`window.__dakar`, src/main.ts) keeps on a host that is not a test host: the public game. `?debug` works on every host (the
+ * public smoke test, scripts/check-public-smoke.mjs, moves through the published build with it), but only these hooks exist there — the ones that read
+ * the game (position, camera, focus, presence, the frame's cost) and the moves of that smoke test (a district, the phone). Nothing that makes money
+ * or value or changes the economy or a save's progress (the game state itself, `giveMoney`, jobs completed, rent, loans, purchases, story choices,
+ * the modules' check hooks): those stay on test hosts, like `?argent=`.
+ */
+export const PUBLIC_DEBUG_HOOKS: readonly string[] = [
+  'hubs', 'pos', 'camera', 'camInfo', 'focus', 'nearestInteractable', 'presence', 'drawCalls', 'tris', 'perfOn', 'perf', 'crossMs', 'textures', 'hudTicks', 'cityDay',
+  'teleport', 'phone', 'phoneInfo', 'phoneClose',
+];
+
+/** The `?debug` API for this host: all of it on a test host, only `PUBLIC_DEBUG_HOOKS` elsewhere. */
+export function debugApiFor<T extends Record<string, unknown>>(hostname: string, api: T): Partial<T> {
+  if (isTestHost(hostname)) return api;
+  const out: Record<string, unknown> = {};
+  for (const k of PUBLIC_DEBUG_HOOKS) if (k in api) out[k] = api[k];
+  return out as Partial<T>;
+}
+
 export function readTestParams(hostname: string, search: string): TestParams {
   const none: TestParams = { hour: null, money: null, avatar: null, weather: null };
   if (!isTestHost(hostname)) return none;

@@ -5,6 +5,7 @@ import type {
 } from './protocol';
 import { cleanChatText, FAILURE_LABEL } from '../multiplayer/chatRules';
 import { fcfaText as F } from '../economy/format';
+import { isTestHost } from '../core/testParams';
 
 /**
  * LD2.0-B: an in-memory player account (the OnlineApi of src/online/api.ts) and a scripted « other player », for the Messages app's checks, the visits and
@@ -570,9 +571,12 @@ export class FakeOnline implements OnlineApi {
 
 export function createFakeOnline(opts: FakeOnlineOpts = {}): FakeOnline { return new FakeOnline(opts); }
 
-/** `?debug&fakeonline`: the only way a build without the server shows the online features (always labelled « simulé »). */
-export function fakeOnlineRequested(search = typeof location !== 'undefined' ? location.search : ''): boolean {
-  const q = new URLSearchParams(search); return q.has('debug') && q.has('fakeonline');
+/**
+ * `?debug&fakeonline`: the only way a build without the server shows the online features (always labelled « simulé »). Test hosts only
+ * (src/core/testParams.ts): its script pays the device's wallet, so the public game never installs it, whatever its address says.
+ */
+export function fakeOnlineRequested(search = typeof location !== 'undefined' ? location.search : '', hostname = typeof location !== 'undefined' ? location.hostname : ''): boolean {
+  const q = new URLSearchParams(search); return isTestHost(hostname) && q.has('debug') && q.has('fakeonline');
 }
 
 /** Places, a home and a position for the world's hooks (onlineHooks) when the world lane did not provide them: debug checks only. Records « Y aller ». */
