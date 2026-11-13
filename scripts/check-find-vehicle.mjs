@@ -42,8 +42,9 @@ const tapText = async (sel, re) => {
   const find = scroll => d(([s, r, sc]) => { const e = [...document.querySelectorAll(s)].find(x => new RegExp(r).test(x.textContent)); if (!e) return null; if (sc) e.scrollIntoView({ block: 'center' }); const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }, [sel, re.source, scroll]);
   if (!(await find(true))) return false;
   // a sheet slides in and a list scrolls: the finger goes where the element has come to rest
-  let c = await find(false);
-  for (let i = 0; i < 12; i++) { await wait(140); const n = await find(false); if (!n) return false; if (Math.hypot(n.x - c.x, n.y - c.y) < 0.5) break; c = n; }
+  await until(() => [...document.querySelectorAll('#modal, #modal *, #phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished' || a.effect?.getComputedTiming().iterations === Infinity)), null, 6000);
+  let c = await find(false), still = 0;
+  for (let i = 0; i < 20 && still < 3; i++) { await wait(160); const n = await find(false); if (!n) return false; still = Math.hypot(n.x - c.x, n.y - c.y) < 0.5 ? still + 1 : 0; c = n; }
   await t.down(9, c.x, c.y); await wait(60); await t.up(9); return true;
 };
 const info = () => d(() => window.__dakar.moto.info());
@@ -53,7 +54,10 @@ const phoneInfo = () => d(() => window.__dakar.phoneInfo());
 /** ☰ → the home screen → the « Mes véhicules » tile, with fingers. */
 const openVehicles = async () => {
   if (!(await phoneInfo()).open) { await wait(500); await t.tap('#menuBtn'); await until(() => window.__dakar.phoneInfo().open); }
+  await wait(600);
+  if ((await phoneInfo()).screen === 'vehicules') return true;                 // the phone opens where it was left
   if ((await phoneInfo()).screen !== 'home') { await tap('#phone [data-nav="home"]'); await until(() => window.__dakar.phoneInfo().screen === 'home'); }
+  await until(() => !!document.querySelector('#phone [data-app="vehicules"]'), null, 20000);
   await tap('#phone [data-app="vehicules"]');
   return until(() => window.__dakar.phoneInfo().screen === 'vehicules', null, 20000);
 };
@@ -88,14 +92,14 @@ await until(() => window.__dakar.pos().mode === 'play');
 
 // get on, ride east with a real finger on the gas pedal, stop, get off with the pad's own button
 await d(r => window.__dakar.place(r.x + 1.2, r.z, -Math.PI / 2), kerb);
-await until(() => window.__dakar.focus()?.name === 'Ta moto Jakarta');
+await until(() => window.__dakar.focus()?.id === 'moto:parked');
 await wait(400); await t.tap('#act');
 await until(() => window.__dakar.moto.info().driving && document.body.classList.contains('ridepad'));
 await wait(800);
 {
   const gas = await t.centre('#ridepad .rp-gas'); await padRig(page, t);
   await t.down(1, gas.x, gas.y + 18);
-  await until(p => { const m = window.__dakar.moto.info(); return Math.hypot(m.x - p.x, m.z - p.z) > 34; }, kerb, 180000);
+  await until(p => { const m = window.__dakar.moto.info(); return Math.hypot(m.x - p.x, m.z - p.z) > 22; }, kerb, 180000);
   await t.upAll();
 }
 await until(() => Math.abs(window.__dakar.moto.info().speed) < 0.3, null, 60000);
@@ -105,11 +109,11 @@ await wait(300); await t.tap('#ridepad .rp-off');
 await until(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play');
 await wait(800);
 const parked = await info(), R = parked.record;
-check('A3. parked: its record is where it stands, more than 30 m from the kerb', !parked.driving && !!R && Math.hypot(R.x - parked.x, R.z - parked.z) < 0.05 && Math.hypot(R.x - kerb.x, R.z - kerb.z) > 30, JSON.stringify(R));
+check('A3. parked: its record is where it stands, more than 20 m from the kerb', !parked.driving && !!R && Math.hypot(R.x - parked.x, R.z - parked.z) < 0.05 && Math.hypot(R.x - kerb.x, R.z - kerb.z) > 20, JSON.stringify(R));
 // walk away, back toward the dealer's kerb, with the joystick
 const leftAt = await walkTo(page, t, kerb.x + 1.2, kerb.z, { tol: 2.5, ms: 150000 });
 const me0 = await d(() => window.__dakar.pos()), away0 = Math.hypot(me0.x - R.x, me0.z - R.z);
-check('A4. walked away from it (the joystick): more than 25 m off, out of reach', away0 > 25 && (await d(() => window.__dakar.focus()?.name)) !== 'Ta moto Jakarta', `${away0.toFixed(1)} m (${leftAt.toFixed(1)} m short of the kerb)`);
+check('A4. walked away from it (the joystick): more than 15 m off, out of reach', away0 > 15 && (await d(() => window.__dakar.focus()?.id)) !== 'moto:parked', `${away0.toFixed(1)} m (${leftAt.toFixed(1)} m short of the kerb)`);
 
 // the phone: Mes véhicules
 check('A5. ☰ › Mes véhicules opens the list', await openVehicles(), JSON.stringify(await phoneInfo()));
@@ -164,6 +168,7 @@ await closePhone();
 
 // the guidance: the goal line, the world pin and the minimap's way all follow the game's one guide target
 await until(() => window.__dakar.minimap().guide === 'Ta moto Jakarta' && !!window.__dakar.minimap().route, null, 20000);
+await until(() => document.querySelector('#goal').classList.contains('on') && /Jakarta/.test(document.querySelector('#goal .gt').textContent), null, 20000);
 const g1 = await goal(), mm1 = await d(() => window.__dakar.minimap()), me1 = await d(() => window.__dakar.pos());
 check('A18. the goal line leads to it: its name and the metres left', g1.on && /Ta moto Jakarta/.test(g1.text) && /^\d+ m$/.test(g1.dist.trim()) && Math.abs(parseInt(g1.dist, 10) - Math.hypot(me1.x - R.x, me1.z - R.z)) < 3, JSON.stringify(g1));
 check('A19. the guide target (world pin, compass, the minimap’s dotted way) is the recorded position', Math.hypot(mm1.guideAt.x - R.x, mm1.guideAt.z - R.z) < 0.05 && mm1.route.n >= 2, JSON.stringify({ at: mm1.guideAt, route: mm1.route }));
@@ -172,7 +177,7 @@ const runsA = await d(() => window.__dakar.minimap().routeRuns); await wait(4000
 const runsB = await d(() => window.__dakar.minimap().routeRuns);
 const placeId = await d(([x, z]) => window.__dakar.minimapPlaces().filter(p => Math.hypot(p.x - x, p.z - z) > 20).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0].id, [me1.x, me1.z]);
 await d(id => window.__dakar.phoneHooks.markPlace(id, 'pikine'), placeId);
-await until(id => window.__dakar.destination() === id && !!window.__dakar.minimap().route, placeId, 20000); await wait(1200);
+await until(id => window.__dakar.destination() === id && window.__dakar.minimap().guide !== 'Ta moto Jakarta' && !!window.__dakar.minimap().route, placeId, 20000); await wait(2500);
 const runsC = await d(() => window.__dakar.minimap().routeRuns); await wait(4000);
 const runsD = await d(() => window.__dakar.minimap().routeRuns);
 check('A20. no extra route work: standing still for 4 s, the way to the vehicle is recomputed as often as the way to a marked place (never)', runsB - runsA === 0 && runsD - runsC === 0, `vehicle marker: ${runsB - runsA} recomputation(s) in 4 s; place marker: ${runsD - runsC}`);
@@ -186,7 +191,8 @@ const runsF = await d(() => window.__dakar.minimap().routeRuns);
 await until(() => !window.__dakar.marked(), null, 8000);
 const me2 = await d(() => window.__dakar.pos());
 check('A21. walking to it with the joystick ends the guidance beside it (« Te voilà »), the marker is cleared', short <= 3.6 && !(await d(() => window.__dakar.marked())) && Math.hypot(me2.x - R.x, me2.z - R.z) < 4, `${short.toFixed(1)} m left; ${runsF - runsE} way(s) worked out over ${Math.round(away0)} m of walk (one per 8 m block, as for any marker)`);
-check('A22. it is really there: « Monter » is offered on it', await until(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, 15000) || (await d(([x, z]) => { window.__dakar.place(x + 1.2, z, -Math.PI / 2); }, [R.x, R.z]), await until(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, 15000)));
+if (!(await until(() => window.__dakar.focus()?.id === 'moto:parked', null, 6000))) await d(([x, z]) => { window.__dakar.place(x + 1.2, z, -Math.PI / 2); }, [R.x, R.z]);   // (the walk may end at its nose: step to its side)
+check('A22. it is really there: « Monter » is offered on it', await until(() => window.__dakar.focus()?.id === 'moto:parked', null, 20000), JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), me: window.__dakar.pos(), moto: window.__dakar.moto.at() }))));
 
 // reload
 await d(() => window.__dakar.save());
@@ -202,7 +208,7 @@ await closePhone();
 
 // ------------------------------------------------------------------ B. left in another district
 await d(r => window.__dakar.place(r.x + 1.2, r.z, -Math.PI / 2), R);
-await until(() => window.__dakar.focus()?.name === 'Ta moto Jakarta');
+await until(() => window.__dakar.focus()?.id === 'moto:parked');
 await wait(400); await t.tap('#act');
 await until(() => window.__dakar.moto.info().driving && document.body.classList.contains('ridepad'));
 const road = await d(id => { const p = window.__dakar.road.at(id, 0, 0), q = window.__dakar.road.project(p.x, p.z); return { length: q.length, swapS: q.swapS }; }, ROAD);

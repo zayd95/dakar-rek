@@ -147,7 +147,9 @@ export function mountFullMap(host: HTMLElement): () => void {
     if (remote) return remoteCardHtml(remote, here);
     const mk0 = mapBridge.destination(), cv0 = car ?? (selected ? null : carsHere().find(o => o.id === mk0) ?? null);
     if (cv0) {                                                             // one's own vehicle, picked or marked: how far it is, and the one marker of the game
-      const marked = mk0 === cv0.id, d = marked && mapBridge.route ? mapBridge.route.length : Math.hypot(cv0.x - pl.x, cv0.z - pl.z);
+      // (the way kept for the objective is used only once it is the way to this vehicle: it is refreshed a moment after the marker moves)
+      const marked = mk0 === cv0.id, rt = mapBridge.route, end = rt?.points[rt.points.length - 1];
+      const d = marked && rt && end && Math.hypot(end.x - cv0.x, end.z - cv0.z) < 12 ? rt.length : Math.hypot(cv0.x - pl.x, cv0.z - pl.z);
       return `<div class="fm-row"><span class="cm-ic" aria-hidden="true">${esc(cv0.icon)}</span><b>${esc(cv0.name)}</b><em>${marked ? 'Repère' : 'À toi'}</em></div><p class="fm-sub fm-dist"><strong>${distText(d)}</strong> · 🚶 ${walkTime(d)}</p>
         <div class="cm-acts"><button type="button" class="ph-btn fm-mark${marked ? ' on' : ''}" data-fm="markcar" data-id="${esc(cv0.id)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button></div>${note ? `<p class="fm-note">${esc(note)}</p>` : ''}`;
     }

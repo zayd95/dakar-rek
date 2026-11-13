@@ -251,9 +251,9 @@ export function mountGeoMap(host: HTMLElement): () => void {
         }
       }
       // the marked place: where it is in this district; a place marked in another district (a dealer, a shortcut) is pinned on that district
-      // …and the marker on one of the player's vehicles (« Localiser ») is pinned on the vehicle itself, in whatever district it stands
+      // …and the marker on one of the player's vehicles (« Localiser ») is the ring round its own icon, in whatever district it stands
       const dest = mapBridge.destination(), dp = dest ? list.find(q => q.id === dest) : null, far = dp ? null : phoneHooks.marked?.() ?? null, car = far ? owned.find(o => o.id === far.id) : null;
-      const pll = dp ? hubToLngLat(hub, dp.x, dp.z) : car ? gameToLngLat(car.hub, car.x, car.z).lngLat : far && far.hub !== hub ? HUB_ANCHORS[far.hub].lngLat : null;
+      const pll = dp ? hubToLngLat(hub, dp.x, dp.z) : car ? null : far && far.hub !== hub ? HUB_ANCHORS[far.hub].lngLat : null;   // (a marked vehicle is ringed: a pin would cover its icon)
       if (pll) { if (!dyn.pin) dyn.pin = new ml.Marker({ element: div('gm-pin', '📍'), anchor: 'bottom' }).setLngLat(pll).addTo(map); dyn.pin.setLngLat(pll); }
       else if (dyn.pin) { dyn.pin.remove(); dyn.pin = undefined; }
     };

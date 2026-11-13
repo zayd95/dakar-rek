@@ -472,3 +472,4 @@ body.theme-night .ph-go { background:#0f2a4a; color:#9cc8ff; }
 /* « Mes véhicules » (src/ui/phone/apps/vehicles.ts): the same card; the state is a pill beside the name, the place a line that reads first */
 .vh .pi-tx b .pk-badge { margin-left:4px; vertical-align:2px; }
 .vh .pi-tx p.vh-where { color:var(--ios-ink); font-weight:600; }
+.vh + .vh { margin-top:10px; }
