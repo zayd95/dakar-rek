@@ -460,9 +460,12 @@ class Estate {
           : [{ id: 'commander', verb: 'browse', label: 'Commander des meubles', icon: '🛒', detail: 'Keur Meubles livre et installe chez toi', run: () => this.openCatalogue() }],
     });
   }
+  /** A tenant of the city lives in this home this month (a monthly contract on offer, src/economy/monthly.ts): the player does not walk in. */
+  private tenantHome(id: string) { const c = contractOf(this.s, holding(this.s, id)?.uid); return !!c && tenantIn(this.s, c); }
   private enterHome(id: string) {
     const sp = homeSpec(id); if (!sp) return;
     if (!holds(this.s, id)) { this.openSheet(id); return; }
+    if (this.tenantHome(id)) { this.ctx.toast('Ton locataire est chez lui : tu n’entres pas pendant la location'); this.openSheet(id); return; }
     this.ctx.enter(sp.home.door);
   }
 
@@ -572,7 +575,8 @@ class Estate {
       if (a.upgrades.length) rows.push(`Améliorations : ${a.upgrades.map(u => esc(sp.upgrades?.find(x => x.id === u)?.name ?? u)).join(', ')}`);
       if (home) {
         const inside = this.ownViewInside()?.spec.id === specId;
-        if (!inside && this.inHub(sp)) items.push({ icon: '🚪', label: 'Entrer chez toi', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
+        if (!inside && this.inHub(sp) && this.tenantHome(specId)) items.push({ icon: '🚪', label: 'Entrer chez toi', detail: 'Ton locataire est chez lui jusqu’à l’échéance', disabled: true, onPick: () => {} });
+        else if (!inside && this.inHub(sp)) items.push({ icon: '🚪', label: 'Entrer chez toi', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
         if (inside) items.push({ icon: '🛋️', label: 'Aménager', detail: 'Déplacer, tourner, ranger tes meubles', onPick: () => { this.ctx.hud.closeModal(); const v = this.ownViewInside(); if (v) this.editor.open(v); } });
         const why = cannotMoveIn(s, a.uid);
         if (why !== 'Tu y habites déjà' && !given) items.push({ icon: '⭐', label: 'Définir comme domicile principal', detail: why ?? `Tu y vis, on t’y livre ; tes meubles suivent et s’installent où il y a de la place (${furnitureIn(s, currentHome(s).uid).length} pièces)`, disabled: !!why,
