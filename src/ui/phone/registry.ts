@@ -55,7 +55,7 @@ export const APPS: AppDef[] = [
   { id: 'maison', label: 'Mes meubles', short: 'Meubles', emoji: '🛋️', grad: '#fecaca,#b91c1c', group: 'argent', order: 3, home: 33, hook: () => phoneHooks.openHome },
   { id: 'biens', label: 'Biens et véhicules', short: 'Biens', emoji: '🔑', grad: '#fde68a,#b45309', group: 'argent', order: 4, home: 21, hook: () => phoneHooks.openAssets },
   // 1.0.1 « Retrouver mon véhicule » (src/ui/phone/apps/vehicles.ts): where each vehicle was left, « Localiser » on the phone's map.
-  { id: 'vehicules', label: 'Mes véhicules', short: 'Véhicules', emoji: '🚗', grad: '#93c5fd,#0e7490', group: 'argent', order: 4.5, home: 21.5, screen: 'vehicules' },
+  { id: 'vehicules', label: 'Mes véhicules', short: 'Véhicules', emoji: '🚗', grad: '#93c5fd,#0e7490', group: 'argent', order: 4.5, home: 23.5, screen: 'vehicules' },
 
   { id: 'carte', label: 'Carte', emoji: '🗺️', grad: '#7dd3fc,#2563eb', group: 'ville', order: 0, home: 0, dock: true, screen: 'carte' },
   { id: 'quartier', label: 'Coins du quartier', short: 'Quartier', emoji: '📍', grad: '#6ee7b7,#0f766e', group: 'ville', order: 1, home: 43, hook: () => phoneHooks.openPlaces },
