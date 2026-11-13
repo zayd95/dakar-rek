@@ -60,12 +60,13 @@ import { phoneHooks } from './ui/phoneHooks';
 import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
-import { PresenceClient, loadProfile } from './multiplayer/client';
+import { PresenceClient, isDefaultName, loadProfile } from './multiplayer/client';
+import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
-import { online, setOnline } from './online/api';
+import { online, onlineHooks, setOnline } from './online/api';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
-import { startMessageNotices } from './ui/phone/apps/messages';
+import { openConversation, startMessageNotices, withdrawReceived } from './ui/phone/apps/messages';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
@@ -73,7 +74,7 @@ import { Phone } from './ui/phone';
 import { mapBridge } from './ui/minimap';
 import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
-import { EMOTE_INFO, Emoter, Notice, PlayerSocial, seatedPeers } from './multiplayer/social';
+import { EMOTE_INFO, Emoter, Notice, PlayerSocial, registerPlayerAction, seatedPeers } from './multiplayer/social';
 import { isHub, lookIndex, nickname, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
@@ -205,6 +206,8 @@ if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money 
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the studio's look travels with the connection (servers that relay it)
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+/** 1.0.1: a crown over the player's own character while other players are drawn around (this device only). */
+const selfMarker = new SelfMarker(); scene.add(selfMarker.sprite);
 // LD2.0-B: the player's online account (Messages, Teranga Money, visits, meetups: src/online/client.ts) beside the hub's presence. Its saves must be synchronous
 // and say false when nothing was written: a top-up is never sent before the wallet's debit is on disk.
 const onlineAccount = new OnlineAccount({
@@ -217,7 +220,24 @@ const onlineAccount = new OnlineAccount({
 // in-memory account of the checks (src/online/fake.ts), never presented to players as real.
 if (fakeOnlineRequested()) installFakeOnline({ now: () => presence.serverNow(), wallet: { get: () => state.wallet, add: (n, label) => { state.addMoney(n, label); } }, save: () => { if (world) saveNow(); }, me: { name: presence.profile.name } });
 else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
-startMessageNotices(m => hud.toast(m));                                                 // « 💬 Awa : … » for what arrives outside the open conversation
+// « 💬 Awa : … » for what arrives outside the open conversation. 1.0.1 — money received cannot be missed and is one tap from the wallet: a card (never
+// over the middle of the screen) says « 💸 1 000 F reçus de Awa », where it is (Teranga Money, the server's account: the wallet's figure has not moved),
+// and offers « Retirer » (the server-confirmed withdrawal: the wallet goes up when the server says yes) and « Voir » (the conversation).
+/** What the account says at a connection made while the city is still loading (money received while away, a send answered) waits for the street: a card shown behind the loading screen would be gone before anyone saw it. */
+const onceInTheStreet = (fn: () => void) => { if (started) fn(); else void whenStarted.then(() => setTimeout(fn, 1200)); };
+startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
+  hud.toast(pay.text);                                                                // (the Notifications list keeps it; read out for screen readers)
+  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [
+    { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { void withdrawReceived(pay).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
+    { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
+  ] }, 20000);
+}));
+// a money operation answered after its sheet was closed (or after a reload): its outcome is said, a yes as a yes, a no with what came back
+onlineHooks.moneySettled = (op, r) => onceInTheStreet(() => {
+  const what = op.kind === 'pay' ? `${fcfa(op.amount)} envoyés` : op.kind === 'fund' ? `${fcfa(op.amount)} rechargés` : `${fcfa(op.amount)} retirés`;
+  if (r.ok) hud.moment({ icon: '✅', title: what, lines: [op.kind === 'pay' ? 'Le serveur a confirmé l’envoi.' : op.kind === 'fund' ? 'Ils sont sur ton Teranga Money.' : 'Ils sont dans ton portefeuille.'] }, 6000);
+  else hud.toast(`${op.kind === 'pay' ? `Envoi de ${fcfa(op.amount)}` : op.kind === 'fund' ? `Recharge de ${fcfa(op.amount)}` : `Retrait de ${fcfa(op.amount)}`} refusé : ${r.text}${op.kind !== 'cashout' ? ' Rien n’a été débité.' : ''}`, 'warn');
+});
 // a visit or a meeting joins the other player's presence room (src/online/visit.ts); the account refreshes the host's snapshot by itself
 visitDeps.room = () => presence.room;
 visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
@@ -732,6 +752,18 @@ interactions.add(new PlayerSocial(() => presence.peers.values(), p => remoteAvat
   if (!emoter.make(kind, peer.id, performance.now())) { hud.toast('Doucement : un geste à la fois.'); return; }
   hud.toast(`${EMOTE_INFO[kind].you} ${peer.name} ${EMOTE_INFO[kind].glyph}`);
 }));
+// 1.0.1: the player menu (the action button on another player): after « Saluer », what Messages can do with that player, straight from the street.
+// A later feature adds its line the same way (src/multiplayer/social.ts registerPlayerAction).
+{
+  const hasAccount = (p: { tag?: string }) => !!p.tag && !!online;
+  const offline = () => (online?.status !== 'online' ? 'Hors ligne pour l’instant' : null);
+  const conv = (p: { tag?: string; name: string; look: number }, act?: 'pay' | 'invite' | 'meet') => { if (!p.tag || !openConversation({ tag: p.tag, name: p.name, look: p.look }, act)) hud.toast('Messages n’est pas disponible pour l’instant.', 'warn'); };
+  registerPlayerAction({ id: 'message', label: 'Message', icon: '💬', order: 10, show: hasAccount, run: p => conv(p) });
+  registerPlayerAction({ id: 'pay', label: 'Envoyer de l’argent', icon: '💸', order: 20, show: hasAccount, disabled: offline, run: p => conv(p, 'pay') });
+  registerPlayerAction({ id: 'invite', label: 'Inviter chez moi', icon: '🏠', order: 30, show: p => hasAccount(p) && !!onlineHooks.homeToInvite,
+    disabled: () => offline() ?? (onlineHooks.homeToInvite?.() ? null : 'Tu n’as pas encore de logement où recevoir'), run: p => conv(p, 'invite') });
+  registerPlayerAction({ id: 'meet', label: 'Proposer un rendez-vous', icon: '🤝', order: 40, show: p => hasAccount(p) && !!onlineHooks.meetupPlaces, disabled: offline, run: p => conv(p, 'meet') });
+}
 remoteAvatars.onEmote = (peer, emo) => { if (emo.to && emo.to === presence.id) hud.toast(`${peer.name} ${EMOTE_INFO[emo.k].toast} ${EMOTE_INFO[emo.k].glyph}`); };
 /** Everyone in the street can be greeted (placed people and walkers). */
 const people = interactions.add(new People(() => [
@@ -1527,6 +1559,7 @@ mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
+phoneHooks.closePhone = () => phone.close();
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 
@@ -1559,7 +1592,9 @@ hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (mode !== 'play') return;
   // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
-  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined));
+  const t = lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined);
+  if (t?.menu) { openMore(); return; }                     // another player: the button opens their menu (greet, write, send money, invite)
+  const a = interactions.primary(t);
   if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
@@ -1579,13 +1614,14 @@ function showPrompt(t: Target | null) {
   if (run) { hud.setPrompt('Arrêter', run.step.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
-  const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
-  hud.setPrompt(a.label, a.disabled ?? (a.label === t.name ? '' : t.name), all.length > 1, opt);
+  const all = interactions.all(t), opt = t.menu ? { icon: t.menu.icon } : { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
+  const label = t.menu?.label ?? a.label;
+  hud.setPrompt(label, t.menu ? 'Saluer, écrire, envoyer…' : a.disabled ?? (a.label === t.name ? '' : t.name), !t.menu && all.length > 1, opt);
   if (t.kind === 'self' || !world || seated) { hud.setWorldPrompt(null); return; }   // seated: the middle stays clear (§0 C)
   camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
-  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt);
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, t.menu?.icon ?? a.icon, label, opt);
 }
 /** Title, icon and « step n/m » (timed steps) of the running activity, for the progress pill. */
 function progressMeta() {
@@ -1765,6 +1801,7 @@ function frameStep(now: number, dt: number, draw = true) {
   presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }
     : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
+  selfMarker.update(pos, 2.02, remoteAvatars.size > 0 && space !== 'scene' && !lambScene, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined) : (interactions.focus = null);
@@ -1800,7 +1837,7 @@ async function start() {
   const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
-    name: /^Dakarois [0-9A-F]{4}$/.test(presence.profile.name) ? '' : presence.profile.name }) : null;
+    name: isDefaultName(presence.profile.name, state.data.guestId) ? '' : presence.profile.name }) : null;
   if (studio) { studioOpen = true; input.enabled = false; }                      // touches on the studio never reach the game's stick or camera
   const [, made] = await Promise.all([loading, studio]);
   studioOpen = false; if (studio) { input.enabled = true; input.reset(); }
@@ -1824,7 +1861,7 @@ if (DEBUG) {
     state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
     /** LD2.0-B: the player's online account as the UI sees it (src/online/api.ts), for the checks: status, me, balance, conversations, items, history. */
     account: () => online,
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, plates: { ...remoteAvatars.plates }, selfMarker: selfMarker.sprite.visible, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
