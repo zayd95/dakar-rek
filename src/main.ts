@@ -2054,6 +2054,8 @@ if (DEBUG) {
     phone(app?: string) { hud.closeModal(); return phone.open(app); },
     phoneClose() { phone.close(); },
     phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
+    /** « Retrouver mon véhicule »: where the game has each of the player's vehicles (src/transport/whereabouts.ts), and the map's own list. */
+    myVehicles: () => myVehicles(), mapOwned: () => mapBridge.owned(), marked: () => (destination ? { ...destination } : null),
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },

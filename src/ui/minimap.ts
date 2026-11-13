@@ -85,6 +85,8 @@ export function minimapModule(): GameModule {
   let size = 0, dpr = 1;
   let radius = 52, speedAvg = 0, tick = 0, labelT = 0, scanT = 0, routeT = 0, placesT = 0, shown = false, t = 0;
   let last = { x: NaN, z: NaN }, routeKey = '', wasBack: boolean | null = null;
+  /** Checks: how many times a way to the objective was worked out (a marker on a parked vehicle costs what a marker on a place does: scripts/check-find-vehicle.mjs). */
+  let routeRuns = 0;
   const tracked = new Map<THREE.Object3D, { x: number; z: number; moving: boolean }>();
   const dir = new THREE.Vector3();
   let yaw = 0;
@@ -288,11 +290,11 @@ export function minimapModule(): GameModule {
         const shut = p.driving ? closuresNow() : [];   // at the wheel, as the goal line: off the streets closed to cars
         if (p.driving) {                                                     // at the wheel: the driver's way, as the goal line reads it (src/game/navRules.ts driverWay)
           const way = driverWay(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, p.facing, { x: gd.x, z: gd.z }, wasBack);
-          wasBack = way.back; mapBridge.route = way; routeKey = '';
+          wasBack = way.back; mapBridge.route = way; routeKey = ''; routeRuns++;
         } else {
           wasBack = null;
           const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
-          if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+          if (k !== routeKey) { routeKey = k; routeRuns++; mapBridge.route = routePath(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
         }
         routeT = 0.5;
       }
@@ -310,7 +312,7 @@ export function minimapModule(): GameModule {
       minimap: () => ({
         on: root.classList.contains('on'), size, radius: Math.round(radius * 10) / 10, yaw, speed: Math.round(speedAvg * 10) / 10,
         district: dEl.textContent, street: sEl.textContent, places: mapBridge.places.length, vehicles: mapBridge.vehicles.length,
-        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null, job: jobOf(mapBridge.guide),
+        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null, guideAt: mapBridge.guide ? { x: mapBridge.guide.x, z: mapBridge.guide.z } : null, routeRuns, job: jobOf(mapBridge.guide),
         north: northAngle(yaw), enabled: mapBridge.enabled, hubOk: ctx.world() === mapBridge.hub,
       }),
       minimapPlaces: () => mapBridge.places,
