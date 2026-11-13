@@ -26,20 +26,28 @@ const clean = () => d(() => ({
   items: [...document.querySelectorAll('#modal.on .item')].map(e => ({ text: e.textContent.replace(/[  ]/g, ' ').replace(/\s+/g, ' ').trim(), off: e.classList.contains('disabled') || e.hasAttribute('disabled') || e.getAttribute('aria-disabled') === 'true' })).filter(i => i.text !== '✕'),
 }));
 let t;
-/** A finger taps the menu row whose text matches (scrolled into view first), then the menu that follows is awaited. */
-async function tapRow(re, { wait = 900 } = {}) {
-  const at = await d(src => {
-    const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(src).test(x.textContent.replace(/[  ]/g, ' ').replace(/\s+/g, ' ')));
+/**
+ * A finger taps the menu row whose text matches (scrolled into view first), then the sheet that follows is awaited: the sheet's text must change.
+ * The machine is shared with other checks: if nothing changed after eight seconds the row is tapped once more before the tap counts as failed.
+ */
+async function tapRow(re, { wait = 600 } = {}) {
+  const find = src => {
+    const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(src).test(x.textContent.replace(/[\u202f\u00a0]/g, ' ').replace(/\s+/g, ' ')));
     if (!e) return null;
     e.scrollIntoView({ block: 'center' });
     const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-  }, re.source);
-  if (!at) return false;
-  await page.waitForTimeout(700);                                              // the sheet settles (it opens with a short slide)
-  const now = await d(src => { const e = [...document.querySelectorAll('#modal.on .item')].find(x => new RegExp(src).test(x.textContent.replace(/[  ]/g, ' ').replace(/\s+/g, ' '))); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; }, re.source);
-  await t.down(5, now.x, now.y); await page.waitForTimeout(70); await t.up(5);
-  await page.waitForTimeout(wait);
-  return true;
+  };
+  const sig = () => d(() => document.querySelector('#modal.on')?.textContent ?? '');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (!await d(find, re.source)) return false;
+    await page.waitForTimeout(700);                                            // the sheet settles (it opens with a short slide)
+    const at = await d(find, re.source), before = await sig();
+    if (!at) return false;
+    await t.down(5, at.x, at.y); await page.waitForTimeout(70); await t.up(5);
+    const changed = await page.waitForFunction(b => (document.querySelector('#modal.on')?.textContent ?? '') !== b, before, { timeout: 8000 }).then(() => true).catch(() => false);
+    if (changed) { await page.waitForTimeout(wait); return true; }
+  }
+  return false;
 }
 const wallet = () => d(() => window.__dakar.state.data.wallet);
 const ledger = re => d(src => window.__dakar.state.data.ledger.filter(l => new RegExp(src).test(l.label)).map(l => ({ label: l.label, amount: l.amount })), re.source);
@@ -100,12 +108,14 @@ await shot('furnished');
 
 // ---- offer it furnished
 check('« Louer meublé » is tapped', await tapRow(/Louer meublé/, { wait: 1500 }));
-mo = await monthly(); const c0 = mo.contracts[0];
+mo = await monthly(); const c0 = mo.contracts[0] ?? {};
 check('on offer, furnished; this month\'s occupancy is drawn (0 or 78–100 %) and the expected revenue follows it', c0.mode === 'furnished' && (c0.occ === 0 || (c0.occ >= 78 && c0.occ <= 100)) && Math.abs(c0.revenue - 150000 * c0.occ / 100) <= 150000 * 0.002 + 1, JSON.stringify({ occ: c0.occ, revenue: c0.revenue, profit: c0.profit }));
 m = await clean();
 check('the sheet shows occupancy, revenue, costs, profit and the next settlement', /(Occupation ce mois : \d+ %|Pas de locataire ce mois)/.test(m.text) && /Revenu du mois/.test(m.text) && /loyer et charges : −60 000 F/.test(m.text) && /Résultat du mois/.test(m.text) && /Prochaine échéance/.test(m.text), m.text.slice(0, 420));
 const principal = m.items.find(i => /Définir comme domicile principal/.test(i.text));
 check('exclusive: the player cannot move in while it is let', !!principal && /sous-loué/.test(principal.text), principal?.text);
+const door = m.items.find(i => /Entrer chez toi/.test(i.text));
+check('a tenant in place keeps the door: « Entrer chez toi » is refused this month (open again in a vacant month)', c0.occ > 0 ? /locataire est chez lui/.test(door?.text ?? '') : !/locataire/.test(door?.text ?? ''), `occ ${c0.occ} · ${door?.text ?? 'not in this hub'}`);
 check('the actions are there: stop, give notice', m.items.some(i => /Arrêter la location/.test(i.text)) && m.items.some(i => /Donner congé/.test(i.text)));
 await shot('on-offer');
 // the same at a glance in « Biens »
@@ -133,7 +143,7 @@ await d(() => window.__dakar.playFor(45)); await page.waitForTimeout(2500);
 await d(() => window.__dakar.econAdvance(0.5)); await page.waitForTimeout(2500);
 check('no double collection: the wallet, the ledger and the month counter have not moved', (await wallet()) === after && (await ledger(/Loyer perçu/)).length === got.length && (await ledger(/Loyer et charges/)).length === 2 && (await monthly()).contracts[0].k === 1);
 // a second month: settled once more, and only once
-const c1 = (await monthly()).contracts[0];
+const c1 = (await monthly()).contracts[0] ?? {};
 await d(() => window.__dakar.econAdvance(0.5));
 await page.waitForFunction(() => window.__dakar.monthly().contracts[0]?.k === 2, null, { timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(2000);

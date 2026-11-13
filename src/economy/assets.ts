@@ -254,6 +254,7 @@ export function addLease(s: GameState, specId: string, extra: Partial<AssetState
 export function endLease(s: GameState, uid: string, settle = true): boolean {
   const a = assetByUid(s, uid); if (!a || a.how !== 'rented') return false;
   if (settle) accrue(s);
+  if (a.lease && a.lease.debt > 0) s.data.assets.owed = (s.data.assets.owed ?? 0) + a.lease.debt;   // a monthly contract's arrears outlive it, however it ends (src/economy/monthly.ts)
   leaveHome(s, a);
   removeAsset(s, uid);
   return true;

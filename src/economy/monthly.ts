@@ -181,11 +181,7 @@ export function cannotEndNow(s: GameState, uid: string): string | null {
   return null;
 }
 /** The contract is over: the keys go back, the furniture (the pack's too) to the player's home, and what was unpaid stays owed. */
-function close(s: GameState, a: Held) {
-  const st = s.data.assets;
-  if (a.lease.debt > 0) st.owed = owed(s) + a.lease.debt;
-  endLease(s, a.uid, false);
-}
+function close(s: GameState, a: Held) { endLease(s, a.uid, false); }                // `endLease` moves the arrears to `assets.owed`
 /** Hand the keys back now (no tenant in place). The month paid is not refunded; what is unpaid stays owed. */
 export function endNow(s: GameState, uid: string): boolean {
   if (cannotEndNow(s, uid)) return false;
