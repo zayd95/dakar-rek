@@ -34,6 +34,8 @@ export interface MapFriend { id: string; name: string; x: number; z: number }
  * The meeting point between the map module, the full map in the phone and main.ts (which wires the three functions at
  * the top: the game's own waypoint, the phone, the contacts).
  */
+/** One of the player's own parked vehicles on the phone's maps. */
+export interface MapOwned { id: string; asset: string; name: string; icon: string; hub: HubId; x: number; z: number; yaw: number }
 export const mapBridge = {
   hub: null as HubWorld | null,
   hubName: '',
@@ -45,8 +47,11 @@ export const mapBridge = {
   guide: null as { name: string; x: number; z: number; job?: 'vtc' | 'delivery' } | null,
   friends: [] as MapFriend[],
   vehicles: [] as MapVehicle[],
-  /** The vehicles the player owns, wherever they are parked (wired by main.ts): the city map (src/ui/geoMap.ts) shows them. */
-  owned: (): { asset: string; name: string; hub: HubId; x: number; z: number; yaw: number }[] => [],
+  /**
+   * The vehicles the player owns, wherever they are parked (wired by main.ts from src/transport/whereabouts.ts): both phone maps show them, and a tap picks one.
+   * `id` is the walking marker's id of the vehicle (`vehicle:<asset>`).
+   */
+  owned: (): MapOwned[] => [],
   hour: 12,
   /**
    * The streets a way is found on, from `a` to `b`: the district's own, and the roads that leave it (src/game/navRules.ts roadEdges) when either end is out on one,

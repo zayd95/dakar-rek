@@ -1,6 +1,6 @@
-import { mapBridge } from './minimap';
+import { mapBridge, type MapOwned } from './minimap';
 import { JOB, drawJobBadge, jobOf } from './jobMarks';
-import { pinHtml, remoteCardHtml, tabsHtml, type Focus } from './carteState';
+import { peekFocus, pinHtml, remoteCardHtml, tabsHtml, takeFocus, type Focus } from './carteState';
 import { drawArrow, drawIcon, drawRoads, PALETTE } from './minimapDraw';
 import { KIND_COLOR, KIND_LABEL, KIND_ORDER, declutter, distText, nightness, routePath, walkTime, whereLabel, type MapPlace, type PlaceKind, type Pt } from './minimapMath';
 
@@ -35,6 +35,8 @@ export function mountFullMap(host: HTMLElement): () => void {
   let W = 0, H = 0, dpr = 1;
   const bounds = hub.bounds, span = Math.max(bounds.x1 - bounds.x0, bounds.z1 - bounds.z0) + 30;
   const view = { cx: mapBridge.player.x, cz: mapBridge.player.z, scale: 1 };
+  /** One of the player's own vehicles standing in this district, picked (its icon tapped, or « Localiser »): its card, the view on it. */
+  let car: MapOwned | null = null;
   let fit = 1, remote: Focus | null = null, selected: MapPlace | null = null, selRoute: { points: Pt[]; length: number } | null = null, note = '', t = 0, timer = 0, raf = 0;
   // every listener of this mount: the canvas outlives the tab (the map is mounted again each time « Quartier » opens), and a listener left on it would pan and draw a second, stale view
   const life = new AbortController(), sig = { signal: life.signal };
@@ -55,8 +57,9 @@ export function mountFullMap(host: HTMLElement): () => void {
     view.scale = Math.max(fit * 0.9, Math.min(fit * 9, view.scale));
     const mx = (bounds.x1 - bounds.x0) / 2 + 20, mz = (bounds.z1 - bounds.z0) / 2 + 20, ox = (bounds.x0 + bounds.x1) / 2, oz = (bounds.z0 + bounds.z1) / 2;
     // the district, and as far as the player is when they are out on a road that leaves it: the view can always reach them
-    const pl = mapBridge.player;
-    view.cx = Math.max(Math.min(ox - mx, pl.x), Math.min(Math.max(ox + mx, pl.x), view.cx)); view.cz = Math.max(Math.min(oz - mz, pl.z), Math.min(Math.max(oz + mz, pl.z), view.cz));
+    // …and as far as the vehicle picked, which may have been left out on such a road
+    const pl = mapBridge.player, far = car ?? pl;
+    view.cx = Math.max(Math.min(ox - mx, pl.x, far.x), Math.min(Math.max(ox + mx, pl.x, far.x), view.cx)); view.cz = Math.max(Math.min(oz - mz, pl.z, far.z), Math.min(Math.max(oz + mz, pl.z, far.z), view.cz));
   };
   const S = (x: number, z: number) => ({ x: W / 2 + (x - view.cx) * view.scale, y: H / 2 + (z - view.cz) * view.scale });
   const world = (sx: number, sy: number) => ({ x: view.cx + (sx - W / 2) / view.scale, z: view.cz + (sy - H / 2) / view.scale });
@@ -67,6 +70,8 @@ export function mountFullMap(host: HTMLElement): () => void {
 
   const kick = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
   const visible = () => mapBridge.places.filter(p => !hidden.has(p.kind));
+  /** The player's own vehicles parked in this district (the one being driven is the player's own arrow). */
+  const carsHere = () => mapBridge.owned().filter(o => o.hub === hub.id);
 
   const draw = () => {
     if (!W) return;
@@ -109,10 +114,21 @@ export function mountFullMap(host: HTMLElement): () => void {
     g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
     const room = declutter(labels, 2);
     labels.forEach((l, i) => { if (!room[i]) return; g.lineWidth = 3.5; g.strokeStyle = 'rgba(8,12,16,.92)'; g.strokeText(l.text, l.x, l.y + 4); g.fillStyle = l.sel ? '#ffd23f' : '#f4f6f8'; g.fillText(l.text, l.x, l.y + 4); });
+    // the player's own parked vehicles: a pictogram on a white disc (nothing else on the map looks like it), ringed when it is picked or is where the marker stands
+    g.font = '15px system-ui, sans-serif'; g.textBaseline = 'middle';
+    for (const o of carsHere()) {
+      const m = S(o.x, o.z); if (m.x < -20 || m.y < -20 || m.x > W + 20 || m.y > H + 20) continue;
+      const on = car?.id === o.id || o.id === dest;
+      if (on) { g.beginPath(); g.arc(m.x, m.y, 18 + 2 * Math.sin(t * 5), 0, TAU); g.fillStyle = 'rgba(255,210,63,.35)'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#ffd23f'; g.stroke(); }
+      g.beginPath(); g.arc(m.x, m.y, 12, 0, TAU); g.fillStyle = '#f4f6f8'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#0c1115'; g.stroke();
+      g.fillStyle = '#0c1115'; g.fillText(o.icon, m.x, m.y + 1);
+    }
+    g.textBaseline = 'alphabetic';
     // friends, the objective, the player
     for (const f of mapBridge.friends) { const m = S(f.x, f.z); g.beginPath(); g.arc(m.x, m.y, 4.5, 0, TAU); g.fillStyle = '#7CFFB2'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#0c1115'; g.stroke(); }
     const gd = mapBridge.guide;
-    if (gd && !dest && job) { const m = S(gd.x, gd.z); drawJobBadge(g, job, m.x, m.y, 11, 0.5 + 0.5 * Math.sin(t * 5)); }
+    if (dest && carsHere().some(o => o.id === dest)) { /* the marker is on a vehicle: its ringed icon is the mark */ }
+    else if (gd && !dest && job) { const m = S(gd.x, gd.z); drawJobBadge(g, job, m.x, m.y, 11, 0.5 + 0.5 * Math.sin(t * 5)); }
     else if (gd && !dest) { const m = S(gd.x, gd.z); g.beginPath(); g.arc(m.x, m.y, 7 + 2 * Math.sin(t * 5), 0, TAU); g.fillStyle = '#ffd23f'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#0c1115'; g.stroke(); }
     const pl = mapBridge.player, pm = S(pl.x, pl.z);
     g.beginPath(); g.arc(pm.x, pm.y, 13, 0, TAU); g.fillStyle = 'rgba(255,255,255,.22)'; g.fill();
@@ -129,6 +145,12 @@ export function mountFullMap(host: HTMLElement): () => void {
   const cardHtml = () => {
     const pl = mapBridge.player;
     if (remote) return remoteCardHtml(remote, here);
+    const mk0 = mapBridge.destination(), cv0 = car ?? (selected ? null : carsHere().find(o => o.id === mk0) ?? null);
+    if (cv0) {                                                             // one's own vehicle, picked or marked: how far it is, and the one marker of the game
+      const marked = mk0 === cv0.id, d = marked && mapBridge.route ? mapBridge.route.length : Math.hypot(cv0.x - pl.x, cv0.z - pl.z);
+      return `<div class="fm-row"><span class="cm-ic" aria-hidden="true">${esc(cv0.icon)}</span><b>${esc(cv0.name)}</b><em>${marked ? 'Repère' : 'À toi'}</em></div><p class="fm-sub fm-dist"><strong>${distText(d)}</strong> · 🚶 ${walkTime(d)}</p>
+        <div class="cm-acts"><button type="button" class="ph-btn fm-mark${marked ? ' on' : ''}" data-fm="markcar" data-id="${esc(cv0.id)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button></div>${note ? `<p class="fm-note">${esc(note)}</p>` : ''}`;
+    }
     if (!selected) {
       const mk = mapBridge.destination(), mp = mk ? mapBridge.places.find(q => q.id === mk) : null;
       if (mp) { const d = mapBridge.route?.length ?? Math.hypot(mp.x - pl.x, mp.z - pl.z);
@@ -150,10 +172,18 @@ export function mountFullMap(host: HTMLElement): () => void {
   };
 
   const select = (p: MapPlace | null) => {
-    selected = p; note = ''; remote = null;
+    selected = p; note = ''; remote = null; car = null;
     selRoute = p ? routePath(mapBridge.net(mapBridge.player, p), { x: mapBridge.player.x, z: mapBridge.player.z }, p) : null;
     refreshCard(true); kick();
     if (p) card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });      // portrait: the card sits under the map
+  };
+
+  /** One of the player's vehicles is picked: its card, and (`centre`) the view on it, close enough to see the street it stands in. */
+  const pick = (o: MapOwned, centre: boolean) => {
+    select(null); car = o; follow = false;
+    if (centre) { view.cx = o.x; view.cz = o.z; view.scale = Math.max(view.scale, fit * 2.4); clampView(); }
+    refreshCard(true); kick();
+    card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   };
 
   // ---- pointer: drag to pan, tap to select, pinch and wheel to zoom
@@ -183,6 +213,9 @@ export function mountFullMap(host: HTMLElement): () => void {
     const at = local(e); pts.delete(e.pointerId); if (pts.size < 2) pinch = 0;
     if (!wasTap) return;
     let best: MapPlace | null = null, bd = 22 * 22;
+    // one's own vehicle first (its disc is larger than a place's dot, and there are few of them)
+    const mine = carsHere().find(o => { const m = S(o.x, o.z); return (m.x - at.x) ** 2 + (m.y - at.y) ** 2 < 20 * 20; });
+    if (mine) { pick(mine, false); return; }
     for (const p of visible()) { const m = S(p.x, p.z), d = (m.x - at.x) ** 2 + (m.y - at.y) ** 2; if (d < bd) { bd = d; best = p; } }
     select(best);
   };
@@ -208,6 +241,12 @@ export function mountFullMap(host: HTMLElement): () => void {
         else { mapBridge.walkTo(selected.id); note = 'Repère placé : suis le trait pointillé'; }
         refreshCard(true); kick();
       } break;
+      case 'markcar': {
+        const id = b.dataset.id!;
+        if (mapBridge.destination() === id) { mapBridge.walkTo(null); note = 'Repère retiré'; car = null; }
+        else { mapBridge.walkTo(id); note = 'Repère placé : suis le trait pointillé'; }
+        refreshCard(true); kick();
+      } break;
       case 'clear': mapBridge.walkTo(null); refreshCard(true); kick(); break;
       case 'filters': { const pop = host.querySelector<HTMLElement>('#cm-pop'); if (pop) { pop.hidden = !pop.hidden; b.setAttribute('aria-expanded', String(!pop.hidden)); } } break;
     }
@@ -224,8 +263,9 @@ export function mountFullMap(host: HTMLElement): () => void {
         select(p); view.cx = p.x; view.cz = p.z; view.scale = Math.max(view.scale, fit * 2); clampView(); kick(); return;
       }
     }
+    if (f.kind === 'point' && f.hub === here) { const o = carsHere().find(q => q.id === f.id); if (o) { pick(o, true); return; } }
     if (f.kind === 'hub' && f.hub === here) { remote = null; select(null); view.cx = pl.x; view.cz = pl.z; clampView(); kick(); return; }
-    remote = f; selected = null; selRoute = null; refreshCard(true); kick();
+    remote = f; selected = null; car = null; selRoute = null; refreshCard(true); kick();
   };
   const onRefresh = () => refreshCard(true);
   host.addEventListener('carte:focus', onFocus, sig); host.addEventListener('carte:refresh', onRefresh, sig);
@@ -234,10 +274,14 @@ export function mountFullMap(host: HTMLElement): () => void {
   mapBridge.screenOf = (x, z) => { const r = cv.getBoundingClientRect(), m = S(x, z); return { x: r.left + m.x, y: r.top + m.y }; };
   const ro = new ResizeObserver(resize); ro.observe(cv);
   resize(); refreshCard(true);
+  // « Localiser » asked for a point before the screen opened (src/ui/carteState.ts): this map takes it when it is the one that shows it
+  { const w = peekFocus(); if (w && W) { takeFocus(); onFocus(new CustomEvent<Focus>('carte:focus', { detail: w })); } }
   timer = window.setInterval(() => {
     // another district was loaded under the open map (a road crossed, a quality change that rebuilds the district): this map is of the one that is gone, the screen draws itself again
     if (mapBridge.hub !== hub || mapBridge.layer !== lay) { host.dispatchEvent(new Event('carte:stale')); return; }
     t += 0.1; resize();
+    { const w = peekFocus(); if (w && W) { takeFocus(); onFocus(new CustomEvent<Focus>('carte:focus', { detail: w })); } }   // (the canvas had no size yet when the screen was mounted)
+    if (car) { const o = carsHere().find(q => q.id === car!.id); if (!o) car = null; else car = o; }                         // sold, or driven away
     const pl = mapBridge.player;
     if (follow && (view.cx !== pl.x || view.cz !== pl.z)) { view.cx = pl.x; view.cz = pl.z; clampView(); }
     if (selected && (selRoute?.points[0].x !== pl.x || selRoute?.points[0].z !== pl.z) && Math.hypot((selRoute?.points[0].x ?? 0) - pl.x, (selRoute?.points[0].z ?? 0) - pl.z) > 3) { selRoute = routePath(mapBridge.net(pl, selected), { x: pl.x, z: pl.z }, selected); }

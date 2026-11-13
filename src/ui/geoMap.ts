@@ -4,10 +4,10 @@ import { HUB_NAMES } from '../world/content';
 import { HUB_ANCHORS, cityBounds, cityFitPad, gameToLngLat, hubFootprint, hubToLngLat, inFootprint, linkLineFrom, mapLinks, type MapLink } from '../geo/anchors';
 import { HUB_IDS, type HubId } from '../core/types';
 import { CITY_HUBS, planTrip, type TripPlan } from '../road/graph';
-import { mapBridge } from './minimap';
+import { mapBridge, type MapOwned } from './minimap';
 export { geoMapHtml, geoCardHtml } from './geoMapHtml';
 import { KIND_COLOR, KIND_LABEL, declutter, nightness, type MapPlace } from './minimapMath';
-import { pinHtml, remoteCardHtml, type Focus } from './carteState';
+import { pinHtml, remoteCardHtml, takeFocus, type Focus } from './carteState';
 import { phoneHooks } from './phoneHooks';
 
 /**
@@ -28,7 +28,6 @@ const km = (m: number) => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + 
 const short = (h: HubId) => HUB_NAMES[h].split(' · ')[0];
 /** From this zoom the places of the district the player is in are drawn. */
 const CLOSE_ZOOM = 13.2;
-const OWNED_ICON: Record<string, string> = { jakarta: '🏍️', tiak: '🛵', compacte: '🚗', teranga: '🚗', rafet: '🚗', berline: '🚘', gainde: '🚙', tout_terrain: '🚙' };
 
 /** Mounts the city map in `host` (the markup above); returns what to call when the tab or the phone closes. */
 export function mountGeoMap(host: HTMLElement): () => void {
@@ -168,9 +167,30 @@ export function mountGeoMap(host: HTMLElement): () => void {
         <div class="cm-acts"><button type="button" class="ph-btn fm-mark${dest ? ' on' : ''}" data-gm-mark="${esc(p.id)}">${dest ? 'Retirer le repère' : '📍 Marquer'}</button>${h ? pinHtml({ id: p.id, name: p.name, hub: h, icon: '📍' }) : ''}</div>`;
       reveal();
     };
+    /**
+     * One of the player's own parked vehicles (its icon tapped, or « Localiser »): where it is, and the game's one marker. In the district the player is in the marker goes
+     * straight on it; in another district the card is the one of a place over there (the walk that keeps the marker, the directions that end on the vehicle).
+     */
+    const showCar = (o: MapOwned) => {
+      redraw = () => { const now = mapBridge.owned().find(q => q.id === o.id); if (now) showCar(now); else card.innerHTML = ''; };
+      const h = hubNow(), f: Focus = { kind: 'point', id: o.id, hub: o.hub, name: o.name, icon: o.icon, x: o.x, z: o.z };
+      setRoute(h && h !== o.hub ? planTrip(h, o.hub) : null);
+      if (h !== o.hub) { card.innerHTML = remoteCardHtml(f, h); reveal(); return; }
+      const marked = mapBridge.destination() === o.id;
+      card.innerHTML = `<div class="fm-row"><span class="cm-ic" aria-hidden="true">${esc(o.icon)}</span><b>${esc(o.name)}</b><em>${esc(short(o.hub))}</em></div>
+        <p class="fm-sub fm-dist"><strong>${km(Math.hypot(o.x - mapBridge.player.x, o.z - mapBridge.player.z))}</strong> à vol d’oiseau</p>
+        <div class="cm-acts"><button type="button" class="ph-btn fm-mark${marked ? ' on' : ''}" data-gm-mark="${esc(o.id)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button></div>`;
+      reveal();
+    };
     /** The strip under the map asks for a district, or a place of another district: the map flies there and the card says how to go. */
     const onFocus = (e: Event) => {
       const f = (e as CustomEvent<Focus>).detail;
+      if (f.kind === 'point') {                                               // a vehicle: the map goes to the very spot, close enough to tell the street
+        const o = mapBridge.owned().find(q => q.id === f.id);
+        if (o) showCar(o); else { redraw = () => { card.innerHTML = remoteCardHtml(f, hubNow()); }; redraw(); reveal(); }
+        map?.easeTo({ center: gameToLngLat(f.hub, f.x, f.z).lngLat, zoom: Math.max(map.getZoom(), 14.6), duration: 500 });
+        return;
+      }
       if (f.kind === 'hub') { showHub(f.hub); map?.easeTo({ center: HUB_ANCHORS[f.hub].lngLat, zoom: Math.max(map.getZoom(), 12.5), duration: 500 }); return; }
       redraw = () => { card.innerHTML = remoteCardHtml(f, hubNow()); };
       redraw(); reveal();
@@ -181,7 +201,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
     card.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gm-mark]'); if (!b) return;
       const id = b.dataset.gmMark!; mapBridge.walkTo(mapBridge.destination() === id ? null : id);
-      const p = mapBridge.places.find(q => q.id === id); if (p) showPlace(p);
+      const p = mapBridge.places.find(q => q.id === id); if (p) showPlace(p); else redraw();
       refresh();
     }, sig);
     card.innerHTML = '<div class="fm-row"><b>Dakar</b></div><p class="fm-sub">Touche un quartier ou une route</p>';
@@ -209,8 +229,15 @@ export function mountGeoMap(host: HTMLElement): () => void {
       while (dyn.owned.length > owned.length) dyn.owned.pop()!.remove();
       owned.forEach((o, i) => {
         const ll = gameToLngLat(o.hub, o.x, o.z).lngLat;
-        if (!dyn.owned[i]) dyn.owned[i] = new ml.Marker({ element: div('gm-car', ''), anchor: 'center' }).setLngLat(ll).addTo(map!);
-        dyn.owned[i].setLngLat(ll); const el = dyn.owned[i].getElement(); el.textContent = OWNED_ICON[o.asset] ?? '🚗'; el.title = o.name;
+        if (!dyn.owned[i]) {
+          const el = div('gm-car', ''); el.setAttribute('role', 'button');
+          el.addEventListener('click', e => { e.stopPropagation(); const now = mapBridge.owned()[i]; if (now) showCar(now); });   // (the list is read again: the marker is reused as the vehicles change)
+          dyn.owned[i] = new ml.Marker({ element: el, anchor: 'center' }).setLngLat(ll).addTo(map!);
+        }
+        dyn.owned[i].setLngLat(ll); const el = dyn.owned[i].getElement();
+        if (el.textContent !== o.icon) el.textContent = o.icon;
+        el.title = o.name; el.dataset.car = o.id; el.setAttribute('aria-label', o.name);
+        el.classList.toggle('on', o.id === (phoneHooks.marked?.()?.id ?? null));
       });
       // the places of the district the player is in (rebuilt only when the list changes)
       const list = mapBridge.places, key = hub + ':' + mapBridge.version + ':' + list.map(q => q.id).join();   // (the list is refreshed as modules add their places)
@@ -224,8 +251,9 @@ export function mountGeoMap(host: HTMLElement): () => void {
         }
       }
       // the marked place: where it is in this district; a place marked in another district (a dealer, a shortcut) is pinned on that district
-      const dest = mapBridge.destination(), dp = dest ? list.find(q => q.id === dest) : null, far = dp ? null : phoneHooks.marked?.() ?? null;
-      const pll = dp ? hubToLngLat(hub, dp.x, dp.z) : far && far.hub !== hub ? HUB_ANCHORS[far.hub].lngLat : null;
+      // …and the marker on one of the player's vehicles (« Localiser ») is pinned on the vehicle itself, in whatever district it stands
+      const dest = mapBridge.destination(), dp = dest ? list.find(q => q.id === dest) : null, far = dp ? null : phoneHooks.marked?.() ?? null, car = far ? owned.find(o => o.id === far.id) : null;
+      const pll = dp ? hubToLngLat(hub, dp.x, dp.z) : car ? gameToLngLat(car.hub, car.x, car.z).lngLat : far && far.hub !== hub ? HUB_ANCHORS[far.hub].lngLat : null;
       if (pll) { if (!dyn.pin) dyn.pin = new ml.Marker({ element: div('gm-pin', '📍'), anchor: 'bottom' }).setLngLat(pll).addTo(map); dyn.pin.setLngLat(pll); }
       else if (dyn.pin) { dyn.pin.remove(); dyn.pin = undefined; }
     };
@@ -248,6 +276,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
     m.once('load', () => {
       if (dead) return;
       labels(); refresh(); zoomClass(); tell('');
+      { const w = takeFocus(); if (w) onFocus(new CustomEvent<Focus>('carte:focus', { detail: w })); }      // « Localiser » asked for a point before the screen opened (src/ui/carteState.ts)
       (window as unknown as { __geoMap: { ready: boolean } }).__geoMap.ready = true;
       m.on('zoom', zoomClass); m.on('move', fitLabels);
       timer = window.setInterval(refresh, 500);

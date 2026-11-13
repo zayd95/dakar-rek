@@ -583,6 +583,8 @@ class Estate {
           onPick: () => this.confirm(up.name, [['Prix', fcfa(up.price)], ['Effet', up.what], ['Pour', sp.name], ['Il te restera', this.left(up.price)]], 'Confirmer', '−' + fcfa(up.price), cannotUpgrade(s, a.uid, up.id),
             () => { if (upgradeAsset(s, a.uid, up.id)) this.done(`${up.name} ✓`, reopen); }, reopen) });
       }
+      // where it was left: the phone's « Mes véhicules » (src/ui/phone/apps/vehicles.ts), which locates it on the map
+      if (a.how === 'owned' && sp.kind === 'vehicle' && phoneHooks.vehicles) items.push({ icon: '📍', label: 'Où est-il ?', detail: 'Mes véhicules : le localiser sur la carte', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openPhone?.('vehicules'); } });
       // a vehicle is repaired where it stands, at Garage Modou (src/transport/garageModule.ts): no repair from a menu, anywhere
       if (a.how === 'owned' && sp.kind === 'vehicle' && a.condition < 100) items.push({ icon: '🔧', label: 'Réparer', detail: 'Au Garage Modou, à Pikine : gare-la devant l’atelier', disabled: true, onPick: () => {} });
       else if (a.how === 'owned' && a.condition < 95) { const cost = repairCost(a); items.push({ icon: '🔧', label: 'Réparer', right: '−' + fcfa(cost), detail: `Comme neuf : le loyer remonte`, disabled: !s.canAfford(cost), onPick: () => { if (repairAsset(s, a.uid)) this.done('Réparé ✓', reopen); } }); }

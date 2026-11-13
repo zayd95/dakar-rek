@@ -1,4 +1,4 @@
-import { moto } from './motoModule';
+import { moto, tiakMoto } from './motoModule';
 import { car } from './carModule';
 import { berline, suv } from './premiumCars';
 import { gainde, rafet, teranga } from './modelCars';
@@ -10,6 +10,8 @@ import type { VehicleAsset } from './owned';
  */
 export const CARS = [teranga, rafet, car, berline, gainde, suv] as const;
 export const OWNED_VEHICLES = [moto, ...CARS] as const;
+/** …and the motorbike the Tiak Tiak depot lends: every catalogue id of src/transport/owned.ts VEHICLE_ASSETS has its module here (tests/findVehicle.test.ts). */
+export const ALL_VEHICLES = [...OWNED_VEHICLES, tiakMoto] as const;
 /** What each module is called when the planner points at it, and its catalogue id. */
 export const VEHICLE_LABELS: { key: string; asset: VehicleAsset; label: string; mod: (typeof OWNED_VEHICLES)[number]; f: boolean }[] = [
   { key: 'moto', asset: 'jakarta', label: 'Ta moto Jakarta', mod: moto, f: true },
