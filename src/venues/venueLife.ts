@@ -4,7 +4,7 @@ import type { Collider } from '../world/types';
 import { NavGrid, type Area } from '../world/navgrid';
 import { Crowd, LIVE_CROWDS, defaultLook, type CrowdLook, type CrowdSlot } from '../crowd/crowd';
 import { lookRng } from '../crowd/looks';
-import { STREET_BODIES } from '../social/ambientLife';
+import { STREET_BODIES } from '../social/ambientData';
 import { BODY_BUDGET, CLEAR_ANCHOR, Routines, lifeBudget, shareAt, stepAside, type KeepOut, type LifePlan, type LifeSpot, type Person, type Pt } from './routine';
 
 /**
@@ -98,7 +98,13 @@ export class VenueLife {
     const keepOnly = (l: readonly LifeSpot[]) => l.map(ok).filter((s): s is LifeSpot => !!s);
     const plan: LifePlan = { ...o.plan, gathers: keepOnly(o.plan.gathers), spots: keepOnly(o.plan.spots) };
     this.routines = new Routines(plan, o.ctx.quality(), {
-      route: (a, b) => grid.path(a, b),
+      route: (a, b) => {
+        const path = grid.path(a, b); if (!path) return null;
+        // the last step onto the spot itself: a seat's own furniture blocks its cell, so the map's way ends beside it (no pop onto the seat)
+        const end = path[path.length - 1];
+        if (Math.hypot(end.x - b.x, end.z - b.z) > 0.05) path.push({ x: b.x, z: b.z });
+        return path;
+      },
       claim: (s, who) => {
         if (s.seat) return seats.occupy(s.seat, `life:${who}`);
         const p = o.ctx.player.pos;

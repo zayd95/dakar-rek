@@ -207,7 +207,7 @@ export function buildPatio(env: VenueEnv): Venue {
     // the gate's leaves and the rope stop the player who has not paid, never the guests
     colliders: () => world.colliders.filter(c => !mainGate.includes(c) && !smokeGate.includes(c)),
     area: { x0: Math.min(...corners.map(c => c.x)), x1: Math.max(...corners.map(c => c.x)), z0: Math.min(...corners.map(c => c.z)), z1: Math.max(...corners.map(c => c.z)) },
-    y: () => F, active: () => lifeSeen,
+    y: (x, z) => Math.max(F, 0.1 + world.heightAt(x, z)), active: () => lifeSeen,                        // (the raised smokers' terrace and the VIP corner: the ground there is higher)
     keep: PATIO_KEEP.map(c => ({ ...c, ...at(c.x, c.z) })),
   });
   const dance = new DancePlay({ ctx, music, crowd: stage, here: () => inPatio, spot: () => { const p = at(DANCE_FLOOR.x, DANCE_FLOOR.z); return { x: p.x, z: p.z, yaw: site.yaw }; }, track: PATIO_TRACK, words: PATIO_DANCE });

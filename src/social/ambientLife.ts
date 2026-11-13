@@ -12,7 +12,7 @@ import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { rng } from '../core/rng';
 import { len2 } from '../core/math';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, warmPaths, type ClearFn } from './routines';
-import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
+import { ACTIVITIES, AMBIENT_BUDGET, STREET_BODIES, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
 import { planDemand, chooseSeat, curveAt, dayOfWeek, keepsPlace, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type DemandRow, type LookKind, type PlanCache, type Pt, type SeatLike } from './ambient';
 import { buildSpotsSteps, furnitureSeats } from './ambientSpots';
 import type { ShopInfo } from '../world/shopFlow';
@@ -1221,9 +1221,6 @@ export class AmbientLife implements GameModule {
     return { full: mine + foreign, fullAmbient: mine, fullOther: foreign, figures: this.stats.figures, budget: this.B.totalFull, bodies: this.pool.length, others: this.foreign.list.length };
   }
 }
-
-/** The full animated bodies the shared budget gave out at its last ration (ambient people and the other systems'), for the crowds that add bodies of their own beside it (src/venues/venueLife.ts). */
-export const STREET_BODIES = { full: 0 };
 
 interface Cand { d: number; a: Actor | null; f: Foreign | null; full: boolean }
 const byD = (u: Cand, v: Cand) => u.d - v.d;

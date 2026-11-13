@@ -117,7 +117,8 @@ export const NGOR_LIFE: LifePlan = {
     // beside a stall's customer (the customer's own place is the stall's anchor), looking at what is sold
     spot('st0', 'stand', -11.2, -132.5, SEA + 0.5), spot('st1', 'stand', -1.2, -132.5, SEA + 0.5), spot('st2', 'stand', 4.4, -132.5, SEA + 0.5),
     // beds, a stool at the bar, a bench of the lookout, a place in the waiting shelter: seats the beach's own figures do not hold, and others stay free for the player
-    spot('s0', 'sit', 0, 0, 0, { seat: 'almadies:ngor:bed:6' }), spot('s1', 'sit', 0, 0, 0, { seat: 'almadies:ngor:bed:11' }), spot('s2', 'sit', 0, 0, 0, { seat: 'almadies:ngor:bed:0' }),
+    // (a single bed, by the west anchor « Louer un transat »: with the beach's own sunbathers, three of the six beds by each anchor stay free for the player)
+    spot('s0', 'sit', 0, 0, 0, { seat: 'almadies:ngor:bed:6' }),
     spot('s3', 'sit', 0, 0, 0, { seat: 'almadies:ngor:stool:5' }), spot('s4', 'sit', 0, 0, 0, { seat: 'almadies:ngor:look:1' }), spot('s5', 'sit', 0, 0, 0, { seat: 'almadies:ngor:wait:3' }),
   ],
   windows: [[8, 10, 0.3], [10, 13, 0.65], [13, 18, 1], [18, 20, 0.45]],
@@ -130,8 +131,8 @@ export const NGOR_KEEP: KeepOut[] = [
   { x: N.bar.at.x, z: N.bar.at.z, r: 1.7, why: 'bar' }, { x: N.hut.at.x, z: N.hut.at.z, r: 1.7, why: 'guichet' }, { x: N.lookout.at.x, z: N.lookout.at.z, r: 1.25, why: 'lunette' },
   { x: -17.4, z: -142.3, r: 1.25, why: 'transats_a' }, { x: 0.6, z: -142.3, r: 1.25, why: 'transats_b' }, { x: N.gate.x, z: N.gate.z, r: 1.7, why: 'gate' },
 ];
-/** The ground the beach's people walk on (their walking map: src/world/navgrid.ts). */
-export const NGOR_AREA = { x0: -26, x1: 36, z0: -162.4, z1: -128.6 } as const;
+/** The ground the beach's people walk on (their walking map: src/world/navgrid.ts): from the beach's west end to the waiting shelter (the corridor east of x 47 is the boarding beach's). */
+export const NGOR_AREA = { x0: -26, x1: 47, z0: -162.4, z1: -128.6 } as const;
 
 /** A plan placed in the world: `at` maps its own metres to the hub's, `turn` is added to every facing. */
 export function placed(plan: LifePlan, at: (x: number, z: number) => Pt, turn = 0): LifePlan {

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import {
   BODY_BUDGET, CLEAR_SPOT, FRAME_CALLS, NEXT, Routines, hashOf, inWindow, lifeBudget, shareAt, spotOpen, spotsInTheWay, stepAside, streamOf,
   type Host, type LifePlan, type LifeQuality, type LifeSpot, type Phase,
 } from '../src/venues/routine';
 import { NGOR_AREA, NGOR_KEEP, NGOR_LIFE, PATIO_KEEP, PATIO_LIFE, PATIO_WALK, TERRACE_AISLE, TERRACE_KEEP, placed, terraceLife } from '../src/venues/lifePlans';
-import { AMBIENT_BUDGET, BODY_CALLS } from '../src/social/ambientData';
+import { AMBIENT_BUDGET, BODY_CALLS, STREET_BODIES } from '../src/social/ambientData';
+import { Seats } from '../src/interact/seats';
+import { VenueLife } from '../src/venues/venueLife';
+import { LIVE_CROWDS } from '../src/crowd/crowd';
+import type { GameCtx } from '../src/game/modules';
+import type { Collider } from '../src/world/types';
 import { CAST, DANCE_FLOOR, HW, ZB, ZF, patioMoment } from '../src/venues/patioPlan';
 import { ROOFTOPS } from '../src/venues/rooftop';
 import { NGOR_BEACH } from '../src/world/ngorBeach';
@@ -271,6 +277,15 @@ describe('where people stand: never in the way', () => {
     for (const s of NGOR_LIFE.spots.filter(x => x.seat)) expect(taken, s.seat).not.toContain(s.seat);
     expect(NGOR_LIFE.spots.filter(s => s.kind === 'stroll').length).toBeGreaterThanOrEqual(6);
   });
+  it('the beach: by each « Louer un transat » anchor, three of its beds stay free when every sunbather — the beach’s own and the routine’s — is there', () => {
+    const lifeBeds = NGOR_LIFE.spots.filter(s => /:bed:/.test(s.seat ?? '')).map(s => s.seat!);
+    const own = [1, 4, 8, 10, 5].map(n => `almadies:ngor:bed:${n}`);                                 // src/venues/ngorBeach.ts: bain1…bain5 by day (High and Medium)
+    for (const a of [{ x: -17.4, z: -142.3 }, { x: 0.6, z: -142.3 }]) {
+      const near = NGOR_BEACH.beds.filter(b => Math.hypot(b.x - a.x, b.z - a.z) <= 8).map(b => b.id);  // the offer's seat search (r 8)
+      expect(near.length).toBe(6);
+      expect(near.filter(id => !own.includes(id) && !lifeBeds.includes(id)).length, JSON.stringify(a)).toBeGreaterThanOrEqual(3);
+    }
+  });
   it('a plan is placed in the world by its venue: every point moved, every facing turned, nothing else changed', () => {
     const at = (x: number, z: number) => ({ x: 100 - z, z: 50 + x }), w = placed(PATIO_LIFE, at, Math.PI / 2);
     expect(w.entries[0]).toEqual(at(PATIO_LIFE.entries[0].x, PATIO_LIFE.entries[0].z));
@@ -281,5 +296,90 @@ describe('where people stand: never in the way', () => {
     expect(stepAside(1, 0, 5, 0)).toEqual({ x: 1, z: 0 });
     const a = stepAside(1, 0, 1.3, 0); expect(Math.hypot(a.x - 1.3, a.z)).toBeCloseTo(0.85, 6); expect(a.x).toBeLessThan(1);
     const b = stepAside(2, 2, 2, 2); expect(Math.hypot(b.x - 2, b.z - 2)).toBeCloseTo(0.85, 6);
+  });
+});
+
+// ------------------------------------------------------------------ the scene side (src/venues/venueLife.ts) on a real seat registry and a real crowd
+describe('VenueLife: the routine drawn as figures', () => {
+  const wall: Collider = { x0: 9, x1: 10, z0: -2, z1: 7.5, h: 2 };                                 // a wall between the way in and the far spots, open at its north end
+  const plan: LifePlan = {
+    ...TOY, id: 'scene',
+    spots: [...TOY.spots, spot('w', 'stand', 9.5, 3)],                                          // inside the wall: dropped
+  };
+  const make = (q: LifeQuality, hour: number, keep = [{ x: 28, z: 6, r: 1.25, why: 'anchor' }]) => {
+    const seats = new Seats();
+    seats.add({ id: 'seat:1', x: 20, z: 6, top: 0.5, yaw: 0, kind: 'chair', space: 'street', occupant: null });
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500); camera.position.set(15, 12, 30); camera.lookAt(15, 0, 4); camera.updateMatrixWorld();
+    const clock = { hour, on: true }, player = { pos: new THREE.Vector3(-30, 0.1, -30) };
+    const ctx = { quality: () => q, hour: () => clock.hour, seats, camera, player } as unknown as GameCtx;
+    const parent = new THREE.Group();
+    const life = new VenueLife({ ctx, plan, name: 'scene', parent, colliders: () => [wall], area: { x0: -2, x1: 42, z0: -4, z1: 12 }, y: () => 0.1, active: () => clock.on, keep });
+    return { life, seats, clock, player, parent };
+  };
+  it('shows as many figures as the routine has people, seats them on the registry’s seat, and drops the spots in a solid or a keep-out disc', () => {
+    const { life, seats } = make('high', 15);
+    life.update(0.1);
+    const info = life.info();
+    expect(info.active).toBe(true);
+    expect(info.present).toBe(TOY.capacity.high);                                                   // settled as the hour has it
+    expect(life.crowd.stats().present).toBe(info.present);                                         // one figure a person (standing or seated, never both)
+    expect(info.dropped.sort()).toEqual(['e (anchor)', 'w (solid)']);
+    for (let i = 0; i < 1200; i++) {
+      life.update(0.1);
+      const st = life.info();
+      expect(life.crowd.stats().present).toBe(st.present);
+      // the seat is held from the moment somebody sets off for it until they get up, by them alone; nobody sits anywhere else
+      const holder = st.people.find(p => p.spot === 'c');
+      expect(seats.get('seat:1')!.occupant).toBe(holder ? `life:${holder.id}` : null);
+      for (const p of st.people) if (p.seated) expect(p.spot).toBe('c');
+    }
+    life.dispose();
+  });
+  it('walks round the wall, never through it', () => {
+    const { life } = make('high', 15);
+    const inWall = (x: number, z: number) => x > wall.x0 + 0.05 && x < wall.x1 - 0.05 && z > wall.z0 + 0.05 && z < wall.z1 - 0.05;
+    let walked = 0;
+    for (let i = 0; i < 1500; i++) {
+      life.update(0.1);
+      for (const p of life.info().people) { if (p.phase === 'walk' || p.phase === 'leave') walked++; expect(inWall(p.x, p.z), `${p.id} at ${p.x}, ${p.z}`).toBe(false); }
+    }
+    expect(walked).toBeGreaterThan(100);
+    life.dispose();
+  });
+  it('nobody outside the hours; nothing drawn or held while unseen, and the place settled again when it is seen', () => {
+    const { life, seats, clock } = make('medium', 15);
+    life.update(0.1);
+    expect(life.info().present).toBe(TOY.capacity.medium);
+    for (let i = 0; i < 300; i++) life.update(0.1);
+    clock.on = false; life.update(0.1);
+    expect(life.crowd.group.visible).toBe(false); expect(life.crowd.stats().present).toBe(0); expect(seats.get('seat:1')!.occupant).toBeNull();
+    clock.hour = 9; clock.on = true; life.update(0.1);
+    expect(life.info().present).toBe(0); expect(life.crowd.stats().present).toBe(0);
+    clock.hour = 19; life.update(0.1);                                                              // the hour jumps (debug, travel): settled at once
+    expect(life.info().present).toBe(Math.round(TOY.capacity.medium * 0.5));
+    life.dispose();
+    expect(LIVE_CROWDS.has(life.crowd)).toBe(false);
+  });
+  it('full bodies: never more than the shared budget has left beside the street’s, none on Low', () => {
+    for (const q of QS) for (const street of [0, 5, BODY_BUDGET[q] - 1, BODY_BUDGET[q], 40]) {
+      STREET_BODIES.full = street;
+      const { life } = make(q, 15);
+      life.update(0.1);
+      const i = life.info();
+      expect(i.others).toBe(street);
+      expect(i.bodiesAllowed).toBe(Math.max(0, Math.min(TOY.near[q], i.target, BODY_BUDGET[q] - street)));
+      expect(i.bodies).toBeLessThanOrEqual(i.bodiesAllowed);
+      if (q === 'low') expect(i.bodiesAllowed).toBe(0);
+      life.dispose();
+    }
+    STREET_BODIES.full = 0;
+  });
+  it('the crowd’s meshes are its owner’s to free: a hub’s disposal skips them (the crowd material is shared by every crowd)', () => {
+    const { life, parent } = make('medium', 15);
+    life.update(0.1);
+    let meshes = 0;
+    parent.traverse(o => { if ((o as THREE.Mesh).isMesh) { meshes++; expect(o.userData.shared, o.name).toBe(true); } });
+    expect(meshes).toBeGreaterThanOrEqual(4);
+    life.dispose();
   });
 });

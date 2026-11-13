@@ -159,3 +159,8 @@ export const AMBIENT_BUDGET = {
   high: { population: 64, bodies: 14, full: 50, far: 120, totalFull: bodiesFor(BODY_CALL_BUDGET.high), scale: 1, near: 80, plan: 150 },
 } as const;
 export type AmbientQuality = keyof typeof AMBIENT_BUDGET;
+/**
+ * The full animated bodies the shared budget gave out at its last ration (the ambient people's and the other systems' under it: src/social/ambientLife.ts
+ * writes it), for the crowds that add bodies of their own beside it (src/venues/venueLife.ts).
+ */
+export const STREET_BODIES = { full: 0 };
