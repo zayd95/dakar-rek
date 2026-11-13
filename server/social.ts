@@ -12,6 +12,10 @@ import {
   type AskResult, type AskRow, type LedgerAccount, type LedgerResult, type LedgerStore, type MoneyRequest, type StoredOp, type Today,
 } from '../src/online/ledgerRules';
 import { OUTBOX_TRIES, STATEFUL, blockEffects, deliveryOf, findAllowed, inviteNext, meetNext, nextDeadline, outboxRetry, payItemOf, seenOf, visitCheck, type InviteAct, type MeetAct, type MeetTimes } from '../src/online/accountRules';
+import {
+  campHold, campRelease, campSettle,
+  type CampHoldResult, type CampHoldRow, type CampOpRow, type CampOutcomeRow, type CampPoolRow, type CampReleaseResult, type CampSettleResult, type CampStore, type CampTermsRow,
+} from '../src/online/campLedger';
 import type { HubId } from '../src/core/types';
 
 /**
@@ -182,6 +186,66 @@ export class Social extends DurableObject<SocialEnv> {
     this.openLedger();
     const rows = this.sql.exec<Record<string, string | number | null>>('SELECT * FROM ops WHERE (a = ? OR b = ?) AND at < ? ORDER BY at DESC, id DESC LIMIT ?', tag, tag, before ?? 1e15, O.page + 1).toArray();
     return { ops: rows.slice(0, O.page).map(r => opView(rowOp(r))), more: rows.length > O.page };
+  }
+
+  // ------------------------------------------------------------------ 1.0.1 Grand Camp: the matches' entry fees (src/online/campLedger.ts)
+  // Three add-only tables of the ledger object, made at the first Grand Camp operation; the accounts' balances are the same rows as Teranga Money's.
+  // Called by the match objects (server/camp.ts) only. Every step is one transactionSync, like ledgerMoney.
+  private campReady = false;
+  private openCamp() {
+    this.openLedger();
+    if (this.campReady) return;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS camp_pools (match TEXT PRIMARY KEY, fee INTEGER NOT NULL, size INTEGER NOT NULL, dist TEXT NOT NULL, state TEXT NOT NULL,
+      held INTEGER NOT NULL, result TEXT, at INTEGER NOT NULL, closed INTEGER)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS camp_holds (match TEXT NOT NULL, tag TEXT NOT NULL, op TEXT NOT NULL, amount INTEGER NOT NULL, fund INTEGER NOT NULL,
+      state TEXT NOT NULL, at INTEGER NOT NULL, closed INTEGER, PRIMARY KEY (match, tag))`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS camp_holds_tag ON camp_holds (tag, state)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS camp_ops (id TEXT PRIMARY KEY, match TEXT NOT NULL, tag TEXT NOT NULL, kind TEXT NOT NULL, amount INTEGER NOT NULL,
+      fund INTEGER NOT NULL, at INTEGER NOT NULL)`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS camp_ops_match ON camp_ops (match, at)`);
+    this.campReady = true;
+  }
+  private campStore(): CampStore {
+    const sql = this.sql, base = this.ledgerStore();
+    const pool = (r: Record<string, string | number | null>): CampPoolRow => ({ match: String(r.match), fee: Number(r.fee), size: Number(r.size), dist: r.dist === 'single' ? 'single' : 'team', state: r.state as CampPoolRow['state'], held: Number(r.held), result: r.result === null ? null : String(r.result), at: Number(r.at), closed: r.closed === null ? null : Number(r.closed) });
+    const hold = (r: Record<string, string | number | null>): CampHoldRow => ({ match: String(r.match), tag: String(r.tag), op: String(r.op), amount: Number(r.amount), fund: Number(r.fund), state: r.state as CampHoldRow['state'], at: Number(r.at), closed: r.closed === null ? null : Number(r.closed) });
+    return {
+      account: base.account, putAccount: base.putAccount,
+      pool: m => { const r = sql.exec<Record<string, string | number | null>>('SELECT * FROM camp_pools WHERE match = ?', m).toArray()[0]; return r ? pool(r) : null; },
+      putPool: p => { sql.exec(`INSERT INTO camp_pools (match, fee, size, dist, state, held, result, at, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(match) DO UPDATE SET
+        state = excluded.state, held = excluded.held, result = excluded.result, closed = excluded.closed`, p.match, p.fee, p.size, p.dist, p.state, p.held, p.result, p.at, p.closed); },
+      hold: (m, t) => { const r = sql.exec<Record<string, string | number | null>>('SELECT * FROM camp_holds WHERE match = ? AND tag = ?', m, t).toArray()[0]; return r ? hold(r) : null; },
+      holds: m => sql.exec<Record<string, string | number | null>>('SELECT * FROM camp_holds WHERE match = ?', m).toArray().map(hold),
+      heldBy: t => { const r = sql.exec<Record<string, string | number | null>>(`SELECT * FROM camp_holds WHERE tag = ? AND state = 'held' LIMIT 1`, t).toArray()[0]; return r ? hold(r) : null; },
+      putHold: h => { sql.exec(`INSERT INTO camp_holds (match, tag, op, amount, fund, state, at, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(match, tag) DO UPDATE SET
+        op = excluded.op, amount = excluded.amount, fund = excluded.fund, state = excluded.state, at = excluded.at, closed = excluded.closed`, h.match, h.tag, h.op, h.amount, h.fund, h.state, h.at, h.closed); },
+      campOp: id => { const r = sql.exec<Record<string, string | number | null>>('SELECT * FROM camp_ops WHERE id = ?', id).toArray()[0]; return r ? { id: String(r.id), match: String(r.match), tag: String(r.tag), kind: r.kind as CampOpRow['kind'], amount: Number(r.amount), fund: Number(r.fund), at: Number(r.at) } : null; },
+      putCampOp: o => { sql.exec('INSERT INTO camp_ops (id, match, tag, kind, amount, fund, at) VALUES (?, ?, ?, ?, ?, ?, ?)', o.id, o.match, o.tag, o.kind, o.amount, o.fund, o.at); },
+    };
+  }
+  /** A match's fee held for a player at « Prêt » (Teranga Money first, `fund` from the wallet, as a send). */
+  async campHold(r: { match: string; tag: Tag; op: string; terms: CampTermsRow; fund: number }): Promise<CampHoldResult> {
+    this.openCamp(); const store = this.campStore(), now = Date.now();
+    return this.ctx.storage.transactionSync(() => campHold(store, r, now, LIMITS));
+  }
+  async campRelease(r: { match: string; tag: Tag }): Promise<CampReleaseResult> {
+    this.openCamp(); const store = this.campStore(), now = Date.now();
+    return this.ctx.storage.transactionSync(() => campRelease(store, r, now));
+  }
+  async campSettle(r: { match: string; outcome: CampOutcomeRow; terms?: CampTermsRow }): Promise<CampSettleResult> {
+    this.openCamp(); const store = this.campStore(), now = Date.now();
+    return this.ctx.storage.transactionSync(() => campSettle(store, r, now));
+  }
+  /** A match's pool and holds as the ledger has them (the match object checks itself against them after a restart). */
+  async campPool(match: string): Promise<{ pool: CampPoolRow | null; holds: CampHoldRow[] }> {
+    this.openCamp(); const store = this.campStore();
+    return { pool: store.pool(match), holds: store.holds(match) };
+  }
+  /** Account role: a Grand Camp step moved this account's Teranga Money; its open sockets get the new balance (the 1.0 `balance` message). */
+  async campBalance(me: Tag): Promise<void> {
+    if (!this.existing(me)) return;
+    const b = await this.ledger().ledgerState(me);
+    if (b) this.push({ type: 'balance', balance: b.balance, today: b.today });
   }
 
   // ================================================================== the account role: sockets
