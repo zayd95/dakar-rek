@@ -19,8 +19,13 @@ const ASSUME = {
 };
 const NEEDS = { energyStart: 85, energyMin: ECONOMY.tiak.minEnergy, perDelivery: -ECONOMY.tiak.fatigue.energie, cafe: { energy: 6, cost: 100 }, hungerPerMin: 1.6, hungerPerDelivery: -ECONOMY.tiak.fatigue.faim, meal: { faim: 40, cost: 500 } };
 const HOUR_S = 3600, CITY_HOUR_S = 60;                                                  // one city hour is one real minute (src/core/clock.ts)
-interface Mode { name: string; bike: boolean }
-const MODES: Mode[] = [{ name: 'on foot, runs inside the district', bike: false }, { name: 'Tiak bike, any run', bike: true }];
+interface Mode { name: string; bike: boolean; foot: number }
+// « as the script walked »: 3.7 m/s is what scripts/check-tiak-everywhere.mjs measured on the game's clock (five districts, a thumb on the stick's edge, corners and passers-by included)
+const MODES: Mode[] = [
+  { name: 'on foot at 3.7 m/s (as the script walked), runs inside the district', bike: false, foot: 3.7 },
+  { name: `on foot at ${ASSUME.foot} m/s (a clean run), runs inside the district`, bike: false, foot: ASSUME.foot },
+  { name: 'Tiak bike, any run', bike: true, foot: ASSUME.foot },
+];
 
 function simulate(start: HubId, mode: Mode, day: number) {
   let t = 0, hub = start, at: { x: number; z: number } = { x: 0, z: 0 }, money = 0, n = 0, late = 0, local = 0, away = 0, energy = NEEDS.energyStart, faim = 70, living = 0;
@@ -28,9 +33,9 @@ function simulate(start: HubId, mode: Mode, day: number) {
   const cost = (r: Route) => {
     const g = r.gen!, a: TiakPoint = g.from, m = routeMetres(r)!, cross = !!r.toHub;
     const approach = Math.abs(a.x - at.x) + Math.abs(a.z - at.z);
-    const ride = mode.bike ? (cross ? m / ASSUME.bikeRoad : m / ASSUME.bikeTown) + ASSUME.mount : m / ASSUME.foot;
+    const ride = mode.bike ? (cross ? m / ASSUME.bikeRoad : m / ASSUME.bikeTown) + ASSUME.mount : m / mode.foot;
     const leg = ASSUME.pickup + ride + ASSUME.handover;
-    return { total: ASSUME.board + approach / (mode.bike ? ASSUME.bikeTown : ASSUME.foot) + (mode.bike ? ASSUME.mount : 0) + leg, leg };
+    return { total: ASSUME.board + approach / (mode.bike ? ASSUME.bikeTown : mode.foot) + (mode.bike ? ASSUME.mount : 0) + leg, leg };
   };
   while (t < HOUR_S) {
     const list = tiakOffers(hub, day, Math.floor(t / CITY_HOUR_S), new Set(taken)).filter(r => mode.bike || !r.toHub);
@@ -61,7 +66,7 @@ console.log('| mode | starting district | deliveries / real hour | of which to a
 console.log('|---|---|---|---|---|---|---|---|---|');
 for (const r of rows) console.log(`| ${r.mode} | ${r.hub} | ${r.n.toFixed(1)} | ${r.away.toFixed(1)} | ${r.late.toFixed(1)} | ${fmt(r.money)} F | ${fmt(r.living)} F | ${fmt(r.money - r.living)} F | ${fmt(r.mean)} F |`);
 const GOALS: [string, number][] = [['F2: first monthly rent 50 000 F + 10 000 F charges', 60000], ['F2 furnishing', 300000], ['Jakarta', 150000]];
-console.log('\n| goal | F | ' + rows.map(r => `${r.hub} ${r.mode.startsWith('on foot') ? 'foot' : 'bike'}`).join(' | ') + ' |');
+console.log('\n| goal | F | ' + rows.map(r => `${r.hub} ${r.mode.startsWith('on foot at 3.7') ? 'foot 3.7' : r.mode.startsWith('on foot') ? 'foot 5.6' : 'bike'}`).join(' | ') + ' |');
 console.log('|---|---|' + rows.map(() => '---').join('|') + '|');
 for (const [name, f] of GOALS) console.log(`| ${name} | ${fmt(f)} | ` + rows.map(r => `${Math.ceil(f / r.mean)} (${(f / (r.money - r.living)).toFixed(1)} h)`).join(' | ') + ' |');
 // the offers themselves: how the boards are paid, per district
