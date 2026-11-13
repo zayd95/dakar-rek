@@ -5,7 +5,8 @@
 //   B. ridden across the middle of the road to Almadies (the district swap is real; the kilometre of road either side of it is skipped with the debug placement) and parked
 //      there; from Pikine the list names Almadies, nothing can be made to sound from there, « Localiser » shows it on the city map and « Y aller » walks to that district, where
 //      the marker leads to it.
-//   C. sold from « Biens » while it stands in another district: its record is gone, and the one bought again is delivered at the dealer's kerb (one moto, not two).
+//   C. sold from « Biens » while it stands in another district: its record is gone, and the one bought again from « Biens » is delivered at the dealer's kerb (one moto,
+//      not two).
 // Usage: node scripts/check-find-vehicle.mjs [baseUrl] [outDir]      (needs a running build: npx vite preview --outDir <dir> --port 4391 --host 127.0.0.1 --strictPort)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -65,6 +66,23 @@ const closePhone = async () => { if ((await phoneInfo()).open) { await tap('#pho
 const cardText = sel => d(s => [...document.querySelectorAll(s)].map(e => e.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' ¦ '), sel);
 const listText = () => cardText('#phone .vh');
 const goal = () => d(() => { const g = document.querySelector('#goal'); return { on: g.classList.contains('on'), text: g.querySelector('.gt').textContent, dist: g.querySelector('.gd').textContent }; });
+/**
+ * « Descendre » on the ride pad, with a finger. On a machine shared with other browser checks one run in six lost this tap (the moto stayed ridden for two minutes); a tap
+ * that does not dismount within 15 s is given again, at most twice, and each one is printed with what lay under the finger: survived and reported, never hidden.
+ */
+let offRetries = 0;
+const getOff = async (first = 300) => {
+  for (let i = 0; i < 3; i++) {
+    await wait(i ? 600 : first); await t.tap('#ridepad .rp-off');
+    if (await until(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, 15000)) return true;
+    offRetries++;
+    console.log(`NOTE: « Descendre » tap ${i + 1} did not dismount: ${JSON.stringify(await d(() => {
+      const b = document.querySelector('#ridepad .rp-off'), r = b?.getBoundingClientRect();
+      return { at: window.__dakar.moto.at(), mode: window.__dakar.pos().mode, pad: document.body.classList.contains('ridepad'), off: b && r ? { cls: b.className, box: [r.left, r.top, r.width, r.height].map(Math.round), under: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.className ?? null } : null };
+    }))}`);
+  }
+  return false;
+};
 
 // ------------------------------------------------------------------ A. Pikine: buy, ride, park, walk away
 await d(() => { window.__dakar.teleport('pikine'); window.__dakar.state.data.wallet = 900000; });
@@ -105,8 +123,7 @@ await wait(800);
 await until(() => Math.abs(window.__dakar.moto.info().speed) < 0.3, null, 60000);
 const riding = await mine();
 check('A2. while it is ridden the game says so: « En circulation », at the rider’s own place, and no icon of it on the maps', riding?.status === 'driven' && (await row())?.statusLabel === 'En circulation' && !(await row())?.locate && !(await d(() => window.__dakar.mapOwned().some(o => o.asset === 'jakarta'))), JSON.stringify(riding));
-await wait(300); await t.tap('#ridepad .rp-off');
-await until(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play');
+await getOff(300);
 await wait(800);
 const parked = await info(), R = parked.record;
 check('A3. parked: its record is where it stands, more than 20 m from the kerb', !parked.driving && !!R && Math.hypot(R.x - parked.x, R.z - parked.z) < 0.05 && Math.hypot(R.x - kerb.x, R.z - kerb.z) > 20, JSON.stringify(R));
@@ -224,8 +241,7 @@ const spot = await d(() => {
   return null;
 });
 await d(s => window.__dakar.moto.place(s.x, s.z, 0), spot);
-await wait(800); await t.tap('#ridepad .rp-off');
-await until(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play');
+await getOff(800);
 await wait(800);
 const R2 = (await info()).record;
 check('B2. parked in Almadies: the record says so', R2?.hub === 'almadies' && Math.hypot(R2.x - spot.x, R2.z - spot.z) < 0.5, JSON.stringify({ R2, near: spot.near }));
@@ -284,23 +300,25 @@ await tapText('#modal .item', /^\s*\S*\s*Vendre/) || await tapText('#modal .item
 await until(() => /Tu reçois/.test(document.querySelector('#modal.on')?.textContent ?? ''));
 await tapText('#modal .item', /Vendre/);
 await until(() => !window.__dakar.moto.info().owned);
-await wait(800);
-const afterSale = await keys();
-check('C1. sold from « Biens » in Pikine while it stood in Almadies: its parking record is gone', before.length >= 3 && afterSale.length === 0 && !(await mine()) && /Où est-il/.test(sheet), JSON.stringify({ before, afterSale }));
-await d(() => document.querySelector('#modal .item.close')?.click()); await d(() => window.__dakar.phoneClose());
-await until(() => window.__dakar.pos().mode === 'play');
-await d(p => window.__dakar.place(p.x, p.z + 1.3, Math.PI), dealer);
-await until(() => /Motos/.test(window.__dakar.focus()?.name ?? ''));
-await wait(400); await t.tap('#act');
-await until(() => !!document.querySelector('#modal.on'));
+// the record goes on the game's next frame (the vehicle modules follow the asset model there, sheet open or not): waited for, not raced against a fixed delay
+// (SwiftShader frames on a shared machine can take longer than a second), and the time it took is printed
+const soldAt = Date.now();
+const cleared = await until(() => !Object.keys(window.__dakar.state.data.counters).some(k => k.startsWith('vehicle:jakarta:')), null, 20000);
+const clearMs = Date.now() - soldAt, afterSale = await keys();
+check('C1. sold from « Biens » in Pikine while it stood in Almadies: its parking record is gone', before.length >= 3 && cleared && afterSale.length === 0 && !(await mine()) && /Où est-il/.test(sheet), JSON.stringify({ before, afterSale, clearMs }));
+// bought again at once from the same sheet of « Biens » (the sheet comes back on the vehicle after the sale): the asset model alone delivers it, as in the defect
+// (the dealer's own counter always parks a new purchase at its kerb, so it would hide a stale record)
+await until(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''));
 await tapText('#modal .item', /^[^A-Za-z]*Acheter/);
-await until(() => /Confirmer/.test(document.querySelector('#modal.on')?.textContent ?? ''));
-await tapText('#modal .item', /Confirmer/);
-await until(() => window.__dakar.moto.info().owned && window.__dakar.moto.info().here);
+await until(() => /Il te restera/.test(document.querySelector('#modal.on')?.textContent ?? ''));
+await tapText('#modal .item', /^[^A-Za-z]*Acheter/);
+await until(() => window.__dakar.moto.info().owned);
+const delivered = await until(() => window.__dakar.moto.info().here, null, 20000);
 const again = await info(), e4 = await mine();
-check('C2. bought again: delivered at the dealer’s kerb in Pikine (not at the old spot in Almadies), one moto, listed there', again.here && again.record.hub === 'pikine' && Math.hypot(again.record.x - kerb.x, again.record.z - kerb.z) < 0.05 && e4?.hub === 'pikine' && (await d(() => window.__dakar.state.data.assets.list.filter(a => a.spec === 'jakarta').length)) === 1, JSON.stringify(again.record));
+check('C2. bought again from « Biens » in Pikine: delivered at the dealer’s kerb in Pikine (not left at the old spot in Almadies), one moto, listed there', delivered && again.owned && again.record?.hub === 'pikine' && Math.hypot(again.record.x - kerb.x, again.record.z - kerb.z) < 0.05 && e4?.hub === 'pikine' && (await d(() => window.__dakar.state.data.assets.list.filter(a => a.spec === 'jakarta').length)) === 1, JSON.stringify({ record: again.record, owned: again.owned, here: again.here }));
+await d(() => document.querySelector('#modal .item.close')?.click()); await d(() => window.__dakar.phoneClose());
 
 check('no page errors', errors.length === 0, errors.join(' | '));
 await browser.close();
-console.log(`\n${total - failed}/${total} find-my-vehicle checks passed`);
+console.log(`\n${total - failed}/${total} find-my-vehicle checks passed${offRetries ? ` (« Descendre » had to be tapped again ${offRetries} time(s): see the NOTE lines)` : ''}`);
 process.exit(failed ? 1 : 0);
