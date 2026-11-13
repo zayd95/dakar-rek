@@ -989,6 +989,7 @@ export class AmbientLife implements GameModule {
       if (a.lod === 2 && !a.body && !this.takeBody(a)) a.lod = 1;
     }
     this.stats = { full, mineFull: mine, foreignFull: full - mine, figures: 0, foreign: foreignN };
+    STREET_BODIES.full = full;
     // people the player can greet: those with a body
     const list = this.bodyList; list.length = 0;
     for (const a of this.actors) if (a.body && !a.spot!.tags.some(t => t.startsWith('mosque'))) {   // at the mosque: presence only, no exchange
@@ -1220,6 +1221,9 @@ export class AmbientLife implements GameModule {
     return { full: mine + foreign, fullAmbient: mine, fullOther: foreign, figures: this.stats.figures, budget: this.B.totalFull, bodies: this.pool.length, others: this.foreign.list.length };
   }
 }
+
+/** The full animated bodies the shared budget gave out at its last ration (ambient people and the other systems'), for the crowds that add bodies of their own beside it (src/venues/venueLife.ts). */
+export const STREET_BODIES = { full: 0 };
 
 interface Cand { d: number; a: Actor | null; f: Foreign | null; full: boolean }
 const byD = (u: Cand, v: Cand) => u.d - v.d;
