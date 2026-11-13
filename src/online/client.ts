@@ -41,6 +41,8 @@ const CHAT_KEY = 'dakarrek.chat.v1';
 const DEVICE_KEY = 'dakarrek.chat.key';
 /** The account's name for a player it has not heard from yet (server/social.ts ensureConv). */
 export const UNKNOWN_NAME = 'Joueur';
+/** How many times a money op the server answered « undecided » is sent again on one connection (1.5 s, 3 s, 4.5 s…; then at the next connection). */
+const MONEY_RETRIES = 5;
 const CONVS_MAX = 60, ITEMS_PER_CONV = 120, REQUEST_MS = 15_000, MONEY_WAIT_MS = 15_000, RESEND_GAP_MS = 1_100;
 /** Frames sent per second at most: the account closes a socket past 20 (server/social.ts), so a burst (a list asking who is online) waits its turn. */
 const SEND_RATE = 15;
@@ -75,6 +77,8 @@ export class OnlineAccount implements OnlineApi {
   private waiters = new Map<string, { list: ((m: ServerMessage | null) => void)[]; timer: number }>();
   private moneyWaiters = new Map<string, ((o: Outcome<{ op: LedgerOp }>) => void)[]>();
   private moneyDone = new Map<string, Outcome<{ op: LedgerOp }>>();
+  /** Money ops the server answered « undecided » (`offline`), and how many times each was sent again on this connection. */
+  private moneyRetries = new Map<string, number>();
   private convWaiters = new Map<Tag, ((more: boolean) => void)[]>();
   private historyWaiters: ((m: { ops: LedgerOp[]; more: boolean } | null) => void)[] = [];
   private listeners = new Set<() => void>();
@@ -239,7 +243,14 @@ export class OnlineAccount implements OnlineApi {
   private moneyAnswer(m: Extract<ServerMessage, { type: 'ack' }>) {
     const pending = this.d.state.data.online.pending.find(p => p.id === m.id);
     if (!pending && !this.moneyWaiters.has(m.id)) return false;
-    if (!m.ok && m.reason === 'offline') return true;             // undecided on the server: kept, sent again at the next connection
+    if (!m.ok && m.reason === 'offline') {                        // undecided on the server (it could not reach its ledger): kept, and the same id goes again
+      // a little later on this connection (1.0.1: it used to wait for the next connection while the sheet said « en attente »), then at the next one
+      const n = (this.moneyRetries.get(m.id) ?? 0) + 1, gen = this.generation;
+      this.moneyRetries.set(m.id, n);
+      if (pending && n <= MONEY_RETRIES) window.setTimeout(() => { if (gen === this.generation && this.d.state.data.online.pending.some(x => x.id === pending.id)) this.sendMoney(pending); }, 1_500 * n);
+      return true;
+    }
+    this.moneyRetries.delete(m.id);
     const r = settleOnline(this.d.state, m.id, m.ok ? { ok: true, ...(typeof m.balance === 'number' ? { balance: m.balance } : {}) } : { ok: false });
     if (r !== 'none' || m.ok) this.d.saveNow();
     const out: Outcome<{ op: LedgerOp }> = m.ok ? (m.op ? { ok: true, op: m.op } : this.no('invalid')) : this.no(m.reason);
@@ -451,7 +462,7 @@ export class OnlineAccount implements OnlineApi {
   }
   private stopSocket() {
     this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); clearInterval(this.homeTimer); clearTimeout(this.backlogT);
-    this.backlog = []; this.sentAt = [];                         // what was waiting is sent again from the outboxes at the next welcome
+    this.backlog = []; this.sentAt = []; this.moneyRetries.clear();   // what was waiting is sent again from the outboxes at the next welcome
     this.retry = this.handshake = this.heartbeat = this.homeTimer = 0; this.live = false;
     if (this.socket) { this.socket.onclose = null; try { this.socket.close(); } catch { /* closed */ } this.socket = null; }
     for (const [, w] of this.waiters) { clearTimeout(w.timer); for (const fn of w.list) fn(null); }

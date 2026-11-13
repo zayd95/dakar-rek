@@ -20,6 +20,8 @@ class FakeServer {
   received: Msg[] = [];
   /** Ids whose answer is lost once (applied, never answered), and refusals to give. */
   swallow = new Set<string>(); refuse = new Map<string, string>(); duplicateAnswers = new Set<string>(); refuseText = new Map<string, string>();
+  /** Ids answered « undecided » (`offline`: the server could not reach its ledger) this many times before being handled. */
+  undecided = new Map<string, number>();
   constructor() { openAccount(this.ledger, OTHER, Date.now()); }
   connect(ws: FakeWS) {
     const tag = ws.url.searchParams.get('key')!.slice(0, 16);
@@ -35,6 +37,7 @@ class FakeServer {
     this.received.push(m); this.times.push(Date.now());
     const ack = (x: object) => { if (m.id && this.swallow.delete(m.id)) return; ws.deliver({ type: 'ack', id: m.id, ...x }); if (m.id && this.duplicateAnswers.has(m.id)) ws.deliver({ type: 'ack', id: m.id, duplicate: true, ...x }); };
     if (m.id && this.refuse.has(m.id)) { ack({ ok: false, reason: this.refuse.get(m.id) }); return; }
+    if (m.id && (this.undecided.get(m.id) ?? 0) > 0) { this.undecided.set(m.id, this.undecided.get(m.id)! - 1); ack({ ok: false, reason: 'offline' }); return; }
     if (m.type === 'fund' || m.type === 'cashout' || m.type === 'pay') {
       const r = this.ledger.transaction(() => applyMoney(this.ledger, m.type === 'pay' ? { kind: 'pay', id: m.id!, tag: ws.tag, to: m.to, amount: m.amount, fund: m.fund, ...(m.req ? { req: m.req } : {}) } : { kind: m.type, id: m.id!, tag: ws.tag, amount: m.amount }, Date.now(), L));
       if (!r.ok) { ack({ ok: false, reason: r.reason }); return; }
@@ -311,6 +314,20 @@ describe('a send waiting for the server (1.0.1)', () => {
     expect(FakeWS.server.ledger.account(OTHER)?.balance).toBe(4_000);      // once
     expect(payCard(client, id)?.status).toBeUndefined(); expect(state.data.online.pending).toEqual([]); expect(state.data.wallet).toBe(6_000);
     expect(told).toEqual([]);                                              // someone was waiting: the sheet says it, not the notice
+  });
+
+  it('an « undecided » answer (the server could not reach its ledger) is not the end: the same id goes again on the same connection, applied once', async () => {
+    FakeWS.server = new FakeServer();
+    const { client, state } = setup({ wallet: 1_000 });
+    await online(client);
+    const fund = client.newId();
+    expect(await client.fund({ id: fund, amount: 1_000 })).toMatchObject({ ok: true });
+    const id = client.newId(); FakeWS.server.undecided.set(id, 2);
+    const r = await client.cashout({ id, amount: 600 });               // undecided twice, then applied: within the first wait, no reconnection
+    expect(r).toMatchObject({ ok: true, op: { id, kind: 'cashout', amount: 600 } });
+    expect(FakeWS.server.received.filter(m => m.id === id)).toHaveLength(3);
+    expect(state.data.wallet).toBe(600); expect(state.data.online).toMatchObject({ pending: [], balance: 400 });
+    expect(FakeWS.server.ledger.account(TAG)?.balance).toBe(400);      // once
   });
 
   it('after a reload nobody waits: the pending send is still shown waiting, is sent again, and its outcome is told through `moneySettled`', async () => {

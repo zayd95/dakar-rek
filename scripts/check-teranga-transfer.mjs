@@ -28,7 +28,9 @@ const OUT = process.argv[2] || 'proof/teranga-transfer';
 const PORT = Number(process.env.TERANGA_PORT || 8870);
 const TMP = `/tmp/claude-0/teranga/run-${Date.now()}`;
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
-if (!fs.existsSync(path.join(ROOT, 'dist/index.html'))) { console.error('No build: run `npm run build:online` first.'); process.exit(2); }
+/** The online build to serve (default dist/; TERANGA_DIST: another build, e.g. one made beside a dist/ that other checks are serving). */
+const DIST = process.env.TERANGA_DIST ? path.resolve(process.env.TERANGA_DIST) : path.join(ROOT, 'dist');
+if (!fs.existsSync(path.join(DIST, 'index.html'))) { console.error('No build: run `npm run build:online` first.'); process.exit(2); }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
@@ -40,7 +42,7 @@ async function startWorker(port, name, vars = []) {
   const dir = path.join(TMP, name); fs.mkdirSync(dir, { recursive: true });
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'wrangler.jsonc'), 'utf8').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n'));
   delete cfg.$schema; delete cfg.build;
-  cfg.main = path.join(ROOT, cfg.main); cfg.assets = { ...cfg.assets, directory: path.join(ROOT, 'dist') };
+  cfg.main = path.join(ROOT, cfg.main); cfg.assets = { ...cfg.assets, directory: DIST };
   fs.writeFileSync(path.join(dir, 'wrangler.json'), JSON.stringify(cfg, null, 2));
   const w = { base: `http://127.0.0.1:${port}/`, logs: '' };
   w.proc = spawn(process.execPath, [path.join(ROOT, 'node_modules/wrangler/bin/wrangler.js'), 'dev', '--local', '--config', path.join(dir, 'wrangler.json'), '--ip', '127.0.0.1', '--port', String(port),
@@ -334,8 +336,10 @@ try {
   const myCode = NB(await A.d(() => document.querySelector('#phone .mg-mycode')?.innerText ?? ''));
   await A.d(() => window.__dakar.phoneClose());
   for (const p of [A, B]) await p.d(([x, z, me]) => window.__dakar.place(x + (me ? 0 : 1.6), z, me ? Math.PI / 2 : -Math.PI / 2), [spot.x, spot.z, p === A]);
-  await A.until(() => window.__dakar.presence().visible >= 1 && window.__dakar.presence().selfMarker, null, 20000); await A.wait(800);
-  const pres = await A.d(() => { const p = window.__dakar.presence(); return { visible: p.visible, plates: p.plates, selfMarker: p.selfMarker }; });
+  // (Moussa's new place reaches Awa with his next presence move: until then his body may still stand where he was, out of the plates' 35 m)
+  await A.until(() => window.__dakar.presence().visible >= 1 && window.__dakar.presence().selfMarker && window.__dakar.presence().plates.shown >= 1, null, 30000); await A.wait(800);
+  const pres = await A.d(t => { const p = window.__dakar.presence(), me = window.__dakar.pos(), o = p.peers.find(x => x.tag === t);
+    return { visible: p.visible, plates: p.plates, selfMarker: p.selfMarker, me: [Math.round(me.x), Math.round(me.z)], him: o ? [Math.round(o.x), Math.round(o.z), o.space] : null }; }, B.tag);
   await A.d(() => { window.__dakar.portrait?.(4.2, 2.1, 0.8); window.__dakar.render?.(); }); await A.shot('7-awa-crown-and-nameplate'); await A.d(() => window.__dakar.portrait?.(0));
   check('7b. identity: no friend code in a conversation (header, list of items: none on the screen); it is still under « Ton code »; Moussa’s nameplate is drawn; a crown marks Awa’s own character on her screen only (a local sprite: nothing in what she publishes)',
     !anyCode && !/[0-9a-f]{16}/i.test(head.replace(/\s/g, '')) && /[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}/.test(myCode) && header.length < 40 && pres.visible >= 1 && pres.plates.shown >= 1 && pres.selfMarker === true
@@ -367,10 +371,11 @@ try {
   await D.until(i => !!document.querySelector(`#phone [data-key="${i}"] [data-do="cashout"]`), pay5, 20000);
   const card5 = await D.card(pay5);
   await D.tap(`#phone [data-key="${pay5}"] [data-do="cashout"]`);
-  const cashed5 = await D.until(w => window.__dakar.state.wallet === w, wD0 + 2000, 30000);
+  const cashed5 = await D.until(w => window.__dakar.state.wallet === w, wD0 + 2000, 60000);
+  const after5 = { card: await D.card(pay5), pending: await D.pending(), said: (await D.said()).slice(-4), wallet: await D.wallet(), wD0, server: (F.logs.match(/social-[a-z-]+[^\n]{0,160}/g) ?? []).slice(-4) };
   check('8b. at Moussa’s next connection his account asks the ledger: the card (from the ledger’s own row, the same id), the notice, the unread count and the balance are there, once; « Retirer » puts exactly 2 000 F in his wallet; Awa’s total −2 000 F',
     mended && accD.balance === 2000 && accD.unread === 1 && itemsD.length === 1 && itemsD[0].id === pay5 && itemsD[0].amount === 2000 && /2 000 F reçus/.test(card5 ?? '') && cashed5 && (await total(C)) === tC0 - 2000,
-    JSON.stringify({ mended, accD, itemsD, card5, cashed5 }));
+    JSON.stringify({ mended, accD, itemsD, card5, cashed5, after5 }));
   await D.d(() => window.__dakar.phoneClose()); await D.page.close(); await D.open(); await sleep(2500);
   const itemsD2 = (await D.items(C.tag)).filter(i => i.k === 'pay'), saidD2 = await D.said();
   check('8c. and only once: another reconnect brings no second card and no second notice; nothing pending; no page errors', itemsD2.length <= 1 && !saidD2.some(t => /reçus de Awa/.test(t)) && (await D.pending()).length === 0 && (await D.wallet()) === wD0 + 2000 && !C.errors.length && !D.errors.length,
