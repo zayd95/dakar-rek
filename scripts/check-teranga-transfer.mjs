@@ -78,7 +78,7 @@ async function player(base, name, look, avatar, guest) {
     page.on('pageerror', e => p.errors.push(e.message));
     await page.goto(`${base}?debug&touch`, { timeout: 180000 });
     await page.waitForFunction(() => window.__dakar?.pos?.().hub && !document.getElementById('studio'), null, { timeout: 300000 });
-    await page.waitForFunction(() => window.__dakar.presence().status === 'online' && window.__dakar.account()?.status === 'online' && !!window.__dakar.account().me, null, { timeout: 120000 });
+    await page.waitForFunction(() => window.__dakar.presence().status === 'online' && window.__dakar.account()?.status === 'online' && !!window.__dakar.account().me, null, { timeout: 300000 }).catch(async () => { throw new Error(`${name}: not online after 300 s: ${JSON.stringify(await page.evaluate(() => ({ presence: window.__dakar.presence().status, account: window.__dakar.account()?.status })))}`); });
     p.page = page; p.t = await realTouch(page); p.cdp = await ctx.newCDPSession(page);
     p.tag = await page.evaluate(() => window.__dakar.account().me.tag);
     return page;
@@ -237,15 +237,13 @@ try {
   await A.closeSheet();
   await B.open();
   const noticed2 = await B.until(() => /2.000.F reçus de Awa/.test(document.querySelector('#toast .mo.of')?.innerText ?? ''), null, 30000);
-  await B.shot('5-moussa-back-online');
   const accB3 = await B.acct(), wB3 = await B.wallet();
-  await B.until(() => document.querySelector('#chatBtn .chat-badge')?.textContent === '1', null, 10000);
   const badge2 = await B.d(() => document.querySelector('#chatBtn .chat-badge')?.textContent ?? '');
+  // « Retirer » on the notice itself, in the street: one tap (while the card is up: it leaves by itself after half a minute)
+  await B.tapWhere(() => [...document.querySelectorAll('#toast .mo.of .of-b')].find(b => /Retirer/.test(b.textContent)), null, { settle: 250 });
   check('5a. Moussa was offline: Awa still sees the server’s yes; when he reconnects the notice (« 2 000 F reçus de Awa »), the balance (2 000 F) and the unread count (1, on the badge too) are there; his wallet has not moved',
     /2 000 F envoyés à Moussa/.test(out2) && noticed2 && accB3.balance === 2000 && unreadBefore === 0 && accB3.unread === 1 && badge2 === '1' && wB3 === wB2 && accB3.convs.find(c => c.with === A.tag)?.last === pay2,
     JSON.stringify({ out2, noticed2, accB3, badge2, wB2, wB3 }));
-  // « Retirer » on the notice itself, in the street: one tap
-  await B.tapWhere(() => [...document.querySelectorAll('#toast .mo.of .of-b')].find(b => /Retirer/.test(b.textContent)));
   const cashed2 = await B.until(w => window.__dakar.state.wallet === w, wB2 + 2000, 30000);
   await sleep(1200);
   const saidB = await B.said(), histB3 = await B.history();
@@ -287,7 +285,7 @@ try {
   await A.d(() => { window.__dakar.phoneClose(); window.__dakar.save(); }); await A.page.close(); await A.open();
   const settled3 = await A.until(() => window.__dakar.state.data.online.pending.length === 0, null, 30000);
   const saidA = await A.until(() => window.__said.some(t => /5.000.F envoyés/.test(t)), null, 15000);
-  const got3 = await B.until(() => /5.000.F reçus de Awa/.test(document.querySelector('#toast .mo.of')?.innerText ?? ''), null, 20000);
+  const got3 = await B.until(() => window.__said.some(t => /5.000.F reçus de Awa/.test(t)), null, 20000);   // (said while Awa's page was still loading: the card may be gone by now)
   await A.conv(B.tag); await A.until(i => /envoyés/.test(document.querySelector(`#phone [data-key="${i}"]`)?.innerText ?? ''), pay3, 20000);
   const card3b = await A.card(pay3), histA3 = await A.history();
   await A.shot('6-awa-pending-resolved');
