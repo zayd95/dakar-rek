@@ -534,7 +534,7 @@ export class Hud {
     const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
       const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
     };
-    return this.momentCard('mo bc', card.icon, card.title, tx => {
+    return this.momentCard(card.action ? 'mo bc go' : 'mo bc', card.icon, card.title, tx => {
       add(tx, 'small', 'bc-sub', card.sub);
       const dl = add(tx, 'dl', 'bc-rows');
       for (const r of card.rows) {

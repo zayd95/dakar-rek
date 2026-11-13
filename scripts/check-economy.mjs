@@ -140,8 +140,8 @@ let savedJson = null;
   // jobs app: Tiak Tiak + the city's existing paid services, with pay, energy and distance; picking one sets the marker
   const appRows = await D(page, () => window.__dakar.jobsApp());
   await page.screenshot({ path: `${out}/desktop-jobs-app.png` });
-  const svc = appRows.filter(t => !/Gain estimé/.test(t));
-  check('jobs app lists Tiak Tiak offers and the city’s paid services', appRows.some(t => /Gain estimé/.test(t)) && svc.some(t => /Ranger|ranger le stock/.test(t) && /Boutique Diallo/.test(t)) && svc.some(t => /dossiers/.test(t)), `${appRows.length} rows: ${svc.slice(0, 4).join(' | ')}`);
+  const svc = appRows.filter(t => !/Gain estimé|Accepter/.test(t));      // 1.0.1: the offers are compact cards (route / kind / pay / « Accepter »); the tour keeps its own card
+  check('jobs app lists Tiak Tiak offers and the city’s paid services', appRows.filter(t => /→.*F\s*Accepter/.test(t)).length >= 3 && svc.some(t => /Ranger|ranger le stock/.test(t) && /Boutique Diallo/.test(t)) && svc.some(t => /dossiers/.test(t)), `${appRows.length} rows: ${svc.slice(0, 4).join(' | ')}`);
   check('service rows show pay, energy cost and distance', svc.length > 0 && svc.every(t => /\+\d[\d\s]*F/.test(t) && /énergie/.test(t) && /\d+ m/.test(t)), svc.filter(t => !(/énergie/.test(t) && /\d+ m/.test(t))).join(' | ') || svc[0]);
   const posBefore = await D(page, () => window.__dakar.pos());
   await pick(page, 'dossiers');
@@ -275,9 +275,10 @@ let savedJson = null;
   check('phone: save loaded with furniture', (await D(page, () => window.__dakar.furniture().owned.length)) === 6);
   await D(page, () => window.__dakar.jobsMenu()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/phone-jobs-app.png` });
-  await pick(page, /Maïga.*Garage/);      // accepted from the phone: go to the pick-up first
+  await page.locator('#modal.on .dcard.job').first().click(); await page.waitForTimeout(250);      // accepted from the phone (1.0.1: the district's rolling board): go to the pick-up first
   const pj = await D(page, () => window.__dakar.activeJob());
   check('phone: accepted from the jobs app → pick-up stage', pj?.stage === 'pickup', JSON.stringify(pj));
+  await D(page, () => { window.__dakar.cancelJob(); window.__dakar.acceptJob('pk_maiga_garage', false); });      // the rest of this part follows the Maïga's regular run (still a route of the game)
   const its = await D(page, () => window.__dakar.interactables());
   const maiga = its.find(i => /:maiga:/.test(i.id));
   await D(page, ([x, z]) => window.__dakar.place(x, z + 2, Math.PI), [maiga.x, maiga.z]);
