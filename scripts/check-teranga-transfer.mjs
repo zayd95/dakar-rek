@@ -316,7 +316,7 @@ try {
 
   // ------------------------------------------------------------------ 7. the chat button, the proximity talk, identity
   await A.d(() => window.__dakar.phoneClose()); await A.wait(600);
-  await A.t.tap('#chatBtn');
+  await A.tap('#chatBtn', { settle: 1500 });                                   // (once it stands where the HUD puts it after the phone closed)
   const inbox = await A.until(() => window.__dakar.phoneInfo().open && window.__dakar.phoneInfo().screen === 'messages' && !window.__dakar.phoneInfo().arg, null, 15000);
   const panelClosed = await A.d(() => !document.getElementById('chatPanel')?.classList.contains('on'));
   const nearRow = NB(await A.d(() => document.querySelector('#phone .mg-near-go')?.innerText ?? ''));
