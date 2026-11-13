@@ -1,41 +1,39 @@
-# Grand Camp 5 contre 5: proposed stake rules (for the owner's approval)
+# Grand Camp: player-organized matches (rules set by the owner)
 
-Status: **proposal, not implemented.** The brief asks for explicit rules before any pooled stake exists. Until the owner approves this page, organized Grand Camp matches are built and tested with the stake switched off (a match costs nothing and pays nothing). All money here is the game's fictional F; nothing is bought or cashed out for real money.
+Status: **rules decided by the owner on 13 November 2026; not yet implemented.** They replace the earlier proposal (fixed 1 000 F stake, five paid matches a day). All money here is the game's fictional F; nothing is bought or cashed out for real money.
 
-## The stake
+## What the organizer decides
 
-- Fixed at 1 000 F per player. The organizer cannot change it. Ten players make a pot of 10 000 F.
-- A player's 1 000 F is taken when they press « Prêt », not when they are invited or when they join the lobby. Pressing « Prêt » again (not ready) gives it back at once.
-- The stake is held by the server (the same account that holds Teranga Money), never by a player. A player who does not have 1 000 F cannot be ready and is told why.
-- A player can hold one stake at a time: one lobby, one match.
+- **Entry fee.** 1 000 F by default. Shortcuts: Gratuit, 500 F, 1 000 F, 2 500 F, 5 000 F, or any whole amount typed in, 0 F included (a free match).
+- **Participants.** 6, 10 or 14 players (3, 5 or 7 a side), within what the football mode supports.
+- **Prize distribution.** « Équipe gagnante — partage égal » or « Un seul gagnant ».
+- **Public or private.** Open to everyone nearby, or by invitation to friends.
 
-## Before kick-off
+The prize pool is the sum of the entry fees actually collected, nothing else. With ten players at 1 000 F: pool 10 000 F, 2 000 F per winner under equal split. No commission, no fixed prize, no daily cap on paid matches.
 
-- The match starts only when ten players are ready, five a side.
-- Anyone who leaves the lobby, is removed by the organizer or loses the connection before kick-off gets their stake back.
-- If the organizer leaves, the lobby passes to the longest-present player. If the lobby empties or is not full 10 minutes after it opened, it closes and every stake is returned.
+## Joining
 
-## Settlement
+- Before accepting, a player sees the entry fee, the pool if the match fills, the distribution and whether it is public or private.
+- The fee is taken when the player presses « Prêt » and given back at once if they un-ready, leave, are removed or lose the connection before kick-off.
+- The match starts when every place is filled and ready, the two teams equal.
 
-- Win: the five winners share the pot equally, 2 000 F each (their own 1 000 F and 1 000 F won). The losers get nothing back.
-- Draw at full time: every stake is returned. No extra time, no penalties in 1.0.1.
-- The server settles each match once, under the match's id; a repeat of the same settlement changes nothing. A player sees the result only after the server has written it.
+## Cancelling and leaving
 
-## Disconnections during a match
+- Cancelled before kick-off (by the organizer, or because the lobby empties): every fee is returned.
+- After kick-off the agreed rules apply. A player who drops has 60 seconds to come back to the same team. A player who does not come back follows their team's result: paid if it wins, not refunded if it loses.
+- Draw at full time: every fee is returned.
+- If the server has to stop a match, every fee is returned.
 
-- A player who drops has 60 seconds to come back to the same team; the team plays one short meanwhile.
-- A player who does not come back keeps their place in the result: their stake is lost if the team loses and paid if it wins. Leaving never recovers a stake and never forfeits a win for the others.
-- If a team falls below three connected players for more than 60 seconds, the match is abandoned and every stake is returned. The same applies if the server stops the match for any reason.
+## Technical safeguards (the only restrictions)
 
-## Abuse limits
+- No negative balance: a player who cannot cover the fee cannot be ready, and is told why.
+- The fee and the distribution cannot be changed once another player has joined; to change them the organizer cancels and opens a new match.
+- No money from nowhere: payouts always add up to exactly the fees collected. With equal teams both distributions divide exactly (each winner gets twice the fee, or one winner gets the whole pool), so nothing is rounded.
+- No duplicate payout: the server holds the pool and settles each match once under its id; a repeated settlement changes nothing. A player sees a result only after the server has written it.
+- One pending fee per player at a time (one lobby, one match).
 
-- At most five staked matches per player per economic day.
-- The same ten players can settle at most three staked matches together per economic day; after that their matches are friendly (no stake).
-- A stake cannot be sent, lent or paid by another player.
-- Abandoned matches are counted per player; three abandoned in a day by leaving turns staked play off for that player until the next day.
+## Points that need the owner's word
 
-## What the owner is asked
-
-1. Approve, change or refuse these rules. If refused, organized matches ship in 1.0.1 without stakes.
-2. Winner payout: equal split (proposed) or something else.
-3. The daily limits above (five matches, three with the same ten).
+1. **« Un seul gagnant » in a team match.** Proposed: the top scorer of the winning team takes the whole pool; if two are level, the one who scored first. Say if another rule is meant.
+2. **« Top three ».** A football match has two sides, so there is no third place to pay. It will be offered when a mode with three or more ranked sides exists (a tournament); it is not in 1.0.1.
+3. **Leaving after kick-off.** The owner's text says "apply the agreed match rules"; the 60-second return and "follows the team's result" above are the proposed reading.
