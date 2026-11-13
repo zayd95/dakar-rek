@@ -39,7 +39,12 @@ export function streakNote(c: Credit | null, run: number): { v: string; note?: s
   if (c.counted) return { v: runLabel(c.run), note: c.graceUsed ? 'Jour actif compté (un jour manqué pardonné)' : c.fresh && c.run === 1 ? 'Premier jour actif' : 'Jour actif compté' };
   return { v: runLabel(run), note: c.why === 'already' ? 'Aujourd’hui est déjà compté' : 'Compté pour aujourd’hui un peu plus tard' };
 }
-export interface Card { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] }
+export interface Card {
+  icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[];
+  /** One thing to do next, in one tap (the next delivery nearby): a line and a button on the card. */
+  action?: CardAction;
+}
+export interface CardAction { label: string; cta: string; onPick: () => void }
 export function workCard(w: WorkDone, c: Credit | null, run: number, extra: Card['rows'] = []): Card {
   const st = streakNote(c, run), rows: Card['rows'] = [{ k: 'Payé', v: fmt(w.paid), d: `+${fmt(w.paid)}`, tone: 'up' }, ...extra];
   if (w.ms > 0) rows.push({ k: 'Durée', v: duration(w.ms) });

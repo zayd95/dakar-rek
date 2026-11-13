@@ -24,7 +24,9 @@ const chip = (text: string, cls = '') => node('span', 'chip' + (cls ? ' ' + cls 
 export function iconOf(frag: string): string {
   const f = frag.toLowerCase();
   return f.includes('bank') ? '🏦' : f.includes('cafe') ? '☕' : f.includes('gargote') ? '🍲' : f.includes('dibiterie') ? '🍢' : f.includes('maiga') ? '🥬'
-    : f.includes('garage') ? '🔧' : f.includes('salon') ? '💇' : f.includes('square') ? '♟️' : f.includes('boutique') ? '🛍️' : f.includes('market') ? '🧺' : '📍';
+    : f.includes('garage') ? '🔧' : f.includes('salon') ? '💇' : f.includes('square') ? '♟️' : f.includes('boutique') ? '🛍️' : f.includes('fish') ? '🐟' : f.includes('market') ? '🧺'
+    : f.includes('restaurant') ? '🍽️' : f.includes('boulangerie') ? '🥖' : f.includes('juice') ? '🧃' : f.includes('mall') ? '🛍️' : f.includes('craft') ? '🧺' : f.includes('port') ? '⛵'
+    : f.includes('gym') ? '🏋️' : f.includes('station') ? '🚌' : f.includes('filaos') ? '🏠' : '📍';
 }
 
 /** One delivery to pick: the route (from, then one or two stops), the reward on the right, a few chips, one yellow action. */
@@ -50,6 +52,21 @@ export function routeCard(o: {
   if (!o.live) b.append(node('span', 'go ui-btn', o.blocked ? '' : o.cta + ' ›'));
   if (o.blocked) b.setAttribute('aria-disabled', 'true');
   else if (!o.live) b.addEventListener('click', o.onPick);
+  return b;
+}
+
+/**
+ * One offer of the board, compact (1.0.1): four things and nothing else — the route (« Plateau → Mermoz »), the kind of delivery (« Documents »), the pay
+ * (« 3 500 F ») and the button (« Accepter »). The whole card is the button; a run that cannot be taken now says why in place of the button's word.
+ */
+export function jobCard(o: { route: string; title: string; type: string; pay: string; cta: string; blocked?: string; onPick: () => void }): HTMLButtonElement {
+  const b = node('button', 'item dcard job' + (o.blocked ? ' dis' : ''));
+  b.type = 'button'; b.dataset.route = o.route;
+  const face = node('div', 'face ui-card');
+  face.append(node('b', 'jc-route', o.title), node('span', 'jc-type', o.type), node('em', 'jc-pay ui-price gain', o.pay), node('span', 'jc-go ui-btn', o.blocked ?? o.cta));
+  b.append(face);
+  if (o.blocked) b.setAttribute('aria-disabled', 'true');
+  else b.addEventListener('click', o.onPick);
   return b;
 }
 

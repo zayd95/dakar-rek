@@ -529,7 +529,7 @@ export class Hud {
    * the action button or the joystick); it replaces the card on screen and the moments that follow wait for it to go;
    * it stays longer (16–24 s).
    */
-  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
+  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[]; action?: { label: string; cta: string; onPick: () => void } },
     ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
     const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
       const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
@@ -549,6 +549,12 @@ export class Hud {
         const nx = add(tx, 'div', 'bc-next');
         add(nx, 'b', '', 'Ensuite');
         for (const l of card.next) add(nx, 'span', '', l);
+      }
+      if (card.action) {                                                             // one tap: the action runs, then the card goes (its own click)
+        const a = card.action, go = add(tx, 'button', 'bc-go');
+        go.type = 'button';
+        add(go, 'span', '', a.label); add(go, 'b', '', `${a.cta} ›`);
+        go.addEventListener('click', () => a.onPick());
       }
     }, ms);
   }

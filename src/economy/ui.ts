@@ -8,9 +8,10 @@ import type { ShopDetail } from '../world/shopKit';
 import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { ROUTES, acceptJob, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { ROUTES, acceptJob, board, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { TIAK_POINTS, TIAK_TYPE, districtOffers, limitFactor, routeMetres, titleOf, titlesOf, typeOf, type TiakOfferInfo } from './tiakOffers';
 import { planTrip } from '../road/graph';
-import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
+import { cards, jobCard, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
 import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
 import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
 import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
@@ -32,7 +33,7 @@ import { JOB, jobBadge } from '../ui/jobMarks';
  * the « Affaires » (ventures, hourly income, polyvalence) and the phone hooks (ledger, openJobs, openHome, openBusiness,
  * wealth). Menus use hud.openMenu. Everything is saved on this device only.
  */
-export const JOBS_ACTION: Action = { id: 'tiak', label: 'Livraisons Tiak Tiak', detail: 'Porter des commandes dans le quartier', seconds: 0, special: 'jobs' };
+export const JOBS_ACTION: Action = { id: 'tiak', label: 'Livraisons Tiak Tiak', detail: 'Porter des commandes, ici et vers les autres quartiers', seconds: 0, special: 'jobs' };
 export const SHOP_ACTION: Action = { id: 'meubles', label: 'Voir les meubles', detail: 'Livrés dans ta chambre', seconds: 0, special: 'shop' };
 /** At the Banque Teranga agencies: the ventures (same menu as the phone app). */
 export const BUSINESS_ACTION: Action = { id: 'affaires', label: 'Investir dans une affaire', detail: 'Bana-bana, kiosque, boutique… jusqu’à la grande entreprise', seconds: 0, special: 'business' };
@@ -50,6 +51,9 @@ export interface EconomyDeps {
   save(): boolean;
   /** Set (or clear) the city's walking marker — main.ts `destination`, the one "Les coins du quartier" uses. */
   walkTo(placeId: string | null): void;
+  /** The city's day and hour (the board of offers is drawn for one district and one city hour, as the VTC requests are). */
+  day?(): number;
+  hour?(): number;
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
@@ -97,6 +101,8 @@ export class Economy {
   private bizT = 0;
   /** The first payout of a session gets a toast; the next ones only tint the wallet. */
   private paidOnce = false;
+  /** The last runs taken from the board (their ids): skipped by the board, so the next of the hour's stream takes their place. */
+  private taken: string[] = [];
 
   constructor(private d: EconomyDeps) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.55, 40), this.ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
@@ -133,9 +139,15 @@ export class Economy {
   /** Add the delivery action at pick-up points and, in Pikine, the furniture shop. Called after each hub build. */
   decorateHub(world: HubWorld, detail?: ShopDetail) {
     this.world = world;
-    for (const frag of pickupFrags(world.id)) {
+    // a delivery point that is an address and not a counter (Mermoz: the bakery, the Filaos' gate): a silent place of its own, for the marker and the directions
+    for (const p of TIAK_POINTS[world.id]) {
+      if (p.vtc && !this.placeOf(p.frag)) world.interactables.push({ id: `${world.id}${p.frag}`, name: p.name, kind: 'actions', x: p.x, z: p.z, radius: -1, actions: [] });
+    }
+    // the board at a counter: where the fixed routes leave from, and every place that cooks (a courier's usual stop), in each district
+    const counters = new Set([...ROUTES.filter(r => r.hub === world.id).map(r => r.from.frag), ...TIAK_POINTS[world.id].filter(p => p.kind === 'food' && !p.vtc).map(p => p.frag)]);
+    for (const frag of counters) {
       const it = this.placeOf(frag);
-      if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
+      if (it && it.kind === 'actions' && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
     }
     for (const t of toursIn(world.id)) {                                 // a tour leaves from its own pick-up point too
       const it = this.placeOf(t.pickup.frag);
@@ -150,6 +162,7 @@ export class Economy {
     return w?.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(frag));
   }
   private distance(r: Route): number | null {
+    const m = routeMetres(r); if (m !== null) return m;                                    // a run of the board: the way its pay was counted on
     if (r.toHub && r.toHub !== r.hub) return planTrip(r.hub, r.toHub)?.metres ?? 2000;     // between districts: the roads' length
     const a = this.placeOf(r.from.frag), b = this.placeOf(r.to.frag);
     return a && b && this.world?.id === r.hub ? Math.hypot(a.x - b.x, a.z - b.z) : null;
@@ -166,8 +179,8 @@ export class Economy {
 
   // ---------------------------------------------------------------- deliveries and the jobs app
   /**
-   * Jobs. At a pick-up point (its "Livraisons Tiak Tiak" action): the deliveries leaving from there, parcel in hand.
-   * From the phone / wallet: Tiak Tiak offers of the hub, then the city's existing paid services (any place action with
+   * Jobs. At a pick-up point (its "Livraisons Tiak Tiak" action): the deliveries leaving from there, parcel in hand, then the district's board up to three choices.
+   * From the phone / wallet: the district's rolling board (src/economy/tiakOffers.ts, every district), then the city's existing paid services (any place action with
    * a `gain`: Soumbédioune, the mall, the bank, Boutique Diallo, the market, the garage…). Picking a service only sets the
    * city's walking marker; the work itself is done at the place, as before (no teleport).
    */
@@ -179,7 +192,6 @@ export class Economy {
     const deck = cards();
     const away = (x: number, z: number) => Math.round(Math.hypot(x - this.here.x, z - this.here.z));
     const spotOf = (p: Place): Spot => ({ icon: iconOf(p.frag), name: shortName(p.name) });
-    const energy = `⚡ ${ECONOMY.tiak.fatigue.energie}`.replace('-', '−');
     const first = (s.data.counters.livraisons ?? 0) === 0;
     if (a?.tour) {
       const c = currentTour(s);
@@ -195,17 +207,24 @@ export class Economy {
       deck.append(routeCard({ from: r ? spotOf(r.from) : { icon: '📦', name: '?' }, to: r ? [spotOf(r.to)] : [], reward: '+' + fcfa(payNow(s, a.pay)), chips: [a.stage === 'pickup' ? '📦 Colis à prendre' : left === Infinity ? '' : left >= 0 ? `⏱ ${clock(left)}` : '⏰ En retard'].filter(Boolean), cta: '', live: true, onPick: () => {} }));
       deck.append(actionCard('✖', 'Annuler', () => { this.cancel(); this.d.hud.closeModal(); }));
     } else {
-      let badge = first;
-      for (const r of offers(s, hub).filter(r => !fromHere || fromHere(r))) {
-        const why = whyNot(s, r), dist = this.distance(r), start = this.placeOf(r.from.frag);
-        const chips = [dist !== null ? `📏 ${Math.round(dist)} m` : '', energy, !fromHere && start ? `🚶 ${away(start.x, start.z)} m` : ''].filter(Boolean);
-        deck.append(routeCard({
-          from: spotOf(r.from), to: [spotOf(r.to)], reward: '+' + fcfa(payNow(s, routePay(r))), chips, cta: fromHere ? 'Livrer' : 'Y aller', blocked: why ?? undefined,
-          badge: r.needFlag ? '★ Client fidèle' : badge && !why ? '👍 Pour débuter' : undefined,
-          onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); },
+      // compact cards: the route, the kind of delivery, the pay, one button. At a counter: what leaves from here first (parcel in hand at once), then the
+      // district's board up to three choices; on the phone: the district's board (every run leaves from this district).
+      const key = (r: Route) => `${r.from.frag}>${deliveryHub(r)}${r.to.frag}`, seen = new Set<string>(), list: { r: Route; here: boolean }[] = [];
+      const add = (r: Route, here: boolean) => { if (!seen.has(key(r))) { seen.add(key(r)); list.push({ r, here }); } };
+      const rolling = this.boardNow(hub);
+      if (fromHere) {
+        for (const r of [...offers(s, hub), ...rolling].filter(fromHere)) add(r, true);
+        const tours = toursAt(hub, at!.id).length;
+        for (const r of rolling) { if (list.length + tours >= 3) break; add(r, false); }
+      } else for (const r of rolling) add(r, false);
+      const titles = titlesOf(list.map(o => o.r));
+      list.forEach(({ r, here }, i) => {
+        const why = whyNot(s, r);
+        deck.append(jobCard({
+          route: r.id, title: titles[i], type: (r.needFlag ? '★ ' : '') + TIAK_TYPE[typeOf(r)], pay: fcfa(payNow(s, routePay(r))), cta: 'Accepter', blocked: why ?? undefined,
+          onPick: () => { this.d.hud.closeModal(); this.accept(r.id, here); },
         }));
-        if (!r.needFlag) badge = false;
-      }
+      });
       // the optional tour: two clients, the courier picks who is served first (at its pick-up point, or as a marker from the phone)
       for (const t of fromHere ? toursAt(hub, at!.id) : toursIn(hub)) {
         const why = whyNotTour(s, t), pays = paysOf(s, t), start = this.placeOf(t.pickup.frag);
@@ -234,17 +253,29 @@ export class Economy {
         });
       }
     }
-    if (!deck.children.length && !items.length) deck.append(tip('📵', 'Pas de Tiak Tiak ici (Pikine et Plateau).'));
+    if (!deck.children.length && !items.length) deck.append(tip('📵', 'Rien pour l’instant. Reviens dans un moment.'));
     this.d.menu();
     const hint = fromHere && first && !a && toursAt(hub, at!.id).length ? '👍 1re fois ? Commence simple.' : '';
     this.d.hud.openMenu(fromHere ? 'Tiak Tiak' : 'Petits boulots', hint, items, '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
   }
 
+  /** The city's day and hour the board is drawn for. */
+  private clock() { return { day: Math.floor(this.d.day?.() ?? 0), hour: Math.floor(this.d.hour?.() ?? 0) }; }
+  /** The board of a district now: the recommended run once unlocked, then this hour's rolling offers, the runs just taken replaced. */
+  private boardNow(hub: HubId): Route[] { const c = this.clock(); return board(this.s, hub, c.day, c.hour, new Set(this.taken)); }
+  /**
+   * The rolling offers of a district now, with where each starts and ends (hub-local metres): for another screen (the phone's map, « Autour de moi »).
+   * Read-only; `accept(id, false)` takes one (the courier then goes to its pick-up point).
+   */
+  offersOf(hub: HubId): TiakOfferInfo[] { const c = this.clock(); return districtOffers(hub, c.day, c.hour, new Set(this.taken)); }
+  /** The time a run allows for its delivery leg (an express allows less). */
+  private limitOf(r: Route) { return Math.round(deliveryLimitMs(this.distance(r) ?? 120) * limitFactor(r)); }
+
   accept(routeId: string, atPickup: boolean) {
     const r = routeById(routeId); if (!r) return null;
-    const dist = this.distance(r) ?? 120;
-    const job = acceptJob(this.s, routeId, atPickup, deliveryLimitMs(dist));
+    const job = acceptJob(this.s, routeId, atPickup, this.limitOf(r));
     if (!job) { this.d.hud.toast(whyNot(this.s, r) ?? 'Livraison indisponible'); return null; }
+    if (r.gen) { this.taken.push(r.id); if (this.taken.length > 2) this.taken.shift(); }
     this.d.hud.toast(atPickup ? `Colis en main → ${r.to.name} · ${clock(job.limitMs)} pour livrer` : `Va récupérer le colis : ${r.from.name}`);
     this.d.save();
     return job;
@@ -336,10 +367,21 @@ export class Economy {
     if (!c) return null;
     this.unmark();
     // the card says what was done (paid above, once): what, where, how long, how far, the run of days, how it went
-    streak.done(`tiak:${runId}`, { kind: 'tiak', title: c.late ? 'Livré en retard' : 'Livraison réussie', from: c.route.from.name, to: c.route.to.name, paid: c.paid, late: c.late });
+    // … and the next run nearby, taken in one tap: the board of the district the courier is in now, the pick-up nearest first
+    const next = this.nextNearby(c.route);
+    streak.done(`tiak:${runId}`, { kind: 'tiak', title: c.late ? 'Livré en retard' : 'Livraison réussie', from: c.route.from.name, to: c.route.to.name, paid: c.paid, late: c.late }, [],
+      next ? { label: `${titleOf(next)} · ${TIAK_TYPE[typeOf(next)]} · ${fcfa(payNow(this.s, routePay(next)))}`, cta: 'Accepter', onPick: () => { this.accept(next.id, false); } } : undefined);
     if (c.newClient) this.d.hud.toast(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
     this.d.save();
     return c;
+  }
+
+  /** The offer to propose after a delivery: on the board of the loaded district, not the run just done, its pick-up the nearest to the courier. */
+  private nextNearby(done: Route): Route | null {
+    const w = this.world; if (!w) return null;
+    const list = this.boardNow(w.id).filter(r => r.id !== done.id && !whyNot(this.s, r));
+    const away = (r: Route) => { const it = this.placeOf(r.from.frag); return it ? Math.hypot(it.x - this.here.x, it.z - this.here.z) : Infinity; };
+    return list.sort((p, q) => away(p) - away(q))[0] ?? null;
   }
 
   private unmark() { if (this.markedFor) { this.d.walkTo(null); this.markedFor = null; } }
@@ -375,8 +417,7 @@ export class Economy {
       if (playing && !inside && d < ECONOMY.tiak.arriveRadius) {
         if (tc) { if (tc.run.departed) this.finishStop(a!.runId); }
         else if (a!.stage === 'pickup') {
-          const dist = this.distance(r!) ?? 120;
-          pickUp(s, deliveryLimitMs(dist));
+          pickUp(s, this.limitOf(r!));
           this.d.hud.toast(`Colis récupéré ✓ → ${r!.to.name} · ${clock(s.data.jobs.active!.limitMs)} pour livrer`);
           this.d.save();
         } else this.finish(a!.runId);
@@ -604,12 +645,17 @@ export class Economy {
       jobs: () => (this.world ? offers(s, this.world.id).map(r => ({ id: r.id, from: r.from.name, to: r.to.name, pay: ECONOMY.tiak.pay[r.id] ?? 0, payNow: payNow(s, routePay(r)), recommended: !!r.needFlag, blocked: whyNot(s, r) })) : []),
       /** What a place's action pays if done now (variety bonus included). */
       servicePay: (placeId: string, actionId: string) => { const it = this.world?.interactables.find(i => i.id === placeId), a = it?.actions.find(x => x.id === actionId); return it && a ? this.workPreview(a, it) : null; },
+      /** The board of this district now (what the phone's « Tiak Tiak » lists), and any district's rolling offers with their positions. */
+      board: () => (this.world ? this.boardNow(this.world.id).map((r, i, all) => ({ id: r.id, title: titlesOf(all)[i], type: TIAK_TYPE[typeOf(r)], pay: routePay(r), payNow: payNow(s, routePay(r)), toHub: deliveryHub(r), from: r.from.name, to: r.to.name, fromPlace: this.placeOf(r.from.frag)?.id ?? null, metres: this.distance(r), limitMs: this.limitOf(r), recommended: !!r.needFlag, blocked: whyNot(s, r) })) : []),
+      tiakOffers: (hub?: HubId) => this.offersOf(hub ?? this.world?.id ?? (s.data.hub as HubId)),
+      /** Every delivery point of this district against the places built here (null: not found). */
+      tiakPoints: () => (this.world ? TIAK_POINTS[this.world.id].map(p => { const it = this.placeOf(p.frag); return { id: p.id, name: p.name, place: it ? { id: it.id, x: it.x, z: it.z } : null, x: p.x, z: p.z }; }) : []),
       acceptJob: (id: string, atPickup = true) => { const j = this.accept(id, atPickup); return j ? { ...j } : null; },
       activeJob: () => (s.data.jobs.active ? { ...s.data.jobs.active } : null),
       /** Simulate arrival (pick-up then drop-off); with a run id, hands over that run only. */
       completeJob: (runId?: string) => {
         const a = s.data.jobs.active;
-        if (!runId && a && a.stage === 'pickup') { const r = routeById(a.routeId); pickUp(s, deliveryLimitMs(r ? this.distance(r) ?? 120 : 120)); }
+        if (!runId && a && a.stage === 'pickup') { const r = routeById(a.routeId); pickUp(s, r ? this.limitOf(r) : deliveryLimitMs(120)); }
         const id = runId ?? s.data.jobs.active?.runId;
         const c = id ? this.finish(id) : null;
         return c ? { runId: c.runId, paid: c.paid, late: c.late, newClient: c.newClient } : null;
