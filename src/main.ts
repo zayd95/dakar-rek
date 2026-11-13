@@ -226,9 +226,10 @@ else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
 /** What the account says at a connection made while the city is still loading (money received while away, a send answered) waits for the street: a card shown behind the loading screen would be gone before anyone saw it. */
 const onceInTheStreet = (fn: () => void) => { if (started) fn(); else void whenStarted.then(() => setTimeout(fn, 1200)); };
 startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
+  let op: string | undefined;                                                         // one withdrawal per notice, however it is tapped (the id is made once)
   hud.toast(pay.text);                                                                // (the Notifications list keeps it; read out for screen readers)
   hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [
-    { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { void withdrawReceived(pay).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
+    { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { op ??= online?.newId(); void withdrawReceived(pay, op).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
     { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
   ] }, 30000);
 }));

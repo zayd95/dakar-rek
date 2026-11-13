@@ -41,7 +41,7 @@ export const isSharedHome = (space: string) => /^home:[0-9a-f]{16}$/.test(space)
  * 1.0.1 — nameplates that do not pile into clutter when several players stand together. A plate is its box on screen (px: `x` its centre, `y` its
  * bottom edge). Nearest first: a plate that would cover one already placed is raised one row, then a second; if it still covers one it is not shown;
  * and never more than `max` plates at once. Returns, per plate, the rows it is raised by (0, 1, 2) or null (hidden). Pure: tested and timed in
- * tests/nameplates.test.ts (14 plates, the most bodies drawn: a few microseconds a frame).
+ * tests/teranga101.test.ts (14 plates piled on one spot, the most bodies drawn: about 0.1 ms a frame measured on a heavily loaded test machine).
  */
 export interface Plate { x: number; y: number; w: number; h: number }
 export const PLATES_MAX = 8, PLATE_ROWS = 3, PLATE_GAP = 3;
