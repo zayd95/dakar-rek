@@ -297,7 +297,7 @@ function listView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
     setHtml(st, statusHtml(o));
     // the proximity talk (bubbles over the characters, heard around you): one row, where the HUD's chat button used to lead
     const nu = messagesDeps.nearUnread?.() ?? 0;
-    setHtml(nearRow, messagesDeps.openNear ? `<button type="button" class="mg-conv mg-near-go" data-act="near" aria-label="${esc(`À proximité : parler aux joueurs autour de toi${nu ? `, ${nu} non lu${nu > 1 ? 's' : ''}` : ''}`)}">
+    setHtml(nearRow, messagesDeps.openNear ? `<button type="button" class="mg-near-go" data-act="near" aria-label="${esc(`À proximité : parler aux joueurs autour de toi${nu ? `, ${nu} non lu${nu > 1 ? 's' : ''}` : ''}`)}">
         <i class="mg-av mg-av-near" aria-hidden="true">📣</i><span class="mg-conv-tx"><span class="mg-conv-top"><b>À proximité</b></span>
           <span class="mg-conv-bot"><small>Parler à voix haute aux joueurs autour de toi</small>${nu ? `<em class="mg-unread">${nu > 99 ? '99+' : nu}</em>` : ''}</span></span></button>` : '');
     setHtml(list, cs.length ? cs.map(c => `<button type="button" class="mg-conv${c.blocked ? ' blocked' : ''}${c.unread ? ' unread' : ''}" role="listitem" data-tag="${esc(c.with)}" aria-label="${esc(`${c.name}${c.unread ? `, ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`)}">
