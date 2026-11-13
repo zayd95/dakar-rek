@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, OnlinePending, OnlineSave, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, OnlinePending, OnlineSave, MonthlyLease, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -362,6 +362,8 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
     if (typeof x.basis === 'number' && x.basis > 0) asset.basis = money(x.basis);
     if (asset.how === 'rented' && typeof x.rate === 'number' && x.rate > 0) asset.rate = money(x.rate);
     if (typeof x.home === 'string' && UID.test(x.home)) { asset.home = x.home; asset.at = placementOf(x.at); }
+    const lease = asset.how === 'rented' ? leaseOf(x.lease, playedMs) : null;
+    if (lease) { asset.lease = lease; delete asset.rate; }
     list.push(asset);
   }
   // furniture whose home is gone (or points at another piece of furniture) has nowhere to stand: it is dropped
@@ -370,12 +372,35 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
   if (!kept.some(x => x.spec === STARTER_HOME)) kept.unshift(starterRoom(nextSeq(kept), playedMs));
   const seq = Math.max(Math.floor(num(a.seq, 0)), nextSeq(kept) - 1);
   const home = typeof a.home === 'string' && kept.some(x => x.uid === a.home && !x.home) ? a.home : kept.find(x => x.spec === STARTER_HOME)!.uid;
-  return {
+  const out: AssetsState = {
     list: kept, seq, home, clockMs: clock(a.clockMs), payMs: clock(a.payMs),
     carryIn: clamp(num(a.carryIn, 0), 0, MONEY_MAX), carryOut: clamp(num(a.carryOut, 0), 0, MONEY_MAX),
     earned: money(num(a.earned, 0)), spent: money(num(a.spent, 0)), arrears: money(num(a.arrears, 0)),
     adUntil: clamp(num(a.adUntil, 0), 0, playedMs + 30 * 86_400_000),
   };
+  // 1.0.1, monthly contracts (src/economy/monthly.ts): what ended contracts left unpaid, and the keys of the last settlements. Absent in older saves.
+  if (num(a.owed, 0) > 0) out.owed = money(num(a.owed, 0));
+  if (Array.isArray(a.settled)) out.settled = (a.settled as unknown[]).filter((k): k is string => typeof k === 'string' && /^rent:a\d{1,9}:\d{1,6}$/.test(k)).slice(-32);
+  // a pack's pieces must still be furniture of that home
+  for (const h of kept) if (h.lease?.pack) { h.lease.pack = h.lease.pack.filter(u => kept.some(f => f.uid === u && f.home === h.uid)); if (!h.lease.pack.length) delete h.lease.pack; }
+  return out;
+}
+/** A monthly contract of a rented home (1.0.1): null when absent or malformed (the lease is then a per-day one, as before). */
+function leaseOf(v: unknown, playedMs: number): MonthlyLease | null {
+  if (!v || typeof v !== 'object') return null;
+  const x = v as Record<string, unknown>;
+  if (typeof x.start !== 'number' || !Number.isFinite(x.start) || x.start <= 0 || typeof x.rent !== 'number' || !(x.rent > 0)) return null;
+  const k = clamp(Math.floor(num(x.k, 0)), 0, 100_000), mode = x.mode === 'sublet' || x.mode === 'furnished' ? x.mode : 'live';
+  const L: MonthlyLease = {
+    start: x.start, k, rent: money(x.rent), charges: money(num(x.charges, 0)), mode,
+    acc: clamp(num(x.acc, 0), 0, MONEY_MAX), accAt: Math.max(x.start, num(x.accAt, x.start)), debt: money(num(x.debt, 0)), playAt: clamp(num(x.playAt, playedMs), 0, playedMs),
+  };
+  if (x.next === 'live' && mode !== 'live') L.next = 'live';
+  if (x.notice === true) L.notice = true;
+  if (Array.isArray(x.pack)) { const pack = [...new Set((x.pack as unknown[]).filter((u): u is string => typeof u === 'string' && UID.test(u)))].slice(0, 32); if (pack.length) L.pack = pack; }
+  const last = x.last as Record<string, unknown> | null;
+  if (last && typeof last === 'object') L.last = { k: clamp(Math.floor(num(last.k, 0)), 0, 100_000), occ: clamp(Math.round(num(last.occ, 0)), 0, 100), revenue: money(num(last.revenue, 0)), cost: money(num(last.cost, 0)) };
+  return L;
 }
 /** v3 / v4 → v5: the starter room, its furniture (stored; the game puts each piece back at its usual spot) and the ventures. */
 function assetsFromV4(business: unknown, furniture: string[], playedMs: number): AssetsState {

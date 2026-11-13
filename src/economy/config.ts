@@ -106,6 +106,34 @@ export const ECONOMY = {
     adSpace: { perDay: 25_000, boost: 0.1 },
   },
   /**
+   * Monthly contracts (1.0.1, src/economy/monthly.ts): a home rented by the ECONOMIC month (seven real days, src/economy/calendar.ts), which its
+   * tenant may sublet empty or furnished to a tenant of the city. The owner's balancing targets for the F2 of the Résidence Jàmm (gameplay numbers,
+   * not real-world estimates): at 80 % occupancy a furnished F2 nets 150 000 × 0,8 − 50 000 − 10 000 = 60 000 F a month, so the 300 000 F of
+   * furniture are paid back in five months (docs/release/BALANCE-1.0.1-housing.md).
+   */
+  monthly: {
+    /** The F2: rent and charges per month, what a tenant pays for it empty and furnished (at full occupancy), the price of the furnishing pack. */
+    f2: { rent: 50_000, charges: 10_000, sublet: 60_000, furnished: 150_000, pack: 300_000 },
+    /**
+     * The pack's pieces (catalogue ids, at their catalogue prices: 299 500 F; the rest is delivery and fitting). They are delivered to the home and
+     * set up room by room like any furniture (bed and wardrobe in the bedroom, sofa and table in the séjour, the kitchen table in the kitchen).
+     */
+    pack: ['lit_bois', 'armoire_metal', 'canape_wax', 'table_basse', 'salle_manger_simple', 'table_cuisine', 'lampe', 'plante'],
+    /**
+     * Tenant demand, drawn once per month from a seed (the player, the home, the month): a month in ten finds no tenant (0 %), the others are let
+     * 78–100 % of the month (89 % on average): 0,9 × 0,89 = 80 % on average, never guaranteed.
+     */
+    vacancy: 0.1, occMin: 78, occMax: 100,
+    /** After an absence at most this many months are settled at once; the older ones are skipped whole (no rent, no revenue: the contract slept). */
+    catchUpMonths: 4,
+    /** The landlord takes the keys back when this many months of rent and charges are unpaid; the debt stays owed. */
+    evictMonths: 2,
+    /** Homes one player may sublet at the same time. */
+    maxSublets: 2,
+    /** Played time between two batches of settlements (a device clock set forward cannot settle month after month without playing). */
+    minPlayMs: 30 * 60_000,
+  },
+  /**
    * Credit between people (src/economy/credit.ts): Pape Sarr (Sarr Auto, Pikine) finances a city car, Modou lets a customer pay a repair later.
    * Game money only, no interest; trust is the relationship level (src/social/relations.ts, −100…100). PROVISIONAL until the economy pass.
    */
