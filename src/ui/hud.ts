@@ -507,7 +507,9 @@ export class Hud {
    * An offer (« Mes pistes », src/economy/pistesModule.ts): a moment card with one line and up to two buttons (e.g. « Y aller », « Plus tard »). Same rules as a
    * moment: never modal, never over the middle of the screen or the controls, a tap elsewhere on it or ✕ dismisses it (`onClose`), it leaves by itself.
    */
-  offer(m: { icon: string; title: string; line: string; actions: { label: string; primary?: boolean; run: () => void }[]; onClose?: () => void }, ms = 12000) {
+  offer(m: { icon: string; title: string; line: string; actions: { label: string; primary?: boolean; run: () => void }[]; onClose?: () => void;
+    /** Not pushed away by the next plain moment card (a recap, a gauge's word): those wait for it, as for the after-bout card (1.0.1: money received). */
+    keep?: boolean }, ms = 12000) {
     let acted = false;
     const c = this.momentCard('mo of', m.icon, m.title, tx => {
       const p = document.createElement('p'); p.className = 'of-line'; p.textContent = m.line; tx.appendChild(p);
@@ -518,7 +520,7 @@ export class Hud {
         row.appendChild(b);
       }
       tx.appendChild(row);
-    }, ms);
+    }, ms, m.keep);
     c.addEventListener('click', () => { if (!acted) m.onClose?.(); });
     return c;
   }
@@ -552,9 +554,10 @@ export class Hud {
       }
     }, ms);
   }
-  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number) {
+  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number, keep = false) {
     const c = document.createElement('div');
     c.className = cls; c.setAttribute('role', 'status');
+    if (keep) c.dataset.keep = '1';
     const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = icon;
     const tx = document.createElement('div'); tx.className = 'mo-tx';
     const b = document.createElement('b'); b.textContent = title; tx.appendChild(b);
@@ -565,7 +568,7 @@ export class Hud {
     c.addEventListener('click', e => { e.stopPropagation(); (document.activeElement as HTMLElement | null)?.blur?.(); this.dropToast(c); });
     c.dataset.ms = String(ms);
     // one at a time: it replaces the card on screen, or waits for the after-bout card to go (src/ui/moments.ts)
-    const kind: MomentKind = c.classList.contains('bc') ? 'bout' : 'moment';
+    const kind = momentKindOf(c);
     if (momentArrives(this.moShown?.kind ?? null, kind) === 'wait') {
       this.moQueue.push(c);
       while (this.moQueue.length > MOMENT_QUEUE) { const old = this.moQueue.shift()!; quietLog.add(old.querySelector('.mo-tx')?.textContent ?? title); }
@@ -593,7 +596,7 @@ export class Hud {
     if (this.moShown?.el === t) {                                                    // the card on screen went: the next waiting one
       this.moShown = null;
       const next = this.moQueue.shift();
-      if (next) this.showMoment(next, next.classList.contains('bc') ? 'bout' : 'moment');
+      if (next) this.showMoment(next, momentKindOf(next));
     }
   }
   /** Activity progress: a slim pill above the action button (title, step label, step n/m, bar). */
@@ -667,6 +670,8 @@ export class Hud {
  * to the target's `x` as it can, and how far aside its tail moves to point at the target (at most `half − 16` px: the
  * card stays readable first).
  */
+/** A card that the plain moments wait behind: the after-bout card, and an offer made with `keep` (src/ui/moments.ts treats both as 'bout'). */
+const momentKindOf = (c: HTMLElement): MomentKind => (c.classList.contains('bc') || c.dataset.keep === '1' ? 'bout' : 'moment');
 export function bubbleX(x: number, half: number, width: number): { x: number; tail: number } {
   const lo = half + 8, hi = width - half - 8;
   const c = lo > hi ? width / 2 : Math.min(hi, Math.max(lo, x)), m = Math.max(0, half - 16);

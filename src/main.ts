@@ -231,7 +231,7 @@ startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
   hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [
     { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { op ??= online?.newId(); void withdrawReceived(pay, op).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
     { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
-  ] }, 30000);
+  ], keep: true }, 30000);                                                            // (a recap arriving meanwhile waits: it does not push the money away)
 }));
 // a money operation answered after its sheet was closed (or after a reload): its outcome is said, a yes as a yes, a no with what came back
 onlineHooks.moneySettled = (op, r) => onceInTheStreet(() => {
