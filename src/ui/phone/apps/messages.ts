@@ -8,9 +8,10 @@ import { tapSettled } from '../../tapGuard';
 import { parseAmount } from '../../../economy/bank';
 import { HUB_NAMES } from '../../../world/content';
 import {
-  F, NOTE_MAX, QUICK_AMOUNTS, cardOf, cashoutCheck, clockOf, codeOf, fundCheck, formatCode, groupByDay, initials, isCode, limitLines, listTime, lookColor, meetChoices,
-  plusActions, plusClosed, previewOf, realIn, reasonText, retryable, seenText, statusText, type CardAct, type PlusId,
+  F, NOTE_MAX, QUICK_AMOUNTS, cardOf, cashable, cashoutCheck, clockOf, fundCheck, formatCode, groupByDay, initials, isCode, limitLines, listTime, lookColor, meetChoices,
+  outcomeHead, plusActions, plusClosed, previewOf, realIn, reasonText, receivedNotice, retryable, seenText, statusText, type CardAct, type PlusId,
 } from './messagesText';
+import { refusalText } from '../../../online/accountRules';
 import './messages.css';
 
 /**
@@ -23,10 +24,71 @@ import './messages.css';
  * Every state is said in words (online, reconnecting, sending, failed, last seen); every money or invitation action goes through one confirmation whose op
  * id is made when it shows (a double tap sends it once) and the tap guard. Chat text is never read for meaning: only the sheets' confirmations act.
  * Pure rules and words: ./messagesText.ts. The money sheet is also Argent's (Recharger / Retirer, src/ui/phone/apps/money.ts).
+ *
+ * 1.0.1: money received says where it is (Teranga Money) and its card offers « Retirer » (the server-confirmed withdrawal, one tap); a send the server
+ * has not answered is « En attente de confirmation… » until it is a yes or a no; the friend code shows only under « Ton code »; the list leads to the
+ * proximity talk (« À proximité », the panel of src/multiplayer/chat.ts) now that the HUD's chat button opens this app; and `openConversation` opens a
+ * player's conversation on one of its « + » sheets (the street's player menu, src/multiplayer/social.ts).
  */
 export interface Nearby { tag: Tag; name: string; look: number; app?: string; dist: number }
 /** What the game provides to Messages (chat.ts fills `nearby` from presence; a feature without its provider is simply not shown). */
-export const messagesDeps: { nearby?: () => Nearby[] } = {};
+export const messagesDeps: {
+  nearby?: () => Nearby[];
+  /** The proximity talk (chat.ts): how many lines wait there, and opening its panel (the phone closes). */
+  nearUnread?: () => number; openNear?: () => void;
+} = {};
+
+/** What a conversation opens on, once (`openConversation`): one of its « + » sheets. */
+let intent: { tag: Tag; act: PlusId } | null = null;
+/**
+ * Opens the phone on the conversation with `tag` (their name known from the street), on a « + » sheet when `act` is given (« Envoyer de l’argent »,
+ * « Inviter chez moi », « Proposer un rendez-vous »). False when the phone cannot open now or this build has no account.
+ */
+export function openConversation(p: { tag: Tag; name?: string; look?: number }, act?: PlusId): boolean {
+  if (!online || !isTag(p.tag)) return false;
+  if (p.name && !online.convs().some(c => c.with === p.tag && c.name !== UNKNOWN)) contacts.set(p.tag, { name: p.name, look: p.look ?? 0 });
+  intent = act ? { tag: p.tag, act } : null;
+  const ok = phoneHooks.openPhone?.(`messages:${p.tag}`) ?? false;
+  if (!ok) intent = null;
+  return ok;
+}
+
+/** Received sends whose money this device withdrew from their card (« Retiré ✓ »): a few ids, kept on the device. */
+const CASHED_KEY = 'dakarrek.tm.cashed';
+let cashedIds: string[] | null = null;
+function cashedList(): string[] {
+  if (cashedIds) return cashedIds;
+  try { const raw = JSON.parse(localStorage.getItem(CASHED_KEY) ?? '[]') as unknown; cashedIds = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string').slice(-200) : []; } catch { cashedIds = []; }
+  return cashedIds;
+}
+function markCashed(id: string) { const l = cashedList(); if (!l.includes(id)) { l.push(id); if (l.length > 200) l.shift(); try { localStorage.setItem(CASHED_KEY, JSON.stringify(l)); } catch { /* the session remembers */ } } }
+/**
+ * A money operation until the server has answered it: asked again with the same id while the answer is only « pending » (the account never sends it
+ * twice: it waits for the one answer), so the caller gets a yes or a no, never a guess.
+ */
+/**
+ * « Retirer » on money received (its card in the conversation, the notice in the street): the server-confirmed withdrawal of that amount, or of what
+ * Teranga Money still holds of it. The wallet is credited by the account when the server says yes (src/economy/money.ts settleOnline), never here.
+ * `id`: the operation's id, made by the caller once per card (a double tap, a resend: one withdrawal).
+ */
+export async function withdrawReceived(item: { id: string; amount: Francs }, id?: string): Promise<Outcome<{ amount: Francs }>> {
+  const o = online;
+  if (!o) return { ok: false, reason: 'solo', text: refusalText('solo', { opMax: 0, fundDayMax: 0, sendDayMax: 0, receiveDayMax: 0, balanceMax: 0 }) };
+  // the balance follows the card by a moment (the server says the item, then the balance): a tap in between waits for it
+  const there = () => (o.balance?.amount ?? 0) >= item.amount;
+  if (!there() && o.status === 'online') await new Promise<void>(done => { const off = o.onChange(() => { if (there()) { off(); done(); } }); setTimeout(() => { off(); done(); }, 2500); });
+  const amount = cashable(item.amount, o.balance?.amount), op = id ?? o.newId();
+  if (!amount) return { ok: false, reason: 'insufficient', text: 'Teranga Money est vide : il n’y a rien à retirer.' };
+  const r = await settledMoney(() => o.cashout({ id: op, amount }));
+  if (!r.ok) return r;
+  markCashed(item.id);
+  return { ok: true, amount };
+}
+export async function settledMoney<T extends Outcome>(ask: () => Promise<T>, waiting?: () => void): Promise<T> {
+  let r = await ask();
+  while (!r.ok && r.reason === 'pending') { waiting?.(); r = await ask(); }
+  return r;
+}
 
 /** Players met through « Nouveau message » before any item exists between you (name and look for the header). */
 const contacts = new Map<Tag, { name: string; look: number }>();
@@ -34,16 +96,20 @@ const drafts = new Map<Tag, string>();
 /** The conversation on screen now (the notices do not toast it). */
 let viewing: Tag | null = null;
 const isTag = (s?: string): s is Tag => !!s && /^[0-9a-f]{16}$/.test(s);
+/** The account's placeholder for a player it has not heard from yet (server/social.ts): any name this device knows is better. */
+const UNKNOWN = 'Joueur';
 const fake = (o: OnlineApi) => !!(o as { fake?: boolean }).fake;
 const short = (hub: string) => (HUB_NAMES as Record<string, string>)[hub]?.split(' · ')[0] ?? '';
 
 /** A player's name: their conversation's, else one met this session (a forgotten conversation, a code looked up, a player nearby), else « Joueur ». */
 export function nameOf(tag: Tag): string {
   const c = online?.convs().find(x => x.with === tag);
-  if (c) { contacts.set(tag, { name: c.name, look: c.look }); return c.name; }
-  return contacts.get(tag)?.name ?? messagesDeps.nearby?.().find(n => n.tag === tag)?.name ?? 'Joueur';
+  if (c && c.name !== UNKNOWN) { contacts.set(tag, { name: c.name, look: c.look }); return c.name; }
+  const near = contacts.get(tag) ?? messagesDeps.nearby?.().find(n => n.tag === tag);
+  if (near) contacts.set(tag, { name: near.name, look: near.look });
+  return near?.name ?? UNKNOWN;
 }
-function lookOf(tag: Tag): number { return online?.convs().find(c => c.with === tag)?.look ?? contacts.get(tag)?.look ?? 0; }
+function lookOf(tag: Tag): number { const c = online?.convs().find(x => x.with === tag); return (c && c.name !== UNKNOWN ? c.look : contacts.get(tag)?.look) ?? c?.look ?? 0; }
 /**
  * Draws `html` into `el` only when it differs from what was drawn there last: the views redraw on every change and every second, and an element
  * replaced between a finger's down and up would lose its tap.
@@ -180,21 +246,34 @@ export function moneySheet(api: PhoneApi, from: HTMLElement, m: { kind: MoneyKin
       if (busy || ok.disabled) return;                                       // in flight: the same request is not asked twice
       busy = true; ok.disabled = true; ok.querySelector('span')!.textContent = m.kind === 'ask' ? 'Envoi de la demande…' : 'Envoi…';
       sh.body.querySelector<HTMLButtonElement>('[data-act="edit"]')!.disabled = true;
-      const r: Outcome = m.kind === 'pay' ? await o.pay({ id, to: m.to!, amount, ...(note ? { note } : {}), ...(m.req ? { req: m.req.id } : {}) })
-        : m.kind === 'ask' ? await o.ask({ id, to: m.to!, amount, ...(note ? { note } : {}) })
-          : m.kind === 'fund' ? await o.fund({ id, amount }) : await o.cashout({ id, amount });
+      const ask = (): Promise<Outcome> => m.kind === 'pay' ? o.pay({ id, to: m.to!, amount, ...(note ? { note } : {}), ...(m.req ? { req: m.req.id } : {}) })
+        : m.kind === 'ask' ? o.ask({ id, to: m.to!, amount, ...(note ? { note } : {}) })
+          : m.kind === 'fund' ? o.fund({ id, amount }) : o.cashout({ id, amount });
+      // no answer yet is its own state, said as such; the same id waits for the one answer (a yes or a no), however long the network takes
+      const r = await settledMoney(ask, () => waiting());
       busy = false;
       outcome(r);
     });
   };
 
+  /** The server has not answered: nothing is claimed either way. The sheet can be closed: the answer is told when it comes. */
+  const waiting = () => {
+    if (!sh.open()) return;
+    const fromWallet = m.kind === 'fund' ? amount : m.kind === 'pay' ? Math.max(0, amount - Math.min(amount, bal())) : 0;
+    sh.body.innerHTML = `<div class="pk-confirm mg-out wait" role="status"><i aria-hidden="true">⏳</i><p><b>En attente de confirmation…</b><br>${esc(`${VERB[m.kind]} ${F(amount)}${m.kind === 'pay' ? ` à ${who}` : ''} : le serveur n’a pas encore répondu.`)}</p></div>
+      <p class="pk-note">${esc(`Ne recommence pas : cette opération sera confirmée ou annulée toute seule, jamais comptée deux fois.${fromWallet > 0 ? ' La part de ton portefeuille est mise de côté ; elle te revient si c’est refusé.' : ''} Tu peux fermer, on te dira le résultat.`)}</p>
+      ${btn('Fermer', { act: 'close' })}`;
+    sh.settle();
+    sh.body.querySelector('[data-act="close"]')!.addEventListener('click', () => sh.close());
+  };
   const outcome = (r: Outcome) => {
     const what = m.kind === 'pay' ? `${F(amount)} envoyés à ${who}` : m.kind === 'ask' ? `Demande de ${F(amount)} envoyée à ${who}` : m.kind === 'fund' ? `${F(amount)} rechargés sur Teranga Money` : `${F(amount)} retirés dans ton portefeuille`;
     m.done?.(r.ok);
-    if (!sh.open()) { api.notify(r.ok ? what : r.text, r.ok ? 'ok' : 'warn'); return; }
+    const head = r.ok ? null : outcomeHead(r.reason);
+    if (!sh.open()) { api.notify(r.ok ? `✅ ${what}` : `${head!.title} · ${r.text}`, r.ok ? 'ok' : 'warn'); return; }
     sh.body.innerHTML = r.ok
       ? `<div class="pk-confirm mg-out ok" role="status"><i aria-hidden="true">✅</i><p><b>${esc(what)}</b>${m.kind !== 'ask' ? `<br>Teranga Money : ${esc(F(bal()))} · portefeuille ${esc(F(wallet()))}` : `<br>${esc(who)} la verra dans votre conversation.`}</p></div>${btn('OK', { kind: 'primary', act: 'close' })}`
-      : `<div class="pk-confirm mg-out bad" role="alert"><i aria-hidden="true">⚠️</i><p><b>Rien n’est parti</b><br>${esc(r.text)}</p></div><div class="pk-acts">${btn('Réessayer', { kind: 'primary', act: 'again' })}${btn('Fermer', { act: 'close' })}</div>`;
+      : `<div class="pk-confirm mg-out ${head!.tone}" role="alert"><i aria-hidden="true">${head!.icon}</i><p><b>${esc(head!.title)}</b><br>${esc(r.text)}</p></div><div class="pk-acts">${btn('Réessayer', { kind: 'primary', act: 'again' })}${btn('Fermer', { act: 'close' })}</div>`;
     sh.settle();
     sh.body.querySelector('[data-act="close"]')!.addEventListener('click', () => sh.close());
     sh.body.querySelector('[data-act="again"]')?.addEventListener('click', () => confirm());   // a new confirmation: a new id (a refused one is never resent)
@@ -211,11 +290,16 @@ function statusHtml(o: OnlineApi): string {
 }
 function listView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   page.innerHTML = `<div class="mg-top"><div class="mg-st"></div>${btn('Nouveau message', { act: 'new', kind: 'primary', inline: true, icon: '✏️', cls: 'mg-new' })}</div>
-    <div class="mg-list" role="list"></div><p class="mg-privacy"><span aria-hidden="true">🔒</span> ${esc(PRIVACY)}</p>`;
-  const list = page.querySelector<HTMLElement>('.mg-list')!, st = page.querySelector<HTMLElement>('.mg-st')!;
+    <div class="mg-nearrow"></div><div class="mg-list" role="list"></div><p class="mg-privacy"><span aria-hidden="true">🔒</span> ${esc(PRIVACY)}</p>`;
+  const list = page.querySelector<HTMLElement>('.mg-list')!, st = page.querySelector<HTMLElement>('.mg-st')!, nearRow = page.querySelector<HTMLElement>('.mg-nearrow')!;
   const draw = () => {
-    const now = api.ctx.now(), me = o.me?.tag ?? null, cs = o.convs();
+    const now = api.ctx.now(), me = o.me?.tag ?? null, cs = o.convs().map(c => (c.name === UNKNOWN ? { ...c, name: nameOf(c.with), look: lookOf(c.with) } : c));
     setHtml(st, statusHtml(o));
+    // the proximity talk (bubbles over the characters, heard around you): one row, where the HUD's chat button used to lead
+    const nu = messagesDeps.nearUnread?.() ?? 0;
+    setHtml(nearRow, messagesDeps.openNear ? `<button type="button" class="mg-conv mg-near-go" data-act="near" aria-label="${esc(`À proximité : parler aux joueurs autour de toi${nu ? `, ${nu} non lu${nu > 1 ? 's' : ''}` : ''}`)}">
+        <i class="mg-av mg-av-near" aria-hidden="true">📣</i><span class="mg-conv-tx"><span class="mg-conv-top"><b>À proximité</b></span>
+          <span class="mg-conv-bot"><small>Parler à voix haute aux joueurs autour de toi</small>${nu ? `<em class="mg-unread">${nu > 99 ? '99+' : nu}</em>` : ''}</span></span></button>` : '');
     setHtml(list, cs.length ? cs.map(c => `<button type="button" class="mg-conv${c.blocked ? ' blocked' : ''}${c.unread ? ' unread' : ''}" role="listitem" data-tag="${esc(c.with)}" aria-label="${esc(`${c.name}${c.unread ? `, ${c.unread} non lu${c.unread > 1 ? 's' : ''}` : ''}`)}">
         ${avatar(c.name, c.look, c.seen === 'online' && !c.blocked)}
         <span class="mg-conv-tx"><span class="mg-conv-top"><b>${esc(c.name)}</b>${c.last ? `<time>${esc(listTime(c.last.at, now))}</time>` : ''}</span>
@@ -225,7 +309,8 @@ function listView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   };
   page.addEventListener('click', e => {
     const t = e.target as HTMLElement, c = t.closest<HTMLElement>('[data-tag]');
-    if (c) api.go('messages', c.dataset.tag);
+    if (t.closest('[data-act="near"]')) messagesDeps.openNear?.();
+    else if (c) api.go('messages', c.dataset.tag);
     else if (t.closest('[data-act="new"]')) api.go('messages', 'new');
   });
   draw();
@@ -255,7 +340,7 @@ function newView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
     }
     const rec = o.convs().slice(0, 6);
     page.querySelector('.mg-recent-sec')!.toggleAttribute('hidden', !rec.length);
-    setHtml(page.querySelector('.mg-recent')!, rec.length ? `<div class="pk-rows">${rec.map(c => person(c.with, c.name, c.look, seenText(c.seen, now) || ' ', c.seen === 'online')).join('')}</div>` : '');
+    setHtml(page.querySelector('.mg-recent')!, rec.length ? `<div class="pk-rows">${rec.map(c => person(c.with, nameOf(c.with), lookOf(c.with), seenText(c.seen, now) || ' ', c.seen === 'online')).join('')}</div>` : '');
   };
   const form = page.querySelector<HTMLFormElement>('.mg-code')!, input = form.querySelector('input')!, err = page.querySelector<HTMLElement>('.mg-err')!, found = page.querySelector<HTMLElement>('.mg-found')!;
   input.addEventListener('input', () => { const v = formatCode(input.value); if (v !== input.value) input.value = v; err.hidden = true; });
@@ -269,7 +354,7 @@ function newView(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
     const r = await o.lookup(c); looking = false;
     if (!r.ok) { found.innerHTML = ''; err.textContent = r.text; err.hidden = false; return; }
     contacts.set(r.tag, { name: r.name, look: r.look });
-    found.innerHTML = `<div class="pk-rows">${person(r.tag, r.name, r.look, `${c} · ${seenText(o.seen(r.tag), api.ctx.now()) || 'trouvé'}`, o.seen(r.tag) === 'online')}</div>`;
+    found.innerHTML = `<div class="pk-rows">${person(r.tag, r.name, r.look, seenText(o.seen(r.tag), api.ctx.now()) || 'trouvé', o.seen(r.tag) === 'online')}</div>`;
   });
   page.addEventListener('click', e => {
     const t = e.target as HTMLElement, p = t.closest<HTMLElement>('.mg-person');
@@ -293,7 +378,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   viewing = tag;
   page.classList.add('mg-page-conv');
   page.innerHTML = `<div class="mg-chat">
-      <div class="mg-bar"><span class="mg-bar-av"></span><span class="mg-who"><b class="mg-seen"></b><small class="mg-code-sm">${esc(codeOf(tag))}</small></span>
+      <div class="mg-bar"><span class="mg-bar-av"></span><span class="mg-who"><b class="mg-seen"></b></span>
         <button type="button" class="mg-menu-btn" data-act="menu" aria-haspopup="menu" aria-expanded="false" aria-label="Options : bloquer, signaler, supprimer">⋯</button></div>
       <p class="mg-banner" role="status" hidden></p>
       <ol class="mg-log" aria-live="polite" aria-label="Conversation"></ol>
@@ -322,7 +407,8 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
 
   const atBottom = () => log.scrollHeight - log.scrollTop - log.clientHeight < 48;
   const toBottom = () => { log.scrollTop = log.scrollHeight; jump.hidden = true; };
-  const hooks = () => ({ goToPlace: !!onlineHooks.goToPlace, goToLocation: !!onlineHooks.goToLocation, goToInvite: !!onlineHooks.goToInvite });
+  const hooks = (it: ItemView) => ({ goToPlace: !!onlineHooks.goToPlace, goToLocation: !!onlineHooks.goToLocation, goToInvite: !!onlineHooks.goToInvite,
+    ...(it.k === 'pay' ? { balance: o.status === 'online' ? o.balance?.amount ?? null : null, cashed: cashedList().includes(it.id), ...(it.status ? { status: it.status, reason: it.reason } : {}) } : {}) });
   const seenNow = () => o.seen(tag);
   const blocked = () => o.isBlocked(tag);
   /** Why nothing can be written now, or ''. */
@@ -330,19 +416,21 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
 
   const itemHtml = (it: ItemView, last: boolean, now: number, newest: boolean, who: string): string => {
     const me = o.me?.tag ?? null, mine = !!me && it.from === me, side = mine ? 'me' : 'them';
-    const st = it.status === 'sending' ? ' · envoi…' : it.status === 'failed' ? '' : mine && newest ? ' · envoyé' : '';
-    const failed = it.status === 'failed'
-      ? `<span class="mg-fail">Pas envoyé · ${esc(reasonText(it.reason))}</span>${retryable(it.reason) ? `<button type="button" class="mg-retry" data-act="retry" data-ref="${esc(it.id)}">Réessayer</button>` : ''}` : '';
+    let st = it.status === 'sending' ? ' · envoi…' : it.status === 'failed' ? '' : mine && newest ? ' · envoyé' : '';
+    const failed = it.status !== 'failed' ? ''
+      : it.k === 'pay' ? `<span class="mg-fail">${esc(refusalText(it.reason ?? 'invalid', o.limits ?? { opMax: 0, fundDayMax: 0, sendDayMax: 0, receiveDayMax: 0, balanceMax: 0 }))}</span>`   // a refused send is never sent again by itself: a new one is a new confirmation
+        : `<span class="mg-fail">Pas envoyé · ${esc(reasonText(it.reason))}</span>${retryable(it.reason) ? `<button type="button" class="mg-retry" data-act="retry" data-ref="${esc(it.id)}">Réessayer</button>` : ''}`;
+    if (it.k === 'pay' && it.status === 'sending') st = ' · en attente';
     const meta = last || it.status ? `<small class="mg-meta">${esc(clockOf(it.at))}${st}${failed}</small>` : '';
     if (it.k === 'text') return `<li class="mg-b ${side}${last ? ' last' : ''}${it.status ? ' ' + it.status : ''}" data-key="${esc(it.id)}"><p>${esc(it.text)}</p>${meta}</li>`;
-    const v = cardOf(it, me, who, now, hooks()), [icon, kind] = KIND[it.k];
+    const v = cardOf(it, me, who, now, hooks(it)), [icon, kind] = KIND[it.k];
     const sub = it.k === 'invite' ? `<p class="mg-csub">${esc(it.home.name)}<br>${it.perms.use ? 'Peut s’asseoir et utiliser la télé' : 'Visite seulement'}</p>`
       : it.k === 'meet' ? `<p class="mg-csub">${it.place.icon ? esc(it.place.icon) + ' ' : ''}${esc(short(it.place.hub))}${it.when && (it.state === 'open' || it.state === 'accepted') ? ` · ${esc(realIn(it.when, now))}` : ''}${it.counter ? ' · autre heure proposée' : ''}</p>`
         : it.k === 'loc' ? `<p class="mg-csub">${esc(short(it.hub))}</p>` : '';
     const noteTx = 'note' in it && it.note ? `<p class="mg-cnote">« ${esc(it.note)} »</p>` : '';
     const wait = busy.has(it.id);
     const acts = v.actions.length ? `<div class="mg-acts">${v.actions.map(a => `<button type="button" class="mg-act ${a.kind}" data-act="card" data-do="${a.act}" data-ref="${esc(it.id)}"${wait ? ' disabled' : ''}>${esc(wait ? '…' : a.label)}</button>`).join('')}</div>` : '';
-    return `<li class="mg-c ${side} k-${it.k}${last ? ' last' : ''}" data-key="${esc(it.id)}"><div class="mg-card"><span class="mg-kind"><i aria-hidden="true">${icon}</i>${esc(kind)}</span>
+    return `<li class="mg-c ${side} k-${it.k}${last ? ' last' : ''}${it.status ? ' ' + it.status : ''}" data-key="${esc(it.id)}"><div class="mg-card"><span class="mg-kind"><i aria-hidden="true">${icon}</i>${esc(kind)}</span>
       <b class="mg-title">${esc(v.title)}</b>${sub}${noteTx}${v.state ? `<span class="mg-state ${v.tone}">${esc(v.state)}</span>` : ''}${acts}</div>${meta}</li>`;
   };
 
@@ -465,7 +553,12 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
   const cardAct = (act: CardAct, ref: string) => {
     const it = o.items(tag).find(i => i.id === ref); if (!it || busy.has(ref)) return;
     const n = name();
-    if (it.k === 'ask') {
+    if (it.k === 'pay' && act === 'cashout') {
+      // money received, to the wallet in one tap: the server-confirmed withdrawal (the wallet is credited when the server says yes, never before),
+      // for what the card shows; its op id is the card's (a double tap, a resend: once)
+      const amt = cashable(it.amount, o.balance?.amount); if (!amt) return;
+      void run(ref, act, withdrawReceived(it, idFor(ref, act)), `✅ ${F(amt)} retirés dans ton portefeuille`);
+    } else if (it.k === 'ask') {
       if (act === 'pay') moneySheet(api, page, { kind: 'pay', to: tag, name: n, req: { id: it.id, amount: it.amount, note: it.note } });
       else if (act === 'decline') void run(ref, act, o.closeAsk({ id: idFor(ref, act), ref, how: 'declined' }), 'Demande refusée');
       else if (act === 'cancel') void run(ref, act, o.closeAsk({ id: idFor(ref, act), ref, how: 'cancelled' }), 'Demande annulée');
@@ -481,6 +574,13 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     } else if (it.k === 'loc' && act === 'go' && onlineHooks.goToLocation) { const go = onlineHooks.goToLocation; api.launch(() => go(it)); }
   };
 
+  /** One of the « + » actions: its sheet. */
+  const plusDo = (id: PlusId) => {
+    if (id === 'pay' || id === 'ask') moneySheet(api, page, { kind: id, to: tag, name: name() });
+    else if (id === 'invite') inviteSheet(api, page, o, tag);
+    else if (id === 'meet') meetSheet(api, page, o, tag);
+    else if (id === 'loc') locSheet(api, page, o, tag);
+  };
   page.addEventListener('click', e => {
     const t = e.target as HTMLElement, b = t.closest<HTMLElement>('[data-act]');
     if (!b) { if (!t.closest('.mg-pop')) pop(null); return; }
@@ -500,11 +600,7 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
     } else if (act === 'plus-do') {
       if (b.getAttribute('aria-disabled') === 'true') return;
       pop(null); field.blur();
-      const id = b.dataset.do as PlusId, n = name();
-      if (id === 'pay' || id === 'ask') moneySheet(api, page, { kind: id, to: tag, name: n });
-      else if (id === 'invite') inviteSheet(api, page, o, tag);
-      else if (id === 'meet') meetSheet(api, page, o, tag);
-      else if (id === 'loc') locSheet(api, page, o, tag);
+      plusDo(b.dataset.do as PlusId);
     } else if (act === 'm-block') {
       pop(null);
       if (blocked()) void o.block(tag, false).then(r => api.notify(r.ok ? `${name()} débloqué` : r.text, r.ok ? 'ok' : 'warn'));
@@ -529,6 +625,13 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
 
   draw(); toBottom();
   requestAnimationFrame(() => { toBottom(); if (log.scrollHeight <= log.clientHeight + 4) older(); });
+  // opened from the street on one action (the player menu's « Envoyer de l’argent », « Inviter chez moi »…): its sheet, when it is open now
+  if (intent?.tag === tag) {
+    const want = intent.act; intent = null;
+    const a = plusActions({ status: o.status, seen: seenNow(), blocked: blocked(), name: name(), hooks: { invite: !!onlineHooks.homeToInvite, meet: !!onlineHooks.meetupPlaces, loc: !!onlineHooks.hereNow },
+      home: !!onlineHooks.homeToInvite?.(), here: !!onlineHooks.hereNow?.() }).find(x => x.id === want);
+    if (a?.ok) plusDo(want); else if (a) hint(a.why); else pop('plus');
+  } else if (intent) intent = null;
   return {
     draw,
     cleanup: () => {
@@ -669,17 +772,21 @@ export const messagesScreen: Screen = {
 export const messagesBadge = () => online?.unread() ?? 0;
 
 /**
- * Optional, for main.ts: a toast for each new item another player sends while its conversation is not on screen (« 💬 Awa : On se retrouve où ? »).
+ * Optional, for main.ts: a toast for each new item another player sends while its conversation is not on screen (« 💬 Awa : On se retrouve où ? »), and
+ * for money received wherever the player is (« 💸 1 000 F reçus de Awa »: `received`, when main.ts gives one, shows it as a card with « Retirer »).
  * Call once the account is installed; returns the unsubscribe.
  */
-export function startMessageNotices(toast: (msg: string) => void): () => void {
+export function startMessageNotices(toast: (msg: string) => void, received?: (pay: { id: string; tag: Tag; name: string; amount: Francs; text: string }) => void): () => void {
   const o = online; if (!o) return () => {};
   const told = new Set(o.convs().map(c => c.last?.id ?? ''));
   return o.onChange(() => {
     for (const c of o.convs()) {
       const l = c.last; if (!l || told.has(l.id)) continue;
       told.add(l.id);
-      if (c.unread && !c.blocked && l.from === c.with && viewing !== c.with) toast(`💬 ${c.name} : ${previewOf(l, o.me?.tag ?? null)}`);
+      if (c.blocked || l.from !== c.with) continue;
+      // money that arrives is said wherever the player is, the open conversation included (1.0.1: it lands on Teranga Money, not in the wallet's figure)
+      if (l.k === 'pay') { const name = nameOf(c.with), text = receivedNotice(l.amount, name); if (received) received({ id: l.id, tag: c.with, name, amount: l.amount, text }); else toast(text); }
+      else if (c.unread && viewing !== c.with) toast(`💬 ${nameOf(c.with)} : ${previewOf(l, o.me?.tag ?? null)}`);
     }
   });
 }

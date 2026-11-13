@@ -18,6 +18,9 @@ const SHORT_LANDSCAPE = typeof matchMedia === 'function' ? matchMedia('(max-heig
  * conversation). History, drafts, mute and the report log stay on this device; blocking is the account's (`online.block`), the local block list is kept
  * and still hides avatars (it is sent to the account at its first connection). Player text is shown as written (only cleaned of control characters) and
  * is never parsed: a message cannot pay, lend or trigger anything.
+ *
+ * 1.0.1: the HUD's « Chat » button opens the phone's Messages inbox (one place for conversations); this panel, the proximity talk, is reached from
+ * there (« À proximité », the first row of the list) and its « Messages privés ↗ » leads back. The button's badge still counts both.
  */
 type Status = 'sending' | 'sent' | 'failed';
 type LocalFailure = ChatFailure | 'timeout' | 'network';
@@ -91,6 +94,9 @@ export class ChatUi {
     d.presence.onChatAck = a => this.ack(a);
     d.presence.onReportAck = (target, ok) => this.reportAck(target, ok);
     phoneHooks.openMessages = () => this.toMessages(null);
+    // Messages › « À proximité »: the phone closes, this panel opens; its unread lines show on that row
+    messagesDeps.openNear = () => { phoneHooks.closePhone?.(); this.open('near'); };
+    messagesDeps.nearUnread = () => this.unread.get('near') ?? 0;
     // Messages › « Nouveau message »: the players of this presence room, nearest first (their tag is their account's address)
     messagesDeps.nearby = () => {
       const me = d.local(), sp = d.space();
@@ -322,10 +328,11 @@ export class ChatUi {
   // ---------------------------------------------------------------- DOM
   private build() {
     const b = this.button;
-    b.id = 'chatBtn'; b.className = 'card'; b.type = 'button'; b.setAttribute('aria-label', 'Discussion'); b.setAttribute('aria-expanded', 'false');
+    b.id = 'chatBtn'; b.className = 'card'; b.type = 'button'; b.setAttribute('aria-label', 'Messages'); b.setAttribute('aria-expanded', 'false');
     b.innerHTML = '<span aria-hidden="true">💬</span> Chat<i class="chat-badge"></i>';
     b.addEventListener('pointerdown', e => e.stopPropagation());
-    b.addEventListener('click', () => (this.opened ? this.close() : this.open()));
+    // the phone's Messages inbox (the proximity panel, when it is open, closes first)
+    b.addEventListener('click', () => (this.opened ? this.close() : this.toMessages(null)));
 
     const p = this.panel; p.id = 'chatPanel'; p.className = 'card'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Discussion');
     // Touches on the panel never reach the joystick or camera drag.

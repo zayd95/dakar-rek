@@ -39,6 +39,8 @@ export const phoneHooks: {
   openBusiness?: () => void;
   /** Opens the phone on an app or screen (main.ts), false when it cannot open now. */
   openPhone?: (app?: string) => boolean;
+  /** Closes the phone (an app that hands over to the street: Messages › « À proximité »). */
+  closePhone?: () => void;
   /** « Mes pistes » (src/economy/pistesModule.ts): the open leads, « Y aller », « Pas maintenant ». */
   pistes?: () => import('../economy/pistes').Piste[];
   followPiste?: (id: string) => boolean;
