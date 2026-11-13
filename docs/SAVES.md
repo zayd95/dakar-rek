@@ -17,6 +17,9 @@ The game saves on the device only (`localStorage`, `src/core/save.ts`).
 ## Why v6
 The Tiak Tiak tour adds an active-run field (`jobs.active.tour`) that only a v6 build understands. Under the v5 key an older client that was served again (a rollback) would read the run as a route it does not know, cancel it and write the save back, losing the tour. A schema number that stays the same is not compatibility: the tour data is in a new schema with its own key, so the older client never sees it and never writes to it.
 
+## 1.0.1: runs of the rolling Tiak Tiak board (still v6)
+A run taken from the rolling board (`src/economy/tiakOffers.ts`) is saved in the same field as before, `jobs.active`, with a route id that describes it (`t:<hub>.<place>><hub>.<place>`, `!` for an express). No new field, no new schema. A 1.0 client served again (a rollback) does not know such an id: it drops the run in hand, unpaid, as it does for any route removed from its table, and nothing else of the save changes. At load, the pay of a run in hand is capped at what its route pays (and never above the top of the delivery band); a lower saved pay is kept.
+
 ## Rules
 1. A schema owns its key. A client never writes a key of an older or newer schema. The next schema gets its own key.
 2. Migration is one-time and happens at load, from the newest older save: v5, else the legacy one. The v6 key is written at once (not at the first autosave); the older bytes and the markers the older client owns are never touched.

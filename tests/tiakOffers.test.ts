@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { stubCanvas } from './hubstub';
 import { GameState } from '../src/core/state';
 import { HUB_IDS, type HubId } from '../src/core/types';
@@ -18,6 +18,7 @@ import type { HubWorld } from '../src/world/types';
 stubCanvas();
 const hubs: Partial<Record<HubId, HubWorld>> = {};
 const hub = async (h: HubId) => { const { buildHub } = await import('../src/world/builder'); return (hubs[h] ??= buildHub(h, true)); };
+beforeAll(async () => { for (const h of HUB_IDS) await hub(h); }, 240000);      // the five districts built once (slow on a busy machine)
 const fresh = () => new GameState(newSave(0));
 const DAYS = 6;
 const everyWindow = (f: (h: HubId, day: number, hour: number) => void) => { for (const h of HUB_IDS) for (let day = 0; day < DAYS; day++) for (let hour = 0; hour < 24; hour++) f(h, 20400 + day, hour); };

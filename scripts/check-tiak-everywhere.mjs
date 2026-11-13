@@ -197,8 +197,9 @@ for (const h of HUBS) {
   check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   if (after?.go) await touch.tap('#toast .mo.bc .bc-go');
   await page.waitForFunction(() => window.__dakar.activeJob(), null, { timeout: 90000 }).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.destination(), null, { timeout: 60000 }).catch(() => {});      // its waypoint, on the next frames
   const next = await job();
-  check(`${L}: one tap takes the next run, leaving from this district; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!(await d(() => window.__dakar.destination())), JSON.stringify(next));
+  check(`${L}: one tap takes the next run, leaving from this district; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!(await d(() => window.__dakar.destination())), JSON.stringify({ next, wallet: await wallet(), was: done.w1, dest: await d(() => window.__dakar.destination()), was1: run.runId }));
   await d(() => window.__dakar.cancelJob());
   check(`${L}: that run cancelled: no payment`, !(await job()) && (await wallet()) === done.w1);
 }
@@ -206,9 +207,8 @@ for (const h of HUBS) {
 // ---- B. one delivery to another district, end to end (the car rapide between the two)
 if (!process.env.ONLY) {
   await goHub('corniche');
-  // the hour whose board has a ride leaving the Corniche (debug: the clock is set; each hour's board is the game's own)
-  let ride = null;
-  for (let hour = 10; hour < 34 && !ride; hour++) { await d(x => window.__dakar.setHour(x % 24), hour); ride = (await d(() => window.__dakar.board())).find(b => b.toHub !== 'corniche') ?? null; }
+  // the ride of this hour's board with the most time to spare (the car rapide's journey counts on the run's clock: a short hop to the next district would arrive late that way)
+  const ride = (await d(() => window.__dakar.board())).filter(b => b.toHub !== 'corniche').sort((p, q) => q.limitMs - p.limitMs)[0];
   await openBoard();
   const cards = await cardsNow(), card = cards.find(c => c.route === ride.id);
   check('Between districts: the board offers a ride to another district, by its two districts', !!card && compact(card) && card.parts[0].startsWith('Corniche → '), JSON.stringify(card?.parts));
