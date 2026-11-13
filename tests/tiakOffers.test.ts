@@ -4,7 +4,7 @@ import { GameState } from '../src/core/state';
 import { HUB_IDS, type HubId } from '../src/core/types';
 import { migrate, newSave } from '../src/core/save';
 import { ECONOMY } from '../src/economy/config';
-import { acceptJob, board, completeJob, deliveryLimitMs, offers, pickUp, pickupFrags } from '../src/economy/jobs';
+import { acceptJob, board, completeJob, counterLine, deliveryLimitMs, offers, pickUp, pickupFrags } from '../src/economy/jobs';
 import { BOARD, ROUTES, TIAK_PAY_MAX, TIAK_POINTS, TIAK_TYPE, districtOffers, limitFactor, payCap, routeById, routeMetres, routePay, tiakOffers, titleOf, typeOf } from '../src/economy/tiakOffers';
 import { planTrip } from '../src/road/graph';
 import { VTC_POINTS, stopOf } from '../src/transport/vtcRules';
@@ -83,9 +83,16 @@ describe('the delivery points of the five districts', () => {
       }
     }
   });
-  it('the fixed routes of 1.0 still resolve, and every place a run can leave from is a pick-up of its district', () => {
+  it('the fixed routes of 1.0 still resolve; every district has counters (the board in hand at a place), each a delivery point of the district', () => {
     for (const r of ROUTES) { expect(routeById(r.id)).toBe(r); expect(routePay(r)).toBe(ECONOMY.tiak.pay[r.id]); expect(routeMetres(r)).toBeNull(); }
-    for (const h of HUB_IDS) for (const p of TIAK_POINTS[h]) expect(pickupFrags(h)).toContain(p.frag);
+    for (const h of HUB_IDS) {
+      const counters = pickupFrags(h);
+      expect(counters.length, h).toBeGreaterThanOrEqual(1);
+      for (const f of counters) expect(TIAK_POINTS[h].some(p => p.frag === f && !p.vtc), `${h} ${f}`).toBe(true);
+      for (const r of ROUTES.filter(x => x.hub === h)) expect(counters).toContain(r.from.frag);
+      expect(counterLine(h), h).toMatch(/^(la |le )?\S.* \((Pikine|Plateau|Corniche|Almadies|Mermoz)\)$/);
+    }
+    expect(counterLine('pikine')).toBe('la Gargote Mame Diarra (Pikine)'); expect(counterLine('mermoz')).toBe('le Café Touba (Mermoz)');
   });
 });
 

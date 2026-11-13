@@ -2,7 +2,7 @@ import type { HubId, ActiveJob } from '../core/types';
 import type { GameState } from '../core/state';
 import { DONE_JOBS_MAX, setJobPayCap } from '../core/save';
 import { ECONOMY } from './config';
-import { ROUTES, TIAK_POINTS, payCap, routeById, routePay, tiakOffers, type Route } from './tiakOffers';
+import { HUB_SHORT, ROUTES, TIAK_POINTS, payCap, pointAt, routeById, routePay, tiakOffers, type Route } from './tiakOffers';
 export { P, ROUTES, deliveryHub, routeById, routePay, type Place, type Route } from './tiakOffers';
 import { payPreview, workPay } from './polyvalence';
 
@@ -39,8 +39,17 @@ export function board(s: GameState, hub: HubId, day: number, hour: number, skip?
   return [...ROUTES.filter(r => r.hub === hub && r.needFlag && s.data.flags.includes(r.needFlag)), ...tiakOffers(hub, day, hour, skip)];
 }
 
-/** Pick-up places of a hub (each gets a "Livraisons Tiak Tiak" action): every place a run may leave from. */
-export const pickupFrags = (hub: HubId) => [...new Set([...ROUTES.filter(r => r.hub === hub).map(r => r.from.frag), ...TIAK_POINTS[hub].map(p => p.frag)])];
+/**
+ * The counters of a hub, each with a "Livraisons Tiak Tiak" action (the board, parcels in hand at once): where its fixed routes leave from, and every
+ * place that cooks (a courier's usual stop). A run of the board may leave from any delivery point of the district; it is picked up on arrival there.
+ */
+export const pickupFrags = (hub: HubId) => [...new Set([...ROUTES.filter(r => r.hub === hub).map(r => r.from.frag), ...TIAK_POINTS[hub].filter(p => p.kind === 'food' && !p.vtc).map(p => p.frag)])];
+/** The hub's first counter as a sentence says it, with its district: « la Gargote Mame Diarra (Pikine) », « le Restaurant Le Pointe (Almadies) ». */
+export function counterLine(hub: HubId): string | null {
+  const frag = pickupFrags(hub)[0], p = frag ? pointAt(hub, frag) : undefined; if (!p) return null;
+  const name = p.name.split(' · ')[0], art = /^(Gargote|Dibiterie|Maïga|Boutique|Place)/.test(name) ? 'la ' : /^(Restaurant|Café|Garage|Marché)/.test(name) ? 'le ' : '';
+  return `${art}${name} (${HUB_SHORT[hub]})`;
+}
 
 /** Generous limit for a delivery leg of `distance` metres, in played milliseconds. */
 export function deliveryLimitMs(distance: number): number {

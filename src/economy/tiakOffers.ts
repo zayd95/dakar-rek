@@ -168,7 +168,8 @@ export function typeOf(r: Route): TiakType {
   if (r.gen) return r.gen.express ? 'express' : TYPE_OF[r.gen.from.kind];
   return TYPE_OF[pointAt(r.hub, r.from.frag)?.kind ?? 'place'];
 }
-const HUB_SHORT: Record<HubId, string> = { plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz' };
+/** A district's name as a card or a sentence says it. */
+export const HUB_SHORT: Record<HubId, string> = { plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz' };
 /**
  * The card's first line: « Plateau → Mermoz » between districts; inside one, its two parts when they differ (« Ngor → Almadies », « Mermoz → Sacré-Cœur »),
  * else the two places (« Chez Mame → Boutique »).

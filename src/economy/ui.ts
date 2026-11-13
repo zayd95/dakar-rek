@@ -8,7 +8,7 @@ import type { ShopDetail } from '../world/shopKit';
 import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { ROUTES, acceptJob, board, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { ROUTES, acceptJob, board, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
 import { TIAK_POINTS, TIAK_TYPE, districtOffers, limitFactor, routeMetres, titleOf, titlesOf, typeOf, type TiakOfferInfo } from './tiakOffers';
 import { planTrip } from '../road/graph';
 import { cards, jobCard, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
@@ -145,9 +145,8 @@ export class Economy {
     for (const p of TIAK_POINTS[world.id]) {
       if (p.vtc && !this.placeOf(p.frag)) world.interactables.push({ id: `${world.id}${p.frag}`, name: p.name, kind: 'actions', x: p.x, z: p.z, radius: -1, actions: [] });
     }
-    // the board at a counter: where the fixed routes leave from, and every place that cooks (a courier's usual stop), in each district
-    const counters = new Set([...ROUTES.filter(r => r.hub === world.id).map(r => r.from.frag), ...TIAK_POINTS[world.id].filter(p => p.kind === 'food' && !p.vtc).map(p => p.frag)]);
-    for (const frag of counters) {
+    // the board at a counter: where the fixed routes leave from, and every place that cooks (a courier's usual stop), in each district (jobs.ts pickupFrags)
+    for (const frag of pickupFrags(world.id)) {
       const it = this.placeOf(frag);
       if (it && it.kind === 'actions' && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
     }
