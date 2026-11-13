@@ -163,10 +163,24 @@ function deviceChatKey(): string | null {
   return chatKey;
 }
 
+/**
+ * 1.0.1 — the name of a player who never chose one: a first name of the city, always the same for the same save (from its guest id), instead of
+ * « Dakarois 4F2A » (a fragment of an id nobody can read or say). The character studio still asks for the player's own.
+ */
+export const DEFAULT_NAMES = ['Awa', 'Moussa', 'Fatou', 'Ibou', 'Aïda', 'Modou', 'Khady', 'Cheikh', 'Ndeye', 'Pape', 'Astou', 'Omar', 'Coumba', 'Lamine', 'Mame', 'Babacar',
+  'Sokhna', 'Aliou', 'Bineta', 'Demba', 'Rama', 'Malick', 'Yacine', 'Assane'] as const;
+export function defaultName(guestId: string): string {
+  const h = [...guestId].reduce((n, c) => (Math.imul(n, 31) + c.charCodeAt(0)) >>> 0, 7);
+  return DEFAULT_NAMES[h % DEFAULT_NAMES.length];
+}
+/** The 1.0 default (« Dakarois 4F2A »), wherever it was kept. */
+const OLD_DEFAULT = /^Dakarois( [0-9A-F]{4})?$/;
+/** A name the player did not choose (the default of this save, or the 1.0 one): the studio starts from an empty field. */
+export const isDefaultName = (name: string, guestId: string) => OLD_DEFAULT.test(name) || name === defaultName(guestId);
 export function loadProfile(storage: Storage | null, guestId: string): Profile {
   try { const saved = JSON.parse(storage?.getItem('dakarrek.presence.profile') ?? 'null') as Profile | null;
-    if (saved) return { name: nickname(saved.name), look: lookIndex(saved.look) };
+    if (saved) { const name = nickname(saved.name); return { name: OLD_DEFAULT.test(name) ? defaultName(guestId) : name, look: lookIndex(saved.look) }; }
   } catch { /* private browsing or corrupt profile */ }
   const hash = [...guestId].reduce((n, c) => n + c.charCodeAt(0), 0);
-  return { name: `Dakarois ${guestId.slice(0, 4).toUpperCase()}`, look: hash % 6 };
+  return { name: defaultName(guestId), look: hash % 6 };
 }

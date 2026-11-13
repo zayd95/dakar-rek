@@ -11,7 +11,7 @@ import {
   applyMoney, askItem, closeAsk, createAsk, openAccount, opView, todayOf,
   type AskResult, type AskRow, type LedgerAccount, type LedgerResult, type LedgerStore, type MoneyRequest, type StoredOp, type Today,
 } from '../src/online/ledgerRules';
-import { STATEFUL, blockEffects, deliveryOf, findAllowed, inviteNext, meetNext, nextDeadline, seenOf, visitCheck, type InviteAct, type MeetAct, type MeetTimes } from '../src/online/accountRules';
+import { OUTBOX_TRIES, STATEFUL, blockEffects, deliveryOf, findAllowed, inviteNext, meetNext, nextDeadline, outboxRetry, payItemOf, seenOf, visitCheck, type InviteAct, type MeetAct, type MeetTimes } from '../src/online/accountRules';
 import type { HubId } from '../src/core/types';
 
 /**
@@ -28,7 +28,14 @@ import type { HubId } from '../src/core/types';
  * `meta` table, never inferred: an object answers only for the role it was opened with. An account « exists » once a client connected to it once (its
  * `meta` table and its ledger row are made then); RPCs to a tag that never connected answer 'unknown' and write nothing.
  */
-export interface SocialEnv { SOCIAL: DurableObjectNamespace<Social> }
+export interface SocialEnv {
+  SOCIAL: DurableObjectNamespace<Social>;
+  /**
+   * Checks only (`wrangler dev --var SOCIAL_TEST_FAULT:deliver`, scripts/check-teranga-transfer.mjs): money items are never delivered between accounts,
+   * as if every delivery failed. Never set in production (wrangler.jsonc has no such variable).
+   */
+  SOCIAL_TEST_FAULT?: string;
+}
 type Profile = { name: string; look: number; app?: string };
 type Seen = 'online' | number | 'never';
 type Out = { kind: 'deliver'; to: Tag; item: Item; rev: number } | { kind: 'visitEnd'; to: Tag; host: Tag; invite: string } | { kind: 'blockedBy'; to: Tag };
@@ -41,8 +48,8 @@ export const LIMITS: MoneyLimits = { opMax: O.opMax, fundDayMax: O.fundDayMax, s
 const TIMES: MeetTimes = { early: O.meetEarlyMs, late: O.meetLateMs, nowOpen: O.meetNowOpenMs };
 /** Messages a socket may send per second (the room's rule: more closes it), conversations in the welcome, people told when this one comes or goes. */
 const SOCKET_RATE = 20, WELCOME_CONVS = 100, SEEN_FANOUT = 20;
-/** Outbox: retries back off from 5 s to 10 min; a delivery still failing after this many tries is dropped (and logged). */
-const OUTBOX_TRIES = 40;
+/** At its first mending an account looks this far back in the ledger for sends it was never told about. */
+const MEND_WINDOW_MS = 14 * 86_400_000;
 const ACKS_KEEP_MS = 30 * 86_400_000;
 const FRAME_ROOM = ONLINE_MAX_FRAME - 512;
 
@@ -166,6 +173,11 @@ export class Social extends DurableObject<SocialEnv> {
     this.openLedger(); const store = this.ledgerStore();
     this.ctx.storage.transactionSync(() => store.putBlock(a, b, on));
   }
+  /** The sends `tag` received after `since`, oldest first (a page of them): what its account checks its conversations against at each connection. */
+  async ledgerReceived(tag: Tag, since: number): Promise<LedgerOp[]> {
+    this.openLedger();
+    return this.sql.exec<Record<string, string | number | null>>(`SELECT * FROM ops WHERE b = ? AND kind = 'pay' AND at > ? ORDER BY at ASC, id ASC LIMIT 50`, tag, since).toArray().map(r => opView(rowOp(r)));
+  }
   async ledgerHistory(tag: Tag, before?: number): Promise<{ ops: LedgerOp[]; more: boolean }> {
     this.openLedger();
     const rows = this.sql.exec<Record<string, string | number | null>>('SELECT * FROM ops WHERE (a = ? OR b = ?) AND at < ? ORDER BY at DESC, id DESC LIMIT ?', tag, tag, before ?? 1e15, O.page + 1).toArray();
@@ -191,6 +203,8 @@ export class Social extends DurableObject<SocialEnv> {
     this.send(server, this.welcome(tag, money));
     if (first) this.ctx.waitUntil(this.tellPeers('online'));
     this.ctx.waitUntil(this.refreshSeen());
+    this.ctx.waitUntil(this.mendPays(tag));
+    this.unpark();                                                // this sender is here again: what was parked is tried now
     this.ctx.waitUntil(this.flush());
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -299,7 +313,7 @@ export class Social extends DurableObject<SocialEnv> {
       case 'pay': {
         const r: LedgerResult = await this.ledger().ledgerMoney({ kind: 'pay', id: m.id, tag: me, to: m.to, amount: m.amount, fund: m.fund, ...(m.note ? { note: m.note } : {}), ...(m.req ? { req: m.req } : {}) });
         if (!r.ok) return no(r.reason);
-        const op = r.op, item: Item = { id: op.id, k: 'pay', from: me, at: op.at, amount: op.amount, op: op.id, ...(op.note ? { note: op.note } : {}), ...(op.req ? { req: op.req } : {}) };
+        const op = r.op, item: Item = payItemOf(op)!;
         const to = op.to!;
         // the same answer for a resend: the items are written again idempotently (a crash between the ledger and here is mended by the resend)
         if (this.putItem(to, item, 0) !== 'stale') this.push({ type: 'item', with: to, item, ...this.peerProfile(to) }, ws);
@@ -570,8 +584,35 @@ export class Social extends DurableObject<SocialEnv> {
   }
 
   // ------------------------------------------------------------------ RPC between accounts
+  /**
+   * 1.0.1: money this account received that its conversations do not show. The ledger is asked, at each connection, for the sends received since the
+   * last one looked at; one without its card (the sender's delivery failed, or has not come yet) gets it here, from the ledger's own row, and is pushed
+   * like any new item (the notice, the unread count, the balance). Each send is looked at once: a conversation the player deleted is not brought back.
+   */
+  private async mendPays(me: Tag) {
+    try {
+      const since = Number(this.metaGet('payMend') ?? 0) || Date.now() - MEND_WINDOW_MS;
+      const ops = await this.ledger().ledgerReceived(me, since);
+      let last = since, mended = 0;
+      for (const op of ops) {
+        last = Math.max(last, op.at);
+        const item = payItemOf(op);
+        if (!item || item.from === me || this.getItem(item.from, item.id)) continue;
+        let profile: Profile | null = null;
+        try { profile = await this.account(item.from).profileOf(item.from); } catch { /* its name comes with its next item */ }
+        if (this.getItem(item.from, item.id)) continue;             // (the delivery came meanwhile)
+        if (profile) this.ensureConv(item.from, profile);
+        if (this.putItem(item.from, item, 0) !== 'stale') { this.push({ type: 'item', with: item.from, item, ...this.peerProfile(item.from) }); mended++; }
+      }
+      if (ops.length) this.metaSet('payMend', String(last));
+      if (!mended) return;
+      console.log(JSON.stringify({ event: 'social-pay-mended', count: mended }));
+      const b = await this.ledger().ledgerState(me); if (b) this.push({ type: 'balance', balance: b.balance, today: b.today });
+    } catch (e) { console.log(JSON.stringify({ event: 'social-error', type: 'mend', error: String(e) })); }   // looked at again at the next connection
+  }
   /** RPC: an item from `from`'s account (new, or a newer state). Kept and pushed unless this account blocked `from` (then text is dropped silently). */
   async deliver(me: Tag, from: Tag, profile: Profile, item: Item, rev: number): Promise<{ status: 'ok' | 'dropped' | 'unknown'; profile?: Profile }> {
+    if (this.env.SOCIAL_TEST_FAULT === 'deliver' && isItem(item) && item.k === 'pay') throw new Error('test fault: delivery refused');
     if (!this.existing(me)) return { status: 'unknown' };
     if (!isTag(from) || !isItem(item)) return { status: 'dropped' };
     const known = !!this.getItem(from, item.id), blocked = this.blocks(from);
@@ -599,6 +640,7 @@ export class Social extends DurableObject<SocialEnv> {
     if (!this.existing(me) || !this.convExists(peer)) return;
     this.sql.exec('UPDATE convs SET seen = ? WHERE peer = ?', JSON.stringify(seen), peer);
     this.push({ type: 'seen', tag: peer, seen });
+    if (seen === 'online' && this.unpark(peer)) this.ctx.waitUntil(this.flush());   // the recipient is here again: what was parked for them goes now
   }
   /** RPC: the host revoked (or blocked): a guest inside leaves. */
   async visitEnd(me: Tag, host: Tag, invite: string): Promise<void> {
@@ -647,10 +689,23 @@ export class Social extends DurableObject<SocialEnv> {
   }
 
   // ------------------------------------------------------------------ outbox and alarm
-  /** Sends to another account, now if it answers, else later (the alarm retries with a back-off). Idempotent on the other side. */
+  /** Sends to another account, now if it answers, else later (the alarm retries with a back-off, then every few hours: never dropped while it matters). Idempotent on the other side. */
   private async enqueue(o: Out) {
     this.sql.exec('INSERT INTO outbox (json, next) VALUES (?, ?)', JSON.stringify(o), Date.now());
     await this.flush();
+  }
+  /**
+   * Parked deliveries (those that failed OUTBOX_TRIES times: kept, tried every few hours) become due now: all of them when this account's player
+   * connects, those for `to` when that player does. True when there is something to send.
+   */
+  private unpark(to?: Tag): boolean {
+    const rows = this.sql.exec<{ seq: number; json: string }>('SELECT seq, json FROM outbox WHERE tries >= ?', OUTBOX_TRIES).toArray();
+    let n = 0;
+    for (const r of rows) {
+      if (to && (JSON.parse(r.json) as Out).to !== to) continue;
+      this.sql.exec('UPDATE outbox SET next = ? WHERE seq = ?', Date.now(), r.seq); n++;
+    }
+    return n > 0;
   }
   private flush(): Promise<void> {
     if (this.flushing) return this.flushing.then(() => this.flushOnce());
@@ -676,9 +731,11 @@ export class Social extends DurableObject<SocialEnv> {
         else await this.account(o.to).blockedBy(o.to, me);
         this.sql.exec('DELETE FROM outbox WHERE seq = ?', row.seq);
       } catch (e) {
-        const tries = row.tries + 1;
-        if (tries >= OUTBOX_TRIES) { this.sql.exec('DELETE FROM outbox WHERE seq = ?', row.seq); console.log(JSON.stringify({ event: 'social-outbox-drop', kind: o.kind, error: String(e) })); continue; }
-        this.sql.exec('UPDATE outbox SET tries = ?, next = ? WHERE seq = ?', tries, Date.now() + Math.min(600_000, 5_000 * 2 ** Math.min(tries, 7)), row.seq);
+        // 1.0.1: nothing for another account is dropped silently: past OUTBOX_TRIES it is parked (src/online/accountRules.ts outboxRetry), and said in the log
+        const tries = row.tries + 1, again = outboxRetry(tries, Date.now(), { kind: o.kind, ...(o.kind === 'deliver' ? { at: o.item.at } : {}) });
+        if (!again) { this.sql.exec('DELETE FROM outbox WHERE seq = ?', row.seq); console.log(JSON.stringify({ event: 'social-outbox-drop', kind: o.kind, to: o.to, tries, error: String(e) })); continue; }
+        if (again.parked && tries === OUTBOX_TRIES) console.log(JSON.stringify({ event: 'social-outbox-parked', kind: o.kind, to: o.to, error: String(e) }));
+        this.sql.exec('UPDATE outbox SET tries = ?, next = ? WHERE seq = ?', tries, again.next, row.seq);
       }
     }
     await this.schedule();
