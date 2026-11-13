@@ -15,6 +15,19 @@ export const ECONOMY = {
       // between districts (a ride of 1.2 to 2 km on the roads): PROVISIONAL
       x_pk_pl_diallo_ndeye: 5000, x_pl_pk_market_mame: 5000, x_pk_al_maiga_pointe: 6500, x_pl_co_fatou_etudiants: 6000,
     } as Record<string, number>,
+    /**
+     * Pay of a run of the rolling board (src/economy/tiakOffers.ts), from the real length of its way, rounded to `step`:
+     *   – inside a district: `base` + `perMetre` × the way along the streets, between `min` and `max` (a 60 m hop pays 1 000 F, 250 m 1 500 F, 400 m 2 000 F);
+     *   – to another district: `base` + `perMetre` × the roads' length (and the streets at both ends) + `perHop` for each district crossed beyond the first,
+     *     between `min` and `max` (Almadies → Corniche, 0.4 km: 2 500 F; Pikine → Plateau, 1.6 km: 5 000 F; Plateau → Mermoz, 3.8 km and two roads: 10 000 F);
+     *   – an express pays `express.pay` × that and allows `express.limit` × the usual time.
+     * A late delivery pays `latePayFactor` of it, as before. The fixed routes above keep their table.
+     */
+    band: {
+      local: { base: 700, perMetre: 3.2, min: 1000, max: 2000, step: 50 },
+      away: { base: 1500, perMetre: 2.2, perHop: 400, min: 2500, max: 10000, step: 100 },
+      express: { pay: 1.25, limit: 0.7 },
+    },
     /** Share of the pay when the delivery arrives after the time limit (never negative). */
     latePayFactor: 0.6,
     /** Generous limit: walking time × slack + a base, at least minLimitS (played seconds). */
