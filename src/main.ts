@@ -76,6 +76,7 @@ import { ChatUi } from './multiplayer/chat';
 import { EMOTE_INFO, Emoter, Notice, PlayerSocial, seatedPeers } from './multiplayer/social';
 import { isHub, lookIndex, nickname, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
+import { setEconClock } from './economy/calendar';
 import { pickupFrags } from './economy/jobs';
 import { activityOf } from './economy/polyvalence';
 import { Interactions } from './interact/system';
@@ -343,6 +344,8 @@ const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: stor
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); onlineAccount.setWhere(presence.status === 'online' ? world?.id ?? null : null, presence.room); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
+// The economic calendar (monthly contracts, src/economy/calendar.ts) reads the server's clock when the game is online, the device's otherwise.
+setEconClock(() => presence.serverNow());
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }

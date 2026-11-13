@@ -308,8 +308,18 @@ describe('activities: polyvalence and religious practice', () => {
   });
 });
 
-describe('the F2 has two bedrooms', () => {
-  it('partitions exist only for the apartment, with two doorways kept free and walls nothing can stand on', async () => {
+describe('the F2 has one bedroom', () => {
+  it('the F2 of the Résidence Jàmm is its floor plan: entrée, séjour, cuisine, dégagement, chambre, salle de bain, 63 m²', async () => {
+    const { planFor } = await import('../src/housing/plan');
+    const plan = planFor('appart_jamm')!, L = layoutOf(homeSpec('appart_jamm')!);
+    expect(L.plan).toBe(plan);
+    expect(plan.rooms.map(r => r.id)).toEqual(['entree', 'sejour', 'cuisine', 'degagement', 'chambre', 'sdb']);
+    expect(plan.rooms.filter(r => r.kind === 'chambre')).toHaveLength(1);
+    expect(Math.round(plan.rooms.reduce((s, r) => s + (r.box.x1 - r.box.x0) * (r.box.z1 - r.box.z0), 0))).toBe(homeSpec('appart_jamm')!.size);
+    expect(homeSpec('appart_jamm')!.what).toMatch(/chambre et salle de bain/);
+  });
+  // the open plan of before LD2.0-C (an apartment with no floor plan): two partitioned rooms. No listed home uses it any more; the placement rules still carry it.
+  it('the legacy open plan: partitions exist only for the apartment, with two doorways kept free and walls nothing can stand on', async () => {
     const { partitions, openPlan } = await import('../src/economy/placement');
     expect(partitions('villa', 10, 8).walls).toEqual([]);
     const P = partitions('apartment', 8, 6.5);

@@ -14,6 +14,8 @@ import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type 
 import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
 import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
 import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
+import { settleMonthly } from './monthly';
+import { specOf } from './catalog';
 import { saveLine } from '../core/saveHealth';
 import { homeGoalLine } from './progress';
 import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
@@ -498,6 +500,10 @@ export class Economy {
     const s = this.s;
     this.sig = this.sig ? noticeActivities(s, this.sig) : signature(s.data);
     const paid = accrue(s);
+    // the monthly contracts (src/economy/monthly.ts): once per economic month each, never per city hour
+    const months = settleMonthly(s);
+    for (const m of months) this.d.hud.toast(`Échéance · ${(specOf(m.spec)?.name ?? '').split(' · ')[0]} : ${m.revenue ? `+${fcfa(m.revenue)} perçus (occupé à ${m.occ} %) · ` : ''}${m.ended === 'notice' ? 'bail terminé' : `−${fcfa(m.paid)} de loyer et charges`}`);
+    if (months.length) this.d.save();
     for (const n of takeNotices()) this.d.hud.toast(n);
     if (paid > 0) {
       const m = document.getElementById('money');
