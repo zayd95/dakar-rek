@@ -8,7 +8,7 @@
 //  C. A reload in the middle of a run: the parcel is still in hand with the same pay; delivered: paid once; a second reload pays nothing more.
 // What is not a player's touch, and said so: the district is changed with the debug `travelTo` between parts (a player takes the car rapide, as part B does), energy and a little money
 // are set at the start (debug), and the hour is fixed by `?heure=`. Game time is the game's own clock; a headless renderer says nothing about a phone's frame rate.
-// Usage: node scripts/check-tiak-everywhere.mjs <baseUrl> <outDir>   (ONLY=pikine,mermoz limits part A)
+// Usage: node scripts/check-tiak-everywhere.mjs <baseUrl> <outDir>   (ONLY=pikine,mermoz limits part A and skips part B; SKIP_A=1 runs parts B and C only)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch } from './lib/realTouch.mjs';
@@ -174,7 +174,7 @@ const touch = await realTouch(page);
 await d(() => { window.__dakar.giveMoney(20000); });                                             // debug: the car rapide's fares between the districts of this check
 
 // ---- A. every district: the board, one run inside the district, the next offer
-for (const h of HUBS) {
+for (const h of process.env.SKIP_A ? [] : HUBS) {
   const L = NAMES[h];
   await goHub(h);
   await openBoard();
@@ -220,13 +220,19 @@ if (!process.env.ONLY) {
   const toStop = await walkToPlace(stop, () => window.__dakar.focus()?.id === 'corniche:station');
   await touch.tap('#act'); await page.waitForSelector('#modal.on', T); await page.waitForTimeout(300);
   await shot('between-car-rapide');
-  const row = page.locator('#modal.on .item:not(.close)', { hasText: new RegExp(`^.*${{ plateau: 'Plateau', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz', corniche: 'Corniche' }[ride.toHub]}`) }).first();
-  await row.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
-  { const b = await row.boundingBox(); await touch.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await touch.up(5); }
+  // the car rapide's row for that district (« ≈ 25 min de route »; the rows on foot say « de marche »), tapped once it has stopped moving (the sheet scrolls to it first)
+  const word = { plateau: 'Plateau', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz', corniche: 'Corniche' }[ride.toHub];
+  const row = page.locator('#modal.on .item:not(.close)').filter({ hasText: 'min de route' }).filter({ hasText: word }).first();
+  await row.scrollIntoViewIfNeeded();
+  let box = await row.boundingBox();
+  for (let k = 0; k < 40; k++) { await page.waitForTimeout(150); const b = await row.boundingBox(); if (b && box && Math.abs(b.y - box.y) < 0.5) break; box = b; }
+  await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
+  await page.waitForFunction(() => window.__dakar.pos().mode !== 'menu', null, { timeout: 60000 }).catch(() => {});
   await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.pos().mode === 'play', ride.toHub, T).catch(() => {});
   await page.waitForTimeout(1500);
-  const fare = run.w0 - (await wallet());
-  check(`Between districts: the car rapide taken with taps at the stop; in ${ride.toHub} with the parcel, nothing paid yet`, toStop.ok && (await d(() => window.__dakar.pos().hub)) === ride.toHub && (await job())?.stage === 'deliver' && fare >= 0, JSON.stringify({ fare, job: await job() }));
+  const fare = run.w0 - (await wallet()), hubNow = await d(() => window.__dakar.pos().hub);
+  check(`Between districts: the car rapide taken with taps at the stop; in ${ride.toHub} with the parcel, nothing paid yet`, toStop.ok && hubNow === ride.toHub && (await job())?.stage === 'deliver' && fare > 0, JSON.stringify({ hub: hubNow, fare, job: await job() }));
+  if (hubNow !== ride.toHub) throw new Error(`not in ${ride.toHub} (in ${hubNow}): the rest of part B cannot run`);
   const drop = await pointByName(ride.to);
   run.w0 -= fare;
   const done = await handOver('Between districts', run, drop);

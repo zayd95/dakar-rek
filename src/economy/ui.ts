@@ -117,6 +117,8 @@ export class Economy {
     (document.getElementById('ui') ?? document.body).appendChild(this.line);
     phoneHooks.ledger = () => [...d.state.data.ledger].reverse().map(e => ({ ...e }));   // newest first
     phoneHooks.openJobs = () => this.openJobs();
+    phoneHooks.tiakOffers = hub => this.offersOf(hub);
+    phoneHooks.takeTiak = id => !!this.accept(id, false);
     phoneHooks.openHome = () => this.openShop(true);
     phoneHooks.openBusiness = () => this.openBusiness();
     phoneHooks.wealth = () => ({ assets: assetsValue(d.state), perHour: allIncome(d.state), charges: chargesPerHour(d.state), polyvalence: polyLine(d.state) });
