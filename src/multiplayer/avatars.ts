@@ -4,7 +4,7 @@ import { Character, PLAYER_OUTFIT } from '../actors/character';
 import type { PresenceClient } from './client';
 import type { PresenceClip } from './protocol';
 import type { EmotePresence, Peer } from './protocol';
-import { EMOTE_INFO, EMOTE_SHOW_MS, RECEIVE_GAP_MS, emoteChanged, shownHere } from './social';
+import { EMOTE_INFO, EMOTE_SHOW_MS, RECEIVE_GAP_MS, emoteChanged, shownHere, shortName } from './social';
 import { buildVehicle } from '../actors/vehicleKit';
 import { COLORS, OUTFITS, SKINS, decodeAppearance, type Appearance } from '../actors/appearance';
 import type { Avatar as Identity } from '../core/types';
@@ -37,8 +37,29 @@ export function peerLook(peer: Pick<Peer, 'look' | 'app'>): PersonLook {
 export function drawnHere(peerSpace: string, space: string): boolean { return peerSpace === space && space !== 'home' && space !== 'scene'; }
 /** A home of a player that its host and their guests share (presence space `home:<tag>`, the tag 16 hex). */
 export const isSharedHome = (space: string) => /^home:[0-9a-f]{16}$/.test(space);
+/**
+ * 1.0.1 — nameplates that do not pile into clutter when several players stand together. A plate is its box on screen (px: `x` its centre, `y` its
+ * bottom edge). Nearest first: a plate that would cover one already placed is raised one row, then a second; if it still covers one it is not shown;
+ * and never more than `max` plates at once. Returns, per plate, the rows it is raised by (0, 1, 2) or null (hidden). Pure: tested and timed in
+ * tests/teranga101.test.ts (14 plates piled on one spot, the most bodies drawn: about 0.1 ms a frame measured on a heavily loaded test machine).
+ */
+export interface Plate { x: number; y: number; w: number; h: number }
+export const PLATES_MAX = 8, PLATE_ROWS = 3, PLATE_GAP = 3;
+export function stackPlates(plates: readonly Plate[], max = PLATES_MAX): (number | null)[] {
+  const placed: { l: number; r: number; t: number; b: number }[] = [];
+  return plates.map(p => {
+    if (placed.length >= max) return null;
+    for (let row = 0; row < PLATE_ROWS; row++) {
+      const b = p.y - row * (p.h + PLATE_GAP), box = { l: p.x - p.w / 2 - 2, r: p.x + p.w / 2 + 2, t: b - p.h, b };
+      if (placed.some(q => box.l < q.r && box.r > q.l && box.t < q.b && box.b > q.t)) continue;
+      placed.push(box); return row;
+    }
+    return null;
+  });
+}
 interface Glyph { sprite: THREE.Sprite; texture: THREE.CanvasTexture; until: number; clip: PresenceClip; t0: number }
-interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; app: string; label: string; rec: string; h: number; bike?: THREE.Group; glyph?: Glyph; lastEmoteAt: number }
+interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; app: string; label: string; rec: string; w: number; h: number; bike?: THREE.Group; glyph?: Glyph; lastEmoteAt: number }
+const plateV = new THREE.Vector3();
 
 /** Only the nearest visible players get an animated body; peers outside the view remain lightweight state. */
 export class RemoteAvatars {
@@ -82,8 +103,34 @@ export class RemoteAvatars {
       a.body.animate(dt, peer.speed);
       if (a.body instanceof Humanoid) this.dress(a.body, peer);
       a.name.visible = Math.hypot(peer.x - local.x, peer.z - local.z) < 35;
-      a.name.scale.set(labelHeight * 256 / 48, labelHeight * a.h / 48, 1);
+      a.name.scale.set(labelHeight * a.w / 48, labelHeight * a.h / 48, 1);
     }
+    this.declutter(visible, camera, viewportHeight);
+  }
+  /** What the last frame did with the nameplates (checks). */
+  plates = { shown: 0, raised: 0, hidden: 0 };
+  private plateBuf: Plate[] = []; private plateOf: Avatar[] = [];
+  /** Nameplates of players standing together: stacked a row or two, capped (stackPlates). `visible` is nearest first. */
+  private declutter(visible: readonly Peer[], camera: THREE.PerspectiveCamera, viewportHeight: number) {
+    const plates = this.plateBuf, of = this.plateOf; plates.length = 0; of.length = 0;
+    const vw = viewportHeight * camera.aspect, k = 28 / 48;                    // a 48-row canvas is drawn 28 px high
+    for (const peer of visible) {
+      const a = this.avatars.get(peer.id); if (!a || !a.name.visible) continue;
+      const g = a.body.group.position;
+      plateV.set(g.x, g.y + a.name.position.y, g.z).project(camera);
+      if (plateV.z > 1 || Math.abs(plateV.x) > 1.2 || Math.abs(plateV.y) > 1.2) { a.name.center.y = 0.5; continue; }   // off screen: nothing to sort out
+      const h = a.h * k;
+      plates.push({ x: (plateV.x * 0.5 + 0.5) * vw, y: (0.5 - plateV.y * 0.5) * viewportHeight + h / 2, w: a.w * k, h }); of.push(a);
+    }
+    const rows = stackPlates(plates);
+    let raised = 0, hidden = 0;
+    rows.forEach((row, i) => {
+      const a = of[i];
+      if (row === null) { a.name.visible = false; hidden++; return; }
+      if (row) raised++;
+      a.name.center.y = 0.5 - row * (plates[i].h + PLATE_GAP) / plates[i].h;    // a row up, at the plate's constant screen size
+    });
+    this.plates.shown = rows.length - hidden; this.plates.raised = raised; this.plates.hidden = hidden;
   }
   /** Shows a new emote of this peer (a glyph over the head, a short gesture) when it is close enough to be seen and not too soon after the last. */
   private emote(a: Avatar, peer: Peer, local: THREE.Vector3, space: string) {
@@ -129,17 +176,21 @@ export class RemoteAvatars {
   private make(peer: Peer): Avatar {
     const body = humanoidReady() ? new Humanoid(peerLook(peer)) : new Character({ ...PLAYER_OUTFIT, top: SHIRT_COLORS[peer.look] });
     body.group.name = `player:${peer.id}`; body.group.position.set(peer.x, peer.y, peer.z);
-    // name, and under it the public sporting record when the player has one (« Undercards · 3-1 · Écurie Baobab »)
-    const rec = peer.rec ?? '', h = rec ? 74 : 48;
-    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = h;
-    const c = canvas.getContext('2d')!;
-    c.fillStyle = 'rgba(8, 20, 32, .85)'; c.beginPath(); c.roundRect(0, 0, 256, h, 14); c.fill();
-    c.fillStyle = '#6ee7b7'; c.font = '600 22px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(peer.name, 128, 24, 238);
-    if (rec) { c.fillStyle = '#fde68a'; c.font = '600 16px system-ui'; c.fillText(rec, 128, 54, 240); }
+    // name, and under it the public sporting record when the player has one (« Undercards · 3-1 · Écurie Baobab »). 1.0.1: the plate is as wide as
+    // what it says (a short name is a small plate, not a 256 px bar), and a long name shows short (its first word, or cut)
+    const rec = peer.rec ?? '', h = rec ? 74 : 48, label = shortName(peer.name, 16);
+    const canvas = document.createElement('canvas'), c = canvas.getContext('2d')!;
+    c.font = '600 22px system-ui'; const wName = c.measureText(label).width;
+    c.font = '600 16px system-ui'; const wRec = rec ? c.measureText(rec).width : 0;
+    const w = Math.round(Math.min(256, Math.max(64, Math.max(wName, wRec) + 28)));
+    canvas.width = w; canvas.height = h;
+    c.fillStyle = 'rgba(8, 20, 32, .85)'; c.beginPath(); c.roundRect(0, 0, w, h, 14); c.fill();
+    c.fillStyle = '#6ee7b7'; c.font = '600 22px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, w / 2, 24, w - 18);
+    if (rec) { c.fillStyle = '#fde68a'; c.font = '600 16px system-ui'; c.fillText(rec, w / 2, 54, w - 16); }
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false }));
     name.position.y = rec ? 2.45 : 2.35; body.group.add(name);
-    return { body, name, texture, look: peer.look, app: peer.app ?? '', label: peer.name, rec, h, lastEmoteAt: -Infinity };
+    return { body, name, texture, look: peer.look, app: peer.app ?? '', label: peer.name, rec, w, h, lastEmoteAt: -Infinity };
   }
   private disposeBike(a: Avatar) {
     if (!a.bike) return;

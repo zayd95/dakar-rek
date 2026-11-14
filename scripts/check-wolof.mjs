@@ -249,7 +249,7 @@ if (chatUrl && only !== 'solo') {
   await desk.page.evaluate(() => { window.__dakar.setHour(9); window.__dakar.place(-6, -30, 0); });
   await phone.page.evaluate(() => { window.__dakar.setHour(9); window.__dakar.place(-7, -25, Math.PI); });
   await desk.page.waitForFunction(() => window.__dakar.presence().visible === 1, null, { timeout: 60000 }).catch(() => {});
-  for (const s of sides) { if (!(await s.page.evaluate(() => window.__dakarChat.state().open))) await s.page.click('#chatBtn'); await s.page.click('.chat-tabs button[data-tab="near"]'); }
+  for (const s of sides) { if (!(await s.page.evaluate(() => window.__dakarChat.state().open))) await s.page.evaluate(() => window.__dakarChat.open('near')); await s.page.click('.chat-tabs button[data-tab="near"]'); }
   await phone.page.waitForFunction(() => window.__dakarChat.state().phrases.length > 0, null, T);
   const st = await phone.page.evaluate(() => window.__dakarChat.state());
   check('chat: street quick phrases at 9 h start with « Salaam aleekum » and « Na nga fanaane ? »', st.place === 'street' && st.phrases[0] === 'Salaam aleekum' && st.phrases[1] === 'Na nga fanaane ?' && st.phrases.includes('Ba ci kanam'), st.phrases.join(' | '));
@@ -266,7 +266,7 @@ if (chatUrl && only !== 'solo') {
   await phone.page.waitForFunction(() => window.__dakarChat.state().place === 'food', null, { timeout: 30000 }).catch(() => {});
   const food = await phone.page.evaluate(() => window.__dakarChat.state());
   check('chat: inside a gargote the phrases offer « Neex na » and « Dama suur », greeting of the afternoon', food.place === 'food' && food.phrases.includes('Neex na') && food.phrases.includes('Dama suur') && food.phrases.includes('Na nga def ?'), food.phrases.join(' | '));
-  if (!(await phone.page.evaluate(() => window.__dakarChat.state().open))) await phone.page.click('#chatBtn');
+  if (!(await phone.page.evaluate(() => window.__dakarChat.state().open))) await phone.page.evaluate(() => window.__dakarChat.open('near'));
   await phone.page.waitForTimeout(1200); await phone.page.screenshot({ path: `${out}/phone-chat-gargote.png` });
   const tools = await phone.page.evaluate(() => !!document.querySelector('.chat-people, .chat-peer'));
   check('chat: block / mute / report tools are still there (people list)', tools);

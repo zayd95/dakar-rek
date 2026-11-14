@@ -1,5 +1,5 @@
 import type { OnlineStatus } from '../../../online/api';
-import type { AskItem, Francs, InviteItem, Item, MeetItem, MoneyLimits, Tag } from '../../../online/protocol';
+import type { AskItem, Francs, InviteItem, Item, MeetItem, MoneyLimits, PayItem, Tag } from '../../../online/protocol';
 import { fcfaText } from '../../../economy/format';
 import { cityTimeAt } from '../../../core/clock';
 
@@ -111,14 +111,29 @@ export function reasonText(reason: string | undefined): string {
     default: return 'pas envoyé';
   }
 }
+/**
+ * What the money sheet says under an answer that is not a yes (1.0.1). `pending`: the server has not answered, the operation may still go through —
+ * never « Rien n’est parti ». `timeout` (a request, an invitation…): no answer either, so nothing is claimed. Anything else is a refusal: nothing left.
+ */
+export function outcomeHead(reason: string): { icon: string; title: string; tone: 'wait' | 'bad'; again: boolean } {
+  if (reason === 'pending') return { icon: '⏳', title: 'En attente de confirmation…', tone: 'wait', again: false };
+  if (reason === 'timeout') return { icon: '⏳', title: 'Pas de réponse pour l’instant', tone: 'wait', again: true };
+  return { icon: '⚠️', title: 'Rien n’est parti', tone: 'bad', again: true };
+}
 /** A failed item the player can send again (a refusal for good is not offered again). */
 export const retryable = (reason: string | undefined) => !['blocked', 'unavailable', 'unknown-recipient', 'not-found', 'too-long', 'too-large', 'empty', 'invalid'].includes(reason ?? '');
 
-export type CardAct = 'pay' | 'decline' | 'cancel' | 'accept' | 'revoke' | 'counter' | 'go';
+export type CardAct = 'pay' | 'decline' | 'cancel' | 'accept' | 'revoke' | 'counter' | 'go' | 'cashout';
 export interface CardAction { act: CardAct; label: string; kind: 'primary' | 'secondary' | 'quiet' }
 export interface CardView { title: string; state: string; tone: '' | 'gain' | 'warn' | 'sun' | 'mute'; actions: CardAction[] }
 /** What the world can do now (onlineHooks): « Y aller » only shows where it leads somewhere. */
-export interface CardHooks { goToPlace?: boolean; goToLocation?: boolean; goToInvite?: boolean }
+export interface CardHooks {
+  goToPlace?: boolean; goToLocation?: boolean; goToInvite?: boolean;
+  /** Money received (1.0.1): the Teranga Money balance now (null: not known), and whether this card's money was already withdrawn from it. */
+  balance?: Francs | null; cashed?: boolean;
+  /** One of the player's own items still on its way (« sending ») or refused (« failed »), and why. */
+  status?: 'sending' | 'failed'; reason?: string;
+}
 
 const btn = (act: CardAct, label: string, kind: CardAction['kind'] = 'secondary'): CardAction => ({ act, label, kind });
 /**
@@ -130,8 +145,7 @@ const btn = (act: CardAct, label: string, kind: CardAction['kind'] = 'secondary'
 export function cardOf(item: Item, me: Tag | null, name: string, now: number, hooks: CardHooks = {}): CardView {
   const mine = !!me && item.from === me;
   switch (item.k) {
-    case 'pay':
-      return { title: `${F(item.amount)} ${mine ? 'envoyés' : 'reçus'}`, state: item.req ? (mine ? 'Demande payée' : 'Pour ta demande') : '', tone: 'gain', actions: [] };
+    case 'pay': return payCard(item, mine, hooks);
     case 'ask': return askCard(item, mine, name);
     case 'invite': return inviteCard(item, mine, name, now, hooks);
     case 'meet': return meetCard(item, mine, name, now, hooks, me);
@@ -140,6 +154,24 @@ export function cardOf(item: Item, me: Tag | null, name: string, now: number, ho
     case 'text': return { title: item.text, state: '', tone: '', actions: [] };
   }
 }
+/**
+ * Money sent or received (1.0.1). A send the server has not answered yet is « En attente de confirmation… », never « envoyés »; a refused one says that
+ * nothing left. Money received lands on Teranga Money (the server's account), not in the wallet: the card says where it is and offers « Retirer » (the
+ * server-confirmed withdrawal) for as much of it as the balance still holds; once withdrawn it says so.
+ */
+function payCard(p: PayItem, mine: boolean, hooks: CardHooks): CardView {
+  if (mine && hooks.status === 'sending') return { title: `Envoi de ${F(p.amount)}`, state: 'En attente de confirmation…', tone: 'sun', actions: [] };
+  if (mine && hooks.status === 'failed') return { title: `${F(p.amount)} non envoyés`, state: 'Refusé : rien n’est parti', tone: 'warn', actions: [] };
+  const title = `${F(p.amount)} ${mine ? 'envoyés' : 'reçus'}`, why = p.req ? (mine ? 'Demande payée' : 'Pour ta demande') : '';
+  if (mine) return { title, state: why, tone: 'gain', actions: [] };
+  if (hooks.cashed) return { title, state: 'Retiré dans ton portefeuille ✓', tone: 'gain', actions: [] };
+  const can = Math.min(p.amount, Math.max(0, hooks.balance ?? 0));
+  return { title, state: [why, 'Sur ton Teranga Money'].filter(Boolean).join(' · '), tone: 'gain', actions: can > 0 ? [btn('cashout', `Retirer ${F(can)}`, 'primary')] : [] };
+}
+/** How much of a received send « Retirer » on its card withdraws now: all of it, or what the balance still holds (0: nothing to withdraw). */
+export const cashable = (amount: Francs, balance: Francs | null | undefined) => Math.min(amount, Math.max(0, balance ?? 0));
+/** The notice for money that just arrived (the HUD's toast, wherever the player is): « 💸 1 000 F reçus de Awa ». */
+export const receivedNotice = (amount: Francs, name: string) => `💸 ${F(amount)} reçus de ${name}`;
 function askCard(a: AskItem, mine: boolean, name: string): CardView {
   const title = mine ? `Tu demandes ${F(a.amount)}` : `${name} te demande ${F(a.amount)}`;
   if (a.state === 'paid') return { title, state: 'Payée ✓', tone: 'gain', actions: [] };
