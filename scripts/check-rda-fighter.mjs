@@ -52,13 +52,13 @@ async function until(page, cond, act, budget = 120000) {
 }
 /** The pouches' distances to their bones and the bodies' boxes, sampled: the first sample of each pouch is its reference. */
 function sampler() {
-  const ref = new Map(), s = { frames: 0, bodies: 0, worstDrift: 0, worstPiece: '', boxes: { maxSize: 0, minY: Infinity, maxY: -Infinity }, pouches: new Set(), builds: new Set(), face: true };
+  const ref = new Map(), s = { frames: 0, bodies: 0, worstDrift: 0, worstPiece: '', boxes: { maxSize: 0, maxReach: 0, minY: Infinity, maxY: -Infinity }, pouches: new Set(), builds: new Set(), face: true };
   s.add = r => {
     if (!r) return;
     s.frames++;
     for (const [k, b] of r.bodies.entries()) {
       s.bodies = Math.max(s.bodies, r.bodies.length); s.builds.add(b.build); s.face &&= b.faceMaps;
-      s.boxes.maxSize = Math.max(s.boxes.maxSize, ...b.box.size); s.boxes.minY = Math.min(s.boxes.minY, b.box.min[1]); s.boxes.maxY = Math.max(s.boxes.maxY, b.box.min[1] + b.box.size[1]);
+      s.boxes.maxSize = Math.max(s.boxes.maxSize, ...b.box.size); s.boxes.maxReach = Math.max(s.boxes.maxReach, b.reach); s.boxes.minY = Math.min(s.boxes.minY, b.box.min[1]); s.boxes.maxY = Math.max(s.boxes.maxY, b.box.min[1] + b.box.size[1]);
       b.probes.forEach((p, i) => {
         const key = `${b.build}:${k}:${p.piece}:${i}`; s.pouches.add(`${b.build}:${p.piece}:${i}`);
         if (!ref.has(key)) ref.set(key, p.d);
@@ -165,7 +165,8 @@ const neu = await evening('rda');
 const S = neu.S;
 check('rda: every pouch stays on its bone through the entrance, the watched bout, the fête and the player\'s bout (drift < 2 mm)', S.frames > 20 && S.pouches.size >= 12 && S.worstDrift < 0.002,
   { frames: S.frames, pouches: S.pouches.size, worstDriftMm: +(S.worstDrift * 1000).toFixed(2), worst: S.worstPiece });
-check('rda: no detached or exploded vertex (each body\'s skinned box stays a body\'s: < 2.4 m, above the sand, below 2.6 m)', S.frames > 20 && S.boxes.maxSize < 2.4 && S.boxes.minY > -0.4 && S.boxes.maxY < 2.6, S.boxes);
+// (the box's height above the sand is not a criterion: the fête lifts the winner onto his people's shoulders, his head near 2.8 m)
+check('rda: no detached or exploded vertex (each body\'s skinned box < 2.4 m, every sampled vertex within 1.6 m of its hips)', S.frames > 20 && S.boxes.maxSize < 2.4 && S.boxes.maxReach < 1.6, S.boxes);
 check('rda: both physiques were drawn, every body with its face maps', S.builds.has('heavy') && S.builds.has('athletic') && S.face, [...S.builds].join(' '));
 
 // a missing file, then a corrupt one: the v4 wrestlers, the bout as always

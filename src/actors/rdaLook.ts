@@ -139,8 +139,10 @@ export function measureRda(p: RdaParts) {
     m.getVertexPosition(pr.vertex, PV); m.localToWorld(PV);
     probes.push({ piece: m.name, bone: pr.bone, d: +PV.distanceTo(bone.getWorldPosition(BV)).toFixed(4) });
   }
-  const box = new THREE.Box3(), pos = p.body.geometry.getAttribute('position');
-  for (let i = 0; i < pos.count; i += 12) { p.body.getVertexPosition(i, PV); p.body.localToWorld(PV); box.expandByPoint(PV); }
+  const box = new THREE.Box3(), pos = p.body.geometry.getAttribute('position'), hips = p.root.getObjectByName('hips')!.getWorldPosition(new THREE.Vector3());
+  let reach = 0;
+  for (let i = 0; i < pos.count; i += 12) { p.body.getVertexPosition(i, PV); p.body.localToWorld(PV); box.expandByPoint(PV); reach = Math.max(reach, PV.distanceTo(hips)); }
   const size = box.getSize(BV);
-  return { build: p.build, parts: { ...p.parts }, faceMaps: p.faceMaps, probes, box: { min: box.min.toArray().map(x => +x.toFixed(3)), size: size.toArray().map(x => +x.toFixed(3)) } };
+  // reach: the farthest sampled vertex from the hips (a body is about 1.2 m from its hips to a raised hand; a detached vertex is not)
+  return { build: p.build, parts: { ...p.parts }, faceMaps: p.faceMaps, probes, reach: +reach.toFixed(3), box: { min: box.min.toArray().map(x => +x.toFixed(3)), size: size.toArray().map(x => +x.toFixed(3)) } };
 }
