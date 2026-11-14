@@ -26,7 +26,7 @@ import type { AssetState } from '../core/types';
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
-import { migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, setPaintSeed, unpark, type VehicleAsset } from './owned';
+import { forgetIfSold, migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, setPaintSeed, unpark, type VehicleAsset } from './owned';
 import { prestige, roadTestAt, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
 import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
@@ -361,8 +361,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const s = this.ctx.state, a = this.def.asset;
     this.showSale();
     if (!ownsVehicle(s, a)) {
+      forgetIfSold(s, a);                                         // sold wherever it stood (another district too): bought again, it is delivered at the dealer's kerb (a trial car is never saved)
       if (this.trial) return;                                     // the dealer's vehicle on a test drive: not the player's, not touched by the asset model
-      if (this.vehicle) { if (this.driving) this.getOff(false); this.setSolid(false); this.vehicle.dispose(); this.vehicle = null; unpark(s.data, a); }
+      if (this.vehicle) { if (this.driving) this.getOff(false); this.setSolid(false); this.vehicle.dispose(); this.vehicle = null; }
       return;
     }
     if (this.vehicle || !this.hub) return;

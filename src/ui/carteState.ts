@@ -14,8 +14,17 @@ import { esc } from './journal';
 
 /** A place the player keeps one tap away (any district). Kept on this device only (nothing in the save, no protocol). */
 export interface Shortcut { id: string; name: string; hub: HubId; icon: string }
-/** What a tap on the strip asks the maps to show: a whole district, or one place (in this district, or in another one). */
-export type Focus = { kind: 'hub'; hub: HubId } | { kind: 'place'; id: string; hub: HubId; name: string; icon?: string };
+/**
+ * What a tap on the strip asks the maps to show: a whole district, one place (in this district, or in another one), or a point that is no place of a district: one of the
+ * player's own parked vehicles (« Mes véhicules » › « Localiser », or a tap on its icon), at the position its record gives.
+ */
+export type Focus = { kind: 'hub'; hub: HubId } | { kind: 'place'; id: string; hub: HubId; name: string; icon?: string } | { kind: 'point'; id: string; hub: HubId; name: string; icon: string; x: number; z: number };
+
+/** A focus asked for before the map screen is open (« Localiser »): the map that mounts next takes it, once. */
+let wanted: Focus | null = null;
+export const wantFocus = (f: Focus | null) => { wanted = f; };
+export const peekFocus = () => wanted;
+export const takeFocus = (): Focus | null => { const f = wanted; wanted = null; return f; };
 
 const KEY = 'dakarrek.map.shortcuts', MAX = 8;
 const store = () => { try { return window.localStorage; } catch { return null; } };
@@ -51,7 +60,8 @@ export function remoteCardHtml(f: Focus, here: HubId | null): string {
   const facts = there ? '' : `<p class="cm-facts"><span>🚶 ${min} min · gratuit</span>${leg ? `<span>🚌 Car rapide ${esc(fcfa(leg.cost))} · ≈ ${leg.minutes} min</span>` : ''}${trip ? `<span>🛣️ Au volant · ${driveKm(trip.metres)}${trip.hubs.length > 2 ? ` · via ${esc(trip.hubs.slice(1, -1).map(short).join(' → '))}` : ''}</span>` : ''}</p>`;
   // at the wheel the map gives directions (src/game/navigation.ts), never a walk; on foot both, the walk first
   const driving = !!phoneHooks.driving?.(), nav = phoneHooks.navGoal?.(), going = !!nav && nav.hub === f.hub && (f.kind === 'hub' || nav.name === f.name);
-  const drive = phoneHooks.driveTo && trip ? (going ? `<button type="button" class="ph-btn" data-drive="">Arrêter l’itinéraire</button>` : `<button type="button" class="ph-btn cm-go" data-drive="${f.hub}" data-name="${esc(f.kind === 'hub' ? short(f.hub) : f.name)}">🚗 Itinéraire en voiture</button>`) : '';
+  const at = f.kind === 'point' ? ` data-x="${f.x}" data-z="${f.z}"` : '';                                // a vehicle's own position: the directions end on it
+  const drive = phoneHooks.driveTo && trip ? (going ? `<button type="button" class="ph-btn" data-drive="">Arrêter l’itinéraire</button>` : `<button type="button" class="ph-btn cm-go" data-drive="${f.hub}" data-name="${esc(f.kind === 'hub' ? short(f.hub) : f.name)}"${at}>🚗 Itinéraire en voiture</button>`) : '';
   if (f.kind === 'hub') {
     return `<div class="fm-row"><b>${esc(HUB_NAMES[f.hub])}</b>${there ? '<em>Tu es ici</em>' : ''}</div>${facts}
       ${!there && (walk || drive) ? `<div class="cm-acts">${driving ? drive : `${walk ? `<button type="button" class="ph-btn cm-go" data-walk="${f.hub}">🚶 Y aller à pied</button>` : ''}${drive.replace(' cm-go', '')}`}</div>` : ''}`;
@@ -60,7 +70,7 @@ export function remoteCardHtml(f: Focus, here: HubId | null): string {
   const walkBtn = `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">🚶 Y aller · repère gardé</button>`;
   return `<div class="fm-row"><span class="cm-ic" aria-hidden="true">${esc(icon)}</span><b>${esc(f.name)}</b><em>${esc(short(f.hub))}</em></div>${facts}
     <div class="cm-acts">${!there && driving && drive ? drive : !there && walk ? `${walkBtn}${drive.replace(' cm-go', '')}`
-      : `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button>`}${pinHtml({ id: f.id, name: f.name, hub: f.hub, icon })}</div>`;
+      : `<button type="button" class="ph-btn cm-go" data-dealer="${esc(f.id)}" data-hub="${f.hub}" data-name="${esc(f.name)}">${marked ? 'Retirer le repère' : '📍 Marquer'}</button>`}${f.kind === 'point' ? '' : pinHtml({ id: f.id, name: f.name, hub: f.hub, icon })}</div>`;
 }
 
 /** The strip under the map: the player's shortcuts, the vehicles, and the other districts with their walking time. One row to swipe. */

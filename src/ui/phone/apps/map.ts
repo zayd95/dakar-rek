@@ -3,7 +3,7 @@ import type { HubId } from '../../../core/types';
 import { esc } from '../kit';
 import { fullMapHtml, fullCardHtml, mountFullMap } from '../../fullmap';
 import { geoMapHtml, geoCardHtml } from '../../geoMapHtml';
-import { sendFocus, shortcuts, stripHtml, type Focus } from '../../carteState';
+import { peekFocus, sendFocus, shortcuts, stripHtml, type Focus } from '../../carteState';
 import { phoneHooks } from '../../phoneHooks';
 import { HUB_NAMES } from '../../../world/content';
 import { walkMinutes } from '../../../world/walk';
@@ -77,14 +77,20 @@ export const mapScreen: Screen = {
       }
       const act = t.closest<HTMLElement>('[data-dealer], [data-walk], [data-drive]');
       if (!act) return;
-      if (act.dataset.drive !== undefined) { const h = (act.dataset.drive || null) as HubId | null, n = act.dataset.name; api.launch(() => phoneHooks.driveTo?.(h, n)); }
+      if (act.dataset.drive !== undefined) {
+        const h = (act.dataset.drive || null) as HubId | null, n = act.dataset.name, at = act.dataset.x !== undefined ? { x: Number(act.dataset.x), z: Number(act.dataset.z) } : undefined;
+        api.launch(() => phoneHooks.driveTo?.(h, n, at));
+      }
       else if (act.dataset.dealer) dealerAct(api, act);
       else if (act.dataset.walk) { const h = act.dataset.walk as HubId; api.launch(() => phoneHooks.walkTo?.(h)); }
     });
     // the district changed while the map was open (the maps say so: src/ui/fullmap.ts, src/ui/geoMap.ts): the map, the strip and the cards are of the district that is gone
     s.addEventListener('carte:stale', () => api.rerender(), { once: true });
     if (vehiclesOpen) lit(s.querySelector('[data-cm="dealers"]'));
-    show(lastMapTab);
+    // « Localiser » (src/ui/phone/apps/vehicles.ts) asked for a point before this screen opened: a vehicle of this district on the district's map, any other on the city's;
+    // the map that mounts takes the focus itself (src/ui/carteState.ts takeFocus)
+    const want = peekFocus();
+    show(want && want.kind !== 'hub' ? (want.hub === here ? 'quartier' : 'ville') : lastMapTab);
     return () => { off?.(); off = null; tab = null; };
   },
 };

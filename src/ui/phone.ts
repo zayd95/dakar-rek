@@ -31,6 +31,7 @@ import { APPS, appById } from './phone/registry';
 import { homeScreen, appsScreen, clock, dayName } from './phone/apps/home';
 import { online } from '../online/api';
 import { pistesScreen } from './phone/apps/pistes';
+import { vehiclesScreen } from './phone/apps/vehicles';
 import { profileScreen } from './phone/apps/profile';
 import { moneyScreen } from './phone/apps/money';
 import { bankScreen } from './phone/apps/bank';
@@ -70,7 +71,7 @@ const SCREENS: Record<string, Screen> = {
   reglages: settingsScreen, nouvelle: newGameScreen, sontest: soundTestScreen,
   notifs: notifsScreen, sante: healthScreen, carnet: carnetScreen, arene: arenaScreen, lutteurs: lutteursScreen, cesoir: tonightScreen,
   actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen, banque: bankScreen,
-  messages: messagesScreen,
+  messages: messagesScreen, vehicules: vehiclesScreen,
 };
 /** Other names a screen is opened by: « progression » is the Profile on its Progression tab (the HUD's streak chip). */
 const ALIASES: Record<string, [string, string?]> = { progression: ['profil', 'progression'], argent: ['portefeuille'], maison_hub: ['logement'], travail_hub: ['travailler'] };

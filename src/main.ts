@@ -97,7 +97,11 @@ import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { bankModule } from './economy/bankModule';
-import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
+import { rehomeOnRoad, type VehicleAsset } from './transport/owned';
+import { ALL_VEHICLES } from './transport/fleet';
+import { RING_RANGE, STATUS_LABEL, VEHICLE_ICON, WhereNotes, cannotRing, vehicleEntries, vehicleEntry, vehicleOfMark, type VehicleEntry } from './transport/whereabouts';
+import { whereLabel } from './ui/minimapMath';
+import { isMuted } from './core/audioSettings';
 import { CorridorHost, type Swap } from './road/host';
 import { approachLink, hasLinks } from './transport/hubLink';
 import { vehicleAudio as trafficAudio } from './transport/vehicleAudio';
@@ -658,11 +662,7 @@ function corridorStep(dt: number) {
  */
 function corridorSwap(sw: Swap) {
   const w = world!, b = w.bounds;
-  for (const a of ['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]) {          // vehicles parked on the road follow the frame
-    const p = parked(state.data, a);
-    if (!p || p.hub !== sw.from || inRect(b, p.x, p.z)) continue;
-    park(state.data, { ...p, hub: sw.to, x: p.x + sw.dx, z: p.z + sw.dz });
-  }
+  rehomeOnRoad(state.data, sw.from, sw.to, sw.dx, sw.dz, (x, z) => inRect(b, x, z));                         // vehicles parked on the road follow the frame (every model)
   for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
   corridors.prepare(sw.road);
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
@@ -1491,6 +1491,9 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
 
 /** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
 function guidePlace(id: string): { name: string; x: number; z: number } | null {
+  // one's own parked vehicle (« Localiser »): where it really stands in this district; nothing when it is the one being driven, was sold, or is in another district
+  const car = vehicleOfMark(id);
+  if (car) { const e = myVehicle(car); return e && e.hub === world?.id && e.status !== 'driven' && e.status !== 'unknown' ? { name: vehicleMine(car), x: e.x, z: e.z } : null; }
   // the dealers' directory names a dealer with its district (`teranga:dealer:pikine`, src/transport/ownedModule.ts directoryRows); its place in that district is `teranga:dealer`
   const local = world && id.endsWith(`:${world.id}`) ? id.slice(0, -(world.id.length + 1)) : null;
   for (const k of local ? [id, local] : [id]) {
@@ -1508,12 +1511,14 @@ function walkingHint(): string | null {
   if (m) return m.hint ?? (m.hub === world?.id ? withBearing(`${pin} ${m.name}`, m) : `${pin} ${m.name} · ${HUB_NAMES[m.hub].split(' · ')[0]}`);
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
+  // the marker is on a vehicle the player is now driving, or no longer has: it is done
+  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { destination = null; return null; } }
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
   const target = guidePlace(destination.id);
   if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
-  if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
+  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }   // (a car is wider than a doorstep)
   const angle = Math.atan2(dx, dz) - follow.yaw;
   const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
   return `${arrow} ${jobAt(target)?.job === 'delivery' ? '📦 ' : ''}${target.name} · ${Math.round(distance)} m`;
@@ -1553,13 +1558,68 @@ const phone = new Phone({
 // the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
 transport.addObstacles(out => { if (corridors.active) corridors.footprints(out, pos.x, pos.z); });     // the road's traffic is solid for the vehicle the player drives
 mapBridge.walkTo = id => setDestination(id);
-/** The vehicles the player owns and where they stand parked (the city map shows them; the one being driven is the player's own marker). */
-mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
-  if (!ownsVehicle(state, a)) return [];
-  const p = parked(state.data, a); if (!p) return [];
-  if (MODULES.some(m => { const o = m as unknown as { ridden?: boolean; def?: { asset?: string } }; return o.ridden && o.def?.asset === a; })) return [];
-  return [{ asset: a, name: catalogSpec(a)?.name ?? a, hub: p.hub, x: p.x, z: p.z, yaw: p.yaw }];
+// ------------------------------------------------------------------ « Retrouver mon véhicule » (src/transport/whereabouts.ts): the phone's list, the maps' icons, « Localiser », « Faire sonner »
+const vehicleMod = (a: VehicleAsset) => ALL_VEHICLES.find(m => m.def.asset === a);
+/** The model's own vehicle standing in the loaded district, as its module has it (never a dealer's car on trial). */
+const liveVehicle = (a: VehicleAsset) => { const c = world ? vehicleMod(a)?.carNow() : null; return c ? { x: c.x, z: c.z, yaw: c.yaw, driving: c.driving } : null; };
+const myVehicles = () => vehicleEntries(state, world?.id ?? null, liveVehicle);
+const myVehicle = (a: VehicleAsset) => vehicleEntry(state, a, world?.id ?? null, liveVehicle(a));
+/** « Ta moto Jakarta »: the name the marker and the goal line give it. */
+const vehicleMine = (a: VehicleAsset) => vehicleMod(a)?.def.text.mine ?? catalogSpec(a)?.name ?? a;
+const whereNotes = new WhereNotes(store);
+/** The place a vehicle stands near: read from the loaded district (and remembered on this device), or the memory of where it was left in another one. */
+function vehiclePlace(e: VehicleEntry): string {
+  if (!e.hub) return '';
+  if (!world || e.hub !== world.id || mapBridge.hub !== world) return whereNotes.get(e);
+  const label = inRect(world.bounds, e.x, e.z) ? whereLabel(mapBridge.hubName, mapBridge.places, e.x, e.z).street : 'sur la route';
+  if (e.status !== 'driven' && !e.lent) whereNotes.set(e, label);
+  return label;
+}
+const onFootInStreet = () => !inside && !lambScene && !phoneHooks.driving?.();
+phoneHooks.vehicles = () => myVehicles().map(e => {
+  const here = e.hub === world?.id, metres = here && e.status !== 'driven' && !inside ? Math.hypot(e.x - pos.x, e.z - pos.z) : undefined;
+  const place = vehiclePlace(e), district = e.hub ? HUB_NAMES[e.hub].split(' · ')[0] : '';
+  const dealer = e.status === 'unknown' ? vehicleMod(e.asset)?.directoryRows(state)[0] : undefined;
+  return {
+    asset: e.asset, name: e.lent ? vehicleMine(e.asset) : catalogSpec(e.asset)?.name ?? e.asset, icon: VEHICLE_ICON[e.asset], status: e.status, statusLabel: STATUS_LABEL[e.status],
+    where: e.status === 'unknown' ? '' : [district, place].filter(Boolean).join(' · '),
+    note: e.status === 'unknown' ? (dealer ? `Il t’attend chez ${dealer.name}, ${HUB_NAMES[dealer.hub].split(' · ')[0]} : il sort à ta première visite` : 'Position inconnue')
+      : e.status === 'driven' ? 'Tu es au volant' : e.lent ? 'Prêtée par le dépôt · une dans chaque quartier' : e.status === 'broken' ? 'Ne démarre pas : réparation de fortune devant le capot' : undefined,
+    locate: e.status === 'driven' ? undefined : e.status === 'unknown' ? (dealer ? 'Voir le concessionnaire' : undefined) : 'Localiser',
+    marked: destination?.id === e.id, metres,
+    ring: metres !== undefined && metres <= RING_RANGE && (e.status === 'parked' || e.status === 'broken'),
+  };
 });
+/** « Localiser »: the game's one marker goes on the vehicle (directions too at the wheel), and the phone's map shows it. Nothing is moved; a vehicle with no record leads to its dealer, where it waits. */
+phoneHooks.locateVehicle = id => {
+  const a = vehicleOfMark(`vehicle:${id}`), e = a ? myVehicle(a) : null;
+  if (!a || !e || e.status === 'driven') return null;
+  if (e.status === 'unknown' || !e.hub) {
+    const d = vehicleMod(a)?.directoryRows(state)[0]; if (!d) return null;
+    destination = { id: d.id, hub: d.hub, name: d.name };
+    return { kind: 'place', id: d.id, hub: d.hub, name: d.name, icon: d.icon };
+  }
+  const name = vehicleMine(a);
+  destination = { id: e.id, hub: e.hub, name };
+  if (phoneHooks.driving?.()) navigation.driveTo(e.hub, name, { x: e.x, z: e.z });
+  return { kind: 'point', id: e.id, hub: e.hub, name, icon: VEHICLE_ICON[a], x: e.x, z: e.z };
+};
+/** « Faire sonner »: one short blip of its own horn, played on this device only (nothing is sent to the room), and not again for a few seconds. */
+let rangAt = -1e9;
+phoneHooks.ringVehicle = id => {
+  const a = vehicleOfMark(`vehicle:${id}`), e = a ? myVehicle(a) : null;
+  if (!a || !e) return 'Véhicule introuvable';
+  if (inside) return 'Sors d’abord dans la rue';
+  const why = cannotRing(e, world?.id ?? null, pos, onFootInStreet(), (performance.now() - rangAt) / 1000); if (why) return why;
+  if (isMuted()) return 'Le son est coupé (Réglages)';
+  rangAt = performance.now();
+  trafficAudio.hornOn(vehicleMod(a)?.def.kit ?? 'sedan');
+  if (!trafficAudio.hornHeld) trafficAudio.unlock();                       // the recording is still being decoded (first sound of the session): the key's chirp answers instead
+  window.setTimeout(() => trafficAudio.hornOff(), 240);
+  return null;
+};
+/** The vehicles the player owns and where they stand parked (both maps show them; the one being driven is the player's own marker). */
+mapBridge.owned = () => myVehicles().flatMap(e => e.hub && e.status !== 'driven' && e.status !== 'unknown' ? [{ id: e.id, asset: e.asset, name: vehicleMine(e.asset), icon: VEHICLE_ICON[e.asset], hub: e.hub, x: e.x, z: e.z, yaw: e.yaw }] : []);
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
@@ -1573,6 +1633,7 @@ function saveNow(): boolean {
   // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
   const safe = inside || !ctxReady ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
   if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
+  if (world && ctxReady) for (const e of myVehicles()) vehiclePlace(e);   // the place each vehicle of this district stands near is remembered for « Mes véhicules »
   const ok = writeSave(store, state.data);
   reportWrite(ok);
   return ok;
@@ -2034,6 +2095,8 @@ if (DEBUG) {
     phone(app?: string) { hud.closeModal(); return phone.open(app); },
     phoneClose() { phone.close(); },
     phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
+    /** « Retrouver mon véhicule »: where the game has each of the player's vehicles (src/transport/whereabouts.ts), and the map's own list. */
+    myVehicles: () => myVehicles(), mapOwned: () => mapBridge.owned(), marked: () => (destination ? { ...destination } : null),
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
