@@ -34,16 +34,19 @@ class Navigation implements GameModule {
 
   init(ctx: GameCtx) {
     this.ctx = ctx;
-    phoneHooks.driveTo = (hub, name) => this.driveTo(hub, name);
+    phoneHooks.driveTo = (hub, name, at) => this.driveTo(hub, name, at);
     phoneHooks.driving = () => this.driving(ctx);
     phoneHooks.navGoal = () => (this.manual ? { hub: this.manual.hub, name: this.manual.name } : null);
   }
 
-  /** « 🚗 Itinéraire » from the map: directions to a district (its centre) or a place of it (the walking marker then leads in that district). */
-  driveTo(hub: HubId | null, name?: string) {
+  /**
+   * « 🚗 Itinéraire » from the map: directions to a district (its centre) or a place of it (the walking marker then leads in that district); `at`: a point of that district
+   * that is no place of it (one's own parked vehicle, « Localiser »: src/transport/whereabouts.ts), steered for like a job's target.
+   */
+  driveTo(hub: HubId | null, name?: string, at?: { x: number; z: number }) {
     const ctx = this.ctx; if (!ctx) return;
     if (!hub) { this.manual = null; ctx.hud.setNav(null); return; }
-    this.manual = { name: name ?? HUB_NAMES[hub].split(' · ')[0], hub, x: 0, z: 0, known: false };
+    this.manual = { name: name ?? HUB_NAMES[hub].split(' · ')[0], hub, x: at?.x ?? 0, z: at?.z ?? 0, known: !!at };
     this.log.set++;
     ctx.toast(`Itinéraire : ${this.manual.name}${hub !== ctx.world()?.id ? ` (${HUB_SHORT[hub]})` : ''} · suis la ligne jaune`);
   }
@@ -120,7 +123,7 @@ class Navigation implements GameModule {
     return {
       nav: {
         info: () => ({ goal: this.goal(), manual: this.manual, now: this.now ? { ...this.now, local: { ...this.now.local } } : null, route: this.route ? { n: this.route.points.length, length: Math.round(this.route.length) } : null, log: { ...this.log, lines: [...this.log.lines] } }),
-        to: (hub: HubId | null, name?: string) => this.driveTo(hub, name),
+        to: (hub: HubId | null, name?: string, at?: { x: number; z: number }) => this.driveTo(hub, name, at),
       },
     };
   }

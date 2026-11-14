@@ -87,7 +87,9 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
 #phone .gm-me { width:30px; height:30px; display:grid; place-items:center; }
 #phone .gm-me b { width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-bottom:20px solid #0a84ff; filter:drop-shadow(0 0 2px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
 #phone .gm-me.driving b { border-bottom-color:#34c759; }
-#phone .gm-car { font-size:19px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
+/* the player's own parked vehicles: a white disc a fingertip can pick (src/ui/geoMap.ts showCar); ringed when the marker is on it */
+#phone .gm-car { width:32px; height:32px; display:grid; place-items:center; border-radius:50%; background:#f4f6f8; box-shadow:0 0 0 2px #0c1115, 0 1px 4px rgba(0,0,0,.5); font-size:18px; line-height:1; cursor:pointer; }
+#phone .gm-car.on { box-shadow:0 0 0 2px #0c1115, 0 0 0 6px rgba(255,210,63,.75), 0 1px 4px rgba(0,0,0,.5); }
 #phone .gm-pl { width:11px; height:11px; border-radius:50%; background:var(--c); box-shadow:0 0 0 2px #fff, 0 1px 3px rgba(0,0,0,.4); cursor:pointer; display:none; }
 #phone .gm.gm-close .gm-pl { display:block; }
 #phone .gm-pin { font-size:24px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }

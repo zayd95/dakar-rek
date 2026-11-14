@@ -80,7 +80,7 @@ describe('Tonton Ibou\'s welcome: done once, gone for good', () => {
     for (let i = 0; i < 3; i++) { const j = acceptJob(s, 'pk_mame_boutique', true, 600_000); expect(j).not.toBeNull(); expect(completeJob(s, j!.runId)?.paid).toBeGreaterThan(0); }
     expect(welcomeEarly(s.data)).toBe(false);
     const here = suggestionHere(r, s, 'pikine', 17.6);
-    expect(here?.id).toBe('ibou_tiak');                                                     // Ibou heard of the first delivery
+    expect(here?.id).toBe('pouce_meuble');                                                  // 1.0.1: the next coup de pouce leads the local leads (Ibou's reaction follows)
     expect(pickGoal({ evening: 'Combat ce soir à l’arène (Pikine)', local: here?.hint })).toEqual({ kind: 'evening', text: 'Combat ce soir à l’arène (Pikine)' });
     // and a brand-new player at 17.6 h: the welcome leads the local leads, the gala still comes first
     const n = fresh();
@@ -110,12 +110,14 @@ describe('the goal line: this hub, this hour', () => {
     expect(suggestionHere(r, s, 'pikine', 23)?.id ?? null).not.toBe(WELCOME);              // at night nobody is sent to see someone
     expect(suggestionHere(r, s, 'pikine', 10, id => id !== 'ibou')?.id).not.toBe(WELCOME);   // he is not about
   });
-  it('the first job: the hub\'s own Tiak Tiak (Pikine, Plateau), else its paid services — never another hub\'s pick-up', () => {
-    for (const [hub, re] of [['pikine', /Mame Diarra \(Pikine\)/], ['plateau', /Chez Fatou \(Plateau\)/], ['almadies', /Petits boulots/], ['corniche', /Petits boulots/]] as const) {
+  it('the first job: the hub\'s own Tiak Tiak counter (every district since 1.0.1) — never another hub\'s pick-up', () => {
+    // 1.0.1 HUD pass: short enough for the goal line's two lines on a phone (this district's counter needs no district), « au » for « le »
+    for (const [hub, re] of [['pikine', /à la Gargote Mame Diarra\.$/], ['plateau', /à la Gargote Chez Fatou\.$/], ['almadies', /au Restaurant Le Pointe\.$/], ['corniche', /à la Gargote des étudiants\.$/], ['mermoz', /au Café Touba\.$/]] as const) {
       const { s, r } = fresh(hub);
       welcomeByTalk('ibou', r, s);
       const st = economyStep(s)!;
       expect(st.hint).toMatch(re);
+      expect(st.hint.length).toBeLessThanOrEqual(56);
       expect(suggestionHere(r, s, hub, 10)?.hint ?? '').not.toMatch(hub === 'pikine' ? /\(Plateau\)/ : /\(Pikine\)/);
     }
     const { s } = fresh();

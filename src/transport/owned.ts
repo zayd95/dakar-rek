@@ -10,11 +10,26 @@ import { addOwned, holds } from '../economy/assets';
  *   `vehicle:<asset>:hub|x|z|yaw`
  * No record yet (bought from « Biens », or never driven): it waits at its dealer's kerb.
  */
-/** 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold. */
-export type VehicleAsset = 'jakarta' | 'compacte' | 'teranga' | 'rafet' | 'berline' | 'tout_terrain' | 'gainde' | 'tiak';
+/**
+ * Every vehicle the player can have, cheapest first: THE list (the road swap, the phone's « Mes véhicules », the maps and the tests read this one; src/transport/fleet.ts
+ * has the module of each). 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold.
+ */
+export const VEHICLE_ASSETS = ['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as const;
+export type VehicleAsset = (typeof VEHICLE_ASSETS)[number];
+export const isVehicleAsset = (id: string): id is VehicleAsset => (VEHICLE_ASSETS as readonly string[]).includes(id);
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;
+
+/**
+ * The district of a record whose `hub` counter is missing or is not a district of this build (a save from before the districts, a newer client's district): the one every game
+ * starts in, where the first dealer is. One rule for reading and writing, here and in the migrations below.
+ */
+export const FALLBACK_HUB: HubId = 'pikine';
+/** The district a stored `hub` counter names. */
+export function hubOfCounter(n: unknown): HubId { return (typeof n === 'number' && Number.isFinite(n) ? HUB_IDS[Math.round(n)] : undefined) ?? FALLBACK_HUB; }
+/** The `hub` counter of a district. */
+export function counterOfHub(hub: HubId): number { const i = HUB_IDS.indexOf(hub); return i >= 0 ? i : HUB_IDS.indexOf(FALLBACK_HUB); }
 
 /** The player owns it (the asset model's word). */
 export const ownsVehicle = (s: GameState, id: VehicleAsset) => id === 'tiak' || holds(s, id);
@@ -22,13 +37,13 @@ export const ownsVehicle = (s: GameState, id: VehicleAsset) => id === 'tiak' || 
 export function parked(data: SaveData, id: VehicleAsset): Parked | null {
   const c = data.counters, n = (f: string) => c[key(id, f)];
   if (typeof n('x') !== 'number' || typeof n('z') !== 'number') return null;
-  return { asset: id, hub: HUB_IDS[Math.round(n('hub') ?? 0)] ?? 'pikine', x: n('x'), z: n('z'), yaw: n('yaw') ?? 0 };
+  return { asset: id, hub: hubOfCounter(n('hub')), x: n('x'), z: n('z'), yaw: n('yaw') ?? 0 };
 }
 
 /** Records where it is parked (bought and delivered, or left there by its driver). */
 export function park(data: SaveData, p: Parked) {
   const c = data.counters;
-  c[key(p.asset, 'hub')] = Math.max(0, HUB_IDS.indexOf(p.hub));
+  c[key(p.asset, 'hub')] = counterOfHub(p.hub);
   c[key(p.asset, 'x')] = Math.round(p.x * 100) / 100; c[key(p.asset, 'z')] = Math.round(p.z * 100) / 100;
   c[key(p.asset, 'yaw')] = Math.round(p.yaw * 1000) / 1000;
 }
@@ -36,6 +51,30 @@ export function park(data: SaveData, p: Parked) {
 /** Forget the parking spot (sold: a vehicle bought again is delivered at the dealer's kerb). */
 export function unpark(data: SaveData, id: VehicleAsset) {
   for (const f of ['hub', 'x', 'z', 'yaw', 'seed']) delete data.counters[key(id, f)];
+}
+
+/**
+ * A vehicle that is no longer the player's has no parking spot: sold from « Biens » while it stood in another district, its record went nowhere (the module only cleared it when
+ * the vehicle was in the loaded district), and the one bought again reappeared at the old spot. Returns true when a record was dropped.
+ */
+export function forgetIfSold(s: GameState, id: VehicleAsset): boolean {
+  if (ownsVehicle(s, id) || !(key(id, 'x') in s.data.counters || key(id, 'seed') in s.data.counters)) return false;
+  unpark(s.data, id); return true;
+}
+
+/**
+ * The player has crossed the middle of a road between two districts (src/main.ts corridorSwap): the district at the other end becomes the loaded one, its frame being this one's
+ * moved by (dx, dz). Every vehicle left parked out on that road (outside the streets of `from`: `inDistrict` is false there) is re-homed to the new frame, at the same place of
+ * the world. Every model, the lent motorbike included.
+ */
+export function rehomeOnRoad(data: SaveData, from: HubId, to: HubId, dx: number, dz: number, inDistrict: (x: number, z: number) => boolean): VehicleAsset[] {
+  const moved: VehicleAsset[] = [];
+  for (const a of VEHICLE_ASSETS) {
+    const p = parked(data, a);
+    if (!p || p.hub !== from || inDistrict(p.x, p.z)) continue;
+    park(data, { ...p, hub: to, x: p.x + dx, z: p.z + dz }); moved.push(a);
+  }
+  return moved;
 }
 
 /**
@@ -81,7 +120,7 @@ export function migrateOwned(s: GameState): boolean {
   const c = d.counters, num = (f: string) => (typeof c[old(f)] === 'number' ? c[old(f)] : undefined);
   if (!holds(s, 'jakarta')) addOwned(s, 'jakarta', num('price') ?? 75000);
   const x = num('x'), z = num('z');
-  if (!parked(d, 'jakarta') && x !== undefined && z !== undefined) park(d, { asset: 'jakarta', hub: HUB_IDS[Math.round(num('hub') ?? 0)] ?? 'pikine', x, z, yaw: num('yaw') ?? 0 });
+  if (!parked(d, 'jakarta') && x !== undefined && z !== undefined) park(d, { asset: 'jakarta', hub: hubOfCounter(num('hub')), x, z, yaw: num('yaw') ?? 0 });
   d.flags.splice(d.flags.indexOf(flag), 1);
   for (const f of ['hub', 'x', 'z', 'yaw', 'seed', 'price', 'at']) delete c[old(f)];
   return true;

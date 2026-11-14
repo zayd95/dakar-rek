@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { readTestParams } from './core/testParams';
+import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -34,6 +34,9 @@ import { preloadAssets } from './actors/vehicles';
 import { preloadGlbVehicles } from './actors/glbVehicle';
 import { missionTarget } from './game/missionGuide';
 import { navigation } from './game/navigation';
+import { aroundDeps } from './game/around';
+import { CampClient } from './online/campClient';
+import { DEVICE_KEY } from './core/saveTransfer';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -60,12 +63,16 @@ import { phoneHooks } from './ui/phoneHooks';
 import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
-import { PresenceClient, loadProfile } from './multiplayer/client';
+import { PresenceClient, deviceChatKey, isDefaultName, loadProfile } from './multiplayer/client';
+import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
-import { online, setOnline } from './online/api';
+import { online, onlineHooks, setOnline } from './online/api';
+import { campSession } from './online/campSession';
+import { POUCE_COUNTERS, pouceWanted, setPouceOn } from './economy/pouce';
+import { grandCamp } from './game/grandCamp';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
-import { startMessageNotices } from './ui/phone/apps/messages';
+import { openConversation, startMessageNotices, withdrawReceived } from './ui/phone/apps/messages';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
@@ -73,9 +80,10 @@ import { Phone } from './ui/phone';
 import { mapBridge } from './ui/minimap';
 import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
-import { EMOTE_INFO, Emoter, Notice, PlayerSocial, seatedPeers } from './multiplayer/social';
+import { EMOTE_INFO, Emoter, Notice, PlayerSocial, registerPlayerAction, seatedPeers } from './multiplayer/social';
 import { isHub, lookIndex, nickname, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
+import { setEconClock } from './economy/calendar';
 import { pickupFrags } from './economy/jobs';
 import { activityOf } from './economy/polyvalence';
 import { Interactions } from './interact/system';
@@ -94,8 +102,13 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { opening, openingSeen, openingWanted } from './game/opening';
 import { bankModule } from './economy/bankModule';
-import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
+import { rehomeOnRoad, type VehicleAsset } from './transport/owned';
+import { ALL_VEHICLES } from './transport/fleet';
+import { RING_RANGE, STATUS_LABEL, VEHICLE_ICON, WhereNotes, cannotRing, vehicleEntries, vehicleEntry, vehicleOfMark, type VehicleEntry } from './transport/whereabouts';
+import { whereLabel } from './ui/minimapMath';
+import { isMuted } from './core/audioSettings';
 import { CorridorHost, type Swap } from './road/host';
 import { approachLink, hasLinks } from './transport/hubLink';
 import { vehicleAudio as trafficAudio } from './transport/vehicleAudio';
@@ -123,6 +136,7 @@ const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', '
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const TEST = readTestParams(location.hostname, location.search);   // preview-only test links (src/core/testParams.ts)
+setPouceOn(pouceWanted({ testHost: isTestHost(location.hostname), debug: DEBUG, forced: TEST.pouce }));   // « Coups de pouce »: off in a ?debug run on a test host unless ?pouce
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
@@ -205,6 +219,8 @@ if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money 
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 presence.setAppearance(state.data.appearance ? encodeAppearance(state.data.avatar, state.data.appearance) : null, false);   // the studio's look travels with the connection (servers that relay it)
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+/** 1.0.1: a crown over the player's own character while other players are drawn around (this device only). */
+const selfMarker = new SelfMarker(); scene.add(selfMarker.sprite);
 // LD2.0-B: the player's online account (Messages, Teranga Money, visits, meetups: src/online/client.ts) beside the hub's presence. Its saves must be synchronous
 // and say false when nothing was written: a top-up is never sent before the wallet's debit is on disk.
 const onlineAccount = new OnlineAccount({
@@ -217,12 +233,43 @@ const onlineAccount = new OnlineAccount({
 // in-memory account of the checks (src/online/fake.ts), never presented to players as real.
 if (fakeOnlineRequested()) installFakeOnline({ now: () => presence.serverNow(), wallet: { get: () => state.wallet, add: (n, label) => { state.addMoney(n, label); } }, save: () => { if (world) saveNow(); }, me: { name: presence.profile.name } });
 else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
-startMessageNotices(m => hud.toast(m));                                                 // « 💬 Awa : … » for what arrives outside the open conversation
+// 1.0.1 Grand Camp (src/online/campSession.ts): the device's one player-organized match. A match this player had a place in is opened again AT ONCE,
+// before the city has loaded: the server gives the place back (before kick-off) or the pitch (after it, within its 60 s).
+if (import.meta.env.VITE_MULTIPLAYER === 'true') {
+  campSession.configure({
+    key: () => deviceChatKey(), profile: () => ({ name: presence.profile.name, look: presence.profile.look, app: presence.appearance ?? null }),
+    endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined,
+    account: () => online, wallet: () => state.wallet,
+    // « Coups de pouce » (src/economy/pouce.ts): a Grand Camp place the server confirmed, once per match
+    joined: () => { state.count(POUCE_COUNTERS.camp); if (world) saveNow(); },
+  });
+  campSession.restore();
+}
+// « 💬 Awa : … » for what arrives outside the open conversation. 1.0.1 — money received cannot be missed and is one tap from the wallet: a card (never
+// over the middle of the screen) says « 💸 1 000 F reçus de Awa », where it is (Teranga Money, the server's account: the wallet's figure has not moved),
+// and offers « Retirer » (the server-confirmed withdrawal: the wallet goes up when the server says yes) and « Voir » (the conversation).
+/** What the account says at a connection made while the city is still loading (money received while away, a send answered) waits for the street: a card shown behind the loading screen would be gone before anyone saw it. */
+const onceInTheStreet = (fn: () => void) => { if (started) fn(); else void whenStarted.then(() => setTimeout(fn, 1200)); };
+startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
+  let op: string | undefined;                                                         // one withdrawal per notice, however it is tapped (the id is made once)
+  hud.toast(pay.text);                                                                // (the Notifications list keeps it; read out for screen readers)
+  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money : retire-les.', actions: [
+    { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { op ??= online?.newId(); void withdrawReceived(pay, op).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
+    { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
+  ], keep: true }, 30000);                                                            // (a recap arriving meanwhile waits: it does not push the money away)
+}));
+// a money operation answered after its sheet was closed (or after a reload): its outcome is said, a yes as a yes, a no with what came back
+onlineHooks.moneySettled = (op, r) => onceInTheStreet(() => {
+  const what = op.kind === 'pay' ? `${fcfa(op.amount)} envoyés` : op.kind === 'fund' ? `${fcfa(op.amount)} rechargés` : `${fcfa(op.amount)} retirés`;
+  if (r.ok) hud.moment({ icon: '✅', title: what, lines: [op.kind === 'pay' ? 'Le serveur a confirmé l’envoi.' : op.kind === 'fund' ? 'Ils sont sur ton Teranga Money.' : 'Ils sont dans ton portefeuille.'] }, 6000);
+  else hud.toast(`${op.kind === 'pay' ? `Envoi de ${fcfa(op.amount)}` : op.kind === 'fund' ? `Recharge de ${fcfa(op.amount)}` : `Retrait de ${fcfa(op.amount)}`} refusé : ${r.text}${op.kind !== 'cashout' ? ' Rien n’a été débité.' : ''}`, 'warn');
+});
 // a visit or a meeting joins the other player's presence room (src/online/visit.ts); the account refreshes the host's snapshot by itself
 visitDeps.room = () => presence.room;
 visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
+remoteAvatars.elsewhere = peer => grandCamp.drawsTag(peer.tag);   // 1.0.1 Grand Camp: the match draws its players itself (src/game/grandCamp.ts)
 const rel = new Relations(state.data);
 settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
 const follow = new FollowCamera(camera);
@@ -343,7 +390,9 @@ const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: stor
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); onlineAccount.setWhere(presence.status === 'online' ? world?.id ?? null : null, presence.room); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
+// The economic calendar (monthly contracts, src/economy/calendar.ts) reads the server's clock when the game is online, the device's otherwise.
+setEconClock(() => presence.serverNow());
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id), day: () => ctx.day(), hour: () => ctx.hour() });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 /** A bout at the arena (the duel in its ring): the others in the street still see the player there, in the ring. */
@@ -634,11 +683,7 @@ function corridorStep(dt: number) {
  */
 function corridorSwap(sw: Swap) {
   const w = world!, b = w.bounds;
-  for (const a of ['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]) {          // vehicles parked on the road follow the frame
-    const p = parked(state.data, a);
-    if (!p || p.hub !== sw.from || inRect(b, p.x, p.z)) continue;
-    park(state.data, { ...p, hub: sw.to, x: p.x + sw.dx, z: p.z + sw.dz });
-  }
+  rehomeOnRoad(state.data, sw.from, sw.to, sw.dx, sw.dz, (x, z) => inRect(b, x, z));                         // vehicles parked on the road follow the frame (every model)
   for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
   corridors.prepare(sw.road);
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
@@ -732,6 +777,21 @@ interactions.add(new PlayerSocial(() => presence.peers.values(), p => remoteAvat
   if (!emoter.make(kind, peer.id, performance.now())) { hud.toast('Doucement : un geste à la fois.'); return; }
   hud.toast(`${EMOTE_INFO[kind].you} ${peer.name} ${EMOTE_INFO[kind].glyph}`);
 }));
+// 1.0.1: the player menu (the action button on another player): after « Saluer », what Messages can do with that player, straight from the street.
+// A later feature adds its line the same way (src/multiplayer/social.ts registerPlayerAction).
+{
+  const hasAccount = (p: { tag?: string }) => !!p.tag && !!online;
+  const offline = () => (online?.status !== 'online' ? 'Hors ligne pour l’instant' : null);
+  const conv = (p: { tag?: string; name: string; look: number }, act?: 'pay' | 'invite' | 'meet') => { if (!p.tag || !openConversation({ tag: p.tag, name: p.name, look: p.look }, act)) hud.toast('Messages n’est pas disponible pour l’instant.', 'warn'); };
+  registerPlayerAction({ id: 'message', label: 'Message', icon: '💬', order: 10, show: hasAccount, run: p => conv(p) });
+  registerPlayerAction({ id: 'pay', label: 'Envoyer de l’argent', icon: '💸', order: 20, show: hasAccount, disabled: offline, run: p => conv(p, 'pay') });
+  registerPlayerAction({ id: 'invite', label: 'Inviter chez moi', icon: '🏠', order: 30, show: p => hasAccount(p) && !!onlineHooks.homeToInvite,
+    disabled: () => offline() ?? (onlineHooks.homeToInvite?.() ? null : 'Tu n’as pas encore de logement où recevoir'), run: p => conv(p, 'invite') });
+  registerPlayerAction({ id: 'meet', label: 'Proposer un rendez-vous', icon: '🤝', order: 40, show: p => hasAccount(p) && !!onlineHooks.meetupPlaces, disabled: offline, run: p => conv(p, 'meet') });
+  // 1.0.1 Grand Camp: the organizer invites the player in front of them (the server's list, and a text message in their conversation)
+  registerPlayerAction({ id: 'camp', label: 'Inviter au Grand Camp', icon: '⚽', order: 50, show: p => hasAccount(p) && campSession.enabled,
+    disabled: p => offline() ?? campSession.inviteWhy(p.tag!), run: p => { void campSession.invite([p.tag!]).then(r => hud.toast(r.ok ? `⚽ Invitation au Grand Camp envoyée à ${p.name}` : r.text, r.ok ? 'info' : 'warn')); } });
+}
 remoteAvatars.onEmote = (peer, emo) => { if (emo.to && emo.to === presence.id) hud.toast(`${peer.name} ${EMOTE_INFO[emo.k].toast} ${EMOTE_INFO[emo.k].glyph}`); };
 /** Everyone in the street can be greeted (placed people and walkers). */
 const people = interactions.add(new People(() => [
@@ -1455,6 +1515,9 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
 
 /** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
 function guidePlace(id: string): { name: string; x: number; z: number } | null {
+  // one's own parked vehicle (« Localiser »): where it really stands in this district; nothing when it is the one being driven, was sold, or is in another district
+  const car = vehicleOfMark(id);
+  if (car) { const e = myVehicle(car); return e && e.hub === world?.id && e.status !== 'driven' && e.status !== 'unknown' ? { name: vehicleMine(car), x: e.x, z: e.z } : null; }
   // the dealers' directory names a dealer with its district (`teranga:dealer:pikine`, src/transport/ownedModule.ts directoryRows); its place in that district is `teranga:dealer`
   const local = world && id.endsWith(`:${world.id}`) ? id.slice(0, -(world.id.length + 1)) : null;
   for (const k of local ? [id, local] : [id]) {
@@ -1472,12 +1535,18 @@ function walkingHint(): string | null {
   if (m) return m.hint ?? (m.hub === world?.id ? withBearing(`${pin} ${m.name}`, m) : `${pin} ${m.name} · ${HUB_NAMES[m.hub].split(' · ')[0]}`);
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
+  // the marker is on a vehicle the player is now driving, or no longer has: it is done
+  // (got on it: found — « Coups de pouce », src/economy/pouce.ts)
+  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { if (e) state.count('vehicule:retrouve'); destination = null; return null; } }
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
   const target = guidePlace(destination.id);
   if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
-  if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
+  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) {          // (a car is wider than a doorstep)
+    if (vehicleOfMark(destination.id)) state.count('vehicule:retrouve');    // a parked vehicle found with its marker (« Coups de pouce », src/economy/pouce.ts)
+    destination = null; hud.toast('Te voilà : ' + target.name); return null;
+  }
   const angle = Math.atan2(dx, dz) - follow.yaw;
   const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
   return `${arrow} ${jobAt(target)?.job === 'delivery' ? '📦 ' : ''}${target.name} · ${Math.round(distance)} m`;
@@ -1517,16 +1586,84 @@ const phone = new Phone({
 // the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
 transport.addObstacles(out => { if (corridors.active) corridors.footprints(out, pos.x, pos.z); });     // the road's traffic is solid for the vehicle the player drives
 mapBridge.walkTo = id => setDestination(id);
-/** The vehicles the player owns and where they stand parked (the city map shows them; the one being driven is the player's own marker). */
-mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
-  if (!ownsVehicle(state, a)) return [];
-  const p = parked(state.data, a); if (!p) return [];
-  if (MODULES.some(m => { const o = m as unknown as { ridden?: boolean; def?: { asset?: string } }; return o.ridden && o.def?.asset === a; })) return [];
-  return [{ asset: a, name: catalogSpec(a)?.name ?? a, hub: p.hub, x: p.x, z: p.z, yaw: p.yaw }];
+// ------------------------------------------------------------------ « Retrouver mon véhicule » (src/transport/whereabouts.ts): the phone's list, the maps' icons, « Localiser », « Faire sonner »
+const vehicleMod = (a: VehicleAsset) => ALL_VEHICLES.find(m => m.def.asset === a);
+/** The model's own vehicle standing in the loaded district, as its module has it (never a dealer's car on trial). */
+const liveVehicle = (a: VehicleAsset) => { const c = world ? vehicleMod(a)?.carNow() : null; return c ? { x: c.x, z: c.z, yaw: c.yaw, driving: c.driving } : null; };
+const myVehicles = () => vehicleEntries(state, world?.id ?? null, liveVehicle);
+const myVehicle = (a: VehicleAsset) => vehicleEntry(state, a, world?.id ?? null, liveVehicle(a));
+/** « Ta moto Jakarta »: the name the marker and the goal line give it. */
+const vehicleMine = (a: VehicleAsset) => vehicleMod(a)?.def.text.mine ?? catalogSpec(a)?.name ?? a;
+const whereNotes = new WhereNotes(store);
+/** The place a vehicle stands near: read from the loaded district (and remembered on this device), or the memory of where it was left in another one. */
+function vehiclePlace(e: VehicleEntry): string {
+  if (!e.hub) return '';
+  if (!world || e.hub !== world.id || mapBridge.hub !== world) return whereNotes.get(e);
+  const label = inRect(world.bounds, e.x, e.z) ? whereLabel(mapBridge.hubName, mapBridge.places, e.x, e.z).street : 'sur la route';
+  if (e.status !== 'driven' && !e.lent) whereNotes.set(e, label);
+  return label;
+}
+const onFootInStreet = () => !inside && !lambScene && !phoneHooks.driving?.();
+phoneHooks.vehicles = () => myVehicles().map(e => {
+  const here = e.hub === world?.id, metres = here && e.status !== 'driven' && !inside ? Math.hypot(e.x - pos.x, e.z - pos.z) : undefined;
+  const place = vehiclePlace(e), district = e.hub ? HUB_NAMES[e.hub].split(' · ')[0] : '';
+  const dealer = e.status === 'unknown' ? vehicleMod(e.asset)?.directoryRows(state)[0] : undefined;
+  return {
+    asset: e.asset, name: e.lent ? vehicleMine(e.asset) : catalogSpec(e.asset)?.name ?? e.asset, icon: VEHICLE_ICON[e.asset], status: e.status, statusLabel: STATUS_LABEL[e.status],
+    where: e.status === 'unknown' ? '' : [district, place].filter(Boolean).join(' · '),
+    note: e.status === 'unknown' ? (dealer ? `Il t’attend chez ${dealer.name}, ${HUB_NAMES[dealer.hub].split(' · ')[0]} : il sort à ta première visite` : 'Position inconnue')
+      : e.status === 'driven' ? 'Tu es au volant' : e.lent ? 'Prêtée par le dépôt · une dans chaque quartier' : e.status === 'broken' ? 'Ne démarre pas : réparation de fortune devant le capot' : undefined,
+    locate: e.status === 'driven' ? undefined : e.status === 'unknown' ? (dealer ? 'Voir le concessionnaire' : undefined) : 'Localiser',
+    marked: destination?.id === e.id, metres,
+    ring: metres !== undefined && metres <= RING_RANGE && (e.status === 'parked' || e.status === 'broken'),
+  };
 });
+/** « Localiser »: the game's one marker goes on the vehicle (directions too at the wheel), and the phone's map shows it. Nothing is moved; a vehicle with no record leads to its dealer, where it waits. */
+phoneHooks.locateVehicle = id => {
+  const a = vehicleOfMark(`vehicle:${id}`), e = a ? myVehicle(a) : null;
+  if (!a || !e || e.status === 'driven') return null;
+  if (e.status === 'unknown' || !e.hub) {
+    const d = vehicleMod(a)?.directoryRows(state)[0]; if (!d) return null;
+    destination = { id: d.id, hub: d.hub, name: d.name };
+    return { kind: 'place', id: d.id, hub: d.hub, name: d.name, icon: d.icon };
+  }
+  const name = vehicleMine(a);
+  destination = { id: e.id, hub: e.hub, name };
+  if (phoneHooks.driving?.()) navigation.driveTo(e.hub, name, { x: e.x, z: e.z });
+  return { kind: 'point', id: e.id, hub: e.hub, name, icon: VEHICLE_ICON[a], x: e.x, z: e.z };
+};
+/** « Faire sonner »: one short blip of its own horn, played on this device only (nothing is sent to the room), and not again for a few seconds. */
+let rangAt = -1e9;
+phoneHooks.ringVehicle = id => {
+  const a = vehicleOfMark(`vehicle:${id}`), e = a ? myVehicle(a) : null;
+  if (!a || !e) return 'Véhicule introuvable';
+  if (inside) return 'Sors d’abord dans la rue';
+  const why = cannotRing(e, world?.id ?? null, pos, onFootInStreet(), (performance.now() - rangAt) / 1000); if (why) return why;
+  if (isMuted()) return 'Le son est coupé (Réglages)';
+  rangAt = performance.now();
+  trafficAudio.hornOn(vehicleMod(a)?.def.kit ?? 'sedan');
+  if (!trafficAudio.hornHeld) trafficAudio.unlock();                       // the recording is still being decoded (first sound of the session): the key's chirp answers instead
+  window.setTimeout(() => trafficAudio.hornOff(), 240);
+  return null;
+};
+/** The vehicles the player owns and where they stand parked (both maps show them; the one being driven is the player's own marker). */
+mapBridge.owned = () => myVehicles().flatMap(e => e.hub && e.status !== 'driven' && e.status !== 'unknown' ? [{ id: e.id, asset: e.asset, name: vehicleMine(e.asset), icon: VEHICLE_ICON[e.asset], hub: e.hub, x: e.x, z: e.z, yaw: e.yaw }] : []);
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
+phoneHooks.closePhone = () => phone.close();
+phoneHooks.canOpenPhone = app => phone.can(app);
+// 1.0.1 « Autour de moi » (src/game/around.ts): the district's open Grand Camp lobbies on this build's server (none without one), and a place's row started
+// where the player stands as its own sheet starts it
+if (import.meta.env.VITE_MULTIPLAYER === 'true') {
+  const campEndpoint = import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined;
+  aroundDeps.campList = hub => CampClient.list(hub, { key: () => { try { return localStorage.getItem(DEVICE_KEY) ?? ''; } catch { return ''; } }, ...(campEndpoint ? { endpoint: campEndpoint } : {}) });
+}
+aroundDeps.runAction = (placeId, actionId) => {
+  const it = world?.interactables.find(i => i.id === placeId), a = it?.actions.find(x => x.id === actionId);
+  if (!it || !a || mode !== 'play' || (a.visible && !a.visible(state)) || a.requires?.(state)) return false;
+  hud.markAct(); runAction(a, it.npc, it); return true;
+};
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 
@@ -1536,6 +1673,7 @@ function saveNow(): boolean {
   // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
   const safe = inside || !ctxReady ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
   if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
+  if (world && ctxReady) for (const e of myVehicles()) vehiclePlace(e);   // the place each vehicle of this district stands near is remembered for « Mes véhicules »
   const ok = writeSave(store, state.data);
   reportWrite(ok);
   return ok;
@@ -1559,7 +1697,9 @@ hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (mode !== 'play') return;
   // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
-  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined));
+  const t = lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined);
+  if (t?.menu) { openMore(); return; }                     // another player: the button opens their menu (greet, write, send money, invite)
+  const a = interactions.primary(t);
   if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
@@ -1579,13 +1719,14 @@ function showPrompt(t: Target | null) {
   if (run) { hud.setPrompt('Arrêter', run.step.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
-  const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
-  hud.setPrompt(a.label, a.disabled ?? (a.label === t.name ? '' : t.name), all.length > 1, opt);
+  const all = interactions.all(t), opt = t.menu ? { icon: t.menu.icon } : { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
+  const label = t.menu?.label ?? a.label;
+  hud.setPrompt(label, t.menu ? 'Saluer, écrire, envoyer…' : a.disabled ?? (a.label === t.name ? '' : t.name), !t.menu && all.length > 1, opt);
   if (t.kind === 'self' || !world || seated) { hud.setWorldPrompt(null); return; }   // seated: the middle stays clear (§0 C)
   camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
-  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt);
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, t.menu?.icon ?? a.icon, label, opt);
 }
 /** Title, icon and « step n/m » (timed steps) of the running activity, for the progress pill. */
 function progressMeta() {
@@ -1638,6 +1779,16 @@ function frame(now: number) {
   updateFrameMeter(now);
   textureSweep.tick(scene, now);                            // (every 20 s: what the scene draws with, for the sweep at the next district change)
 }
+/** The stick in world space (as the walk reads it: along the camera), handed to the first module that steers the body now (GameModule.pilot). */
+function pilotNow(dt: number) {
+  let x = 0, z = 0;
+  if (mode === 'play') {
+    const m = input.move(), fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
+    x = fx * m.y + rx * m.x; z = fz * m.y + rz * m.x;
+  }
+  for (const m of MODULES) { const p = m.pilot?.(ctx, dt, { x, z }); if (p) return p; }
+  return null;
+}
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
 /** ?debug: modules whose update took over 25 ms in a frame: [frame index in the ring, name, ms, 1 if a district was loading]. */
@@ -1674,7 +1825,13 @@ function frameStep(now: number, dt: number, draw = true) {
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
-  if (lambScene) {
+  // a module steering the body itself (1.0.1 Grand Camp: the server's body on the pitch, predicted from the stick); also behind the phone (the stick at rest)
+  const piloted = !lambScene && !seated && !rising && (mode === 'play' || mode === 'menu') ? pilotNow(dt) : null;
+  if (piloted) {
+    pos.x = piloted.x; pos.z = piloted.z; facing = piloted.facing; speed = piloted.speed;
+    { const gy = 0.1 + world.heightAt(pos.x, pos.z); pos.y += (gy - pos.y) * Math.min(1, dt * 14); }
+    if (mode !== 'menu') state.tick(dt * 1000);
+  } else if (lambScene) {
     const f = lambScene.update(dt);
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
@@ -1765,6 +1922,7 @@ function frameStep(now: number, dt: number, draw = true) {
   presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }
     : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
+  selfMarker.update(pos, 1.9, remoteAvatars.size > 0 && space !== 'scene' && !lambScene, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined) : (interactions.focus = null);
@@ -1800,7 +1958,7 @@ async function start() {
   const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
-    name: /^Dakarois [0-9A-F]{4}$/.test(presence.profile.name) ? '' : presence.profile.name }) : null;
+    name: isDefaultName(presence.profile.name, state.data.guestId) ? '' : presence.profile.name }) : null;
   if (studio) { studioOpen = true; input.enabled = false; }                      // touches on the studio never reach the game's stick or camera
   const [, made] = await Promise.all([loading, studio]);
   studioOpen = false; if (studio) { input.enabled = true; input.reset(); }
@@ -1810,8 +1968,13 @@ async function start() {
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
-  if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
-  else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+  const welcome = () => {
+    if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
+    else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+  };
+  // 1.0.1: the first launch on this device flies in over Pikine once the character is made (src/game/opening.ts); the welcome comes with the HUD, when it lands
+  if (openingWanted({ made: !!made, debug: DEBUG, forced: TEST.intro, seen: openingSeen() })) opening.play(ctx, { done: welcome });
+  else welcome();
   started = true; markStarted();
   requestAnimationFrame(frame);
   if (made) requestAnimationFrame(() => requestAnimationFrame(() => made.arrive()));   // the arrival card fades once the game has drawn
@@ -1820,11 +1983,14 @@ async function start() {
 void start();
 
 if (DEBUG) {
-  (window as unknown as Record<string, unknown>).__dakar = {
+  // ?debug works on every host (the public smoke test uses it), but on the public game only the hooks that read and the smoke test's moves exist:
+  // what makes money or value, or changes the economy or a save's progress, is for test hosts only, like ?argent= (src/core/testParams.ts debugApiFor)
+  const testHost = isTestHost(location.hostname);
+  const api: Record<string, unknown> = {
     state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
     /** LD2.0-B: the player's online account as the UI sees it (src/online/api.ts), for the checks: status, me, balance, conversations, items, history. */
     account: () => online,
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, plates: { ...remoteAvatars.plates }, selfMarker: selfMarker.sprite.visible, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
@@ -1993,6 +2159,8 @@ if (DEBUG) {
     phone(app?: string) { hud.closeModal(); return phone.open(app); },
     phoneClose() { phone.close(); },
     phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
+    /** « Retrouver mon véhicule »: where the game has each of the player's vehicles (src/transport/whereabouts.ts), and the map's own list. */
+    myVehicles: () => myVehicles(), mapOwned: () => mapBridge.owned(), marked: () => (destination ? { ...destination } : null),
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
@@ -2025,7 +2193,8 @@ if (DEBUG) {
       return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
     },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.pin(); follow.yaw = facing + yawOff; void dist; },
-    ...economy.debug(),
+    ...(testHost ? economy.debug() : {}),
   };
-  for (const m of MODULES) Object.assign((window as unknown as { __dakar: Record<string, unknown> }).__dakar, m.debug?.(ctx));
+  if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
 }

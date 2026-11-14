@@ -6,6 +6,9 @@ import type { ActivitySpec } from '../activity/types';
 import { NGOR_BEACH, ngorBeachSeats } from '../world/ngorBeach';
 import { Crowd, defaultLook, type CrowdLook, type CrowdSlot } from '../crowd/crowd';
 import { conversation, counter, type Venue, type VenueEnv } from './venue';
+import { VenueLife } from './venueLife';
+import { NGOR_AREA, NGOR_KEEP, NGOR_LIFE } from './lifePlans';
+import { beachSandY } from '../world/ngorBay';
 
 /**
  * La plage de Ngor (docs/NGOR_BEACH.md; the world: src/world/ngorBeach.ts): the beach first, then the embarkation. What the player does there, with the activities that
@@ -115,6 +118,12 @@ export function buildNgorBeach(env: VenueEnv): Venue {
   crowd.group.name = 'ngor_plage_crowd'; ctx.extra.add(crowd.group);
   const present = (m: string) => ({ v_souvenirs: m === 'day', v_jus: m === 'day', v_grill: m === 'day', v_tissus: m === 'day', barman: true, guichetier: m === 'day', bain1: m === 'day', bain2: m === 'day', bain3: m === 'day' && !lite, bain4: m === 'day' && !lite, bain5: m === 'day', bar1: m !== 'night', bar2: m === 'eve' && !lite, bar3: m === 'day' && !lite,
     att1: m === 'day', att2: m === 'day' && !lite, banc1: m === 'day' });
+  // the beachgoers who come and go (1.0.1): down from the boardwalk, a word between the stalls, then the water's edge, a walk along it, a bed, the bar; busiest in the afternoon, nobody at night
+  let lifeSeen = false;
+  const life = new VenueLife({
+    ctx, name: 'plage', parent: ctx.extra, plan: { ...NGOR_LIFE, entries: [...NGOR_LIFE.entries], gathers: [...NGOR_LIFE.gathers], spots: [...NGOR_LIFE.spots] },
+    colliders: () => world.colliders, area: NGOR_AREA, y: (_x, z) => beachSandY(z) + 0.02, active: () => lifeSeen, keep: NGOR_KEEP,
+  });
   let moment = '';
   const showFigure = (k: string, on: boolean) => {
     const sid = seatOf.get(k), who = `${id}:${k}`;
@@ -159,14 +168,15 @@ export function buildNgorBeach(env: VenueEnv): Venue {
     if (m !== moment) { moment = m; for (const [k, on] of Object.entries(present(m))) showFigure(k, on); }
     const near = Math.hypot(ctx.camera.position.x + 8, ctx.camera.position.z + 142) < 90;
     crowd.group.visible = near && ctx.space() === 'street'; if (crowd.group.visible) crowd.update(dt, true);
+    lifeSeen = crowd.group.visible; life.update(dt);
     if ((pollT -= dt) <= 0) { pollT = 0.5; pollDay(); }
   };
 
   return {
     id, type: 'beach', name: place.name, places: [place], update, camera,
-    dispose() { for (const [k, sid] of seatOf) ctx.seats.release(sid, `${id}:${k}`); crowd.dispose(); group.removeFromParent(); },
+    dispose() { for (const [k, sid] of seatOf) ctx.seats.release(sid, `${id}:${k}`); life.dispose(); crowd.dispose(); group.removeFromParent(); },
     debug: () => ({
-      id, moment, anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z })), present: crowd.stats().present, lying: lying()?.id ?? null, scoping: scoping(), cards,
+      id, moment, anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z })), present: crowd.stats().present, life: life.info(), lying: lying()?.id ?? null, scoping: scoping(), cards,
       counters: { achats: counter(ctx, KEYS.buy), transat: counter(ctx, KEYS.bed), ile: counter(ctx, KEYS.look), jours: counter(ctx, KEYS.days), carte: counter(ctx, KEYS.card) },
     }),
   };

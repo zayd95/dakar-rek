@@ -58,7 +58,7 @@ await pick(/^📝Louer/);
 await pick(/^✅/);
 const rented = await d(() => window.__dakar.estate());
 check('rented by touch: the F2 is the player\'s, rented', rented.assets.some(a => a.spec === 'appart_jamm' && a.how === 'rented'), JSON.stringify(rented.assets.filter(a => a.kind === 'home').map(a => [a.spec, a.how])));
-await pick('Définir comme domicile principal');
+await pick('Emménager'); await pick('Garder comme chambre familiale');      // the purchase sequence (1.0.1): « Les clés sont à toi » › « Emménager » › the family room kept
 check('moved in: the F2 is the principal residence', (await d(() => window.__dakar.estate().home)) === 'appart_jamm');
 await pick('Entrer chez toi');
 await P.inF2(); await wait(1200);
@@ -194,7 +194,7 @@ const s1 = await B.atSign();
 await B.pick(/^🔑Acheter/); await B.pick(/^Acheter|^✅/);
 const est = await B.d(() => window.__dakar.estate());
 check('bought by touch at the sign: the F2 is the player\'s, owned', est.assets.some(a => a.spec === 'appart_jamm' && a.how === 'owned'), JSON.stringify({ sheet: s1.items.slice(0, 3), homes: est.assets.filter(a => a.kind === 'home').map(a => [a.spec, a.how]) }));
-await B.pick('Définir comme domicile principal'); await B.pick('Entrer chez toi');
+await B.pick('Emménager'); await B.pick('Garder comme chambre familiale'); await B.pick('Entrer chez toi');
 await B.inF2(); await B.wait(1000);
 const hb = await B.d(() => window.__dakar.home());
 check('entered the bought F2: the same walkable apartment', hb.plan === 'f2_jamm' && hb.room === 'entree', JSON.stringify(hb));

@@ -42,6 +42,13 @@ body.theme-night #modal .dcard .chip.bonus { background:#4a3a10; color:#ffd77a; 
 #modal .dcard .side small { font-size:13px; font-weight:650; color:var(--ink-2); }
 /* the big yellow action (the shared .ui-btn; outside the card on a route, inside it on an order) */
 #modal .dcard.dis .go { display:none; }
+/* an offer of the board, compact: the route, the kind, the pay, one button (deliveryCards.ts jobCard) */
+#modal .dcard.job .face { display:grid; grid-template-columns:1fr auto; grid-template-areas:'route pay' 'type go'; align-items:center; gap:6px 12px; padding:12px 14px; }
+#modal .dcard.job .jc-route { grid-area:route; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:17px; font-weight:800; }
+#modal .dcard.job .jc-type { grid-area:type; min-width:0; font-size:14px; font-weight:650; color:var(--ink-2); }
+#modal .dcard.job .jc-pay { grid-area:pay; justify-self:end; font-size:19px; font-weight:850; font-style:normal; white-space:nowrap; }
+#modal .dcard.job .jc-go { grid-area:go; justify-self:end; min-height:40px; padding:8px 16px; border-radius:999px; font-size:15px; font-weight:800; display:grid; place-items:center; white-space:nowrap; }
+#modal .dcard.job.dis .jc-go { background:rgba(180,35,24,.14); color:var(--warn); }
 /* the two orders of a tour */
 #modal .dcard.order .face { flex-direction:column; gap:12px; }
 #modal .dcard.order .stop.link::before { content:''; position:absolute; left:9px; top:43px; width:10px; height:10px; border-radius:50%; background:var(--gain); box-shadow:0 0 0 3px var(--row); z-index:1; }

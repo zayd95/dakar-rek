@@ -7,19 +7,31 @@
 //      the stick moves the player, the phone opens on its home screen and closes, the map opens, each of the five districts loads, a save survives a reload;
 //   4. an online build (version.json mode « online »): the presence server answers /api/health.
 // It says that the published build STARTS and its main paths work from that address. It does not say how the game runs on a phone.
+// A local build under the public game's own name (1.0.1: its `?debug` keeps only the public hooks, src/core/testParams.ts): SMOKE_AS_HOST=<public hostname> with a local
+// base URL; the browser resolves that name to the local server and treats the origin as secure, as the real https address is.
+// HOW TO SERVE IT for SMOKE_AS_HOST: the requests carry `Host: <public hostname>:<port>`, which `vite preview` refuses (403 on everything: its allowed-hosts
+// guard). Serve the build folder with a server that answers any Host, e.g.
+//   python3 -m http.server <port> --bind 127.0.0.1 --directory <dist>
+//   SMOKE_AS_HOST=dakar-rek.habibjallow95.workers.dev node scripts/check-public-smoke.mjs http://127.0.0.1:<port>/ <commit> <outDir>
+// Without SMOKE_AS_HOST, `vite preview` is fine.
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { realTouch } from './lib/realTouch.mjs';
 
 const [baseArg, expected = '', out = '/tmp/public-smoke'] = process.argv.slice(2);
 if (!baseArg) { console.error('usage: node scripts/check-public-smoke.mjs <baseUrl> [expectedCommit] [outDir]'); process.exit(2); }
-const base = baseArg.endsWith('/') ? baseArg : baseArg + '/';
+const asHost = process.env.SMOKE_AS_HOST ?? '';
+const baseUrl = new URL(baseArg.endsWith('/') ? baseArg : baseArg + '/'), local = baseUrl.hostname;
+if (asHost) baseUrl.hostname = asHost;
+const base = baseUrl.href;
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 300000 };
 let fails = 0; const check = (n, ok, d = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}: ${n}${d ? ' ' + d : ''}`); if (!ok) fails++; };
 const HUBS = ['pikine', 'plateau', 'corniche', 'almadies', 'mermoz'];
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const hostArgs = asHost ? [`--host-resolver-rules=MAP ${asHost} ${local}`, `--unsafely-treat-insecure-origin-as-secure=${baseUrl.origin}`] : [];
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', ...hostArgs] });
+if (asHost) console.log(`(served by ${local}, opened as ${base})`);
 const open = async (query) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   await context.addInitScript(() => { try { if (!localStorage.getItem('dakarrek.quality')) localStorage.setItem('dakarrek.quality', 'low'); } catch { /* */ } });
@@ -62,6 +74,13 @@ let version = null;
   }));
   check('in play, the stick on screen; no Sprint, Footing or stamina control', hud.stick && !hud.gauge && !hud.words && !hud.runButton, JSON.stringify(hud));
   await page.screenshot({ path: `${out}/02-in-play.png` });
+  // 1.0.1: on the public game (not a local or preview host: src/core/testParams.ts isTestHost) ?debug has none of the hooks that make money or change progress
+  const host = new URL(base).hostname;
+  if (!/^(localhost|127\.0\.0\.1)$/.test(host) && !/^[a-z0-9-]+-dakar-rek\.[a-z0-9-]+\.workers\.dev$/.test(host)) {
+    const keys = await page.evaluate(() => Object.keys(window.__dakar).sort());
+    const bad = keys.filter(k => /^(state|rel|giveMoney|buy|buyVenture|advancePlayed|acceptJob|completeJob|playBeat|nextDay|setHour|econAdvance|save|character|phoneHooks|account|three)$/.test(k));
+    check('the public game\'s ?debug keeps only the hooks that read or move (nothing makes money or changes progress)', bad.length === 0 && keys.length <= 25, `${keys.length} hooks: ${keys.join(' ')}`);
+  }
 
   // the stick moves the player (a real touch held at the stick's edge)
   const p0 = await page.evaluate(() => window.__dakar.pos());

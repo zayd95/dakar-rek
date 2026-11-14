@@ -34,6 +34,8 @@ export interface MapFriend { id: string; name: string; x: number; z: number }
  * The meeting point between the map module, the full map in the phone and main.ts (which wires the three functions at
  * the top: the game's own waypoint, the phone, the contacts).
  */
+/** One of the player's own parked vehicles on the phone's maps. */
+export interface MapOwned { id: string; asset: string; name: string; icon: string; hub: HubId; x: number; z: number; yaw: number }
 export const mapBridge = {
   hub: null as HubWorld | null,
   hubName: '',
@@ -45,8 +47,11 @@ export const mapBridge = {
   guide: null as { name: string; x: number; z: number; job?: 'vtc' | 'delivery' } | null,
   friends: [] as MapFriend[],
   vehicles: [] as MapVehicle[],
-  /** The vehicles the player owns, wherever they are parked (wired by main.ts): the city map (src/ui/geoMap.ts) shows them. */
-  owned: (): { asset: string; name: string; hub: HubId; x: number; z: number; yaw: number }[] => [],
+  /**
+   * The vehicles the player owns, wherever they are parked (wired by main.ts from src/transport/whereabouts.ts): both phone maps show them, and a tap picks one.
+   * `id` is the walking marker's id of the vehicle (`vehicle:<asset>`).
+   */
+  owned: (): MapOwned[] => [],
   hour: 12,
   /**
    * The streets a way is found on, from `a` to `b`: the district's own, and the roads that leave it (src/game/navRules.ts roadEdges) when either end is out on one,
@@ -80,6 +85,8 @@ export function minimapModule(): GameModule {
   let size = 0, dpr = 1;
   let radius = 52, speedAvg = 0, tick = 0, labelT = 0, scanT = 0, routeT = 0, placesT = 0, shown = false, t = 0;
   let last = { x: NaN, z: NaN }, routeKey = '', wasBack: boolean | null = null;
+  /** Checks: how many times a way to the objective was worked out (a marker on a parked vehicle costs what a marker on a place does: scripts/check-find-vehicle.mjs). */
+  let routeRuns = 0;
   const tracked = new Map<THREE.Object3D, { x: number; z: number; moving: boolean }>();
   const dir = new THREE.Vector3();
   let yaw = 0;
@@ -283,11 +290,11 @@ export function minimapModule(): GameModule {
         const shut = p.driving ? closuresNow() : [];   // at the wheel, as the goal line: off the streets closed to cars
         if (p.driving) {                                                     // at the wheel: the driver's way, as the goal line reads it (src/game/navRules.ts driverWay)
           const way = driverWay(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, p.facing, { x: gd.x, z: gd.z }, wasBack);
-          wasBack = way.back; mapBridge.route = way; routeKey = '';
+          wasBack = way.back; mapBridge.route = way; routeKey = ''; routeRuns++;
         } else {
           wasBack = null;
           const k = `${gd.x | 0},${gd.z | 0},${Math.round(pos.x / 8)},${Math.round(pos.z / 8)},${shut.length}`;
-          if (k !== routeKey) { routeKey = k; mapBridge.route = routePath(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
+          if (k !== routeKey) { routeKey = k; routeRuns++; mapBridge.route = routePath(openEdges(mapBridge.net(pos, gd), shut), { x: pos.x, z: pos.z }, { x: gd.x, z: gd.z }); }
         }
         routeT = 0.5;
       }
@@ -305,7 +312,7 @@ export function minimapModule(): GameModule {
       minimap: () => ({
         on: root.classList.contains('on'), size, radius: Math.round(radius * 10) / 10, yaw, speed: Math.round(speedAvg * 10) / 10,
         district: dEl.textContent, street: sEl.textContent, places: mapBridge.places.length, vehicles: mapBridge.vehicles.length,
-        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null, job: jobOf(mapBridge.guide),
+        route: mapBridge.route ? { n: mapBridge.route.points.length, length: Math.round(mapBridge.route.length) } : null, guide: mapBridge.guide?.name ?? null, guideAt: mapBridge.guide ? { x: mapBridge.guide.x, z: mapBridge.guide.z } : null, routeRuns, job: jobOf(mapBridge.guide),
         north: northAngle(yaw), enabled: mapBridge.enabled, hubOk: ctx.world() === mapBridge.hub,
       }),
       minimapPlaces: () => mapBridge.places,

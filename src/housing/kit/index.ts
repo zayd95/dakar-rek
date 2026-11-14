@@ -1,4 +1,5 @@
 import type { HomeLevel, HomeSpec } from '../../economy/catalog';
+import { ECONOMY } from '../../economy/config';
 import { F2_JAMM, registerPlan, type FloorPlan } from '../plan';
 import { MAISON_PLAN } from '../maisonPlan';
 import { RESIDENCE_PLAN } from '../residencePlan';
@@ -75,7 +76,7 @@ export function homeSpecFromTemplate(template: TemplateId, o: ListingOptions): H
   const box = plan.box ?? { x0: -plan.w / 2, x1: plan.w / 2, z0: -plan.d / 2, z1: plan.d / 2 };
   const price = o.price ?? t.price, rent = o.rent ?? t.rent;
   return {
-    id: o.id, kind: 'home', name: o.name, what: o.what ?? t.about, price, rent, income: Math.round((rent / 24) * 0.6), hub: o.hub, place: o.place, where: o.where,
+    id: o.id, kind: 'home', name: o.name, what: o.what ?? t.about, price, rent, income: Math.round((rent / 24) * ECONOMY.property.letShare), hub: o.hub, place: o.place, where: o.where,
     size: Math.round(t.area), tier: Math.min(5, 1 + TEMPLATE_IDS.indexOf(template) % 5), upgrades: [],
     home: { level: t.level, w: box.x1 - box.x0, d: box.z1 - box.z0, door: o.door, floor: o.floor ?? 'tiles' },
   } as HomeSpec;

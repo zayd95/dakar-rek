@@ -3,6 +3,7 @@ import { newSave, writeSave, loadSave, type KV } from '../src/core/save';
 import { GameState } from '../src/core/state';
 import { applyMoney, createAsk, memoryLedger, openAccount, todayOf } from '../src/online/ledgerRules';
 import { OnlineAccount, CACHE_KEY } from '../src/online/client';
+import { onlineHooks } from '../src/online/api';
 import type { ClientMessage, MoneyLimits } from '../src/online/protocol';
 
 /**
@@ -19,6 +20,8 @@ class FakeServer {
   received: Msg[] = [];
   /** Ids whose answer is lost once (applied, never answered), and refusals to give. */
   swallow = new Set<string>(); refuse = new Map<string, string>(); duplicateAnswers = new Set<string>(); refuseText = new Map<string, string>();
+  /** Ids answered « undecided » (`offline`: the server could not reach its ledger) this many times before being handled. */
+  undecided = new Map<string, number>();
   constructor() { openAccount(this.ledger, OTHER, Date.now()); }
   connect(ws: FakeWS) {
     const tag = ws.url.searchParams.get('key')!.slice(0, 16);
@@ -34,6 +37,7 @@ class FakeServer {
     this.received.push(m); this.times.push(Date.now());
     const ack = (x: object) => { if (m.id && this.swallow.delete(m.id)) return; ws.deliver({ type: 'ack', id: m.id, ...x }); if (m.id && this.duplicateAnswers.has(m.id)) ws.deliver({ type: 'ack', id: m.id, duplicate: true, ...x }); };
     if (m.id && this.refuse.has(m.id)) { ack({ ok: false, reason: this.refuse.get(m.id) }); return; }
+    if (m.id && (this.undecided.get(m.id) ?? 0) > 0) { this.undecided.set(m.id, this.undecided.get(m.id)! - 1); ack({ ok: false, reason: 'offline' }); return; }
     if (m.type === 'fund' || m.type === 'cashout' || m.type === 'pay') {
       const r = this.ledger.transaction(() => applyMoney(this.ledger, m.type === 'pay' ? { kind: 'pay', id: m.id!, tag: ws.tag, to: m.to, amount: m.amount, fund: m.fund, ...(m.req ? { req: m.req } : {}) } : { kind: m.type, id: m.id!, tag: ws.tag, amount: m.amount }, Date.now(), L));
       if (!r.ok) { ack({ ok: false, reason: r.reason }); return; }
@@ -255,5 +259,117 @@ describe('the account client', () => {
     expect(state.data.wallet).toBe(1_000);
     expect((await client.lookup('pas un code'))).toMatchObject({ ok: false, reason: 'code' });
     void createAsk;
+  });
+});
+
+/** 1.0.1: a send the server has not answered is « pending », shown as such, and becomes a yes or a no when the answer comes — never a guess. */
+describe('a send waiting for the server (1.0.1)', () => {
+  afterEach(() => { delete onlineHooks.moneySettled; vi.useRealTimers(); });
+  const payCard = (c: OnlineAccount, id: string) => c.items(OTHER).find(i => i.id === id);
+
+  it('is in its conversation at once as « sending », never as the last line of the list; the server’s yes makes it the server’s card', async () => {
+    FakeWS.server = new FakeServer();
+    const { client, state } = setup({ wallet: 10_000 });
+    await online(client);
+    const id = client.newId(), sent = client.pay({ id, to: OTHER, amount: 3_000, note: 'Taxi' });
+    expect(payCard(client, id)).toMatchObject({ k: 'pay', from: TAG, amount: 3_000, note: 'Taxi', status: 'sending' });   // before any answer
+    expect(client.convs().find(c => c.with === OTHER)?.last ?? null).toBeNull();                                          // the list does not say « envoyés » yet
+    expect(state.data.wallet).toBe(7_000);
+    expect(await sent).toMatchObject({ ok: true, op: { id, amount: 3_000 } });
+    expect(payCard(client, id)).toMatchObject({ k: 'pay', amount: 3_000 }); expect(payCard(client, id)?.status).toBeUndefined();
+    expect(client.convs().find(c => c.with === OTHER)?.last).toMatchObject({ id, k: 'pay' });
+  });
+
+  it('a refusal turns the waiting card into « failed » with its reason; the wallet part is back; it is never sent again', async () => {
+    FakeWS.server = new FakeServer();
+    const { client, state } = setup({ wallet: 10_000 });
+    await online(client);
+    const id = client.newId(); FakeWS.server.refuse.set(id, 'unavailable');
+    expect(await client.pay({ id, to: OTHER, amount: 3_000 })).toMatchObject({ ok: false, reason: 'unavailable' });
+    expect(payCard(client, id)).toMatchObject({ status: 'failed', reason: 'unavailable' });
+    expect(state.data.wallet).toBe(10_000); expect(state.data.online.pending).toEqual([]);
+    sockets()[0].drop(); await online(client); await new Promise(r => setTimeout(r, 60));
+    expect(FakeWS.server.received.filter(m => m.id === id)).toHaveLength(1);
+  });
+
+  it('no answer in time is « pending », not a refusal: asked again with the same id it waits for the one answer, which comes at the next connection (once on the ledger)', async () => {
+    FakeWS.server = new FakeServer();
+    const { client, state } = setup({ wallet: 10_000 });
+    await online(client);
+    const told: unknown[] = []; onlineHooks.moneySettled = (op, r) => { told.push([op, r.ok]); };
+    vi.useFakeTimers();
+    const id = client.newId(); FakeWS.server.swallow.add(id);              // applied by the server, its answer lost
+    const first = client.pay({ id, to: OTHER, amount: 4_000 });
+    await vi.advanceTimersByTimeAsync(15_100);
+    const r1 = await first;
+    expect(r1).toMatchObject({ ok: false, reason: 'pending' }); expect((r1 as { text: string }).text).not.toMatch(/Rien/);
+    expect(payCard(client, id)).toMatchObject({ status: 'sending' });      // still waiting: nothing is claimed either way
+    expect(state.data.online.pending.map(p => p.id)).toEqual([id]); expect(state.data.wallet).toBe(6_000);
+    const second = client.pay({ id, to: OTHER, amount: 4_000 });           // the sheet asks again: not a second operation
+    expect(FakeWS.server.received.filter(m => m.id === id)).toHaveLength(1);
+    sockets()[0].drop();                                                   // the connection goes and comes back: the same id is sent again
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(await second).toMatchObject({ ok: true, op: { id, amount: 4_000 } });
+    expect(FakeWS.server.received.filter(m => m.id === id)).toHaveLength(2);
+    expect(FakeWS.server.ledger.account(OTHER)?.balance).toBe(4_000);      // once
+    expect(payCard(client, id)?.status).toBeUndefined(); expect(state.data.online.pending).toEqual([]); expect(state.data.wallet).toBe(6_000);
+    expect(told).toEqual([]);                                              // someone was waiting: the sheet says it, not the notice
+  });
+
+  it('an « undecided » answer (the server could not reach its ledger) is not the end: the same id goes again on the same connection, applied once', async () => {
+    FakeWS.server = new FakeServer();
+    const { client, state } = setup({ wallet: 1_000 });
+    await online(client);
+    const fund = client.newId();
+    expect(await client.fund({ id: fund, amount: 1_000 })).toMatchObject({ ok: true });
+    const id = client.newId(); FakeWS.server.undecided.set(id, 2);
+    const r = await client.cashout({ id, amount: 600 });               // undecided twice, then applied: within the first wait, no reconnection
+    expect(r).toMatchObject({ ok: true, op: { id, kind: 'cashout', amount: 600 } });
+    expect(FakeWS.server.received.filter(m => m.id === id)).toHaveLength(3);
+    expect(state.data.wallet).toBe(600); expect(state.data.online).toMatchObject({ pending: [], balance: 400 });
+    expect(FakeWS.server.ledger.account(TAG)?.balance).toBe(400);      // once
+  });
+
+  it('after a reload nobody waits: the pending send is still shown waiting, is sent again, and its outcome is told through `moneySettled`', async () => {
+    FakeWS.server = new FakeServer();
+    const storage = mem();
+    const one = setup({ wallet: 10_000, storage });
+    await online(one.client);
+    const id = one.client.newId(); FakeWS.server.swallow.add(id);
+    void one.client.pay({ id, to: OTHER, amount: 2_500 });
+    await vi.waitFor(() => expect(FakeWS.server.received.some(m => m.id === id)).toBe(true));
+    (one.client as unknown as { persistNow(): void; stopSocket(): void }).persistNow();
+    (one.client as unknown as { stopSocket(): void }).stopSocket();
+    const told: [string, number, string | undefined, boolean][] = []; onlineHooks.moneySettled = (op, r) => { told.push([op.kind, op.amount, op.to, r.ok]); };
+    const two = setup({ storage, state: new GameState(loadSave(storage)!) });
+    expect(two.client.items(OTHER).find(i => i.id === id)).toMatchObject({ status: 'sending' });   // (read from the device's copy, before any connection)
+    await online(two.client);
+    await vi.waitFor(() => expect(told).toEqual([['pay', 2_500, OTHER, true]]));
+    expect(two.client.items(OTHER).find(i => i.id === id)?.status).toBeUndefined();
+    expect(two.state.data.wallet).toBe(7_500); expect(FakeWS.server.ledger.account(OTHER)?.balance).toBe(2_500);
+  });
+
+  it('a waiting card whose operation the save no longer holds was answered: it goes (the server’s card comes with the conversation)', async () => {
+    FakeWS.server = new FakeServer();
+    const storage = mem();
+    storage.setItem(CACHE_KEY, JSON.stringify({ v: 1, tag: TAG, convs: [], items: { [OTHER]: [
+      { id: 'pay-gone-0001', k: 'pay', from: TAG, at: 5, amount: 900, op: 'pay-gone-0001', status: 'sending' },
+      { id: 'txt-lost-0001', k: 'text', from: TAG, at: 6, text: 'Salut', status: 'sending' }] }, outbox: [] }));
+    const { client } = setup({ storage });
+    const items = client.items(OTHER);
+    expect(items.map(i => i.id)).toEqual(['txt-lost-0001']); expect(items[0]).toMatchObject({ status: 'failed' });   // (a text without its outbox entry is failed, as before)
+    await online(client);
+  });
+
+  it('« Joueur », the account’s placeholder for someone it has not heard from, never replaces a name this device knows', async () => {
+    FakeWS.server = new FakeServer();
+    const { client } = setup();
+    await online(client);
+    const push = (id: string, name: string) => sockets()[0].deliver({ type: 'item', with: OTHER, item: { id, k: 'text', from: OTHER, at: Date.now(), text: 'Salut' }, name, look: 2 });
+    push('txt-00000001', 'Moussa');
+    await vi.waitFor(() => expect(client.convs()[0]?.name).toBe('Moussa'));
+    push('txt-00000002', 'Joueur');
+    await vi.waitFor(() => expect(client.items(OTHER)).toHaveLength(2));
+    expect(client.convs()[0].name).toBe('Moussa'); expect(client.unread()).toBe(2);
   });
 });

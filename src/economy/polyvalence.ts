@@ -17,7 +17,7 @@ export const ACTIVITIES = ACTIVITY_IDS;
 export type Activity = ActivityId;
 
 export const ACTIVITY_INFO: Record<Activity, { label: string; where: string }> = {
-  livraison: { label: 'Livraisons', where: 'Tiak Tiak à Pikine et au Plateau' },
+  livraison: { label: 'Livraisons', where: 'Tiak Tiak, dans tous les quartiers' },
   service: { label: 'Petits boulots', where: 'Services payés des commerces (appli Travail)' },
   commerce: { label: 'Commerce', where: 'Vendre à Sandaga, acheter un meuble ou une affaire' },
   combat: { label: 'Lutte', where: 'Écurie et arène de Pikine' },

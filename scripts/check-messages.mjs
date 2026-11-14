@@ -408,11 +408,16 @@ try {
     await until(() => document.querySelector('#chatBtn .chat-badge')?.textContent === '1');   // drawn by the chat's frame update
     const badge = await d(() => document.querySelector('#chatBtn .chat-badge')?.textContent ?? '');
     await tap('#chatBtn');
-    await until(() => document.getElementById('chatPanel')?.classList.contains('on'));
+    await until(() => window.__dakar.phoneInfo().open && window.__dakar.phoneInfo().screen === 'messages');
+    const straight = await d(() => window.__dakar.phoneInfo().screen === 'messages' && !window.__dakar.phoneInfo().arg && !document.getElementById('chatPanel').classList.contains('on'));
+    await until(() => !!document.querySelector('#phone .mg-near-go'));
+    await tap('#phone .mg-near-go');
+    await until(() => document.getElementById('chatPanel')?.classList.contains('on') && !window.__dakar.phoneInfo().open);
+    const near = await d(() => document.getElementById('chatPanel').classList.contains('on') && !window.__dakar.phoneInfo().open);
     await tap('#chatPanel .chat-dm');
     await until(() => window.__dakar.phoneInfo().open && window.__dakar.phoneInfo().screen === 'messages');
-    check('9c. the floating chat: its badge counts the unread message, « Messages privés ↗ » closes the panel and opens the phone’s Messages',
-      badge === '1' && !(await d(() => document.getElementById('chatPanel').classList.contains('on'))), JSON.stringify({ badge }));
+    check('9c. (1.0.1) the floating chat button: its badge counts the unread message and it opens the phone’s Messages inbox; « À proximité » there opens the proximity panel, whose « Messages privés ↗ » closes it and leads back',
+      badge === '1' && straight && near && !(await d(() => document.getElementById('chatPanel').classList.contains('on'))), JSON.stringify({ badge, straight, near }));
   } else check('9c. the floating chat exists in this build (vite build --mode online)', false, 'no #chatBtn');
 
   // the phone's keyboard (simulated: the visual viewport loses 336 px at the bottom, as Safari's): the field rides above it

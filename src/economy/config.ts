@@ -15,6 +15,19 @@ export const ECONOMY = {
       // between districts (a ride of 1.2 to 2 km on the roads): PROVISIONAL
       x_pk_pl_diallo_ndeye: 5000, x_pl_pk_market_mame: 5000, x_pk_al_maiga_pointe: 6500, x_pl_co_fatou_etudiants: 6000,
     } as Record<string, number>,
+    /**
+     * Pay of a run of the rolling board (src/economy/tiakOffers.ts), from the real length of its way, rounded to `step`:
+     *   – inside a district: `base` + `perMetre` × the way along the streets, between `min` and `max` (a 60 m hop pays 1 000 F, 250 m 1 500 F, 400 m 2 000 F);
+     *   – to another district: `base` + `perMetre` × the roads' length (and the streets at both ends) + `perHop` for each district crossed beyond the first,
+     *     between `min` and `max` (Almadies → Corniche, 0.4 km: 2 500 F; Pikine → Plateau, 1.6 km: 5 000 F; Plateau → Mermoz, 3.8 km and two roads: 10 000 F);
+     *   – an express pays `express.pay` × that and allows `express.limit` × the usual time.
+     * A late delivery pays `latePayFactor` of it, as before. The fixed routes above keep their table.
+     */
+    band: {
+      local: { base: 700, perMetre: 3.2, min: 1000, max: 2000, step: 50 },
+      away: { base: 1500, perMetre: 2.2, perHop: 400, min: 2500, max: 10000, step: 100 },
+      express: { pay: 1.25, limit: 0.7 },
+    },
     /** Share of the pay when the delivery arrives after the time limit (never negative). */
     latePayFactor: 0.6,
     /** Generous limit: walking time × slack + a base, at least minLimitS (played seconds). */
@@ -104,6 +117,34 @@ export const ECONOMY = {
     evictDays: 3,
     /** Ad space on a billboard: price per in-game day, and the boost to the ventures' income while the ad runs. */
     adSpace: { perDay: 25_000, boost: 0.1 },
+  },
+  /**
+   * Monthly contracts (1.0.1, src/economy/monthly.ts): a home rented by the ECONOMIC month (seven real days, src/economy/calendar.ts), which its
+   * tenant may sublet empty or furnished to a tenant of the city. The owner's balancing targets for the F2 of the Résidence Jàmm (gameplay numbers,
+   * not real-world estimates): at 80 % occupancy a furnished F2 nets 150 000 × 0,8 − 50 000 − 10 000 = 60 000 F a month, so the 300 000 F of
+   * furniture are paid back in five months (docs/release/BALANCE-1.0.1-housing.md).
+   */
+  monthly: {
+    /** The F2: rent and charges per month, what a tenant pays for it empty and furnished (at full occupancy), the price of the furnishing pack. */
+    f2: { rent: 50_000, charges: 10_000, sublet: 60_000, furnished: 150_000, pack: 300_000 },
+    /**
+     * The pack's pieces (catalogue ids, at their catalogue prices: 299 500 F; the rest is delivery and fitting). They are delivered to the home and
+     * set up room by room like any furniture (bed and wardrobe in the bedroom, sofa and table in the séjour, the kitchen table in the kitchen).
+     */
+    pack: ['lit_bois', 'armoire_metal', 'canape_wax', 'table_basse', 'salle_manger_simple', 'table_cuisine', 'lampe', 'plante'],
+    /**
+     * Tenant demand, drawn once per month from a seed (the player, the home, the month): a month in ten finds no tenant (0 %), the others are let
+     * 78–100 % of the month (89 % on average): 0,9 × 0,89 = 80 % on average, never guaranteed.
+     */
+    vacancy: 0.1, occMin: 78, occMax: 100,
+    /** After an absence at most this many months are settled at once; the older ones are skipped whole (no rent, no revenue: the contract slept). */
+    catchUpMonths: 4,
+    /** The landlord takes the keys back when this many months of rent and charges are unpaid; the debt stays owed. */
+    evictMonths: 2,
+    /** Homes one player may sublet at the same time. */
+    maxSublets: 2,
+    /** Played time between two batches of settlements (a device clock set forward cannot settle month after month without playing). */
+    minPlayMs: 30 * 60_000,
   },
   /**
    * Credit between people (src/economy/credit.ts): Pape Sarr (Sarr Auto, Pikine) finances a city car, Modou lets a customer pay a repair later.

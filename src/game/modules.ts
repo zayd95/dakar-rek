@@ -22,6 +22,7 @@ import { pikineDnaModule } from './pikineDna';
 import { signFitModule } from './signFit';
 import { transport } from '../transport/module';
 import { moto, tiakMoto } from '../transport/motoModule';
+import { pouceModule } from '../economy/pouceModule';
 import { car } from '../transport/carModule';
 import { berline, suv } from '../transport/premiumCars';
 import { gainde, ndiayeSales, rafet, sarrSales, teranga } from '../transport/modelCars';
@@ -61,12 +62,14 @@ import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
 import { tonightModule } from '../arena/tonight';
+import { aroundModule } from './around';
 import { supportersModule } from '../arena/supporters';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
 import { meals } from './meals';
 import { perform } from './perform';
 import { football } from './football';
+import { grandCamp } from './grandCamp';
 import { mermozModule } from '../districts/mermoz';
 import { tradeModule } from '../districts/trade';
 import { almadiesModule } from '../districts/almadies';
@@ -74,6 +77,7 @@ import { nightStreetModule } from '../districts/nightStreet';
 import { VISIT_MODULE } from '../online/visit';
 import { MEETUPS_MODULE } from '../online/meetups';
 import { villaModule } from '../villa/module';
+import { opening } from './opening';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -192,6 +196,12 @@ export interface GameModule {
   corridorCross?(ctx: GameCtx, dest: HubId, dx: number, dz: number): boolean;
   /** Every frame after the activity runner, before the interaction focus. */
   update?(ctx: GameCtx, dt: number): void;
+  /**
+   * Steers the player's body this frame instead of the walk (1.0.1 Grand Camp: the body is the server's on the pitch, predicted from the stick).
+   * `move` is the stick in world space (length ≤ 1; zero while the phone or a sheet is up). Returns where the body is (world x, z), its facing and
+   * its ground speed, or null to leave the player to the walk.
+   */
+  pilot?(ctx: GameCtx, dt: number, move: { x: number; z: number }): { x: number; z: number; facing: number; speed: number } | null;
   /** The player entered or left an interior (space = new interaction space). */
   spaceChanged?(ctx: GameCtx, space: string): void;
   /**
@@ -258,10 +268,11 @@ const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.h
 
 export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
+  opening,              // 1.0.1: the first launch's fly-in over Pikine; first in the list: its camera wins while it flies (src/game/opening.ts)
   wolofModule,
   ESTATE_MODULE,        // before the parked cars (assetKit): the homes' gates and directory entries are places they keep clear of
   banaModule,           // the player's bana-bana table by the Maïga du marché (src/economy/banaModule.ts): before the street dressing, which keeps off its ground
-  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, pouceModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
@@ -271,6 +282,7 @@ export const MODULES: GameModule[] = [
   tradeModule,          // Plateau · Médina (M2): Oumar Diallo's lots, the Comptoir Sall, the porters' pousse-pousse (docs/districts/M2-PLATEAU-MEDINA.md)
   almadiesModule,       // Almadies · Ngor (M4): Awa Sy on the Terrasse de Ngor, the hand-off to La Vague, the end-of-evening card (docs/districts/M4-ALMADIES.md)
   nightStreetModule,    // the night street's counters (Chez Binta, Le Comptoir de Ngor, Café du Phare, Lounge 221): their hours and menus, the ambient people's tables (docs/districts/ALMADIES-NIGHTLIFE.md)
+  grandCamp,            // 1.0.1 Grand Camp: a players' match on the Corniche's pitch, drawn from the server's snapshots, played with PASSE · DRIBBLE · TIR (src/game/grandCamp.ts)
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
@@ -279,6 +291,7 @@ export const MODULES: GameModule[] = [
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
   tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
+  aroundModule,         // 1.0.1 the phone's « Autour de moi »: Tiak Tiak, Grand Camp, friends online, places and activities here and now (src/game/around.ts)
   supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
   meals,                // table service: the plate in front of the seat, eaten spoonful by spoonful (src/game/meals.ts)
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)

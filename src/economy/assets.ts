@@ -111,7 +111,7 @@ export const rentOf = (a: AssetState): number => a.rate ?? LEGACY_RENT[a.spec] ?
 /** Charges of one asset per in-game hour: the rent of a rented home, the upkeep of an owned one. */
 export function chargeOf(a: AssetState): number {
   const sp = specOf(a.spec); if (!sp) return 0;
-  if (a.how === 'rented') return rentOf(a) / 24;
+  if (a.how === 'rented') return a.lease ? 0 : rentOf(a) / 24;          // a monthly contract is settled by the economic month (src/economy/monthly.ts), never per hour
   if (a.how === 'owned') return sp.upkeep ?? 0;
   return 0;
 }
@@ -144,6 +144,7 @@ function chargeLabel(s: GameState): string {
 
 /** Messages for the player from the last settlements (a lease that ended…), taken once by the UI. */
 const notices: string[] = [];
+export const pushNotice = (msg: string) => { notices.push(msg); };
 export const takeNotices = () => notices.splice(0, notices.length);
 
 /**
@@ -173,9 +174,10 @@ export function accrue(s: GameState): number {
     const taken = -s.addMoney(-owe, st.arrears > 0 ? `${chargeLabel(s)} (avec l’arriéré)` : chargeLabel(s));
     st.spent += taken; net -= taken; st.arrears = owe - taken;
   }
-  const rentDay = st.list.filter(a => a.how === 'rented').reduce((t, a) => t + rentOf(a), 0);
+  // per-day leases only: a monthly contract has its own arrears, which are never dropped (src/economy/monthly.ts)
+  const rentDay = st.list.filter(a => a.how === 'rented' && !a.lease).reduce((t, a) => t + rentOf(a), 0);
   if (st.arrears > 0 && (rentDay <= 0 || st.arrears >= rentDay * P.evictDays)) {
-    for (const a of st.list.filter(x => x.how === 'rented')) { endLease(s, a.uid, false); notices.push(`Loyer impayé : le propriétaire a repris les clés · ${specOf(a.spec)?.name ?? ''}`); }
+    for (const a of st.list.filter(x => x.how === 'rented' && !x.lease)) { endLease(s, a.uid, false); notices.push(`Loyer impayé : le propriétaire a repris les clés · ${specOf(a.spec)?.name ?? ''}`); }
     st.arrears = 0;
   }
   bump();
@@ -203,8 +205,9 @@ export function buyAsset(s: GameState, specId: string): AssetState | null {
   if (sp.kind === 'business' || sp.kind === 'furniture') return null;
   accrue(s);
   s.addMoney(-sp.price!, `Achat : ${label(sp)}`);
-  const lease = holding(s, specId);
+  const lease = holding(s, specId), st0 = s.data.assets;
   let a: AssetState;
+  if (lease?.lease) { st0.owed = (st0.owed ?? 0) + lease.lease.debt; delete lease.lease; }      // a monthly contract ends with the purchase; what it owed is still owed
   if (lease) { lease.how = 'owned'; delete lease.rate; lease.paid = sp.price!; lease.since = s.data.playedMs; lease.condition = 100; a = lease; bump(); }
   else a = addAsset(s, specId, 'owned', sp.price!);
   practise(s, 'commerce'); s.count('biens');
@@ -245,10 +248,13 @@ export function rentAsset(s: GameState, specId: string): AssetState | null {
   s.count('locations');
   return a;
 }
+/** A lease made by another module (a monthly contract, src/economy/monthly.ts), already paid by the caller. */
+export function addLease(s: GameState, specId: string, extra: Partial<AssetState>) { return addAsset(s, specId, 'rented', 0, extra); }
 /** End a lease (« Rendre les clés »): the home's furniture goes back to the player's home. */
 export function endLease(s: GameState, uid: string, settle = true): boolean {
   const a = assetByUid(s, uid); if (!a || a.how !== 'rented') return false;
   if (settle) accrue(s);
+  if (a.lease && a.lease.debt > 0) s.data.assets.owed = (s.data.assets.owed ?? 0) + a.lease.debt;   // a monthly contract's arrears outlive it, however it ends (src/economy/monthly.ts)
   leaveHome(s, a);
   removeAsset(s, uid);
   return true;
@@ -268,6 +274,8 @@ export function cannotSell(s: GameState, uid: string): string | null {
   if (a.how !== 'owned') return a.how === 'rented' ? 'Tu le loues : rends les clés plutôt' : 'Ce n’est pas à toi de le vendre';
   // a car still on credit is not the player's to sell yet (src/economy/credit.ts): buying on credit and selling at once would make money from nothing
   if (s.data.loans?.list.some(l => l.status === 'open' && l.asset === uid)) return 'Crédit en cours : rembourse-le d’abord';
+  // a piece of the furnishing pack of a home let furnished stays there while the tenant is in (src/economy/monthly.ts)
+  if (a.home && s.data.assets.list.some(h => h.uid === a.home && h.lease?.mode === 'furnished' && h.lease.pack?.includes(uid))) return 'Il meuble un logement loué meublé : arrête la location d’abord';
   return null;
 }
 /** Sell at once for most of the current value. Returns what was paid. */
@@ -289,6 +297,7 @@ export function cannotMoveIn(s: GameState, uid: string): string | null {
   if (s.data.assets.home === uid) return 'Tu y habites déjà';
   if (a.spec === STARTER_HOME && roomReturned(s)) return 'Rendue à la famille : redemande-la d’abord';
   if (a.leased) return 'Il est loué à quelqu’un : arrête la location d’abord';
+  if (a.lease && a.lease.mode !== 'live') return 'Il est sous-loué : un locataire y vit jusqu’à la fin de la location';   // never two exclusive tenancies of one home
   return null;
 }
 /** Live in this home from now on; with `bring`, the furniture of the previous home comes along (stored, then set up). */
@@ -296,7 +305,8 @@ export function moveIn(s: GameState, uid: string, bring = true): boolean {
   if (cannotMoveIn(s, uid)) return false;
   const st = s.data.assets, from = currentHome(s);
   st.home = uid;
-  if (bring) { for (const f of furnitureIn(s, from.uid)) { if (!furnitureSpec(f.spec)!.fixed) { f.home = uid; f.at = null; } } settleFurniture(s, uid); }
+  // the pieces of a furnishing pack belong to the home they furnish: they stay behind (src/economy/monthly.ts)
+  if (bring) { for (const f of furnitureIn(s, from.uid)) { if (!furnitureSpec(f.spec)!.fixed && !from.lease?.pack?.includes(f.uid)) { f.home = uid; f.at = null; } } settleFurniture(s, uid); }
   bump();
   return true;
 }

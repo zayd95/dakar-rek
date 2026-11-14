@@ -13,7 +13,10 @@ export type OnlineStatus = 'solo' | 'connecting' | 'online' | 'reconnecting' | '
 
 /** A conversation item as this device shows it: the server's item, plus the state of one of ours still on its way. */
 export type ItemView = Item & {
-  /** Ours, not yet acknowledged (shown at once, resent with the same id after a reconnect) or refused (never resent by itself). */
+  /**
+   * Ours, not yet acknowledged (shown at once, resent with the same id after a reconnect) or refused (never resent by itself). On a send of money
+   * 'sending' reads « en attente de confirmation »: the server has not said yes, nothing is shown as sent.
+   */
   status?: 'sending' | 'failed';
   reason?: string;
 };
@@ -119,6 +122,11 @@ export const onlineHooks: {
   goToPlace?: (place: PlaceRef) => void;
   goToLocation?: (loc: LocationItem) => void;
   goToInvite?: (host: Tag, invite: InviteItem) => void;
+  /**
+   * A money operation of this device was answered while nothing was waiting for it any more (its sheet closed, the page reloaded: 1.0.1): main.ts says
+   * the outcome (« ✅ 1 000 F envoyés à Awa », or the refusal and that the wallet part is back).
+   */
+  moneySettled?: (op: { kind: 'fund' | 'cashout' | 'pay'; amount: Francs; to?: Tag }, r: Outcome) => void;
   /** The host whose home the player is visiting now, or null. */
   visiting?: () => Tag | null;
 } = {};

@@ -14,7 +14,8 @@ fs.mkdirSync(out, { recursive: true });
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail: String(detail).slice(0, 400) }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${String(detail).slice(0, 400)}`); };
 // Messages (LD2.0-B): the list, « Nouveau message » and a conversation, on the simulated account (`fakeonline`: also Argent's Teranga Money block)
-const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque', 'messages', 'messages:new', 'messages:a11ce0000000a001'];
+// 1.0.1: « Autour de moi » (src/ui/phone/apps/around.ts)
+const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque', 'messages', 'messages:new', 'messages:a11ce0000000a001', 'autour'];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 try {
@@ -38,7 +39,10 @@ try {
     const controls = [...rootEl.querySelectorAll('button, a[href], [role="button"], .item, input:not([type="hidden"]), select, textarea, label.pk-btn')].filter(vis);
     // a control inside another control is one target (the outer one)
     const outer = controls.filter(c => !controls.some(o => o !== c && o.contains(c)));
-    const small = outer.map(c => ({ c, r: c.getBoundingClientRect() })).filter(({ c, r }) => r.height < 44 - 0.5 && !(c.tagName === 'INPUT' && ['checkbox', 'radio', 'range'].includes(c.type))).map(({ c, r }) => `${name(c)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+    // the height a finger can hit: the box, and a positioned ::before / ::after that reaches past it (the phone's home bar is a 30 px strip whose ::before
+    // takes the 14 px above it: a 44 px target, src/ui/phone.css .ph-homebar); a pseudo-element that does not take the pointer adds nothing
+    const hitH = (c, r) => { let up = 0, down = 0; for (const pe of ['::before', '::after']) { const cs = getComputedStyle(c, pe); if (cs.content === 'none' || cs.pointerEvents === 'none' || cs.position !== 'absolute') continue; const t = parseFloat(cs.top), b = parseFloat(cs.bottom); if (Number.isFinite(t) && t < 0) up = Math.max(up, -t); if (Number.isFinite(b) && b < 0) down = Math.max(down, -b); } return r.height + up + down; };
+    const small = outer.map(c => ({ c, r: c.getBoundingClientRect() })).map(o => ({ ...o, h: hitH(o.c, o.r) })).filter(({ c, h }) => h < 44 - 0.5 && !(c.tagName === 'INPUT' && ['checkbox', 'radio', 'range'].includes(c.type))).map(({ c, r, h }) => `${name(c)} ${Math.round(r.width)}×${Math.round(r.height)}${h > r.height ? ` (hit ${Math.round(h)})` : ''}`);
     const texts = [...rootEl.querySelectorAll('*')].filter(e => vis(e) && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()));
     const tiny = texts.filter(e => parseFloat(getComputedStyle(e).fontSize) < 11 - 0.01).map(e => `${name(e)} ${getComputedStyle(e).fontSize}`);
     const fams = [...new Set(texts.map(e => getComputedStyle(e).fontFamily.split(',')[0].replace(/["']/g, '').trim()))];
@@ -81,6 +85,21 @@ try {
   await page.screenshot({ path: `${out}/sheet-asset.png` });
   judge('sheet of an asset (Cité Jàmm house)', await audit('#modal.on'));
   await d(() => document.querySelector('#modal.on .sh-x, #modal.on [aria-label="Fermer"]')?.click()); await page.waitForTimeout(600);
+
+  // 1.0.1: a sheet opens at its top, whatever the last one was scrolled to (src/ui/sheet.ts: the reset is made once the sheet is shown)
+  const top = () => d(() => { const p = document.querySelector('#modal.on .panel'); return p ? { top: Math.round(p.scrollTop), max: p.scrollHeight - p.clientHeight, title: document.querySelector('#modal.on h2')?.textContent } : null; });
+  const closeSheet = async () => { await d(() => document.querySelector('#modal.on .sh-x')?.click()); await page.waitForFunction(() => !document.querySelector('#modal.on'), null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(500); };
+  await d(() => window.__dakar.places()); await page.waitForSelector('#modal.on .item'); await page.waitForTimeout(700);
+  await d(() => { const p = document.querySelector('#modal.on .panel'); p.scrollTop = p.scrollHeight; }); await page.waitForTimeout(300);
+  const scrolled = await top();
+  await closeSheet();
+  await d(() => window.__dakar.places()); await page.waitForSelector('#modal.on .item'); await page.waitForTimeout(700);
+  const again = await top();
+  await closeSheet();
+  await d(() => window.__dakar.jobsApp()); await page.waitForSelector('#modal.on'); await page.waitForTimeout(700);
+  const other = await top();
+  await closeSheet();
+  check('a sheet opens at its top after another was left scrolled down (the same sheet again, then another)', scrolled.top > 0 && again.top === 0 && other.top === 0, JSON.stringify({ scrolled, again, other }));
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   fs.writeFileSync(`${out}/audit.json`, JSON.stringify(report, null, 2));

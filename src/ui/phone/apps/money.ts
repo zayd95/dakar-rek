@@ -14,6 +14,9 @@ import './money.css';
  * Argent: the balance (one line at any size), Teranga Money (LD2.0-B: the server-held account, when this build is online), what the player owes and when
  * the next repayment falls, then what they can DO (the money apps: Épargne, Crédits, Biens, Affaires), then the figures (income and charges) and the
  * last movements (the full history on a tap).
+ *
+ * 1.0.1: money another player sends lands on Teranga Money, not in the wallet. The balance block says so: the wallet (what the city takes), Teranga
+ * Money beside it with « Retirer », the two together, and the fortune counts both. Operations the server has not answered yet are said (« en attente »).
  */
 function when(at: number): string {
   const d = new Date(at);
@@ -31,11 +34,12 @@ function tmLabel(op: LedgerOp, me: string | undefined): { label: string; sub: st
   const parts = [op.note ? `« ${op.note} »` : '', op.req ? (out ? 'demande payée' : 'ta demande payée') : '', out && op.fund ? `dont ${fcfa(op.fund)} du portefeuille` : ''].filter(Boolean);
   return { label: out ? `Envoyé à ${who}` : `Reçu de ${who}`, sub: parts.join(' · ') };
 }
-function tmHtml(o: OnlineApi, now: number): string {
+function tmHtml(o: OnlineApi, now: number, waiting: number): string {
   const b = o.balance, on = o.status === 'online', st = statusText(o.status);
   return `<div class="tm-card"><div class="tm-top"><span class="tm-tx"><small>Ton argent en ligne, sur ton téléphone${(o as { fake?: boolean }).fake ? ' · simulé (debug)' : ''}</small>
       <b class="tm-bal">${b ? esc(fcfa(b.amount)) : '—'}</b><span class="tm-when">${b ? esc(knownText(b.at, b.fresh && on, now)) : esc(st.text)}</span></span><i aria-hidden="true">📱</i></div></div>
     <div class="pk-acts">${btn('Recharger', { act: 'tm-fund', kind: 'primary', icon: '⬇️', cls: 'tm-go', sub: 'du portefeuille' })}${btn('Retirer', { act: 'tm-cashout', icon: '⬆️', cls: 'tm-go', sub: 'au portefeuille' })}</div>
+    ${waiting ? `<p class="pk-note tm-wait" role="status">⏳ ${waiting > 1 ? `${waiting} opérations en attente` : 'Une opération en attente'} de confirmation : ${on ? 'la réponse du serveur arrive' : 'elle partira à la reconnexion'}. Rien n’est compté deux fois.</p>` : ''}
     ${on ? '' : `<p class="pk-note warn tm-off">${esc('Hors ligne : Recharger et Retirer reviennent avec la connexion. Le solde affiché est le dernier connu.')}</p>`}`;
 }
 /** Teranga Money's block: its balance and when it was known, « Recharger » / « Retirer » (the money sheet's one confirmation), its history and today's limits. */
@@ -44,11 +48,14 @@ function teranga(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   let lastBal = o.balance?.amount ?? NaN, asked = 0;
   // redrawn on every change of the account, but only what changed: a button replaced under a finger would lose its tap, an open « Limites » would close
   let box = '', lims = '';
+  let both = '';
   const draw = () => {
-    const html = tmHtml(o, api.ctx.now());
+    const html = tmHtml(o, api.ctx.now(), api.ctx.state.data.online.pending.length);
     if (html !== box) { box = html; sec.querySelector('.tm-box')!.innerHTML = html; }
     const on = o.status === 'online';
-    sec.querySelectorAll<HTMLButtonElement>('.tm-go').forEach(b => { b.disabled = !on; });
+    const top = bothHtml(api, o), slot = page.querySelector('.mn-both-slot');
+    if (slot && top !== both) { both = top; slot.innerHTML = top; }
+    page.querySelectorAll<HTMLButtonElement>('.tm-go').forEach(b => { b.disabled = !on; });
     const lim = limitLines(o.limits, o.today), l = lim.map(x => `<p>${esc(x)}</p>`).join('');
     if (l !== lims) {
       const open = !!sec.querySelector<HTMLDetailsElement>('.tm-limits')?.open; lims = l;
@@ -66,7 +73,7 @@ function teranga(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
     box.innerHTML = r.ops.length ? rows(r.ops.slice(0, 5).map(rowOf)) + (r.ops.length > 5 ? more(`Tout l’historique (${r.ops.length}${r.more ? '+' : ''})`, rows(r.ops.slice(5).map(rowOf)), 'mn-all') : '')
       : empty('🧾', 'Aucune opération Teranga Money pour l’instant.');
   };
-  sec.addEventListener('click', e => {
+  page.addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act^="tm-"]'); if (!b || (b as HTMLButtonElement).disabled) return;
     moneySheet(api, page, { kind: b.dataset.act === 'tm-fund' ? 'fund' : 'cashout', done: ok => { if (ok) { draw(); void history(); } } });
   });
@@ -80,11 +87,21 @@ function teranga(page: HTMLElement, api: PhoneApi, o: OnlineApi): () => void {
   return () => { off(); closeSheets(); };                                   // a sheet open when the phone closes goes with it
 }
 
-function balance(api: PhoneApi): string {
-  const cash = api.ctx.state.wallet, full = fcfa(cash), w = phoneHooks.wealth?.();
+/**
+ * Under the wallet (1.0.1): Teranga Money beside it once it holds something (with « Retirer », the server-confirmed withdrawal), the two together, and
+ * the fortune, which counts both. Redrawn in place when either changes.
+ */
+function bothHtml(api: PhoneApi, o: OnlineApi | null): string {
+  const cash = api.ctx.state.wallet, tm = o?.balance?.amount ?? 0, w = phoneHooks.wealth?.();
+  return `${o && tm > 0 ? `<div class="mn-tm"><span>📱 Teranga Money</span><b>${esc(fcfa(tm))}</b>${btn('Retirer', { act: 'tm-cashout', inline: true, cls: 'tm-go mn-tm-out' })}</div>
+      <div class="mn-worth mn-sum"><span>Portefeuille + Teranga Money</span><b>${esc(fcfa(cash + tm))}</b></div>` : ''}
+    ${w ? `<div class="mn-worth"><span>Fortune totale</span><b>${esc(fcfa(cash + tm + w.assets))}</b></div>` : ''}`;
+}
+function balance(api: PhoneApi, o: OnlineApi | null): string {
+  const cash = api.ctx.state.wallet, full = fcfa(cash);
   const size = full.length > 17 ? 'xl' : full.length > 13 ? 'l' : '';
-  return `<div class="ph-balance"><small>Solde</small><b class="${size}">${esc(full)}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span>
-    ${w ? `<div class="mn-worth"><span>Fortune totale</span><b>${esc(fcfa(cash + w.assets))}</b></div>` : ''}</div>`;
+  return `<div class="ph-balance"><small>${o ? 'Portefeuille' : 'Solde'}</small><b class="${size}">${esc(full)}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span>
+    <div class="mn-both-slot">${bothHtml(api, o)}</div></div>`;
 }
 
 export const moneyScreen: Screen = {
@@ -111,7 +128,7 @@ export const moneyScreen: Screen = {
         : (() => { const list = ledger.slice().sort((a, b) => b.at - a.at); return ledgerRows(list.slice(0, 5)) + (list.length > 5 ? more(`Tout l’historique (${list.length})`, ledgerRows(list.slice(5)), 'mn-all') : ''); })();
     // Teranga Money: only in a build with the online account (hidden entirely without it)
     const tm = o ? section('Teranga Money', '<div class="tm-box"></div><div class="tm-lim"></div><h4 class="tm-h">Historique Teranga Money</h4><div class="tm-hist"></div>', ' data-slot="tm"') : '';
-    page.innerHTML = `${balance(api)}${tm}${debtHtml}${apps.length ? section('Gérer', rows(apps)) : ''}${flows}${section('Derniers mouvements', recent)}`;
+    page.innerHTML = `${balance(api, o)}${tm}${debtHtml}${apps.length ? section('Gérer', rows(apps)) : ''}${flows}${section('Derniers mouvements', recent)}`;
     page.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act="credits"]');
       if (b && phoneHooks.openCredits) api.launch(phoneHooks.openCredits);
@@ -121,6 +138,9 @@ export const moneyScreen: Screen = {
   tick(page, api) {
     (page as HTMLElement & { _tm?: () => void })._tm?.();                          // « il y a 3 min » in place
     const b = page.querySelector('.ph-balance > b'), t = fcfa(api.ctx.state.wallet);
-    if (b && b.textContent !== t) { b.textContent = t; b.className = t.length > 17 ? 'xl' : t.length > 13 ? 'l' : ''; }   // in place: the list keeps its scroll
+    if (b && b.textContent !== t) {                                                 // in place: the list keeps its scroll
+      b.textContent = t; b.className = t.length > 17 ? 'xl' : t.length > 13 ? 'l' : '';
+      const slot = page.querySelector('.mn-both-slot'), top = bothHtml(api, online); if (slot && slot.innerHTML !== top) slot.innerHTML = top;
+    }
   },
 };

@@ -47,7 +47,8 @@ function html(api: PhoneApi): string {
         ...(canVibrate() ? [toggle('haptics', 'Vibrations', hapticsOn(), 'Chocs et klaxon', ['Activées', 'Coupées'])] : []),
         row({ icon: '🔊', label: 'Tester le son', sub: 'Moteur, klaxon, chocs', act: 'soundtest' }),
       ])}<p class="pk-label">Radio de la voiture</p>${seg('radio', VOLUMES.map(v => [String(v.v), v.label]), String(vol))}`)
-    + section('Caméra', `<p class="pk-label">Vitesse quand tu glisses pour tourner</p>${seg('sens', SENSITIVITY.map(([v, l]) => [String(v), l]), String(sens))}`)
+    + section('Caméra', `<p class="pk-label">Vitesse quand tu glisses pour tourner</p>${seg('sens', SENSITIVITY.map(([v, l]) => [String(v), l]), String(sens))}
+      ${phoneHooks.replayOpening ? rows([row({ icon: '🎬', label: 'Revoir l’ouverture', sub: 'Le survol de Pikine du premier lancement', act: 'opening' })]) : ''}`)
     + section('Partie', `<section data-slot="save">${phoneHooks.saveCard ? saveCardHtml() : btn('Sauvegarder maintenant', { act: 'save', icon: '💾' })}</section>
       ${rows([
         ...(phoneHooks.openPresence ? [row({ icon: '🌐', label: 'Jouer en ligne', sub: 'Pseudo, tenue, inviter un ami', act: 'presence' })] : []),
@@ -84,6 +85,7 @@ export const settingsScreen: Screen = {
         case 'fps': frameStats.setEnabled(!frameStats.enabled); if (frameStats.enabled) frameStats.reset(); api.rerender(); break;
         case 'devmode': devMode.set(!devMode.on); api.rerender(); break;
         case 'presence': if (phoneHooks.openPresence) api.launch(phoneHooks.openPresence); break;
+        case 'opening': if (phoneHooks.replayOpening) api.launch(phoneHooks.replayOpening); break;
         case 'report': {                          // the lines a tester pastes at the top of a report (src/ui/betaInfo.ts): shown, and copied where allowed
           const d0 = api.ctx.state.data, text = reportText({ hub: api.ctx.hub(), x: d0.x, z: d0.z, quality: api.ctx.quality(), playedMin: Math.floor(d0.playedMs / 60000) });
           const box = page.querySelector<HTMLTextAreaElement>('[data-report]'); if (box) { box.value = text; box.hidden = false; box.onfocus = () => box.select(); }

@@ -53,7 +53,8 @@ try {
   // 3 — the phone's home and the Profile
   await tap('#menuBtn'); await page.waitForTimeout(900);
   const home = await phoneText();
-  check('3a. the phone opens on its home: the name, the district, the wallet, the five destinations', /Awa/.test(home) && /Pikine/.test(home) && ['Carte', 'Travailler', 'Ma vie', 'Maison', 'Argent'].every(w => home.includes(w)), home.replace(/\s+/g, ' ').slice(0, 200));
+  // the five destinations as the smartphone shell names them since 1.0 (« Ma vie » became « Profil »; Carte, Travailler and Argent are the dock's)
+  check('3a. the phone opens on its home: the name, the district, the wallet, the five destinations', /Awa/.test(home) && /Pikine/.test(home) && /Solde/.test(home) && ['Carte', 'Travailler', 'Profil', 'Maison', 'Argent'].every(w => home.includes(w)), home.replace(/\s+/g, ' ').slice(0, 400));
   check('3b. nothing of the HUD shows over the open phone', await d(() => getComputedStyle(document.getElementById('joy')).visibility === 'hidden' || getComputedStyle(document.getElementById('joy')).display === 'none'));
   await shot('3-phone-home');
   await phoneOpen('profil');
@@ -87,7 +88,7 @@ try {
   await page.waitForFunction(() => window.__dakar.teranga.info().owned, null, { timeout: 300000 });
   await d(() => window.__dakar.assetSheet('maison_cite')); await page.waitForSelector('#modal.on .item');
   const pick = async text => { await page.locator('#modal.on .item', { hasText: text }).first().click(); await page.waitForTimeout(350); };
-  await pick('Acheter'); await pick('Acheter'); await pick('Définir comme domicile principal');
+  await pick('Acheter'); await pick('Acheter'); await pick('Emménager'); await pick('Garder comme chambre familiale');   // the purchase sequence (1.0.1)
   for (const id of ['canape_wax', 'table_basse']) await d(i => window.__dakar.buyPiece(i), id);
   await d(() => document.querySelector('#modal.on .sh-x, #modal.on [aria-label="Fermer"]')?.click()); await page.waitForTimeout(500);
   const life = await d(() => ({ home: window.__dakar.estate().home, car: window.__dakar.teranga.info().owned, pieces: window.__dakar.estate().assets.filter(a => a.kind === 'furniture').length }));

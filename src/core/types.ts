@@ -286,6 +286,36 @@ export interface AssetState {
   /** Furniture: the home (asset uid) it belongs to, and where it stands there (null = stored). */
   home?: string;
   at?: Placement | null;
+  /** A home rented by the economic month (1.0.1, src/economy/monthly.ts): its contract. Absent: a per-day lease, or not rented. */
+  lease?: MonthlyLease;
+}
+/**
+ * A monthly rental contract (the F2 of the Résidence Jàmm since 1.0.1): rent and charges paid in advance once per ECONOMIC month (seven real days,
+ * src/economy/calendar.ts), never per city hour. Months are counted from `start`; `k` months are settled, so the same month is never settled twice.
+ */
+export interface MonthlyLease {
+  /** Economic time (ms: the server's clock when online, the device's otherwise) the contract began. */
+  start: number;
+  /** Months settled so far (the month in hand is paid): the next settlement is at `start + (k + 1)` months. */
+  k: number;
+  /** The terms it was signed at (F per economic month): a later change of the catalogue never re-prices a contract. */
+  rent: number; charges: number;
+  /** What the home is used for: the player's (`live`: lived in or kept), sublet empty, or let furnished. */
+  mode: 'live' | 'sublet' | 'furnished';
+  /** Asked for while a tenant is in place: applied at the next settlement (the tenant stays to the end of the month). */
+  next?: 'live';
+  /** Notice given: the contract ends at the next settlement instead of being renewed. */
+  notice?: boolean;
+  /** The furnishing pack bought for this home: the uids of its pieces (furniture assets standing in it). */
+  pack?: string[];
+  /** Revenue counted for the month in hand (F, fractional) and the economic time it is counted up to. */
+  acc: number; accAt: number;
+  /** Rent and charges the wallet could not cover (F): never dropped, moved to `AssetsState.owed` when the contract ends. */
+  debt: number;
+  /** Played time (ms) of the last settlement (a device clock set forward settles at most one batch per half hour of play). */
+  playAt: number;
+  /** The last settlement, for the phone: the month it closed, its occupancy (0–100), what came in and what the next month cost. */
+  last?: { k: number; occ: number; revenue: number; cost: number };
 }
 /** Furniture placement in a home: metres from the home interior's centre, quarter turns (0 faces +z, the door side). */
 export interface Placement { x: number; z: number; rot: number }
@@ -305,6 +335,10 @@ export interface AssetsState {
   arrears: number;
   /** Played time (ms) until which ad space rented on a billboard runs. */
   adUntil: number;
+  /** Rent left unpaid by monthly contracts that ended (F): taken as money comes in, never forgiven; no new monthly contract while it stands. */
+  owed?: number;
+  /** Idempotency keys of the last monthly settlements (`rent:<asset uid>:<month>`): a key in the list is never settled again. */
+  settled?: string[];
 }
 export interface ActivityState {
   /** Categories ever practised (unlocks), and the played time (ms) each was last practised (polyvalence). */

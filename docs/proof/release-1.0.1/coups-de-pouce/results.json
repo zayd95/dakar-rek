@@ -1,0 +1,199 @@
+{
+ "base": "http://127.0.0.1:4825/",
+ "when": "2026-11-14T06:15:22.845Z",
+ "passed": 38,
+ "total": 38,
+ "results": [
+  {
+   "name": "a new game: the ladder has 9 steps, 300 000 F in all, nothing paid; the next is the first delivery (+10 000 F)",
+   "ok": true,
+   "detail": "{\"id\":\"livraison\",\"label\":\"Ta première livraison Tiak Tiak\",\"amount\":10000,\"hint\":\"ta première livraison Tiak Tiak, à la Gargote Mame Diarra (Pikine)\"}"
+  },
+  {
+   "name": "the goal line, at the start: Tonton Ibou's welcome (the first moments) or the first coup de pouce",
+   "ok": true,
+   "detail": "Parle à Tonton Ibou, devant ta chambre (Pikine)."
+  },
+  {
+   "name": "« Travailler » shows the next coup de pouce: the first delivery, +10 000 F",
+   "ok": true,
+   "detail": "🎁Ta première livraison Tiak Tiakta première livraison Tiak Tiak, à la Gargote Mame Diarra (Pikine)+10 000 F"
+  },
+  {
+   "name": "the whole ladder on a tap: nine steps with their amounts, 10 000 F to 70 000 F",
+   "ok": true,
+   "detail": "[\"🎁Ta première livraison Tiak Tiak+10 000 F\",\"▫️Un premier meuble chez toi+15 000 F\",\"▫️Un véhicule retrouvé avec « Mes véhicules »+20 000 F\",\"▫️Une livraison vers un autre quartier+25 000 F\",\"▫️Un repas ou une soirée dans un lieu vivant+30 000 F\",\"▫️Un envoi ou un retrait Teranga Moneysans réseau : un premier dépôt à la Banque Teranga+35 000 F\",\"▫️Locataire au mois ou propriétaire+45 000 F\",\"▫️U"
+  },
+  {
+   "name": "the Tiak Tiak board shows runs; the shortest one inside Pikine is chosen",
+   "ok": true,
+   "detail": "[[\"t:pikine.salon>pikine.mame\",\"pikine\",188],[\"t:pikine.garage>pikine.pathe\",\"pikine\",168],[\"t:pikine.maiga>pikine.diallo\",\"pikine\",270],[\"t:pikine.diallo>plateau.reparation\",\"plateau\",1612],[\"t:pikine.place>corniche.maiga!\",\"corniche\",2051]]"
+  },
+  {
+   "name": "a tap on its card takes the run",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "walked to the pick-up with the joystick: the parcel is in hand",
+   "ok": true,
+   "detail": "{\"mk1\":{\"x\":102,\"z\":-5.5},\"job\":{\"runId\":\"c2957284-1-1833\",\"routeId\":\"t:pikine.garage>pikine.pathe\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1250,\"startedMs\":86383.00000000003,\"limitMs\":115000}}"
+  },
+  {
+   "name": "walked to the drop-off: delivered and paid",
+   "ok": true,
+   "detail": "{\"mk2\":{\"x\":-15.599999999999998,\"z\":-51.3},\"me\":{\"x\":-14.120431749473072,\"y\":0.1,\"z\":-54.02073352601208,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":-0.3877011122131389,\"cam\":-1.130805853866892},\"job\":null}"
+  },
+  {
+   "name": "the notice: « Coup de pouce : +10 000 F » · the first delivery · the next coup de pouce named",
+   "ok": true,
+   "detail": "🎁Coup de pouce : +10 000 FTa première livraison Tiak TiakProchain coup de pouce : un premier meuble chez toi (+15 000 F)✕"
+  },
+  {
+   "name": "paid once: one wallet line « Coup de pouce : Ta première livraison Tiak Tiak » +10 000 F",
+   "ok": true,
+   "detail": "[{\"label\":\"Coup de pouce : Ta première livraison Tiak Tiak\",\"amount\":10000}]"
+  },
+  {
+   "name": "the goal line now names the next: « Coup de pouce +15 000 F : un premier meuble chez toi »",
+   "ok": true,
+   "detail": "Coup de pouce +15 000 F : un premier meuble chez toi (Keur Meubles, ou téléphone › Maison › Commander)"
+  },
+  {
+   "name": "« Mes meubles » from the phone: « Commander chez Keur Meubles »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the shelf of the cheapest piece (Chaise en plastique, 1800 F): « Salon »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the piece's row: its confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Acheter » with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the notice: « Coup de pouce : +15 000 F » · a first piece of furniture · the next named",
+   "ok": true,
+   "detail": "🎁Coup de pouce : +15 000 FUn premier meuble chez toiProchain coup de pouce : un véhicule retrouvé avec « Mes véhicules » (+20 000 F)✕"
+  },
+  {
+   "name": "paid once: the wallet paid the piece and got 15 000 F once",
+   "ok": true,
+   "detail": "{\"lines\":[{\"label\":\"Coup de pouce : Ta première livraison Tiak Tiak\",\"amount\":10000},{\"label\":\"Coup de pouce : Un premier meuble chez toi\",\"amount\":15000}],\"wb2\":14250,\"now\":27450,\"price\":1800}"
+  },
+  {
+   "name": "the goal line names the next: the Tiak Tiak bike, parked and found with « Mes véhicules » (+20 000 F)",
+   "ok": true,
+   "detail": "Coup de pouce +20 000 F : monte sur une moto Tiak Tiak, gare-la, puis retrouve-la avec « Mes véhicules »"
+  },
+  {
+   "name": "on the Tiak Tiak bike (« Monter » with the action button)",
+   "ok": true,
+   "detail": "{\"t\":195.899,\"x\":-40.25,\"z\":-56.94,\"yaw\":0.95,\"speed\":0,\"driving\":true,\"mounting\":false,\"box\":true,\"parcel\":false,\"pad\":true,\"paddling\":false,\"rBadge\":false,\"clip\":\"Ride\"}"
+  },
+  {
+   "name": "ridden a little and parked: « Descendre »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the goal line follows: now « retrouve ton véhicule garé : téléphone › Mes véhicules › Localiser »",
+   "ok": true,
+   "detail": "Coup de pouce +20 000 F : retrouve ton véhicule garé : téléphone › Mes véhicules › Localiser"
+  },
+  {
+   "name": "walked away from the bike with the joystick",
+   "ok": true,
+   "detail": "{\"from\":{\"x\":-37.0836884136044,\"y\":0.1,\"z\":-55.717415554323296,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Tonton Ibou · voisin\",\"yaw\":0.95,\"cam\":0.95},\"at\":{\"x\":-15.658012481163807,\"y\":0.1,\"z\":-54.51165886471738,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":1.4971457572094808,\"cam\":1.4971455259438455},\"bike\":{\"t\":197.999,\"x\":-37.4,\"z\":-54.9,\"yaw\":0.95,\"speed\":0,\"driving\":false,\"mounting\":false,\"box\":tr"
+  },
+  {
+   "name": "« Mes véhicules » lists the Tiak Tiak bike, parked, with « Localiser »",
+   "ok": true,
+   "detail": "[\"🛵Moto Tiak Tiak StationnéPikine · Ma chambre · à 22 mPrêtée par le dépôt · une dans chaque quartier 📍Localiser🔔Faire sonner\"]"
+  },
+  {
+   "name": "« Localiser » with a tap: the marker is on the bike",
+   "ok": true,
+   "detail": "{\"id\":\"vehicle:tiak\",\"hub\":\"pikine\",\"name\":\"Moto Tiak Tiak\"}"
+  },
+  {
+   "name": "the goal line leads to it (its distance)",
+   "ok": true,
+   "detail": "Moto Tiak Tiak ·"
+  },
+  {
+   "name": "walked back to the bike: « Te voilà », found",
+   "ok": true,
+   "detail": "{\"bike\":{\"t\":197.999,\"x\":-37.4,\"z\":-54.9,\"yaw\":0.95,\"speed\":0,\"driving\":false,\"mounting\":false,\"box\":true,\"parcel\":false,\"pad\":false,\"paddling\":false,\"rBadge\":false,\"clip\":\"Ride\"},\"me\":{\"x\":-34.13353543461023,\"y\":0.1,\"z\":-55.50295837281522,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Tonton Ibou · voisin\",\"yaw\":-1.5644442047112255,\"cam\":-1.5633186427951542},\"marked\":null}"
+  },
+  {
+   "name": "the notice: « Coup de pouce : +20 000 F » · found with « Mes véhicules » · the next named",
+   "ok": true,
+   "detail": "🎁Coup de pouce : +20 000 FUn véhicule retrouvé avec « Mes véhicules »Prochain coup de pouce : une livraison vers un autre quartier (+25 000 F)✕"
+  },
+  {
+   "name": "paid once: three wallet lines in all, 10 000 + 15 000 + 20 000 F",
+   "ok": true,
+   "detail": "[{\"label\":\"Coup de pouce : Ta première livraison Tiak Tiak\",\"amount\":10000},{\"label\":\"Coup de pouce : Un premier meuble chez toi\",\"amount\":15000},{\"label\":\"Coup de pouce : Un véhicule retrouvé avec « Mes véhicules »\",\"amount\":20000}]"
+  },
+  {
+   "name": "the goal line names the next: « Coup de pouce +25 000 F : une livraison Tiak Tiak vers un autre quartier »",
+   "ok": true,
+   "detail": "Coup de pouce +25 000 F : une livraison Tiak Tiak vers un autre quartier (de 2 500 à 10 000 F la course)"
+  },
+  {
+   "name": "« Travailler »: 3 received (+45 000 F of 300 000 F), the three ticked, the fourth next",
+   "ok": true,
+   "detail": "{\"sum\":\"Les 9 coups de pouce · 3 reçus (+45 000 F sur 300 000 F)\",\"rows\":[\"✅Ta première livraison Tiak Tiakreçu10 000 F\",\"✅Un premier meuble chez toireçu15 000 F\",\"✅Un véhicule retrouvé avec « Mes véhicules »reçu20 000 F\",\"🎁Une livraison vers un autre quartier+25 000 F\",\"▫️Un repas ou une soirée dans un lieu vivant+30 000 F\",\"▫️Un envoi ou un retrait Teranga Moneysans réseau : un premier dépôt à "
+  },
+  {
+   "name": "after a reload: the same three steps paid, nothing paid again (the wallet within a few francs of a city hour, the lines the same)",
+   "ok": true,
+   "detail": "{\"was\":47450,\"now\":47450,\"lines\":3}"
+  },
+  {
+   "name": "no notice of a coup de pouce at load",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the marks are in the save: pouce:livraison, pouce:meuble, pouce:vehicule",
+   "ok": true,
+   "detail": "{\"pouce:livraison\":10000,\"pouce:meuble\":15000,\"pouce:vehicule\":20000}"
+  },
+  {
+   "name": "an older save: the three steps already done are credited in ONE notice « Coups de pouce : +45 000 F »",
+   "ok": true,
+   "detail": "🎁Coups de pouce : +45 000 FPour ce que tu as déjà fait : ta première livraison Tiak Tiak, un premier meuble chez toi, un véhicule retrouvé avec « Mes véhicules »Prochain coup de pouce : une livraison vers un autre quartier (+25 000 F)✕"
+  },
+  {
+   "name": "one notice, not a burst",
+   "ok": true,
+   "detail": "1"
+  },
+  {
+   "name": "…paid once each (three more wallet lines, one per step, +45 000 F)",
+   "ok": true,
+   "detail": "{\"lines\":6,\"was\":47450,\"now\":92450}"
+  },
+  {
+   "name": "and reloaded once more: nothing again",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "no JavaScript errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

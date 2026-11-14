@@ -4,7 +4,8 @@ import { newSave } from '../src/core/save';
 import { Relations } from '../src/social/relations';
 import { creditWork } from '../src/economy/streak';
 import { contextualShortcut, debtsNow, highlights, historyRows, missionNow, residenceLine, statRows, streakChip, streakView } from '../src/ui/phone/selectors';
-import { APPS, GROUPS, homeLayout } from '../src/ui/phone/registry';
+import { APPS, GROUPS, appById, homeLayout } from '../src/ui/phone/registry';
+import { campSession } from '../src/online/campSession';
 import { phoneHooks } from '../src/ui/phoneHooks';
 import { dayName } from '../src/ui/phone/apps/home';
 import { placeClock } from '../src/arena/eveningCall';
@@ -74,13 +75,17 @@ describe('phone: the player\'s life hub', () => {
     const bare = homeLayout();
     expect(bare.dock.map(a => a.id)).toEqual(['carte', 'travailler', 'portefeuille', 'messages']);
     expect(bare.grid.some(a => a.hook)).toBe(false);                         // no module registered here: no hook app, no empty tile
-    expect(bare.grid.slice(0, 3).map(a => a.id)).toEqual(['notifs', 'profil', 'logement']);
+    expect(bare.grid.slice(0, 3).map(a => a.id)).toEqual(['autour', 'notifs', 'profil']);       // 1.0.1: « Autour de moi » first
+    expect(bare.grid.some(a => a.id === 'grandcamp')).toBe(false);           // Grand Camp only in a build with the server (main.ts configures it)
+    // its routes for other modules (phoneHooks.openPhone): 'grandcamp' → the list, 'grandcamp:<match>' → that lobby (the shell's `app:arg`)
+    expect(appById('grandcamp')).toMatchObject({ screen: 'camp' });
     const keys = ['openVtc', 'openJobs', 'openAssets', 'openCredits', 'openBusiness', 'openHome', 'openPeople', 'openPlaces'] as const;
     for (const k of keys) phoneHooks[k] = () => {};
+    campSession.configure({ key: () => null, profile: () => ({ name: 'Test', look: 0 }), account: () => null, wallet: () => 0, storage: () => null });
     try {
       const { dock, grid } = homeLayout();
       expect([...dock, ...grid].map(a => a.id).sort()).toEqual(APPS.map(a => a.id).sort());   // every app is on the home screen
-      expect(grid.slice(0, 8).map(a => a.id)).toEqual(['notifs', 'profil', 'logement', 'vtc', 'travail', 'biens', 'banque', 'reglages']);   // what is used all day first
-    } finally { for (const k of keys) delete phoneHooks[k]; }
+      expect(grid.slice(0, 8).map(a => a.id)).toEqual(['autour', 'notifs', 'profil', 'logement', 'vtc', 'travail', 'biens', 'banque']);   // what is used all day first
+    } finally { for (const k of keys) delete phoneHooks[k]; campSession.reset(); }
   });
 });

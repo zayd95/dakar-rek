@@ -5,6 +5,23 @@ import type { HubId } from '../core/types';
  * Keep this file tiny: it is the meeting point of parallel work (phone, chat, economy, NPCs, arena).
  */
 export interface LedgerEntry { at: number; label: string; amount: number }
+/** One of the player's vehicles in « Mes véhicules »: what it is, its real state, where it was last left (a district and the place it stands near), and what can be done about it. */
+export interface VehicleRow {
+  asset: string; name: string; icon: string;
+  status: 'driven' | 'parked' | 'broken' | 'unknown'; statusLabel: string;
+  /** « Pikine · près de la Boutique » ; '' when there is nothing honest to say. */
+  where: string;
+  /** One more short line (lent by the depot, where to collect it…). */
+  note?: string;
+  /** « Localiser » / « Chez le concessionnaire »: absent when there is nothing to locate (the one being driven). */
+  locate?: string;
+  /** The marker is on it now. */
+  marked: boolean;
+  /** Metres from the player, when it stands in the district they are in. */
+  metres?: number;
+  /** It is close enough to answer: « Faire sonner » is offered. */
+  ring: boolean;
+}
 export const phoneHooks: {
   /** Messages app (chat module). */
   openMessages?: () => void;
@@ -31,6 +48,12 @@ export const phoneHooks: {
   openAsset?: (assetId: string) => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
+  /**
+   * The Tiak Tiak offers of a district now, with where each starts and ends (hub-local metres; src/economy/tiakOffers.ts `districtOffers`), for a screen
+   * that lists or maps them (« Autour de moi »). Read-only; `takeTiak(id)` takes one (the courier then goes to its pick-up point).
+   */
+  tiakOffers?: (hub: HubId) => import('../economy/tiakOffers').TiakOfferInfo[];
+  takeTiak?: (id: string) => boolean;
   /** « Courses VTC »: rides asked for with the player's own car (src/transport/vtc.ts). */
   openVtc?: () => void;
   /** « Crédits »: what the player owes and to whom, and repaying it (src/transport/sarrAuto.ts). */
@@ -39,6 +62,8 @@ export const phoneHooks: {
   openBusiness?: () => void;
   /** Opens the phone on an app or screen (main.ts), false when it cannot open now. */
   openPhone?: (app?: string) => boolean;
+  /** Closes the phone (an app that hands over to the street: Messages › « À proximité »). */
+  closePhone?: () => void;
   /** « Mes pistes » (src/economy/pistesModule.ts): the open leads, « Y aller », « Pas maintenant ». */
   pistes?: () => import('../economy/pistes').Piste[];
   followPiste?: (id: string) => boolean;
@@ -55,7 +80,15 @@ export const phoneHooks: {
   /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
   /** Driving directions to a district (and a place of it), or none (src/game/navigation.ts). */
-  driveTo?: (hub: HubId | null, name?: string) => void;
+  driveTo?: (hub: HubId | null, name?: string, at?: { x: number; z: number }) => void;
+  /**
+   * « Mes véhicules » (src/ui/phone/apps/vehicles.ts; main.ts provides them from src/transport/whereabouts.ts): the player's own vehicles and where each really is;
+   * « Localiser » sets the game's marker on one (and directions at the wheel) and returns what the map should show, null when there is nothing to show;
+   * « Faire sonner » sounds its horn once, for this player only, and returns null, or says why it cannot.
+   */
+  vehicles?: () => VehicleRow[];
+  locateVehicle?: (asset: string) => import('./carteState').Focus | null;
+  ringVehicle?: (asset: string) => string | null;
   /** The player is at the wheel (or on a saddle) now: the map offers directions first, not a walk. */
   driving?: () => boolean;
   /** The district chosen for directions, if any. */
@@ -92,4 +125,15 @@ export const phoneHooks: {
   openPlaces?: () => void;
   /** Réglages › « Jouer en ligne »: the online profile and the invitation (src/multiplayer/ui.ts, wired by main.ts). */
   openPresence?: () => void;
+  /** Réglages › Caméra › « Revoir l'ouverture »: the first launch's fly-in over Pikine again (src/game/opening.ts). */
+  replayOpening?: () => void;
+  /** Whether `openPhone(app)` would open something in this build now (a screen, or an app shown here), without opening it (main.ts: Phone.can). */
+  canOpenPhone?: (app: string) => boolean;
+  /**
+   * « Autour de moi » (src/game/around.ts, the page src/game/aroundPage.ts): the page now; the server reads it needs (on open, then every few seconds
+   * while it is shown); a row's one action (a line to say back, or null).
+   */
+  around?: () => import('../game/aroundPage').AroundSection[];
+  aroundRefresh?: () => void;
+  aroundDo?: (act: import('../game/aroundPage').AroundAct) => string | null;
 } = {};
