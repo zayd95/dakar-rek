@@ -7,7 +7,7 @@
 //  - none of their spots was dropped as standing in a solid or in an anchor's way, and a real thumb on the stick still walks the player to the place's anchors,
 //    which then take the focus (no one of the crowd stands in the way or takes it).
 // They are simulated on the device only: nothing here is online. Usage: node scripts/check-living-venues.mjs <baseUrl> [shotsDir]
-// QUALITY=low|medium|high (default medium); WALK=0 skips the walks (budget runs on other qualities).
+// QUALITY=low|medium|high (default medium); WALK=0 skips the walks (budget runs on other qualities); ONLY=<a place's crowd name> runs that place alone.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, walkTo } from './lib/realTouch.mjs';
@@ -55,13 +55,19 @@ const walk = async (pts, tol = 1.2) => {
   let left = Infinity;
   for (let i = 0; i < pts.length; i++) left = await walkTo(page, t, pts[i].x, pts[i].z, { tol: i === pts.length - 1 ? tol : 0.9, ms: 90000 });
   await page.waitForTimeout(900);
-  const f = await d(() => window.__dakar.focus());
-  return { left, focus: f?.id ?? null };
+  const f = await d(() => window.__dakar.focus()), p = await d(() => window.__dakar.pos());
+  return { left, focus: f?.id ?? null, at: { x: p.x, z: p.z } };
 };
-const reachAnchor = async (label, pts, want, tol = 1.2) => {
-  const r = await walk(pts, tol);
-  check(`${label}: the thumb walks the player to it`, r.left < tol, `${r.left.toFixed(2)} m left`);
-  check(`${label}: it takes the focus (nobody of the crowd stands in the way)`, r.focus === want, `focus ${r.focus}, want ${want}`);
+/**
+ * Walks to a target and reads the focus. The walk may stop anywhere within `tol` of its last point, and a target is only offered within its radius
+ * (src/interact/system.ts pickTarget): so the last point is the target itself, or beside it, and `tol` stays half a metre or more inside its radius —
+ * else the check would hang on where the thumb happens to stop (the DJ, radius 1.5, was once asked from a point 0.9 m short with 1.3 m of slack).
+ * `at`: the target's own place, to print how far from it the player stopped.
+ */
+const reachAnchor = async (label, pts, want, tol = 1.2, at = pts[pts.length - 1]) => {
+  const r = await walk(pts, tol), off = Math.hypot(r.at.x - at.x, r.at.z - at.z);
+  check(`${label}: the thumb walks the player to it`, r.left < tol, `${r.left.toFixed(2)} m left, ${off.toFixed(2)} m from the target`);
+  check(`${label}: it takes the focus (nobody of the crowd stands in the way)`, r.focus === want, `focus ${r.focus}, want ${want}, ${off.toFixed(2)} m from it`);
 };
 const results = [];
 
@@ -131,11 +137,11 @@ const PATIO = {
     const start = L(0, 13.1);
     await d(([x, z, y]) => window.__dakar.place(x, z, y), [start.x, start.z, yawTo(start, A('door'))]); await page.waitForTimeout(1500);
     await reachAnchor('Le Patio, the street door', [A('door')], id('door'));
-    await reachAnchor('Le Patio, through the gate to the way out', [A('exit')], id('exit'));
+    await reachAnchor('Le Patio, through the gate to the way out', [A('exit')], id('exit'), 0.8);
     await reachAnchor('Le Patio, the dance floor', [L(0, 2), A('floor')], id('floor'));
     await reachAnchor('Le Patio, the bar', [L(-5, -4), A('bar')], id('bar'), 1.6);
-    await reachAnchor('Le Patio, the salon', [L(-8.2, -1.5), L(-9.9, 1.2)], id('lounge'), 1.2);
-    await reachAnchor('Le Patio, the DJ', [L(-4, -0.5), L(0, -5.4)], id('dj'), 1.3);
+    await reachAnchor('Le Patio, the salon', [L(-8.2, -1.5), L(-9.9, 2.2)], id('lounge'), 0.8, A('lounge'));          // (the anchor is between the sofas: the open side of the low table)
+    await reachAnchor('Le Patio, the DJ', [L(-4, -0.5), L(0, -4.4), A('dj')], id('dj'), 0.9);
   },
   // from above the courtyard's front corner (the debug's free camera), the floor, the bar and the salon ahead; the player stays inside
   async shot() { const p = await patioInfo(), a = local(p, 0, 6.6), e = local(p, 6.2, 9.2), at = local(p, -2.5, -2.8); await d(([x, z, y]) => window.__dakar.place(x, z, y), [a.x, a.z, Math.PI]); await d(([e, at]) => window.__dakar.cam([e.x, 5.2, e.z], [at.x, 0.6, at.z]), [e, at]); },
@@ -167,7 +173,7 @@ const terrace = (hub, name, life, file) => ({
   async anchors() {
     const i = await d(() => window.__dakar.rooftop.info()), ox = i.bar.x - 2.2;
     await reachAnchor(`${name}, the bar (« Commander »)`, [{ x: ox + 3.6, z: 1.0 }, { x: i.bar.x, z: i.bar.z }], `${i.door.id}:bar`);
-    await reachAnchor(`${name}, the way down`, [{ x: ox + 4.9, z: 1.0 }, { x: ox + 5, z: 4.7 }], `${hub}:rooftop:out`);
+    await reachAnchor(`${name}, the way down`, [{ x: ox + 4.9, z: 1.0 }, { x: ox + 5, z: 5.0 }], `${hub}:rooftop:out`, 0.8);
   },
   async shot() { const i = await d(() => window.__dakar.rooftop.info()), ox = i.bar.x - 2.2; await d(([x, z, y]) => window.__dakar.place(x, z, y), [ox + 5, 4.2, Math.PI]); await d(ox => window.__dakar.cam([ox + 7.2, 4.6, 5.2], [ox - 3.5, 0.4, -1.8]), ox); },
 });
@@ -176,14 +182,12 @@ const BAOBAB = terrace('plateau', 'Toit Baobab', 'terrasse-plateau', 'toit-baoba
 
 // the Almadies first (Le Patio, the beach, then up on the hotel's roof), then the Plateau
 await d(() => window.__dakar.setHour(1));
-await hour(PATIO, 1, true);
-await hour(PATIO, 11, false);
-await hour(BEACH, 15, true);
-await hour(BEACH, 23, false);
-await hour(NGOR_ROOF, 21, true);
-await hour(NGOR_ROOF, 9, false);
-await hour(BAOBAB, 21, true);
-await hour(BAOBAB, 9, false);
+const only = process.env.ONLY;                                         // ONLY=patio | plage | terrasse-almadies | terrasse-plateau: that place alone
+for (const [v, busy, quiet] of [[PATIO, 1, 11], [BEACH, 15, 23], [NGOR_ROOF, 21, 9], [BAOBAB, 21, 9]]) {
+  if (only && v.life !== only) continue;
+  await hour(v, busy, true);
+  await hour(v, quiet, false);
+}
 
 console.log(`RESULTS ${JSON.stringify(results)}`);
 check('no JavaScript errors', errors.length === 0, JSON.stringify(errors.slice(0, 3)));
