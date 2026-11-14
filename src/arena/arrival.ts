@@ -161,7 +161,7 @@ class Arrival {
     const me = ctx.player.pos, near = Math.hypot(me.x - this.lot.gardien.x, me.z - this.lot.gardien.z) < VIEW;
     this.group.visible = near;
     if (this.gardien) { this.gardien.group.visible = near && this.present(); if (this.gardien.group.visible) this.gardien.animate(dt, 0); }
-    this.anchor.bias = gardienBias(this.present() && !this.paid() && this.mineInLot());   // the fee due: he wins the focus when faced
+    { const mine = this.present() && this.mineInLot(); this.anchor.bias = gardienBias(mine && !this.paid(), mine && this.paid()); }   // the fee due (or paid, the moto in his care): he wins the focus when faced
 
     // the player's moto: getting off in the parking, riding away from it
     const riding = moto.ridden, parked = moto.parkedHere();

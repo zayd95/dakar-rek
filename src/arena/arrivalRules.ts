@@ -20,9 +20,12 @@ export const paidTonight = (counters: Record<string, number>, day: number) => co
 /**
  * The gardien's focus bias (metres, src/interact/system.ts pickTarget). While his fee is due for the player's moto in the
  * parking, he is the one the player came to see: facing him, he wins the focus over the moto standing beside him (its
- * target sits on its nearest edge, so it is often closer). Once paid, a word with him only: the moto first, to ride away.
+ * target sits on its nearest edge, so it is often closer). Once paid, while he keeps it (`keeping`), the same −0.2 m as
+ * the moto's own target: the player who has just paid, still in front of him, has a word with him (with no bias the two
+ * scored within millimetres there, the prompt flipping to « Monter sur la moto » as the player turned a little), and
+ * beside the moto it comes first, to ride away.
  */
-export const gardienBias = (feeDue: boolean) => (feeDue ? -0.5 : 0);
+export const gardienBias = (feeDue: boolean, keeping = false) => (feeDue ? -0.5 : keeping ? -0.2 : 0);
 
 /**
  * The parking's evening (the gardien is there whenever it is not 'quiet'): the arena's street at this hour. The evening
