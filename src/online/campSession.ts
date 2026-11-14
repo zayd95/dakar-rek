@@ -45,6 +45,8 @@ export class CampSession {
   /** Set once by main.ts; a build without the server never calls it (Grand Camp is then not offered). */
   configure(d: CampSessionDeps) { this.d = d; this.mine = this.stored(); }
   get enabled() { return !!this.d; }
+  /** The player's name and look as the match shows them. */
+  profile() { return this.d?.profile() ?? null; }
   /** The client (made on first use), its state, its match. */
   get client(): CampClient | null {
     if (!this.d) return null;

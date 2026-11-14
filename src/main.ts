@@ -65,6 +65,7 @@ import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
 import { online, onlineHooks, setOnline } from './online/api';
 import { campSession } from './online/campSession';
+import { grandCamp } from './game/grandCamp';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
 import { openConversation, startMessageNotices, withdrawReceived } from './ui/phone/apps/messages';
@@ -260,6 +261,7 @@ visitDeps.room = () => presence.room;
 visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
+remoteAvatars.elsewhere = peer => grandCamp.drawsTag(peer.tag);   // 1.0.1 Grand Camp: the match draws its players itself (src/game/grandCamp.ts)
 const rel = new Relations(state.data);
 settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
 const follow = new FollowCamera(camera);
@@ -1753,6 +1755,16 @@ function frame(now: number) {
   updateFrameMeter(now);
   textureSweep.tick(scene, now);                            // (every 20 s: what the scene draws with, for the sweep at the next district change)
 }
+/** The stick in world space (as the walk reads it: along the camera), handed to the first module that steers the body now (GameModule.pilot). */
+function pilotNow(dt: number) {
+  let x = 0, z = 0;
+  if (mode === 'play') {
+    const m = input.move(), fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
+    x = fx * m.y + rx * m.x; z = fz * m.y + rz * m.x;
+  }
+  for (const m of MODULES) { const p = m.pilot?.(ctx, dt, { x, z }); if (p) return p; }
+  return null;
+}
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
 /** ?debug: modules whose update took over 25 ms in a frame: [frame index in the ring, name, ms, 1 if a district was loading]. */
@@ -1789,7 +1801,13 @@ function frameStep(now: number, dt: number, draw = true) {
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
-  if (lambScene) {
+  // a module steering the body itself (1.0.1 Grand Camp: the server's body on the pitch, predicted from the stick); also behind the phone (the stick at rest)
+  const piloted = !lambScene && !seated && !rising && (mode === 'play' || mode === 'menu') ? pilotNow(dt) : null;
+  if (piloted) {
+    pos.x = piloted.x; pos.z = piloted.z; facing = piloted.facing; speed = piloted.speed;
+    { const gy = 0.1 + world.heightAt(pos.x, pos.z); pos.y += (gy - pos.y) * Math.min(1, dt * 14); }
+    if (mode !== 'menu') state.tick(dt * 1000);
+  } else if (lambScene) {
     const f = lambScene.update(dt);
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
