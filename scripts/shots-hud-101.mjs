@@ -36,6 +36,8 @@ for (const v of viewsArg.split(',')) {
     (report[v] ??= {})[name] = info;
     console.log(`${prefix}-${v}-${name}`);
   };
+  /** The cards on screen closed as a player closes them (their ✕), the ones waiting behind them too. */
+  const closeCards = async () => { for (let k = 0; k < 6 && await d(() => !!document.querySelector('#toast .mo:not(.out)')); k++) { await d(() => document.querySelector('#toast .mo:not(.out) .mo-x')?.click()); await page.waitForTimeout(700); } };
   const ready = () => page.waitForFunction(() => window.__dakar?.pos?.().hub && window.__dakar.pos().mode === 'play', null, { timeout: 240000 });
   const goHub = async (hub, hour, at) => {
     await d(([x, hr, p]) => { window.__dakar.setHour(hr); return p ? window.__dakar.teleport(x, p.x, p.z, p.yaw ?? 0) : window.__dakar.teleport(x); }, [hub, hour, at]);
@@ -65,12 +67,12 @@ for (const v of viewsArg.split(',')) {
       await shot('stacked');
     }
     if (MOMENTS.includes('next') && run) {
-      await d(() => document.querySelectorAll('#toast .mo').forEach(e => e.remove()));
+      await closeCards();
       await d(() => { const a = window.__dakar.state.data.jobs.active; if (a) { a.stage = 'deliver'; a.startedMs = window.__dakar.state.data.playedMs; a.limitMs = 600000; } });
       await d(id => window.__dakar.completeJob(id), run.runId);
       await page.waitForFunction(() => document.querySelector('#toast .mo.bc'), null, { timeout: 30000 }).catch(() => {});
       await shot('next');
-      await d(() => { document.querySelectorAll('#toast .mo').forEach(e => e.remove()); window.__dakar.cancelJob(); });
+      await closeCards(); await d(() => window.__dakar.cancelJob());
     }
   }
   if (MOMENTS.includes('night')) { await goHub('almadies', 21); await shot('night'); }

@@ -404,9 +404,14 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
      Profil); the run's line over the button's whole width, « Accepter › » under it (it was a column of single words over the card's rows) */
   #toast .mo.bc.go { padding:8px 36px 8px 10px; }
   #toast .mo.bc.go .mo-ic, #toast .mo.bc.go .bc-sub, #toast .mo.bc.go .bc-r ~ .bc-r, #toast .mo.bc.go .bc-next { display:none; }
-  #toast .mo.bc.go .bc-r { grid-template-columns:auto 1fr auto; }
+  /* … the gain on the title's line (« Livraison réussie · +1 250 F »): on a 360 × 780 phone the button hid a row of its own */
+  #toast .mo.bc.go .mo-tx > b { display:inline; font-size:15px; }
+  #toast .mo.bc.go .bc-rows, #toast .mo.bc.go .bc-r { display:inline; margin:0; padding:0; border:0; }
+  #toast .mo.bc.go .bc-r dt, #toast .mo.bc.go .bc-r dd { display:none; }
+  #toast .mo.bc.go .bc-d { font-size:15px; }
+  #toast .mo.bc.go .bc-d::before { content:' · '; color:var(--ink-3); }
   #toast .mo.bc.go .bc-go { flex-wrap:wrap; gap:2px 10px; margin-top:6px; }
-  #toast .mo.bc.go .bc-go span { flex-basis:100%; }
+  #toast .mo.bc.go .bc-go span { flex-basis:100%; font-size:12.5px; }
   #toast .mo.bc.go .bc-go b { margin-left:auto; }
   #placeEv { justify-content:flex-end; }
   #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
