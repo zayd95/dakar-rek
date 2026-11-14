@@ -134,6 +134,34 @@ const gauges = page => page.evaluate(() => {
 const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.clashes.length === 0 && g.off.length === 0
   && (!clinch || (!!g.prise && g.prise.left === 'Prise · toi' && g.prise.right === 'lui' && /^Prise : /.test(g.prise.words) && g.prise.font >= 12 && g.prise.h >= 10));
 
+/**
+ * « Le choc » (docs/wrestling/WRESTLING-PLAN.md §5): the empoignade's close-up once the camera has settled — the opponent,
+ * the clock and the referee held still meanwhile (duelHold, left on: the caller lets go) — with the duel's `fx`, the six
+ * points on screen (feet, waist, head of each wrestler: duelScreen), how far the heads are under the Prise, and the points
+ * under a control (the duel's buttons, the joystick) or a gauge.
+ */
+async function closeUp(page) {
+  await page.evaluate(() => window.__dakar.duelHold(true));
+  const read = () => page.evaluate(() => {
+    const r = el => { const b = el.getBoundingClientRect(); return { k: el.dataset?.k ?? el.id ?? el.className, l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+    const shown = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+    const prise = document.querySelector('.duel-clinch');
+    const boxes = [...document.querySelectorAll('.duel-btns button'), document.getElementById('joy'), document.querySelector('[data-k=mebar]'), document.querySelector('[data-k=aibar]')].filter(shown).map(r);
+    return { i: window.__dakar.duelInfo(), pts: window.__dakar.duelScreen(), prise: shown(prise) ? r(prise) : null, boxes, vw: innerWidth, vh: innerHeight };
+  });
+  let now = await read(), prev = null;
+  for (const t0 = Date.now(); now.i?.phase === 'clinch' && Date.now() - t0 < 40000 * SLOW; prev = now, now = await read()) {
+    if (now.i.fx?.close >= 1 && prev && [2, 5].every(k => Math.abs(now.pts[k].y - prev.pts[k].y) < 0.5)) break;
+    await page.waitForTimeout(250);
+  }
+  const settled = now.i?.phase === 'clinch' && now.i.fx?.close >= 1 && !!prev && [2, 5].every(k => Math.abs(now.pts[k].y - prev.pts[k].y) < 0.5);
+  const headGap = now.prise ? Math.round(Math.min(now.pts[2].y, now.pts[5].y) - now.prise.b) : null;
+  const under = (now.pts ?? []).flatMap((p, n) => now.boxes.filter(b => p.x > b.l - 4 && p.x < b.r + 4 && p.y > b.t - 4 && p.y < b.b + 4).map(b => `${['feet', 'waist', 'head'][n % 3]}${n < 3 ? '·toi' : '·lui'}/${b.k}`));
+  const onScreen = (now.pts ?? []).every(p => p.x > 0 && p.x < now.vw && p.y > 0 && p.y < now.vh);
+  return { settled, fx: now.i?.fx, headGap, under, onScreen, heads: now.pts?.filter((_, n) => n % 3 === 2).map(p => Math.round(p.y)), feet: now.pts?.filter((_, n) => n % 3 === 0).map(p => Math.round(p.y)), prise: now.prise && Math.round(now.prise.b) };
+}
+const closeUpOk = c => c.settled && c.fx?.cam === 'clinch' && c.fx.clinchDist <= 0.8 && c.headGap >= 12 && c.under.length === 0 && c.onScreen;
+
 // ------------------------------------------------------------------ desktop, with the flag
 {
   const { ctx, page, errors } = await open({ width: 1280, height: 720 }, false, true);
@@ -343,6 +371,36 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
   // step 5 on the phone: he tries a throw, the button turns to « Contrer », and a steady counter turns it. The exchange
   // above can knock a level 1–2 opponent down (src/lamb/stand.ts AI_LEVEL): he is back on his feet for the step
   if (await page.evaluate(() => window.__dakar.duelInfo()?.phase === 'fight')) await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 100, composure: 100, stamina: 100 }));
+  // « Le choc » (stage 1): a clean quick hit holds the bout for a stop, a big one for a longer stop; the empoignade brings
+  // the camera in and the bodies chest to chest, both heads under the Prise, nobody under the buttons or the gauges.
+  // The opponent held still (duelHold: no guard, strike, break or throw of his) — the set-up is the check's
+  {
+    await page.evaluate(() => window.__dakar.duelHold(true));
+    if ((await info(page))?.phase === 'clinch') await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => { window.__dakar.duelSet('player', { grip: 0, stamina: 100 }); window.__dakar.duelBreak(); }), 30000);
+    await closeIn(page, 1.5);
+    await page.evaluate(() => { window.__dakar.duelSet('opponent', { balance: 100, composure: 100, stamina: 100 }); window.__dakar.duelSet('player', { stamina: 100 }); });
+    const s0 = (await info(page))?.fx?.stops ?? 0;
+    await strike(page, 'quick');
+    const q = await until(page, i => !i || i.phase !== 'fight' || (i.fx?.stops ?? 0) > s0, null, 20000);
+    let b = null;
+    for (const t0 = Date.now(); !b && Date.now() - t0 < 30000 * SLOW;) {
+      const i = await info(page); if (!i || i.phase !== 'fight') break;
+      if ((i.fx?.stops ?? 0) > (q?.fx?.stops ?? 0)) { b = i; break; }
+      if (!i.strike.player) await strike(page, 'big');
+      await page.waitForTimeout(200);
+    }
+    check('phone, « Le choc »: a clean quick hit stops the bout for an instant, a clean big hit for longer',
+      q?.lastStrike?.by === 'player' && q.lastStrike.kind === 'quick' && q.lastStrike.result === 'hit' && q.fx.stops === s0 + 1 && q.fx.lastStop >= 0.05
+      && b?.lastStrike?.kind === 'big' && ['hit', 'stagger'].includes(b.lastStrike.result) && b.fx.lastStop > q.fx.lastStop,
+      { quick: q && { last: q.lastStrike, fx: q.fx }, big: b && { last: b.lastStrike, fx: b.fx } });
+    const cg = await until(page, i => !i || i.phase !== 'fight', async i => { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } }, 60000);
+    await page.keyboard.up('KeyD');
+    const cu = cg?.phase === 'clinch' ? await closeUp(page) : null;
+    if (cu?.settled) await shot(page, 'phone-choc-clinch');
+    check('phone 390×844, « Le choc »: the empoignade’s close-up — chest to chest (≤ 0.8 m), both heads ≥ 12 px under the Prise, nobody under the buttons or the gauges, a slap',
+      !!cu && closeUpOk(cu) && cu.fx.slaps >= 1, cu ?? { phase: cg?.phase });
+    await page.evaluate(() => window.__dakar.duelHold(false));
+  }
   let hot = false, label = '', clinchLay = null, clinchG = null;
   const ph = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
     if (i.phase === 'fight') { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } return; }
@@ -383,6 +441,8 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
     if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
   }, 60000);
   await page.keyboard.up('KeyD');
+  const cu = cl?.phase === 'clinch' ? await closeUp(page) : null;
+  check('phone 844×390, « Le choc »: the empoignade’s close-up — chest to chest, the heads under the Prise, nobody under the buttons or the gauges', !!cu && closeUpOk(cu), cu ?? { phase: cl?.phase });
   if (cl?.phase === 'clinch') { await page.waitForTimeout(300); await shot(page, 'phone-landscape-clinch'); }
   const l2 = cl?.phase === 'clinch' ? await layout(page) : null;
   check('phone 844×390, empoignade: relabelled buttons fit and read', !!l2 && layoutOk(l2) && l2.labels.some(t => t.startsWith('Pousser')), l2 ?? { phase: cl?.phase });
@@ -407,7 +467,10 @@ for (const vp of [{ width: 360, height: 640 }, { width: 667, height: 375 }]) {
     if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
   }, 60000);
   await page.keyboard.up('KeyD');
-  if (c?.phase === 'clinch') { await page.evaluate(() => window.__dakar.duelSet('player', { grip: 30 })); await page.waitForTimeout(300); await shot(page, `phone-${tag}-clinch`); }
+  if (c?.phase === 'clinch') await page.evaluate(() => window.__dakar.duelSet('player', { grip: 30 }));
+  const cu = c?.phase === 'clinch' ? await closeUp(page) : null;
+  check(`small phone ${tag}, « Le choc »: the empoignade’s close-up — chest to chest, the heads under the Prise, nobody under the buttons or the gauges`, !!cu && closeUpOk(cu), cu ?? { phase: c?.phase });
+  if (c?.phase === 'clinch') { await page.waitForTimeout(300); await shot(page, `phone-${tag}-clinch`); }
   const gc = c?.phase === 'clinch' ? await gauges(page) : null;
   check(`small phone ${tag}, empoignade: the Prise named and readable, clear of the buttons and the joystick`, !!gc && gaugesOk(gc, true), gc ?? { phase: c?.phase });
   check(`small phone ${tag}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
