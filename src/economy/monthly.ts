@@ -211,7 +211,7 @@ function settleOne(s: GameState, a: Held): Settlement {
   const revenue = Math.floor(L.acc + 1e-6), cost = monthlyCost(L), month = L.k + 1;
   L.acc = 0; L.accAt = boundary;
   const out: Settlement = { uid: a.uid, spec: a.spec, month, occ, revenue, cost: 0, paid: 0 };
-  if (revenue > 0) st.earned += s.addMoney(revenue, `Loyer perçu · ${name(a)}${L.mode === 'furnished' ? ' meublé' : ''} · occupé à ${occ} %`);
+  if (revenue > 0) { st.earned += s.addMoney(revenue, `Loyer perçu · ${name(a)}${L.mode === 'furnished' ? ' meublé' : ''} · occupé à ${occ} %`); s.count('loyers:percus'); }   // (« Coups de pouce »: a tenant's rent received, src/economy/pouce.ts)
   remember(s, settlementKey(a.uid, month));
   if (L.next) { L.mode = L.next; delete L.next; }
   if (L.notice) {
@@ -233,14 +233,33 @@ function settleOne(s: GameState, a: Held): Settlement {
 }
 
 /**
+ * A device clock moved by hand (offline the economic time is the device's). Signed with the clock set forward, or one batch settled with it a year ahead, then
+ * put right, a contract would wait for its own dates: a year without rent. So when the clock reads more than a month behind the month in hand, the contract's
+ * dates (`start`, `accAt`) are moved back together until that month begins now, and `lag` keeps how far: the month in hand stays paid, the rent-free time is
+ * at most a month, the months settled keep their numbers (never settled twice) and what a tenant paid is not counted again. When the clock is back in the
+ * contract's own month in hand or later (it was only set back for a while, then put right), its own dates are given back: nothing is charged for time that
+ * never passed. Time passing on a clock left set back never reaches them (each settlement moves the month in hand as far). Settles nothing itself.
+ */
+function rebase(L: MonthlyLease, now: number): boolean {
+  const lag = L.lag ?? 0;
+  if (lag > 0 && now >= L.start + lag + L.k * ECON_MONTH_MS) { L.start += lag; L.accAt += lag; delete L.lag; return true; }
+  if (now >= L.start + (L.k - 1) * ECON_MONTH_MS) return false;
+  const d = L.start + L.k * ECON_MONTH_MS - now;
+  L.start -= d; L.accAt -= d; L.lag = lag + d;
+  return true;
+}
+
+/**
  * Settle every monthly contract up to `now` (economic time). Called a few times per second by the economy's tick: it does nothing until a contract's
  * month has turned. After an absence at most `catchUpMonths` months are settled, oldest first; the months beyond are skipped whole (the contract
- * slept: no rent, no revenue) and the month paid last covers the one in hand. A batch needs half an hour of play since the previous one.
+ * slept: no rent, no revenue) and the month paid last covers the one in hand. A batch needs half an hour of play since the previous one. A clock
+ * read more than a month behind the contract moves its dates first (`rebase`).
  */
 export function settleMonthly(s: GameState, now = econNow()): Settlement[] {
   const out: Settlement[] = [];
   collect(s);
   for (const a of contracts(s)) {
+    if (rebase(a.lease, now)) touchAssets();
     const L = a.lease, turned = contractMonthAt(L.start, now) - L.k;
     if (turned <= 0) continue;
     if (s.data.playedMs - L.playAt < M.minPlayMs) continue;                  // not lost: settled once the player has played a little

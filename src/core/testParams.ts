@@ -30,11 +30,27 @@ export const PUBLIC_DEBUG_HOOKS: readonly string[] = [
   'teleport', 'phone', 'phoneInfo', 'phoneClose',
 ];
 
-/** The `?debug` API for this host: all of it on a test host, only `PUBLIC_DEBUG_HOOKS` elsewhere. */
-export function debugApiFor<T extends Record<string, unknown>>(hostname: string, api: T): Partial<T> {
+/**
+ * A jump is not a trip (1.0.1 review): on the public game `teleport` first drops the delivery (a Tiak Tiak run or tour) and the VTC ride in hand, unpaid, so
+ * no drop-off or passenger's kerb is reached by a jump (teleported onto a drop-off, a run used to be handed over on the next frame, up to 12 500 F).
+ * True when something was dropped. The smoke test's moves (a district, its arrival point) are unchanged.
+ */
+export function dropWorkInHand(data: { jobs: { active: unknown }; vtc: { active: unknown } }): boolean {
+  const had = !!data.jobs.active || !!data.vtc.active;
+  data.jobs.active = null; data.vtc.active = null;
+  return had;
+}
+
+/**
+ * The `?debug` API for this host: all of it on a test host, only `PUBLIC_DEBUG_HOOKS` elsewhere, where `teleport` runs `beforeJump` first (src/main.ts: the
+ * work in hand dropped, `dropWorkInHand`, and the walking marker taken off).
+ */
+export function debugApiFor<T extends Record<string, unknown>>(hostname: string, api: T, beforeJump: () => void): Partial<T> {
   if (isTestHost(hostname)) return api;
   const out: Record<string, unknown> = {};
   for (const k of PUBLIC_DEBUG_HOOKS) if (k in api) out[k] = api[k];
+  const jump = api.teleport;
+  if (typeof jump === 'function') out.teleport = (...args: unknown[]) => { beforeJump(); return (jump as (...a: unknown[]) => unknown)(...args); };
   return out as Partial<T>;
 }
 

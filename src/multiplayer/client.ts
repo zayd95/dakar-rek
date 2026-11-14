@@ -22,6 +22,8 @@ export class PresenceClient {
   private retry = 0; private handshake = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
   private lastSentAt = 0; private lastMove = ''; private latest: Move | null = null; private clockOffset = 0;
   private lastPong = 0;
+  /** The device clock and the page's monotonic clock when the offset was last checked (0: no server time known yet on this page). */
+  private wallAt = 0; private monoAt = 0;
   constructor(public profile: Profile, private enabled: boolean, private endpoint?: string) {
     addEventListener('online', () => { if (this.hub && this.enabled && this.status !== 'online') this.open(); });
     addEventListener('offline', () => { if (this.enabled) { this.stopSocket(); this.setStatus('offline'); } });
@@ -78,10 +80,29 @@ export class PresenceClient {
    */
   private refineClock(serverMs: unknown) {
     if (typeof serverMs !== 'number' || !Number.isFinite(serverMs)) return;
+    this.followDevice();
     const o = serverMs - Date.now();
     if (o > this.clockOffset && o - this.clockOffset < 5000) this.clockOffset = o;
   }
-  serverNow() { return Date.now() + (this.status === 'online' ? this.clockOffset : 0); }
+  /**
+   * A device clock moved by hand (forward or back) moves `Date.now()` but not the page's monotonic clock: the difference is taken out of the offset at once, so the
+   * server's time goes on as it was until the server answers again (a reconnection's welcome sets the offset afresh). The monthly economy reads this time
+   * (src/economy/calendar.ts): it never sees the jump (it used to for up to 20 s after a jump forward, until the heartbeat reconnected, and for good after a jump back).
+   */
+  private followDevice() {
+    const wall = Date.now(), mono = performance.now();
+    if (this.monoAt) { const jump = wall - this.wallAt - (mono - this.monoAt); if (Math.abs(jump) > 2000) this.clockOffset -= jump; }
+    this.wallAt = wall; this.monoAt = mono;
+  }
+  /**
+   * The server's time (ms): once it is known on this page, while online and while reconnecting (the time it gave, gone on by the page's own clock); the device's
+   * before the first welcome, offline and solo.
+   */
+  serverNow() {
+    if (!this.monoAt || this.status === 'offline' || this.status === 'solo') return Date.now();
+    this.followDevice();
+    return Date.now() + this.clockOffset;
+  }
   private open() {
     this.stopSocket();
     if (!this.hub || !navigator.onLine) { this.setStatus('offline'); return; }
@@ -108,7 +129,7 @@ export class PresenceClient {
       if (message.type === 'welcome') {
         if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
         clearTimeout(this.handshake); this.handshake = 0;
-        this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now();
+        this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now(); this.wallAt = Date.now(); this.monoAt = performance.now() || 1;
         this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now();
         this.features.clear(); if (Array.isArray(message.features)) for (const f of message.features) if (typeof f === 'string') this.features.add(f);
         for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
