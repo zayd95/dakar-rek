@@ -33,9 +33,12 @@ are what our wrestlers lack most; they can come in **as new body ids on our own 
 pipeline already does this for the player's bodies), with the current body as the fallback, so every rule, clip, check
 and screen keeps working. Its planted-feet locomotion duplicates our own gait (we lack only a crouched fighting-stance
 gait, which we can build). Its contact practice gives a number (0.72 m) and a feel target, not mechanics. Its WEB-008
-chest X can be rebuilt from its description as an original optional cosmetic. **Its code and files are on the owner's
-computer**: the physiques and face need the owner to push `experiments/roi-des-arenes` (or hand over the GLBs and their
-licence records).
+chest X can be rebuilt from its description as an original optional cosmetic.
+
+**Update (14 Nov, evening): the owner has pushed RDA's code** to `origin/lab/roi-des-arenes-threejs` at 809a9817
+(`experiments/roi-des-arenes`: `anatomy-study.glb` with a 31-joint MPFB rig, the face maps, `accessories.ts` with the
+chest X). Stage 6's first fighter is being built by work package W1 on `wp/wrestling-rda`; this plan does not analyse
+those files further.
 
 **The plan, in eight stages after a few fixes, each playable and checked on its own** (impact for the player / cost):
 
@@ -47,7 +50,7 @@ licence records).
 | 3 | **Le spectacle** | A replay of the fall, short commentary in French with a little Wolof, the referee and the crowd in every bout, drums that follow the bout | high | medium | none (text only); recorded voices later |
 | 4 | **La lutte simple** | The default « sans frappe » gets Làmb 2.0's clinch (push, pull, pivot, slip, throw, counter) and a referee who presses passive wrestlers | high | medium | yes: changes the default rules (and the staller draw) |
 | 5 | **Lire et être lu** | Opponents who learn your habits, a signature move per wrestler, a real revenge bout against your rival, sparring | medium–high | medium | none |
-| 6 | **Les corps de Roi des Arènes** | Big, believable wrestlers (two physiques, faces) | high | medium (with RDA files) | yes: the files and their licences; the phone budget |
+| 6 | **Les corps de Roi des Arènes** | Big, believable wrestlers (two physiques, faces) | high | medium | the phone budget (files: on the lab branch, W1 under way) |
 | 7 | **La bascule et le titre** | Làmb 2.0 becomes the evening's làmb; the belt and the « Roi des Arènes » moment get their own staging | high | low–medium | yes: when to flip (LAMB2.md option (b)) |
 | 8 | **Le défi** | Challenge a player met in the street to a friendly bout, server-refereed, friends watching | very high | high | yes: a new server object; staked bouts |
 
@@ -56,8 +59,8 @@ licence records).
 button, no rule touched. It is the change a player notices in the first second of every bout.
 
 **Decisions needed from the owner** (§6): when Làmb 2.0 becomes the default; whether « sans frappe » gets the deep
-clinch (and what the held-guard draw pays); how a woman player's character wrestles; the RDA files and their licence
-records; whether the chest X ships as an option before an adviser has seen it; a new server object for player-vs-player
+clinch (and what the held-guard draw pays); how a woman player's character wrestles; the phone budget for RDA's bodies;
+whether the chest X ships as an option before an adviser has seen it; a new server object for player-vs-player
 bouts, and whether any are staked.
 
 ## 1. Baseline: the checks as they are, and a bout played on a phone
@@ -70,7 +73,8 @@ SwiftShader (a software renderer: these runs say nothing about a phone's frame r
 `arena*`, `celebration`, `ceremony`, `frappeMoments`, `myGala`, `supporters`, `tickets`, `undercard`, `watchedBout`,
 `campMatch`, `campRules`, `campProtocol`): **37 files, 392 tests passed**, 56 s.
 
-**Browser checks**, each run once (PASS / FAIL lines as the script prints them):
+**Browser checks**, each run once (PASS / FAIL lines as the script prints them; the time is wall time, waits for the
+shared lock included, so it says nothing about the game's speed):
 
 | Check | Result | Time | Notes |
 |---|---|---|---|
@@ -78,7 +82,19 @@ SwiftShader (a software renderer: these runs say nothing about a phone's frame r
 | `check-lamb2` | **53 / 53** | 678 s | Làmb 2.0 on desktop and phone: strikes, stagger, clinch, slip, break, throw, fall, lesson, a drill, gauges on four phone sizes |
 | `check-arena-fighter` | **40 / 44** | 591 s | 4 FAIL, the same two on desktop and phone, both on the player's gala night: « their corner is held while the preliminaries run (told so) » and « Je suis prêt: the preliminary under way fought to its end, then their entrance ». In the output the show does what the docs say (timeline `filling → prelims → prelim 1 → prelim 1 result → entrance`, only the opponent walks out); what the check does not find are the toasts « Les préliminaires d’abord… » and « Prêt : … ». The corner's words show on screen as the goal line instead (`entrance-2-corner`). Likely a check out of step with the 1.0.1 HUD; to confirm (stage 0) |
 | `check-arena-fighter` `LAMB2=1` | **44 / 48** | 1 157 s | the same 4 FAIL; the bout avec frappe and its announced knockdown pass |
-| `check-career`, `check-duel-guard`, `check-arena-visit` (with and without `LAMB2=1`), `check-arena-people`, `-interior`, `-exterior`, `-arrival`, `-hype`, `-outflow`, `-lanes-drive`, `check-gestures`, `check-trial` | running when this table was first committed | | results in the following commit |
+| `check-career` | **73 / 73** | 587 s | the record, purses, rank, drills, the phone's gauges, a gala place on the bill and posters, a reload |
+| `check-duel-guard` | **7 / 7** | 658 s | the guard released on blur and on a hidden page (most of the time: waiting for the lock) |
+| `check-arena-visit` | **126 / 126** | 1 753 s | the whole evening as a spectator on desktop, phone and landscape: tickets, seats, crowd, entrance, the watched bout, result, leaving |
+| `check-arena-visit` `LAMB2=1` | **129 / 129** | 1 438 s | the watched bout avec frappe: the referee's arm, the stands at the fall |
+| `check-arena-people` | **40 / 40** | 736 s | officials, drummers, vendors, entourages, the fête |
+| `check-arena-interior` | **16 / 16** | 728 s | stands, aisles, tunnel, ringside, draw calls from a seat |
+| `check-arena-exterior` | **40 / 42** | 332 s | 2 FAIL (desktop and phone): « the next morning: quiet, the drums stop, the road reopens » — everything is quiet except the street's audio, still `playing` the next morning. Not a bout; not investigated |
+| `check-arena-arrival` | **25 / 28** | 389 s | 3 FAIL: « paid tonight: no second fee, a word with him instead » (desktop and phone: the action in focus is the parked moto, « Monter sur la moto », not « Saluer le gardien »), and on the phone « riding away, the gardien says goodbye » (the moto did not back out). Not a bout; not investigated |
+| `check-arena-hype` | **19 / 19** | 195 s | posters of tonight's card, a result printed, places from the aisles |
+| `check-arena-outflow` | **16 / 16** | 312 s | the crowd leaving, the posters crossed out, the quiet street |
+| `check-gestures` | **20 / 20** | 263 s | the gestures of the trades (garage, market stall); listed in the brief, not a wrestling check |
+| `check-trial` | **partial: 11 PASS, 6 FAIL**, stopped | 30 min | the dealers' free test drive (listed in the brief, not a wrestling check). Stopped after the first two of eight runs (4 vehicles × desktop and phone) to free the shared lock: the Jakarta passed but for « the test vehicle can be got on » (the action in focus was the player's own parked moto, as in `check-arena-arrival`); the Berline moderne was not offered « Essayer » and so failed its next four steps. Not investigated |
+| `check-arena-lanes-drive` | **not run** | | driving past the arena (a vehicle check that films itself); left out when the queue was stopped |
 
 **Screenshots** (`docs/wrestling/baseline/`, phone 390 × 844, touch, low quality). The bouts were played through the
 game's own `?debug` hooks, as `check-lamb2` does (`duelStart`, `duelGrab`, `duelStrike`, `duelMove`; for the throw, the
@@ -194,7 +210,7 @@ cords over the shoulders to the back, no neck loop, a central pouch, six pouches
 Its own recommendation (INT-001): keep Dakar Rek's arena, duel, career, audio, save and network systems; adapt RDA's
 fighter presentation; first a free AI exhibition bout through the existing entrance → bout → result → return route;
 RDA contact practice is not a combat engine; Dakar's advanced clinch is coupled to striking and must be separated
-carefully for a non-striking bout. Its code is on the owner's computer: the lab branch holds a README only. Its
+carefully for a non-striking bout. Its code is now on the lab branch at 809a9817 (above; W1 integrates it). Its
 cultural status, which we keep: every wrestling, ritual, accessory and arena representation is unverified, no claim of
 authenticity, original generic forms only, a Senegalese adviser to review high-impact final content.
 
@@ -202,11 +218,11 @@ authenticity, original generic forms only, a Senegalese adviser to review high-i
 
 | RDA piece | What it would do in Dakar Rek | Replaces or adds | Needs from the owner | What we can build ourselves now |
 |---|---|---|---|---|
-| **Two anatomical physiques** (heavyweight, athletic; CC0/MPFB-derived) | The wrestler body of every bout: the player's, the opponent's, the entrance, watched bouts, preliminaries | **Adds** two body ids on our 20-bone v4 rig through `scripts/meshy/transplant-to-v4-rig.mjs` (adapted from Meshy's to MPFB's bone names), so `Wrestler`, the clips, `StrikeRig`, the gait, the fête and every check run unchanged. The transplant scales a body to v4's leg length; a heavyweight keeps his size through `BODY_FIT.scale` (the Meshy « femme » uses 0.93). `preloadBody` already falls back to v4 when a body is missing; v4 stays the low-quality body | The GLBs (or `experiments/roi-des-arenes` pushed to `lab/roi-des-arenes-threejs`), the source `.blend`/MPFB export, the licence records (CC0 headers, MPFB policy) | Per-style builds from v4's own morphs (`heavy`, `muscular`): Gora heavy, Pape lean (stage 2) |
-| **Face realism** (WEB-004 atlas, eyes, brows, lashes) | Faces in the close shots: the fall camera, the replay, the entrance | **Adds** with the bodies | The atlas PNGs and their licence record; ~4 MB more to measure on a phone | Nothing needed before the bodies |
+| **Two anatomical physiques** (heavyweight, athletic; CC0/MPFB-derived) | The wrestler body of every bout: the player's, the opponent's, the entrance, watched bouts, preliminaries | **Adds** two body ids on our 20-bone v4 rig through `scripts/meshy/transplant-to-v4-rig.mjs` (adapted from Meshy's to MPFB's bone names), so `Wrestler`, the clips, `StrikeRig`, the gait, the fête and every check run unchanged. The transplant scales a body to v4's leg length; a heavyweight keeps his size through `BODY_FIT.scale` (the Meshy « femme » uses 0.93). `preloadBody` already falls back to v4 when a body is missing; v4 stays the low-quality body | Pushed at 809a9817 (`anatomy-study.glb`, 31-joint MPFB rig); W1 integrates it on `wp/wrestling-rda` | Per-style builds from v4's own morphs (`heavy`, `muscular`): Gora heavy, Pape lean (stage 2) |
+| **Face realism** (WEB-004 atlas, eyes, brows, lashes) | Faces in the close shots: the fall camera, the replay, the entrance | **Adds** with the bodies | Pushed (the face maps); ~4 MB more to measure on a phone | Nothing needed before the bodies |
 | **Planted-feet locomotion** (WEB-002) | Wrestlers stepping and circling without sliding | Dakar already has one (`src/actors/gait.ts`: feet planted, no moonwalk) for Idle/Walk/Run; the duel's Stance/Grab clips bypass it, so the opponent glides | Nothing (RDA's code would only be a reference) | A crouched fighting-stance gait in `gait.ts` (stage 2) |
 | **Contact practice** (WEB-006) | The distance and the hold/release of the empoignade | **Not a combat engine**: we keep ours. We take its number (0.72 m separation) and its approach → hold → release states as the target for the clinch's presentation | Nothing | The clinch at chest distance (stage 1) |
-| **Chest X, no neck loop** (WEB-008) | An optional cosmetic in « Tenue de lutte », worn at the entrance and in bouts | **Adds** a fifth accessory next to today's four placeholders (arm, waist, neck) | A go to ship it as an option (cultural status unverified); an adviser before it becomes prominent (posters, the default look) | Yes, from the description: cords from the chest over the shoulders to the back, a central pouch, six plain pouches, on the `chest`/`spine` bones, one merged mesh |
+| **Chest X, no neck loop** (WEB-008) | An optional cosmetic in « Tenue de lutte », worn at the entrance and in bouts | **Adds** a fifth accessory next to today's four placeholders (arm, waist, neck) | A go to ship it as an option (cultural status unverified); an adviser before it becomes prominent (posters, the default look) | Yes, from the description (or from its `accessories.ts`, now pushed): cords from the chest over the shoulders to the back, a central pouch, six plain pouches, on the `chest`/`spine` bones, one merged mesh |
 | **Unity prototype** (movement, clinch) | Ideas only | Nothing | Nothing | Nothing |
 | **INT-001's « free AI exhibition first »** | A bout through the full route with nothing at stake | The fighter's path already takes `mode: 'amical'`: an « Exhibition » is a small addition | Nothing | Yes (stage 3) |
 
@@ -365,8 +381,9 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
   grabs and falls (paired poses at chest distance); licence records must be complete before anything ships.
 - **Checks**: the proof harness used for the Meshy bodies (`proof/meshy`), `check-lamb2`, `check-arena-fighter`,
   `check-arena-people` (the fête's carry on the new bodies), `scripts/perf.mjs`, a device frame-rate pass on a phone.
-- **Owner decision**: **yes** — push `experiments/roi-des-arenes` to `lab/roi-des-arenes-threejs` or hand over the GLBs,
-  sources and licence records; accept the phone budget.
+- **Status**: the files are on `lab/roi-des-arenes-threejs` at 809a9817; W1 builds the first fighter on
+  `wp/wrestling-rda`.
+- **Owner decision**: **yes** — accept the phone budget once measured.
 
 ### Stage 7 · « La bascule et le titre » — the evening's làmb becomes Làmb 2.0
 
@@ -432,7 +449,7 @@ drills get the same feel (a drill's timing is in game time, so a stop pauses its
 | Piece | What happens | Numbers (to tune on a phone) |
 |---|---|---|
 | **Hit-stop** | The bout's clock stops for an instant (the duel's `update` advances by 0; presses made meanwhile are kept, not dropped), the bodies hold their pose | quick hit 0.05 s · big hit 0.09 s · stagger 0.12 s · a throw that lands or a counter that turns it 0.12 s · a big strike guarded 0.04 s; the longest wins, never summed |
-| **Camera kick** | A short push of the camera towards the pair along its own axis, then back; no random shake (calmer on a phone, readable) | quick 4 %, big/stagger 8 %, fall 10 % of the distance, back over 0.25 s |
+| **Camera kick** | A short push of the camera towards the pair along its own axis, then back; no random shake (calmer on a phone, readable). `main.ts` eases the camera towards the duel's view at 3 per second (`camera.position.lerp(f.cam, dt * 3)`), which would swallow a 0.25 s kick: the duel returns the kick apart and `main.ts` adds it after the easing (one line) | quick 4 %, big/stagger 8 %, fall 10 % of the distance, back over 0.25 s |
 | **Clinch close-up** | Entering the empoignade, the camera eases closer and lower; it eases back when they separate. Its look point is set so that, in portrait, the heads stay below the « Prise » panel (today the panel already overlaps them: §2.5) | 70 % of the fight distance, 0.4 m lower, over 0.4 s; heads ≥ 12 px below the panel on 390 × 844 and 360 × 640 |
 | **Bodies in contact** | Entering the empoignade the two wrestlers close to chest distance along their line and stay there through the exchanges (which already move both together); arms on the other's shoulders and back by one more `StrikeRig` aim under the push/pull/pivot aims (the rig is then made in both disciplines; today only avec frappe) | 0.72 m between centres (RDA's measured contact separation), over 0.15 s; `separate` already puts them 2.2 m apart |
 | **The slow fall sans frappe** | The projection that ends a « sans frappe » bout gets the 0.9 s slow-down and the low close camera that « avec frappe » has (today `fallFx` exists only avec frappe) | as avec frappe: 0.3× for 0.9 s |
@@ -446,7 +463,8 @@ buzzes }`. The plan of each event (stop, kick, buzz, sound) is a pure function i
 **Files.** `src/lamb/duel.ts` (`update`: the stop; `poseBodies`: the kick and the clinch camera; `startClinch`: the
 closing; `end` and `resolveClinch`: the sans-frappe slow fall; `strikeLands`, `clinchExchange`, `throwStep`: the
 events), `src/lamb/strikeRig.ts` (one `grip` aim; the rig made sans frappe too), `src/lamb/audio.ts` (two sounds),
-`src/lamb/fx.ts` (new, pure), `tests/duelFx.test.ts` (new). Roughly 200 lines.
+`src/lamb/fx.ts` (new, pure), `tests/duelFx.test.ts` (new), `src/main.ts` (the kick added after the camera's
+easing). Roughly 200 lines.
 
 **Acceptance.**
 1. `npx tsc --noEmit`; `npx vitest run tests/duelFx.test.ts tests/lamb*.test.ts tests/watchedBout.test.ts` — the
@@ -472,7 +490,7 @@ stance gait (stage 2); any rule.
 | 1 | When Làmb 2.0 « avec frappe » becomes the game's làmb | (a) keep sans frappe by default, avec frappe offered beside it; (b) the evening and the lesson first, the ranked menu after; (c) all at once after a week of real games | (b), after stages 1–4 have been played on phones (`docs/LAMB2.md`) | stage 7 |
 | 2 | Does « sans frappe » get the deep clinch, and what does a held-guard draw pay | keep the 2.6 s tap race; or « La lutte simple » (stage 4). For the draw: pay the loss factor (0.6) when the player never grabbed, or leave it (`docs/ORDINARY-PURSES.md`) | the deep clinch behind `?lamb2` first; a passive draw paid as a loss | stage 4 |
 | 3 | How a woman player's character wrestles | today she fights as the male v4 wrestler; her own Meshy body on the same rig in a sports top and ngemb; or keep it | her own body, decided with the art direction | stage 2 (that part) |
-| 4 | RDA's physiques and faces | push `experiments/roi-des-arenes` to `lab/roi-des-arenes-threejs`, or hand over the GLBs, sources and licence records | push the experiment (we read it; nothing of it runs in the game until transplanted and measured) | stage 6 |
+| 4 | RDA's physiques and faces | settled: pushed to `lab/roi-des-arenes-threejs` at 809a9817 | W1 integrates the first fighter; the phone budget remains to accept | stage 6 |
 | 5 | The chest X (WEB-008) before an adviser has seen it | ship it as an optional cosmetic now (original, uninscribed, no power); or wait for the review | optional now, never on posters or as a default look until reviewed | stage 2 (that part) |
 | 6 | Player-vs-player bouts: the server object | a role in `GrandCamp` (no migration) or a new `LambBout` class (new migration tag and bindings in `durable_objects` and `previews`) | the new class, published with a release | stage 8 |
 | 7 | Staked player-vs-player bouts | friendly only; or a fee held at « Prêt », the winner takes both, a draw returns both (the Grand Camp ledger) | friendly only first; stakes after a season of friendly bouts | after stage 8 |
