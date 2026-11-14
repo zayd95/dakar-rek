@@ -218,14 +218,17 @@ await rest();
 await until(() => !!window.__dakar.tiak?.at(), null, 60000);
 const beforeBike = await d(() => window.__dakar.pos());
 { // to its left side with the planner (round the buildings), then « Monter » with the action button (scripts/lib/realTouch.mjs boardVehicle)
+  // (within 1.6 m: the planner's cells are a metre and it keeps 1.95 m round a parked bike, so no cell lay within the 1.0 m first asked for and no way was
+  // ever found: from Boutique Diallo's counter, where today's shortest run ends, the player never left the shop; boardVehicle walks the last metres)
   const c = await d(() => window.__dakar.tiak.at());
-  await walkWay(c.x + Math.cos(c.yaw) * 2.0, c.z - Math.sin(c.yaw) * 2.0, null, 1.0);
+  const there = await walkWay(c.x + Math.cos(c.yaw) * 2.0, c.z - Math.sin(c.yaw) * 2.0, null, 1.6);
+  if (!there) console.log(`  the way to the bike was not found or not walked: ${JSON.stringify(await d(([x, z]) => { const p = window.__dakar.pos(); return { at: [p.x, p.z], metres: +Math.hypot(p.x - x, p.z - z).toFixed(1) }; }, [c.x, c.z]))}`);
   try { await boardVehicle(page, t, 'tiak'); } catch (e) { console.log('  ' + e.message); }
 }
 const a0 = await d(() => window.__dakar.tiak.at());
 // on a failure, what the game was doing: its mode, the focus, the phone, a sheet, the action button and what lies under its centre
 const why0 = a0?.driving ? null : await d(() => { const a = document.getElementById('act'), r = a?.getBoundingClientRect(), hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
-  return { mode: window.__dakar.pos().mode, focus: window.__dakar.focus()?.id ?? null, phone: window.__dakar.phoneInfo?.()?.open ?? null, sheet: document.querySelector('#modal.on h2')?.textContent ?? null, act: a ? `${a.innerText.replace(/\s+/g, ' ')} ${a.className}` : null, hit: hit ? `${hit.tagName}#${hit.id}.${hit.className}`.slice(0, 60) : null, activity: window.__dakar.activity?.()?.id ?? null }; });
+  return { at: [window.__dakar.pos().x, window.__dakar.pos().z], mode: window.__dakar.pos().mode, focus: window.__dakar.focus()?.id ?? null, phone: window.__dakar.phoneInfo?.()?.open ?? null, sheet: document.querySelector('#modal.on h2')?.textContent ?? null, act: a ? `${a.innerText.replace(/\s+/g, ' ')} ${a.className}` : null, hit: hit ? `${hit.tagName}#${hit.id}.${hit.className}`.slice(0, 60) : null, activity: window.__dakar.activity?.()?.id ?? null }; });
 check('on the Tiak Tiak bike (« Monter » with the action button)', a0?.driving === true, JSON.stringify(why0 ? { ...a0, why: why0 } : a0));
 { const g = await t.centre('#ridepad .rp-gas'); await t.down(7, g.x, g.y); }                        // a finger on the gas, then on the brake (as check-tiak-moto rides it)
 await until(() => (window.__dakar.tiak.at()?.speed ?? 0) > 3, null, 40000);
