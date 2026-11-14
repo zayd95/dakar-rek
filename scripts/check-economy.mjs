@@ -48,7 +48,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ desktop: the whole loop
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug`, { waitUntil: 'load' }); await ready(page);
   await D(page, () => localStorage.clear()); await page.reload({ waitUntil: 'load' }); await ready(page);
@@ -156,7 +156,7 @@ let savedJson = null;
   await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
   await pick(page, 'ranger le stock');
   // the service is played in the world (to the shelves and back with the cartons): wait for its end
-  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 120000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 300000 }).catch(() => {});   // (game time: slower in wall time on a loaded machine)
   const led2 = await D(page, () => window.__dakar.ledger());
   check('a city service (Boutique Diallo stock) is in the ledger, paid with the polyvalence bonus', stockPay > 1500 && led2[0]?.amount === stockPay && /Boutique Diallo/.test(led2[0].label), `${stockPay} · ${JSON.stringify(led2[0])}`);
 
@@ -270,7 +270,7 @@ let savedJson = null;
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
   await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
   await D(page, () => { window.__dakar.setHour(16); window.__dakar.teleport('pikine'); }); await page.waitForTimeout(600);
@@ -323,7 +323,7 @@ let savedJson = null;
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await ctx.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save', JSON.stringify({ schemaVersion: 2, guestId: 'recovery-test', hub: 'pikine', x: 1040, z: 0, wallet: 7777 })); sessionStorage.setItem('seeded', '1'); } });
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(800);
   const r = await D(page, () => ({ p: window.__dakar.pos(), w: window.__dakar.state.wallet, ledger: window.__dakar.ledger().length, owned: window.__dakar.furniture().owned.length, ver: window.__dakar.state.data.schemaVersion }));
