@@ -15,6 +15,8 @@ export interface BotStyle {
 export const STRONG: BotStyle = { speed: 1, shootFrom: 13, pass: 0.15, push: 0.12, power: 0.75 };
 export const WEAK: BotStyle = { speed: 0.45, shootFrom: 7, pass: 0.35, push: 0, power: 0.5 };
 export const STILL: BotStyle = { speed: 0, shootFrom: 0, pass: 0, push: 0, power: 0, still: true };
+/** A warm-up: goes for the ball, passes and pushes it ahead, never shoots. */
+export const WARM: BotStyle = { speed: 0.55, shootFrom: 0, pass: 0.45, push: 0.25, power: 0.5 };
 export interface BotOut { mx: number; mz: number; f: number; a?: CampAction; p?: number }
 
 const hyp = Math.hypot;
