@@ -12,6 +12,7 @@ import {
   outcomeHead, plusActions, plusClosed, previewOf, realIn, reasonText, receivedNotice, retryable, seenText, statusText, type CardAct, type PlusId,
 } from './messagesText';
 import { refusalText } from '../../../online/accountRules';
+import { parseCampInvite } from './campText';
 import './messages.css';
 
 /**
@@ -422,7 +423,12 @@ function convView(page: HTMLElement, api: PhoneApi, o: OnlineApi, tag: Tag): { d
         : `<span class="mg-fail">Pas envoyé · ${esc(reasonText(it.reason))}</span>${retryable(it.reason) ? `<button type="button" class="mg-retry" data-act="retry" data-ref="${esc(it.id)}">Réessayer</button>` : ''}`;
     if (it.k === 'pay' && it.status === 'sending') st = ' · en attente';
     const meta = last || it.status ? `<small class="mg-meta">${esc(clockOf(it.at))}${st}${failed}</small>` : '';
-    if (it.k === 'text') return `<li class="mg-b ${side}${last ? ' last' : ''}${it.status ? ' ' + it.status : ''}" data-key="${esc(it.id)}"><p>${esc(it.text)}</p>${meta}</li>`;
+    if (it.k === 'text') {
+      // 1.0.1 Grand Camp: an invitation travels as an ordinary text (a 1.0 client reads it as it is); here it is the words and « Voir le match »
+      const camp = parseCampInvite(it.text);
+      return `<li class="mg-b ${side}${last ? ' last' : ''}${it.status ? ' ' + it.status : ''}${camp ? ' mg-campinv' : ''}" data-key="${esc(it.id)}"><p>${esc(camp ? `⚽ ${camp.text}` : it.text)}</p>`
+        + `${camp && it.status !== 'failed' ? `<button type="button" class="mg-camp" data-go="camp" data-arg="${esc(camp.match)}">Voir le match</button>` : ''}${meta}</li>`;
+    }
     const v = cardOf(it, me, who, now, hooks(it)), [icon, kind] = KIND[it.k];
     const sub = it.k === 'invite' ? `<p class="mg-csub">${esc(it.home.name)}<br>${it.perms.use ? 'Peut s’asseoir et utiliser la télé' : 'Visite seulement'}</p>`
       : it.k === 'meet' ? `<p class="mg-csub">${it.place.icon ? esc(it.place.icon) + ' ' : ''}${esc(short(it.place.hub))}${it.when && (it.state === 'open' || it.state === 'accepted') ? ` · ${esc(realIn(it.when, now))}` : ''}${it.counter ? ' · autre heure proposée' : ''}</p>`

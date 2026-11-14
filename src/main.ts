@@ -60,10 +60,13 @@ import { phoneHooks } from './ui/phoneHooks';
 import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
-import { PresenceClient, isDefaultName, loadProfile } from './multiplayer/client';
+import { PresenceClient, deviceChatKey, isDefaultName, loadProfile } from './multiplayer/client';
 import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
 import { online, onlineHooks, setOnline } from './online/api';
+import { campSession } from './online/campSession';
+import { POUCE_COUNTERS } from './economy/pouce';
+import { grandCamp } from './game/grandCamp';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
 import { openConversation, startMessageNotices, withdrawReceived } from './ui/phone/apps/messages';
@@ -226,6 +229,18 @@ const onlineAccount = new OnlineAccount({
 // in-memory account of the checks (src/online/fake.ts), never presented to players as real.
 if (fakeOnlineRequested()) installFakeOnline({ now: () => presence.serverNow(), wallet: { get: () => state.wallet, add: (n, label) => { state.addMoney(n, label); } }, save: () => { if (world) saveNow(); }, me: { name: presence.profile.name } });
 else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
+// 1.0.1 Grand Camp (src/online/campSession.ts): the device's one player-organized match. A match this player had a place in is opened again AT ONCE,
+// before the city has loaded: the server gives the place back (before kick-off) or the pitch (after it, within its 60 s).
+if (import.meta.env.VITE_MULTIPLAYER === 'true') {
+  campSession.configure({
+    key: () => deviceChatKey(), profile: () => ({ name: presence.profile.name, look: presence.profile.look, app: presence.appearance ?? null }),
+    endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined,
+    account: () => online, wallet: () => state.wallet,
+    // « Coups de pouce » (src/economy/pouce.ts): a Grand Camp place the server confirmed, once per match
+    joined: () => { state.count(POUCE_COUNTERS.camp); if (world) saveNow(); },
+  });
+  campSession.restore();
+}
 // « 💬 Awa : … » for what arrives outside the open conversation. 1.0.1 — money received cannot be missed and is one tap from the wallet: a card (never
 // over the middle of the screen) says « 💸 1 000 F reçus de Awa », where it is (Teranga Money, the server's account: the wallet's figure has not moved),
 // and offers « Retirer » (the server-confirmed withdrawal: the wallet goes up when the server says yes) and « Voir » (the conversation).
@@ -250,6 +265,7 @@ visitDeps.room = () => presence.room;
 visitDeps.joinRoom = (hub, room) => { if (hub === world?.id) presence.join(hub, room); };
 const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
+remoteAvatars.elsewhere = peer => grandCamp.drawsTag(peer.tag);   // 1.0.1 Grand Camp: the match draws its players itself (src/game/grandCamp.ts)
 const rel = new Relations(state.data);
 settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
 const follow = new FollowCamera(camera);
@@ -768,6 +784,9 @@ interactions.add(new PlayerSocial(() => presence.peers.values(), p => remoteAvat
   registerPlayerAction({ id: 'invite', label: 'Inviter chez moi', icon: '🏠', order: 30, show: p => hasAccount(p) && !!onlineHooks.homeToInvite,
     disabled: () => offline() ?? (onlineHooks.homeToInvite?.() ? null : 'Tu n’as pas encore de logement où recevoir'), run: p => conv(p, 'invite') });
   registerPlayerAction({ id: 'meet', label: 'Proposer un rendez-vous', icon: '🤝', order: 40, show: p => hasAccount(p) && !!onlineHooks.meetupPlaces, disabled: offline, run: p => conv(p, 'meet') });
+  // 1.0.1 Grand Camp: the organizer invites the player in front of them (the server's list, and a text message in their conversation)
+  registerPlayerAction({ id: 'camp', label: 'Inviter au Grand Camp', icon: '⚽', order: 50, show: p => hasAccount(p) && campSession.enabled,
+    disabled: p => offline() ?? campSession.inviteWhy(p.tag!), run: p => { void campSession.invite([p.tag!]).then(r => hud.toast(r.ok ? `⚽ Invitation au Grand Camp envoyée à ${p.name}` : r.text, r.ok ? 'info' : 'warn')); } });
 }
 remoteAvatars.onEmote = (peer, emo) => { if (emo.to && emo.to === presence.id) hud.toast(`${peer.name} ${EMOTE_INFO[emo.k].toast} ${EMOTE_INFO[emo.k].glyph}`); };
 /** Everyone in the street can be greeted (placed people and walkers). */
@@ -1744,6 +1763,16 @@ function frame(now: number) {
   updateFrameMeter(now);
   textureSweep.tick(scene, now);                            // (every 20 s: what the scene draws with, for the sweep at the next district change)
 }
+/** The stick in world space (as the walk reads it: along the camera), handed to the first module that steers the body now (GameModule.pilot). */
+function pilotNow(dt: number) {
+  let x = 0, z = 0;
+  if (mode === 'play') {
+    const m = input.move(), fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
+    x = fx * m.y + rx * m.x; z = fz * m.y + rz * m.x;
+  }
+  for (const m of MODULES) { const p = m.pilot?.(ctx, dt, { x, z }); if (p) return p; }
+  return null;
+}
 /** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
 const frameRing: number[][] = [];
 /** ?debug: modules whose update took over 25 ms in a frame: [frame index in the ring, name, ms, 1 if a district was loading]. */
@@ -1780,7 +1809,13 @@ function frameStep(now: number, dt: number, draw = true) {
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
-  if (lambScene) {
+  // a module steering the body itself (1.0.1 Grand Camp: the server's body on the pitch, predicted from the stick); also behind the phone (the stick at rest)
+  const piloted = !lambScene && !seated && !rising && (mode === 'play' || mode === 'menu') ? pilotNow(dt) : null;
+  if (piloted) {
+    pos.x = piloted.x; pos.z = piloted.z; facing = piloted.facing; speed = piloted.speed;
+    { const gy = 0.1 + world.heightAt(pos.x, pos.z); pos.y += (gy - pos.y) * Math.min(1, dt * 14); }
+    if (mode !== 'menu') state.tick(dt * 1000);
+  } else if (lambScene) {
     const f = lambScene.update(dt);
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);

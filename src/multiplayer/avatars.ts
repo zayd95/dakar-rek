@@ -67,6 +67,8 @@ export class RemoteAvatars {
   private avatars = new Map<string, Avatar>();
   /** Peers the local player blocked (chat module): their avatar is not drawn on this device. */
   hidden: (peer: Peer) => boolean = () => false;
+  /** Peers another system draws itself now (1.0.1 Grand Camp: the players of the match, from its snapshots): no second body for them. */
+  elsewhere: (peer: Peer) => boolean = () => false;
   /** Dresses a drawn peer's body from their presence fields every frame (the écurie colours: src/arena/supporterGear.ts). */
   dress: (body: Humanoid, peer: Peer) => void = () => {};
   /** A greeting or reaction from a player nearby was just shown (src/multiplayer/social.ts): main tells the player it was meant for them. */
@@ -78,7 +80,7 @@ export class RemoteAvatars {
     // Keep names at 28 screen pixels even when an indoor camera is close to another player.
     const labelHeight = 56 / (Math.max(1, viewportHeight) * camera.projectionMatrix.elements[5]);
     const visible = [...this.presence.peers.values()]
-      .filter(p => drawnHere(p.space, space) && Math.hypot(p.x - local.x, p.z - local.z) < 110 && !this.hidden(p))
+      .filter(p => drawnHere(p.space, space) && Math.hypot(p.x - local.x, p.z - local.z) < 110 && !this.hidden(p) && !this.elsewhere(p))
       .sort((a, b) => Math.hypot(a.x - local.x, a.z - local.z) - Math.hypot(b.x - local.x, b.z - local.z)).slice(0, maxBodies);
     const keep = new Set(visible.map(p => p.id));
     for (const id of this.emoSeen.keys()) if (!this.presence.peers.has(id)) this.emoSeen.delete(id);

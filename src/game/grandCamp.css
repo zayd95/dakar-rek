@@ -1,0 +1,31 @@
+/* 1.0.1 Grand Camp (src/game/grandCamp.ts): while a match is played, the action area is PASSE · DRIBBLE · TIR and nothing else, and a small band
+   replaces the place card (the teams, the score, the clock). Its own classes; body.camp-play only hides what the match replaces. */
+body.camp-play #act, body.camp-play #actMore, body.camp-play .kick-shot, body.camp-play #wprompt, body.camp-play #place, body.camp-play #goal { display:none !important; }
+
+.cp { display:none; grid-template-columns:auto auto; grid-template-areas:". dribble" "pass shot"; gap:10px; align-items:end; justify-items:center; pointer-events:none; }
+.cp.on { display:grid; }
+.cp-b { position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border:0; border-radius:50%; color:#fff; font:inherit;
+  pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.55), 0 6px 16px rgba(0,0,0,.28); }
+.cp-b b { position:relative; font-size:11.5px; font-weight:850; letter-spacing:.3px; line-height:1; }
+.cp-b .cp-ic { position:relative; font-size:20px; line-height:1; font-weight:800; }
+.cp-b kbd { position:absolute; top:6px; right:9px; font:700 10px/1 ui-monospace, monospace; padding:2px 4px; border-radius:4px; background:rgba(255,255,255,.2); }
+body.touch .cp-b kbd { display:none; }
+.cp-pass { grid-area:pass; width:72px; height:72px; background:#1d4ed8; }
+.cp-dribble { grid-area:dribble; width:62px; height:62px; background:#0f766e; }
+.cp-shot { grid-area:shot; width:88px; height:88px; background:#16181d; }
+.cp-shot .cp-ic { font-size:24px; }
+.cp-shot b { font-size:13px; }
+.cp-shot .cp-fill { position:absolute; left:0; right:0; bottom:0; height:var(--p, 0%); background:linear-gradient(0deg, #e8743b, #f2c12e); opacity:.92; pointer-events:none; }
+.cp-b.down, .cp-shot.charge { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.55), 0 4px 12px rgba(0,0,0,.28); }
+
+.cb { display:none; position:absolute; left:50%; top:calc(10px + var(--sa-t, 0px)); transform:translateX(-50%); z-index:2; flex-direction:column; align-items:center; gap:2px;
+  padding:6px 14px 6px; border-radius:16px; background:rgba(14,16,20,.82); color:#fff; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25); max-width:calc(100vw - 150px); }
+.cb.on { display:flex; }
+.cb-row { display:flex; align-items:center; gap:7px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cb-row b { font-size:13.5px; font-weight:800; max-width:28vw; overflow:hidden; text-overflow:ellipsis; }
+.cb-sc { font-size:17px; font-weight:900; letter-spacing:.5px; }
+.cb-d { width:11px; height:11px; border-radius:50%; box-shadow:0 0 0 1.5px rgba(255,255,255,.7); }
+.cb-d.t0 { background:#c8302a; } .cb-d.t1 { background:#f2c12e; }
+.cb-st { font-size:11.5px; font-weight:650; color:rgba(255,255,255,.78); font-variant-numeric:tabular-nums; }
+.cb-st.net { color:#fde68a; }
+@media (prefers-reduced-motion:reduce) { .cp-b.down, .cp-shot.charge { transform:none; } }

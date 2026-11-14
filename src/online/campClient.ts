@@ -271,6 +271,18 @@ export class CampClient {
     ws.addEventListener('close', () => { if (gen !== this.gen) return; this.ws = null; if (this.pingT) { clearInterval(this.pingT); this.pingT = null; } this.retry(); });
     ws.addEventListener('error', () => { /* the close follows */ });
   }
+  /**
+   * This device gives up its socket and connects again (the silence watchdog). The socket is let go AT ONCE: the match object does not answer a
+   * closing handshake (the browser then fires `close` only ~10 s later, longer on a dead network), and a client waiting for it stayed « open » on a
+   * dead socket — past the 60 s return window, the player was gone from the pitch (seen by scripts/check-grand-camp-ui.mjs).
+   */
+  private drop(code: number, reason: string) {
+    const ws = this.ws; if (!ws) return;
+    this.gen++; this.ws = null;
+    if (this.pingT) { clearInterval(this.pingT); this.pingT = null; }
+    try { ws.close(code, reason); } catch { /* gone */ }
+    this.retry();
+  }
   /** Again after a back-off, unless the player closed it or the server ended it for good. */
   private retry() {
     if (!this.wanted || this.state.bye || this.retryT) { if (!this.wanted || this.state.bye) this.set({ status: 'closed' }); return; }
@@ -350,7 +362,7 @@ export class CampClient {
     if (this.pingT) clearInterval(this.pingT);
     this.pingT = setInterval(() => {
       const ws = this.ws; if (!ws) return;
-      if (this.now() - this.lastHeard > SILENT_MS + PING_MS) { try { ws.close(4002, 'Silent'); } catch { /* gone */ } return; }
+      if (this.now() - this.lastHeard > SILENT_MS + PING_MS) { this.drop(4002, 'Silent'); return; }
       try { ws.send('ping'); } catch { /* the close follows */ }
     }, PING_MS);
     this.set({ status: 'open', me: m.you });
