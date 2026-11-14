@@ -376,9 +376,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   spaceChanged(_ctx: GameCtx, _space: string) { /* the vehicle stays where it is parked */ }
 
-  /** Where the vehicle stands parked in this hub (null: ridden now, or not in this hub). */
+  /** Where the player's vehicle stands parked in this hub (null: ridden now, not in this hub, or a dealer's car out on a test drive: never theirs). */
   parkedHere(): { x: number; z: number; yaw: number } | null {
-    return this.vehicle && !this.driving && this.hub ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw } : null;
+    return this.vehicle && !this.driving && this.hub && !this.trial ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw } : null;
   }
   /** The player is riding / driving it now. */
   get ridden() { return this.driving; }
@@ -1456,7 +1456,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const c = Math.cos(this.st.yaw), s = Math.sin(this.st.yaw), dx = x - this.st.x, dz = z - this.st.z;
     const lx = Math.max(-d.halfWidth, Math.min(d.halfWidth, dx * c - dz * s)), lz = Math.max(-d.halfLength, Math.min(d.halfLength, dx * s + dz * c));
     const t = this.parkedTarget; t.x = this.st.x + lx * c + lz * s; t.z = this.st.z - lx * s + lz * c;
-    const tag = healthTag(this.hp()); t.name = tag ? `${this.def.text.mine} · ${tag}` : this.def.text.mine;     // a discreet figure once it has a scratch
+    if (!this.trial) { const tag = healthTag(this.hp()); t.name = tag ? `${this.def.text.mine} · ${tag}` : this.def.text.mine; }   // a discreet figure once it has a scratch
+    // (a dealer's car on a test drive keeps the name its trial gave it, « Véhicule d’essai » / « Voiture d’essai »: it is never « Ta … »)
     if (m.hasDoor) { const p = this.stepPoint(); t.x = p.x; t.z = p.z; }                // a car with a door: offered at the driver's door
     out.push(t);
   }
