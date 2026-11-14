@@ -183,6 +183,7 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 #toast .bc-go { position:sticky; bottom:0; display:flex; align-items:center; gap:10px; width:100%; min-height:48px; margin-top:8px; box-shadow:0 0 0 4px var(--surface, #fff); padding:8px 12px; border:0; border-radius:12px; background:var(--sun); color:#2b2000; font:inherit; text-align:left; cursor:pointer; }
 #toast .bc-go span { flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:750; line-height:1.25; }
 #toast .bc-go b { flex:none; font-size:15px; font-weight:850; white-space:nowrap; }
+#toast .mo.bc.go .bc-v { white-space:nowrap; }                             /* « Payé 1 000 F » on one line beside its gain (1.0.1 HUD pass) */
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 
@@ -385,16 +386,28 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #toast .t.say { left:calc(12px + var(--sa-l)); right:calc(12px + var(--sa-r)); bottom:calc(166px + var(--sa-b)); transform:none; width:auto; max-width:none;
     font-size:13px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   #toast .t.now { bottom:calc(150px + var(--sa-b)); max-width:calc(100vw - 32px - var(--sa-l) - var(--sa-r)); }
-  /* a moment card: at the top, under the goal line and left of the social buttons, ending above the middle of the
   /* 1.0.1 HUD pass: the goal line as wide as the minimap's column allows (its two lines cut the first job's counter: « … à la… ») */
   #goal { max-width:calc(100vw - 38px - var(--mm, 88px) - var(--sa-l) - var(--sa-r)); }
+  /* a moment card: at the top, under the goal line and left of the social buttons, ending above the middle of the
      screen (33 % of the height); taller, it scrolls inside. A tap dismisses it. */
   #toast .mo { left:calc(10px + var(--sa-l)); right:calc(118px + var(--sa-r)); top:calc(128px + var(--sa-t)); width:auto;
     max-height:calc(33vh - 132px - var(--sa-t)); max-height:calc(33dvh - 132px - var(--sa-t)); }
-  /* an offer (« Mes pistes ») keeps its line and its two buttons whole: it may reach a little lower, never past the middle of the screen */
-  #toast .mo.of { max-height:calc(50vh - 132px - var(--sa-t)); max-height:calc(50dvh - 132px - var(--sa-t)); }
-  /* a work card with its next job: the button stays in view at the card's foot (sticky) and the card may reach a little lower, never past the middle */
-  #toast .mo.bc.go { max-height:calc(50vh - 132px - var(--sa-t)); max-height:calc(50dvh - 132px - var(--sa-t)); }
+  /* 1.0.1 HUD pass: under the delivery line when one is on (it sits right under the goal line, where a card started) */
+  #ui:has(#delivery.on) #toast .mo { top:calc(166px + var(--sa-t)); max-height:calc(33vh - 170px - var(--sa-t)); max-height:calc(33dvh - 170px - var(--sa-t)); }
+  /* an offer (« Mes pistes », the money received) ends above the middle like any card: no icon (its title says it), its buttons in one row that
+     stays in view at the card's foot while a longer sentence scrolls (they reached half the screen, the buttons one under the other) */
+  #toast .mo.of { padding:8px 36px 8px 10px; }
+  #toast .mo.of .mo-ic { display:none; }
+  #toast .mo.of .of-acts { position:sticky; bottom:-8px; flex-wrap:nowrap; margin-top:6px; padding:0 0 8px; background:linear-gradient(var(--surface), var(--surface)), var(--surface); }   /* twice: the 94 % surface let the sentence show through */
+  #toast .mo.of .of-b { padding:0 12px; }
+  /* the card after a delivery with the next run: what was paid and the next run in one tap, nothing else on a phone (the rest is in phone ›
+     Profil); the run's line over the button's whole width, « Accepter › » under it (it was a column of single words over the card's rows) */
+  #toast .mo.bc.go { padding:8px 36px 8px 10px; }
+  #toast .mo.bc.go .mo-ic, #toast .mo.bc.go .bc-sub, #toast .mo.bc.go .bc-r ~ .bc-r, #toast .mo.bc.go .bc-next { display:none; }
+  #toast .mo.bc.go .bc-r { grid-template-columns:auto 1fr auto; }
+  #toast .mo.bc.go .bc-go { flex-wrap:wrap; gap:2px 10px; margin-top:6px; }
+  #toast .mo.bc.go .bc-go span { flex-basis:100%; }
+  #toast .mo.bc.go .bc-go b { margin-left:auto; }
   #placeEv { justify-content:flex-end; }
   #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
   /* the after-bout card: a smaller icon leaves its rows the room they need */
@@ -426,6 +439,10 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 @media (max-width:360px) and (orientation:portrait) {
   .ring { width:22px; height:22px; } .ring b { font-size:11px; } .rings { gap:3px; }
   #place { max-width:calc(100vw - 214px); }
+  /* 1.0.1 HUD pass: the action button is 112 px wide here, beside « Courir »: a smaller icon leaves a long verb its two lines (« Des-cen… ») */
+  body.touch #act { gap:5px; padding-left:5px; }
+  body.touch #act .a-ic { width:34px; height:34px; font-size:18px; }
+  body.touch #act b { font-size:13.5px; }
 }
 /* ------------------------------------------------------------- landscape phones */
 @media (max-height:500px) and (orientation:landscape) {
@@ -439,10 +456,6 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place b { font-size:12.5px; -webkit-line-clamp:1; } #place small { font-size:11px; }
   #place .pl-more { display:none; }
   #menuBtn { top:calc(8px + var(--sa-t)); }
-  /* 1.0.1 HUD pass: the action button is 112 px wide here, beside « Courir »: a smaller icon leaves a long verb its two lines (« Des-cen… ») */
-  body.touch #act { gap:5px; padding-left:5px; }
-  body.touch #act .a-ic { width:34px; height:34px; font-size:18px; }
-  body.touch #act b { font-size:13.5px; }
   #goal { top:calc(8px + var(--sa-t)); left:calc(174px + var(--sa-l)); max-width:min(320px, calc(100vw - 174px - 272px - var(--sa-l) - var(--sa-r))); min-height:44px; }
   #ui #presenceBtn, #ui #chatBtn { min-height:34px; padding:7px 11px; }
   /* the delivery card under the wallet, inside the left safe area (rides live in the place chip) */
@@ -456,9 +469,10 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #toast .t.say { left:calc(236px + var(--sa-l)); right:calc(24vw + 6px + var(--sa-r)); bottom:calc(8px + var(--sa-b)); transform:none; width:fit-content; max-width:none; margin:0 auto;
     font-size:12.5px; padding:6px 12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   #toast .t.now { max-width:calc(24vw + 4px); font-size:12.5px; }
-  /* a moment card: on the left under the goal line, 30 vw wide at most (clear of the middle), ending above the joystick */
-  #toast .mo { left:calc(10px + var(--sa-l)); right:auto; top:calc(118px + var(--sa-t)); width:calc(30vw - 20px - var(--sa-l));
-    max-height:calc(100vh - 118px - 164px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 118px - 164px - var(--sa-t) - var(--sa-b)); }
+  /* a moment card: on the right under the phone button and the streak chip, 30 vw wide at most (clear of the middle), ending above the action
+     column (1.0.1 HUD pass: on the left it lay over the minimap and the delivery line, which now hold that column) */
+  #toast .mo { left:auto; right:calc(10px + var(--sa-r)); top:calc(112px + var(--sa-t)); width:calc(30vw - 20px - var(--sa-r));
+    max-height:calc(100vh - 112px - 140px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 112px - 140px - var(--sa-t) - var(--sa-b)); }
   #ui #delivery { max-width:calc(30vw - 20px - var(--sa-l)); }              /* the delivery line too stays left of the middle */
   /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
   #toast .mo-tx li:nth-child(n+6) { display:none; }
@@ -467,10 +481,16 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
      above the action column */
   #toast .mo.bc { padding:7px 34px 7px 10px; }
   /* an offer on a short screen: one row — the title and « Y aller » (its sentence is in the phone's « Mes pistes ») */
-  #toast .mo.of { align-items:center; }
+  #toast .mo.of { align-items:flex-start; }
   #toast .mo.of .mo-ic, #toast .of .of-line, #toast .of-b:not(.on) { display:none; }
-  #toast .mo.of .mo-tx { display:flex; align-items:center; gap:8px; }
+  #toast .mo.of .mo-tx { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }   /* the title above its button (beside it, it ran to four lines) */
   #toast .mo.of .of-acts { margin-top:0; flex-wrap:nowrap; }
+  /* the card after a delivery with the next run: what was paid, then the run's line over the button's width and « Accepter › » under it (the sticky
+     button lay over the card's title) */
+  #toast .mo.bc.go .bc-sub, #toast .mo.bc.go .bc-r ~ .bc-r, #toast .mo.bc.go .bc-next { display:none; }
+  #toast .mo.bc.go .bc-go { flex-wrap:wrap; gap:0 10px; min-height:44px; margin-top:4px; padding:5px 10px; }
+  #toast .mo.bc.go .bc-go span { flex-basis:100%; font-size:12.5px; }
+  #toast .mo.bc.go .bc-go b { margin-left:auto; font-size:14px; }
   #toast .bc .mo-ic, #toast .bc-next span + span { display:none; }
   #toast .bc-v, #toast .bc-note { display:inline; } #toast .bc-note::before { content:' · '; }
   #toast .bc .mo-tx > b { display:inline; font-size:15px; }

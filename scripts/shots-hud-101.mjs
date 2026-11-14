@@ -57,7 +57,7 @@ for (const v of viewsArg.split(',')) {
     if (MOMENTS.includes('stacked')) {
       await d(() => {
         const k = window.__dakar;
-        k.uiOffer?.({ icon: '💸', title: '1 000 F reçus de Moussa', line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [{ label: 'Retirer 1 000 F', primary: true }, { label: 'Voir' }], keep: true });
+        k.uiOffer?.({ icon: '💸', title: '1 000 F reçus de Moussa', line: 'Sur ton Teranga Money : retire-les.', actions: [{ label: 'Retirer 1 000 F', primary: true }, { label: 'Voir' }], keep: true });
         k.uiMoment('Nouvelle cliente', ['Awa, du Salon Awa, te recommandera.']);
         k.uiToast('Cheikh : « Café Touba, chaud ! »');
         k.uiToast('Pas assez d’énergie pour courir', 'warn');

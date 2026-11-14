@@ -237,7 +237,7 @@ const onceInTheStreet = (fn: () => void) => { if (started) fn(); else void whenS
 startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
   let op: string | undefined;                                                         // one withdrawal per notice, however it is tapped (the id is made once)
   hud.toast(pay.text);                                                                // (the Notifications list keeps it; read out for screen readers)
-  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [
+  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money : retire-les.', actions: [
     { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { op ??= online?.newId(); void withdrawReceived(pay, op).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
     { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
   ], keep: true }, 30000);                                                            // (a recap arriving meanwhile waits: it does not push the money away)
