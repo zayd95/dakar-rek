@@ -84,7 +84,7 @@ export function campRefusalText(reason: string): string {
     ready: 'Tu es prêt : passe « Pas prêt » d’abord.', 'no-team': 'Choisis une équipe d’abord.', 'not-org': 'Seul l’organisateur peut le faire.',
     busy: 'Ton droit d’entrée est déjà pris pour un autre match.', insufficient: 'Solde insuffisant : Teranga Money ne couvre pas le droit d’entrée.',
     'limit-fund': 'Limite de recharge du jour atteinte.', 'limit-op': 'Droit d’entrée trop élevé pour une seule opération.', amount: 'Montant invalide.',
-    offline: 'Hors ligne : ce sera confirmé ou annulé tout seul, jamais compté deux fois.', 'rate-limited': 'Trop rapide : attends un instant.',
+    'org-busy': 'Tu organises déjà un Grand Camp ouvert : annule-le d’abord.', offline: 'Hors ligne : ce sera confirmé ou annulé tout seul, jamais compté deux fois.', 'rate-limited': 'Trop rapide : attends un instant.',
     timeout: 'Pas encore de réponse du serveur : ce sera confirmé ou annulé tout seul.', 'no-match': 'Aucun match ouvert.', solo: 'Grand Camp n’est pas disponible ici.',
   } as Record<string, string>)[reason] ?? 'Ce n’est pas possible maintenant.';
 }

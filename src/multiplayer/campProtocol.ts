@@ -186,7 +186,9 @@ export type CampClientMessage =
 
 export type CampRefusal =
   | 'invalid' | 'exists' | 'unknown' | 'full' | 'private' | 'removed' | 'closed' | 'started' | 'not-member' | 'team-full' | 'ready' | 'no-team'
-  | 'not-org' | 'busy' | 'insufficient' | 'limit-fund' | 'limit-op' | 'amount' | 'offline' | 'rate-limited';
+  | 'not-org' | 'busy' | 'insufficient' | 'limit-fund' | 'limit-op' | 'amount' | 'offline' | 'rate-limited'
+  /** This organizer already has a lobby open (one at a time). */
+  | 'org-busy';
 
 // ------------------------------------------------------------------ match → client
 

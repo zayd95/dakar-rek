@@ -130,3 +130,43 @@ describe('Grand Camp server: a fee release the ledger could not do (review M1)',
     expect(rig.ledger.s.pool(M)!.held).toBe(6000);
   });
 });
+
+describe('Grand Camp server: the district’s list cannot be flooded (review M2)', () => {
+  const listing = (i: number, created: number, org = tag(1000 + i)) => ({
+    match: (0x1000000000000000n + BigInt(i) * 7919n).toString(16).padStart(16, '0'),        // the newest lobbies' ids sort past the first 1 000
+    terms: terms(), org: { tag: org, name: `Org ${i}` }, teams: ['Rouge', 'Jaune'], count: 1, created, closes: created + 600_000,
+  });
+  it('one open lobby per organizer: a second one is refused while the first takes players; free again once it is cancelled or handed over', async () => {
+    const rig = new CampRig(Camp), a = await rig.match(), b = await rig.match(), c = await rig.match();
+    rig.ledger.account(tag(1));
+    const w1 = await a.connect(tag(1), M), w2 = await b.connect(tag(1), M2);
+    expect((await a.req(w1, { type: 'create', terms: terms() }))?.ok).toBe(true);
+    expect(await b.req(w2, { type: 'create', terms: terms() })).toMatchObject({ ok: false, reason: 'org-busy' });
+    expect(await rig.list('list:corniche').obj.campList('corniche', null)).toHaveLength(1);
+    expect((await a.req(w1, { type: 'cancel' }))?.ok).toBe(true);
+    await Promise.all(rig.list('list:corniche').ctx.waits); await a.flush();
+    expect((await b.req(w2, { type: 'create', terms: terms() }))?.ok).toBe(true);
+    // handed over: the organizer leaves, another player now organizes that lobby — the first may open a new one
+    const w3 = await b.connect(tag(2), M2); rig.ledger.account(tag(2));
+    expect((await b.req(w3, { type: 'join' }))?.ok).toBe(true);
+    expect((await b.req(w2, { type: 'leave' }))?.ok).toBe(true);
+    await b.flush();
+    const w4 = await c.connect(tag(1), '1122334455667788');
+    expect((await c.req(w4, { type: 'create', terms: terms() }))?.ok).toBe(true);
+  });
+  it('the list is the newest lobbies by creation, read from an index (never the first 1 000 rows by match id)', async () => {
+    const rig = new CampRig(Camp), L = rig.list('list:corniche'), now = Date.now();
+    for (let i = 0; i < 1200; i++) await L.obj.campListPut(listing(i, now - 590_000 + i * 400), []);
+    for (let i = 0; i < 40; i++) await L.obj.campListPut(listing(5000 + i, now - 700_000 - i * 1000), []);   // stale rows (closed long ago, never dropped)
+    L.storage.lists.length = 0;
+    const out = await L.obj.campList('corniche', null);
+    expect(out.map(x => x.created)).toEqual(Array.from({ length: 30 }, (_, k) => now - 590_000 + (1199 - k) * 400));
+    expect(L.storage.lists.reduce((n, l) => n + l.read, 0)).toBeLessThanOrEqual(300);
+    expect(L.storage.lists.every(l => (l.limit ?? Infinity) <= 300)).toBe(true);
+    for (let k = 0; k < 3; k++) await L.obj.campList('corniche', null);           // the stale rows are swept from the old end, a few each time
+    expect([...L.storage.m.keys()].filter(k => k.startsWith('c:')).length).toBeLessThan(1240);
+    await L.obj.campListDrop(listing(1199, 0).match);
+    expect((await L.obj.campList('corniche', null))[0].created).toBe(now - 590_000 + 1198 * 400);
+  });
+});
+

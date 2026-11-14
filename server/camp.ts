@@ -54,6 +54,11 @@ const WATCH_MS = 30_000, RETRY_MS = 5_000, RETRY_MAX_MS = 10 * 60_000;
  */
 const SETTLE_TRIES = 4;
 const ACKS_KEPT = 400, LISTED_MAX = 30;
+/**
+ * The list role reads the newest LIST_SCAN rows of its creation-time index (never the whole district), and sweeps up to LIST_SWEEP of the oldest
+ * (stale rows a lost drop left behind) at each read. A lobby lives 10 minutes at most and an organizer has one open at a time (`campListClaim`).
+ */
+const LIST_SCAN = 240, LIST_SWEEP = 32, CLAIM_MS = 30_000;
 
 export class GrandCamp extends DurableObject<CampEnv> {
   private match: string | null = null;
@@ -176,6 +181,9 @@ export class GrandCamp extends DurableObject<CampEnv> {
     const now = Date.now(), tag = a.tag, profile: CampProfile = { name: a.name, look: a.look, ...(a.app ? { app: a.app } : {}) };
     if (m.type === 'create') {
       if (this.lobby) return this.lobby.data.org === tag && this.lobby.state === 'lobby' ? yes({ duplicate: true, match: this.match! }) : no('exists');
+      let free = true;                                                     // one open lobby per organizer (an unreachable list lists nothing anyway)
+      try { free = await this.env.CAMPS.getByName(`list:${m.terms.hub}`).campListClaim(tag, this.match!); } catch (e) { console.log(JSON.stringify({ event: 'camp-list', step: 'claim', error: String(e) })); }
+      if (!free) return no('org-busy');
       this.lobby = CampLobby.open(this.match!, tag, profile, m.terms, now);
       await this.changed();
       return yes({ match: this.match! });
@@ -475,20 +483,51 @@ export class GrandCamp extends DurableObject<CampEnv> {
   }
 
   // ================================================================== the `list:<hub>` role
-  async campListPut(e: CampListing, invited: Tag[]): Promise<void> { await this.ctx.storage.put(`l:${e.match}`, { e, invited, at: Date.now() } satisfies ListRow); }
-  async campListDrop(match: string): Promise<void> { await this.ctx.storage.delete(`l:${match}`); }
+  // Rows under `c:<created>:<match>` (the creation-time index the list reads newest first), `l:<match>` → that key (a drop finds it), `o:<organizer>`
+  // → the lobby they opened last ({ match, at }). An `l:` row of the first 1.0.1 builds (the row itself) is still dropped.
+  private static listKey(e: Pick<CampListing, 'created' | 'match'>) { return `c:${String(Math.max(0, Math.floor(e.created))).padStart(15, '0')}:${e.match}`; }
+  private async listRow(match: string): Promise<{ key: string | null; row: ListRow | null }> {
+    const k = await this.ctx.storage.get<string | ListRow>(`l:${match}`);
+    if (typeof k === 'string') return { key: k, row: (await this.ctx.storage.get<ListRow>(k)) ?? null };
+    return { key: null, row: k ?? null };
+  }
+  async campListPut(e: CampListing, invited: Tag[]): Promise<void> {
+    const key = GrandCamp.listKey(e);
+    await this.ctx.storage.put({ [key]: { e, invited, at: Date.now() } satisfies ListRow, [`l:${e.match}`]: key });
+  }
+  async campListDrop(match: string): Promise<void> {
+    const { key, row } = await this.listRow(match), org = row ? `o:${row.e.org.tag}` : null;
+    const claim = org ? await this.ctx.storage.get<{ match: string }>(org) : undefined;
+    await this.ctx.storage.delete([`l:${match}`, ...(key ? [key] : []), ...(org && claim?.match === match ? [org] : [])]);
+  }
+  /**
+   * One open lobby per organizer: `org` may open `match` unless the lobby they opened before still takes players and is still theirs (the organizer's
+   * role passes on when they leave), or was claimed a moment ago and is not listed yet.
+   */
+  async campListClaim(org: Tag, match: string): Promise<boolean> {
+    const now = Date.now(), had = await this.ctx.storage.get<{ match: string; at: number }>(`o:${org}`);
+    if (had && had.match !== match) {
+      const { row } = await this.listRow(had.match);
+      if (row ? row.e.org.tag === org && now <= row.e.closes + 60_000 : now - had.at < CLAIM_MS) return false;
+    }
+    await this.ctx.storage.put(`o:${org}`, { match, at: now });
+    return true;
+  }
   /** The lobbies of `hub` that take players now: the public ones, and the private ones `tag` organizes or is invited to (newest first). */
   async campList(hub: HubId, tag: Tag | null): Promise<CampListing[]> {
     const now = Date.now(), out: CampListing[] = [], stale: string[] = [];
-    for (const [k, v] of await this.ctx.storage.list<ListRow>({ prefix: 'l:', limit: 1000 })) {
-      if (now > v.e.closes + 60_000) { stale.push(k); continue; }
-      if (v.e.terms.hub !== hub || v.e.count >= v.e.terms.size) continue;
+    const isStale = (v: ListRow) => now > v.e.closes + 60_000;
+    for (const [k, v] of await this.ctx.storage.list<ListRow>({ prefix: 'c:', reverse: true, limit: LIST_SCAN })) {
+      if (isStale(v)) { stale.push(k, `l:${v.e.match}`); continue; }
+      if (out.length >= LISTED_MAX || v.e.terms.hub !== hub || v.e.count >= v.e.terms.size) continue;
       const invited = !!tag && v.invited.includes(tag);
       if (!v.e.terms.open && !invited && v.e.org.tag !== tag) continue;
       out.push({ ...v.e, ...(invited ? { invited: true } : {}) });
     }
-    for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
-    return out.sort((a, b) => b.created - a.created).slice(0, LISTED_MAX);
+    for (const [k, v] of await this.ctx.storage.list<ListRow>({ prefix: 'c:', limit: LIST_SWEEP })) if (isStale(v)) stale.push(k, `l:${v.e.match}`);
+    const gone = [...new Set(stale)];
+    for (let i = 0; i < gone.length; i += 128) await this.ctx.storage.delete(gone.slice(i, i + 128));
+    return out;
   }
 }
 
