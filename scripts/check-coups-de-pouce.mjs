@@ -127,7 +127,7 @@ async function walkWay(x, z, done = null, tol = 1.4) {
   for (let plan = 0; plan < 6; plan++) {
     const way = await wayTo(x, z, tol); if (!way) break;
     for (const p of way) {
-      await walkTo(page, t, p.x, p.z, { tol: 0.9, ms: 40000 });
+      await walkTo(page, t, p.x, p.z, { tol: 0.9, ms: 120000 });   // (wall clock: a leg of 40 m is a few game seconds, but over a minute at a frame every 1.5 s)
       if (done && await d(done)) return true;
       const me = await d(() => window.__dakar.pos());
       if (Math.hypot(x - me.x, z - me.z) <= tol) return done ? !!(await until(done, null, 5000)) : true;
