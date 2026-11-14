@@ -153,6 +153,9 @@ describe('Grand Camp match: players who drop or leave', () => {
     expect(m.snapshot().players.map(q => q.sid)).not.toContain(7);
     expect(m.seats.has(7)).toBe(true);
     expect(kinds(m.events).filter(k => k !== 'kickoff')).toEqual(['drop', 'back', 'gone']);
+    m.drop(3);
+    expect(kinds(m.step())).toContain('drop');                                        // between two ticks: handed over by the next one
+    expect(m.step().filter(e => e.k === 'drop')).toEqual([]);                         // once
     expect(m.events.find(e => e.k === 'gone')).toMatchObject({ who: 7, team: 1 });
   });
   it('a team with nobody on the pitch: the other team takes its kick-offs and restarts; play goes on', () => {

@@ -264,7 +264,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
     this.send(ws, { type: 'start', roster: l.data.players.map(p => ({ sid: p.sid, tag: p.tag, team: p.team as 0 | 1 })), kick: g.firstKick, seconds: g.seconds, goals: g.goals, tick: g.tick });
     for (let i = 0; i < g.events.length; i += 100) this.send(ws, { type: 'ev', e: g.events.slice(i, i + 100) });
   }
-  /** The fixed tick: as many steps as the time owes (a late timer catches up, four at most), the events, one snapshot to every player. */
+  /** The fixed tick: as many steps as the time owes (a late timer catches up, four at most); after each step its events and a snapshot to every player. */
   private tick() {
     const g = this.game;
     if (!g) { this.stopTimer(); return; }
@@ -275,9 +275,10 @@ export class GrandCamp extends DurableObject<CampEnv> {
       this.acc -= dt; n++; this.meter.ticks++;
       const ev = g.step();
       if (ev.length) { this.meter.events += ev.length; this.toPlayers(JSON.stringify({ type: 'ev', e: ev } satisfies CampServerMessage)); }
+      const s = JSON.stringify(encodeSnap(g.snapshot()));
+      this.meter.snaps++; this.meter.snapBytes += s.length; this.toPlayers(s);
     }
     if (this.acc > dt * 4) this.acc = 0;                                    // far behind (a slow host): the match goes on from now
-    if (n) { const s = JSON.stringify(encodeSnap(g.snapshot())); this.meter.snaps++; this.meter.snapBytes += s.length; this.toPlayers(s); }
     if (g.stage === 'over' && !this.ending) { this.ending = true; this.stopTimer(); this.later(() => this.finish(g.winner === null ? 'draw' : 'win')); return; }
     if (now - this.lastDue >= 1000) { this.lastDue = now; this.later(async () => { await this.due(); }); }
     if (now - this.lastArm >= WATCH_MS / 3) { this.lastArm = now; this.later(() => this.arm()); }

@@ -100,17 +100,16 @@ export class CampMatch {
   get onPitch() { let n = 0; for (const s of this.seats.values()) if (s.on) n++; return n; }
 
   // ------------------------------------------------------------------ one tick
-  /** Advances the match by one tick; returns the events of this tick (also kept in `events`). */
+  /** Advances the match by one tick; returns the events since the last step: this tick's, and a drop, a return or a departure in between (all kept in `events` too). */
   step(): CampEvent[] {
-    this.fresh = [];
-    if (this.stage === 'over') return this.fresh;
+    if (this.stage === 'over') return this.flush();
     const dt = this.dt, sim = this.sim;
     this.tick++;
     this.moveBodies(dt);
     if (this.stage === 'half') {
       this.pause -= dt;
       if (this.pause <= 0) { this.stage = 'play'; this.half = 2; this.kickoff((1 - this.firstKick) as 0 | 1); }
-      return this.fresh;
+      return this.flush();
     }
     for (const s of this.seats.values()) {
       if (!s.on) continue;
@@ -154,8 +153,10 @@ export class CampMatch {
       else if (this.clock >= this.seconds) this.end();
     }
     this.lastPhase = sim.phase;
-    return this.fresh;
+    return this.flush();
   }
+  /** The events not handed over yet, once. */
+  private flush() { const out = this.fresh; this.fresh = []; return out; }
 
   /** Every body on the pitch, one step from its stick; the set piece's places; nobody through anybody; the curb. */
   private moveBodies(dt: number) {
