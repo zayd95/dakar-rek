@@ -39,7 +39,7 @@ api.show = (clip: Clip, t: number, view = 'front', o: { zoom?: number; ty?: numb
   const dirs: Record<string, number[]> = { front: [0, 0.05, 1], back: [0, 0.05, -1], side: [1, 0.05, 0], threeq: [0.7, 0.15, 0.7] };
   const target = c0.clone(); let dist = Math.max(size.y * 2.1, size.x * 1.25 * H / W) / (o.zoom ?? 1);
   if (o.ty !== undefined) target.y = box.min.y + size.y * o.ty;
-  if (view === 'face' || view === 'face3q') { figs[o.on ?? 0].bone('head')!.getWorldPosition(target); target.y += 0.12; dist = 1.0 / (o.zoom ?? 1); }
+  if (view === 'face' || view === 'face3q') { figs[o.on ?? 0].bone('head')!.getWorldPosition(target); target.y += o.ty ?? 0.05; dist = 1.0 / (o.zoom ?? 1); }
   cam.position.copy(target).addScaledVector(new THREE.Vector3(...(dirs[view === 'face' ? 'front' : view === 'face3q' ? 'threeq' : view] ?? dirs.front)).normalize(), dist); cam.lookAt(target);
   r.render(sc, cam); return { calls: r.info.render.calls, triangles: r.info.render.triangles };
 };

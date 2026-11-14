@@ -1,0 +1,146 @@
+[
+ {
+  "quality": "low",
+  "body": "v4",
+  "readyMs": 7537,
+  "rdaFile": null,
+  "duel": {
+   "dc": 132,
+   "tris": 176756,
+   "geometries": 156,
+   "textures": 168,
+   "bodies": "v4 v4",
+   "fps": 6.5
+  },
+  "entrance": {
+   "dc": 123,
+   "tris": 183798,
+   "geometries": 184,
+   "textures": 321,
+   "bodies": "v4 v4",
+   "fps": 3.7
+  }
+ },
+ {
+  "quality": "low",
+  "body": "rda",
+  "readyMs": 4631,
+  "rdaFile": {
+   "level": "medium",
+   "ok": true,
+   "ms": 247
+  },
+  "duel": {
+   "dc": 125,
+   "tris": 197676,
+   "geometries": 154,
+   "textures": 156,
+   "bodies": "rda rda",
+   "fps": 5.1
+  },
+  "entrance": {
+   "dc": 143,
+   "tris": 218732,
+   "geometries": 182,
+   "textures": 309,
+   "bodies": "rda rda",
+   "fps": 4.7
+  }
+ },
+ {
+  "quality": "medium",
+  "body": "v4",
+  "readyMs": 5685,
+  "rdaFile": null,
+  "duel": {
+   "dc": 182,
+   "tris": 239917,
+   "geometries": 176,
+   "textures": 462,
+   "bodies": "v4 v4",
+   "fps": 1.6
+  },
+  "entrance": {
+   "dc": 79,
+   "tris": 214039,
+   "geometries": 215,
+   "textures": 1190,
+   "bodies": "v4 v4",
+   "fps": 2.6
+  }
+ },
+ {
+  "quality": "medium",
+  "body": "rda",
+  "readyMs": 5157,
+  "rdaFile": {
+   "level": "medium",
+   "ok": true,
+   "ms": 264
+  },
+  "duel": {
+   "dc": 185,
+   "tris": 267619,
+   "geometries": 178,
+   "textures": 486,
+   "bodies": "rda rda",
+   "fps": 1.3
+  },
+  "entrance": {
+   "dc": 127,
+   "tris": 273535,
+   "geometries": 219,
+   "textures": 1341,
+   "bodies": "rda rda",
+   "fps": 1.6
+  }
+ },
+ {
+  "quality": "high",
+  "body": "v4",
+  "readyMs": 4861,
+  "rdaFile": null,
+  "duel": {
+   "dc": 204,
+   "tris": 268805,
+   "geometries": 176,
+   "textures": 481,
+   "bodies": "v4 v4",
+   "fps": 2.5
+  },
+  "entrance": {
+   "dc": 80,
+   "tris": 223141,
+   "geometries": 229,
+   "textures": 1307,
+   "bodies": "v4 v4",
+   "fps": 2.6
+  }
+ },
+ {
+  "quality": "high",
+  "body": "rda",
+  "readyMs": 4797,
+  "rdaFile": {
+   "level": "high",
+   "ok": true,
+   "ms": 268
+  },
+  "duel": {
+   "dc": 194,
+   "tris": 285433,
+   "geometries": 179,
+   "textures": 565,
+   "bodies": "rda rda",
+   "fps": 2.1
+  },
+  "entrance": {
+   "dc": 75,
+   "tris": 244323,
+   "geometries": 232,
+   "textures": 1312,
+   "bodies": "rda rda",
+   "fps": 2.3
+  }
+ }
+]
