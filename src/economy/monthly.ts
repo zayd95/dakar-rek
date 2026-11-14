@@ -211,7 +211,7 @@ function settleOne(s: GameState, a: Held): Settlement {
   const revenue = Math.floor(L.acc + 1e-6), cost = monthlyCost(L), month = L.k + 1;
   L.acc = 0; L.accAt = boundary;
   const out: Settlement = { uid: a.uid, spec: a.spec, month, occ, revenue, cost: 0, paid: 0 };
-  if (revenue > 0) st.earned += s.addMoney(revenue, `Loyer perçu · ${name(a)}${L.mode === 'furnished' ? ' meublé' : ''} · occupé à ${occ} %`);
+  if (revenue > 0) { st.earned += s.addMoney(revenue, `Loyer perçu · ${name(a)}${L.mode === 'furnished' ? ' meublé' : ''} · occupé à ${occ} %`); s.count('loyers:percus'); }   // (« Coups de pouce »: a tenant's rent received, src/economy/pouce.ts)
   remember(s, settlementKey(a.uid, month));
   if (L.next) { L.mode = L.next; delete L.next; }
   if (L.notice) {

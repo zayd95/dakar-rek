@@ -3,10 +3,12 @@ import { GameState } from '../src/core/state';
 import { newSave, migrate, STARTER_HOME } from '../src/core/save';
 import { ECONOMY } from '../src/economy/config';
 import { specOf } from '../src/economy/catalog';
-import { assetByUid, buyAsset, holding, rentAsset, saleValue, sellAsset, setLeased } from '../src/economy/assets';
+import { HOUR_MS, accrue, assetByUid, buyAsset, holding, rentAsset, saleValue, sellAsset, setLeased } from '../src/economy/assets';
 import { acceptJob, completeJob, pickUp } from '../src/economy/jobs';
 import { deliverFurniture } from '../src/economy/furniture';
-import { offer, signLease } from '../src/economy/monthly';
+import { occupancy, offer, setNotice, settleMonthly, signLease } from '../src/economy/monthly';
+import { ECON_MONTH_MS, econMonthAt } from '../src/economy/calendar';
+import { openAccount } from '../src/economy/bank';
 import { move, reserveOnline, settleOnline } from '../src/economy/money';
 import { recordMatch } from '../src/districts/matchRules';
 import { moveAndLeave } from '../src/economy/moving';
@@ -102,8 +104,14 @@ describe('each step\'s trigger, read from the save', () => {
     settleOnline(w, 'op-cash-0001', { ok: true, balance: 0 });
     expect(w.data.counters[POUCE_COUNTERS.cashed]).toBe(1); expect(step('teranga').done(w)).toBe(true);
     const b = fresh(5000);
+    expect(openAccount(b)).toBe(true);
+    expect(step('teranga').done(b)).toBe(false);                                               // the account opened (free): not a deposit yet
+    expect(move(b, 'wallet', 'savings', 0).ok).toBe(false); expect(step('teranga').done(b)).toBe(false);
     expect(move(b, 'wallet', 'savings', 1000).ok).toBe(true);
     expect(step('teranga').done(b)).toBe(true);
+    expect(move(b, 'wallet', 'savings', -1000).ok).toBe(false);
+    expect(move(b, 'savings', 'wallet', 1000).ok).toBe(true); expect(b.data.bank.savings).toBe(0);
+    expect(step('teranga').done(b)).toBe(true);                                                // taken out again later: the deposit was made
   });
   it('7. a tenant by the month or an owner', () => {
     const a = fresh(100_000); signLease(a, 'appart_jamm'); expect(step('logement').done(a)).toBe(true);
@@ -117,14 +125,45 @@ describe('each step\'s trigger, read from the save', () => {
     expect(step('camp').done(a)).toBe(true);
     const b = fresh(); b.count(POUCE_COUNTERS.camp); expect(step('camp').done(b)).toBe(true);
   });
-  it('9. a home let: an owned home let to a family, or the F2 sublet', () => {
+  it('9. a home let: met when a tenant\'s first rent comes in (an owned home let: within the city hour; the F2 sublet: at its settlement), not when it is put on offer', () => {
     const a = fresh(20_000_000), f2 = buyAsset(a, 'appart_jamm')!;
     expect(step('location').done(a)).toBe(false);
     expect(setLeased(a, f2.uid, true)).toBe(true);
+    expect(step('location').done(a)).toBe(false);                                               // on offer: nothing came in yet
+    a.data.playedMs += HOUR_MS; accrue(a);
+    expect(a.data.counters[POUCE_COUNTERS.rent]).toBe(1);
     expect(step('location').done(a)).toBe(true);
-    const b = fresh(200_000), g = signLease(b, 'appart_jamm')!;
-    expect(offer(b, g.uid, 'sublet')).toBe(true);
+    // the F2 sublet: a tenant this month (the demand is seeded by the player); a month with none pays nothing and meets nothing
+    const T0 = Date.UTC(2026, 10, 14, 12), M = ECON_MONTH_MS;
+    const sublet = (want: (occ: number) => boolean) => { for (let i = 0; i < 500; i++) { const s = fresh(200_000); s.data.guestId = `guest-${i}`; if (want(occupancy(`${s.data.guestId}:appart_jamm`, econMonthAt(T0)))) return s; } throw new Error('no such player'); };
+    const b = sublet(o => o > 0), g = signLease(b, 'appart_jamm', T0)!;
+    expect(offer(b, g.uid, 'sublet', T0)).toBe(true);
+    expect(step('location').done(b)).toBe(false);
+    b.data.playedMs += ECONOMY.monthly.minPlayMs;
+    const out = settleMonthly(b, T0 + M);
+    expect(out[0].revenue).toBeGreaterThan(0);
     expect(step('location').done(b)).toBe(true);
+    const c = sublet(o => o === 0), h = signLease(c, 'appart_jamm', T0)!;
+    expect(offer(c, h.uid, 'sublet', T0)).toBe(true);
+    c.data.playedMs += ECONOMY.monthly.minPlayMs;
+    expect(settleMonthly(c, T0 + M)[0].revenue).toBe(0);
+    expect(step('location').done(c)).toBe(false);                                               // a vacant month: no rent, not met yet
+    expect(POUCE_COUNTERS.rent).toBe('loyers:percus');                                         // (the literal src/economy/assets.ts and monthly.ts count)
+  });
+  it('the review\'s case: signing the F2 and putting it on offer pays « logement » only; « location » waits for the tenant\'s first rent, a month later', () => {
+    const T0 = Date.UTC(2026, 10, 14, 12);
+    let s: GameState | null = null;
+    for (let i = 0; i < 500 && !s; i++) { const t = fresh(60_000); t.data.guestId = `guest-${i}`; if (occupancy(`${t.data.guestId}:appart_jamm`, econMonthAt(T0)) > 0) s = t; }
+    for (const k of ['livraisons', 'livraisons:quartiers', 'vehicule:retrouve', 'terrasse', 'ft_matches']) s!.data.counters[k] = 1;
+    s!.data.counters['pouce:meuble'] = 15_000;                                                  // the earlier steps done and paid: only the two housing steps are watched
+    payDue(s!); const w0 = s!.wallet;
+    const a = signLease(s!, 'appart_jamm', T0)!; offer(s!, a.uid, 'sublet', T0); setNotice(s!, a.uid, true);
+    expect(payDue(s!).map(p => [p.step.id, p.amount])).toEqual([['logement', 45_000]]);          // the review: logement +45 000 AND location +70 000 at once
+    expect(s!.wallet - w0).toBe(45_000 - 60_000);
+    s!.data.playedMs += ECONOMY.monthly.minPlayMs;
+    const out = settleMonthly(s!, T0 + ECON_MONTH_MS);
+    expect(out[0]).toMatchObject({ ended: 'notice' }); expect(out[0].revenue).toBeGreaterThan(0);
+    expect(payDue(s!).map(p => [p.step.id, p.amount])).toEqual([['location', 70_000]]);
   });
 });
 
