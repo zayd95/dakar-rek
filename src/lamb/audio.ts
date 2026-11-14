@@ -90,6 +90,28 @@ export function strikeSound(kind: 'quick' | 'big', result: 'hit' | 'stagger' | '
   }
 }
 
+/**
+ * « Le choc » (src/lamb/fx.ts), the player's own bout: a body landing on the sand — a low thump (from 66 down to 55 Hz,
+ * 0.25 s) and a short burst of dull noise (the sand). Synthesized like `strikeSound`; silent with the sound off.
+ */
+export function fallThud() {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + 0.01;
+  hit(c, t, 55, 0.25, 0.85);
+  const len = Math.floor(c.sampleRate * 0.14), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+  const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  f.type = 'lowpass'; f.frequency.value = 520; n.buffer = buf; g.gain.value = 0.5;
+  n.connect(f).connect(g).connect(out()); n.start(t);
+}
+/** « Le choc », the player's own bout: skin on skin as the empoignade starts — two short slaps (0.04 s each). */
+export function gripSlap() {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + 0.01;
+  hit(c, t, 210, 0.04, 0.32, true);
+  hit(c, t + 0.07, 180, 0.04, 0.26, true);
+}
+
 /** The stands cheer (`seconds` long, `level` 0..~0.3): the arena's authored one-shots, by the moment that called it (src/arena/soundscape.ts). */
 export function crowdCheer(seconds = 2.5, level = 0.18) {
   if (!ac()) return;
