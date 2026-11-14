@@ -413,7 +413,18 @@ for (const name of refit) {
 const lin = c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 const skinCrop = sharp(file('public/assets/skin_m.png')).extract(crop);
 const cropRaw = await skinCrop.clone().removeAlpha().raw().toBuffer({ resolveWithObject: true });
-const faceMean = [0, 0, 0]; { const d = cropRaw.data, n = d.length / 3; for (let i = 0; i < d.length; i++) faceMean[i % 3] += lin(d[i] / 255) / n; }
+// the face's own mean colour (the texels under the front of the face, not the crop's hair and margins): the atlas is applied as detail
+// around it, so the face keeps the wrestler's skin tone and meets the neck without a step
+const faceMean = [0, 0, 0]; {
+  const d = cropRaw.data, W = cropRaw.info.width, H = cropRaw.info.height; let n = 0;
+  for (let i = 0; i < nB; i++) {
+    if (FW[i] < 0.5 || body.P[i * 3 + 2] < 0.06) continue;
+    const x = Math.min(W - 1, Math.max(0, Math.floor(UVc[i * 2] * W))), y = Math.min(H - 1, Math.max(0, Math.floor(UVc[i * 2 + 1] * H))), k = (y * W + x) * 3;
+    for (let c = 0; c < 3; c++) faceMean[c] += lin(d[k + c] / 255); n++;
+  }
+  for (let c = 0; c < 3; c++) faceMean[c] /= n;
+  report.faceSamples = n;
+}
 // the eye atlas: RDA mutes its strong red iris saturation in a shader (face-material.ts); the same, baked into the pixels
 const eyeRaw = await sharp(file('public/assets/eye_brown.png')).removeAlpha().raw().toBuffer({ resolveWithObject: true });
 for (let i = 0; i < eyeRaw.data.length; i += 3) {
