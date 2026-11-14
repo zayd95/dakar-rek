@@ -207,10 +207,11 @@ for (const h of process.env.SKIP_A ? [] : HUBS) {
   const done = await handOver(L, run, drop);
   // the card after the delivery: the pay, and the next run nearby in one tap
   await page.waitForSelector('#toast .mo.bc .bc-go', { timeout: 60000 }).catch(() => {});
+  // read and tapped at once: the card stays 12 s on screen, and a screenshot of SwiftShader on a loaded machine can take longer than that (it comes after the tap)
   const after = await d(() => { const c = document.querySelector('#toast .mo.bc'); return c ? { text: c.innerText.replace(/\s+/g, ' '), go: c.querySelector('.bc-go')?.innerText.replace(/\s+/g, ' ') ?? null } : null; });
-  await shot(`${h}-delivered`);
-  check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   if (after?.go) await touch.tap('#toast .mo.bc .bc-go');
+  await shot(`${h}-next-taken`);
+  check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   await page.waitForFunction(() => window.__dakar.activeJob(), null, { timeout: 90000 }).catch(() => {});
   await page.waitForFunction(() => window.__dakar.destination(), null, { timeout: 60000 }).catch(() => {});      // its waypoint, on the next frames
   const next = await job();
