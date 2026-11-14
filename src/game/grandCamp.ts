@@ -445,15 +445,15 @@ class GrandCamp implements GameModule {
          * back-off starting `holdMs` in (a network that takes a few seconds to come back; DevTools' offline mode does not cut WebSockets).
          */
         dropSocket: (holdMs = 0) => {
-          const c = campSession.client as unknown as { ws: WebSocket | null; attempt: number } | null, ws = c?.ws;
+          const c = campSession.client as unknown as { ws: WebSocket | null; attempt: number; drop(code: number, reason: string): void } | null, had = !!c?.ws;
           if (c && holdMs > 0) c.attempt = Math.max(c.attempt, holdMs >= 5000 ? 4 : holdMs >= 2500 ? 3 : 2);
-          try { ws?.close(4003, 'Dropped (check)'); } catch { /* gone */ }
-          return !!ws;
+          c?.drop(4003, 'Dropped (check)');
+          return had;
         },
         /** The view's players in world space (screenshots, the checks' driver: where the ball and my body are). */
         view: () => {
           const v = this.view, pt = this.pitch, c = campSession.client; if (!v || !pt || !c) return null;
-          return { sid: c.state.sid, own: v.own, taker: v.taker, phase: v.phase, ball: { x: pt.x + v.ball.x, z: pt.z + v.ball.z, h: v.ball.h }, me: v.me ? { x: pt.x + v.me.x, z: pt.z + v.me.z, f: v.me.f } : null,
+          return { sid: c.state.sid, own: v.own, taker: v.taker, phase: v.phase, ball: { x: pt.x + v.ball.x, z: pt.z + v.ball.z, h: v.ball.h, vx: v.ball.vx, vz: v.ball.vz }, me: v.me ? { x: pt.x + v.me.x, z: pt.z + v.me.z, f: v.me.f } : null,
             players: v.players.map(p => ({ sid: p.sid, team: p.team, x: pt.x + p.x, z: pt.z + p.z })), team: c.state.roster?.find(r => r.sid === c.state.sid)?.team ?? null };
         },
       },
