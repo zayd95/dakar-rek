@@ -18,11 +18,12 @@ export const OPENING_SECONDS = 14;
 
 /**
  * Pikine's keys (world metres; the starter room's street is z ≈ −60, its crossroads x ≈ −60, the arena x ≈ 30, z ≈ −30); the end key is the play camera.
- * Timed by distance: 3.5 s to reach a glide of 6–8 m/s, a slow-down over the last 3 s into the player's camera.
+ * Timed by distance: 3.5 s to reach a glide of 6–8 m/s, a slow-down over the last 3 s into the player's camera. The view looks about 10° down
+ * all the way (more city, less sky on a phone held upright), tilting to the play camera's 16° as it lands.
  */
 export const PIKINE_KEYS: readonly Key[] = [
-  { t: 0, pos: { x: -108, y: 17, z: -112 }, look: { x: 25, y: 4, z: -35 } },
-  { t: 4.5, pos: { x: -94, y: 15, z: -97 }, look: { x: 0, y: 3, z: -42 } },
+  { t: 0, pos: { x: -108, y: 17, z: -112 }, look: { x: 25, y: -10, z: -35 } },
+  { t: 4.5, pos: { x: -94, y: 15, z: -97 }, look: { x: 0, y: -4, z: -42 } },
   { t: 7.6, pos: { x: -79, y: 11.5, z: -80 }, look: { x: -28, y: 1.8, z: -50 } },
   { t: 10.4, pos: { x: -64, y: 7.5, z: -67 }, look: { x: -39, y: 1.4, z: -51 } },
 ];
