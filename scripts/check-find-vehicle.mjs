@@ -139,17 +139,20 @@ check('A6. the Jakarta is listed « Stationné », in Pikine, near a named place
 check('A7. its primary action is « Localiser »; « Faire sonner » is offered because it is close', await d(() => { const c = [...document.querySelectorAll('#phone .vh')].find(e => /Jakarta/.test(e.textContent)); const b = [...c.querySelectorAll('button')]; return b.length === 2 && /Localiser/.test(b[0].textContent) && b[0].classList.contains('primary') && /Faire sonner/.test(b[1].textContent) && b.every(x => x.getBoundingClientRect().height >= 44); }));
 await shot('a1-list');
 
-// « Faire sonner »: once, then not again at once; the moto has not moved
+// « Faire sonner »: once, then not again at once; the moto has not moved. The page notes when each ring was asked and what it answered, so the cooldown
+// (src/transport/whereabouts.ts RING_COOLDOWN_S, 6 s) is judged on the real interval between the two taps; the second is a plain tap at once (the button has not moved)
+await d(() => { const h = window.__dakar.phoneHooks, f = h.ringVehicle; window.__rings = []; h.ringVehicle = id => { const r = f(id); window.__rings.push({ at: performance.now(), r }); return r; }; });
 const horn0 = await d(() => window.__dakar.moto.audio().count.horn ?? 0);
 await tapText('#phone .vh [data-act="ring"]', /./);
 await wait(150);
 const hornA = await d(() => { const a = window.__dakar.moto.audio(); return { n: a.count.horn ?? 0, held: a.horn, state: a.state }; });
 await wait(700);
 const hornB = await d(() => window.__dakar.moto.audio().horn);
-await tapText('#phone .vh [data-act="ring"]', /./); await wait(500);
-const hornC = await d(() => window.__dakar.moto.audio().count.horn ?? 0);
+await t.tap('#phone .vh [data-act="ring"]'); await until(() => window.__rings.length >= 2, null, 10000); await wait(500);
+const hornC = await d(() => window.__dakar.moto.audio().count.horn ?? 0), rings = await d(() => window.__rings), gap = rings.length >= 2 ? (rings[1].at - rings[0].at) / 1000 : null;
 check('A8. « Faire sonner »: the moto’s own horn, one short blip (released within a second)', hornA.n === horn0 + 1 && hornB === false, JSON.stringify({ horn0, hornA, hornB }));
-check('A9. …and a second tap at once is refused (a cooldown): no second horn', hornC === horn0 + 1, `${horn0} → ${hornC}`);
+check('A9. …and a second tap at once is refused (a cooldown): no second horn', rings.length === 2 && rings[0].r === null && gap !== null && gap < 6 && /instant/.test(rings[1].r ?? '') && hornC === horn0 + 1,
+  `horns ${horn0} → ${hornC}; second tap ${gap === null ? '?' : gap.toFixed(1)} s after the first; answers ${JSON.stringify(rings.map(r => r.r))}`);
 check('A10. nothing moved it: same record', JSON.stringify((await info()).record) === JSON.stringify(R));
 
 // « Localiser »
