@@ -33,16 +33,16 @@ describe('« Autour de moi »: the page', () => {
     const p = aroundPage(base({ tiak: [offer('a', 80), offer('b', 60, 'Trop fatigué')], places: [place('dibi', 120)] }));
     const [b, a] = sec(p, 'tiak')!.rows;
     expect(a).toMatchObject({ label: 'Route a', act: { label: 'Accepter', do: { kind: 'tiak', id: 'a' } } });
-    expect(a.detail).toMatch(/^Repas · 1\s200\sF · départ à 80 m$/);
+    expect(a.detail).toMatch(/^Repas · 1\s200\sF · départ à 80\u00a0m$/);
     expect(a.act!.disabled).toBeUndefined();
     expect(b).toMatchObject({ why: 'Trop fatigué', act: { label: 'Accepter', disabled: true } });
-    expect(sec(p, 'lieux')!.rows[0]).toMatchObject({ detail: 'Ouvert · à 120 m', act: { label: 'Y aller', do: { kind: 'go', key: 'dibi' } } });
+    expect(sec(p, 'lieux')!.rows[0]).toMatchObject({ detail: 'Ouvert · à 120\u00a0m', act: { label: 'Y aller', do: { kind: 'go', key: 'dibi' } } });
     for (const s of p) for (const r of s.rows) expect(r.act ? 1 : 0).toBeLessThanOrEqual(1);
   });
 
   it('a run in hand: it alone, with « Y aller » (no other offer can be taken meanwhile)', () => {
     const p = aroundPage(base({ job: { title: 'Chez Mame → Boutique', next: 'Colis à prendre : Chez Mame', dist: 64 }, tiak: [offer('a', 10)] }));
-    expect(sec(p, 'tiak')!.rows).toEqual([{ key: 'job', icon: '📦', label: 'En cours · Chez Mame → Boutique', detail: 'Colis à prendre : Chez Mame · à 60 m', act: { label: 'Y aller', do: { kind: 'job' } } }]);
+    expect(sec(p, 'tiak')!.rows).toEqual([{ key: 'job', icon: '📦', label: 'En cours · Chez Mame → Boutique', detail: 'Colis à prendre : Chez Mame · à 60\u00a0m', act: { label: 'Y aller', do: { kind: 'job' } } }]);
   });
 
   it('offline: the online rows say « Hors ligne » once, the rest works', () => {
@@ -82,7 +82,7 @@ describe('« Autour de moi »: the page', () => {
       { tag: 'd', name: 'Dior', dist: null, district: null, sameDistrict: true },
     ] }));
     expect(sec(p, 'amis')!.rows.map(r => [r.label, r.detail, r.act?.label])).toEqual([
-      ['Cheikh', 'à 40 m', 'Rejoindre'], ['Awa', 'à Plateau', 'Rejoindre'], ['Bineta', 'en ligne', 'Message'], ['Dior', 'dans le quartier', 'Rejoindre']]);
+      ['Cheikh', 'à 40\u00a0m', 'Rejoindre'], ['Awa', 'à Plateau', 'Rejoindre'], ['Bineta', 'en ligne', 'Message'], ['Dior', 'dans le quartier', 'Rejoindre']]);
     expect(sec(p, 'amis')!.rows[2].act!.do).toEqual({ kind: 'message', tag: 'b', name: 'Bineta' });
   });
 
@@ -102,7 +102,7 @@ describe('« Autour de moi »: the page', () => {
   });
 
   it('words: distances, hours, how full a place is; the key changes when a row does', () => {
-    expect([away(4), away(64), away(995), away(1234)]).toEqual(['à côté', 'à 60 m', 'à 1,0 km', 'à 1,2 km']);
+    expect([away(4), away(64), away(995), away(1234)]).toEqual(['à côté', 'à 60\u00a0m', 'à 1,0\u00a0km', 'à 1,2\u00a0km']);
     expect([hourText(17), hourText(19.25), hourText(25)]).toEqual(['17 h', '19 h 15', '1 h']);
     expect([crowdWord(1), crowdWord(0.8), crowdWord(0.45), crowdWord(0.3), crowdWord(0)]).toEqual(['plein', 'du monde', 'du monde', 'quelques personnes', 'calme']);
     const a = aroundPage(base({ places: [place('x', 100)] })), b = aroundPage(base({ places: [place('x', 104)] })), c = aroundPage(base({ places: [place('x', 200)] }));

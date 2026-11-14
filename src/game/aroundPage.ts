@@ -52,12 +52,12 @@ export const AROUND_LIMIT = { tiak: 5, camp: 3, amis: 5, lieux: 8, activites: 5 
 /** How often the screen asks the server again while it is shown (ms), never while it is not. */
 export const AROUND_REFRESH_MS = 5000;
 
-/** « à 80 m », « à 1,2 km », « à côté » (rounded to 10 m: the list does not change at every step). */
+/** « à 80 m », « à 1,2 km », « à côté » (rounded to 10 m: the list does not change at every step); the number and its unit never on two lines. */
 export function away(m: number): string {
   if (m < 15) return 'à côté';
   const r = Math.round(m / 10) * 10;
-  if (r < 1000) return `à ${r} m`;
-  return `à ${(m / 1000).toFixed(1).replace('.', ',')} km`;
+  if (r < 1000) return `à ${r}\u00a0m`;
+  return `à ${(m / 1000).toFixed(1).replace('.', ',')}\u00a0km`;
 }
 /** « 17 h », « 19 h 15 ». */
 export const hourText = (h: number) => { const w = ((h % 24) + 24) % 24, hh = Math.floor(w), mm = Math.round((w - hh) * 60); return mm ? `${hh} h ${String(mm).padStart(2, '0')}` : `${hh} h`; };
