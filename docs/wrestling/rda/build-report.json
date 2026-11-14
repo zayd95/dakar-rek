@@ -1,0 +1,478 @@
+{
+ "source": {
+  "commit": "809a9817",
+  "files": {
+   "public/assets/anatomy-study.glb": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+   "public/assets/face-atlas.json": "866c1cb5e5432d1f702498f93992944413b9f203da668e7bf8f50008c53e4515",
+   "public/assets/skin_m.png": "e3f0dbb634e4c68561338f0087f7a122444e84ec56df102212f1222aa12e4d50",
+   "public/assets/eye_brown.png": "4659691c7295ad6206c78b003e5fd0e5f91dcd53032fa914a229bb48cabe424b",
+   "public/assets/brows.png": "9940f7d0b1b223709a19b05156ba6f6e9e4dbdbced02d7574f4d51d72c58967b",
+   "public/assets/lashes.png": "4b69c0fff2648874460e9caf80c31413c444218a5c50afebc425aeaa65484a35"
+  }
+ },
+ "v4": "public/assets/character_v4.glb",
+ "faceAtlas": {
+  "vertices": 6965,
+  "fromVertices": 6322,
+  "triangles": 12560
+ },
+ "scaleG": 0.9848,
+ "centre": [
+  0,
+  0,
+  0.0039
+ ],
+ "trunkWarp": {
+  "hip": [
+   0.9424,
+   0.9499999555619567
+  ],
+  "neck": [
+   1.5161,
+   1.5499998787249234
+  ],
+  "belowHips": 1.008,
+  "hipsToNeck": 1.046
+ },
+ "legStretch": {
+  "thigh.L": 1.055,
+  "shin.L": 0.953,
+  "foot.L": {
+   "yawOutDeg": 6.4,
+   "heelBehindAnkle": 0.053,
+   "toeAheadOfAnkle": 0.19,
+   "soleBelowAnkle": 0.071
+  },
+  "thigh.R": 1.055,
+  "shin.R": 0.953,
+  "foot.R": {
+   "yawOutDeg": 6.4,
+   "heelBehindAnkle": 0.053,
+   "toeAheadOfAnkle": 0.19,
+   "soleBelowAnkle": 0.071
+  }
+ },
+ "arms": {
+  "L": {
+   "shoulder": [
+    0.1969,
+    1.4391,
+    0.0256
+   ],
+   "elbow": [
+    0.2471,
+    1.1882,
+    0.0256
+   ],
+   "wrist": [
+    0.2889,
+    0.9062,
+    0.0256
+   ],
+   "upperArm": 0.2559,
+   "forearm": 0.2851,
+   "shoulderFromV4": [
+    -0.0231,
+    -0.0609,
+    0.0256
+   ],
+   "v4UpperArm": 0.3059,
+   "v4Forearm": 0.2729,
+   "palmTwistDeg": -7.5
+  },
+  "R": {
+   "shoulder": [
+    -0.1969,
+    1.4391,
+    0.0256
+   ],
+   "elbow": [
+    -0.2471,
+    1.1882,
+    0.0256
+   ],
+   "wrist": [
+    -0.2889,
+    0.9062,
+    0.0256
+   ],
+   "upperArm": 0.2559,
+   "forearm": 0.2851,
+   "shoulderFromV4": [
+    0.0231,
+    -0.0609,
+    0.0256
+   ],
+   "v4UpperArm": 0.3059,
+   "v4Forearm": 0.2729,
+   "palmTwistDeg": 7.5
+  }
+ },
+ "boneMap": {
+  "Hips": "hips",
+  "LHipJoint": "hips",
+  "RHipJoint": "hips",
+  "LowerBack": "spine",
+  "Spine": "spine",
+  "Spine1": "chest",
+  "Neck": "neck",
+  "Neck1": "neck",
+  "Head": "head",
+  "LeftShoulder": "shoulder.L",
+  "LeftArm": "upper_arm.L",
+  "LeftForeArm": "forearm.L",
+  "LeftHand": "hand.L",
+  "LeftFingerBase": "hand.L",
+  "LeftHandFinger1": "hand.L",
+  "LThumb": "hand.L",
+  "LeftUpLeg": "thigh.L",
+  "LeftLeg": "shin.L",
+  "LeftFoot": "foot.L",
+  "LeftToeBase": "foot.L",
+  "RightShoulder": "shoulder.R",
+  "RightArm": "upper_arm.R",
+  "RightForeArm": "forearm.R",
+  "RightHand": "hand.R",
+  "RightFingerBase": "hand.R",
+  "RightHandFinger1": "hand.R",
+  "RThumb": "hand.R",
+  "RightUpLeg": "thigh.R",
+  "RightLeg": "shin.R",
+  "RightFoot": "foot.R",
+  "RightToeBase": "foot.R"
+ },
+ "lowerBackSplit": {
+  "hipsBelow": 1.07,
+  "spineAbove": 1.17
+ },
+ "height": {
+  "athletic": 1.793,
+  "heavy": 1.795,
+  "soleMinY": 0.002
+ },
+ "face": {
+  "blend": [
+   1.58,
+   1.64
+  ],
+  "cropPx": {
+   "left": 1304,
+   "top": 372,
+   "width": 670,
+   "height": 1609
+  },
+  "faceMeanLinear": [
+   0.0693,
+   0.031,
+   0.0182
+  ]
+ },
+ "ngemb": {
+  "cutsRdaSpace": {
+   "top": 1.0249,
+   "A": 0.6447,
+   "B": 0.5037
+  }
+ },
+ "triangles": {
+  "RDA_Body": 12560,
+  "HeadRdaEyes_1": 172,
+  "HeadRdaBrows_2": 192,
+  "HeadRdaLashes_3": 192,
+  "Hair_Short": 736,
+  "Ngemb_A": 924,
+  "Ngemb_B": 1136,
+  "RDA_Acc_athletic_armL": 1960,
+  "RDA_Acc_athletic_armR": 1960,
+  "RDA_Acc_athletic_waist": 1784,
+  "RDA_Acc_athletic_chest": 5600,
+  "RDA_Acc_heavy_armL": 1960,
+  "RDA_Acc_heavy_armR": 1960,
+  "RDA_Acc_heavy_waist": 1784,
+  "RDA_Acc_heavy_chest": 5600
+ },
+ "accessories": {
+  "athletic": {
+   "pouches": 6,
+   "sections": [
+    {
+     "name": "LeftArmUpper",
+     "rMin": 0.0447,
+     "rMax": 0.053
+    },
+    {
+     "name": "LeftArmLower",
+     "rMin": 0.0425,
+     "rMax": 0.0486
+    },
+    {
+     "name": "RightArmUpper",
+     "rMin": 0.0447,
+     "rMax": 0.053
+    },
+    {
+     "name": "RightArmLower",
+     "rMin": 0.0425,
+     "rMax": 0.0486
+    },
+    {
+     "name": "WaistUpper",
+     "rMin": 0.0904,
+     "rMax": 0.1613
+    },
+    {
+     "name": "WaistLower",
+     "rMin": 0.0879,
+     "rMax": 0.1614
+    },
+    {
+     "name": "WaistPouches",
+     "rMin": 0.085,
+     "rMax": 0.1609
+    },
+    {
+     "name": "ChestLower",
+     "rMin": 0.0949,
+     "rMax": 0.1563
+    },
+    {
+     "name": "ChestPouch",
+     "rMin": 0.1129,
+     "rMax": 0.1584
+    }
+   ],
+   "anchors": [
+    {
+     "name": "LeftAccessoryPouch",
+     "bone": "LeftArm"
+    },
+    {
+     "name": "RightAccessoryPouch",
+     "bone": "RightArm"
+    },
+    {
+     "name": "WaistAccessoryPouch0",
+     "bone": "Hips"
+    },
+    {
+     "name": "WaistAccessoryPouch1",
+     "bone": "Hips"
+    },
+    {
+     "name": "WaistAccessoryPouch2",
+     "bone": "Hips"
+    },
+    {
+     "name": "ChestAccessoryPouch",
+     "bone": "Spine1"
+    }
+   ]
+  },
+  "heavy": {
+   "pouches": 6,
+   "sections": [
+    {
+     "name": "LeftArmUpper",
+     "rMin": 0.0623,
+     "rMax": 0.079
+    },
+    {
+     "name": "LeftArmLower",
+     "rMin": 0.0583,
+     "rMax": 0.0748
+    },
+    {
+     "name": "RightArmUpper",
+     "rMin": 0.0623,
+     "rMax": 0.079
+    },
+    {
+     "name": "RightArmLower",
+     "rMin": 0.0583,
+     "rMax": 0.0748
+    },
+    {
+     "name": "WaistUpper",
+     "rMin": 0.1119,
+     "rMax": 0.215
+    },
+    {
+     "name": "WaistLower",
+     "rMin": 0.1057,
+     "rMax": 0.2126
+    },
+    {
+     "name": "WaistPouches",
+     "rMin": 0.1005,
+     "rMax": 0.2103
+    },
+    {
+     "name": "ChestLower",
+     "rMin": 0.1273,
+     "rMax": 0.2133
+    },
+    {
+     "name": "ChestPouch",
+     "rMin": 0.1576,
+     "rMax": 0.2006
+    }
+   ],
+   "anchors": [
+    {
+     "name": "LeftAccessoryPouch",
+     "bone": "LeftArm"
+    },
+    {
+     "name": "RightAccessoryPouch",
+     "bone": "RightArm"
+    },
+    {
+     "name": "WaistAccessoryPouch0",
+     "bone": "Hips"
+    },
+    {
+     "name": "WaistAccessoryPouch1",
+     "bone": "Hips"
+    },
+    {
+     "name": "WaistAccessoryPouch2",
+     "bone": "Hips"
+    },
+    {
+     "name": "ChestAccessoryPouch",
+     "bone": "Spine1"
+    }
+   ]
+  }
+ },
+ "probes": {
+  "athletic_armL": [
+   {
+    "vertex": 1299,
+    "bone": "upper_arm.L"
+   }
+  ],
+  "athletic_armR": [
+   {
+    "vertex": 1299,
+    "bone": "upper_arm.R"
+   }
+  ],
+  "athletic_waist": [
+   {
+    "vertex": 961,
+    "bone": "hips"
+   },
+   {
+    "vertex": 1387,
+    "bone": "hips"
+   },
+   {
+    "vertex": 1859,
+    "bone": "hips"
+   }
+  ],
+  "athletic_chest": [
+   {
+    "vertex": 3137,
+    "bone": "chest"
+   }
+  ],
+  "heavy_armL": [
+   {
+    "vertex": 1345,
+    "bone": "upper_arm.L"
+   }
+  ],
+  "heavy_armR": [
+   {
+    "vertex": 1299,
+    "bone": "upper_arm.R"
+   }
+  ],
+  "heavy_waist": [
+   {
+    "vertex": 915,
+    "bone": "hips"
+   },
+   {
+    "vertex": 1387,
+    "bone": "hips"
+   },
+   {
+    "vertex": 1859,
+    "bone": "hips"
+   }
+  ],
+  "heavy_chest": [
+   {
+    "vertex": 3091,
+    "bone": "chest"
+   }
+  ]
+ },
+ "outputs": {
+  "high": {
+   "file": "public/assets/wrestlers/rda_wrestlers.glb",
+   "bytes": 2242112,
+   "sha256": "981bc1b790b872477148a6722ec7f9fc27fe0875e5ca4e7ec6e2a947c931fdf6",
+   "textures": {
+    "face": {
+     "w": 512,
+     "h": 1230,
+     "bytes": 44000,
+     "decodedRGBA": 2519040
+    },
+    "eye": {
+     "w": 512,
+     "h": 512,
+     "bytes": 13555,
+     "decodedRGBA": 1048576
+    },
+    "brow": {
+     "w": 256,
+     "h": 256,
+     "bytes": 23694,
+     "decodedRGBA": 262144
+    },
+    "lash": {
+     "w": 256,
+     "h": 256,
+     "bytes": 35377,
+     "decodedRGBA": 262144
+    }
+   }
+  },
+  "medium": {
+   "file": "public/assets/wrestlers/rda_wrestlers_m.glb",
+   "bytes": 2163164,
+   "sha256": "67bfac2a23643f792f7fd98dcf9fcd4c19ccf2bd81fc5ca4b26749b67b033cc3",
+   "textures": {
+    "face": {
+     "w": 256,
+     "h": 615,
+     "bytes": 14185,
+     "decodedRGBA": 629760
+    },
+    "eye": {
+     "w": 256,
+     "h": 256,
+     "bytes": 4995,
+     "decodedRGBA": 262144
+    },
+    "brow": {
+     "w": 128,
+     "h": 128,
+     "bytes": 6880,
+     "decodedRGBA": 65536
+    },
+    "lash": {
+     "w": 128,
+     "h": 128,
+     "bytes": 11628,
+     "decodedRGBA": 65536
+    }
+   }
+  }
+ }
+}
