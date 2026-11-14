@@ -118,6 +118,23 @@ async function openBoard() {
   await touch.tap('#phone [data-app="travail"]'); await page.waitForSelector('#modal.on', T);
   await page.waitForTimeout(300);
 }
+/**
+ * The board as the player sees it: the phone's « Tiak Tiak » opened with taps, its cards, and what the game says of each (`__dakar.board()`), read together. The board
+ * turns with the city's day and hour (a city day is 24 real minutes): a board that turned between being drawn and being read is closed and opened again, as a player
+ * would see a new list. A card already on screen stays valid (its id describes its run), so nothing here waits on the clock.
+ */
+async function boardNow() {
+  for (let k = 0; k < 4; k++) {
+    await openBoard();
+    const snap = await d(() => ({ ids: [...document.querySelectorAll('#modal.on .dcard.job')].map(e => e.dataset.route), board: window.__dakar.board() }));
+    if (snap.ids.length && snap.ids.every(id => snap.board.some(b => b.id === id))) return { cards: await cardsNow(), board: snap.board };
+    console.log('  (the board turned while it was being read: opened again)');
+    await touch.tap('#modal.on .sh-x'); await page.waitForFunction(() => !document.querySelector('#modal.on'), null, { timeout: 30000 }).catch(() => {});
+    if (await d(() => window.__dakar.phoneInfo().open)) await touch.tap('#phone [data-nav="close"]');
+    await page.waitForFunction(() => window.__dakar.pos().mode === 'play' && !window.__dakar.phoneInfo().open, null, { timeout: 30000 }).catch(() => {});
+  }
+  throw new Error('the board kept turning');
+}
 /** The cards on the open board, as a player reads them. */
 const cardsNow = () => d(() => [...document.querySelectorAll('#modal.on .dcard.job')].map(e => {
   const r = e.getBoundingClientRect(), parts = [...e.querySelector('.face').children].map(c => c.textContent.trim());
@@ -137,9 +154,8 @@ const goHub = async h => {
   await d(() => { const n = window.__dakar.state.data.needs; n.energie = 100; n.faim = 100; });   // debug: a rested courier in every district (the checks are about the board, not the needs)
 };
 /** One run from the board to its hand-over on foot: the card's stated pay, the waypoint at both stages, the wallet and the ledger. */
-async function deliver(label, route, { stay = true } = {}) {
-  const cards = await cardsNow(), card = cards.find(c => c.route === route), stated = money(card.parts[2]);
-  const info = (await d(() => window.__dakar.board())).find(b => b.id === route);
+async function deliver(label, info, cards, { stay = true } = {}) {
+  const route = info.id, card = cards.find(c => c.route === route), stated = money(card.parts[2]);
   const w0 = await wallet(), l0 = (await tiakLines()).length;
   await tapCard(route);
   await page.waitForFunction(r => window.__dakar.activeJob()?.routeId === r, route, { timeout: 90000 }).catch(() => {});
@@ -177,17 +193,16 @@ await d(() => { window.__dakar.giveMoney(20000); });                            
 for (const h of process.env.SKIP_A ? [] : HUBS) {
   const L = NAMES[h];
   await goHub(h);
-  await openBoard();
-  const cards = await cardsNow();
+  const { cards, board } = await boardNow();
   await shot(`${h}-board`);
   check(`${L}: the board lists at least three runs (${cards.length})`, cards.length >= 3 && cards.every(c => !c.dis), cards.map(c => c.parts[0]).join(' | '));
   check(`${L}: every card is compact: route / kind / pay / « Accepter », nothing else`, cards.length > 0 && cards.every(compact), JSON.stringify(cards.filter(c => !compact(c)).map(c => c.parts)));
   const paragraphs = await d(() => [...document.querySelectorAll('#modal.on .dlv p, #modal.on .dlv .dtip')].filter(p => p.offsetParent !== null).length);
   check(`${L}: no tutorial paragraph on the board; cards a thumb can tap, inside the screen`, paragraphs === 0 && cards.every(c => c.h >= 56 && c.right <= 390), JSON.stringify({ paragraphs, h: cards.map(c => c.h) }));
-  const board = await d(() => window.__dakar.board()), points = await d(() => window.__dakar.tiakPoints());
+  const points = await d(() => window.__dakar.tiakPoints());
   check(`${L}: every run leaves from this district, from a place built here; a run to another district only where a road goes`, board.every(b => b.fromPlace && b.fromPlace.startsWith(h + ':')) && points.every(p => p.place) && board.some(b => b.toHub !== h), JSON.stringify(points.filter(p => !p.place).map(p => p.id)));
   const local = board.filter(b => b.toHub === h && !b.recommended).sort((p, q) => p.metres - q.metres)[0];      // the shortest of the runs inside the district
-  const run = await deliver(L, local.id);
+  const run = await deliver(L, local, cards);
   const drop = await pointByName(local.to);
   const done = await handOver(L, run, drop);
   // the card after the delivery: the pay, and the next run nearby in one tap
@@ -208,12 +223,11 @@ for (const h of process.env.SKIP_A ? [] : HUBS) {
 if (!process.env.ONLY) {
   await goHub('corniche');
   // the ride of this hour's board with the most time to spare (the car rapide's journey counts on the run's clock: a short hop to the next district would arrive late that way)
-  const ride = (await d(() => window.__dakar.board())).filter(b => b.toHub !== 'corniche').sort((p, q) => q.limitMs - p.limitMs)[0];
-  await openBoard();
-  const cards = await cardsNow(), card = cards.find(c => c.route === ride.id);
+  const { cards, board } = await boardNow();
+  const ride = board.filter(b => b.toHub !== 'corniche').sort((p, q) => q.limitMs - p.limitMs)[0], card = cards.find(c => c.route === ride.id);
   check('Between districts: the board offers a ride to another district, by its two districts', !!card && compact(card) && card.parts[0].startsWith('Corniche → '), JSON.stringify(card?.parts));
   await shot('between-board');
-  const run = await deliver('Between districts', ride.id);
+  const run = await deliver('Between districts', ride, cards);
   // to the stop, the action button, the car rapide's menu, the district of the drop-off
   const stop = (await d(() => window.__dakar.interactables())).find(i => i.id === 'corniche:station');
   await bringNear(stop);
@@ -226,8 +240,10 @@ if (!process.env.ONLY) {
   await row.scrollIntoViewIfNeeded();
   let box = await row.boundingBox();
   for (let k = 0; k < 40; k++) { await page.waitForTimeout(150); const b = await row.boundingBox(); if (b && box && Math.abs(b.y - box.y) < 0.5) break; box = b; }
+  console.log('  the car rapide row: ' + JSON.stringify(await d(([x, y]) => { const e = document.elementFromPoint(x, y); return { scrollTop: document.querySelector('#modal .panel')?.scrollTop ?? null, at: (e?.closest('.item')?.innerText ?? e?.tagName ?? '').replace(/\s+/g, ' ').slice(0, 60) }; }, [box.x + box.width / 2, box.y + box.height / 2])) + ` fingers held: ${[...touch.fingers.keys()].join(',') || 'none'}`);
   await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
   await page.waitForFunction(() => window.__dakar.pos().mode !== 'menu', null, { timeout: 60000 }).catch(() => {});
+  console.log('  after the tap: ' + JSON.stringify(await d(() => ({ mode: window.__dakar.pos().mode, hub: window.__dakar.pos().hub, modal: !!document.querySelector('#modal.on') }))));
   await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.pos().mode === 'play', ride.toHub, T).catch(() => {});
   await page.waitForTimeout(1500);
   const fare = run.w0 - (await wallet()), hubNow = await d(() => window.__dakar.pos().hub);
@@ -246,9 +262,8 @@ if (!process.env.ONLY) {
 {
   await d(() => { window.__dakar.cancelJob(); window.__dakar.setHour(10); });
   await goHub('mermoz');
-  await openBoard();
-  const board = await d(() => window.__dakar.board()), local = board.filter(b => b.toHub === 'mermoz').sort((p, q) => p.metres - q.metres)[0];
-  const run = await deliver('Reload', local.id);
+  const { cards, board } = await boardNow(), local = board.filter(b => b.toHub === 'mermoz').sort((p, q) => p.metres - q.metres)[0];
+  const run = await deliver('Reload', local, cards);
   const before = await job();
   await d(() => window.__dakar.save());
   await page.reload(); await ready(); await page.waitForTimeout(2000);
