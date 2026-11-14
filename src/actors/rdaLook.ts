@@ -132,6 +132,8 @@ const PV = new THREE.Vector3(), BV = new THREE.Vector3();
 export function measureRda(p: RdaParts) {
   const probes: { piece: string; bone: string; d: number }[] = [];
   p.root.updateWorldMatrix(true, true);
+  // (the renderer refreshes an attached skinned mesh's bindMatrixInverse each frame; a body moved since its last frame needs it now)
+  p.root.traverse(o => { const m = o as THREE.SkinnedMesh; if (m.isSkinnedMesh && m.bindMode === THREE.AttachedBindMode) m.bindMatrixInverse.copy(m.matrixWorld).invert(); });
   for (const m of p.shown()) for (const pr of (m.userData.rdaProbes as { vertex: number; bone: string }[] | undefined) ?? []) {
     const bone = p.root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(pr.bone)); if (!bone) continue;
     m.getVertexPosition(pr.vertex, PV); m.localToWorld(PV);
