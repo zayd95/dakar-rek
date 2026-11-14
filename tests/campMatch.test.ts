@@ -158,6 +158,22 @@ describe('Grand Camp match: players who drop or leave', () => {
     expect(m.step().filter(e => e.k === 'drop')).toEqual([]);                         // once
     expect(m.events.find(e => e.k === 'gone')).toMatchObject({ who: 7, team: 1 });
   });
+  it('a reload mid-match (a new client counts its sticks from 1 again): its sticks move the body at once, after a drop or with the old socket still open', () => {
+    // the review's C2 (proof p2): 90 s of play left the seat's counter at 1 800, and the reloaded page's frames (s = 1 …) were all dropped
+    for (const how of ['drop', 'replaced'] as const) {
+      const g = new CampMatch(seatsOf(6), { seed: 7 });
+      for (let s = 1; s <= 1800; s++) { g.input(1, s, 0, 0.5, 0); g.step(); }
+      expect(g.seats.get(1)!.seq).toBe(1800);
+      if (how === 'drop') { g.drop(1); g.back(1); } else g.rebase(1);             // a new socket for the seat: back from a drop, or replacing the old one
+      const at = { ...g.seats.get(1)!.body }, inputs = g.stats.inputs;
+      for (let k = 1; k <= 200; k++) { g.input(1, k, 0, -1, Math.PI, k % 20 === 0 ? 'shot' : undefined); g.step(); }   // (away from the curb the old stick ran it to)
+      const seat = g.seats.get(1)!;
+      expect(seat.seq, how).toBe(200);
+      expect(Math.hypot(seat.body.x - at.x, seat.body.z - at.z), how).toBeGreaterThan(5);
+      expect(g.stats.inputs - inputs, how).toBe(200);                                    // every frame of the new page applied, its shots included
+      expect(g.snapshot().players.find(p => p.sid === 1)!.seq).toBe(200);
+    }
+  });
   it('a team with nobody on the pitch: the other team takes its kick-offs and restarts; play goes on', () => {
     const m = new CampMatch(seatsOf(6), { seed: 1, kick: 1 });
     for (const sid of [4, 5, 6]) m.drop(sid);

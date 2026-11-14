@@ -43,8 +43,8 @@ export interface CampReleaseResult { ok: true; duplicate: boolean; amount: Franc
 export type CampOutcomeRow = { kind: 'team'; winners: Tag[] } | { kind: 'single'; winner: Tag } | { kind: 'refund'; why: string };
 export interface CampSettlement {
   match: string; kind: 'team' | 'single' | 'refund'; why?: string;
-  /** The holds collected (the pool), and what each player got: sums to `total`. */
-  total: Francs; payouts: { tag: Tag; amount: Francs; op: string }[];
+  /** The holds collected (the pool), and what each player got: sums to `total`. `stray`: a hold of a player not on the match's roster, refunded. */
+  total: Francs; payouts: { tag: Tag; amount: Francs; op: string; stray?: true }[];
   at: number;
 }
 export type CampSettleResult =
@@ -52,15 +52,25 @@ export type CampSettleResult =
   | { ok: false; reason: 'invalid' };
 
 const whole = (n: unknown): n is number => typeof n === 'number' && Number.isSafeInteger(n);
-const OP = /^[A-Za-z0-9:_-]{8,64}$/;
-/** The op ids the ledger writes for a hold's release, a hold refunded at the end, a winner's payout (server-made, never a client's). */
-export const campReleaseOp = (holdOp: string) => `r-${holdOp}`.slice(0, 64);
-export const campRefundOp = (holdOp: string) => `f-${holdOp}`.slice(0, 64);
+const OP = /^[A-Za-z0-9:_-]{8,64}$/, HOLD_NO = /^\d{1,9}$/;
+/**
+ * Every op id of camp_ops is made by the server, whole (never cut to a length) and from what it is about, so no two can meet and none can be chosen
+ * by a player (a « Prêt » request id is only the match object's duplicate check, src/multiplayer/campProtocol.ts isRequestId):
+ *   h-<match>-<tag>-<n>   a fee held at « Prêt » (`n`: the match's count of « Prêt », src/multiplayer/campRules.ts readyAsk)
+ *   r-<match>-<tag>-<n>   that hold released;   f-<match>-<tag>-<n>   that hold refunded at the end
+ *   w-<match>-<tag>       a winner's payout (a match is settled once)
+ */
+export const campHoldOp = (match: string, tag: Tag, n: number) => `h-${match}-${tag}-${n}`;
+const isHoldOp = (op: string, match: string, tag: Tag) => op.startsWith(`h-${match}-${tag}-`) && HOLD_NO.test(op.slice(match.length + tag.length + 4));
+/** A hold's number in its match, from its op (a hold of another shape, written before these ids: its time, so the ids stay whole and its own). */
+const holdNo = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => (isHoldOp(h.op, h.match, h.tag) ? h.op.slice(h.match.length + h.tag.length + 4) : `t${h.at}`);
+export const campReleaseOp = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => `r-${h.match}-${h.tag}-${holdNo(h)}`;
+export const campRefundOp = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => `f-${h.match}-${h.tag}-${holdNo(h)}`;
 export const campPayoutOp = (match: string, tag: Tag) => `w-${match}-${tag}`;
 
-/** The fee held at « Prêt ». */
+/** The fee held at « Prêt », under the server's op `h-<match>-<tag>-<n>` (any other op: 'invalid'). */
 export function campHold(store: CampStore, r: { match: string; tag: Tag; op: string; terms: CampTermsRow; fund: Francs }, now: number, limits: MoneyLimits): CampHoldResult {
-  if (!OP.test(r.op) || !OP.test(r.match)) return { ok: false, reason: 'invalid' };
+  if (!OP.test(r.op) || !OP.test(r.match) || !isHoldOp(r.op, r.match, r.tag)) return { ok: false, reason: 'invalid' };
   const seen = store.campOp(r.op);
   if (seen) {
     if (seen.kind !== 'hold' || seen.tag !== r.tag || seen.match !== r.match) return { ok: false, reason: 'invalid' };
@@ -105,16 +115,17 @@ export function campRelease(store: CampStore, r: { match: string; tag: Tag }, no
   me.balance += h.amount; store.putAccount(me);
   pool.held -= h.amount; store.putPool(pool);
   store.putHold({ ...h, state: 'released', closed: now });
-  const op = campReleaseOp(h.op);
+  const op = campReleaseOp(h);
   store.putCampOp({ id: op, match: r.match, tag: r.tag, kind: 'release', amount: h.amount, fund: 0, at: now });
   return { ok: true, duplicate: false, amount: h.amount, op, balance: me.balance, pool: pool.held };
 }
 
 /**
  * The match's money, once: a team's winners share the pool equally (a remainder, never with equal teams, goes a franc each to the first winners by
- * tag), one winner takes it, or every hold is returned. A pool that never held anything is closed (a late hold is then refused).
+ * tag), one winner takes it, or every hold is returned. A pool that never held anything is closed (a late hold is then refused). With the match's
+ * `roster`, a hold of anyone not on it (a player who left before kick-off and whose release the ledger could not do) is refunded to them, never shared.
  */
-export function campSettle(store: CampStore, r: { match: string; outcome: CampOutcomeRow; terms?: CampTermsRow }, now: number): CampSettleResult {
+export function campSettle(store: CampStore, r: { match: string; outcome: CampOutcomeRow; terms?: CampTermsRow; roster?: Tag[] }, now: number): CampSettleResult {
   if (!OP.test(r.match)) return { ok: false, reason: 'invalid' };
   const pool = store.pool(r.match), o = r.outcome;
   if (pool && pool.state !== 'open') return { ok: true, duplicate: true, settlement: JSON.parse(pool.result ?? 'null') as CampSettlement, balances: [] };
@@ -126,30 +137,33 @@ export function campSettle(store: CampStore, r: { match: string; outcome: CampOu
   const held = store.holds(r.match).filter(h => h.state === 'held').sort((a, b) => (a.tag < b.tag ? -1 : 1));
   const total = held.reduce((s, h) => s + h.amount, 0);
   if (total !== pool.held) throw new Error(`camp pool ${r.match} out of balance: ${total} held, ${pool.held} on the pool`);
-  let pay: { tag: Tag; amount: number }[];
-  const refund = o.kind === 'refund' || held.length === 0;
-  if (refund) pay = held.map(h => ({ tag: h.tag, amount: h.amount }));
+  const stray = (t: Tag) => !!r.roster && !r.roster.includes(t);
+  const players = held.filter(h => !stray(h.tag)), pot = players.reduce((s, h) => s + h.amount, 0);
+  let pay: { tag: Tag; amount: number; stray?: true }[];
+  const refund = o.kind === 'refund' || players.length === 0;
+  if (refund) pay = [];
   else if (o.kind === 'single') {
-    if (!held.some(h => h.tag === o.winner)) return { ok: false, reason: 'invalid' };
-    pay = [{ tag: o.winner, amount: total }];
+    if (!players.some(h => h.tag === o.winner)) return { ok: false, reason: 'invalid' };
+    pay = [{ tag: o.winner, amount: pot }];
   } else {
-    const winners = [...new Set(o.kind === 'team' ? o.winners : [])].filter(t => held.some(h => h.tag === t)).sort();
+    const winners = [...new Set(o.kind === 'team' ? o.winners : [])].filter(t => players.some(h => h.tag === t)).sort();
     if (!winners.length) return { ok: false, reason: 'invalid' };
-    const share = Math.floor(total / winners.length), rest = total - share * winners.length;
+    const share = Math.floor(pot / winners.length), rest = pot - share * winners.length;
     pay = winners.map((tag, i) => ({ tag, amount: share + (i < rest ? 1 : 0) }));
   }
+  for (const h of held) if (refund || stray(h.tag)) pay.push({ tag: h.tag, amount: h.amount, ...(stray(h.tag) ? { stray: true as const } : {}) });
   if (pay.reduce((s, p) => s + p.amount, 0) !== total || pay.some(p => !whole(p.amount) || p.amount < 0)) throw new Error(`camp payouts of ${r.match} do not add up to ${total}`);
   const payouts: CampSettlement['payouts'] = [], balances: { tag: Tag; balance: Francs; today: Today }[] = [];
   for (const p of pay) {
     const a = rolled(store.account(p.tag)!, now);
     a.balance += p.amount; store.putAccount(a);
-    const hold = held.find(h => h.tag === p.tag)!;
-    const op = refund ? campRefundOp(hold.op) : campPayoutOp(r.match, p.tag);
-    store.putCampOp({ id: op, match: r.match, tag: p.tag, kind: refund ? 'refund' : 'payout', amount: p.amount, fund: 0, at: now });
-    payouts.push({ tag: p.tag, amount: p.amount, op });
+    const hold = held.find(h => h.tag === p.tag)!, back = refund || !!p.stray;
+    const op = back ? campRefundOp(hold) : campPayoutOp(r.match, p.tag);
+    store.putCampOp({ id: op, match: r.match, tag: p.tag, kind: back ? 'refund' : 'payout', amount: p.amount, fund: 0, at: now });
+    payouts.push({ tag: p.tag, amount: p.amount, op, ...(p.stray ? { stray: true as const } : {}) });
     balances.push({ tag: p.tag, balance: a.balance, today: todayOf(a, now) });
   }
-  for (const h of held) store.putHold({ ...h, state: refund ? 'refunded' : pay.some(p => p.tag === h.tag) ? 'paid' : 'lost', closed: now });
+  for (const h of held) store.putHold({ ...h, state: refund || stray(h.tag) ? 'refunded' : pay.some(p => p.tag === h.tag) ? 'paid' : 'lost', closed: now });
   for (const h of held) if (!balances.some(b => b.tag === h.tag)) { const a = rolled(store.account(h.tag)!, now); balances.push({ tag: h.tag, balance: a.balance, today: todayOf(a, now) }); }
   const settlement: CampSettlement = { match: r.match, kind: refund ? 'refund' : o.kind as 'team' | 'single', ...(o.kind === 'refund' ? { why: o.why } : held.length === 0 ? { why: 'empty' } : {}), total, payouts, at: now };
   store.putPool({ ...pool, state: refund ? 'refunded' : 'settled', held: 0, result: JSON.stringify(settlement), closed: now });

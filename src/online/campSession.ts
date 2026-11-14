@@ -44,7 +44,11 @@ const COUNTED_KEY = 'dakarrek.camp.counted', COUNTED_MAX = 40;
 export class CampSession {
   private d: CampSessionDeps | null = null;
   private c: CampClient | null = null;
-  /** The match this player has a place in (null: none); forgotten once its result was shown and closed (`done`). */
+  /**
+   * The match this player has a place in (null: none). Forgotten once its result was shown (`shown`: the card at the pitch, the phone's lobby) or
+   * closed (`done`), and as soon as the server says it is over for good (`bye: over`), has no such match for me (a welcome without a lobby, an
+   * « unknown » answer), or I am no longer in it: a device never stays « busy » with a match that cannot end (the review's C3).
+   */
   mine: string | null = null;
   private listeners = new Set<() => void>();
   private offClient: (() => void) | null = null;
@@ -154,6 +158,12 @@ export class CampSession {
   }
   /** The end was shown and closed (« Fermer » on the result): the match is forgotten on this device. */
   done() { if (this.c?.state.result || this.c?.state.lobby?.state === 'over' || this.c?.state.bye) { this.forget(); this.c?.close(); this.emit(); } }
+  /** The result of `match` was shown to the player (the card at the pitch, the phone's lobby): forgotten on this device (a screen showing it keeps its socket). */
+  shown(match: string) {
+    const c = this.c;
+    if (!c || this.mine !== match || c.state.match !== match || !c.state.result) return;
+    this.forget(); this.emit();
+  }
 
   /** Why `tag` cannot be invited now (the street's player menu greys « Inviter au Grand Camp » with it), or null. */
   inviteWhy(tag: Tag): string | null {
@@ -175,7 +185,7 @@ export class CampSession {
   private follow() {
     const c = this.c!;
     const l = c.state.lobby, s = this.seat();
-    if (c.state.bye === 'removed' && this.mine === c.state.match) this.forget();
+    if (this.mine === c.state.match && (c.state.bye === 'removed' || c.state.bye === 'over' || c.state.missing)) this.forget();
     else if (l && s && !s.gone && l.state !== 'over') this.keep(l.match);
     else if (l && this.mine === l.match && c.state.status === 'open' && !s && l.state === 'lobby') this.forget();   // not a member any more (freed after a long drop)
     this.emit();

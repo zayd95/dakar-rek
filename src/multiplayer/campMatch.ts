@@ -82,11 +82,20 @@ export class CampMatch {
     this.sim.remove(sid);
     this.emit('drop', { who: sid, team: seat.team });
   }
-  /** Back in time: on the pitch again in their own half, same team. */
+  /**
+   * A new connection for this seat (server/camp.ts, every socket it accepts for the player): a reloaded page is a new client whose stick counter starts
+   * at 1 again, so the counter starts over here too (else every frame of it would be older than the last one applied, and dropped, for as long as the
+   * player had played); the old stick is let go.
+   */
+  rebase(sid: number) {
+    const seat = this.seats.get(sid); if (!seat) return;
+    seat.seq = 0; seat.mx = seat.mz = 0; seat.act = null;
+  }
+  /** Back in time: on the pitch again in their own half, same team (its stick counter from 0: see `rebase`). */
   back(sid: number) {
     const seat = this.seats.get(sid); if (!seat || seat.on || seat.gone || this.stage === 'over') return;
     const k = campKickoffSpot(this.perSide, seat.team, seat.slot, false);
-    seat.on = true; seat.body = { x: k.x, z: k.z, vx: 0, vz: 0, f: k.f }; seat.mx = seat.mz = 0; seat.f = k.f;
+    seat.on = true; seat.body = { x: k.x, z: k.z, vx: 0, vz: 0, f: k.f }; seat.mx = seat.mz = 0; seat.f = k.f; seat.seq = 0; seat.act = null;
     this.sim.add({ id: sid, team: seat.team, human: true, x: k.x, z: k.z, yaw: k.f, foot: 1, pace: CAMP_BODY.run, skill: 1 });
     this.emit('back', { who: sid, team: seat.team });
   }

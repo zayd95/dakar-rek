@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CampClient, campRefusalText } from '../src/online/campClient';
+import { moneyLine } from '../src/ui/phone/apps/campText';
 import { CAMP_INPUT_HZ, encodeSnap, stepBody, type CampLobbyView, type CampSnapshot } from '../src/multiplayer/campProtocol';
 
 /**
@@ -133,6 +134,28 @@ describe('Grand Camp client: money steps, on the server’s word only', () => {
     await q;
     expect(c.state.money[1]).toMatchObject({ step: 'release', state: 'done', amount: 1000, balance: 5000 });
     expect(c.state.money.length).toBe(2);
+  });
+  it('« Pas prêt » whose release the ledger could not do: failed, said so — never « Rien n’avait été pris »; the server’s later release is done', async () => {
+    // the review's M1: an ok answer without a money frame read as « nothing was taken » while the fee was still held
+    const c = client(), ws = await connected(c, lobby({ pool: 1000 }, { ready: true, hold: 'held' }));
+    const q = c.unready();
+    ws.recv({ type: 'money', step: 'release', op: `r-${M}-${ME}`, amount: 1000, failed: 'offline', why: 'unready' });
+    ws.recv({ type: 'lobby', lobby: lobby({}, { ready: false, hold: 'none', owed: true }) });
+    ws.recv({ type: 'ack', id: lastReq(ws, 'unready').id, ok: true });
+    await q;
+    expect(c.state.money[0]).toMatchObject({ step: 'release', state: 'failed', amount: 1000, reason: 'offline' });
+    expect(moneyLine(c.state.money[0]).text).not.toMatch(/Rien/);
+    expect(moneyLine(c.state.money[0])).toMatchObject({ tone: 'warn' });
+    ws.recv({ type: 'money', step: 'release', op: `r-${M}-${ME}-1`, amount: 1000, balance: 10_000, why: 'unready' });   // tried again by the server: done
+    expect(c.state.money[1]).toMatchObject({ step: 'release', state: 'done', amount: 1000, balance: 10_000 });
+    // the connection lost before kick-off and the release not done yet (`owed`): pending at the reconnect, never shown done before the server's word
+    const d = client(), w1 = await connected(d, lobby({}, { ready: true, hold: 'held' }));
+    w1.drop(); await vi.advanceTimersByTimeAsync(700);
+    const w2 = FakeWS.last(); w2.open();
+    w2.recv({ type: 'welcome', feature: 'camp', v: 1, match: M, you: ME, time: clock, hz: 20, lobby: lobby({}, { ready: false, hold: 'none', owed: true }) });
+    expect(d.state.money).toMatchObject([{ step: 'release', state: 'pending', amount: 1000, why: 'drop' }]);
+    w2.recv({ type: 'money', step: 'release', op: `r-${M}-${ME}-1`, amount: 1000, why: 'drop' });
+    expect(d.state.money).toMatchObject([{ step: 'release', state: 'done', amount: 1000, why: 'drop' }]);
   });
   it('a refusal: the hold failed with its reason (nothing taken); no answer: still pending, never shown done', async () => {
     const c = client(), ws = await connected(c);

@@ -88,6 +88,8 @@ export interface CampPlayer {
   on: boolean; at: number; sid: number;
   /** After kick-off: left for good (or not back in CAMP_RETURN_MS). They still follow their team's result. */
   gone?: boolean;
+  /** Before kick-off: their fee is still on the ledger, which could not return it yet (the server tries again by itself). */
+  owed?: boolean;
 }
 export type CampEnd = 'win' | 'draw' | 'cancel' | 'empty' | 'timeout' | 'stopped';
 export interface CampResult {
@@ -184,7 +186,9 @@ export type CampClientMessage =
 
 export type CampRefusal =
   | 'invalid' | 'exists' | 'unknown' | 'full' | 'private' | 'removed' | 'closed' | 'started' | 'not-member' | 'team-full' | 'ready' | 'no-team'
-  | 'not-org' | 'busy' | 'insufficient' | 'limit-fund' | 'limit-op' | 'amount' | 'offline' | 'rate-limited';
+  | 'not-org' | 'busy' | 'insufficient' | 'limit-fund' | 'limit-op' | 'amount' | 'offline' | 'rate-limited'
+  /** This organizer already has a lobby open (one at a time). */
+  | 'org-busy';
 
 // ------------------------------------------------------------------ match → client
 
@@ -195,8 +199,11 @@ export type CampServerMessage =
   | { type: 'lobby'; lobby: CampLobbyView }
   | { type: 'ack'; id: string; ok: true; duplicate?: boolean; match?: string }
   | { type: 'ack'; id: string; ok: false; reason: CampRefusal }
-  /** A money step of THIS player, once the ledger has written it: the fee held, returned (`why`), the share paid, the fee refunded at the end. */
-  | { type: 'money'; step: CampMoneyStep; op: string; amount: number; balance?: number; why?: string }
+  /**
+   * A money step of THIS player, once the ledger has written it: the fee held, returned (`why`), the share paid, the fee refunded at the end. With
+   * `failed`: a release the ledger could not do (nothing returned yet: the server tries again by itself, and says it when done).
+   */
+  | { type: 'money'; step: CampMoneyStep; op: string; amount: number; balance?: number; why?: string; failed?: CampRefusal }
   /** Kick-off (and to a player back from a drop): the roster, who kicks off, the rules, the tick now. The events so far follow in `ev` frames. */
   | { type: 'start'; roster: CampRosterEntry[]; kick: 0 | 1; seconds: number; goals: number; tick: number }
   | CampSnapWire
@@ -222,6 +229,22 @@ export function newMatchId(): string {
   const b = new Uint8Array(8);
   crypto.getRandomValues(b);
   return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+/**
+ * A request's id: a uuid made on the device (`newRequestId`), answered once by the ack with the same id. Nothing else is read: the ids the server writes
+ * on the ledger (a hold's `h-…`, a release's, a refund's, a payout's `w-<match>-<tag>`) are its own, and no shape of theirs can come from a client.
+ */
+const REQUEST_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+export const isRequestId = (v: unknown): v is string => typeof v === 'string' && REQUEST_RE.test(v);
+/** A fresh request id: crypto.randomUUID, or the same shape from getRandomValues where a browser lacks it (older Safari). */
+export function newRequestId(): string {
+  const c = (globalThis as unknown as { crypto?: { randomUUID?: () => string; getRandomValues?: (b: Uint8Array) => Uint8Array } }).crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  const b = new Uint8Array(16);
+  if (c && typeof c.getRandomValues === 'function') c.getRandomValues(b); else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;                     // version 4, the RFC's variant
+  const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 export const isCampSize = (v: unknown): v is CampSize => (CAMP_SIZES as readonly unknown[]).includes(v);
 /** A fee the organizer may set: a whole number of francs, 0 (a free match) … CAMP_FEE_MAX. */
@@ -269,7 +292,7 @@ export type CampParsed = { ok: true; msg: CampClientMessage } | { ok: false; id?
 /** A client's frame, strictly shaped, or why not (with its id when it had a readable one, so the match can answer `ack.ok = false`). */
 export function parseCampClient(v: unknown): CampParsed {
   if (!plain(v) || typeof v.type !== 'string' || !Object.prototype.hasOwnProperty.call(FIELDS, v.type)) return { ok: false, reason: 'invalid' };
-  const type = v.type as CampClientMessage['type'], id = isOpId(v.id) ? v.id : undefined;
+  const type = v.type as CampClientMessage['type'], id = isRequestId(v.id) ? v.id : undefined;
   const bad = (): CampParsed => ({ ok: false, ...(id ? { id } : {}), reason: 'invalid' });
   if (!keysIn(v, ['type', ...FIELDS[type]])) return bad();
   if (type === 'in') { const m = parseInput(v); return m ? { ok: true, msg: m } : bad(); }
