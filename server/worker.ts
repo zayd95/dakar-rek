@@ -4,8 +4,9 @@ import { parseChatRequest, parseReport, rateLimit, nearRecipients, isPrivateSpac
 import { ECONOMY } from '../src/economy/config';
 import type { HubId } from '../src/core/types';
 import { Social } from './social';
+import { GrandCamp } from './campStub';
 
-export { Social };
+export { Social, GrandCamp };
 interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; SOCIAL: DurableObjectNamespace<Social>; ALLOWED_ORIGINS?: string }
 interface Session {
   id: string; name: string; look: number; tag?: string; rec?: string; app?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
