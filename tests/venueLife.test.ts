@@ -5,7 +5,7 @@ import {
   type Host, type LifePlan, type LifeQuality, type LifeSpot, type Phase,
 } from '../src/venues/routine';
 import { NGOR_AREA, NGOR_KEEP, NGOR_LIFE, PATIO_KEEP, PATIO_LIFE, PATIO_WALK, TERRACE_AISLE, TERRACE_KEEP, placed, terraceLife } from '../src/venues/lifePlans';
-import { AMBIENT_BUDGET, BODY_CALLS, STREET_BODIES } from '../src/social/ambientData';
+import { AMBIENT_BUDGET, BODY_CALLS, STREET_BODIES, streetCap } from '../src/social/ambientData';
 import { Seats } from '../src/interact/seats';
 import { VenueLife } from '../src/venues/venueLife';
 import { LIVE_CROWDS } from '../src/crowd/crowd';
@@ -373,6 +373,37 @@ describe('VenueLife: the routine drawn as figures', () => {
       life.dispose();
     }
     STREET_BODIES.full = 0;
+  });
+  it('its full bodies come out of the street’s share: held back while it is seen and the hour has people, given back when unseen, closed, indoors or gone', () => {
+    STREET_BODIES.reserved = 0; STREET_BODIES.full = 0;
+    for (const q of QS) {
+      expect(streetCap(AMBIENT_BUDGET[q].totalFull)).toBe(AMBIENT_BUDGET[q].totalFull);
+      const { life, clock } = make(q, 15);
+      life.update(0.1);
+      expect(STREET_BODIES.reserved, q).toBe(TOY.near[q]);                                          // the street's ration leaves them free (src/social/ambientLife.ts lod)
+      expect(streetCap(AMBIENT_BUDGET[q].totalFull)).toBe(AMBIENT_BUDGET[q].totalFull - TOY.near[q]);
+      // the street at its new cap and this place at its own: never more than the budget together
+      STREET_BODIES.full = streetCap(AMBIENT_BUDGET[q].totalFull);
+      for (let i = 0; i < 12; i++) life.update(0.1);
+      expect(STREET_BODIES.full + life.info().bodiesAllowed).toBeLessThanOrEqual(AMBIENT_BUDGET[q].totalFull);
+      STREET_BODIES.full = 0;
+      clock.hour = 9; life.update(0.1); expect(STREET_BODIES.reserved, `${q} closed`).toBe(0);
+      clock.hour = 15; life.update(0.1); expect(STREET_BODIES.reserved).toBe(TOY.near[q]);
+      clock.on = false; life.update(0.1); expect(STREET_BODIES.reserved, `${q} unseen`).toBe(0);
+      clock.on = true; life.update(0.1);
+      const two = make(q, 15); two.life.update(0.1);
+      expect(STREET_BODIES.reserved, `${q} two places`).toBe(2 * TOY.near[q]);
+      two.life.dispose(); life.dispose();
+      expect(STREET_BODIES.reserved, `${q} gone`).toBe(0);
+    }
+    // indoors (a terrace): the street is not drawn, nothing is held back from it
+    const seats = new Seats(), camera = new THREE.PerspectiveCamera();
+    const ctx = { quality: () => 'high', hour: () => 15, seats, camera, player: { pos: new THREE.Vector3(-30, 0.1, -30) } } as unknown as GameCtx;
+    const inside = new VenueLife({ ctx, plan, name: 'inside', parent: new THREE.Group(), colliders: () => [], area: { x0: -2, x1: 42, z0: -4, z1: 12 }, y: () => 0.1, active: () => true, street: false });
+    inside.update(0.1);
+    expect(STREET_BODIES.reserved).toBe(0); expect(inside.info().present).toBeGreaterThan(0);
+    inside.dispose();
+    STREET_BODIES.reserved = 40; expect(streetCap(26)).toBe(0); STREET_BODIES.reserved = 0;
   });
   it('the crowd’s meshes are its owner’s to free: a hub’s disposal skips them (the crowd material is shared by every crowd)', () => {
     const { life, parent } = make('medium', 15);

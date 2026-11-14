@@ -60,6 +60,8 @@ export class VenueLife {
   private budgetT = 0;
   private bodies = 0; private others = 0;
   private dropped: string[] = [];
+  /** The bodies this place holds back from the street's ration while it is seen (STREET_BODIES.reserved is every place's). */
+  private reserve = 0;
   /** What each person's figure was last told (so a frame only moves the ones who moved). */
   private shown = new Map<string, { on: boolean; seated: boolean; x: number; z: number; yaw: number; speed: number; mood: string }>();
 
@@ -117,9 +119,12 @@ export class VenueLife {
   update(dt: number) {
     const o = this.o, ctx = o.ctx, on = !disabled && o.active();
     this.crowd.group.visible = on;
-    if (!on) { if (this.wasActive) { this.routines?.clear(); this.sync(); this.wasActive = false; } return; }
+    if (!on) { this.hold(0); if (this.wasActive) { this.routines?.clear(); this.sync(); this.wasActive = false; } return; }
+    const q = ctx.quality(), hour = ctx.hour();
+    // its own bodies come out of the street's share, set aside before any is taken: as many as the hour's people may have (indoors the street is not drawn: none)
+    this.hold(o.street === false ? 0 : Math.min(o.plan.near[q], lifeBudget(o.plan, q, hour).people));
     if (!this.routines) this.start();
-    const r = this.routines!, hour = ctx.hour();
+    const r = this.routines!;
     const jump = this.lastHour >= 0 && Math.abs(((hour - this.lastHour + 36) % 24) - 12) > 0.2;
     if (!this.wasActive || jump) r.settle(hour);
     this.wasActive = true; this.lastHour = hour;
@@ -133,12 +138,20 @@ export class VenueLife {
         for (const c of LIVE_CROWDS) if (c !== this.crowd && c.group.visible) others += c.people().length;
       }
       this.others = others;
-      this.bodies = lifeBudget(o.plan, ctx.quality(), hour, others).bodies;
+      this.bodies = lifeBudget(o.plan, q, hour, others).bodies;
       this.crowd.setNearMax(this.bodies);
     }
     this.sync();
     this.crowd.setCamera(ctx.camera);
     this.crowd.update(dt, true);
+  }
+
+  /** Holds `n` bodies back from the street's ration (STREET_BODIES.reserved: what every place in view holds). */
+  private hold(n: number) {
+    if (n === this.reserve) return;
+    this.reserve = n;
+    let all = 0; for (const l of LIVES) all += l.reserve;
+    STREET_BODIES.reserved = all;
   }
 
   /** The figures as the routines have their people now. */
@@ -176,7 +189,7 @@ export class VenueLife {
       name: this.o.name, plan: this.o.plan.id, quality: q, hour: round(hour), active: this.wasActive, share: shareAt(this.o.plan, hour),
       target: lifeBudget(this.o.plan, q, hour).people, capacity: this.o.plan.capacity[q],
       present: r?.live ?? 0, phases: r?.counts() ?? null,
-      bodies: this.crowd.people().length, bodiesAllowed: this.bodies, others: this.others, bodyBudget: BODY_BUDGET[q],
+      bodies: this.crowd.people().length, bodiesAllowed: this.bodies, others: this.others, bodyBudget: BODY_BUDGET[q], reserved: this.reserve,
       figures: st.mid + st.far, drawCalls: this.crowd.group.visible ? this.crowd.drawCalls() : 0,
       dropped: this.dropped, spots: r ? r.plan.spots.length + r.plan.gathers.length : 0,
       people: (r?.people ?? []).filter(p => p.phase !== 'off').map(p => ({ id: p.id, phase: p.phase, doing: p.doing, seated: p.seated, spot: p.spot?.id ?? null, x: round(p.x), z: round(p.z), trail: p.trail.join('>') })),
@@ -185,5 +198,5 @@ export class VenueLife {
   /** The way on foot between two points on the place's walking map (the checks: the player's way to an anchor is never shut). */
   way(a: Pt, b: Pt) { return this.grid?.path(a, b) ?? null; }
 
-  dispose() { this.routines?.clear(); this.crowd.dispose(); LIVES.delete(this); }
+  dispose() { this.hold(0); this.routines?.clear(); this.crowd.dispose(); LIVES.delete(this); }
 }

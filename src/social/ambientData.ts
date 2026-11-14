@@ -160,7 +160,10 @@ export const AMBIENT_BUDGET = {
 } as const;
 export type AmbientQuality = keyof typeof AMBIENT_BUDGET;
 /**
- * The full animated bodies the shared budget gave out at its last ration (the ambient people's and the other systems' under it: src/social/ambientLife.ts
- * writes it), for the crowds that add bodies of their own beside it (src/venues/venueLife.ts).
+ * The shared budget of full bodies between the street and the living places (src/venues/venueLife.ts). `full`: what the street's last ration gave out (the ambient
+ * people and the other systems' bodies under it: src/social/ambientLife.ts writes it). `reserved`: what the living places in view hold back for their own people
+ * (venueLife.ts writes it). The street's ration leaves the reserved bodies free (`streetCap`): a place's bodies come out of the shared budget, never on top of it.
  */
-export const STREET_BODIES = { full: 0 };
+export const STREET_BODIES = { full: 0, reserved: 0 };
+/** The street's share of the shared budget (AMBIENT_BUDGET `totalFull`) once the living places' reserved bodies are set aside. */
+export const streetCap = (totalFull: number) => Math.max(0, totalFull - Math.max(0, STREET_BODIES.reserved));
