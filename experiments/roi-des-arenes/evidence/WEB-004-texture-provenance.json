@@ -1,0 +1,43 @@
+{
+  "archive": "/Users/habibdiallo/DakarRek-assets/mh_packs/makehuman_system_assets_cc0.zip",
+  "archive_sha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+  "status": "research-supported",
+  "textures": [
+    {
+      "local": "skin_m.png",
+      "archive_entry": "skins/young_african_male/young_darkskinned_male_diffuse.png",
+      "sha256": "e3f0dbb634e4c68561338f0087f7a122444e84ec56df102212f1222aa12e4d50",
+      "headers": [
+        "skins/young_african_male/young_african_male.mhmat"
+      ],
+      "byte_identical": true
+    },
+    {
+      "local": "eye_brown.png",
+      "archive_entry": "eyes/materials/brown_eye.png",
+      "sha256": "4659691c7295ad6206c78b003e5fd0e5f91dcd53032fa914a229bb48cabe424b",
+      "headers": [
+        "eyes/materials/brown.mhmat"
+      ],
+      "byte_identical": true
+    },
+    {
+      "local": "brows.png",
+      "archive_entry": "eyebrows/eyebrow001/eyebrow001.png",
+      "sha256": "9940f7d0b1b223709a19b05156ba6f6e9e4dbdbced02d7574f4d51d72c58967b",
+      "headers": [
+        "eyebrows/eyebrow001/eyebrow001.mhmat"
+      ],
+      "byte_identical": true
+    },
+    {
+      "local": "lashes.png",
+      "archive_entry": "eyelashes/eyelashes01/eyelashes01.png",
+      "sha256": "4b69c0fff2648874460e9caf80c31413c444218a5c50afebc425aeaa65484a35",
+      "headers": [
+        "eyelashes/eyelashes01/eyelashes01.mhmat"
+      ],
+      "byte_identical": true
+    }
+  ]
+}

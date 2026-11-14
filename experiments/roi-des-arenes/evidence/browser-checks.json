@@ -1,0 +1,114 @@
+{
+  "url": "http://127.0.0.1:5178/",
+  "timestamp": "2026-10-11T20:21:17.106Z",
+  "browser": "155.0.8059.39",
+  "rendering": "Headless desktop Chrome, SwiftShader; not representative hardware performance",
+  "checks": [
+    {
+      "name": "Two separately morphed, clothed anatomical studies load",
+      "passed": true,
+      "loaded": true,
+      "selected": "both",
+      "view": "quarter",
+      "rotating": false,
+      "drawCalls": 0,
+      "triangles": 0,
+      "asset": "anatomy-study.glb",
+      "visibleStudies": 2,
+      "camera": [
+        1.456945817536864,
+        1.6334508705418376,
+        3.834067940886484
+      ],
+      "studyMorphs": [
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "garmentCount": 2
+    },
+    {
+      "name": "View: front",
+      "passed": true
+    },
+    {
+      "name": "View: side",
+      "passed": true
+    },
+    {
+      "name": "View: back",
+      "passed": true
+    },
+    {
+      "name": "View: quarter",
+      "passed": true
+    },
+    {
+      "name": "Athletic individual selection",
+      "passed": true
+    },
+    {
+      "name": "Heavy individual selection",
+      "passed": true
+    },
+    {
+      "name": "Return to comparison",
+      "passed": true
+    },
+    {
+      "name": "Anatomy and resting pose controls",
+      "passed": true
+    },
+    {
+      "name": "Clay and wireframe switches",
+      "passed": true
+    },
+    {
+      "name": "Rotation starts and stops",
+      "passed": true
+    },
+    {
+      "name": "Focused-stage keyboard orbit, zoom and reset",
+      "passed": true
+    },
+    {
+      "name": "Pointer orbit",
+      "passed": true
+    },
+    {
+      "name": "390×844 viewport fits without horizontal overflow",
+      "passed": true,
+      "deviceTest": false
+    },
+    {
+      "name": "Narrow viewport individual profile controls",
+      "passed": true
+    },
+    {
+      "name": "No normal-path browser errors",
+      "passed": true
+    },
+    {
+      "name": "Missing model yields actionable retry",
+      "passed": true
+    },
+    {
+      "name": "Unavailable WebGL yields actionable retry",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "[.WebGL-0x12c000c9000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x12c000c9000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x12c000c9000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x12c000c9000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  ],
+  "visualGate": "Awaiting human review",
+  "culturalStatus": "unverified"
+}

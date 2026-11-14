@@ -1,0 +1,537 @@
+{
+  "timestamp": "2026-10-11T23:11:50.366Z",
+  "browser": "Codex in-app browser, native UI controls via CUA",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "checks": [
+    {
+      "name": "Desktop keyboard walk/release and one clothed athlete",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "athletic",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            -0.22119155097670312,
+            0,
+            -0.9392629808952397
+          ],
+          "speed": 0.12175862071814185,
+          "velocitySpeed": 0.12175862071813694,
+          "heading": -2.778445643643617,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 1.0897611647117755,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": true,
+              "ankleTarget": [
+                -0.4536450136609197,
+                0.14363644631251893,
+                -0.9022145856808022
+              ],
+              "actualAnkle": [
+                -0.4536449985482972,
+                0.143636517375671,
+                -0.9022147485351667
+              ],
+              "reachError": 1.7832528422928393e-7,
+              "actualSoleCentre": [
+                -0.5096977834646599,
+                0.07770987578592106,
+                -0.9981752467330224
+              ],
+              "actualSoleMinY": 0.0668375514946378,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.05020591357676757,
+                0.07899497562372305,
+                -1.1380688110683117
+              ],
+              "actualAnkle": [
+                -0.05020597345645619,
+                0.07899503225511106,
+                -1.1380688236271859
+              ],
+              "reachError": 8.336915819332022e-8,
+              "actualSoleCentre": [
+                -0.0720327351365123,
+                0.013069921990797432,
+                -1.2470512478390878
+              ],
+              "actualSoleMinY": 0.0021960463522890097,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "UI profile focus suppresses movement until stage is focused",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                0.019095420851404116
+              ],
+              "reachError": 6.543719558978674e-8,
+              "actualSoleCentre": [
+                0.24946803374528914,
+                0.01307166220651046,
+                0.1291386685588529
+              ],
+              "actualSoleMinY": 0.0021967930866516523,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                0.019095420851404116
+              ],
+              "reachError": 6.543719558978674e-8,
+              "actualSoleCentre": [
+                -0.24946806662600074,
+                0.013071668722252898,
+                0.12913867350466282
+              ],
+              "actualSoleMinY": 0.0021967931660926733,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "Heavy AZERTY Z walk after stage focus",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            -0.12597779454652375,
+            0,
+            -0.695741186325625
+          ],
+          "speed": 0.2075376678383947,
+          "velocitySpeed": 0.2075376678383867,
+          "heading": -2.778445643643617,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0.8318293362778061,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.3643279018921155,
+                0.07899497562372305,
+                -0.6742102770621752
+              ],
+              "actualAnkle": [
+                -0.3643278990135315,
+                0.07899504029202248,
+                -0.6742104096887521
+              ],
+              "reachError": 1.4758077147015325e-7,
+              "actualSoleCentre": [
+                -0.421192674436666,
+                0.013072085871440159,
+                -0.7703265008704204
+              ],
+              "actualSoleMinY": 0.002196841373587091,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": true,
+              "ankleTarget": [
+                -0.0315235215907788,
+                0.1458773506783747,
+                -0.8369603662024839
+              ],
+              "actualAnkle": [
+                -0.03152358901861094,
+                0.14587747532003592,
+                -0.8369603761886015
+              ],
+              "reachError": 1.4206258762150693e-7,
+              "actualSoleCentre": [
+                -0.09770939940964528,
+                0.07995486105057814,
+                -0.9269091686269737
+              ],
+              "actualSoleMinY": 0.06907926712928372,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "Study mode comparison, four views and pose controls remain available",
+      "passed": true
+    },
+    {
+      "name": "Six practice/study/physique/reset UI cycles preserve grounded character and cleared input",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                0.019095420851404116
+              ],
+              "reachError": 6.543719558978674e-8,
+              "actualSoleCentre": [
+                0.24946803374528914,
+                0.01307166220651046,
+                0.1291386685588529
+              ],
+              "actualSoleMinY": 0.0021967930866516523,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                0.019095420851404116
+              ],
+              "reachError": 6.543719558978674e-8,
+              "actualSoleCentre": [
+                -0.24946806662600074,
+                0.013071668722252898,
+                0.12913867350466282
+              ],
+              "actualSoleMinY": 0.0021967931660926733,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "390px layout and held pointer travel/release",
+      "passed": true,
+      "layout": {
+        "scrollWidth": 390,
+        "viewportWidth": 390
+      },
+      "snapshot": {
+        "mode": "practice",
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0.6578275170752395,
+            0,
+            1.7311250449348417
+          ],
+          "speed": 0.22208591199618677,
+          "velocitySpeed": 0.22208591199620228,
+          "heading": 0.363147009946176,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 1.85189928544239,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": true,
+              "ankleTarget": [
+                0.9301129354872048,
+                0.13758758384462472,
+                1.798897585846059
+              ],
+              "actualAnkle": [
+                0.9301129060495467,
+                0.13758761521906193,
+                1.7988976638757825
+              ],
+              "reachError": 8.910425795068909e-8,
+              "actualSoleCentre": [
+                0.9869793708662211,
+                0.07166497691860123,
+                1.895015719602901
+              ],
+              "actualSoleMinY": 0.06078941277740208,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.4551563851664487,
+                0.07899497562372305,
+                1.8465479948214525
+              ],
+              "actualAnkle": [
+                0.45515644986065085,
+                0.0789950245239398,
+                1.8465480164380976
+              ],
+              "reachError": 8.392764942971163e-8,
+              "actualSoleCentre": [
+                0.476472123759619,
+                0.01307179505557281,
+                1.9561701269525993
+              ],
+              "actualSoleMinY": 0.002196810005602291,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "Arrow keyboard travel and release after final reload",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "athletic",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0.9192098011003627,
+            0,
+            -0.35220781477507535
+          ],
+          "speed": 0.21895178980922844,
+          "velocitySpeed": 0.21895178980922236,
+          "heading": 1.9339433367410732,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0.9856399802381625,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.7953766460642482,
+                0.07899497562372305,
+                -0.5380034778786025
+              ],
+              "actualAnkle": [
+                0.7953767406937247,
+                0.0789950326620199,
+                -0.5380034606514652
+              ],
+              "reachError": 1.118252180163433e-7,
+              "actualSoleCentre": [
+                0.8913378388651596,
+                0.013068489385119947,
+                -0.5940541508810973
+              ],
+              "actualSoleMinY": 0.0021960516015213454,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": true,
+              "ankleTarget": [
+                1.246612780726542,
+                0.09564146451588244,
+                -0.23026525992238345
+              ],
+              "actualAnkle": [
+                1.2466128334007158,
+                0.09564154561556648,
+                -0.23026532780224218
+              ],
+              "reachError": 1.181499156581515e-7,
+              "actualSoleCentre": [
+                1.3557452877666687,
+                0.029720396882726752,
+                -0.25139329808676614
+              ],
+              "actualSoleMinY": 0.018842573953030874,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "Visible stop clears input",
+      "passed": true
+    },
+    {
+      "name": "Final released walker remains grounded and stable",
+      "passed": true,
+      "snapshot": {
+        "mode": "practice",
+        "selected": "athletic",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0.9434170459809573,
+            0,
+            -0.36140656782970143
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 1.9339433367410734,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 1.0115360757444174,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.7953766460642482,
+                0.07899497562372305,
+                -0.5380034778786025
+              ],
+              "actualAnkle": [
+                0.7953767428676404,
+                0.07899502568553912,
+                -0.5380034624600948
+              ],
+              "reachError": 1.1006730916653386e-7,
+              "actualSoleCentre": [
+                0.8913361876421598,
+                0.01306853119073823,
+                -0.5940535086620238
+              ],
+              "actualSoleMinY": 0.0021960453549559064,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                1.0845883984387803,
+                0.07899497562372305,
+                -0.16851982889797135
+              ],
+              "actualAnkle": [
+                1.0845884828206613,
+                0.07899501872297848,
+                -0.16851991525393656
+              ],
+              "reachError": 1.2819984552920132e-7,
+              "actualSoleCentre": [
+                1.1935655327528087,
+                0.013068945849074818,
+                -0.19034451010630496
+              ],
+              "actualSoleMinY": 0.002196050513962537,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "No normal-path browser errors in inspected final IAB session",
+      "passed": true,
+      "logs": []
+    }
+  ],
+  "limits": [
+    "Not a physical Android or two-finger device test",
+    "Two-pointer input state verified separately; cancel/blur/hidden wiring reviewed in source",
+    "WebGL/model error path unchanged; prior WEB-001 evidence remains historical"
+  ],
+  "culturalStatus": "unverified",
+  "visualTarget": "D-008 reference finish remains outstanding"
+}

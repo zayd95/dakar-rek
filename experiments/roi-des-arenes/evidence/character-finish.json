@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-10-11T23:25:05.335Z",
+  "checks": [
+    {
+      "name": "Athletic immutable body, finite normalized shared-rig hair, per-morph curved eye seating",
+      "passed": true
+    },
+    {
+      "name": "Athletic walking attachment, finite skinned scalp and exact rig restoration",
+      "passed": true
+    },
+    {
+      "name": "Heavy immutable body, finite normalized shared-rig hair, per-morph curved eye seating",
+      "passed": true
+    },
+    {
+      "name": "Heavy walking attachment, finite skinned scalp and exact rig restoration",
+      "passed": true
+    }
+  ],
+  "samples": [
+    {
+      "heavy": false,
+      "hairTriangles": 736,
+      "eyeSamples": [
+        {
+          "front": [
+            -0.029010654245905567,
+            1.6816541603127304,
+            0.14871723283609523
+          ],
+          "pupil": [
+            -0.029010654913129985,
+            1.6816541598347947,
+            0.14917723290052518
+          ]
+        },
+        {
+          "front": [
+            0.02901063781927998,
+            1.6816541602413164,
+            0.14871723325334552
+          ],
+          "pupil": [
+            0.02901063803520504,
+            1.6816541594391616,
+            0.1491772346146524
+          ]
+        }
+      ],
+      "maxAttachmentError": 0
+    },
+    {
+      "heavy": true,
+      "hairTriangles": 730,
+      "eyeSamples": [
+        {
+          "front": [
+            -0.030250737987402035,
+            1.6823334795084999,
+            0.15755491977905922
+          ],
+          "pupil": [
+            -0.03025073889682601,
+            1.6823334812984465,
+            0.15801492037720877
+          ]
+        },
+        {
+          "front": [
+            0.03025072093945142,
+            1.6823334794340332,
+            0.1575549202141452
+          ],
+          "pupil": [
+            0.030250721665255803,
+            1.6823334808859016,
+            0.15801492216460777
+          ]
+        }
+      ],
+      "maxAttachmentError": 0
+    }
+  ],
+  "passed": 4
+}

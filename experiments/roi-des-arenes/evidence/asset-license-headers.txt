@@ -1,0 +1,191 @@
+SOURCE: eyelashes/eyelashes01/eyelashes01.mhclo
+SHA256: 5a86b29c15649273d723084954b7fa7bf199112571d4f58539b46734d397ee6b
+# This is a clothes file for MakeHuman
+#
+# This asset was explicitly released as CC0 in september 2020. The license
+# text for CC0 can be found in the root of this repository.
+#
+# The copyright holders at the point of the release to CC0 were:
+#
+# Copyright (C) 2020 Data Collection AB, https://www.datacollection.se
+# Copyright (C) 2020 Joel Palmius
+# Copyright (C) 2020 Jonas Hauquier
+#
+# The primary legal contact for MakeHuman is Data Collection AB.
+#
+# For more information, see homepage at http://www.makehumancommunity.org
+
+uuid d533836f-13ad-4836-8b65-051108253cd2
+basemesh hm08
+tag MakeHuman™
+
+name Eyelashes01
+obj_file eyelashes01.obj
+x_scale 5399 11998 1.4800
+z_scale 962 5320 1.9221
+y_scale 791 881 2.3298
+z_depth 5
+material eyelashes01.mhmat
+verts 0
+14742
+14743
+14744
+14745
+14746
+14747
+14748
+14749
+14750
+14751
+14752
+14753
+14754
+14755
+14756
+14757
+14758
+14759
+
+SOURCE: proxymeshes/male1591/male1591.proxy
+SHA256: 6fc9a44fc19dcace1bee1199555af0bc26c9ce76571843ccf47300fd16b647e2
+# This is a proxy file for MakeHuman
+#
+# This asset was explicitly released as CC0 in september 2020. The license
+# text for CC0 can be found in the root of this repository.
+#
+# The copyright holders at the point of the release to CC0 were:
+#
+# Copyright (C) 2020 Data Collection AB, https://www.datacollection.se
+# Copyright (C) 2020 Joel Palmius
+# Copyright (C) 2020 Jonas Hauquier
+#
+# The primary legal contact for MakeHuman is Data Collection AB.
+#
+# For more information, see homepage at http://www.makehumancommunity.org
+
+uuid d7e4934e-daed-4ad5-a055-18c9cba487dc
+basemesh hm08
+tag MakeHuman™
+
+tag lowpoly
+description Proxy optimized for a very low poly male character (1591 vertices, 1570 FACES)
+name male1591
+obj_file male1591.obj
+x_scale 5399 11998 1.3980
+z_scale 962 5320 1.8461
+y_scale 791 881 2.2048
+z_depth 50
+verts 0
+13478 13477 13476 0.13498 0.74725 0.11777 0.00077 0.00302 -0.00593
+13454 13455 13461 0.27058 0.29801 0.43141 -0.00038 0.00427 0.00449
+13421 13413 13415 0.26303 0.27966 0.45731 -0.00025 0.00119 -0.00061
+13409 13408 13415 0.63166 0.26646 0.10187 0.00000 0.00000 -0.00000
+13425 13424 13431 0.37137 0.40602 0.22262 0.00000 0.00000 -0.00000
+13477 13471 13470 0.02077 0.88695 0.09228 -0.00424 -0.00215 0.00512
+13445 13444 13426 0.08112 0.85480 0.06408 0.00017 0.00294 0.00028
+13419 13420 13415 0.24454 0.27253 0.48292 -0.00001 0.00001 -0.00000
+13415 13408 13407 0.14028 0.64710 0.21262 -0.00023 0.00022 -0.00012
+13435 13436 13432 0.55170 0.32501 0.12328 0.00029 0.00002 -0.00004
+13408 13411 13406 0.30808 0.34886 0.34305 -0.02437 0.03019 0.06226
+13422 13418 13417 0.06648 0.31205 0.62146 0.00000 0.00000 -0.00000
+13435 13434 13437 0.18579 0.54361 0.27060 -0.00267 -0.00095 0.00075
+13445 13444 13426 0.27558 0.46984 0.25458 -0.00243 -0.04314 -0.00416
+13464 13462 13468 0.25646 0.65501 0.08854 0.00044 0.00041 -0.00024
+13411 13406 13407 0.15668 0.64190 0.20142 -0.00598 0.00859 0.01709
+13412 13438 13422 0.35979 0.17063 0.46958 -0.00041 -0.00198 0.00081
+
+SOURCE: eyebrows/eyebrow001/eyebrow001.mhclo
+SHA256: 54c8892c2ba577f4152d779ce1f20f7cd323beb8cbd9cb701796165c221b4f5b
+# This is a clothes file for MakeHuman
+#
+# This asset was explicitly released as CC0 in september 2020. The license
+# text for CC0 can be found in the root of this repository.
+#
+# The copyright holders at the point of the release to CC0 were:
+#
+# Copyright (C) 2020 Data Collection AB, https://www.datacollection.se
+# Copyright (C) 2020 Joel Palmius
+# Copyright (C) 2020 Jonas Hauquier
+#
+# The primary legal contact for MakeHuman is Data Collection AB.
+#
+# For more information, see homepage at http://www.makehumancommunity.org
+
+uuid 9c81ec3a-faa5-4c94-9cdb-992300ba3084
+basemesh hm08
+tag MakeHuman™
+material eyebrow001.mhmat
+name eyebrow001
+obj_file eyebrow001.obj
+x_scale 5399 11998 1.4160
+z_scale 962 5320 1.9231
+y_scale 791 881 2.3073
+z_depth 5
+tag young
+verts 0
+ 6951  6934  6933 0.61625 0.28523 0.09853 0.00197 -0.00739 0.00635
+ 6951  6942  6935 0.30424 0.63637 0.05939 0.00206 -0.00824 0.00738
+ 6957  6956  6983 0.16369 0.42211 0.41420 0.00002 -0.00017 0.00034
+ 6983  6984  6957 0.30685 0.48912 0.20403 -0.00017 0.00025 -0.00044
+ 6934  6933  6950 0.05523 0.54469 0.40008 0.00117 -0.00443 0.00389
+ 6983  6956  6953 0.30591 0.25121 0.44288 0.00032 -0.00087 0.00200
+ 6947  6930  6929 0.30705 0.49797 0.19498 0.00047 -0.00322 0.00248
+ 6980  6953  6952 0.25120 0.59092 0.15788 0.00010 -0.00008 0.00029
+ 6946  6929  6931 0.46885 0.43284 0.09831 0.00031 -0.00115 0.00098
+ 6979  6952  6954 0.33252 0.60466 0.06282 -0.00023 0.00019 -0.00051
+ 6948  6931  6932 0.95608 0.02861 0.01531 0.00039 -0.00136 0.00122
+ 6952  6954  6981 0.16031 0.31475 0.52494 0.00012 -0.00005 0.00026
+ 6949  6955  6954 0.49363 0.20753 0.29884 -0.00005 0.00004 -0.00007
+ 6955  6982  6981 0.23455 0.36990 0.39555 0.00271 -0.00042 0.00316
+ 6938  6966  6955 0.08615 0.25608 0.65777 0.00198 -0.00103 0.00149
+ 6987  6982  6955 0.22484 0.62418 0.15098 0.00270 -0.00049 0.00175
+ 6965  6986  6987 0.43470 0.16514 0.40016 0.00387 -0.00083 0.00232
+ 7024  6987  6986 0.28917 0.28097 0.42985 0.00099 -0.00011 0.00051
+
+SOURCE: eyes/low-poly/low-poly.mhclo
+SHA256: 68582e28e9176cba7cfcf35208f671b6201b8d1bc95c32decff61a3160ec34d8
+# This is a clothes file for MakeHuman
+#
+# This asset was explicitly released as CC0 in september 2020. The license
+# text for CC0 can be found in the root of this repository.
+#
+# The copyright holders at the point of the release to CC0 were:
+#
+# Copyright (C) 2020 Data Collection AB, https://www.datacollection.se
+# Copyright (C) 2020 Joel Palmius
+# Copyright (C) 2020 Jonas Hauquier
+#
+# The primary legal contact for MakeHuman is Data Collection AB.
+#
+# For more information, see homepage at http://www.makehumancommunity.org
+
+uuid 1cc97a30-85a1-42e6-a9f7-b3e753732baa
+basemesh hm08
+
+name Low-Poly
+tag MakeHuman™
+
+obj_file low-poly.obj
+x_scale 5399 11998 1.7412
+z_scale 962 5320 2.2613
+y_scale 791 881 2.7409
+z_depth 50
+material ../materials/brown.mhmat
+verts 0
+14666
+14665
+14664
+14663
+14662
+14661
+14657
+14656
+14655
+14654
+14653
+14652
+14648
+14647
+14646
+14645
+14644

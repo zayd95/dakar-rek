@@ -1,0 +1,22 @@
+{
+  "source_sha256": "43fd6955e610bcf1d5a1258c2ca610d24c2c253d27bf1d759c61ef505cfcbcb2",
+  "output_sha256": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+  "output_bytes": 1103544,
+  "meshes": [
+    "Body",
+    "Brows",
+    "Eyes",
+    "Lashes"
+  ],
+  "joint_count": 31,
+  "animation_count": 0,
+  "texture_count": 0,
+  "profiles": [
+    "AthleticStudy",
+    "HeavyStudy"
+  ],
+  "source_unchanged": true,
+  "body_vertices": 6322,
+  "body_triangles": 12560,
+  "subdivision_passes": 1
+}

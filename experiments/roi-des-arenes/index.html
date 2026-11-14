@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#202724" />
+    <meta name="description" content="Étude visuelle indépendante des lutteurs de Roi des Arènes." />
+    <title>Roi des Arènes · Atelier des lutteurs</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="Roi des Arènes, accueil"><span class="mark">R<span>А</span></span><span>ROI DES ARÈNES<small>ÉTUDE INDÉPENDANTE · 01</small></span></a>
+      <span class="work-badge"><i></i> ATELIER DES LUTTEURS</span>
+    </header>
+    <main>
+      <section class="workbench" aria-label="Atelier des silhouettes">
+        <div class="stage-head"><span class="eyebrow">LE CORPS AVANT LE COMBAT</span><span class="stage-number">ÉTUDE / 001</span></div>
+        <div id="stage" tabindex="0" role="region" aria-label="Vue 3D des lutteurs. Glisser pour tourner, molette ou pincement pour zoomer.">
+          <div id="status" role="status" aria-live="polite">Préparation des silhouettes…</div>
+          <div class="stage-labels" aria-hidden="true"><span id="label-a">01 <strong>ATHLÉTIQUE</strong></span><span id="label-b">02 <strong>PUISSANT</strong></span></div>
+          <div class="stage-help">Glisser pour tourner <b>·</b> Pincer pour zoomer</div>
+          <button class="expand" id="reset-camera" aria-label="Recentrer la vue" title="Recentrer la vue">↗</button>
+          <button id="hold-contact" data-contact hidden aria-pressed="false">Maintenir le contact <small>Espace</small></button>
+          <div class="movement-pad" data-practice hidden role="group" aria-label="Commandes de déplacement">
+            <button data-move="forward" aria-label="Marcher vers le haut">↑</button>
+            <button data-move="left" aria-label="Marcher vers la gauche">←</button>
+            <button id="stop-practice" aria-label="Arrêter">■</button>
+            <button data-move="right" aria-label="Marcher vers la droite">→</button>
+            <button data-move="back" aria-label="Marcher vers le bas">↓</button>
+          </div>
+        </div>
+        <div class="view-bar">
+          <span class="eyebrow">ANGLE DE VUE</span>
+          <div class="segments" aria-label="Angle de vue">
+            <button data-view="front">Face</button><button data-view="side">Profil</button><button data-view="back">Dos</button><button data-view="quarter" class="active" aria-pressed="true">¾</button>
+          </div>
+          <button id="rotate" class="rotation" aria-pressed="false">↻ <span>Rotation</span></button>
+        </div>
+      </section>
+      <aside>
+        <span class="eyebrow">PREMIÈRE PASSE VISUELLE</span>
+        <h1>La puissance<br>dans la silhouette.</h1>
+        <p class="intro">Deux gabarits. Une même échelle.<br>Comparer le volume, les proportions<br>et la présence avant le mouvement.</p>
+        <div class="mode-tabs segments" aria-label="Mode de l’atelier"><button data-mode="study" class="active" aria-pressed="true">Silhouettes</button><button data-mode="practice" aria-pressed="false">Déplacements</button><button data-mode="contact" aria-pressed="false">Contacts</button></div>
+        <div class="practice-info" data-practice hidden><span class="eyebrow" id="practice-title">MARCHE LIBRE</span><p id="practice-instructions">Choisir un lutteur et marcher avec les flèches, ZQSD / WASD ou les boutons de la scène.</p><div><span id="motion-status" role="status">Au repos</span><button id="reset-practice">Repartir du centre</button></div><p data-contact hidden><span id="contact-distance"></span><br>Partenaire immobile · contact symbolisé au sol. Animation de saisie à venir ; comportement de prototype, non authentifié.</p></div>
+        <div class="profile-heading"><span class="eyebrow">À EXAMINER</span><span>01 — 02</span></div>
+        <div class="profiles" role="group" aria-label="Lutteur à examiner">
+          <button class="profile" data-profile="athletic"><span class="profile-index">01</span><span><strong>Athlétique</strong><small>Taille marquée · torse dessiné</small></span><span class="profile-arrow">↗</span></button>
+          <button class="profile" data-profile="heavy"><span class="profile-index">02</span><span><strong>Puissant</strong><small>Épaules larges · volume accru</small></span><span class="profile-arrow">↗</span></button>
+        </div>
+        <button id="compare" class="compare active" aria-pressed="true"><span>Comparer les deux</span><span>↔</span></button>
+        <div class="accessory-panel" role="group" aria-label="Accessoires du lutteur">
+          <span class="eyebrow">GRIS-GRIS · ÉTUDE VISUELLE</span>
+          <button id="accessory-arms" class="accessory-toggle" type="button" role="switch" aria-checked="true" disabled><span>Aux bras</span><i aria-hidden="true"></i></button>
+          <button id="accessory-waist" class="accessory-toggle" type="button" role="switch" aria-checked="true" disabled><span>À la taille</span><i aria-hidden="true"></i></button>
+          <button id="accessory-chest" class="accessory-toggle" type="button" role="switch" aria-checked="true" disabled><span>Sur la poitrine</span><i aria-hidden="true"></i></button>
+          <p>Pochettes et cordons en cuir.<br>Proposition provisoire à valider.</p>
+        </div>
+        <div class="options">
+          <span class="eyebrow">PRÉSENTATION</span>
+          <button id="face-detail" class="face-detail" aria-pressed="false">Examiner le visage</button>
+          <div class="segments" aria-label="Pose de l’étude"><button data-pose="relaxed" class="active" aria-pressed="true">Au repos</button><button data-pose="anatomy">Anatomie</button></div>
+          <label class="toggle"><input id="clay" type="checkbox" /><span>Volume en argile</span><i></i></label>
+          <label class="toggle"><input id="wireframe" type="checkbox" /><span>Voir le maillage</span><i></i></label>
+        </div>
+        <div class="note"><span class="note-dot"></span><p><strong>Modèles de travail</strong><br>Anatomie et short neutres. Apparence à valider ; aucune tenue ou posture authentifiée.</p></div>
+      </aside>
+    </main>
+    <footer><span><strong>01</strong> Silhouettes <i>→</i> 02 Déplacements <i>→</i> 03 Contacts <i>→</i> 04 Performances</span><span>ÉTUDE DE MOUVEMENT · SANS COMBAT</span></footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-10-13T16:32:19.466Z",
+  "checks": [
+    {
+      "name": "Every position/normal/color/skin/morph component and every original triangle retained exactly after 643 UV seam copies",
+      "passed": true
+    },
+    {
+      "name": "Mismatched asset, invalid UV and changed topology rejected",
+      "passed": true
+    },
+    {
+      "name": "Athletic identical turn/stop trajectory, identical morphed/skinned face anchors and rig restoration",
+      "passed": true
+    },
+    {
+      "name": "Heavy identical turn/stop trajectory, identical morphed/skinned face anchors and rig restoration",
+      "passed": true
+    },
+    {
+      "name": "Distinct emitted per-profile skin shaders have distinct program cache keys",
+      "passed": true
+    }
+  ],
+  "passed": 5,
+  "samples": [
+    {
+      "heavy": false,
+      "maxTrajectoryError": 0,
+      "maxSkinError": 0,
+      "vertices": 6965,
+      "eyesUV": 96
+    },
+    {
+      "heavy": true,
+      "maxTrajectoryError": 0,
+      "maxSkinError": 0,
+      "vertices": 6965,
+      "eyesUV": 96
+    }
+  ]
+}

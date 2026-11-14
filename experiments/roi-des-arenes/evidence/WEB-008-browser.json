@@ -1,0 +1,1541 @@
+{
+  "date": "2026-10-23",
+  "candidate": "No neck loop, shoulder continuation",
+  "checks": [
+    {
+      "name": "Both physiques front/profile/back and anatomy",
+      "pass": true
+    },
+    {
+      "name": "Held W chest toggle",
+      "pass": true,
+      "before": {
+        "mode": "practice",
+        "accessories": [
+          {
+            "arms": true,
+            "waist": true,
+            "chest": true,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.04468949738988261,
+                "radiusMax": 0.05302135630987298
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.042487700932762884,
+                "radiusMax": 0.04860032345631101
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.04468951821172936,
+                "radiusMax": 0.053021391198119855
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.04248775612051963,
+                "radiusMax": 0.04860035948693709
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.09038304680549722,
+                "radiusMax": 0.16130817700622718
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.08794828219640927,
+                "radiusMax": 0.1614050512968488
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.08501959637789756,
+                "radiusMax": 0.16085248561121576
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.09485821455232285,
+                "radiusMax": 0.15633153922886356
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.11289326648588621,
+                "radiusMax": 0.15841960818772569
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.002430599954307056,
+                  0.16388977316141964,
+                  0.0756325173501784
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.0024306176321060584,
+                  0.1638897731614152,
+                  0.07563251646692998
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.08865195589976353,
+                  -0.033230907902566,
+                  0.1536290016360421
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000012906506891285918,
+                  -0.03756787324266464,
+                  0.1653452537381932
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.08867120277945545,
+                  -0.03323956635715808,
+                  0.15365239233180744
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  2.867122871064165e-8,
+                  0.0045067894545463005,
+                  0.2448011340952248
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          },
+          {
+            "arms": true,
+            "waist": true,
+            "chest": true,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.06226374539993601,
+                "radiusMax": 0.07903389802790727
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.05829042416302524,
+                "radiusMax": 0.07479946201009759
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.06226380981004715,
+                "radiusMax": 0.07903389020834532
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.05829046952631347,
+                "radiusMax": 0.07479946356614033
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.11185694924140477,
+                "radiusMax": 0.21497386404710161
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.10568037394622382,
+                "radiusMax": 0.21259631287177802
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.10052109008211307,
+                "radiusMax": 0.21034703490224782
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.12725149769116736,
+                "radiusMax": 0.21331077057089837
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.15764478025967252,
+                "radiusMax": 0.20062078232370448
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.03220762449593507,
+                  0.16388976432139105,
+                  0.09666697667887796
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.03220767272498005,
+                  0.16388976432137872,
+                  0.09666697395927563
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.11891472648342348,
+                  -0.050454695236526126,
+                  0.20015882577199584
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000014551749738800357,
+                  -0.052345693780479596,
+                  0.2052673322802021
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.1189758135121657,
+                  -0.05048492041816566,
+                  0.20024047868368655
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  6.868809672433418e-8,
+                  0.017975333792207726,
+                  0.2905989153492091
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          }
+        ],
+        "contact": null,
+        "contactHeld": false,
+        "selected": "athletic",
+        "inputCount": 1,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            -0.005412413847515831
+          ],
+          "speed": 0.26128961280720253,
+          "velocitySpeed": 0.26128961280720253,
+          "heading": 0.16950000000000726,
+          "input": [
+            0,
+            0,
+            -1
+          ],
+          "distance": 0.005412413847515831,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": true,
+              "ankleTarget": [
+                0.23047209799057358,
+                0.09859976202779785,
+                0.017391915446351054
+              ],
+              "actualAnkle": [
+                0.23047206507681103,
+                0.09859976778598073,
+                0.01739199678459638
+              ],
+              "reachError": 8.793396720235577e-8,
+              "actualSoleCentre": [
+                0.2520788393125202,
+                0.03315354059046631,
+                0.1337676762791814
+              ],
+              "actualSoleMinY": 0.021800794942026143,
+              "sampledVertices": 144
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                -0.2304538718068883,
+                0.07899501004445414,
+                0.01909542482287696
+              ],
+              "reachError": 7.158279193146198e-8,
+              "actualSoleCentre": [
+                -0.2518322293775999,
+                0.013548369314043351,
+                0.13550879842139443
+              ],
+              "actualSoleMinY": 0.0021960256217893382,
+              "sampledVertices": 144
+            }
+          ]
+        },
+        "faceDetail": false,
+        "texturedFace": true,
+        "faceMix": [
+          1,
+          1
+        ],
+        "faceVertices": [
+          6965,
+          6965
+        ],
+        "finish": "refined",
+        "hairCount": 2,
+        "garmentCount": 2
+      },
+      "after": {
+        "mode": "practice",
+        "accessories": [
+          {
+            "arms": true,
+            "waist": true,
+            "chest": false,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.04468949738988261,
+                "radiusMax": 0.05302135630987298
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.042487700932762884,
+                "radiusMax": 0.04860032345631101
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.04468951821172936,
+                "radiusMax": 0.053021391198119855
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.04248775612051963,
+                "radiusMax": 0.04860035948693709
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.09038304680549722,
+                "radiusMax": 0.16130817700622718
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.08794828219640927,
+                "radiusMax": 0.1614050512968488
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.08501959637789756,
+                "radiusMax": 0.16085248561121576
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.09485821455232285,
+                "radiusMax": 0.15633153922886356
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.11289326648588621,
+                "radiusMax": 0.15841960818772569
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.002430599954307056,
+                  0.16388977316141964,
+                  0.0756325173501784
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.0024306176321060584,
+                  0.1638897731614152,
+                  0.07563251646692998
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.08865195589976353,
+                  -0.033230907902566,
+                  0.1536290016360421
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000012906506891285918,
+                  -0.03756787324266464,
+                  0.1653452537381932
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.08867120277945545,
+                  -0.03323956635715808,
+                  0.15365239233180744
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  2.867122871064165e-8,
+                  0.0045067894545463005,
+                  0.2448011340952248
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          },
+          {
+            "arms": true,
+            "waist": true,
+            "chest": false,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.06226374539993601,
+                "radiusMax": 0.07903389802790727
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.05829042416302524,
+                "radiusMax": 0.07479946201009759
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.06226380981004715,
+                "radiusMax": 0.07903389020834532
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.05829046952631347,
+                "radiusMax": 0.07479946356614033
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.11185694924140477,
+                "radiusMax": 0.21497386404710161
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.10568037394622382,
+                "radiusMax": 0.21259631287177802
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.10052109008211307,
+                "radiusMax": 0.21034703490224782
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.12725149769116736,
+                "radiusMax": 0.21331077057089837
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.15764478025967252,
+                "radiusMax": 0.20062078232370448
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.03220762449593507,
+                  0.16388976432139105,
+                  0.09666697667887796
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.03220767272498005,
+                  0.16388976432137872,
+                  0.09666697395927563
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.11891472648342348,
+                  -0.050454695236526126,
+                  0.20015882577199584
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000014551749738800357,
+                  -0.052345693780479596,
+                  0.2052673322802021
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.1189758135121657,
+                  -0.05048492041816566,
+                  0.20024047868368655
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  6.868809672433418e-8,
+                  0.017975333792207726,
+                  0.2905989153492091
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          }
+        ],
+        "contact": null,
+        "contactHeld": false,
+        "selected": "athletic",
+        "inputCount": 1,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            -0.2593245262476471
+          ],
+          "speed": 1.0332158712475563,
+          "velocitySpeed": 1.033215871247559,
+          "heading": 1.7510000000000043,
+          "input": [
+            0,
+            0,
+            -1
+          ],
+          "distance": 0.2593245262476471,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": true,
+              "ankleTarget": [
+                0.200239708278109,
+                0.12146274019386212,
+                -0.11026803724469131
+              ],
+              "actualAnkle": [
+                0.20023975641655345,
+                0.12146280367146162,
+                -0.11026805161340922
+              ],
+              "reachError": 8.095168637227757e-8,
+              "actualSoleCentre": [
+                0.24884768054339945,
+                0.05603045217576053,
+                -0.00231177014574386
+              ],
+              "actualSoleMinY": 0.044663834269632705,
+              "sampledVertices": 144
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                0.01909539717032222
+              ],
+              "actualAnkle": [
+                -0.23045385837923577,
+                0.07899493115145756,
+                0.019095367617586123
+              ],
+              "reachError": 8.785914397649556e-8,
+              "actualSoleCentre": [
+                -0.25184210101232785,
+                0.013548324958148039,
+                0.13550205066959126
+              ],
+              "actualSoleMinY": 0.0021959348232618355,
+              "sampledVertices": 144
+            }
+          ]
+        },
+        "faceDetail": false,
+        "texturedFace": true,
+        "faceMix": [
+          1,
+          1
+        ],
+        "faceVertices": [
+          6965,
+          6965
+        ],
+        "finish": "refined",
+        "hairCount": 2,
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "Both physiques walking",
+      "pass": true
+    },
+    {
+      "name": "Held contact chest toggle",
+      "pass": true,
+      "before": {
+        "mode": "contact",
+        "accessories": [
+          {
+            "arms": true,
+            "waist": true,
+            "chest": true,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.04468949738988261,
+                "radiusMax": 0.05302135630987298
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.042487700932762884,
+                "radiusMax": 0.04860032345631101
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.04468951821172936,
+                "radiusMax": 0.053021391198119855
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.04248775612051963,
+                "radiusMax": 0.04860035948693709
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.09038304680549722,
+                "radiusMax": 0.16130817700622718
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.08794828219640927,
+                "radiusMax": 0.1614050512968488
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.08501959637789756,
+                "radiusMax": 0.16085248561121576
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.09485821455232285,
+                "radiusMax": 0.15633153922886356
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.11289326648588621,
+                "radiusMax": 0.15841960818772569
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.002430599954307056,
+                  0.16388977316141964,
+                  0.0756325173501784
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.0024306176321060584,
+                  0.1638897731614152,
+                  0.07563251646692998
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.08865195589976353,
+                  -0.033230907902566,
+                  0.1536290016360421
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000012906506891285918,
+                  -0.03756787324266464,
+                  0.1653452537381932
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.08867120277945545,
+                  -0.03323956635715808,
+                  0.15365239233180744
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  2.867122871064165e-8,
+                  0.0045067894545463005,
+                  0.2448011340952248
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          },
+          {
+            "arms": true,
+            "waist": true,
+            "chest": true,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.06226374539993601,
+                "radiusMax": 0.07903389802790727
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.05829042416302524,
+                "radiusMax": 0.07479946201009759
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.06226380981004715,
+                "radiusMax": 0.07903389020834532
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.05829046952631347,
+                "radiusMax": 0.07479946356614033
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.11185694924140477,
+                "radiusMax": 0.21497386404710161
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.10568037394622382,
+                "radiusMax": 0.21259631287177802
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.10052109008211307,
+                "radiusMax": 0.21034703490224782
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.12725149769116736,
+                "radiusMax": 0.21331077057089837
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.15764478025967252,
+                "radiusMax": 0.20062078232370448
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.03220762449593507,
+                  0.16388976432139105,
+                  0.09666697667887796
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.03220767272498005,
+                  0.16388976432137872,
+                  0.09666697395927563
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.11891472648342348,
+                  -0.050454695236526126,
+                  0.20015882577199584
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000014551749738800357,
+                  -0.052345693780479596,
+                  0.2052673322802021
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.1189758135121657,
+                  -0.05048492041816566,
+                  0.20024047868368655
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  6.868809672433418e-8,
+                  0.017975333792207726,
+                  0.2905989153492091
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          }
+        ],
+        "contact": {
+          "active": true,
+          "distance": 0.72,
+          "ready": true,
+          "awaitNeutral": false,
+          "enterDistance": 1,
+          "breakDistance": 1.25,
+          "player": {
+            "position": [
+              0,
+              0,
+              0.06999999999999995
+            ],
+            "speed": 0,
+            "velocitySpeed": 0,
+            "heading": 3.141592653589793,
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "distance": 1.08,
+            "boundary": 2.6,
+            "feet": [
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  -0.2304539281508817,
+                  0.07899497562372305,
+                  0.14157053549205734
+                ],
+                "actualAnkle": [
+                  -0.23045389091838175,
+                  0.07899494968421411,
+                  0.1415704518498814
+                ],
+                "reachError": 9.515845086768014e-8,
+                "actualSoleCentre": [
+                  -0.252549853812219,
+                  0.013551271059096957,
+                  0.02470619840257564
+                ],
+                "actualSoleMinY": 0.00219674815582893,
+                "sampledVertices": 144
+              },
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  0.2304539281508817,
+                  0.07899497562372305,
+                  0.050904602829677736
+                ],
+                "actualAnkle": [
+                  0.23045388849426635,
+                  0.07899496926904381,
+                  0.05090452348568378
+                ],
+                "reachError": 8.892973893334137e-8,
+                "actualSoleCentre": [
+                  0.25254987404605883,
+                  0.013551808006240496,
+                  -0.0659660934372175
+                ],
+                "actualSoleMinY": 0.0021967651814827106,
+                "sampledVertices": 144
+              }
+            ]
+          },
+          "opponent": {
+            "position": [
+              0,
+              0,
+              -0.65
+            ],
+            "speed": 0,
+            "velocitySpeed": 0,
+            "heading": 0,
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "distance": 0,
+            "boundary": 2.6,
+            "feet": [
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  0.23045392815088167,
+                  0.07899497562372304,
+                  -0.6309046028296778
+                ],
+                "actualAnkle": [
+                  0.23045387840379944,
+                  0.07899501092897387,
+                  -0.6309045791485959
+                ],
+                "reachError": 6.543719558225338e-8,
+                "actualSoleCentre": [
+                  0.25183305063476136,
+                  0.013548641870835735,
+                  -0.5144882340183303
+                ],
+                "actualSoleMinY": 0.002196023022301966,
+                "sampledVertices": 144
+              },
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  -0.23045392815088167,
+                  0.07899497562372304,
+                  -0.6309046028296778
+                ],
+                "actualAnkle": [
+                  -0.23045387840379944,
+                  0.07899501092897387,
+                  -0.6309045791485959
+                ],
+                "reachError": 6.543719558225338e-8,
+                "actualSoleCentre": [
+                  -0.251833087977059,
+                  0.01354864845403575,
+                  -0.514488224701481
+                ],
+                "actualSoleMinY": 0.00219602306317811,
+                "sampledVertices": 144
+              }
+            ]
+          }
+        },
+        "contactHeld": true,
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            0.06999999999999995
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 1.08,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.2304539281508817,
+                0.07899497562372305,
+                0.14157053549205734
+              ],
+              "actualAnkle": [
+                -0.23045389091838175,
+                0.07899494968421411,
+                0.1415704518498814
+              ],
+              "reachError": 9.515845086768014e-8,
+              "actualSoleCentre": [
+                -0.252549853812219,
+                0.013551271059096957,
+                0.02470619840257564
+              ],
+              "actualSoleMinY": 0.00219674815582893,
+              "sampledVertices": 144
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.2304539281508817,
+                0.07899497562372305,
+                0.050904602829677736
+              ],
+              "actualAnkle": [
+                0.23045388849426635,
+                0.07899496926904381,
+                0.05090452348568378
+              ],
+              "reachError": 8.892973893334137e-8,
+              "actualSoleCentre": [
+                0.25254987404605883,
+                0.013551808006240496,
+                -0.0659660934372175
+              ],
+              "actualSoleMinY": 0.0021967651814827106,
+              "sampledVertices": 144
+            }
+          ]
+        },
+        "faceDetail": false,
+        "texturedFace": true,
+        "faceMix": [
+          1,
+          1
+        ],
+        "faceVertices": [
+          6965,
+          6965
+        ],
+        "finish": "refined",
+        "hairCount": 2,
+        "garmentCount": 2
+      },
+      "after": {
+        "mode": "contact",
+        "accessories": [
+          {
+            "arms": true,
+            "waist": true,
+            "chest": false,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.04468949738988261,
+                "radiusMax": 0.05302135630987298
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.042487700932762884,
+                "radiusMax": 0.04860032345631101
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.04468951821172936,
+                "radiusMax": 0.053021391198119855
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.04248775612051963,
+                "radiusMax": 0.04860035948693709
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.09038304680549722,
+                "radiusMax": 0.16130817700622718
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.08794828219640927,
+                "radiusMax": 0.1614050512968488
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.08501959637789756,
+                "radiusMax": 0.16085248561121576
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.09485821455232285,
+                "radiusMax": 0.15633153922886356
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.11289326648588621,
+                "radiusMax": 0.15841960818772569
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.002430599954307056,
+                  0.16388977316141964,
+                  0.0756325173501784
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.0024306176321060584,
+                  0.1638897731614152,
+                  0.07563251646692998
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.08865195589976353,
+                  -0.033230907902566,
+                  0.1536290016360421
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000012906506891285918,
+                  -0.03756787324266464,
+                  0.1653452537381932
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.08867120277945545,
+                  -0.03323956635715808,
+                  0.15365239233180744
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  2.867122871064165e-8,
+                  0.0045067894545463005,
+                  0.2448011340952248
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          },
+          {
+            "arms": true,
+            "waist": true,
+            "chest": false,
+            "pouches": 6,
+            "sections": [
+              {
+                "name": "LeftArmUpper",
+                "radiusMin": 0.06226374539993601,
+                "radiusMax": 0.07903389802790727
+              },
+              {
+                "name": "LeftArmLower",
+                "radiusMin": 0.05829042416302524,
+                "radiusMax": 0.07479946201009759
+              },
+              {
+                "name": "RightArmUpper",
+                "radiusMin": 0.06226380981004715,
+                "radiusMax": 0.07903389020834532
+              },
+              {
+                "name": "RightArmLower",
+                "radiusMin": 0.05829046952631347,
+                "radiusMax": 0.07479946356614033
+              },
+              {
+                "name": "WaistUpper",
+                "radiusMin": 0.11185694924140477,
+                "radiusMax": 0.21497386404710161
+              },
+              {
+                "name": "WaistLower",
+                "radiusMin": 0.10568037394622382,
+                "radiusMax": 0.21259631287177802
+              },
+              {
+                "name": "WaistPouches",
+                "radiusMin": 0.10052109008211307,
+                "radiusMax": 0.21034703490224782
+              },
+              {
+                "name": "ChestLower",
+                "radiusMin": 0.12725149769116736,
+                "radiusMax": 0.21331077057089837
+              },
+              {
+                "name": "ChestPouch",
+                "radiusMin": 0.15764478025967252,
+                "radiusMax": 0.20062078232370448
+              }
+            ],
+            "anchors": [
+              {
+                "name": "LeftAccessoryPouch",
+                "bone": "LeftArm",
+                "local": [
+                  -0.03220762449593507,
+                  0.16388976432139105,
+                  0.09666697667887796
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "RightAccessoryPouch",
+                "bone": "RightArm",
+                "local": [
+                  0.03220767272498005,
+                  0.16388976432137872,
+                  0.09666697395927563
+                ],
+                "surfaceClearance": 0.012
+              },
+              {
+                "name": "WaistAccessoryPouch0",
+                "bone": "Hips",
+                "local": [
+                  -0.11891472648342348,
+                  -0.050454695236526126,
+                  0.20015882577199584
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch1",
+                "bone": "Hips",
+                "local": [
+                  0.0000014551749738800357,
+                  -0.052345693780479596,
+                  0.2052673322802021
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "WaistAccessoryPouch2",
+                "bone": "Hips",
+                "local": [
+                  0.1189758135121657,
+                  -0.05048492041816566,
+                  0.20024047868368655
+                ],
+                "surfaceClearance": 0.023
+              },
+              {
+                "name": "ChestAccessoryPouch",
+                "bone": "Spine1",
+                "local": [
+                  6.868809672433418e-8,
+                  0.017975333792207726,
+                  0.2905989153492091
+                ],
+                "surfaceClearance": 0.022
+              }
+            ]
+          }
+        ],
+        "contact": {
+          "active": true,
+          "distance": 0.72,
+          "ready": true,
+          "awaitNeutral": false,
+          "enterDistance": 1,
+          "breakDistance": 1.25,
+          "player": {
+            "position": [
+              0,
+              0,
+              0.06999999999999995
+            ],
+            "speed": 0,
+            "velocitySpeed": 0,
+            "heading": 3.141592653589793,
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "distance": 1.08,
+            "boundary": 2.6,
+            "feet": [
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  -0.2304539281508817,
+                  0.07899497562372305,
+                  0.14157053549205734
+                ],
+                "actualAnkle": [
+                  -0.23045389091838175,
+                  0.07899494968421411,
+                  0.1415704518498814
+                ],
+                "reachError": 9.515845086768014e-8,
+                "actualSoleCentre": [
+                  -0.252549853812219,
+                  0.013551271059096957,
+                  0.02470619840257564
+                ],
+                "actualSoleMinY": 0.00219674815582893,
+                "sampledVertices": 144
+              },
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  0.2304539281508817,
+                  0.07899497562372305,
+                  0.050904602829677736
+                ],
+                "actualAnkle": [
+                  0.23045388849426635,
+                  0.07899496926904381,
+                  0.05090452348568378
+                ],
+                "reachError": 8.892973893334137e-8,
+                "actualSoleCentre": [
+                  0.25254987404605883,
+                  0.013551808006240496,
+                  -0.0659660934372175
+                ],
+                "actualSoleMinY": 0.0021967651814827106,
+                "sampledVertices": 144
+              }
+            ]
+          },
+          "opponent": {
+            "position": [
+              0,
+              0,
+              -0.65
+            ],
+            "speed": 0,
+            "velocitySpeed": 0,
+            "heading": 0,
+            "input": [
+              0,
+              0,
+              0
+            ],
+            "distance": 0,
+            "boundary": 2.6,
+            "feet": [
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  0.23045392815088167,
+                  0.07899497562372304,
+                  -0.6309046028296778
+                ],
+                "actualAnkle": [
+                  0.23045387840379944,
+                  0.07899501092897387,
+                  -0.6309045791485959
+                ],
+                "reachError": 6.543719558225338e-8,
+                "actualSoleCentre": [
+                  0.25183305063476136,
+                  0.013548641870835735,
+                  -0.5144882340183303
+                ],
+                "actualSoleMinY": 0.002196023022301966,
+                "sampledVertices": 144
+              },
+              {
+                "swinging": false,
+                "ankleTarget": [
+                  -0.23045392815088167,
+                  0.07899497562372304,
+                  -0.6309046028296778
+                ],
+                "actualAnkle": [
+                  -0.23045387840379944,
+                  0.07899501092897387,
+                  -0.6309045791485959
+                ],
+                "reachError": 6.543719558225338e-8,
+                "actualSoleCentre": [
+                  -0.251833087977059,
+                  0.01354864845403575,
+                  -0.514488224701481
+                ],
+                "actualSoleMinY": 0.00219602306317811,
+                "sampledVertices": 144
+              }
+            ]
+          }
+        },
+        "contactHeld": true,
+        "selected": "heavy",
+        "inputCount": 0,
+        "locomotion": {
+          "position": [
+            0,
+            0,
+            0.06999999999999995
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 1.08,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.2304539281508817,
+                0.07899497562372305,
+                0.14157053549205734
+              ],
+              "actualAnkle": [
+                -0.23045389091838175,
+                0.07899494968421411,
+                0.1415704518498814
+              ],
+              "reachError": 9.515845086768014e-8,
+              "actualSoleCentre": [
+                -0.252549853812219,
+                0.013551271059096957,
+                0.02470619840257564
+              ],
+              "actualSoleMinY": 0.00219674815582893,
+              "sampledVertices": 144
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.2304539281508817,
+                0.07899497562372305,
+                0.050904602829677736
+              ],
+              "actualAnkle": [
+                0.23045388849426635,
+                0.07899496926904381,
+                0.05090452348568378
+              ],
+              "reachError": 8.892973893334137e-8,
+              "actualSoleCentre": [
+                0.25254987404605883,
+                0.013551808006240496,
+                -0.0659660934372175
+              ],
+              "actualSoleMinY": 0.0021967651814827106,
+              "sampledVertices": 144
+            }
+          ]
+        },
+        "faceDetail": false,
+        "texturedFace": true,
+        "faceMix": [
+          1,
+          1
+        ],
+        "faceVertices": [
+          6965,
+          6965
+        ],
+        "finish": "refined",
+        "hairCount": 2,
+        "garmentCount": 2
+      }
+    },
+    {
+      "name": "390px layout and keyboard chest switch",
+      "pass": true,
+      "sizes": {
+        "scroll": 390,
+        "width": 390
+      }
+    }
+  ],
+  "logs": []
+}

@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-10-11T20:22:52.617391+00:00",
+  "scope": [
+    "game/Assets",
+    "game/Packages",
+    "game/ProjectSettings"
+  ],
+  "baseline_files": 108,
+  "current_files": 108,
+  "changed": [],
+  "added": [],
+  "removed": [],
+  "original_model_sha256": "43fd6955e610bcf1d5a1258c2ca610d24c2c253d27bf1d759c61ef505cfcbcb2"
+}

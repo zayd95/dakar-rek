@@ -1,0 +1,9 @@
+{
+  "src/main.ts": "b353e385e8258586a8691a5ef6a3683349e9198df6d929d307593c62df0946d2",
+  "src/locomotion.ts": "a3f3181b3aebf3c10dc8fd973f71c33aab1e34ce5022bcc91d30cdafecfac96d",
+  "src/contact-practice.ts": "6cea0f1a0562151dfd9aa27478ac781a24a3e0f6aa71535c4a1a584483af6879",
+  "src/style.css": "65ef5fb6a1a3ea6a3e3703ea9ee36704cceadbe629c67d06190d51ab671608a4",
+  "index.html": "55a75804423c68c90bcaddb644f1b84c16a585ca97ad1f77ca0d82312f30fbe7",
+  "scripts/check-contact.mjs": "2aa4700822c3164eff6f722ec30f890ac9df5bf9d7ed070412d52e707cff5c7c",
+  "README.md": "7651de6f1194731ca8f3ce57ce36a5e8ac7e957d30051a03bda7ca0b805df343"
+}

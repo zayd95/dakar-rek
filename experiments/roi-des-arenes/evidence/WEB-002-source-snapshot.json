@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-10-11T23:13:02.934596+00:00",
+  "aggregate_sha256": "dbfa2646da5171f15e6cd59c0b715774baf97cde01e4680d3cc3a96a95b2ae88",
+  "files": {
+    ".gitignore": "168646ebd2f475e80e97409b4d51da75ef81577333e840c44df4eb3eb51e8512",
+    "ASSET_PROVENANCE.md": "bebf6316344d3f0fc65f876b678777e52d205ec72041a0c688dfe242bc8b209a",
+    "README.md": "9cdd5adaf81ab6e37ff15ce431ba1df0e35d90ddc379c1c0380ee184a91dcba2",
+    "index.html": "2f874fb2e4ef048d2b5748370287f136fd9eb5297c36bf3639690af80de98ea4",
+    "package-lock.json": "1410fc5895bc07a490c8715ddd41ff74b3e1fc7183e2ae6ece1d9982e6ddcf5f",
+    "package.json": "14dbc5ce3dc53f107a5cbe9c4412205a00ab3ff5e3a173f262262363e9ff0d74",
+    "public/assets/anatomy-study.glb": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+    "public/assets/anatomy-study.json": "a73defe45784e25375db016ff7058072c821063594bbb77df93b1be37b114cd7",
+    "public/favicon.svg": "6f2e513af98eeddbec7af3c65401890ef8515b0b0ac578e3a4d75663ff0940c3",
+    "scripts/check-locomotion.mjs": "e8960351a0f5ee1ec94a00d3bb8735a87a2f1e02b9a416cc2bab289ee79a1e45",
+    "scripts/check-motion-input.mjs": "9e477900f24702c53f4fc1eca4b086d38022acdfcaf463f0ca2697aa7062ec2a",
+    "scripts/check-viewer.mjs": "8e6a28f3da307cf29a134ffd5aaf24f8e1447de6b50711b99a1669520c8a57f0",
+    "scripts/prepare-study.py": "8d4b0d0a336c0c3bd9c896e8541036f50adbef34a9829f308c754ed635e117e3",
+    "scripts/smooth_mesh.py": "359eb6893606198f62cef566ee1a99bcbb60729831d66bf1311ac2201f4651b8",
+    "src/locomotion.ts": "9e207cba59a4c318228774fb6c4e2be9cf9d1a36c1f439a9dd16115c6d8386cc",
+    "src/main.ts": "60ce02fbf94c88aeadf0cb782ad15d3f6ad95ca73bc683c8b2b602985731e1f3",
+    "src/motion-input.ts": "5323d2691023264a30c2de6c2f2eed6825291d527b638b1968f41767a25bdb5b",
+    "src/style.css": "4be8581e08e4cedac897d4f3de88071d209856172bae0a1c99e891c29af8afdf",
+    "src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "tsconfig.json": "ff3db04f66943584dd00699cb5ea1369cfef70887fca40c0dcb12c9c8fb3635c",
+    "vite.config.ts": "fceaa1275aef08e33af4f9785d8cb9e4c1f543128922cfa2d02c0275aef33061"
+  }
+}

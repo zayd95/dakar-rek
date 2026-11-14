@@ -1,0 +1,12 @@
+{
+  "source_sha256": "43fd6955e610bcf1d5a1258c2ca610d24c2c253d27bf1d759c61ef505cfcbcb2",
+  "study_sha256": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+  "basis_max_error": 5.960464477539063e-08,
+  "original_vertices": 6322,
+  "runtime_vertices": 6965,
+  "triangles": 12560,
+  "seam_copies": 643,
+  "uv_subdivision": "linear, per source face corner; original Loop geometry unchanged",
+  "source_unchanged": true,
+  "study_unchanged": true
+}

@@ -1,0 +1,642 @@
+{
+  "kind": "Actual GLB/controller simulation, not a browser or human feel verdict",
+  "checks": [
+    "Independent keyboard/pointer ownership and cancellation",
+    "Athletic rigid spawn/feet, held approach, suspension, hysteresis, release neutral latch, cancel/reset and exact viewer restore",
+    "Heavy rigid spawn/feet, held approach, suspension, hysteresis, release neutral latch, cancel/reset and exact viewer restore",
+    "Athletic 30 Hz obstacle collision, glancing approach and stance grounding",
+    "Athletic 60 Hz obstacle collision, glancing approach and stance grounding",
+    "Athletic 120 Hz obstacle collision, glancing approach and stance grounding",
+    "Heavy 30 Hz obstacle collision, glancing approach and stance grounding",
+    "Heavy 60 Hz obstacle collision, glancing approach and stance grounding",
+    "Heavy 120 Hz obstacle collision, glancing approach and stance grounding",
+    "Athletic 30 Hz reversing tangent retains separation and planted-foot reach",
+    "Athletic 60 Hz reversing tangent retains separation and planted-foot reach",
+    "Athletic 120 Hz reversing tangent retains separation and planted-foot reach",
+    "Heavy 30 Hz reversing tangent retains separation and planted-foot reach",
+    "Heavy 60 Hz reversing tangent retains separation and planted-foot reach",
+    "Heavy 120 Hz reversing tangent retains separation and planted-foot reach"
+  ],
+  "samples": [
+    {
+      "heavy": false,
+      "initial": {
+        "active": false,
+        "distance": 1.7999999999999998,
+        "ready": false,
+        "awaitNeutral": true,
+        "enterDistance": 1,
+        "breakDistance": 1.25,
+        "player": {
+          "position": [
+            0,
+            0,
+            1.15
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                1.1309045791485957
+              ],
+              "reachError": 6.543719562243127e-8,
+              "actualSoleCentre": [
+                -0.2487631958357593,
+                0.013068547764086997,
+                1.021285928039443
+              ],
+              "actualSoleMinY": 0.002196023022301966,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                1.1309045791485959
+              ],
+              "reachError": 6.543719554207549e-8,
+              "actualSoleCentre": [
+                0.24876322772887444,
+                0.013068554063436945,
+                1.0212859227001474
+              ],
+              "actualSoleMinY": 0.00219602306317811,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "opponent": {
+          "position": [
+            0,
+            0,
+            -0.65
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                0.24946803374528914,
+                0.01307166220651046,
+                -0.5208613299800315
+              ],
+              "actualSoleMinY": 0.0021967930866516523,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                -0.24946806662600074,
+                0.013071668722252898,
+                -0.5208613259368984
+              ],
+              "actualSoleMinY": 0.0021967931660926733,
+              "sampledVertices": 127
+            }
+          ]
+        }
+      },
+      "contactPosition": [
+        0,
+        0,
+        0.3478194928248038
+      ],
+      "releaseRecovered": {
+        "active": false,
+        "distance": 1.7999999999999998,
+        "ready": false,
+        "awaitNeutral": false,
+        "enterDistance": 1,
+        "breakDistance": 1.25,
+        "player": {
+          "position": [
+            0,
+            0,
+            1.15
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                -0.23045388849426635,
+                0.07899496926904415,
+                1.1309045234856838
+              ],
+              "reachError": 8.892973877235354e-8,
+              "actualSoleCentre": [
+                -0.24876320271803393,
+                0.013068517086293183,
+                1.0212859050570158
+              ],
+              "actualSoleMinY": 0.0021959950888202347,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                0.23045388849426635,
+                0.07899496926904381,
+                1.1309045234856838
+              ],
+              "reachError": 8.89297387961536e-8,
+              "actualSoleCentre": [
+                0.24876323461113942,
+                0.013068523385634731,
+                1.0212858997177177
+              ],
+              "actualSoleMinY": 0.0021959951296943213,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "opponent": {
+          "position": [
+            0,
+            0,
+            -0.65
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                0.24946803374528914,
+                0.01307166220651046,
+                -0.5208613299800315
+              ],
+              "actualSoleMinY": 0.0021967930866516523,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                -0.24946806662600074,
+                0.013071668722252898,
+                -0.5208613259368984
+              ],
+              "actualSoleMinY": 0.0021967931660926733,
+              "sampledVertices": 127
+            }
+          ]
+        }
+      }
+    },
+    {
+      "heavy": true,
+      "initial": {
+        "active": false,
+        "distance": 1.7999999999999998,
+        "ready": false,
+        "awaitNeutral": true,
+        "enterDistance": 1,
+        "breakDistance": 1.25,
+        "player": {
+          "position": [
+            0,
+            0,
+            1.15
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                1.1309045791485957
+              ],
+              "reachError": 6.543719562243127e-8,
+              "actualSoleCentre": [
+                -0.2494680337452891,
+                0.01307166220651046,
+                1.0208613288560966
+              ],
+              "actualSoleMinY": 0.0021967930866516523,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                1.1309045791485959
+              ],
+              "reachError": 6.543719554207549e-8,
+              "actualSoleCentre": [
+                0.24946806662600074,
+                0.013071668722252898,
+                1.02086132550733
+              ],
+              "actualSoleMinY": 0.0021967931660926733,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "opponent": {
+          "position": [
+            0,
+            0,
+            -0.65
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                0.24876319583575934,
+                0.013068547764086997,
+                -0.5212859291633786
+              ],
+              "actualSoleMinY": 0.002196023022301966,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                -0.24876322772887444,
+                0.013068554063436945,
+                -0.5212859231297157
+              ],
+              "actualSoleMinY": 0.00219602306317811,
+              "sampledVertices": 127
+            }
+          ]
+        }
+      },
+      "contactPosition": [
+        0,
+        0,
+        0.3478194928248038
+      ],
+      "releaseRecovered": {
+        "active": false,
+        "distance": 1.7999999999999998,
+        "ready": false,
+        "awaitNeutral": false,
+        "enterDistance": 1,
+        "breakDistance": 1.25,
+        "player": {
+          "position": [
+            0,
+            0,
+            1.15
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 3.141592653589793,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                -0.23045388849426635,
+                0.07899496926904415,
+                1.1309045234856838
+              ],
+              "reachError": 8.892973877235354e-8,
+              "actualSoleCentre": [
+                -0.24946804046165255,
+                0.013071631464545824,
+                1.0208613059969762
+              ],
+              "actualSoleMinY": 0.002196765102045896,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                1.1309046028296776
+              ],
+              "actualAnkle": [
+                0.23045388849426635,
+                0.07899496926904381,
+                1.1309045234856838
+              ],
+              "reachError": 8.89297387961536e-8,
+              "actualSoleCentre": [
+                0.24946807334235446,
+                0.013071637980279582,
+                1.0208613026482074
+              ],
+              "actualSoleMinY": 0.0021967651814827132,
+              "sampledVertices": 127
+            }
+          ]
+        },
+        "opponent": {
+          "position": [
+            0,
+            0,
+            -0.65
+          ],
+          "speed": 0,
+          "velocitySpeed": 0,
+          "heading": 0,
+          "input": [
+            0,
+            0,
+            0
+          ],
+          "distance": 0,
+          "boundary": 2.6,
+          "feet": [
+            {
+              "swinging": false,
+              "ankleTarget": [
+                0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                0.24876319583575934,
+                0.013068547764086997,
+                -0.5212859291633786
+              ],
+              "actualSoleMinY": 0.002196023022301966,
+              "sampledVertices": 127
+            },
+            {
+              "swinging": false,
+              "ankleTarget": [
+                -0.23045392815088167,
+                0.07899497562372304,
+                -0.6309046028296778
+              ],
+              "actualAnkle": [
+                -0.23045387840379944,
+                0.07899501092897387,
+                -0.6309045791485959
+              ],
+              "reachError": 6.543719558225338e-8,
+              "actualSoleCentre": [
+                -0.24876322772887444,
+                0.013068554063436945,
+                -0.5212859231297157
+              ],
+              "actualSoleMinY": 0.00219602306317811,
+              "sampledVertices": 127
+            }
+          ]
+        }
+      }
+    },
+    {
+      "heavy": false,
+      "hz": 30,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.0021960832598335455
+    },
+    {
+      "heavy": false,
+      "hz": 60,
+      "minDistance": 0.7199999999999998,
+      "maxStanceHeight": 0.0021960833821982368
+    },
+    {
+      "heavy": false,
+      "hz": 120,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.002196083946307314
+    },
+    {
+      "heavy": true,
+      "hz": 30,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.0021968533355124892
+    },
+    {
+      "heavy": true,
+      "hz": 60,
+      "minDistance": 0.7199999999999998,
+      "maxStanceHeight": 0.0021968534577787523
+    },
+    {
+      "heavy": true,
+      "hz": 120,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.00219685401149243
+    },
+    {
+      "heavy": false,
+      "hz": 30,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.002196112264375892,
+      "maxReachError": 1.536037410094361e-7
+    },
+    {
+      "heavy": false,
+      "hz": 60,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.002196104260630765,
+      "maxReachError": 1.50147353188848e-7
+    },
+    {
+      "heavy": false,
+      "hz": 120,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999998,
+      "maxStanceHeight": 0.002196115930824684,
+      "maxReachError": 1.578823936659497e-7
+    },
+    {
+      "heavy": true,
+      "hz": 30,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.002196882306861146,
+      "maxReachError": 1.536037410094361e-7
+    },
+    {
+      "heavy": true,
+      "hz": 60,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999999,
+      "maxStanceHeight": 0.0021968743613926603,
+      "maxReachError": 1.50147353188848e-7
+    },
+    {
+      "heavy": true,
+      "hz": 120,
+      "reversingTangent": true,
+      "minDistance": 0.7199999999999998,
+      "maxStanceHeight": 0.0021968860316741627,
+      "maxReachError": 1.578823936659497e-7
+    }
+  ]
+}

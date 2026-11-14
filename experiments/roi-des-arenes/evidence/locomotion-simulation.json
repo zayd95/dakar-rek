@@ -1,0 +1,482 @@
+{
+  "timestamp": "2026-10-19T04:21:16.364Z",
+  "kind": "Pure same-controller/same-GLB simulation, not a device/browser performance test",
+  "checks": [
+    {
+      "name": "Athletic travel, mid-swing release, actual sole grounding and stable idle",
+      "passed": true
+    },
+    {
+      "name": "Athletic turns, stays bounded and stops gait against edge",
+      "passed": true
+    },
+    {
+      "name": "Athletic repeated reset/reconstruction and exact original viewer translation restoration",
+      "passed": true
+    },
+    {
+      "name": "Heavy travel, mid-swing release, actual sole grounding and stable idle",
+      "passed": true
+    },
+    {
+      "name": "Heavy turns, stays bounded and stops gait against edge",
+      "passed": true
+    },
+    {
+      "name": "Heavy repeated reset/reconstruction and exact original viewer translation restoration",
+      "passed": true
+    },
+    {
+      "name": "Athletic actual stance soles grounded/stable throughout walking and gradual turns",
+      "passed": true
+    },
+    {
+      "name": "Athletic actual stance soles grounded/stable throughout walking and abrupt turns",
+      "passed": true
+    },
+    {
+      "name": "Heavy actual stance soles grounded/stable throughout walking and gradual turns",
+      "passed": true
+    },
+    {
+      "name": "Heavy actual stance soles grounded/stable throughout walking and abrupt turns",
+      "passed": true
+    },
+    {
+      "name": "Equal elapsed travel at 30/60/120 Hz; normalized cardinal/diagonal speeds",
+      "passed": true
+    }
+  ],
+  "travel": [
+    {
+      "hz": 30,
+      "diagonal": false,
+      "distance": 1.5170332281604015
+    },
+    {
+      "hz": 30,
+      "diagonal": true,
+      "distance": 1.5170332281604009
+    },
+    {
+      "hz": 60,
+      "diagonal": false,
+      "distance": 1.5170332281604015
+    },
+    {
+      "hz": 60,
+      "diagonal": true,
+      "distance": 1.5170332281604009
+    },
+    {
+      "hz": 120,
+      "diagonal": false,
+      "distance": 1.5170332281604015
+    },
+    {
+      "hz": 120,
+      "diagonal": true,
+      "distance": 1.5170332281604009
+    }
+  ],
+  "samples": [
+    {
+      "heavy": false,
+      "idle": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "speed": 0,
+        "velocitySpeed": 0,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          0
+        ],
+        "distance": 0,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.23045392815088167,
+              0.07899497562372304,
+              0.01909539717032222
+            ],
+            "actualAnkle": [
+              0.23045387840379944,
+              0.07899501092897387,
+              0.019095420851404116
+            ],
+            "reachError": 6.543719558978674e-8,
+            "actualSoleCentre": [
+              0.24876319583575934,
+              0.013068547764086997,
+              0.12871406937550603
+            ],
+            "actualSoleMinY": 0.002196023022301966,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": false,
+            "ankleTarget": [
+              -0.23045392815088167,
+              0.07899497562372304,
+              0.01909539717032222
+            ],
+            "actualAnkle": [
+              -0.23045387840379944,
+              0.07899501092897387,
+              0.019095420851404116
+            ],
+            "reachError": 6.543719558978674e-8,
+            "actualSoleCentre": [
+              -0.24876322772887444,
+              0.013068554063436945,
+              0.12871407631184598
+            ],
+            "actualSoleMinY": 0.00219602306317811,
+            "sampledVertices": 127
+          }
+        ]
+      },
+      "moving": {
+        "position": [
+          0,
+          0,
+          1.5170332281604015
+        ],
+        "speed": 1.0999932413664126,
+        "velocitySpeed": 1.0999932413664115,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          1
+        ],
+        "distance": 1.5170332281604015,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.2304539281508817,
+              0.07899497562372305,
+              1.633276415161462
+            ],
+            "actualAnkle": [
+              0.23045387979249277,
+              0.07899501834105932,
+              1.633276432712404
+            ],
+            "reachError": 6.686808030725348e-8,
+            "actualSoleCentre": [
+              0.2487630651290237,
+              0.01306972226872275,
+              1.7429038026910337
+            ],
+            "actualSoleMinY": 0.0021960297411206414,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": true,
+            "ankleTarget": [
+              -0.2304539281508817,
+              0.09200878812512708,
+              1.32781798837773
+            ],
+            "actualAnkle": [
+              -0.23045388338965633,
+              0.09200878175245569,
+              1.32781801122789
+            ],
+            "reachError": 5.0658741084263285e-8,
+            "actualSoleCentre": [
+              -0.24876317794689604,
+              0.026083019802559396,
+              1.4374213158834301
+            ],
+            "actualSoleMinY": 0.01520979593446661,
+            "sampledVertices": 127
+          }
+        ]
+      },
+      "stopped": {
+        "position": [
+          0,
+          0,
+          1.6492664802373271
+        ],
+        "speed": 0,
+        "velocitySpeed": 0,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          0
+        ],
+        "distance": 1.6492664802373271,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.2304539281508817,
+              0.07899497562372305,
+              1.633276415161462
+            ],
+            "actualAnkle": [
+              0.23045387885257573,
+              0.07899500494887013,
+              1.6332764402719224
+            ],
+            "reachError": 6.261647101493111e-8,
+            "actualSoleCentre": [
+              0.24876319899566207,
+              0.013068409245815121,
+              1.7428922875272028
+            ],
+            "actualSoleMinY": 0.002196017200254749,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": false,
+            "ankleTarget": [
+              -0.2304539281508817,
+              0.07899497562372305,
+              1.7006776945150872
+            ],
+            "actualAnkle": [
+              -0.23045387841486809,
+              0.07899501497876099,
+              1.700677716390293
+            ],
+            "reachError": 6.708960197336244e-8,
+            "actualSoleCentre": [
+              -0.24876320605427435,
+              0.013068801353130348,
+              1.8102991206028125
+            ],
+            "actualSoleMinY": 0.00219602693912496,
+            "sampledVertices": 127
+          }
+        ]
+      }
+    },
+    {
+      "heavy": true,
+      "idle": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "speed": 0,
+        "velocitySpeed": 0,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          0
+        ],
+        "distance": 0,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.23045392815088167,
+              0.07899497562372304,
+              0.01909539717032222
+            ],
+            "actualAnkle": [
+              0.23045387840379944,
+              0.07899501092897387,
+              0.019095420851404116
+            ],
+            "reachError": 6.543719558978674e-8,
+            "actualSoleCentre": [
+              0.24946803374528914,
+              0.01307166220651046,
+              0.1291386685588529
+            ],
+            "actualSoleMinY": 0.0021967930866516523,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": false,
+            "ankleTarget": [
+              -0.23045392815088167,
+              0.07899497562372304,
+              0.01909539717032222
+            ],
+            "actualAnkle": [
+              -0.23045387840379944,
+              0.07899501092897387,
+              0.019095420851404116
+            ],
+            "reachError": 6.543719558978674e-8,
+            "actualSoleCentre": [
+              -0.24946806662600074,
+              0.013071668722252898,
+              0.12913867350466282
+            ],
+            "actualSoleMinY": 0.0021967931660926733,
+            "sampledVertices": 127
+          }
+        ]
+      },
+      "moving": {
+        "position": [
+          0,
+          0,
+          1.5170332281604015
+        ],
+        "speed": 1.0999932413664126,
+        "velocitySpeed": 1.0999932413664115,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          1
+        ],
+        "distance": 1.5170332281604015,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.2304539281508817,
+              0.07899497562372305,
+              1.633276415161462
+            ],
+            "actualAnkle": [
+              0.23045387979249277,
+              0.07899501834105932,
+              1.633276432712404
+            ],
+            "reachError": 6.686808030725348e-8,
+            "actualSoleCentre": [
+              0.24946790350935602,
+              0.013072833019824946,
+              1.7433284117331513
+            ],
+            "actualSoleMinY": 0.002196799792866828,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": true,
+            "ankleTarget": [
+              -0.2304539281508817,
+              0.09200878812512708,
+              1.32781798837773
+            ],
+            "actualAnkle": [
+              -0.23045388338965633,
+              0.09200878175245569,
+              1.32781801122789
+            ],
+            "reachError": 5.0658741084263285e-8,
+            "actualSoleCentre": [
+              -0.24946801573279834,
+              0.026086144235169927,
+              1.4378458985320157
+            ],
+            "actualSoleMinY": 0.015210566070077713,
+            "sampledVertices": 127
+          }
+        ]
+      },
+      "stopped": {
+        "position": [
+          0,
+          0,
+          1.6492664802373271
+        ],
+        "speed": 0,
+        "velocitySpeed": 0,
+        "heading": 0,
+        "input": [
+          0,
+          0,
+          0
+        ],
+        "distance": 1.6492664802373271,
+        "boundary": 2.6,
+        "feet": [
+          {
+            "swinging": false,
+            "ankleTarget": [
+              0.2304539281508817,
+              0.07899497562372305,
+              1.633276415161462
+            ],
+            "actualAnkle": [
+              0.23045387885257573,
+              0.07899500494887013,
+              1.6332764402719224
+            ],
+            "reachError": 6.261647101493111e-8,
+            "actualSoleCentre": [
+              0.24946803673497744,
+              0.013071525028402121,
+              1.7433168838699096
+            ],
+            "actualSoleMinY": 0.0021967872693898468,
+            "sampledVertices": 127
+          },
+          {
+            "swinging": false,
+            "ankleTarget": [
+              -0.2304539281508817,
+              0.07899497562372305,
+              1.7006776945150872
+            ],
+            "actualAnkle": [
+              -0.23045387841486809,
+              0.07899501497876099,
+              1.700677716390293
+            ],
+            "reachError": 6.708960197336244e-8,
+            "actualSoleCentre": [
+              -0.24946804511142717,
+              0.013071914754462215,
+              1.8107237207449676
+            ],
+            "actualSoleMinY": 0.0021967970377738213,
+            "sampledVertices": 127
+          }
+        ]
+      }
+    }
+  ],
+  "stanceMetrics": [
+    {
+      "heavy": false,
+      "abrupt": false,
+      "maxHeight": 0.0021960678388852598,
+      "maxDrift": 0.0000019834909413772776
+    },
+    {
+      "heavy": false,
+      "abrupt": true,
+      "maxHeight": 0.002196124897254331,
+      "maxDrift": 0.000005956532949699544
+    },
+    {
+      "heavy": true,
+      "abrupt": false,
+      "maxHeight": 0.0021968379321922107,
+      "maxDrift": 0.0000019766783386769276
+    },
+    {
+      "heavy": true,
+      "abrupt": true,
+      "maxHeight": 0.002196894964039706,
+      "maxDrift": 0.000005899101360834439
+    }
+  ]
+}

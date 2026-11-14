@@ -1,0 +1,93 @@
+{
+  "checks": [
+    {
+      "name": "athletic front/side/back",
+      "passed": true
+    },
+    {
+      "name": "heavy front/side/back",
+      "passed": true
+    },
+    {
+      "name": "W-held switch keeps movement ownership and position",
+      "passed": true
+    },
+    {
+      "name": "athletic moving with both accessory sets",
+      "passed": true,
+      "speed": 0.07066786449096844
+    },
+    {
+      "name": "heavy moving with both accessory sets",
+      "passed": true,
+      "speed": 0.07723455433642862
+    },
+    {
+      "name": "Space-held contact survives waist pointer switch with unchanged position",
+      "passed": true
+    },
+    {
+      "name": "Contact release and390px equipment switches/layout",
+      "passed": true,
+      "narrowLayout": {
+        "scroll": 390,
+        "width": 390
+      }
+    },
+    {
+      "name": "Native equipment switch Space keyboard activation",
+      "passed": true
+    },
+    {
+      "name": "Silhouette comparison, clay/wire and restoration with equipment",
+      "passed": true
+    },
+    {
+      "name": "Final native switches independently remove/restore arms and waist on both bodies",
+      "passed": true
+    },
+    {
+      "name": "Both anatomy poses and return to relaxed comparison",
+      "passed": true
+    }
+  ],
+  "kind": "Author native CUA and DOM checks; independent review inspected captures/source, did not replay UI",
+  "resolvedFindings": [
+    "Initial contour gap",
+    "Heavy armpit cord and low waist-pouch penetration",
+    "Label default focus interrupted held commands; replaced by native switches with stage-preserving pointer handling"
+  ],
+  "heldWalk": {
+    "before": [
+      -0.00020835058875203012,
+      0,
+      -0.0005482910230316583
+    ],
+    "after": [
+      -0.08572093698373412,
+      0,
+      -0.22558141311508983
+    ],
+    "inputAfter": 1,
+    "speedAfter": 1.0231184859008062
+  },
+  "heldContact": {
+    "before": [
+      -0.494955776686709,
+      0,
+      -0.12675869207952173
+    ],
+    "after": [
+      -0.494955776686709,
+      0,
+      -0.12675869207952173
+    ],
+    "activeAfter": true
+  },
+  "logsAfterFinalCandidate": [],
+  "limits": [
+    "Physical device/multitouch/performance unverified",
+    "No continuous cloth/collision certification",
+    "Cultural approval unverified"
+  ]
+}

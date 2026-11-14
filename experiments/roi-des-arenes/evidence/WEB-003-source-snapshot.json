@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-10-12T13:58:51.560114+00:00",
+  "files": {
+    "index.html": "6177b693e2e742aa7706d234835f190331ab772a9484b570deeef1d3e4154878",
+    "README.md": "c4a3268936add499e623419beb300e5b7fd07a4754c4ea187002e0d4ac1d1483",
+    "ASSET_PROVENANCE.md": "5f457ccb040f1ee15e0151d0a9bb244f7b893f96e865eb32f951062b592960d5",
+    ".gitignore": "168646ebd2f475e80e97409b4d51da75ef81577333e840c44df4eb3eb51e8512",
+    "package-lock.json": "1410fc5895bc07a490c8715ddd41ff74b3e1fc7183e2ae6ece1d9982e6ddcf5f",
+    "package.json": "14dbc5ce3dc53f107a5cbe9c4412205a00ab3ff5e3a173f262262363e9ff0d74",
+    "tsconfig.json": "ff3db04f66943584dd00699cb5ea1369cfef70887fca40c0dcb12c9c8fb3635c",
+    "vite.config.ts": "fceaa1275aef08e33af4f9785d8cb9e4c1f543128922cfa2d02c0275aef33061",
+    "public/favicon.svg": "6f2e513af98eeddbec7af3c65401890ef8515b0b0ac578e3a4d75663ff0940c3",
+    "scripts/check-motion-input.mjs": "9e477900f24702c53f4fc1eca4b086d38022acdfcaf463f0ca2697aa7062ec2a",
+    "scripts/prepare-study.py": "8d4b0d0a336c0c3bd9c896e8541036f50adbef34a9829f308c754ed635e117e3",
+    "scripts/check-locomotion.mjs": "e8960351a0f5ee1ec94a00d3bb8735a87a2f1e02b9a416cc2bab289ee79a1e45",
+    "scripts/smooth_mesh.py": "359eb6893606198f62cef566ee1a99bcbb60729831d66bf1311ac2201f4651b8",
+    "scripts/check-finish.mjs": "151916c58e1435ee633a50068b7416ba04bac60caee20ea0d404fe6c53a53a33",
+    "scripts/check-viewer.mjs": "8e6a28f3da307cf29a134ffd5aaf24f8e1447de6b50711b99a1669520c8a57f0",
+    "src/locomotion.ts": "9e207cba59a4c318228774fb6c4e2be9cf9d1a36c1f439a9dd16115c6d8386cc",
+    "src/motion-input.ts": "5323d2691023264a30c2de6c2f2eed6825291d527b638b1968f41767a25bdb5b",
+    "src/main.ts": "a2713c65bc4bb3d809f0634f6aee19a715c8b7ae1993df4719dee2259572edfa",
+    "src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "src/character-finish.ts": "e308dd61e83aaf055675687d1f5f4e99c21965df8ba1e7a81e0d411880a8b077",
+    "src/style.css": "f78473e721a15039ed02184162e597907ef1c979d684db76c8ce911e34b4d90b",
+    "public/assets/anatomy-study.glb": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+    "public/assets/anatomy-study.json": "a73defe45784e25375db016ff7058072c821063594bbb77df93b1be37b114cd7"
+  }
+}

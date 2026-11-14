@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-10-12T13:58:51.560114+00:00",
+  "checks": [
+    {
+      "name": "athletic front close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "athletic side close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "athletic back close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "heavy front close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "heavy side close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "heavy back close-up controls/capture",
+      "passed": true
+    },
+    {
+      "name": "Full body comparison restored with two hair/short layers",
+      "passed": true
+    },
+    {
+      "name": "Athletic displacement with finish",
+      "passed": true
+    },
+    {
+      "name": "Heavy displacement with finish",
+      "passed": true
+    },
+    {
+      "name": "Practice reset retains finish",
+      "passed": true
+    },
+    {
+      "name": "Clay/wireframe controls toggled and restored",
+      "passed": true
+    }
+  ],
+  "passed": 11,
+  "evidence": "Native CUA session observed 2026-10-11; twelve before/after close-ups, full-body, moving and clay/wireframe captures. Fresh server restart/render on 2026-10-12 confirmed in WEB-003-reloaded.jpg and fresh error log inspection (zero).",
+  "limits": "No new physical mobile, multitouch or full error injection. UI camera controls verified through actual clicks; independently reviewed captures rather than replay."
+}

@@ -1,0 +1,411 @@
+{
+  "kind": "Actual GLB/morph/rig geometry checks; body clearance only, not cloth physics or cultural approval",
+  "checks": [
+    "Athletic immutable source, normalized shared-rig surface geometry, fitted contours, five pouches and independent visibility",
+    "Athletic every accessory vertex against actual posed flesh, unchanged 180-frame gait and exact restoration",
+    "Heavy immutable source, normalized shared-rig surface geometry, fitted contours, five pouches and independent visibility",
+    "Heavy every accessory vertex against actual posed flesh, unchanged 180-frame gait and exact restoration"
+  ],
+  "samples": [
+    {
+      "heavy": false,
+      "triangles": 5704,
+      "fit": {
+        "arms": true,
+        "waist": true,
+        "pouches": 5,
+        "sections": [
+          {
+            "name": "LeftArmUpper",
+            "radiusMin": 0.04468949738988261,
+            "radiusMax": 0.05302135630987298
+          },
+          {
+            "name": "LeftArmLower",
+            "radiusMin": 0.042487700932762884,
+            "radiusMax": 0.04860032345631101
+          },
+          {
+            "name": "RightArmUpper",
+            "radiusMin": 0.04468951821172936,
+            "radiusMax": 0.053021391198119855
+          },
+          {
+            "name": "RightArmLower",
+            "radiusMin": 0.04248775612051963,
+            "radiusMax": 0.04860035948693709
+          },
+          {
+            "name": "WaistUpper",
+            "radiusMin": 0.09038304680549722,
+            "radiusMax": 0.16130817700622718
+          },
+          {
+            "name": "WaistLower",
+            "radiusMin": 0.08794828219640927,
+            "radiusMax": 0.1614050512968488
+          },
+          {
+            "name": "WaistPouches",
+            "radiusMin": 0.08501959637789756,
+            "radiusMax": 0.16085248561121576
+          }
+        ],
+        "anchors": [
+          {
+            "name": "LeftAccessoryPouch",
+            "bone": "LeftArm",
+            "local": [
+              -0.002430599954307056,
+              0.16388977316141964,
+              0.0756325173501784
+            ],
+            "surfaceClearance": 0.012
+          },
+          {
+            "name": "RightAccessoryPouch",
+            "bone": "RightArm",
+            "local": [
+              0.0024306176321060584,
+              0.1638897731614152,
+              0.07563251646692998
+            ],
+            "surfaceClearance": 0.012
+          },
+          {
+            "name": "WaistAccessoryPouch0",
+            "bone": "Hips",
+            "local": [
+              -0.08865195589976353,
+              -0.033230907902566,
+              0.1536290016360421
+            ],
+            "surfaceClearance": 0.023
+          },
+          {
+            "name": "WaistAccessoryPouch1",
+            "bone": "Hips",
+            "local": [
+              0.0000012906506891285918,
+              -0.03756787324266464,
+              0.1653452537381932
+            ],
+            "surfaceClearance": 0.023
+          },
+          {
+            "name": "WaistAccessoryPouch2",
+            "bone": "Hips",
+            "local": [
+              0.08867120277945545,
+              -0.03323956635715808,
+              0.15365239233180744
+            ],
+            "surfaceClearance": 0.023
+          }
+        ]
+      },
+      "poses": [
+        {
+          "pose": "source anatomy",
+          "tested": 5844,
+          "min": 0.0035935817428021993,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0035935817428021993,
+            "LeftAccessoryCord:SkinnedMesh": 0.005390350778771196,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.005603698718781734,
+            "LeftAccessoryPouch:Mesh": 0.016617880715114886,
+            "RightAccessoryBand:SkinnedMesh": 0.003593693094555494,
+            "RightAccessoryCord:SkinnedMesh": 0.005390363274256947,
+            "RightAccessoryCordLower:SkinnedMesh": 0.0056036970553286596,
+            "RightAccessoryPouch:Mesh": 0.016617866802351642,
+            "WaistAccessoryBand:SkinnedMesh": 0.014109501294472825,
+            "WaistAccessoryCord:SkinnedMesh": 0.015893093091834645,
+            "WaistAccessoryPouch0:Mesh": 0.015108545128938507,
+            "WaistAccessoryPouch1:Mesh": 0.024541763901298343,
+            "WaistAccessoryPouch2:Mesh": 0.015092225795179404
+          }
+        },
+        {
+          "pose": "moving 0",
+          "tested": 5844,
+          "min": 0.0018880826833907694,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0018880826833907694,
+            "LeftAccessoryCord:SkinnedMesh": 0.005563049010904358,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.003701489807060196,
+            "LeftAccessoryPouch:Mesh": 0.014898980563612736,
+            "RightAccessoryBand:SkinnedMesh": 0.0018893264521450185,
+            "RightAccessoryCord:SkinnedMesh": 0.005563378192848944,
+            "RightAccessoryCordLower:SkinnedMesh": 0.003703000939260794,
+            "RightAccessoryPouch:Mesh": 0.01490182360900532,
+            "WaistAccessoryBand:SkinnedMesh": 0.014869404813379044,
+            "WaistAccessoryCord:SkinnedMesh": 0.016747575072264542,
+            "WaistAccessoryPouch0:Mesh": 0.020403205521216817,
+            "WaistAccessoryPouch1:Mesh": 0.02806958478623651,
+            "WaistAccessoryPouch2:Mesh": 0.02035762858332094
+          }
+        },
+        {
+          "pose": "moving 45",
+          "tested": 5844,
+          "min": 0.0016374904429784251,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.002160533349631131,
+            "LeftAccessoryCord:SkinnedMesh": 0.0055954597780731785,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.004030676851518204,
+            "LeftAccessoryPouch:Mesh": 0.015180820059850716,
+            "RightAccessoryBand:SkinnedMesh": 0.0016374904429784251,
+            "RightAccessoryCord:SkinnedMesh": 0.005479291069511653,
+            "RightAccessoryCordLower:SkinnedMesh": 0.0033903222576938674,
+            "RightAccessoryPouch:Mesh": 0.014776021614509454,
+            "WaistAccessoryBand:SkinnedMesh": 0.014865937241610115,
+            "WaistAccessoryCord:SkinnedMesh": 0.01674293082713635,
+            "WaistAccessoryPouch0:Mesh": 0.019654744188988372,
+            "WaistAccessoryPouch1:Mesh": 0.027243842853444774,
+            "WaistAccessoryPouch2:Mesh": 0.01943270485939434
+          }
+        },
+        {
+          "pose": "moving 90",
+          "tested": 5844,
+          "min": 0.0014500060942310394,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0014500060942310394,
+            "LeftAccessoryCord:SkinnedMesh": 0.005395166080573112,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.0031506646374890998,
+            "LeftAccessoryPouch:Mesh": 0.014771840650022367,
+            "RightAccessoryBand:SkinnedMesh": 0.0023768411400246054,
+            "RightAccessoryCord:SkinnedMesh": 0.005590482008198288,
+            "RightAccessoryCordLower:SkinnedMesh": 0.00430856898767111,
+            "RightAccessoryPouch:Mesh": 0.01547986564370365,
+            "WaistAccessoryBand:SkinnedMesh": 0.014726484431925653,
+            "WaistAccessoryCord:SkinnedMesh": 0.016575027668056762,
+            "WaistAccessoryPouch0:Mesh": 0.015245393797327998,
+            "WaistAccessoryPouch1:Mesh": 0.025835214166982198,
+            "WaistAccessoryPouch2:Mesh": 0.011261139131243662
+          }
+        },
+        {
+          "pose": "stopped",
+          "tested": 5844,
+          "min": 0.0018886586531231015,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0018886586531231015,
+            "LeftAccessoryCord:SkinnedMesh": 0.0055632123120738265,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.00370220418997589,
+            "LeftAccessoryPouch:Mesh": 0.014899418813020534,
+            "RightAccessoryBand:SkinnedMesh": 0.0018887332763036638,
+            "RightAccessoryCord:SkinnedMesh": 0.005563227051334654,
+            "RightAccessoryCordLower:SkinnedMesh": 0.0037022713717897336,
+            "RightAccessoryPouch:Mesh": 0.014901361439583417,
+            "WaistAccessoryBand:SkinnedMesh": 0.014758606746186013,
+            "WaistAccessoryCord:SkinnedMesh": 0.016614286451796603,
+            "WaistAccessoryPouch0:Mesh": 0.02068220831796771,
+            "WaistAccessoryPouch1:Mesh": 0.028077992438520015,
+            "WaistAccessoryPouch2:Mesh": 0.01522470436607418
+          }
+        }
+      ]
+    },
+    {
+      "heavy": true,
+      "triangles": 5704,
+      "fit": {
+        "arms": true,
+        "waist": true,
+        "pouches": 5,
+        "sections": [
+          {
+            "name": "LeftArmUpper",
+            "radiusMin": 0.06226374539993601,
+            "radiusMax": 0.07903389802790727
+          },
+          {
+            "name": "LeftArmLower",
+            "radiusMin": 0.05829042416302524,
+            "radiusMax": 0.07479946201009759
+          },
+          {
+            "name": "RightArmUpper",
+            "radiusMin": 0.06226380981004715,
+            "radiusMax": 0.07903389020834532
+          },
+          {
+            "name": "RightArmLower",
+            "radiusMin": 0.05829046952631347,
+            "radiusMax": 0.07479946356614033
+          },
+          {
+            "name": "WaistUpper",
+            "radiusMin": 0.11185694924140477,
+            "radiusMax": 0.21497386404710161
+          },
+          {
+            "name": "WaistLower",
+            "radiusMin": 0.10568037394622382,
+            "radiusMax": 0.21259631287177802
+          },
+          {
+            "name": "WaistPouches",
+            "radiusMin": 0.10052109008211307,
+            "radiusMax": 0.21034703490224782
+          }
+        ],
+        "anchors": [
+          {
+            "name": "LeftAccessoryPouch",
+            "bone": "LeftArm",
+            "local": [
+              -0.03220762449593507,
+              0.16388976432139105,
+              0.09666697667887796
+            ],
+            "surfaceClearance": 0.012
+          },
+          {
+            "name": "RightAccessoryPouch",
+            "bone": "RightArm",
+            "local": [
+              0.03220767272498005,
+              0.16388976432137872,
+              0.09666697395927563
+            ],
+            "surfaceClearance": 0.012
+          },
+          {
+            "name": "WaistAccessoryPouch0",
+            "bone": "Hips",
+            "local": [
+              -0.11891472648342348,
+              -0.050454695236526126,
+              0.20015882577199584
+            ],
+            "surfaceClearance": 0.023
+          },
+          {
+            "name": "WaistAccessoryPouch1",
+            "bone": "Hips",
+            "local": [
+              0.0000014551749738800357,
+              -0.052345693780479596,
+              0.2052673322802021
+            ],
+            "surfaceClearance": 0.023
+          },
+          {
+            "name": "WaistAccessoryPouch2",
+            "bone": "Hips",
+            "local": [
+              0.1189758135121657,
+              -0.05048492041816566,
+              0.20024047868368655
+            ],
+            "surfaceClearance": 0.023
+          }
+        ]
+      },
+      "poses": [
+        {
+          "pose": "source anatomy",
+          "tested": 5844,
+          "min": 0.0036423096402173763,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0036423224230682375,
+            "LeftAccessoryCord:SkinnedMesh": 0.005463441047023547,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.005485557164618717,
+            "LeftAccessoryPouch:Mesh": 0.011179497655653296,
+            "RightAccessoryBand:SkinnedMesh": 0.0036423096402173763,
+            "RightAccessoryCord:SkinnedMesh": 0.005463428290319376,
+            "RightAccessoryCordLower:SkinnedMesh": 0.0054855478445699525,
+            "RightAccessoryPouch:Mesh": 0.011179497588204699,
+            "WaistAccessoryBand:SkinnedMesh": 0.013266597761386193,
+            "WaistAccessoryCord:SkinnedMesh": 0.014985495015776918,
+            "WaistAccessoryPouch0:Mesh": 0.023198077644628078,
+            "WaistAccessoryPouch1:Mesh": 0.023068939693369043,
+            "WaistAccessoryPouch2:Mesh": 0.023226337425630416
+          }
+        },
+        {
+          "pose": "moving 0",
+          "tested": 5844,
+          "min": 0.0024032901404917296,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0024035488113726016,
+            "LeftAccessoryCord:SkinnedMesh": 0.0044266567361808075,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.005530561842119064,
+            "LeftAccessoryPouch:Mesh": 0.012712109431842977,
+            "RightAccessoryBand:SkinnedMesh": 0.0024032901404917296,
+            "RightAccessoryCord:SkinnedMesh": 0.004426383918662078,
+            "RightAccessoryCordLower:SkinnedMesh": 0.005530550514224852,
+            "RightAccessoryPouch:Mesh": 0.01270225655550763,
+            "WaistAccessoryBand:SkinnedMesh": 0.01400332737977806,
+            "WaistAccessoryCord:SkinnedMesh": 0.015738414651645185,
+            "WaistAccessoryPouch0:Mesh": 0.03111418603195999,
+            "WaistAccessoryPouch1:Mesh": 0.026420279678667866,
+            "WaistAccessoryPouch2:Mesh": 0.03112031149658348
+          }
+        },
+        {
+          "pose": "moving 45",
+          "tested": 5844,
+          "min": 0.0023385578888882597,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0025026249046205813,
+            "LeftAccessoryCord:SkinnedMesh": 0.004544566221539025,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.00557054188300624,
+            "LeftAccessoryPouch:Mesh": 0.010774503463582937,
+            "RightAccessoryBand:SkinnedMesh": 0.0023385578888882597,
+            "RightAccessoryCord:SkinnedMesh": 0.004345250206097211,
+            "RightAccessoryCordLower:SkinnedMesh": 0.005467342727390795,
+            "RightAccessoryPouch:Mesh": 0.014976076630411643,
+            "WaistAccessoryBand:SkinnedMesh": 0.013914184360069413,
+            "WaistAccessoryCord:SkinnedMesh": 0.01567104256225118,
+            "WaistAccessoryPouch0:Mesh": 0.02862394023925105,
+            "WaistAccessoryPouch1:Mesh": 0.025647104888897723,
+            "WaistAccessoryPouch2:Mesh": 0.02901106889649903
+          }
+        },
+        {
+          "pose": "moving 90",
+          "tested": 5844,
+          "min": 0.002310332612353776,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.002310332612353776,
+            "LeftAccessoryCord:SkinnedMesh": 0.004306103346181545,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.005416687859336635,
+            "LeftAccessoryPouch:Mesh": 0.017119311478892524,
+            "RightAccessoryBand:SkinnedMesh": 0.0026097081250616013,
+            "RightAccessoryCord:SkinnedMesh": 0.004667867590255516,
+            "RightAccessoryCordLower:SkinnedMesh": 0.005557129837216086,
+            "RightAccessoryPouch:Mesh": 0.009365165747822153,
+            "WaistAccessoryBand:SkinnedMesh": 0.013480822251534146,
+            "WaistAccessoryCord:SkinnedMesh": 0.015316739640808602,
+            "WaistAccessoryPouch0:Mesh": 0.02365173614768656,
+            "WaistAccessoryPouch1:Mesh": 0.024241996173666566,
+            "WaistAccessoryPouch2:Mesh": 0.016135944093936132
+          }
+        },
+        {
+          "pose": "stopped",
+          "tested": 5844,
+          "min": 0.0024031015821851854,
+          "byPart": {
+            "LeftAccessoryBand:SkinnedMesh": 0.0024037350986958307,
+            "LeftAccessoryCord:SkinnedMesh": 0.0044268826439212644,
+            "LeftAccessoryCordLower:SkinnedMesh": 0.0055307228942711615,
+            "LeftAccessoryPouch:Mesh": 0.012707198276371602,
+            "RightAccessoryBand:SkinnedMesh": 0.0024031015821851854,
+            "RightAccessoryCord:SkinnedMesh": 0.0044261540540140535,
+            "RightAccessoryCordLower:SkinnedMesh": 0.005530412974324078,
+            "RightAccessoryPouch:Mesh": 0.012707160687794348,
+            "WaistAccessoryBand:SkinnedMesh": 0.0136886954746582,
+            "WaistAccessoryCord:SkinnedMesh": 0.015465641977464797,
+            "WaistAccessoryPouch0:Mesh": 0.03102422375862871,
+            "WaistAccessoryPouch1:Mesh": 0.026436640016510308,
+            "WaistAccessoryPouch2:Mesh": 0.02157528663243711
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+
+> roi-des-arenes-fighter-study@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 14 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   5.82 kB │ gzip:   2.19 kB
+dist/assets/index-D75D6isB.css   10.62 kB │ gzip:   2.91 kB
+dist/assets/index-69mUmqIC.js   628.94 kB │ gzip: 163.40 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 899ms

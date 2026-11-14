@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-10-11T21:26:32.209790+00:00",
+  "aggregate_sha256": "594f4945f74eae5ac6e9b85a8ccdc3b94e2f604cae8e8e84a133a72a2ee593cd",
+  "hash_encoding": "SHA256 of compact JSON, sorted path keys, mapping file path to SHA256",
+  "note": "D-006 acceptance updated README only after recorded checks; runtime/asset/script files unchanged.",
+  "files": {
+    ".gitignore": "168646ebd2f475e80e97409b4d51da75ef81577333e840c44df4eb3eb51e8512",
+    "ASSET_PROVENANCE.md": "b72c881f95b285a4b925788505a89e0ae1c071d73b1e39668725a131f16ec984",
+    "README.md": "f6f0b858c9e3f67559847c7dc9049fb18cffd52f817e4fc1fa0e42bbefb2be34",
+    "index.html": "6a7708aff30eb9575bcb86ef62884be9562c457615a35fb5ae32e5f403f51fa4",
+    "package-lock.json": "1410fc5895bc07a490c8715ddd41ff74b3e1fc7183e2ae6ece1d9982e6ddcf5f",
+    "package.json": "14dbc5ce3dc53f107a5cbe9c4412205a00ab3ff5e3a173f262262363e9ff0d74",
+    "public/assets/anatomy-study.glb": "990f1806a19e940e66b67a1482dcda8509a90e206cae948bbf89f6b4274d9257",
+    "public/assets/anatomy-study.json": "a73defe45784e25375db016ff7058072c821063594bbb77df93b1be37b114cd7",
+    "public/favicon.svg": "6f2e513af98eeddbec7af3c65401890ef8515b0b0ac578e3a4d75663ff0940c3",
+    "scripts/check-viewer.mjs": "8e6a28f3da307cf29a134ffd5aaf24f8e1447de6b50711b99a1669520c8a57f0",
+    "scripts/prepare-study.py": "8d4b0d0a336c0c3bd9c896e8541036f50adbef34a9829f308c754ed635e117e3",
+    "scripts/smooth_mesh.py": "359eb6893606198f62cef566ee1a99bcbb60729831d66bf1311ac2201f4651b8",
+    "src/main.ts": "7f7c0669d602069878dbae5e714159b14a02e9e3ca1fc2d696801350f50316e6",
+    "src/style.css": "b4c1ce1ce2c3f1d4e946a9e2522adc9b8638a2286eab0abc586957a4380713b4",
+    "src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "tsconfig.json": "ff3db04f66943584dd00699cb5ea1369cfef70887fca40c0dcb12c9c8fb3635c"
+  }
+}

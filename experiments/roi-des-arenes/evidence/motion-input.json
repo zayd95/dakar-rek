@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-10-19T04:20:19.578Z",
+  "kind": "Actual input-state unit checks; not physical multitouch/device test",
+  "checks": [
+    {
+      "name": "Two pointer owners; releasing one preserves the other and final release stops",
+      "passed": true
+    },
+    {
+      "name": "Two pointers on the same direction remain independently owned",
+      "passed": true
+    },
+    {
+      "name": "AZERTY/QWERTY/arrows press/release mapping; unrelated keys ignored",
+      "passed": true
+    },
+    {
+      "name": "Keyboard-focus release preserves pointer input; full cancel clears all owners",
+      "passed": true
+    }
+  ]
+}

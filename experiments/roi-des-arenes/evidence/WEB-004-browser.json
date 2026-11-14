@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-10-13T16:34:43.957Z",
+  "checks": [
+    {
+      "name": "athletic front textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "athletic quarter textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "athletic side textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "heavy front textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "heavy quarter textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "heavy side textured face close-up",
+      "passed": true
+    },
+    {
+      "name": "Clay mode disables both facial albedo blends",
+      "passed": true
+    },
+    {
+      "name": "Wireframe retains mapped face geometry",
+      "passed": true
+    },
+    {
+      "name": "Both unchanged physiques retain two shorts and hair layers",
+      "passed": true
+    },
+    {
+      "name": "Athletic textured face retained while walking",
+      "passed": true
+    },
+    {
+      "name": "Heavy textured face retained while turning/walking",
+      "passed": true
+    },
+    {
+      "name": "Reset restores origin with facial detail",
+      "passed": true
+    },
+    {
+      "name": "390px face view remains textured without horizontal overflow",
+      "passed": true
+    },
+    {
+      "name": "Previous face finish remains reversible",
+      "passed": true
+    },
+    {
+      "name": "Final face loads without inspected renderer or texture errors",
+      "passed": true
+    }
+  ],
+  "passed": 15,
+  "logs": [],
+  "viewportChecks": [
+    "1440x1000",
+    "390x844"
+  ],
+  "finalRevision": "After profile cache-key and optional-atlas validation corrections: all final capture files refreshed; loaded mapped faces and both movement paths confirmed again, zero final inspected errors.",
+  "limits": "Native author browser controls/captures, no physical-device performance or complete failure injection. Six-second timeout and malformed-atlas fallback source-reviewed; invalid atlas unit rejection tested."
+}
