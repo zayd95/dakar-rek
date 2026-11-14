@@ -414,6 +414,12 @@ try {
     check(`5c. ${X.name} (a real page, not in the match, at the touchline): the street’s presence shows Awa and Moussa on the pitch’s grass`, onGrass, JSON.stringify({ seen, pitch }));
     if (X === pages[2]) await X.shot('5-spectator-touchline');
   }
+  // the kick-off read, the bots take it (play starts at the taker's first touch: until then the laws of the kick-off hold the pages back), then
+  // stand again — the pages are the only movers from here
+  for (const b of bots) b.style = lib.WARM;
+  const kicked = await until(() => bots[0].client.state.snap?.phase === 'play' || bots[0].client.state.events.some(e => e.k === 'pass'), 20000, 50);
+  for (const b of bots) b.style = lib.STILL;
+  notes.kickoffTaken = kicked;
   // the pages play: a finger on the stick toward the ball, a second on PASSE · DRIBBLE · TIR
   const sid = async p => (await p.info()).sid;
   const sidA = await sid(A), sidB = await sid(B);
@@ -483,14 +489,17 @@ try {
   check('7b. B reloads mid-match: the page opens the match’s socket again at once (before the city has loaded); the server has B back on the pitch within 60 s (same place on the roster, not gone); the page draws and plays it again once loaded',
     serverBackS !== null && serverBackS < 60 && liveB && !!iB.me && bSeat && !bSeat.gone && bSeat.on && iB.sid === sidB,
     `server: back on the pitch ${serverBackS === null ? 'never' : serverBackS.toFixed(1) + ' s'} after the reload began (drop ${dropAt ? ((dropAt - tR) / 1000).toFixed(1) + ' s' : 'none'}) · page live again in ${backS.toFixed(1)} s (this machine's full reload of the game) · events since: ${bots[0].client.state.events.slice(ev0).filter(e => e.who === sidB).map(e => e.k).join(',')} · ${JSON.stringify({ sid: iB.sid, seat: bSeat ? { on: bSeat.on, gone: !!bSeat.gone } : null })}`);
-  // the reloaded page's stick (its counter from 1 again) moves its body at once: a finger forward, then back, the server's own positions of B traced
-  const jB = await B.t.centre('#joy'), traceB = [], tM = Date.now();
+  // the reloaded page's stick (its counter from 1 again) moves its body at once: a finger forward, then back, while the server's own positions and
+  // stick counters of B are traced (sampled apart from the finger: a page that has just reloaded is slow to take a touch). Before the fix the
+  // server applied none of the new page's frames until its counter passed the old one: the counter it reports could never fall below it.
+  const traceB = [], sampler = setInterval(() => { const q = bots[0].client.state.snap?.players.find(x => x.sid === sidB); if (q) traceB.push(q); }, 100);
+  const jB = await B.t.centre('#joy');
   await B.t.down(3, jB.x, jB.y);
-  while (Date.now() - tM < 4000) { const back = Date.now() - tM > 2000 ? 1 : -1; await B.t.move(3, jB.x, jB.y + 38 * back, 1); const q = bots[0].client.state.snap?.players.find(x => x.sid === sidB); if (q) traceB.push(q); await sleep(100); }
-  await B.t.up(3);
-  const ranB = traceB.length ? Math.max(...traceB.map(q => Math.hypot(q.x - traceB[0].x, q.z - traceB[0].z))) : 0, seqB1 = traceB.at(-1)?.seq ?? null;
+  for (const tM = Date.now(); Date.now() - tM < 5000;) { const back = Date.now() - tM > 2500 ? 1 : -1; await B.t.move(3, jB.x, jB.y + 38 * back, 1); await sleep(100); }
+  await B.t.up(3); await sleep(500); clearInterval(sampler);
+  const ranB = traceB.length ? Math.max(...traceB.map(q => Math.hypot(q.x - traceB[0].x, q.z - traceB[0].z))) : 0, seqMin = traceB.length ? Math.min(...traceB.map(q => q.seq)) : null;
   check('7c. the reloaded page plays at once: its stick (the counter from 1 again) moves its body on the server — not frozen for as long as it had played',
-    ranB > 2 && seqB1 !== null && seqB1 > 0 && (seqB0 === null || seqB1 < seqB0), JSON.stringify({ ranB: +ranB.toFixed(1), seqBefore: seqB0, seqAfter: seqB1, samples: traceB.length }));
+    ranB > 2 && seqMin !== null && seqB0 !== null && seqMin < seqB0, JSON.stringify({ ranB: +ranB.toFixed(1), seqBefore: seqB0, seqAfterLowest: seqMin, seqAfterLast: traceB.at(-1)?.seq ?? null, samples: traceB.length }));
   notes.reloadServerBackS = serverBackS === null ? null : +serverBackS.toFixed(1);
   notes.reloadPageLiveS = +backS.toFixed(1);
 
