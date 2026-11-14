@@ -189,12 +189,17 @@ await until(() => document.querySelector('#goal').classList.contains('on') && /J
 const g1 = await goal(), mm1 = await d(() => window.__dakar.minimap()), me1 = await d(() => window.__dakar.pos());
 check('A18. the goal line leads to it: its name and the metres left', g1.on && /Ta moto Jakarta/.test(g1.text) && /^\d+ m$/.test(g1.dist.trim()) && Math.abs(parseInt(g1.dist, 10) - Math.hypot(me1.x - R.x, me1.z - R.z)) < 3, JSON.stringify(g1));
 check('A19. the guide target (world pin, compass, the minimap’s dotted way) is the recorded position', Math.hypot(mm1.guideAt.x - R.x, mm1.guideAt.z - R.z) < 0.05 && mm1.route.n >= 2, JSON.stringify({ at: mm1.guideAt, route: mm1.route }));
-// what it costs: the way is worked out once and kept while the player stands still, exactly like a marker on a place
+// what it costs: the way is worked out once and kept while the player stands still, exactly like a marker on a place. Each 4 s window starts once the way to the goal
+// of now exists (its last point is the goal): the minimap refreshes it every 0.5 s of GAME time and a slow SwiftShader frame moves the game on by 0.1 s at most, so the
+// first way to a goal just set can land seconds of wall time later (one run counted it inside the window)
+const wayIsFor = () => until(() => { const m = window.__dakar.minimap(), pts = window.__dakar.minimapRoute(), l = pts[pts.length - 1]; return !!m.guideAt && !!l && Math.hypot(l.x - m.guideAt.x, l.z - m.guideAt.z) < 0.5; }, null, 30000);
+await wayIsFor(); await wait(1000);
 const runsA = await d(() => window.__dakar.minimap().routeRuns); await wait(4000);
 const runsB = await d(() => window.__dakar.minimap().routeRuns);
 const placeId = await d(([x, z]) => window.__dakar.minimapPlaces().filter(p => Math.hypot(p.x - x, p.z - z) > 20).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0].id, [me1.x, me1.z]);
 await d(id => window.__dakar.phoneHooks.markPlace(id, 'pikine'), placeId);
-await until(id => window.__dakar.destination() === id && window.__dakar.minimap().guide !== 'Ta moto Jakarta' && !!window.__dakar.minimap().route, placeId, 20000); await wait(2500);
+await until(id => window.__dakar.destination() === id && window.__dakar.minimap().guide !== 'Ta moto Jakarta', placeId, 20000);
+await wayIsFor(); await wait(1000);
 const runsC = await d(() => window.__dakar.minimap().routeRuns); await wait(4000);
 const runsD = await d(() => window.__dakar.minimap().routeRuns);
 check('A20. no extra route work: standing still for 4 s, the way to the vehicle is recomputed as often as the way to a marked place (never)', runsB - runsA === 0 && runsD - runsC === 0, `vehicle marker: ${runsB - runsA} recomputation(s) in 4 s; place marker: ${runsD - runsC}`);
