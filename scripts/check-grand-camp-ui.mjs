@@ -388,16 +388,18 @@ try {
     JSON.stringify({ seen, quote: notes['quote Awa'] }));
 
   // ------------------------------------------------------------------ 5. kick-off: the pages on the pitch, PASSE · DRIBBLE · TIR, nothing else
-  for (const b of bots) { b.style = lib.WARM; drive(b); }
+  // the bots stand at their places until the pages have read the kick-off: a warm-up (WARM never shoots, but pushes and passes toward the goal it
+  // attacks) scored within 15 s in half the seeds tried, before a page loaded slowly enough was live — the band then read 1 – 0 at « kick-off »
+  for (const b of bots) { b.style = lib.STILL; drive(b); }
   for (const p of [A, B]) { if (await p.d(() => !!document.querySelector('#phone .gc-a[data-act="play"]'))) await p.tap('#phone .gc-a[data-act="play"]'); else await p.d(() => window.__dakar.phoneClose()); }
   const liveBoth = await A.until(() => window.__dakar.grandCamp.info().live && window.__dakar.grandCamp.info().pad, null, 30000) && await B.until(() => window.__dakar.grandCamp.info().live && window.__dakar.grandCamp.info().pad, null, 30000);
   await A.wait(2500);
   const hud = await A.d(() => ({ act: getComputedStyle(document.getElementById('act')).display, more: getComputedStyle(document.getElementById('actMore')).display, pad: [...document.querySelectorAll('#campPad.on .cp-b')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.textContent.replace(/\s+/g, ' ').trim()), band: document.getElementById('campBand')?.innerText, place: getComputedStyle(document.getElementById('place')).display }));
-  const iA = await A.info();
+  const iA = await A.info(), serverScore = bots[0].client.state.snap?.score ?? null, touched = bots[0].client.state.events.filter(e => e.k === 'pass' || e.k === 'shot' || e.k === 'goal').length;
   const onSpot = iA.me && Math.hypot(iA.me.x - iA.pos.x, iA.me.z - iA.pos.z) < 1.5;
   check('5a. kick-off: each page on the pitch at its place (the server’s body, predicted), the action area PASSE · DRIBBLE · TIR and nothing else, the band « Rouge 0 – 0 Jaune » and the clock',
-    liveBoth && onSpot && hud.act === 'none' && hud.more === 'none' && hud.pad.length === 3 && /PASSE/.test(hud.pad[0]) && /DRIBBLE/.test(hud.pad[1]) && /TIR/.test(hud.pad[2]) && /Rouge/.test(hud.band) && /0 – 0/.test(hud.band) && hud.place === 'none',
-    JSON.stringify({ hud, me: iA.me, pos: iA.pos, bodies: iA.bodies, full: iA.full }));
+    liveBoth && onSpot && hud.act === 'none' && hud.more === 'none' && hud.pad.length === 3 && /PASSE/.test(hud.pad[0]) && /DRIBBLE/.test(hud.pad[1]) && /TIR/.test(hud.pad[2]) && /Rouge/.test(hud.band) && /0 – 0/.test(hud.band) && serverScore?.join() === '0,0' && hud.place === 'none',
+    JSON.stringify({ hud, serverScore, touched, me: iA.me, pos: iA.pos, bodies: iA.bodies, full: iA.full }));
   const bodiesA = await A.until(() => window.__dakar.grandCamp.info().bodies >= 9, null, 20000);
   const iA2 = await A.info();
   check('5b. the nine other players drawn from the snapshots (their look, their team’s shirt), the NPCs’ match and kickabout aside, presence avatars of the players not drawn twice',
