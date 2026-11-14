@@ -11,6 +11,8 @@ import { rng } from '../core/rng';
 import { signPanel } from '../economy/citeJamm';
 import { order } from '../activity/primitives';
 import { isOpen } from '../activity/places';
+import { VenueLife } from './venueLife';
+import { TERRACE_KEEP, placed, terraceLife } from './lifePlans';
 
 /**
  * Rooftop restaurants and lounges (Plateau, Corniche, Ngor): Plateau and Corniche use a stair door on a tall hub facade;
@@ -53,6 +55,12 @@ const HW = 8, HD = 5.5, PARAPET = 1.15;
 interface Built { def: Def; door: Interactable; int: Interior; bar: { x: number; z: number }; facade: { x: number; z: number; nx: number; nz: number }; sign: { onRoof: boolean; top: number; faces: number; panels: NonNullable<HubWorld['rooftopSign']>['panels'] } | null }
 let built: Built | null = null;
 let ctxRef: GameCtx | null = null;
+/**
+ * The terrace's guests (1.0.1, src/venues/venueLife.ts): they come up the stairs, meet, take a table, look out over the parapet, and go down again; on the roof's hours.
+ * Made the first time the player is up there (`lifeOf`, from hubLoaded): a hub's terrace nobody climbs to costs nothing, and building the venue needs nothing of the game but its door.
+ */
+let life: VenueLife | null = null;
+let lifeOf: ((ctx: GameCtx) => VenueLife) | null = null;
 
 /** The stair door: the free spot in front of a tall building facade nearest to the hub's reference point. */
 function findFacade(hub: HubWorld, ref: { x: number; z: number }): { x: number; z: number; nx: number; nz: number } | null {
@@ -262,7 +270,9 @@ export const RooftopModule: GameModule = {
     } });
   },
   /** The stair door of a terrace with opening hours: « Entrer » while it is open, its hours on the door while it is not (someone already up there is never sent down). */
-  update(ctx) {
+  update(ctx, dt) {
+    if (!life && lifeOf && built && ctx.space() === built.door.id) life = lifeOf(ctx);
+    life?.update(dt);
     const b = built; if (!b?.def.hours) return;
     const open = isOpen(b.def.hours, ctx.hour());
     if (open === (b.door.actions.length > 0)) return;
@@ -270,7 +280,7 @@ export const RooftopModule: GameModule = {
     b.door.description = open ? b.def.blurb : `${b.def.name} · ouvre à ${b.def.hours[0]} h`;
   },
   hubLoaded(ctx, hub) {
-    built = null;
+    built = null; life?.dispose(); life = null; lifeOf = null;
     const def = ROOFTOPS[hub.id as HubId]; if (!def) return;
     const f = hub.rooftopDoor ?? findFacade(hub, def.ref); if (!f) return;      // the Almadies' district names its door (the hotel's street face); elsewhere the nearest tall building's first free side
     dressFacade(hub, def, f);
@@ -281,12 +291,20 @@ export const RooftopModule: GameModule = {
     const t = buildTerrace(def, ox, 0, hub.id, doorX);
     ctx.addInterior(door, t.int);
     const rs = hub.rooftopSign;
+    const here = (x: number, z: number) => ({ x: ox + x, z });
+    lifeOf = c => new VenueLife({
+      ctx: c, name: `terrasse-${def.id}`, parent: t.int.group, plan: placed(terraceLife(def, hub.id), here),
+      colliders: () => t.int.colliders, area: { x0: ox - HW, x1: ox + HW, z0: -HD, z1: HD + 0.4 }, y: () => 0.1,
+      active: () => c.space() === door.id, keep: TERRACE_KEEP.map(k => ({ ...k, ...here(k.x, k.z) })),
+      street: false, extraBodies: () => (hub.id === 'almadies' ? 1 : 0),                                  // Awa Sy, the hostess (src/districts/almadies.ts)
+    });
     built = { def, door, int: t.int, bar: t.bar, facade: f, sign: rs ? { onRoof: true, top: Math.max(...rs.panels.map(p => p.y + p.h / 2)), faces: rs.panels.length, panels: rs.panels } : null };
   },
   debug: () => ({
     rooftop: {
       info: () => built ? { hub: built.def.id, name: built.def.name, kind: built.def.kind, hours: built.def.hours ?? null, open: built.door.actions.length > 0, door: { id: built.door.id, x: built.door.x, z: built.door.z }, facade: built.facade, sign: built.sign, bar: built.bar, seats: built.int.seats.length, menu: built.def.menu.map(d => [d.name, d.price]) } : null,
       enter: () => { if (built && ctxRef) ctxRef.enter(built.door.id); },
+      life: () => life?.info() ?? null,
       order: (i = 0) => { if (!built || !ctxRef) return false; const d = built.def.menu[i], s = ctxRef.state; if (s.wallet < d.price) return false; s.addMoney(-d.price, `${built.def.name} : ${d.name}`); s.adjust({ faim: d.faim, moral: d.moral }); return true; },
     },
   }),

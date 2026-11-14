@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { readTestParams } from './core/testParams';
+import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -98,6 +98,7 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { opening, openingSeen, openingWanted } from './game/opening';
 import { bankModule } from './economy/bankModule';
 import { rehomeOnRoad, type VehicleAsset } from './transport/owned';
 import { ALL_VEHICLES } from './transport/fleet';
@@ -1528,13 +1529,17 @@ function walkingHint(): string | null {
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
   // the marker is on a vehicle the player is now driving, or no longer has: it is done
-  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { destination = null; return null; } }
+  // (got on it: found — « Coups de pouce », src/economy/pouce.ts)
+  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { if (e) state.count('vehicule:retrouve'); destination = null; return null; } }
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
   const target = guidePlace(destination.id);
   if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
-  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }   // (a car is wider than a doorstep)
+  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) {          // (a car is wider than a doorstep)
+    if (vehicleOfMark(destination.id)) state.count('vehicule:retrouve');    // a parked vehicle found with its marker (« Coups de pouce », src/economy/pouce.ts)
+    destination = null; hud.toast('Te voilà : ' + target.name); return null;
+  }
   const angle = Math.atan2(dx, dz) - follow.yaw;
   const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
   return `${arrow} ${jobAt(target)?.job === 'delivery' ? '📦 ' : ''}${target.name} · ${Math.round(distance)} m`;
@@ -1944,8 +1949,13 @@ async function start() {
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
-  if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
-  else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+  const welcome = () => {
+    if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
+    else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+  };
+  // 1.0.1: the first launch on this device flies in over Pikine once the character is made (src/game/opening.ts); the welcome comes with the HUD, when it lands
+  if (openingWanted({ made: !!made, debug: DEBUG, forced: TEST.intro, seen: openingSeen() })) opening.play(ctx, { done: welcome });
+  else welcome();
   started = true; markStarted();
   requestAnimationFrame(frame);
   if (made) requestAnimationFrame(() => requestAnimationFrame(() => made.arrive()));   // the arrival card fades once the game has drawn
@@ -1954,7 +1964,10 @@ async function start() {
 void start();
 
 if (DEBUG) {
-  (window as unknown as Record<string, unknown>).__dakar = {
+  // ?debug works on every host (the public smoke test uses it), but on the public game only the hooks that read and the smoke test's moves exist:
+  // what makes money or value, or changes the economy or a save's progress, is for test hosts only, like ?argent= (src/core/testParams.ts debugApiFor)
+  const testHost = isTestHost(location.hostname);
+  const api: Record<string, unknown> = {
     state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
     /** LD2.0-B: the player's online account as the UI sees it (src/online/api.ts), for the checks: status, me, balance, conversations, items, history. */
     account: () => online,
@@ -2161,7 +2174,8 @@ if (DEBUG) {
       return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
     },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.pin(); follow.yaw = facing + yawOff; void dist; },
-    ...economy.debug(),
+    ...(testHost ? economy.debug() : {}),
   };
-  for (const m of MODULES) Object.assign((window as unknown as { __dakar: Record<string, unknown> }).__dakar, m.debug?.(ctx));
+  if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
 }

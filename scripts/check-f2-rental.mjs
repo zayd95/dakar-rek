@@ -87,6 +87,10 @@ check('« Signer le bail » is tapped', await tapRow(/Signer le bail/, { wait: 1
 const w1 = await wallet(); let mo = await monthly();
 check('the first month left the wallet once: 60 000 F', w0 - w1 === COST && (await ledger(/Loyer et charges/)).length === 1, `${w0} -> ${w1}`);
 check('one monthly contract, month 1, nothing owed, next settlement seven real days away', mo.contracts.length === 1 && mo.contracts[0].k === 0 && mo.contracts[0].debt === 0 && Math.abs(mo.contracts[0].nextAt - mo.now - 7 * 86400000) < 120000, JSON.stringify(mo.contracts[0]));
+// the purchase sequence (1.0.1, src/economy/moving.ts): the keys are the player's, « Emménager maintenant ? »; « Plus tard » keeps the F2 free to sublet
+m = await clean();
+check('« Les clés sont à toi »: rented by the month, listed in Biens with its rent; « Emménager » or « Plus tard »', /Les clés sont à toi/.test(m.title) && /loué par toi · 60 000 F \/ mois/.test(m.text) && m.items.some(i => /Plus tard/.test(i.text)), m.text.slice(0, 300));
+check('« Plus tard » is tapped: back on the F2\'s sheet', await tapRow(/Plus tard/, { wait: 1200 }));
 m = await clean();
 check('the sheet now shows the contract: this month\'s result and the next settlement', /Bail au mois · mois 1/.test(m.text) && /Résultat du mois : −60 000 F/.test(m.text) && /Prochaine échéance/.test(m.text), m.text.slice(0, 380));
 check('no rent per city hour: the hourly charges stay at zero', (await d(() => window.__dakar.estate().charges)) === 0);
@@ -112,7 +116,7 @@ mo = await monthly(); const c0 = mo.contracts[0] ?? {};
 check('on offer, furnished; this month\'s occupancy is drawn (0 or 78–100 %) and the expected revenue follows it', c0.mode === 'furnished' && (c0.occ === 0 || (c0.occ >= 78 && c0.occ <= 100)) && Math.abs(c0.revenue - 150000 * c0.occ / 100) <= 150000 * 0.002 + 1, JSON.stringify({ occ: c0.occ, revenue: c0.revenue, profit: c0.profit }));
 m = await clean();
 check('the sheet shows occupancy, revenue, costs, profit and the next settlement', /(Occupation ce mois : \d+ %|Pas de locataire ce mois)/.test(m.text) && /Revenu du mois/.test(m.text) && /loyer et charges : −60 000 F/.test(m.text) && /Résultat du mois/.test(m.text) && /Prochaine échéance/.test(m.text), m.text.slice(0, 420));
-const principal = m.items.find(i => /Définir comme domicile principal/.test(i.text));
+const principal = m.items.find(i => /Emménager ici/.test(i.text));
 check('exclusive: the player cannot move in while it is let', !!principal && /sous-loué/.test(principal.text), principal?.text);
 const door = m.items.find(i => /Entrer chez toi/.test(i.text));
 check('a tenant in place keeps the door: « Entrer chez toi » is refused this month (open again in a vacant month)', c0.occ > 0 ? /locataire est chez lui/.test(door?.text ?? '') : !/locataire/.test(door?.text ?? ''), `occ ${c0.occ} · ${door?.text ?? 'not in this hub'}`);

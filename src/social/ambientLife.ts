@@ -12,7 +12,7 @@ import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { rng } from '../core/rng';
 import { len2 } from '../core/math';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, warmPaths, type ClearFn } from './routines';
-import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
+import { ACTIVITIES, AMBIENT_BUDGET, STREET_BODIES, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, streetCap, type AmbientQuality } from './ambientData';
 import { planDemand, chooseSeat, curveAt, dayOfWeek, keepsPlace, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type DemandRow, type LookKind, type PlanCache, type Pt, type SeatLike } from './ambient';
 import { buildSpotsSteps, furnitureSeats } from './ambientSpots';
 import type { ShopInfo } from '../world/shopFlow';
@@ -974,12 +974,13 @@ export class AmbientLife implements GameModule {
     const view = this.view; view.length = 0;
     for (let i = 0; i < n; i++) view.push(cand[i]);
     view.sort(byD);
+    const cap = streetCap(B.totalFull);                                       // (a living place in view holds a few bodies back for its own people: src/venues/venueLife.ts)
     let full = 0, mine = 0;
     for (const c of view) {
       // (a driven person's weight also stretches its full-body distance: the footballers of a match come first, within the same caps)
       const d = c.a ? c.a.d * (c.a.drive?.prio ?? 1) : c.f!.d * c.f!.prio;
       let lod: 0 | 1 | 2 = d < B.far ? 1 : 0;
-      if (d < B.full && full < B.totalFull && (c.f || mine < B.bodies)) { lod = 2; full++; if (c.a) mine++; }
+      if (d < B.full && full < cap && (c.f || mine < B.bodies)) { lod = 2; full++; if (c.a) mine++; }
       if (c.a) c.a.lod = lod; else c.f!.lod = lod;
     }
     for (const c of view) if (c.a && c.a.lod < 2 && c.a.body) this.dropBody(c.a);
@@ -989,6 +990,7 @@ export class AmbientLife implements GameModule {
       if (a.lod === 2 && !a.body && !this.takeBody(a)) a.lod = 1;
     }
     this.stats = { full, mineFull: mine, foreignFull: full - mine, figures: 0, foreign: foreignN };
+    STREET_BODIES.full = full;
     // people the player can greet: those with a body
     const list = this.bodyList; list.length = 0;
     for (const a of this.actors) if (a.body && !a.spot!.tags.some(t => t.startsWith('mosque'))) {   // at the mosque: presence only, no exchange

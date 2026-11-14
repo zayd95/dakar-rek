@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave, migrate, SCHEMA_VERSION, LEDGER_MAX } from '../src/core/save';
 import { Relations } from '../src/social/relations';
-import { BEATS, availableBeat, suggestion, applyChoice } from '../src/social/beats';
+import { BEATS, availableBeat, suggestion, applyChoice, leads } from '../src/social/beats';
+import { POUCE } from '../src/economy/pouce';
 import { ROUTES, CLIENTS, offers, acceptJob, completeJob, cancelJob, pickUp, deliveryLimitMs, routePay, pickupFrags } from '../src/economy/jobs';
 import { FURNITURE, buyFurniture, goalItem, ownedFurnitureIds, priceOf } from '../src/economy/furniture';
 import { ECONOMY } from '../src/economy/config';
@@ -165,23 +166,26 @@ describe('a close one reacts (Ibou) and the next step', () => {
     const { s, r } = fresh();
     expect(suggestion(r, s)?.id).toBe('ibou_welcome');
   });
-  it('welcome → first delivery → Ibou reacts → furniture goal → first furniture → Ibou suggests the next goal', () => {
+  it('welcome → first delivery → Ibou reacts → furniture goal → first furniture → Ibou suggests the next goal (1.0.1: behind the next coup de pouce)', () => {
     const { s, r } = fresh();
     play(r, s, 'ibou_welcome', 'oui');
-    expect(suggestion(r, s)?.id).toBe('goal_tiak');
+    expect(suggestion(r, s)?.id).toBe('goal_tiak');                 // the first coup de pouce is the first delivery: the same lead, its pin and its star
     expect(availableBeat('ibou', r, s)).toBeNull();
     const job = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     expect(suggestion(r, s)?.id).toBe('goal_deliver');
     completeJob(s, job.runId);
     expect(availableBeat('ibou', r, s)?.id).toBe('ibou_tiak');
-    expect(suggestion(r, s)?.id).toBe('ibou_tiak');
+    expect(suggestion(r, s)?.id).toBe('pouce_meuble');              // 1.0.1: the next coup de pouce leads (src/economy/pouce.ts); Ibou's reaction follows it
+    expect(leads(r, s).map(x => x.id).slice(1, 2)).toEqual(['ibou_tiak']);
     play(r, s, 'ibou_tiak', 'radio');
     expect(goalItem(s)?.id).toBe('radio');
-    const sg = suggestion(r, s)!;
-    expect(sg.id).toBe('goal_buy');                                 // 3 000 + 1 200 F ≥ 4 000 F
+    const sg = leads(r, s).find(x => x.id === 'goal_buy')!;
+    expect(sg).toBeTruthy();                                        // 3 000 + 1 200 F ≥ 4 000 F
     expect(sg.hint).toContain('radio');
     buyFurniture(s, 'radio');
     expect(availableBeat('ibou', r, s)?.id).toBe('ibou_meuble');
+    expect(suggestion(r, s)?.id).toBe('pouce_vehicule');
+    for (const p of POUCE) s.data.counters[`pouce:${p.id}`] = p.amount;   // the ladder done: the story leads again, in its order
     expect(suggestion(r, s)?.id).toBe('ibou_meuble');
     play(r, s, 'ibou_meuble', 'chaises');
     expect(suggestion(r, s)?.id).toBe('goal_save');

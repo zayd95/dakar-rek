@@ -15,6 +15,7 @@ import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
 import { insideWalls } from '../game/pace';
+import { venueLifeInfo } from './venueLife';
 
 export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
 
@@ -129,5 +130,7 @@ export const VenuesModule: GameModule = {
     traverseeSet: (n: number) => embarcadere?.setPirogueTrips(n) ?? null,
     /** The island's rooftop: open or not, who is there by role, whether its people are drawn, its music (null outside the Almadies). */
     islandRooftop: () => islandRooftopInfo(),
+    /** The living places of this hub (Le Patio's courtyard, the rooftop terrace, Ngor's beach): who is there in which phase of their routine, where, the bodies against the budget. */
+    venueLife: () => venueLifeInfo(),
   }),
 };

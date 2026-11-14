@@ -118,6 +118,7 @@ export function completeJob(s: GameState, runId: string): Completion | null {
   const paid = s.addMoney(pay, `Livraison Tiak Tiak → ${route.to.name}${late ? ' (en retard)' : ''}`);
   s.adjust(ECONOMY.tiak.fatigue);
   s.count('livraisons'); s.count('actions');
+  if (route.toHub && route.toHub !== route.hub) s.count('livraisons:quartiers');      // to another district (« Coups de pouce », src/economy/pouce.ts)
   const client = CLIENTS[route.hub];
   let newClient: string | null = null;
   if (client && !s.data.flags.includes(client.flag)) { s.data.flags.push(client.flag); newClient = client.name; }

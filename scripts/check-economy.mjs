@@ -160,7 +160,8 @@ let savedJson = null;
   check('a city service (Boutique Diallo stock) is in the ledger, paid with the polyvalence bonus', stockPay > 1500 && led2[0]?.amount === stockPay && /Boutique Diallo/.test(led2[0].label), `${stockPay} · ${JSON.stringify(led2[0])}`);
 
   // Ibou reacts to the first delivery and suggests a goal (UI)
-  check('Ibou’s delivery beat is suggested', (await D(page, () => window.__dakar.suggestion())) === 'ibou_tiak');
+  // 1.0.1: the next coup de pouce (a first piece of furniture) leads the suggestions; Ibou's beat is offered when he is met (src/economy/pouce.ts)
+  check('the next coup de pouce is suggested (a first piece of furniture)', (await D(page, () => window.__dakar.suggestion())) === 'pouce_meuble');
   await D(page, () => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
   await pick(page, 'Le Tiak Tiak');
   await page.screenshot({ path: `${out}/desktop-ibou-tiak.png` });
@@ -170,7 +171,7 @@ let savedJson = null;
   check('Ibou sets the goal (radio)', (await D(page, () => window.__dakar.flags())).includes('objectif:radio'));
   const goalId = await D(page, () => window.__dakar.suggestion());
   await closeModal(page);
-  check('the chip now points to buying the radio', goalId === 'goal_buy', goalId);
+  check('the chip still points to a first piece of furniture (the coup de pouce; Ibou\'s radio is its first candidate)', goalId === 'pouce_meuble', goalId);
 
   // buy the radio at the stall (UI)
   await goNear(page, shop.x, shop.z + 1.5, Math.PI, shop.name);

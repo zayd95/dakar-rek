@@ -454,6 +454,8 @@ export class Crowd {
     const dx = x - c.x, dz = z - c.z;
     return dx * dx + dz * dz < CLEAR.hide * CLEAR.hide;
   }
+  /** Full humanoids at most from now on (an owner that shares a budget with others: src/venues/venueLife.ts); the ones beyond it go back to figures at the next pick. */
+  setNearMax(n: number) { const k = Math.max(0, Math.min(16, Math.floor(n))); if (k !== this.lod.near) { this.lod.near = k; this.nearT = 0; } }
   /** The camera of this frame: LOD distances, and near bodies outside the view are neither drawn nor animated. */
   setCamera(cam: THREE.Camera) {
     cam.updateMatrixWorld();
