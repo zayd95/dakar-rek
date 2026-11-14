@@ -162,10 +162,13 @@ await ready();
 await page.waitForTimeout(3000);
 mo = await monthly(); const w3 = await wallet();
 const est2 = await d(() => window.__dakar.estate()), f2b = est2.assets.find(a => a.spec === F2);
-check('after a reload the contract is as it was: month, mode, furnished, start, keys', mo.contracts.length === 1 && mo.contracts[0].k === 2 && mo.contracts[0].mode === 'furnished' && mo.contracts[0].furnished && mo.contracts[0].start === kept.contracts[0].start && JSON.stringify(mo.settled) === JSON.stringify(kept.settled), JSON.stringify(mo.contracts[0]));
+check('after a reload the contract is as it was: month, mode, furnished, keys', mo.contracts.length === 1 && mo.contracts[0].k === 2 && mo.contracts[0].mode === 'furnished' && mo.contracts[0].furnished && JSON.stringify(mo.settled) === JSON.stringify(kept.settled), JSON.stringify(mo.contracts[0]));
+// (1.0.1 review: the DEBUG shift is not saved, so the reload reads the clock two months back, a device clock set back: the contract's dates wait at most a month,
+// src/economy/monthly.ts `rebase`; they come back once the clock does, below)
+check('the reload\'s clock reads two months back: the contract\'s dates are moved so the next settlement is at most a month away', mo.contracts[0].start < kept.contracts[0].start && mo.contracts[0].nextAt - mo.now <= 7 * 86400000 && mo.contracts[0].nextAt > mo.now, JSON.stringify({ start: [kept.contracts[0].start, mo.contracts[0].start], inDays: +((mo.contracts[0].nextAt - mo.now) / 86400000).toFixed(2) }));
 check('after a reload the wallet is the same and the furniture is still in its rooms', w3 === after2 && est2.assets.filter(a => a.home === f2b?.uid && a.at).length === 8, `${after2} -> ${w3}`);
 await d(() => { window.__dakar.playFor(60); window.__dakar.econAdvance(2); }); await page.waitForTimeout(3000);   // the DEBUG clock back where it was before the reload
-check('the months already settled are not settled again after the reload', (await wallet()) === w3 && (await monthly()).contracts[0].k === 2);
+{ const m4 = await monthly(); check('the months already settled are not settled again after the reload; the clock back where it was, the contract\'s own dates are back', (await wallet()) === w3 && m4.contracts[0].k === 2 && m4.contracts[0].start === kept.contracts[0].start, JSON.stringify({ k: m4.contracts[0].k, start: [kept.contracts[0].start, m4.contracts[0].start] })); }
 await shot('after-reload');
 
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
