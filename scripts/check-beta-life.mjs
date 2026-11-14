@@ -87,7 +87,7 @@ try {
   await page.waitForFunction(() => window.__dakar.teranga.info().owned, null, { timeout: 300000 });
   await d(() => window.__dakar.assetSheet('maison_cite')); await page.waitForSelector('#modal.on .item');
   const pick = async text => { await page.locator('#modal.on .item', { hasText: text }).first().click(); await page.waitForTimeout(350); };
-  await pick('Acheter'); await pick('Acheter'); await pick('Définir comme domicile principal');
+  await pick('Acheter'); await pick('Acheter'); await pick('Emménager'); await pick('Garder comme chambre familiale');   // the purchase sequence (1.0.1)
   for (const id of ['canape_wax', 'table_basse']) await d(i => window.__dakar.buyPiece(i), id);
   await d(() => document.querySelector('#modal.on .sh-x, #modal.on [aria-label="Fermer"]')?.click()); await page.waitForTimeout(500);
   const life = await d(() => ({ home: window.__dakar.estate().home, car: window.__dakar.teranga.info().owned, pieces: window.__dakar.estate().assets.filter(a => a.kind === 'furniture').length }));
