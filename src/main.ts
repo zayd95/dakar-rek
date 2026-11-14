@@ -1971,6 +1971,7 @@ async function start() {
   const welcome = () => {
     if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
     else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+    else if (restored.includes('monthly')) hud.toast('Ton bail au mois a été retrouvé (et ce qui restait dû) : la partie avait été ouverte avec une version plus ancienne du jeu.');
   };
   // 1.0.1: the first launch on this device flies in over Pikine once the character is made (src/game/opening.ts); the welcome comes with the HUD, when it lands
   if (openingWanted({ made: !!made, debug: DEBUG, forced: TEST.intro, seen: openingSeen() })) opening.play(ctx, { done: welcome });
