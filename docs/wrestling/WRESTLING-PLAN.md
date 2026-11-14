@@ -14,18 +14,19 @@ README on `origin/lab/roi-des-arenes-threejs`. Played: the baseline checks and a
 
 **What we have is much more than a mini-game.** A whole fight evening exists end to end (arrival by moto or car rapide,
 tickets in three tiers, the stands filling, preliminaries, an entrance ceremony with bàkk, griots and drums, the bout,
-the fête, the crowd going home), a career with a city ladder of twelve wrestlers, purses, gala places and a belt, and two
-disciplines: **« sans frappe »**, the live default, and **Làmb 2.0 « avec frappe »** behind `?lamb2`, a real wrestling
-system (distance, strikes that open, grip advantage, push/pull/pivot, slip, throw, counter, the fall, six styles, a
-lesson and played drills).
+the fête, the crowd going home), a career with a city ladder of twelve wrestlers, purses, gala places and a belt, and
+two disciplines: **« sans frappe »**, the live default, and **Làmb 2.0 « avec frappe »** behind `?lamb2`, a real
+wrestling system (distance, strikes that open, grip advantage, push/pull/pivot, slip, throw, counter, the fall, six
+styles, a lesson and played drills).
 
 **What is weak is the bout itself, on a phone, in the hand.** The default bout is a grab and 2.6 s of tapping, over in
-4–7 s for a decent player; one held « Garde » key draws a ranked bout to a paid 90 s time-out (100 % of the measured bouts at levels 1, 3 and 5). The deep Làmb 2.0
-bout is hidden behind a flag and reads as text: small bodies far away, a rule line « Tirer bat Pousser · Pivoter bat
-Tirer · Pousser bat Pivoter » under a bar, tells shown by a lean of the upper body on a figure 106 px tall, partly under the HUD. Nothing hits: no hit-stop, no camera
-jolt, no vibration, no thud of a body on the sand; the two wrestlers hold each other from more than an arm's length.
-The player's own body is replaced by a generic wrestler (a woman player fights as a man), and the opponent changes clothes between
-his entrance and the bout (Ousmane walks in in Baobab's green and fights in indigo).
+4–7 s for a decent player; one held « Garde » key draws a ranked bout to a paid 90 s time-out (100 % of the measured
+bouts at levels 1, 3 and 5). The deep Làmb 2.0 bout is hidden behind a flag and reads as text: small bodies far away, a
+rule line « Tirer bat Pousser · Pivoter bat Tirer · Pousser bat Pivoter » under a bar, tells shown by a lean of the
+upper body on a figure 106 px tall, partly under the HUD. Nothing hits: no hit-stop, no camera jolt, no vibration, no
+thud of a body on the sand; the two wrestlers hold each other from more than an arm's length. The player's own body is
+replaced by a generic wrestler (a woman player fights as a man), and the opponent changes clothes between his entrance
+and the bout (Ousmane walks in in Baobab's green and fights in indigo).
 
 **Roi des Arènes (RDA) brings fighter presentation, not a combat engine.** Its two anatomical physiques and face pass
 are what our wrestlers lack most; they can come in **as new body ids on our own 20-bone rig** (the Meshy transplant
@@ -125,8 +126,8 @@ screen's height), 106 px in the empoignade, 183 px in the slow fall's close shot
   grabs at once within 1.5 m (a guarded grab exposes the grabber); **Dégager** steps back, or in a losing empoignade
   breaks free on a 0.38 s green window. The empoignade lasts 2.6 s: whoever taps more (plus endurance) throws the other.
   90 s round, referee's decision on points (guards, grabs, breaks), abandon apart. Three phone buttons.
-- **Watch**: buy a ticket, sit, follow preliminaries and the main event (sans frappe, AI vs AI), cheer, wear the écurie's
-  colours, see the result on posters and hear it in the street; friends see the same bout.
+- **Watch**: buy a ticket, sit, follow preliminaries and the main event (sans frappe, AI vs AI), cheer, wear the
+  écurie's colours, see the result on posters and hear it in the street; friends see the same bout.
 - **Progress**: the record, the ladder, purses (5 000–14 000 F for an ordinary ranked bout by the opponent's level, a
   gala ×2 and a title ×3 the rung's purse), the after-bout card, the phone's « Arène » app (record, ladder, wrestler
   cards, follow one).
@@ -147,7 +148,8 @@ stands split, the announcer tells it in the gala. Records apart (`lamb_af_*`), s
   stands, posters and talk in the city. It does not need rebuilding; the bout needs to be worthy of it.
 - **Làmb 2.0's design is right** (spec §7–12): no health bar, strikes that open rather than damage, a grip that slides,
   « I am losing this position » felt before the fall, the fall decided by position, not `power > defence`. The six
-  styles really differ (tested pair by pair), the AI is tuned by level for a new player (`docs/LAMB2.md` « Équilibrage »).
+  styles really differ (tested pair by pair), the AI is tuned by level for a new player (`docs/LAMB2.md`
+  « Équilibrage »).
 - **Determinism and tests**: watched bouts are seeded and fixed-step (friends see one bout); 392 unit tests in the
   wrestling stack, headless pupils that play the real duel, browser checks for every path.
 - **The data model is ready for more**: attributes from training, the roster with records, `onMoment` hooks, the
@@ -203,7 +205,7 @@ authenticity, original generic forms only, a Senegalese adviser to review high-i
 | **Two anatomical physiques** (heavyweight, athletic; CC0/MPFB-derived) | The wrestler body of every bout: the player's, the opponent's, the entrance, watched bouts, preliminaries | **Adds** two body ids on our 20-bone v4 rig through `scripts/meshy/transplant-to-v4-rig.mjs` (adapted from Meshy's to MPFB's bone names), so `Wrestler`, the clips, `StrikeRig`, the gait, the fête and every check run unchanged. The transplant scales a body to v4's leg length; a heavyweight keeps his size through `BODY_FIT.scale` (the Meshy « femme » uses 0.93). `preloadBody` already falls back to v4 when a body is missing; v4 stays the low-quality body | The GLBs (or `experiments/roi-des-arenes` pushed to `lab/roi-des-arenes-threejs`), the source `.blend`/MPFB export, the licence records (CC0 headers, MPFB policy) | Per-style builds from v4's own morphs (`heavy`, `muscular`): Gora heavy, Pape lean (stage 2) |
 | **Face realism** (WEB-004 atlas, eyes, brows, lashes) | Faces in the close shots: the fall camera, the replay, the entrance | **Adds** with the bodies | The atlas PNGs and their licence record; ~4 MB more to measure on a phone | Nothing needed before the bodies |
 | **Planted-feet locomotion** (WEB-002) | Wrestlers stepping and circling without sliding | Dakar already has one (`src/actors/gait.ts`: feet planted, no moonwalk) for Idle/Walk/Run; the duel's Stance/Grab clips bypass it, so the opponent glides | Nothing (RDA's code would only be a reference) | A crouched fighting-stance gait in `gait.ts` (stage 2) |
-| **Contact practice** (WEB-006) | The distance and the hold/release of the empoignade | **Not a combat engine**: we keep ours. We take its numbers (0.72 m separation, the approach/hold/release timings) for the clinch's presentation | Nothing | The clinch at chest distance (stage 1) |
+| **Contact practice** (WEB-006) | The distance and the hold/release of the empoignade | **Not a combat engine**: we keep ours. We take its number (0.72 m separation) and its approach → hold → release states as the target for the clinch's presentation | Nothing | The clinch at chest distance (stage 1) |
 | **Chest X, no neck loop** (WEB-008) | An optional cosmetic in « Tenue de lutte », worn at the entrance and in bouts | **Adds** a fifth accessory next to today's four placeholders (arm, waist, neck) | A go to ship it as an option (cultural status unverified); an adviser before it becomes prominent (posters, the default look) | Yes, from the description: cords from the chest over the shoulders to the back, a central pouch, six plain pouches, on the `chest`/`spine` bones, one merged mesh |
 | **Unity prototype** (movement, clinch) | Ideas only | Nothing | Nothing | Nothing |
 | **INT-001's « free AI exhibition first »** | A bout through the full route with nothing at stake | The fighter's path already takes `mode: 'amical'`: an « Exhibition » is a small addition | Nothing | Yes (stage 3) |
@@ -237,17 +239,19 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
 ### Stage 0 · « Les petites réparations » — what the baseline found (independent fixes, any time)
 
 - **For the player**: in the wrestlers' tunnel the camera no longer sits behind the « ENTRÉE DES LUTTEURS » sign (the
-  sign and the tunnel's roof seen by the follow camera like a wall or an awning, `pullClear` in `src/actors/camera.ts`); during a bout the streak chip is hidden with the
-  rest of the city HUD; the bàkk hint goes when the referee calls; the after-bout card's « Palmarès » reads on one line
-  on 390 px; in portrait the « Prise » panel sits above the wrestlers' heads, not over them.
+  sign and the tunnel's roof seen by the follow camera like a wall or an awning, `pullClear` in `src/actors/camera.ts`);
+  during a bout the streak chip is hidden with the rest of the city HUD; the bàkk hint goes when the referee calls; the
+  after-bout card's « Palmarès » reads on one line on 390 px; in portrait the « Prise » panel sits above the wrestlers'
+  heads, not over them.
 - **Files**: `src/lamb/duel.ts` (the `body.induel` hide list: `#streakChip`; the Prise's place in portrait lives in
-  `src/ui/style.css` « the Làmb 2.0 duel HUD »), `src/arena/bakk.ts` or `fighter.ts` (the hint's end), `src/career/progress.ts`
-  / `src/ui/style.css` (the card), the sign and roof as camera obstacles (`src/actors/camera.ts`, `src/world/arenaModules.ts`).
+  `src/ui/style.css` « the Làmb 2.0 duel HUD »), `src/arena/bakk.ts` or `fighter.ts` (the hint's end),
+  `src/career/progress.ts` / `src/ui/style.css` (the card), the sign and roof as camera obstacles
+  (`src/actors/camera.ts`, `src/world/arenaModules.ts`).
 - **Also**: the four failures of `check-arena-fighter` at the baseline (§1: the gala night's « préliminaires d’abord »
   and « Prêt : … » toasts never seen by the check while the show itself behaves as documented) are investigated first:
   a check out of step with 1.0.1 or a lost toast.
-- **Checks**: `check-arena-fighter` (both), `check-lamb2` (a new step: the heads below the Prise panel, by `duelScreen`),
-  `check-career` (the card), a phone capture of the tunnel.
+- **Checks**: `check-arena-fighter` (both), `check-lamb2` (a new step: the heads below the Prise panel, by
+  `duelScreen`), `check-career` (the card), a phone capture of the tunnel.
 - **Owner decision**: none.
 
 ### Stage 1 · « Le choc » — every contact is felt (recommended first; detail in §5)
@@ -268,12 +272,13 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
 
 - **For the player**: the opponent fights in the look he walked in with and wears on his card — Ousmane in Baobab's
   green, Gora in his red stripes, his own skin and his level's pieces (`rosterLook(id)`, used by the ceremony and the
-  portraits, not yet by the player's bout); the player's wrestler has the player's own skin tone (`Appearance.skin`), not a
-  fixed brown; Gora is heavy and Pape lean (v4's `heavy`/`muscular` morphs, by style); both wrestlers step and circle in
-  a crouched stance with planted feet instead of gliding in a static Stance clip (a stance mode of `src/actors/gait.ts`,
-  the idea RDA's WEB-002 proved); in the empoignade, his move is shown by a small sign above him (→ pousse, ← tire,
-  ↻ pivote) in the lesson and against levels 1–2, fading out above (the words stay); the rule line under the Prise moves
-  to the lesson. Optional: the chest X (WEB-008 description, built on our rig) in « Tenue de lutte ».
+  portraits, not yet by the player's bout); the player's wrestler has the player's own skin tone (`Appearance.skin`),
+  not a fixed brown; Gora is heavy and Pape lean (v4's `heavy`/`muscular` morphs, by style); both wrestlers step and
+  circle in a crouched stance with planted feet instead of gliding in a static Stance clip (a stance mode of
+  `src/actors/gait.ts`, the idea RDA's WEB-002 proved); in the empoignade, his move is shown by a small sign above him
+  (→ pousse, ← tire, ↻ pivote) in the lesson and against levels 1–2, fading out above (the words stay); the rule line
+  under the Prise moves to the lesson. Optional: the chest X (WEB-008 description, built on our rig) in
+  « Tenue de lutte ».
 - **Files**: `src/main.ts` (`startDuel`: the opponent's look and skin, the player's skin), `src/lamb/duel.ts` (`mk`,
   the tell sign, the clinch HUD line), `src/actors/gait.ts` + `gaitRig.ts` (stance mode), `src/actors/humanoid.ts`
   (shape per style), `src/lamb/look.ts` (+ one accessory), `src/career/portrait.ts` (the chest X in the portrait).
@@ -311,11 +316,11 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
 
 ### Stage 4 · « La lutte simple » — depth for the default discipline
 
-- **For the player**: the live « sans frappe » bout stops being 2.6 s of tapping. It keeps its own identity (no
-  strikes) and gets Làmb 2.0's clinch: the grip from how you entered, push/pull/pivot read and answered, the slip felt
-  before the fall, the throw and the counter. The referee presses a bout that goes nowhere (as avec frappe) and a passive
-  wrestler loses the decision, so holding « Garde » no longer draws a paid 90 s time-out. Coach Ablaye's « sans frappe »
-  training gains the clinch steps from his avec-frappe lesson.
+- **For the player**: the live « sans frappe » bout stops being 2.6 s of tapping. It keeps its own identity (no strikes)
+  and gets Làmb 2.0's clinch: the grip from how you entered, push/pull/pivot read and answered, the slip felt before the
+  fall, the throw and the counter. The referee presses a bout that goes nowhere (as avec frappe) and a passive wrestler
+  loses the decision, so holding « Garde » no longer draws a paid 90 s time-out. Coach Ablaye's « sans frappe » training
+  gains the clinch steps from his avec-frappe lesson.
 - **Files**: `src/lamb/duel.ts` (split `frappe` into `strikes` and `deepClinch`; `clinchFrappe` → `clinchDeep`),
   `src/lamb/rules.ts` (a third rule set, `sans_frappe` v2, with `enabled` and its own label, behind `?lamb2` first),
   `src/lamb/lesson.ts`, `src/lamb/clinch.ts` (styles' clinch data for the three sans-frappe opponents), `src/main.ts`
@@ -379,11 +384,11 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
 
 ### Stage 8 · « Le défi » — two players, one bout, a server referee
 
-- **For the player**: next to another player in the street, « Défier » on the phone sends a friendly challenge (a row
-  in « Autour de moi », or a sheet like Grand Camp's « Inviter », which already lists « À côté de toi · 12 m » players by
+- **For the player**: next to another player in the street, « Défier » on the phone sends a friendly challenge (a row in
+  « Autour de moi », or a sheet like Grand Camp's « Inviter », which already lists « À côté de toi · 12 m » players by
   tag through `messagesDeps.nearby()`; no new HUD button); accepted, both walk to the nearest sand (the écurie's or the
-  arena's ring), the referee calls « prêts ? », they fight, friends nearby watch the same bout; the result is told to both and recorded
-  apart (`lamb_defi_*`), never in the career ladder at first. A disconnect is not a sporting win.
+  arena's ring), the referee calls « prêts ? », they fight, friends nearby watch the same bout; the result is told to
+  both and recorded apart (`lamb_defi_*`), never in the career ladder at first. A disconnect is not a sporting win.
 - **What Grand Camp already gives** (`server/camp.ts`): one Durable Object per match, named by role (`camp:<match>`,
   `list:<hub>`); a fixed-tick authority (20 Hz) with a snapshot to every player each tick; requests answered once
   (`ack`, idempotent by id), rate limits, a feature-versioned protocol inside its own feature (`CAMP_FEATURE`,
@@ -395,13 +400,14 @@ nothing about a phone's frame rate; a stage that adds anything drawn is measured
      DOM), run by the single-player duel locally (one code path) and by the server. Golden tests: the same seed gives
      the same bout before and after, for both disciplines and the watched bouts. This is the big piece of work, and it
      pays for stages 4–5 too.
-  2. **Two human sides.** The sim already drives its « player » side by buttons and has an `autopilot`; the opponent side
-     needs the same input path (today it is AI only).
+  2. **Two human sides.** The sim already drives its « player » side by buttons and has an `autopilot`; the opponent
+     side needs the same input path (today it is AI only).
   3. **Timing under latency.** Tells last 0.36–0.6 s (clinch moves, a grab's response window, a throw's windup); a phone
      round trip is 100–250 ms. The server judges an answer by the tick the client saw when it pressed (Camp's `in`
-     frames carry a sequence `s`; a wrestling frame adds the last snapshot tick drawn), accepted up to about 150 ms back; online bouts may also lengthen
-     the tells (×1.3). To be measured with two phones before it is promised.
-  4. **A two-seat lobby** (`CampLobby` is football-sized: 6, 10, 14), a challenge from presence, accept/decline, « Prêt ».
+     frames carry a sequence `s`; a wrestling frame adds the last snapshot tick drawn), accepted up to about 150 ms
+     back; online bouts may also lengthen the tells (×1.3). To be measured with two phones before it is promised.
+  4. **A two-seat lobby** (`CampLobby` is football-sized: 6, 10, 14), a challenge from presence, accept/decline,
+     « Prêt ».
   5. **Watchers**: a read-only seat for friends in range; the stands react from the snapshots.
   6. **Server object**: either a new role `lamb:<match>` in the existing `GrandCamp` class (no migration, but football
      and wrestling share a class), or **a new class `LambBout`, which needs a new migration tag (e.g.
@@ -439,15 +445,16 @@ buzzes }`. The plan of each event (stop, kick, buzz, sound) is a pure function i
 
 **Files.** `src/lamb/duel.ts` (`update`: the stop; `poseBodies`: the kick and the clinch camera; `startClinch`: the
 closing; `end` and `resolveClinch`: the sans-frappe slow fall; `strikeLands`, `clinchExchange`, `throwStep`: the
-events), `src/lamb/strikeRig.ts` (one `grip` aim; the rig made sans frappe too), `src/lamb/audio.ts` (two sounds), `src/lamb/fx.ts` (new, pure),
-`tests/duelFx.test.ts` (new). Roughly 200 lines.
+events), `src/lamb/strikeRig.ts` (one `grip` aim; the rig made sans frappe too), `src/lamb/audio.ts` (two sounds),
+`src/lamb/fx.ts` (new, pure), `tests/duelFx.test.ts` (new). Roughly 200 lines.
 
 **Acceptance.**
 1. `npx tsc --noEmit`; `npx vitest run tests/duelFx.test.ts tests/lamb*.test.ts tests/watchedBout.test.ts` — the
    balance, styles and watch tables unchanged to the number (they are headless).
-2. `check-lamb2` with a new phone step: a quick hit adds a stop, a big hit a longer one; in the empoignade
-   `fx.cam === 'clinch'`, `fx.clinchDist <= 0.8`, and both heads (`duelScreen`) below the Prise panel; every existing layout step still passes on 390 × 844, 844 × 390,
-   360 × 640 and 667 × 375 (the closer camera must not bring the bodies under the buttons or the gauges).
+2. `check-lamb2` with a new phone step: a quick hit adds a stop, a big hit a longer one; in the empoignade `fx.cam ===
+   'clinch'`, `fx.clinchDist <= 0.8`, and both heads (`duelScreen`) below the Prise panel; every existing layout step
+   still passes on 390 × 844, 844 × 390, 360 × 640 and 667 × 375 (the closer camera must not bring the bodies under the
+   buttons or the gauges).
 3. `check-lamb` with a new step: a « sans frappe » projection has `fall.slow` and a thud.
 4. `check-arena-fighter` with and without `LAMB2=1`; `LAMB2=1 check-arena-visit` gives the same watched result for the
    same evening as before the change.
