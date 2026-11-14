@@ -1512,13 +1512,17 @@ function walkingHint(): string | null {
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
   // the marker is on a vehicle the player is now driving, or no longer has: it is done
-  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { destination = null; return null; } }
+  // (got on it: found — « Coups de pouce », src/economy/pouce.ts)
+  { const car = vehicleOfMark(destination.id), e = car ? myVehicle(car) : null; if (car && (!e || e.status === 'driven')) { if (e) state.count('vehicule:retrouve'); destination = null; return null; } }
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
   const target = guidePlace(destination.id);
   if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
-  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }   // (a car is wider than a doorstep)
+  if (distance < (vehicleOfMark(destination.id) ? 3.6 : 2.3)) {          // (a car is wider than a doorstep)
+    if (vehicleOfMark(destination.id)) state.count('vehicule:retrouve');    // a parked vehicle found with its marker (« Coups de pouce », src/economy/pouce.ts)
+    destination = null; hud.toast('Te voilà : ' + target.name); return null;
+  }
   const angle = Math.atan2(dx, dz) - follow.yaw;
   const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
   return `${arrow} ${jobAt(target)?.job === 'delivery' ? '📦 ' : ''}${target.name} · ${Math.round(distance)} m`;
