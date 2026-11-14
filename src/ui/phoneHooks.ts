@@ -125,4 +125,6 @@ export const phoneHooks: {
   openPlaces?: () => void;
   /** Réglages › « Jouer en ligne »: the online profile and the invitation (src/multiplayer/ui.ts, wired by main.ts). */
   openPresence?: () => void;
+  /** Réglages › Caméra › « Revoir l'ouverture »: the first launch's fly-in over Pikine again (src/game/opening.ts). */
+  replayOpening?: () => void;
 } = {};

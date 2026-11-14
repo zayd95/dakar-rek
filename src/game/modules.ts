@@ -74,6 +74,7 @@ import { nightStreetModule } from '../districts/nightStreet';
 import { VISIT_MODULE } from '../online/visit';
 import { MEETUPS_MODULE } from '../online/meetups';
 import { villaModule } from '../villa/module';
+import { opening } from './opening';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -258,6 +259,7 @@ const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.h
 
 export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
+  opening,              // 1.0.1: the first launch's fly-in over Pikine; first in the list: its camera wins while it flies (src/game/opening.ts)
   wolofModule,
   ESTATE_MODULE,        // before the parked cars (assetKit): the homes' gates and directory entries are places they keep clear of
   banaModule,           // the player's bana-bana table by the Maïga du marché (src/economy/banaModule.ts): before the street dressing, which keeps off its ground
