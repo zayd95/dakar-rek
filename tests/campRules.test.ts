@@ -116,6 +116,15 @@ describe('Grand Camp lobby: « Prêt », the fee, the start', () => {
     expect(seen.has(back)).toBe(false);
     expect([...seen, back].every(o => /^h-00112233aabbccdd-[0-9a-f]{16}-\d{1,9}$/.test(o))).toBe(true);
   });
+  it('a hold in flight when the server restarted (« pending », no answer kept): not ready, the fee returned at the next occasion, « Prêt » offered again', () => {
+    const l = filled(6);
+    l.readyAsk(tag(2), REQ(1));
+    expect(l.seat(tag(2))!.hold).toBe('pending');
+    const woken = new CampLobby(JSON.parse(JSON.stringify(l.data)));
+    woken.wake();
+    expect(woken.view().players[1]).toMatchObject({ ready: false, hold: 'none' });
+    expect(woken.leave(tag(2))).toMatchObject({ ok: true, release: true });
+  });
   it('the start: every place filled and ready, equal teams, everyone connected — not before', () => {
     const l = filled(6);
     expect(l.startable()).toBe(false);

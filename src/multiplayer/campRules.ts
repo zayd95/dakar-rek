@@ -42,6 +42,8 @@ export interface CampLobbyData {
   holds?: number;
   /** Fees the ledger could not return yet (a release that failed: `why` it was asked), seated or not: tried again until it answers. */
   owed?: { tag: Tag; why: string }[];
+  /** At the end: the match's score and winner (a settlement taken up after a restart, when the match itself is gone, says them). */
+  score?: [number, number]; winner?: 0 | 1 | null;
 }
 export type CampOk<T = object> = ({ ok: true } & T) | { ok: false; reason: CampRefusal };
 /** « Prêt »'s answer: the ledger must hold the fee under `op` (the server's), or nothing to ask (`again`: already ready or asked). */
@@ -60,6 +62,14 @@ export class CampLobby {
   }
   private newSeat(tag: Tag, p: CampProfile, team: 0 | 1, now: number): CampSeat {
     return { tag, name: p.name, look: p.look, ...(p.app ? { app: p.app } : {}), team, ready: false, hold: 'none', on: true, at: now, sid: this.data.next++ };
+  }
+  /**
+   * The object woke on what it had saved (a restart): a hold asked for and not answered then (`pending`) is now unsure — not ready, the fee returned at
+   * the next occasion to be safe, « Prêt » offered again (its hold is the player's one hold if the ledger did take it). Never « en attente » for ever.
+   */
+  wake() {
+    if (this.data.state !== 'lobby') return;
+    for (const s of this.data.players) if (s.hold === 'pending') { s.hold = 'none'; s.ready = false; s.unsure = true; }
   }
   get state() { return this.data.state; }
   get terms() { return this.data.terms; }

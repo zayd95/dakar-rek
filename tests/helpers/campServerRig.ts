@@ -83,14 +83,19 @@ export class FakeLedger {
     if (money) this.s.transaction(() => applyMoney(this.s, { kind: 'fund', id: `fund-${tag}-${money}`, tag, amount: money }, this.now(), LIMITS));
   }
   balance(tag: Tag) { return this.s.account(tag)?.balance ?? null; }
+  /** That call never answers (the ledger's object died with it in flight). */
+  hang: Partial<Record<Fault, boolean>> = {};
   private gate<T>(k: Fault, run: () => T): T {
     this.calls[k]++;
+    if (this.hang[k]) return new Promise<never>(() => {}) as unknown as T;
     if (this.fail[k]) { this.fail[k]!--; throw new Error('Network connection lost.'); }
     const out = run();
     if (this.lost[k]) { this.lost[k]!--; throw new Error('Network connection lost.'); }
     return out;
   }
-  async campHold(r: Parameters<typeof campHold>[1]) { return this.gate('hold', () => this.s.tx(() => campHold(this.s, r, this.now(), LIMITS))); }
+  async campHold(r: Parameters<typeof campHold>[1]) { this.held.push(r.op); return this.gate('hold', () => this.s.tx(() => campHold(this.s, r, this.now(), LIMITS))); }
+  /** Every hold op the match asked for. */
+  held: string[] = [];
   async campRelease(r: Parameters<typeof campRelease>[1]) { return this.gate('release', () => this.s.tx(() => campRelease(this.s, r, this.now()))); }
   /** A settlement this says yes to throws inside the ledger's transaction (nothing written), as a stuck op id or a broken pool would. */
   settleThrows: ((r: Parameters<typeof campSettle>[1]) => boolean) | null = null;

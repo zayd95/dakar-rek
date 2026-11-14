@@ -21,10 +21,10 @@ const priv = (m: MatchHandle) => m.obj as unknown as Priv;
 let undo: (() => void) | null = null;
 afterEach(() => { undo?.(); undo = null; });
 
-/** A lobby of six (the organizer = 1), every player with 10 000 F on Teranga Money; `ready`: all of them « Prêt ». */
-async function lobby(rig: CampRig, o: { fee?: number; ready?: boolean; match?: string } = {}) {
-  const match = o.match ?? M, m = await rig.match(), ws: FakeSocket[] = [];
-  for (let i = 1; i <= 6; i++) { rig.ledger.account(tag(i)); ws.push(await m.connect(tag(i), match, `Joueur ${i}`)); }
+/** A lobby of six (the organizer = 1, or `base` + 1), every player with 10 000 F on Teranga Money; `ready`: all of them « Prêt ». */
+async function lobby(rig: CampRig, o: { fee?: number; ready?: boolean; match?: string; base?: number } = {}) {
+  const match = o.match ?? M, m = await rig.match(), ws: FakeSocket[] = [], base = o.base ?? 0;
+  for (let i = base + 1; i <= base + 6; i++) { rig.ledger.account(tag(i)); ws.push(await m.connect(tag(i), match, `Joueur ${i}`)); }
   expect((await m.req(ws[0], { type: 'create', terms: terms({ fee: o.fee ?? 1000 }) }))?.ok).toBe(true);
   for (let i = 2; i <= 6; i++) expect((await m.req(ws[i - 1], { type: 'join' }))?.ok).toBe(true);
   if (o.ready) for (const w of ws) expect((await m.req(w, { type: 'ready' }))?.ok).toBe(true);
@@ -167,6 +167,59 @@ describe('Grand Camp server: the district’s list cannot be flooded (review M2)
     expect([...L.storage.m.keys()].filter(k => k.startsWith('c:')).length).toBeLessThan(1240);
     await L.obj.campListDrop(listing(1199, 0).match);
     expect((await L.obj.campList('corniche', null))[0].created).toBe(now - 590_000 + 1198 * 400);
+  });
+});
+
+describe('Grand Camp server: the review’s minors', () => {
+  it('a frame that is not JSON closes the socket, as 1.0’s room does (never an unlimited stream of garbage)', async () => {
+    const rig = new CampRig(Camp), m = await rig.match(), w = await m.connect(tag(1), M);
+    await m.raw(w, '{"type":"ready"');
+    expect(w.closed).toMatchObject({ code: 1008 });
+  });
+  it('no answer from the ledger at the last « Prêt »’s pool check: asked again from the alarm (the match starts); still none: every fee returned, the lobby closed', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig);
+    for (const w of ws.slice(0, 5)) expect((await m.req(w, { type: 'ready' }))?.ok).toBe(true);
+    rig.ledger.fail.pool = 1;
+    expect((await m.req(ws[5], { type: 'ready' }))?.ok).toBe(true);
+    expect(priv(m).game).toBeNull();
+    expect(m.storage.alarm! - Date.now()).toBeLessThanOrEqual(5_000);              // not the lobby's 10-minute deadline
+    await m.ring();
+    expect(priv(m).game).not.toBeNull(); priv(m).stopTimer();
+    const b = await lobby(rig, { match: M2, base: 10 });
+    for (const w of b.ws.slice(0, 5)) expect((await b.m.req(w, { type: 'ready' }))?.ok).toBe(true);
+    rig.ledger.fail.pool = 99;
+    expect((await b.m.req(b.ws[5], { type: 'ready' }))?.ok).toBe(true);
+    for (let k = 0; k < 10 && !b.ws[0].last('result'); k++) await b.m.ring();
+    expect(b.ws[0].last<{ result: { end: string; money: string } }>('result')?.result).toMatchObject({ end: 'stopped', money: 'settled' });
+    expect(b.m.priv.lobby!.data.state).toBe('over');
+  });
+  it('a hold in flight when the object restarted: the place is not left « en attente » for ever — not ready, « Prêt » again holds the fee once', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig);
+    rig.ledger.hang.hold = true;
+    void m.obj.webSocketMessage(ws[1], JSON.stringify({ type: 'ready', id: crypto.randomUUID() }));
+    await new Promise(r => setTimeout(r, 5));
+    expect((await m.storage.get('camp') as { players: { hold: string }[] }).players[1].hold).toBe('pending');
+    rig.ledger.hang.hold = false;
+    const again = await rig.match(m.storage);                                        // the object restarts on what it had saved
+    expect(again.seat(tag(2))).toMatchObject({ ready: false, hold: 'none' });
+    const w = await again.connect(tag(2), M, 'Joueur 2');
+    expect(again.shown(tag(2))).toMatchObject({ hold: 'none', ready: false });
+    expect((await again.req(w, { type: 'ready' }))?.ok).toBe(true);
+    expect(again.seat(tag(2))).toMatchObject({ ready: true, hold: 'held' });
+    expect(rig.ledger.balance(tag(2))).toBe(9000);
+  });
+  it('a settlement taken up again after a restart keeps the match’s real score and winner', async () => {
+    const rig = new CampRig(Camp), { m } = await lobby(rig, { ready: true });
+    started(m);
+    rig.ledger.fail.settle = 1;
+    await fullTime(m, [2, 1]);
+    expect(await m.storage.get('settle')).toMatchObject({ kind: 'team' });
+    const again = await rig.match(m.storage), w = await again.connect(tag(4), M, 'Joueur 4');
+    expect(again.storage.alarm).not.toBeNull();
+    await again.ring();
+    const res = w.last<{ result: { end: string; score: number[]; winner: number | null; payouts: { tag: string; amount: number }[] } }>('result')!.result;
+    expect(res).toMatchObject({ end: 'win', score: [2, 1], winner: 0 });
+    expect(res.payouts.map(p => p.tag)).toEqual([tag(1), tag(3), tag(5)]);
   });
 });
 
