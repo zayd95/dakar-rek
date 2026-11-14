@@ -110,8 +110,8 @@ describe('the goal line: this hub, this hour', () => {
     expect(suggestionHere(r, s, 'pikine', 23)?.id ?? null).not.toBe(WELCOME);              // at night nobody is sent to see someone
     expect(suggestionHere(r, s, 'pikine', 10, id => id !== 'ibou')?.id).not.toBe(WELCOME);   // he is not about
   });
-  it('the first job: the hub\'s own Tiak Tiak (Pikine, Plateau), else its paid services — never another hub\'s pick-up', () => {
-    for (const [hub, re] of [['pikine', /Mame Diarra \(Pikine\)/], ['plateau', /Chez Fatou \(Plateau\)/], ['almadies', /Petits boulots/], ['corniche', /Petits boulots/]] as const) {
+  it('the first job: the hub\'s own Tiak Tiak counter (every district since 1.0.1) — never another hub\'s pick-up', () => {
+    for (const [hub, re] of [['pikine', /la Gargote Mame Diarra \(Pikine\)/], ['plateau', /la Gargote Chez Fatou \(Plateau\)/], ['almadies', /le Restaurant Le Pointe \(Almadies\)/], ['corniche', /la Gargote des étudiants \(Corniche\)/], ['mermoz', /le Café Touba \(Mermoz\)/]] as const) {
       const { s, r } = fresh(hub);
       welcomeByTalk('ibou', r, s);
       const st = economyStep(s)!;

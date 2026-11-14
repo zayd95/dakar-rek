@@ -179,6 +179,10 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 #toast .bc-next { margin-top:6px; padding:7px 10px; border-radius:10px; background:#fff4d6; }
 #toast .bc-next b { display:block; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:#7a5a12; }
 #toast .bc-next span { display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); }
+/* the next job nearby, one tap (src/economy/streakModule.ts): a line and a yellow button, a thumb high */
+#toast .bc-go { position:sticky; bottom:0; display:flex; align-items:center; gap:10px; width:100%; min-height:48px; margin-top:8px; box-shadow:0 0 0 4px var(--surface, #fff); padding:8px 12px; border:0; border-radius:12px; background:var(--sun); color:#2b2000; font:inherit; text-align:left; cursor:pointer; }
+#toast .bc-go span { flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:750; line-height:1.25; }
+#toast .bc-go b { flex:none; font-size:15px; font-weight:850; white-space:nowrap; }
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 
@@ -387,6 +391,8 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
     max-height:calc(33vh - 132px - var(--sa-t)); max-height:calc(33dvh - 132px - var(--sa-t)); }
   /* an offer (« Mes pistes ») keeps its line and its two buttons whole: it may reach a little lower, never past the middle of the screen */
   #toast .mo.of { max-height:calc(50vh - 132px - var(--sa-t)); max-height:calc(50dvh - 132px - var(--sa-t)); }
+  /* a work card with its next job: the button stays in view at the card's foot (sticky) and the card may reach a little lower, never past the middle */
+  #toast .mo.bc.go { max-height:calc(50vh - 132px - var(--sa-t)); max-height:calc(50dvh - 132px - var(--sa-t)); }
   #placeEv { justify-content:flex-end; }
   #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
   /* the after-bout card: a smaller icon leaves its rows the room they need */

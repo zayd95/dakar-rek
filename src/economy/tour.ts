@@ -176,7 +176,8 @@ export function completeStop(s: GameState, runId: string): TourCompletion | null
   if (!c || c.job.runId !== runId || j.done.includes(runId)) return null;
   const { run, tour, stop, index } = c;
   const late = tourRemainingMs(s) < 0;
-  const paid = s.addMoney(Math.max(0, workPay(s, Math.round(run.pay[index] * (late ? ECONOMY.tiak.latePayFactor : 1)), 'livraison')), `Tournée Tiak Tiak → ${stop.place.name}${late ? ' (en retard)' : ''}`);
+  const stopPay = Math.min(run.pay[index], Math.round(stop.pay * payFactor(T.trustMax)));   // never more than this client pays at full trust (a run restored from a save)
+  const paid = s.addMoney(Math.max(0, workPay(s, Math.round(stopPay * (late ? ECONOMY.tiak.latePayFactor : 1)), 'livraison')), `Tournée Tiak Tiak → ${stop.place.name}${late ? ' (en retard)' : ''}`);
   s.adjust(ECONOMY.tiak.fatigue);
   s.count('livraisons'); s.count('actions');
   bump(s, stop.id, late ? -1 : 1, late ? 'late' : 'ok');

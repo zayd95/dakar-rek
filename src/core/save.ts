@@ -4,6 +4,7 @@ import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 import { appearanceOf } from '../actors/appearance';
 import { newPistes, pistesOf } from '../economy/pistes';
+import { ECONOMY } from '../economy/config';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -479,6 +480,18 @@ function tourOf(v: unknown): TourRun | null {
   if (late.length !== leg) return null;                    // the stops served and the leg being served must agree
   return { id: t.id, order: [p, q], leg, departed: t.departed === true, limitS, pay, late };
 }
+/** The most any delivery pays (an express between the two furthest districts, ECONOMY.tiak.band): the cap of a run this file knows nothing about. */
+const TIAK_PAY_TOP = Math.round(ECONOMY.tiak.band.away.max * ECONOMY.tiak.band.express.pay);
+let jobPayCap: (routeId: string) => number = () => TIAK_PAY_TOP;
+/**
+ * What a run in hand may carry as its pay at most, by route id. Set by src/economy/jobs.ts, which knows the routes (this file cannot import them: they read
+ * the road graph, which reads the catalogue, which reads this file); until then, the top of the delivery band.
+ */
+export const setJobPayCap = (f: (routeId: string) => number) => { jobPayCap = f; };
+/**
+ * The deliveries. A run in hand keeps the pay fixed when it was accepted, but never more than its route pays (1.0.1: an edited save could carry any
+ * pay); a tour's two stops are held under the top of the delivery band (and under what each client pays at hand-over, src/economy/tour.ts).
+ */
 function jobsOf(v: unknown): JobsState {
   const j = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const done = Array.isArray(j.done) ? (j.done as unknown[]).filter((d): d is string => typeof d === 'string').slice(-DONE_JOBS_MAX) : [];
@@ -487,10 +500,10 @@ function jobsOf(v: unknown): JobsState {
   if (a && typeof a.runId === 'string' && typeof a.routeId === 'string' && HUB_IDS.includes(a.hub as HubId) && !done.includes(a.runId)) {
     active = {
       runId: a.runId, routeId: a.routeId, hub: a.hub as HubId, stage: a.stage === 'pickup' ? 'pickup' : 'deliver',
-      pay: Math.max(0, Math.round(num(a.pay, 0))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
+      pay: Math.min(jobPayCap(a.routeId), TIAK_PAY_TOP, Math.max(0, Math.round(num(a.pay, 0)))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
     };
     const t = tourOf(a.tour);
-    if (t) active.tour = t;
+    if (t) { t.pay = [Math.min(t.pay[0], TIAK_PAY_TOP), Math.min(t.pay[1], TIAK_PAY_TOP)]; active.tour = t; }
     else if (a.tour !== undefined) active = null;          // a tour this build cannot read: dropped, nothing paid
   }
   return { active, done, seq: Math.max(0, Math.floor(num(j.seq, 0))) };

@@ -371,7 +371,7 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
 // The economic calendar (monthly contracts, src/economy/calendar.ts) reads the server's clock when the game is online, the device's otherwise.
 setEconClock(() => presence.serverNow());
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id), day: () => ctx.day(), hour: () => ctx.hour() });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 /** A bout at the arena (the duel in its ring): the others in the street still see the player there, in the ring. */

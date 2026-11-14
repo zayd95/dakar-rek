@@ -48,6 +48,12 @@ export const phoneHooks: {
   openAsset?: (assetId: string) => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
+  /**
+   * The Tiak Tiak offers of a district now, with where each starts and ends (hub-local metres; src/economy/tiakOffers.ts `districtOffers`), for a screen
+   * that lists or maps them (« Autour de moi »). Read-only; `takeTiak(id)` takes one (the courier then goes to its pick-up point).
+   */
+  tiakOffers?: (hub: HubId) => import('../economy/tiakOffers').TiakOfferInfo[];
+  takeTiak?: (id: string) => boolean;
   /** « Courses VTC »: rides asked for with the player's own car (src/transport/vtc.ts). */
   openVtc?: () => void;
   /** « Crédits »: what the player owes and to whom, and repaying it (src/transport/sarrAuto.ts). */

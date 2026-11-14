@@ -87,10 +87,15 @@ await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneIn
 await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
 await t.tap('#phone [data-app="travail"]'); await page.waitForSelector('#modal.on', T);
 await shot('jobs-app');
-const card = page.locator('#modal .dcard', { hasText: 'Ndeye' }).first();
-await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(400); await shot('jobs-app-plateau');
-const cb = await card.boundingBox(); await t.down(5, cb.x + cb.width / 2, cb.y + cb.height / 2); await page.waitForTimeout(60); await t.up(5);
-await page.waitForFunction(() => window.__dakar.activeJob()?.routeId === 'x_pk_pl_diallo_ndeye', null, { timeout: 20000 });
+// 1.0.1: the phone lists the district's rolling board (scripts/check-tiak-everywhere.mjs taps its cards); Boutique Diallo's regular run to Atelier Ndeye is on it only some hours.
+// When its card is there it is tapped; otherwise the board is closed and the same run is taken through the debug hook (said in the line below), the ride itself unchanged.
+const card = page.locator('#modal .dcard[data-route="x_pk_pl_diallo_ndeye"], #modal .dcard[data-route="t:pikine.diallo>plateau.ndeye"]').first();
+const onBoard = await card.count() > 0;
+if (onBoard) { await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(400); await shot('jobs-app-plateau'); const cb = await card.boundingBox(); await t.down(5, cb.x + cb.width / 2, cb.y + cb.height / 2); await page.waitForTimeout(60); await t.up(5); }
+else { await d(() => { window.__dakar.phoneClose?.(); document.querySelector('#modal.on .close')?.click(); }); await page.waitForTimeout(400); await d(() => window.__dakar.acceptJob('x_pk_pl_diallo_ndeye', false)); }
+console.log(`the run to Atelier Ndeye: ${onBoard ? 'tapped on the board' : 'not on this hour\'s board, taken through the debug hook'}`);
+await page.waitForFunction(() => /diallo.*ndeye/.test(window.__dakar.activeJob()?.routeId ?? ''), null, { timeout: 20000 });
+await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 20000 }).catch(() => {});
 const wallet0 = await d(() => window.__dakar.state.wallet);
 check('« Travail » on the phone: the parcel for the Plateau taken with a tap (go and fetch it first)', (await d(() => window.__dakar.activeJob()))?.stage === 'pickup');
 const places = await d(() => window.__dakar.cityPlaces());
