@@ -176,7 +176,7 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
     const st = page.querySelector<HTMLElement>('.gc-status')!, word = s.status === 'open' ? '' : STATUS_WORDS[s.status] ?? '';
     st.hidden = !word || (!l && s.status === 'connecting'); st.textContent = word;
     if (!l) {
-      put('.gc-s-head', s.status === 'open' && s.match === match ? empty('🔒', 'Ce match n’est pas visible pour toi : il est privé, ou il n’existe plus.') : `<p class="pk-note">Connexion au match…</p>`);
+      put('.gc-s-head', s.status === 'open' && s.match === match ? empty('🔒', 'Ce match n’est pas visible pour toi : il est privé, ou il n’existe plus.', btn('Voir les matchs', { go: 'camp', kind: 'primary', inline: true, cls: 'gc-gone' })) : `<p class="pk-note">Connexion au match…</p>`);
       return;
     }
     const seat = seatOf(l, s.me);
@@ -186,8 +186,10 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
     put('.gc-s-money', mine ? section('Ta mise', `<ul class="gc-money">${mine}</ul>`) : '');
     if (l.state === 'over' || s.result) {
       const rv = resultView(s.result, { me: s.me, team: seat?.team ?? null, teams: l.teams, names: t => l.players.find(p => p.tag === t)?.name ?? null });
+      // « Fermer » in every end, the result written or not (the money is the server's either way): the device is never kept on a finished match
       put('.gc-s-result', card(`<div class="gc-res ${rv.tone}"><i aria-hidden="true">${rv.icon}</i><b>${esc(rv.title)}</b>${rv.score ? `<span class="gc-res-sc">${esc(rv.score)}</span>` : ''}${rv.lines.map(x => `<p>${esc(x)}</p>`).join('')}</div>
-        ${s.result ? btn('Fermer', { act: 'done', kind: 'primary' }) : ''}`, 'gc-res-card'));
+        ${btn('Fermer', s.result ? { act: 'done', kind: 'primary' } : { act: 'done', kind: 'quiet', sub: 'Ton argent arrive quand même sur Teranga Money' })}`, 'gc-res-card'));
+      if (s.result) campSession.shown(match);                              // seen here: the device is free for the next Grand Camp
     } else put('.gc-s-result', '');
     const acts = lobbyActions({ lobby: l, me: s.me, status: s.status, atPitch: campHooks.atPitch?.() ?? false, busy, elsewhere: !!campSession.mine && campSession.mine !== match });
     put('.gc-s-acts', actsHtml(acts));

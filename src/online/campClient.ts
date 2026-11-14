@@ -63,6 +63,8 @@ export interface CampClientState {
   money: CampMoneyView[];
   /** Why the server closed this socket for good. */
   bye: 'removed' | 'over' | 'replaced' | null;
+  /** The server has no such match for me: its welcome came without a lobby (gone, or private and not mine), or it answered « unknown ». */
+  missing: boolean;
 }
 export interface CampViewPlayer { sid: number; team: 0 | 1 | null; x: number; z: number; vx: number; vz: number; f: number }
 export interface CampView {
@@ -93,7 +95,7 @@ const BACKOFF = [500, 1000, 2000, 4000, 8000];
 const REQUEST_MS = 20_000, PING_MS = 20_000, SILENT_MS = 12_000, SNAPS_KEPT = 40, EVENTS_KEPT = 600, MONEY_KEPT = 30, INTERP_TICKS = 2;
 
 export class CampClient {
-  readonly state: CampClientState = { status: 'idle', match: null, me: null, lobby: null, roster: null, sid: null, snap: null, events: [], result: null, money: [], bye: null };
+  readonly state: CampClientState = { status: 'idle', match: null, me: null, lobby: null, roster: null, sid: null, snap: null, events: [], result: null, money: [], bye: null, missing: false };
   /** Bytes and frames received, by type (the checks measure the wire with it). */
   readonly wire: Record<string, { n: number; bytes: number }> = {};
   private ws: WebSocket | null = null;
@@ -250,7 +252,7 @@ export class CampClient {
   private set(p: Partial<CampClientState>) { Object.assign(this.state, p); for (const fn of [...this.listeners]) { try { fn(); } catch { /* a listener's error is its own */ } } }
   private reset(match: string) {
     this.close();
-    Object.assign(this.state, { status: 'idle', match, me: null, lobby: null, roster: null, sid: null, snap: null, events: [], result: null, money: [], bye: null } satisfies CampClientState);
+    Object.assign(this.state, { status: 'idle', match, me: null, lobby: null, roster: null, sid: null, snap: null, events: [], result: null, money: [], bye: null, missing: false } satisfies CampClientState);
     this.snaps = []; this.offset = Infinity; this.seq = 0; this.sent = []; this.seenN.clear();
   }
 
@@ -318,6 +320,7 @@ export class CampClient {
       case 'ack': {
         const p = this.pending.get(m.id); if (!p) return;
         this.pending.delete(m.id); if (p.timer) clearTimeout(p.timer);
+        if (!m.ok && m.reason === 'unknown') this.set({ missing: true });
         p.resolve(m.ok ? { ok: true, ...(m.match ? { match: m.match } : {}) } : no(m.reason));
         return;
       }
@@ -365,7 +368,7 @@ export class CampClient {
       if (this.now() - this.lastHeard > SILENT_MS + PING_MS) { this.drop(4002, 'Silent'); return; }
       try { ws.send('ping'); } catch { /* the close follows */ }
     }, PING_MS);
-    this.set({ status: 'open', me: m.you });
+    this.set({ status: 'open', me: m.you, missing: !m.lobby });
     if (m.lobby) this.lobbyNow(m.lobby, true);
     for (const [, p] of this.pending) this.send(p.msg);                 // what was not answered goes again, with the same id
   }
@@ -375,7 +378,7 @@ export class CampClient {
     const now = l.players.find(p => p.tag === me) ?? null;
     // the fee came back while this device was away (the connection lost before kick-off): said as done, from the server's lobby
     if (back && was && was.hold === 'held' && now && now.hold === 'none' && l.state === 'lobby') this.moneyStep({ step: 'release', state: 'done', amount: l.terms.fee, why: 'drop' });
-    this.set({ lobby: l, sid: now ? now.sid : this.state.sid });
+    this.set({ lobby: l, sid: now ? now.sid : this.state.sid, missing: false });
     if (l.result && !this.state.result) this.resultNow(l.result);
   }
   private resultNow(r: CampResult) {

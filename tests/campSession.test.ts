@@ -96,6 +96,58 @@ describe('Grand Camp session: one match at a time, kept on the device', () => {
   });
 });
 
+describe('Grand Camp session: a match that is over or gone never locks the device out (review C3)', () => {
+  const result = { end: 'timeout', score: [0, 0], winner: null, dist: 'team', fee: 1000, total: 1000, payouts: [{ tag: ME, amount: 1000 }], money: 'settled', at: 5 };
+  it('the server no longer has my match (its welcome has no lobby): forgotten; a Grand Camp can be organized and another one looked at', async () => {
+    store.setItem('dakarrek.camp.match', M);                                      // joined two days ago; the match ended and the server forgot it
+    const s = session();
+    expect(s.restore()).toBe(true);
+    welcome(FakeWS.last(), null);
+    expect(s.mine).toBeNull(); expect(store.getItem('dakarrek.camp.match')).toBeNull();
+    expect(s.view(M2)).toBe(true);
+    const made = s.create({ fee: 0, size: 6, dist: 'team', open: true, hub: 'corniche' });
+    await vi.waitFor(() => expect(FakeWS.all.length).toBe(3));
+    const w = FakeWS.last(); welcome(w, null);
+    await vi.waitFor(() => expect(w.msgs().some(x => x.type === 'create')).toBe(true));   // not refused « busy » on the device
+    ack(w, 'create', true, { match: new URL(w.url).searchParams.get('match') });
+    expect((await made).ok).toBe(true);
+  });
+  it('a match I only look at that I may not see (private) leaves my own match alone', () => {
+    const s = session(); s.view(M); welcome(FakeWS.last(), lobby());
+    expect(s.mine).toBe(M);
+    const t = session(); t.view(M2); welcome(FakeWS.last(), null);               // another device state: nothing of mine there
+    expect(t.mine).toBe(M);                                                      // (the same device's stored match, untouched)
+  });
+  it('« bye: over » (the server closed the finished match for good): forgotten', () => {
+    store.setItem('dakarrek.camp.match', M);
+    const s = session(); s.restore(); const ws = FakeWS.last(); welcome(ws, lobby({ state: 'over' }));
+    expect(s.mine).toBe(M);
+    ws.recv({ type: 'bye', reason: 'over' });
+    expect(s.mine).toBeNull();
+  });
+  it('the result once shown (the card at the pitch, or the phone): forgotten — never before it has arrived', () => {
+    store.setItem('dakarrek.camp.match', M);
+    const s = session(); s.restore(); const ws = FakeWS.last(); welcome(ws, lobby({ state: 'over' }));
+    s.shown(M);
+    expect(s.mine).toBe(M);                                                      // over, the result not written yet: kept
+    ws.recv({ type: 'result', result });
+    expect(s.mine).toBe(M);
+    s.shown(M2);
+    expect(s.mine).toBe(M);
+    s.shown(M);
+    expect(s.mine).toBeNull();
+    expect(s.client!.state.result).toMatchObject({ end: 'timeout' });            // the screen showing it still has it
+    expect(s.view(M2)).toBe(true);
+  });
+  it('the server answers that my match does not exist (« unknown »): forgotten', async () => {
+    const s = session(); s.view(M); const ws = FakeWS.last(); welcome(ws, lobby());
+    const l = s.leave(); await Promise.resolve();
+    ack(ws, 'leave', false, { reason: 'unknown' });
+    expect((await l).ok).toBe(false);
+    expect(s.mine).toBeNull();
+  });
+});
+
 describe('Grand Camp session: « Prêt » and the money it takes', () => {
   it('a fee Teranga Money and the wallet cannot cover is refused here with the sentence, nothing sent', async () => {
     account.balance = 300; account.wallet = 200;

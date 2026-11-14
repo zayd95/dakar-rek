@@ -216,6 +216,7 @@ class GrandCamp implements GameModule {
     const match = l.match;
     ctx.hud.offer({ icon: v.icon, title: v.title, line: [v.score, ...v.lines].filter(Boolean).join(' · '), keep: true,
       actions: [{ label: 'Voir le résultat', primary: true, run: () => { phoneHooks.openPhone?.(`grandcamp:${match}`); } }] }, 20000);
+    campSession.shown(match);                                              // shown: the device is free for the next Grand Camp (the card keeps the link)
   }
 
   // ------------------------------------------------------------------ the bodies
@@ -386,7 +387,8 @@ class GrandCamp implements GameModule {
     const b = this.band; if (!b) return;
     const c = campSession.client, v = this.view;
     const recent = !!c?.state.result && performance.now() - this.overAt < 10_000;
-    const show = !!c && !!l && l.match === campSession.mine && (playing || (l.state === 'over' && (recent || !c.state.result)) && this.wasOrIs());
+    const ours = !!l && (l.match === campSession.mine || l.match === this.resultShown);           // (a match whose result was shown is no longer `mine`)
+    const show = !!c && ours && (playing || (l!.state === 'over' && (recent || !c.state.result)) && this.wasOrIs());
     if (!show) { if (b.classList.contains('on')) { b.classList.remove('on'); this.bandKey = ''; } return; }
     if (!b.isConnected) document.getElementById('ui')?.appendChild(b);
     const net = c!.state.status === 'open' ? '' : 'Reconnexion…';
@@ -402,7 +404,7 @@ class GrandCamp implements GameModule {
     b.setAttribute('aria-label', `${scoreText(l!.teams, sc as [number, number])} · ${st}`);
     b.classList.add('on');
   }
-  private wasOrIs() { return this.live || this.wasPlay || this.resultShown === campSession.mine || !!campSession.client?.state.roster; }
+  private wasOrIs() { return this.live || this.wasPlay || (!!this.resultShown && this.resultShown === campSession.client?.state.match) || !!campSession.client?.state.roster; }
 
   // ------------------------------------------------------------------ cleaning up
   private dropBody(b: Body) {
