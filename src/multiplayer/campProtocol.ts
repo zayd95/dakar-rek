@@ -1,7 +1,5 @@
 import type { HubId } from '../core/types';
 import { PITCH } from '../game/footballSim';
-import { GAIT } from '../game/stride';
-import { SHORT } from '../districts/matchRules';
 import { isHub } from './protocol';
 import { isOpId, isTag, type Tag } from '../online/protocol';
 
@@ -67,13 +65,14 @@ export function campRate(w: CampRateWindow, now: number, limit: number, abuse: n
 export const CAMP_LOBBY_MS = 10 * 60_000;
 export const CAMP_RETURN_MS = 60_000;
 /**
- * The match's length: the single-device match's rule (src/districts/matchRules.ts SHORT: first to 3 goals, 240 s of play), with a half time at the
- * middle of the clock (a short pause, then the other team kicks off; the ends do not change). Pauses in seconds: after a goal, at half time, after the
- * last goal before full time; how long a set piece waits for its taker before another player of that team may take it.
+ * The match's length: the single-device match's rule (src/districts/matchRules.ts SHORT: first to 3 goals, 240 s of play; repeated here so the server
+ * does not load the game's modules, a test keeps them in step), with a half time at the middle of the clock (a short pause, then the other team kicks
+ * off; the ends do not change). Pauses in seconds: after a goal, at half time, after the last goal before full time; how long a set piece waits for
+ * its taker before another player of that team may take it.
  */
-export const CAMP_MATCH = { goals: SHORT.goals, seconds: SHORT.seconds, goalPause: 4, halfPause: 5, endPause: 2.6, takerWait: 6 } as const;
-/** A body on the pitch: the run of the city (src/game/stride.ts GAIT.run) for everyone alike, its acceleration and braking (m/s²), its turn rate (rad/s). */
-export const CAMP_BODY = { run: GAIT.run, acc: 14, dec: 20, turn: 12, radius: 0.35 } as const;
+export const CAMP_MATCH = { goals: 3, seconds: 240, goalPause: 4, halfPause: 5, endPause: 2.6, takerWait: 6 } as const;
+/** A body on the pitch: the run of the city (src/game/stride.ts GAIT.run, kept in step by a test) for everyone alike, its acceleration and braking (m/s²), its turn rate (rad/s). */
+export const CAMP_BODY = { run: 7, acc: 14, dec: 20, turn: 12, radius: 0.35 } as const;
 /** How far inside the curb round the grass a body may go (m): the pitch's own limit (src/game/footballSim.ts PITCH.ex/ez). */
 export const CAMP_CURB = { x: PITCH.ex - 0.3, z: PITCH.ez - 0.3 } as const;
 
@@ -198,8 +197,8 @@ export type CampServerMessage =
   | { type: 'ack'; id: string; ok: false; reason: CampRefusal }
   /** A money step of THIS player, once the ledger has written it: the fee held, returned (`why`), the share paid, the fee refunded at the end. */
   | { type: 'money'; step: CampMoneyStep; op: string; amount: number; balance?: number; why?: string }
-  /** Kick-off (and to a player back from a drop): the roster, who kicks off, the rules, and the events so far. */
-  | { type: 'start'; roster: CampRosterEntry[]; kick: 0 | 1; seconds: number; goals: number; tick: number; events: CampEvent[] }
+  /** Kick-off (and to a player back from a drop): the roster, who kicks off, the rules, the tick now. The events so far follow in `ev` frames. */
+  | { type: 'start'; roster: CampRosterEntry[]; kick: 0 | 1; seconds: number; goals: number; tick: number }
   | CampSnapWire
   | { type: 'ev'; e: CampEvent[] }
   /** The end, after the ledger has written the money (never before): see CampResult. */
@@ -221,7 +220,7 @@ export const wrapAngle = (a: number) => a - TAU * Math.floor((a + Math.PI) / TAU
 export const isMatchId = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{16}$/.test(v);
 export function newMatchId(): string {
   const b = new Uint8Array(8);
-  (globalThis.crypto as Crypto).getRandomValues(b);
+  crypto.getRandomValues(b);
   return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 export const isCampSize = (v: unknown): v is CampSize => (CAMP_SIZES as readonly unknown[]).includes(v);
@@ -315,7 +314,7 @@ export function parseCampServer(v: unknown): CampServerMessage | null {
     case 'ack': return isOpId(v.id) && typeof v.ok === 'boolean' ? v as unknown as CampServerMessage : null;
     case 'money': return ['hold', 'release', 'payout', 'refund'].includes(v.step as string) && isOpId(v.op) && whole(v.amount) && v.amount >= 0 ? v as unknown as CampServerMessage : null;
     case 'start': return Array.isArray(v.roster) && v.roster.every(r => plain(r) && whole(r.sid) && isTag(r.tag) && (r.team === 0 || r.team === 1)) && (v.kick === 0 || v.kick === 1)
-      && Array.isArray(v.events) && v.events.every(isEvent) ? v as unknown as CampServerMessage : null;
+      && whole(v.seconds) && whole(v.goals) && whole(v.tick) ? v as unknown as CampServerMessage : null;
     case 'result': {
       const r = v.result;
       return plain(r) && typeof r.end === 'string' && whole(r.total) && Array.isArray(r.payouts) && r.payouts.every(p => plain(p) && isTag(p.tag) && whole(p.amount))
