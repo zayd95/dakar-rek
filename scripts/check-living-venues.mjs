@@ -94,6 +94,8 @@ async function hour(v, h, busy) {
       l = b;
       if (changed + left + arrived >= 3 && moved >= 3 && phases.size >= 4) break;
     }
+    // a few of them as the player sees them: the phases each has gone through this visit, what they do now and where
+    console.log(`${tag}: seen — ${[...l.people].sort((u, w) => w.trail.split('>').length - u.trail.split('>').length).slice(0, 4).map(p => `${p.id} ${p.trail} (${p.doing ?? 'walking'} at ${p.spot ?? 'the way'})`).join(' · ')}`);
     check(`${tag}: people change what they do over time`, changed + left + arrived >= 3 && phases.size >= 3, `${changed} changed phase, ${arrived} arrived, ${left} left in ${Math.round((Date.now() - t0) / 1000)} s; phases seen ${[...phases].join(', ')}`);
     check(`${tag}: people change place over time`, moved >= 3, `${moved} moved more than 0.5 m`);
     check(`${tag}: still the hour's number, never more`, l.present <= l.capacity && l.present >= 1, `${l.present} of ${l.capacity}`);
