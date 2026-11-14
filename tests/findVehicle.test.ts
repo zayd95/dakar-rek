@@ -4,12 +4,16 @@ import { newSave } from '../src/core/save';
 import { HUB_IDS } from '../src/core/types';
 import { buyAsset, holding, sellAsset, setCondition } from '../src/economy/assets';
 import { specOf } from '../src/economy/catalog';
-import { FALLBACK_HUB, VEHICLE_ASSETS, counterOfHub, forgetIfSold, hubOfCounter, migrateOwned, ownsVehicle, paintSeed, park, parked, rehomeOnRoad, setPaintSeed, type VehicleAsset } from '../src/transport/owned';
+import { FALLBACK_HUB, VEHICLE_ASSETS, counterOfHub, forgetIfSold, hubOfCounter, migrateOwned, ownsVehicle, paintSeed, park, parked, rehomeOnRoad, returnStranded, setPaintSeed, type VehicleAsset } from '../src/transport/owned';
+import type { HubId } from '../src/core/types';
+import { roadsOf, type Road } from '../src/road/routes';
+import { hubBounds } from '../src/world/builder';
+import { onDistrictGround } from '../src/transport/ownedModule';
+import { BAYS_HUB } from '../src/villa/bays';
 import { ALL_VEHICLES, OWNED_VEHICLES, VEHICLE_LABELS } from '../src/transport/fleet';
 import { RING_COOLDOWN_S, RING_RANGE, VEHICLE_ICON, WhereNotes, cannotRing, vehicleEntries, vehicleEntry, vehicleMarkId, vehicleOfMark } from '../src/transport/whereabouts';
 
 const rich = () => { const s = new GameState(newSave(0)); s.data.wallet = 500_000_000; return s; };
-const inPikine = (x: number, z: number) => Math.abs(x) <= 100 && Math.abs(z) <= 100;
 
 describe('one list of the vehicles a player can have', () => {
   it('every catalogue id has its module, and every module its id (the lent motorbike included)', () => {
@@ -23,22 +27,105 @@ describe('one list of the vehicles a player can have', () => {
   });
 });
 
-describe('a vehicle left on a road between two districts follows the frame when the road is crossed', () => {
-  it('covers every model: teranga, rafet and gainde too', () => {
-    const s = rich();
-    for (const a of VEHICLE_ASSETS) park(s.data, { asset: a, hub: 'pikine', x: 180, z: 12, yaw: 0.5 });       // out on the road, past the streets
-    const moved = rehomeOnRoad(s.data, 'pikine', 'almadies', -400, 30, inPikine);
-    expect(moved.sort()).toEqual([...VEHICLE_ASSETS].sort());
-    for (const a of VEHICLE_ASSETS) expect(parked(s.data, a), a).toEqual({ asset: a, hub: 'almadies', x: -220, z: 42, yaw: 0.5 });
+/** The crossing of `road`'s middle from `from`, as src/road/host.ts `CorridorHost.watch` reports it. */
+const crossing = (road: Road, from: HubId) => { const to = road.other(from), d = road.offset(to), f = road.offset(from); return { road, from, to, dx: d.x - f.x, dz: d.z - f.z }; };
+/** The district's streets, as src/main.ts `corridorSwap` passes them (`HubWorld.bounds`). */
+const streets = (hub: HubId) => { const b = hubBounds(hub); return (x: number, z: number) => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1; };
+/** A spot out on `road`, on `from`'s side of its middle, halfway from the district's end to the swap, in `from`'s frame. */
+const outOn = (road: Road, from: HubId) => { const s = from === road.def.a ? road.swapS / 2 : (road.swapS + road.length) / 2, p = road.spine.at(s), o = road.offset(from); return { x: p.x + o.x, z: p.z + o.z }; };
+const onRoadGround = (road: Road, hub: HubId, x: number, z: number) => { const o = road.offset(hub); return road.ground.contains(x - o.x, z - o.z, 0); };
+const DISTRICTS = [...new Set(roadsOf('pikine').concat(roadsOf('plateau'), roadsOf('corniche'), roadsOf('almadies'), roadsOf('mermoz')).flatMap(r => [r.def.a, r.def.b]))];
+
+describe('a vehicle left on a road between two districts follows the frame when THAT road is crossed', () => {
+  it('the test spots are real: on the road, out of the streets, before the middle; three districts have two roads', () => {
+    expect(DISTRICTS.sort()).toEqual([...HUB_IDS].sort());
+    expect(HUB_IDS.filter(h => roadsOf(h).length === 2).sort()).toEqual(['corniche', 'pikine', 'plateau']);
+    for (const h of HUB_IDS) for (const r of roadsOf(h)) {
+      const p = outOn(r, h);
+      expect(onRoadGround(r, h, p.x, p.z), `${r.id} from ${h}`).toBe(true);
+      expect(streets(h)(p.x, p.z), `${r.id} from ${h}`).toBe(false);
+    }
   });
-  it('leaves alone what stands in the district, and what is in another one', () => {
-    const s = rich();
+  it('every model, both roads of each district: crossing one road never moves what is parked on the other; crossing its own road carries it to ground of the next district', () => {
+    for (const h of HUB_IDS) for (const parkedOn of roadsOf(h)) {
+      const s = rich(), at = outOn(parkedOn, h);
+      for (const a of VEHICLE_ASSETS) park(s.data, { asset: a, hub: h, x: at.x, z: at.z, yaw: 0.5 });
+      const before = VEHICLE_ASSETS.map(a => parked(s.data, a));
+      for (const other of roadsOf(h).filter(r => r !== parkedOn)) {
+        expect(rehomeOnRoad(s.data, crossing(other, h), streets(h)), `parked on ${parkedOn.id}, ${other.id} crossed from ${h}`).toEqual([]);
+        expect(VEHICLE_ASSETS.map(a => parked(s.data, a))).toEqual(before);
+      }
+      const sw = crossing(parkedOn, h);
+      expect(rehomeOnRoad(s.data, sw, streets(h)).sort(), `${parkedOn.id} crossed from ${h}`).toEqual([...VEHICLE_ASSETS].sort());
+      for (const a of VEHICLE_ASSETS) {
+        const p = parked(s.data, a)!;
+        expect(p, a).toMatchObject({ hub: sw.to, yaw: 0.5 });
+        expect(p.x, a).toBeCloseTo(at.x + sw.dx, 1); expect(p.z, a).toBeCloseTo(at.z + sw.dz, 1);
+        expect(onRoadGround(parkedOn, sw.to, p.x, p.z), `${a} on ${parkedOn.id} in ${sw.to}'s frame`).toBe(true);
+        expect(onDistrictGround(sw.to, p.x, p.z), a).toBe(true);
+      }
+      expect(rehomeOnRoad(s.data, crossing(parkedOn, sw.to), streets(sw.to)).sort()).toEqual([...VEHICLE_ASSETS].sort());      // and back the same way
+      expect(VEHICLE_ASSETS.map(a => parked(s.data, a)!)).toEqual(before.map(p => ({ ...p!, x: expect.closeTo(p!.x, 1), z: expect.closeTo(p!.z, 1) })));
+    }
+  });
+  it('the review\'s case: a Jakarta on the Pikine–Almadies road stays when the Pikine–Plateau road is crossed', () => {
+    const s = rich(), r1 = roadsOf('pikine').find(r => r.id === 'pikine-almadies')!, r2 = roadsOf('pikine').find(r => r.id === 'pikine-plateau')!;
+    const at = r1.spine.at(r1.length * 0.25);
+    park(s.data, { asset: 'jakarta', hub: 'pikine', x: at.x, z: at.z, yaw: 0 });
+    expect(rehomeOnRoad(s.data, crossing(r2, 'pikine'), streets('pikine'))).toEqual([]);
+    expect(parked(s.data, 'jakarta')).toMatchObject({ hub: 'pikine', x: Math.round(at.x * 100) / 100, z: Math.round(at.z * 100) / 100 });
+    expect(rehomeOnRoad(s.data, crossing(r1, 'pikine'), streets('pikine'))).toEqual(['jakarta']);
+    expect(parked(s.data, 'jakarta')!.hub).toBe('almadies');
+  });
+  it('leaves alone what stands in the district\'s streets, and what is in another district', () => {
+    const s = rich(), road = roadsOf('pikine')[0], at = outOn(road, 'pikine');
     park(s.data, { asset: 'teranga', hub: 'pikine', x: 20, z: -30, yaw: 0 });
-    park(s.data, { asset: 'rafet', hub: 'plateau', x: 180, z: 12, yaw: 0 });
-    expect(rehomeOnRoad(s.data, 'pikine', 'almadies', -400, 30, inPikine)).toEqual([]);
+    park(s.data, { asset: 'rafet', hub: 'plateau', x: at.x, z: at.z, yaw: 0 });
+    expect(rehomeOnRoad(s.data, crossing(road, 'pikine'), streets('pikine'))).toEqual([]);
     expect(parked(s.data, 'teranga')).toMatchObject({ hub: 'pikine', x: 20, z: -30 });
-    expect(parked(s.data, 'rafet')).toMatchObject({ hub: 'plateau', x: 180, z: 12 });
+    expect(parked(s.data, 'rafet')).toMatchObject({ hub: 'plateau', x: Math.round(at.x * 100) / 100 });
     expect(parked(s.data, 'gainde')).toBeNull();                              // never a record made up for a vehicle that has none
+  });
+});
+
+describe('a record on no ground of its district goes back at load (a save hit by the old road swap)', () => {
+  it('the districts\' ground: the streets (the coast\'s sea front, the beach), and the roads that leave each one', () => {
+    expect(hubBounds('pikine')).toEqual({ x0: -130, x1: 130, z0: -130, z1: 130 });
+    expect(hubBounds('corniche').x0).toBe(-177); expect(hubBounds('almadies').z0).toBe(-157);
+    for (const h of HUB_IDS) {
+      expect(onDistrictGround(h, 0, 0), h).toBe(true);
+      expect(onDistrictGround(h, 400, 400), h).toBe(false);
+      for (const r of roadsOf(h)) { const p = outOn(r, h); expect(onDistrictGround(h, p.x, p.z), `${r.id} from ${h}`).toBe(true); }
+    }
+    for (const b of BAYS_HUB) expect(onDistrictGround('almadies', b.x, b.z)).toBe(true);        // the Almadies villa's parking bays (src/villa/bays.ts)
+  });
+  it('what the old swap did (a Jakarta on the Pikine–Almadies road re-homed by the Pikine–Plateau road) is repaired; every other spot is kept', () => {
+    const s = rich(), r1 = roadsOf('pikine').find(r => r.id === 'pikine-almadies')!, r2 = crossing(roadsOf('pikine').find(r => r.id === 'pikine-plateau')!, 'pikine');
+    const at = r1.spine.at(r1.length * 0.25);
+    park(s.data, { asset: 'jakarta', hub: 'plateau', x: at.x + r2.dx, z: at.z + r2.dz, yaw: 0 }); setPaintSeed(s.data, 'jakarta', 7);   // the record 1.0 wrote: (−290, −1347) in the Plateau
+    const lost = parked(s.data, 'jakarta')!;
+    expect([lost.hub, Math.round(lost.x), Math.round(lost.z)]).toEqual(['plateau', -290, -1347]);
+    expect(onDistrictGround('plateau', lost.x, lost.z)).toBe(false);
+    // every other model parked somewhere real: the streets, and out on each road of each district
+    const spots: { hub: HubId; x: number; z: number }[] = [{ hub: 'pikine', x: 20, z: -30 }, ...HUB_IDS.flatMap(h => roadsOf(h).map(r => ({ hub: h, ...outOn(r, h) })))];
+    const others = VEHICLE_ASSETS.filter(a => a !== 'jakarta');
+    for (const sp of spots) {
+      const t = rich(); park(t.data, lost);
+      for (const a of others) park(t.data, { asset: a, ...sp, yaw: 1 });
+      expect(returnStranded(t.data, onDistrictGround), JSON.stringify(sp)).toEqual(['jakarta']);
+      for (const a of others) expect(parked(t.data, a), a).toMatchObject({ hub: sp.hub, yaw: 1 });
+    }
+    expect(returnStranded(s.data, onDistrictGround, 'teranga')).toEqual([]);            // one model at a time (each module its own)
+    expect(returnStranded(s.data, onDistrictGround, 'jakarta')).toEqual(['jakarta']);
+    expect(parked(s.data, 'jakarta')).toBeNull();                                     // no record: the module delivers it at its dealer's kerb
+    expect(paintSeed(s.data, 'jakarta')).toBe(7);                                     // the paint chosen on the floor stays
+    expect(returnStranded(s.data, onDistrictGround)).toEqual([]);                     // once
+  });
+  it('every model, the lent motorbike included', () => {
+    const s = rich();
+    for (const a of VEHICLE_ASSETS) park(s.data, { asset: a, hub: 'corniche', x: -400, z: 0, yaw: 0 });      // out in the sea, off both of the Corniche's roads
+    expect(returnStranded(s.data, onDistrictGround).sort()).toEqual([...VEHICLE_ASSETS].sort());
+    for (const a of VEHICLE_ASSETS) expect(parked(s.data, a), a).toBeNull();
   });
 });
 

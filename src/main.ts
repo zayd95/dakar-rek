@@ -683,7 +683,7 @@ function corridorStep(dt: number) {
  */
 function corridorSwap(sw: Swap) {
   const w = world!, b = w.bounds;
-  rehomeOnRoad(state.data, sw.from, sw.to, sw.dx, sw.dz, (x, z) => inRect(b, x, z));                         // vehicles parked on the road follow the frame (every model)
+  rehomeOnRoad(state.data, sw, (x, z) => inRect(b, x, z));                                                     // vehicles parked on this road follow the frame (every model)
   for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
   corridors.prepare(sw.road);
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
