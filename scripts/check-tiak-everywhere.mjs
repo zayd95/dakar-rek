@@ -37,31 +37,41 @@ const stats = { runs: [] };
 /** A way on foot from the player to within `reach` m of (x, z), round the district's built colliders (1 m cells, grown by the walker's width): the points a thumb aims at, one after the other. */
 async function wayTo(x, z, reach = 2.2, cellsOnly = false) {
   const { me, cols } = await d(() => ({ me: window.__dakar.pos(), cols: window.__dakar.cityGeometry().colliders.map(c => [c.x0, c.z0, c.x1, c.z1]) }));
-  const H = 200, N = 2 * H, R = 0.75, blocked = new Uint8Array(N * N);
-  for (const [x0, z0, x1, z1] of cols) for (let j = Math.max(0, Math.floor(z0 - R + H)); j <= Math.min(N - 1, Math.floor(z1 + R + H)); j++) for (let i = Math.max(0, Math.floor(x0 - R + H)); i <= Math.min(N - 1, Math.floor(x1 + R + H)); i++) {
-    const cx = i - H + 0.5, cz = j - H + 0.5; if (cx > x0 - R && cx < x1 + R && cz > z0 - R && cz < z1 + R) blocked[j * N + i] = 1;
-  }
+  const H = 200, N = 2 * H;
   const cell = (px, pz) => Math.floor(pz + H) * N + Math.floor(px + H), start = cell(me.x, me.z);
-  const prev = new Int32Array(N * N).fill(-1), queue = [start]; prev[start] = start;
-  let goal = -1;
-  for (let q = 0; q < queue.length; q++) {
-    const k = queue[q], i = k % N, j = Math.floor(k / N);
-    if (Math.hypot(i - H + 0.5 - x, j - H + 0.5 - z) < reach) { goal = k; break; }
-    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N) continue;
-      const n = b * N + a; if (prev[n] >= 0 || blocked[n]) continue;
-      if (di && dj && (blocked[j * N + a] || blocked[b * N + i])) continue;                      // no cutting a corner
-      prev[n] = k; queue.push(n);
+  // the colliders grown by a walker's margin; where the courier stands in a tight spot (a kiosk's tables), the way starts from the open ground around them, and the
+  // margin narrows if no way is found with the wider one
+  for (const R of [0.75, 0.5, 0.35]) {
+    const blocked = new Uint8Array(N * N);
+    for (const [x0, z0, x1, z1] of cols) for (let j = Math.max(0, Math.floor(z0 - R + H)); j <= Math.min(N - 1, Math.floor(z1 + R + H)); j++) for (let i = Math.max(0, Math.floor(x0 - R + H)); i <= Math.min(N - 1, Math.floor(x1 + R + H)); i++) {
+      const cx = i - H + 0.5, cz = j - H + 0.5; if (cx > x0 - R && cx < x1 + R && cz > z0 - R && cz < z1 + R) blocked[j * N + i] = 1;
     }
+    const prev = new Int32Array(N * N).fill(-1), queue = [start]; prev[start] = start;
+    for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const k = cell(me.x + dx, me.z + dz); if (prev[k] < 0 && !blocked[k] && Math.hypot(dx, dz) <= 3) { prev[k] = k; queue.push(k); }
+    }
+    let goal = -1;
+    for (let q = 0; q < queue.length; q++) {
+      const k = queue[q], i = k % N, j = Math.floor(k / N);
+      if (Math.hypot(i - H + 0.5 - x, j - H + 0.5 - z) < reach) { goal = k; break; }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N) continue;
+        const n = b * N + a; if (prev[n] >= 0 || blocked[n]) continue;
+        if (di && dj && (blocked[j * N + a] || blocked[b * N + i])) continue;                      // no cutting a corner
+        prev[n] = k; queue.push(n);
+      }
+    }
+    if (goal < 0) continue;
+    const cells = []; for (let k = goal; ; k = prev[k]) { cells.unshift(k); if (prev[k] === k) break; }
+    const pts = cells.map(k => ({ x: (k % N) - H + 0.5, z: Math.floor(k / N) - H + 0.5 }));
+    const clear = (p, q) => { const n = Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 0.4); for (let t = 0; t <= n; t++) if (blocked[cell(p.x + ((q.x - p.x) * t) / n, p.z + ((q.z - p.z) * t) / n)]) return false; return true; };
+    if (cellsOnly) return pts;
+    const way = []; let from = { x: me.x, z: me.z };
+    for (let i = 0; i < pts.length;) { let j = Math.min(pts.length - 1, i + 40); while (j > i && !clear(from, pts[j])) j--; way.push(pts[j]); from = pts[j]; i = j + 1; }
+    return way;
   }
-  if (goal < 0) return null;
-  const cells = []; for (let k = goal; k !== start; k = prev[k]) cells.unshift(k);
-  const pts = cells.map(k => ({ x: (k % N) - H + 0.5, z: Math.floor(k / N) - H + 0.5 }));
-  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.4); for (let s = 0; s <= n; s++) if (blocked[cell(a.x + ((b.x - a.x) * s) / n, a.z + ((b.z - a.z) * s) / n)]) return false; return true; };
-  if (cellsOnly) return pts;
-  const way = []; let from = { x: me.x, z: me.z };
-  for (let i = 0; i < pts.length;) { let j = Math.min(pts.length - 1, i + 40); while (j > i && !clear(from, pts[j])) j--; way.push(pts[j]); from = pts[j]; i = j + 1; }
-  return way;
+  console.log(`  (no way found on foot from ${me.x.toFixed(1)},${me.z.toFixed(1)} to ${x.toFixed(1)},${z.toFixed(1)})`);
+  return null;
 }
 /**
  * On foot to (x, z) with the joystick, as scripts/lib/realTouch.mjs `walkTo` does (the stick pushed the way the target lies from the camera, re-aimed as the camera follows), but
@@ -141,11 +151,28 @@ const cardsNow = () => d(() => [...document.querySelectorAll('#modal.on .dcard.j
   return { route: e.dataset.route, parts, h: Math.round(r.height), right: Math.round(r.right), dis: e.classList.contains('dis'), extra: e.querySelectorAll('p, small, .chip, .dbadge').length };
 }));
 const compact = c => c.parts.length === 4 && / → /.test(c.parts[0]) && TYPES.includes(c.parts[1].replace(/^★ /, '')) && /^\d[\d\s]*\sF$/.test(c.parts[2]) && c.parts[3] === 'Accepter' && c.extra === 0;
-async function tapCard(route) {
-  const card = page.locator(`#modal.on .dcard.job[data-route="${route}"]`).first();
-  await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(350);
-  const b = await card.boundingBox(); await touch.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await touch.up(5);
+/**
+ * Tap a card or a row of the open sheet with one finger: brought to the middle of the sheet (the sheet keeps its sticky title over the top of its list, and may open
+ * scrolled where the last sheet was left), tapped once it is still and is what lies under its own centre. Returns what was under the finger.
+ */
+async function tapInSheet(loc) {
+  await loc.evaluate(e => e.scrollIntoView({ block: 'center' }));
+  let box = null, mine = false;
+  for (let k = 0; k < 40; k++) {
+    await page.waitForTimeout(150);
+    // the sheet's own slide-in and scroll must be over: at a few frames a second two reads can see the same frame of a moving sheet
+    const moving = await page.evaluate(() => (document.querySelector('#modal')?.getAnimations({ subtree: true }) ?? []).some(a => a.playState === 'running'));
+    const b = moving ? null : await loc.boundingBox();
+    mine = !!b && await loc.evaluate((e, [x, y]) => { const h = document.elementFromPoint(x, y); return !!h && (h === e || e.contains(h)); }, [b.x + b.width / 2, b.y + b.height / 2]);
+    if (b && box && mine && Math.abs(b.y - box.y) < 0.5) { box = b; break; }
+    if (b) box = b;
+  }
+  box ??= await loc.boundingBox();
+  if (!mine) console.log('  (the row was not under the finger when it was tapped)');
+  await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
+  return mine;
 }
+const tapCard = route => tapInSheet(page.locator(`#modal.on .dcard.job[data-route="${route}"]`).first());
 const placeOf = async id => (await d(() => window.__dakar.interactables())).find(i => i.id === id);
 const pointByName = async name => { const p = (await d(() => window.__dakar.tiakPoints())).find(q => q.name === name); return p?.place ?? null; };
 const goHub = async h => {
@@ -213,9 +240,17 @@ for (const h of process.env.SKIP_A ? [] : HUBS) {
   await shot(`${h}-next-taken`);
   check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   await page.waitForFunction(() => window.__dakar.activeJob(), null, { timeout: 90000 }).catch(() => {});
-  await page.waitForFunction(() => window.__dakar.destination(), null, { timeout: 60000 }).catch(() => {});      // its waypoint, on the next frames
+  // its guidance, on the next frames: the walking marker on its pick-up, or on its drop-off here; a parcel already in hand for another district is guided by the
+  // delivery line, which then names that district (the driving directions take over on the way: src/game/navigation.ts)
+  const guided = () => page.evaluate(([names]) => {
+    const j = window.__dakar.activeJob(); if (!j) return null;
+    const to = /^t:[a-z]+\.[a-z]+>([a-z]+)\./.exec(j.routeId)?.[1] ?? j.hub, line = document.querySelector('#delivery.on')?.textContent ?? '';
+    return window.__dakar.destination() ? 'marker' : j.stage === 'deliver' && to !== j.hub && line.includes(names[to]) ? `line: ${names[to]}` : null;
+  }, [{ pikine: 'Pikine', plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies', mermoz: 'Mermoz' }]);
+  await page.waitForFunction(() => !!window.__dakar.activeJob() && (!!window.__dakar.destination() || !!document.querySelector('#delivery.on')), null, { timeout: 60000 }).catch(() => {});
+  let guide = null; for (let k = 0; k < 40 && !(guide = await guided()); k++) await page.waitForTimeout(250);
   const next = await job();
-  check(`${L}: one tap takes the next run, leaving from this district; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!(await d(() => window.__dakar.destination())), JSON.stringify({ next, wallet: await wallet(), was: done.w1, dest: await d(() => window.__dakar.destination()), was1: run.runId }));
+  check(`${L}: one tap takes the next run, leaving from this district, guided at once; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!guide, JSON.stringify({ next, guide, wallet: await wallet(), was: done.w1, was1: run.runId }));
   await d(() => window.__dakar.cancelJob());
   check(`${L}: that run cancelled: no payment`, !(await job()) && (await wallet()) === done.w1);
 }
@@ -238,11 +273,8 @@ if (!process.env.ONLY) {
   // the car rapide's row for that district (« ≈ 25 min de route »; the rows on foot say « de marche »), tapped once it has stopped moving (the sheet scrolls to it first)
   const word = { plateau: 'Plateau', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz', corniche: 'Corniche' }[ride.toHub];
   const row = page.locator('#modal.on .item:not(.close)').filter({ hasText: 'min de route' }).filter({ hasText: word }).first();
-  await row.scrollIntoViewIfNeeded();
-  let box = await row.boundingBox();
-  for (let k = 0; k < 40; k++) { await page.waitForTimeout(150); const b = await row.boundingBox(); if (b && box && Math.abs(b.y - box.y) < 0.5) break; box = b; }
-  console.log('  the car rapide row: ' + JSON.stringify(await d(([x, y]) => { const e = document.elementFromPoint(x, y); return { scrollTop: document.querySelector('#modal .panel')?.scrollTop ?? null, at: (e?.closest('.item')?.innerText ?? e?.tagName ?? '').replace(/\s+/g, ' ').slice(0, 60) }; }, [box.x + box.width / 2, box.y + box.height / 2])) + ` fingers held: ${[...touch.fingers.keys()].join(',') || 'none'}`);
-  await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
+  console.log(`  the car rapide sheet opened scrolled by ${await d(() => document.querySelector('#modal .panel')?.scrollTop ?? null)} px`);
+  console.log(`  the car rapide row under the finger: ${await tapInSheet(row)}`);
   await page.waitForFunction(() => window.__dakar.pos().mode !== 'menu', null, { timeout: 60000 }).catch(() => {});
   console.log('  after the tap: ' + JSON.stringify(await d(() => ({ mode: window.__dakar.pos().mode, hub: window.__dakar.pos().hub, modal: !!document.querySelector('#modal.on') }))));
   await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.pos().mode === 'play', ride.toHub, T).catch(() => {});
