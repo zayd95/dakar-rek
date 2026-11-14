@@ -1,7 +1,7 @@
 import type { Outcome } from './api';
 import type { Tag } from './protocol';
 import {
-  CAMP_INPUT_HZ, CAMP_TICK_HZ, decodeSnap, isMatchId, newMatchId, parseCampServer, parseTerms, stepBody, wrapAngle,
+  CAMP_INPUT_HZ, CAMP_TICK_HZ, decodeSnap, isMatchId, newMatchId, newRequestId, parseCampServer, parseTerms, stepBody, wrapAngle,
   type CampAction, type CampBody, type CampClientMessage, type CampEvent, type CampListing, type CampLobbyView, type CampMoneyStep, type CampPlayer,
   type CampResult, type CampRosterEntry, type CampServerMessage, type CampSnapshot, type CampTerms,
 } from '../multiplayer/campProtocol';
@@ -298,7 +298,7 @@ export class CampClient {
   }
   private request<T extends Req['type']>(type: T, body: Body<T>): Promise<Outcome<{ match?: string }>> {
     if (!this.state.match) return Promise.resolve(no('no-match'));
-    const id = newId(), msg = { type, id, ...body } as unknown as Req;
+    const id = newRequestId(), msg = { type, id, ...body } as unknown as Req;
     return new Promise(resolve => {
       const timer = setTimeout(() => { const p = this.pending.get(id); if (p) { p.timer = null; p.resolve = () => {}; resolve(no('timeout')); } }, REQUEST_MS);
       this.pending.set(id, { msg, resolve, timer });
@@ -407,10 +407,5 @@ export class CampClient {
 
 const no = (reason: string): { ok: false; reason: string; text: string } => ({ ok: false, reason, text: campRefusalText(reason) });
 const round4 = (v: number) => Math.round(v * 10_000) / 10_000;
-function newId(): string {
-  const c = globalThis.crypto as Crypto | undefined;
-  if (c && 'randomUUID' in c) return c.randomUUID();
-  return [...Array(4)].map(() => Math.random().toString(16).slice(2, 10).padEnd(8, '0')).join('-');
-}
 const endpointOf = (e?: string) => (e ?? '/api/camp').replace(/\/+$/, '');
 const baseHref = () => (typeof location !== 'undefined' ? location.href : 'http://localhost/');

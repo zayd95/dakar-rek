@@ -45,8 +45,13 @@ interface ListRow { e: CampListing; invited: Tag[]; at: number }
 
 /** A finished match's object keeps its lobby and result this long (a late reconnect still reads the result), then forgets them. */
 const KEEP_MS = 24 * 3_600_000;
-/** The watchdog's period while a match runs, and how soon a settlement the ledger did not answer is tried again (ms). */
-const WATCH_MS = 30_000, RETRY_MS = 5_000;
+/** The watchdog's period while a match runs, and how soon a settlement the ledger did not answer is tried again (ms; doubled after each failure, to RETRY_MAX_MS). */
+const WATCH_MS = 30_000, RETRY_MS = 5_000, RETRY_MAX_MS = 10 * 60_000;
+/**
+ * A settlement the ledger keeps failing (it threw: unreachable, or its transaction refused to write) is the match's outcome this many times at most;
+ * then every fee is returned instead (as when the server stops a match), and the logs say so (`camp-alert`). About 35 s with the back-off.
+ */
+const SETTLE_TRIES = 4;
 const ACKS_KEPT = 400, LISTED_MAX = 30;
 
 export class GrandCamp extends DurableObject<CampEnv> {
@@ -55,6 +60,8 @@ export class GrandCamp extends DurableObject<CampEnv> {
   private game: CampMatch | null = null;
   private outcome: CampOutcome | null = null;
   private interrupted = false; private ending = false;
+  /** Failed tries of the settlement in hand (kept with it: a restart does not start the count again). */
+  private settleTries = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
   private acc = 0; private last = 0; private lastDue = 0; private lastArm = 0;
   private queue: Promise<void> = Promise.resolve();
@@ -68,10 +75,10 @@ export class GrandCamp extends DurableObject<CampEnv> {
     super(ctx, env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     void ctx.blockConcurrencyWhile(async () => {
-      const [match, data, outcome] = await Promise.all([ctx.storage.get<string>('match'), ctx.storage.get<CampLobbyData>('camp'), ctx.storage.get<CampOutcome>('settle')]);
+      const [match, data, outcome, tries] = await Promise.all([ctx.storage.get<string>('match'), ctx.storage.get<CampLobbyData>('camp'), ctx.storage.get<CampOutcome>('settle'), ctx.storage.get<number>('settleTries')]);
       this.match = match ?? null;
       if (data) { this.lobby = new CampLobby(data); if (data.state === 'play') this.interrupted = true; }
-      this.outcome = outcome ?? null;
+      this.outcome = outcome ?? null; this.settleTries = tries ?? 0;
       if (this.interrupted || this.outcome) await ctx.storage.setAlarm(Date.now() + 50);
     });
   }
@@ -208,11 +215,15 @@ export class GrandCamp extends DurableObject<CampEnv> {
     return no('invalid');
   }
 
-  /** « Prêt »: the fee held by the ledger first (Teranga Money, the wallet part as a send's), then ready; a free match is ready at once. */
-  private async ready(tag: Tag, op: string, fund: number, yes: (e?: Partial<Extract<Ack, { ok: true }>>) => Ack, no: (r: CampRefusal) => Ack): Promise<Ack> {
-    const l = this.lobby!, r = l.readyAsk(tag, op);
+  /**
+   * « Prêt »: the fee held by the ledger first (Teranga Money, the wallet part as a send's), then ready; a free match is ready at once. The hold's op is
+   * the lobby's (`h-<match>-<tag>-<n>`): the player's request id only answers duplicates, it never reaches the ledger.
+   */
+  private async ready(tag: Tag, req: string, fund: number, yes: (e?: Partial<Extract<Ack, { ok: true }>>) => Ack, no: (r: CampRefusal) => Ack): Promise<Ack> {
+    const l = this.lobby!, r = l.readyAsk(tag, req);
     if (!r.ok) return no(r.reason);
     if (!r.hold) { if (!r.again) { await this.changed(); await this.maybeStart(); } return yes(r.again ? { duplicate: true } : {}); }
+    const op = r.op;
     await this.changed();                                                  // everyone sees « en attente » meanwhile
     const t = l.terms;
     let res: CampHoldResult | null = null;
@@ -303,13 +314,14 @@ export class GrandCamp extends DurableObject<CampEnv> {
     l.close(end);
     const g = this.game, last = l.data.end ?? end;
     this.outcome = l.outcome(last, last === 'win' ? g?.winner ?? null : null, g?.goalLog ?? []);
-    await this.ctx.storage.put('settle', this.outcome);
+    this.settleTries = 0;
+    await this.ctx.storage.put({ settle: this.outcome, settleTries: 0 });
     if (g) console.log(JSON.stringify({ event: 'camp-match', match: this.match, end: last, score: g.score, players: l.data.players.length, ...this.meter, snapBytesAvg: this.meter.snaps ? Math.round(this.meter.snapBytes / this.meter.snaps) : 0 }));
     await this.changed();
     await this.settle();
   }
   /** Asks the ledger to settle the outcome (once per match id: asked again after a failure, it answers the first settlement), then says the result. */
-  private async settle() {
+  private async settle(): Promise<void> {
     const l = this.lobby, o = this.outcome;
     if (!l || !o) return;
     const t = l.terms;
@@ -329,8 +341,17 @@ export class GrandCamp extends DurableObject<CampEnv> {
           this.tellBalance(p.tag);
         }
       } catch (e) {
-        console.log(JSON.stringify({ event: 'camp-ledger', step: 'settle', error: String(e) }));
-        await this.arm(); return;                                         // the alarm asks again; nobody is shown a result meanwhile
+        const tries = ++this.settleTries;
+        console.log(JSON.stringify({ event: 'camp-ledger', step: 'settle', match: this.match, outcome: o.kind, tries, error: String(e) }));
+        if (o.kind !== 'refund' && tries >= SETTLE_TRIES) {              // never a pool locked for ever: every fee goes back, and someone is told
+          console.log(JSON.stringify({ event: 'camp-alert', step: 'settle-refund', match: this.match, outcome: o, tries, error: String(e) }));
+          this.outcome = { kind: 'refund', why: 'stopped' }; this.settleTries = 0;
+          await this.ctx.storage.put({ settle: this.outcome, settleTries: 0 });
+          return this.settle();
+        }
+        if (o.kind === 'refund' && tries >= SETTLE_TRIES) console.log(JSON.stringify({ event: 'camp-alert', step: 'settle-stuck', match: this.match, tries, error: String(e) }));
+        await this.ctx.storage.put('settleTries', tries);
+        await this.arm(); return;                                         // the alarm asks again (later each time); nobody is shown a result meanwhile
       }
     }
     const g = this.game, end = l.data.end ?? 'stopped';
@@ -342,8 +363,8 @@ export class GrandCamp extends DurableObject<CampEnv> {
       money: money ? 'settled' : 'none', at: Date.now(),
     };
     l.data.result = result;
-    this.outcome = null;
-    await this.ctx.storage.delete('settle');
+    this.outcome = null; this.settleTries = 0;
+    await this.ctx.storage.delete(['settle', 'settleTries']);
     await this.changed();
     this.broadcast({ type: 'result', result });
   }
@@ -355,7 +376,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
     let t = Infinity;
     if (l) { const d = l.deadline(); if (d !== null) t = Math.min(t, d); }
     if (l?.state === 'play') t = Math.min(t, Date.now() + WATCH_MS);
-    if (this.outcome) t = Math.min(t, Date.now() + RETRY_MS);
+    if (this.outcome) t = Math.min(t, Date.now() + Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** Math.max(0, this.settleTries - 1)));
     if (l?.state === 'over' && l.data.result) t = Math.min(t, l.data.result.at + KEEP_MS);
     if (!Number.isFinite(t)) { await this.ctx.storage.deleteAlarm(); return; }
     await this.ctx.storage.setAlarm(Math.max(t, Date.now() + 50));

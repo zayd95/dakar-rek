@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ECONOMY } from '../src/economy/config';
 import { rng } from '../src/core/rng';
 import { applyMoney, openAccount } from '../src/online/ledgerRules';
-import { campHold, campPayoutOp, campRelease, campSettle, memoryCampLedger, type CampOutcomeRow, type CampTermsRow } from '../src/online/campLedger';
+import { campHold, campHoldOp, campPayoutOp, campRefundOp, campRelease, campReleaseOp, campSettle, memoryCampLedger, type CampOutcomeRow, type CampTermsRow } from '../src/online/campLedger';
 import type { MoneyLimits } from '../src/online/protocol';
 
 /**
@@ -22,8 +22,9 @@ function setup(n = 10, money = 5000) {
   for (let i = 1; i <= n; i++) { openAccount(s, tag(i), T0); if (money) expect(s.transaction(() => applyMoney(s, { kind: 'fund', id: `fund-${tag(i)}`, tag: tag(i), amount: money }, T0, L)).ok).toBe(true); }
   return s;
 }
-const hold = (s: S, i: number, o: { match?: string; op?: string; fund?: number; terms?: CampTermsRow; now?: number } = {}) =>
-  s.tx(() => campHold(s, { match: o.match ?? M, tag: tag(i), op: o.op ?? `hold-${o.match ?? M}-${i}`, terms: o.terms ?? TERMS, fund: o.fund ?? 0 }, o.now ?? T0, L));
+/** A hold of player i (its op the server's own: h-<match>-<tag>-<n>, `n` the lobby's count of « Prêt »). */
+const hold = (s: S, i: number, o: { match?: string; op?: string; n?: number; fund?: number; terms?: CampTermsRow; now?: number } = {}) =>
+  s.tx(() => campHold(s, { match: o.match ?? M, tag: tag(i), op: o.op ?? campHoldOp(o.match ?? M, tag(i), o.n ?? 1), terms: o.terms ?? TERMS, fund: o.fund ?? 0 }, o.now ?? T0, L));
 const release = (s: S, i: number, match = M) => s.tx(() => campRelease(s, { match, tag: tag(i) }, T0));
 const settle = (s: S, outcome: CampOutcomeRow, match = M) => s.tx(() => campSettle(s, { match, outcome, terms: TERMS }, T0));
 const bal = (s: S, i: number) => s.account(tag(i))!.balance;
@@ -35,7 +36,7 @@ describe('Grand Camp fees: the hold at « Prêt »', () => {
     const s = setup();
     expect(hold(s, 1)).toMatchObject({ ok: true, duplicate: false, balance: 4000, pool: 1000, hold: { state: 'held', amount: 1000 } });
     expect(hold(s, 1)).toMatchObject({ ok: true, duplicate: true, balance: 4000, pool: 1000 });                 // the same op again (a resend)
-    expect(hold(s, 1, { op: 'hold-other-press' })).toMatchObject({ ok: true, duplicate: true, pool: 1000 });   // another « Prêt » of the same player: the one hold
+    expect(hold(s, 1, { n: 2 })).toMatchObject({ ok: true, duplicate: true, pool: 1000 });   // another « Prêt » of the same player: the one hold
     expect(bal(s, 1)).toBe(4000);
     expect([...s.campOps().values()].filter(o => o.kind === 'hold').length).toBe(1);
   });
@@ -44,11 +45,11 @@ describe('Grand Camp fees: the hold at « Prêt »', () => {
     s.transaction(() => applyMoney(s, { kind: 'fund', id: 'fund-small-1', tag: tag(1), amount: 400 }, T0, L));
     expect(reason(hold(s, 1))).toBe('insufficient');                                    // 400 F: not enough, and nothing taken
     expect(bal(s, 1)).toBe(400);
-    expect(hold(s, 1, { op: 'hold-with-fund', fund: 600 })).toMatchObject({ ok: true, balance: 0, today: { funded: 1000 } });
+    expect(hold(s, 1, { n: 2, fund: 600 })).toMatchObject({ ok: true, balance: 0, today: { funded: 1000 } });
     expect(reason(hold(s, 2, { fund: 1001 }))).toBe('amount');                         // never more top-up than the fee
     expect(reason(hold(s, 2, { fund: -1 }))).toBe('amount');
     for (const id of ['fund-big-2a', 'fund-big-2b']) expect(s.transaction(() => applyMoney(s, { kind: 'fund', id, tag: tag(2), amount: L.fundDayMax / 2 }, T0, L)).ok).toBe(true);
-    expect(reason(hold(s, 2, { op: 'hold-over-fund', fund: 1000, match: M2 }))).toBe('limit-fund');
+    expect(reason(hold(s, 2, { n: 2, fund: 1000, match: M2 }))).toBe('limit-fund');
     expect(bal(s, 2)).toBe(L.fundDayMax);
   });
   it('never below zero: a player who cannot cover the fee is refused and nothing changes', () => {
@@ -59,9 +60,9 @@ describe('Grand Camp fees: the hold at « Prêt »', () => {
   it('one pending fee per player: a hold in another match is refused until the first is returned', () => {
     const s = setup();
     hold(s, 1);
-    expect(reason(hold(s, 1, { match: M2, op: 'hold-second-match' }))).toBe('busy');
+    expect(reason(hold(s, 1, { match: M2 }))).toBe('busy');
     release(s, 1);
-    expect(hold(s, 1, { match: M2, op: 'hold-second-match' }).ok).toBe(true);
+    expect(hold(s, 1, { match: M2 }).ok).toBe(true);
   });
   it('the terms are the pool’s from its first hold; a fee of 0 F never reaches the ledger; one operation at most', () => {
     const s = setup();
@@ -71,16 +72,38 @@ describe('Grand Camp fees: the hold at « Prêt »', () => {
     expect(reason(hold(s, 3, { match: M2, terms: { ...TERMS, fee: 0 } }))).toBe('amount');
     expect(reason(hold(s, 3, { match: M2, terms: { ...TERMS, fee: L.opMax + 1 } }))).toBe('limit-op');
     expect(reason(hold(s, 4, { op: 'x' }))).toBe('invalid');
-    expect(reason(s.tx(() => campHold(s, { match: M, tag: 'ffffffffffffffff', op: 'hold-nobody-01', terms: TERMS, fund: 0 }, T0, L)))).toBe('invalid');   // no account
+    expect(reason(s.tx(() => campHold(s, { match: M, tag: 'ffffffffffffffff', op: campHoldOp(M, 'ffffffffffffffff', 1), terms: TERMS, fund: 0 }, T0, L)))).toBe('invalid');   // no account
   });
   it('an op id of another player or match is refused; a spent hold op (returned since) is not held again', () => {
     const s = setup();
-    hold(s, 1, { op: 'hold-shared-01' });
-    expect(reason(hold(s, 2, { op: 'hold-shared-01' }))).toBe('invalid');
+    hold(s, 1, { n: 3 });
+    expect(reason(hold(s, 2, { op: campHoldOp(M, tag(1), 3) }))).toBe('invalid');
     release(s, 1);
-    expect(reason(hold(s, 1, { op: 'hold-shared-01' }))).toBe('closed');               // a new « Prêt » is a new op
+    expect(reason(hold(s, 1, { n: 3 }))).toBe('closed');                                // a new « Prêt » is a new op
     expect(bal(s, 1)).toBe(5000);
-    expect(hold(s, 1, { op: 'hold-shared-02' }).ok).toBe(true);
+    expect(hold(s, 1, { n: 4 }).ok).toBe(true);
+  });
+  it('never a client’s id: a hold op is the server’s own h-<match>-<tag>-<n>; a payout’s id, a uuid, another player’s or match’s hold are refused', () => {
+    // the review's C1 (proof p1): a « Prêt » request id equal to an opponent's payout op made the settlement throw for ever and locked the pool
+    const s = setup(6), T6: CampTermsRow = { fee: 1000, size: 6, dist: 'team' };
+    for (const op of [campPayoutOp(M, tag(1)), '00000000-0000-4000-8000-000000000004', campHoldOp(M, tag(1), 1), campHoldOp(M2, tag(4), 1), `${campHoldOp(M, tag(4), 1)}x`, `h-${M}-${tag(4)}-`, `h-${M}-${tag(4)}-1234567890`])
+      expect(reason(hold(s, 4, { op, terms: T6 }))).toBe('invalid');
+    expect(s.campOps().size).toBe(0); expect(bal(s, 4)).toBe(5000);
+    for (let i = 1; i <= 6; i++) expect(hold(s, i, { terms: T6, n: i }).ok).toBe(true);
+    const r = s.tx(() => campSettle(s, { match: M, outcome: { kind: 'team', winners: [tag(1), tag(2), tag(3)] }, terms: T6 }, T0));
+    expect(r.ok && r.settlement.payouts.map(p => p.amount)).toEqual([2000, 2000, 2000]);
+    expect(hold(s, 1, { match: M2, terms: T6 }).ok).toBe(true);                       // nobody stays « busy »
+  });
+  it('release, refund and payout ids are built whole from (match, tag, kind, n): never cut, never shared', () => {
+    const s = setup(2), ids = new Set<string>();
+    for (let n = 1; n <= 30; n++) { expect(hold(s, 1, { n: 999_999_960 + n }).ok).toBe(true); const r = release(s, 1); expect(r.op).toBe(`r-${M}-${tag(1)}-${999_999_960 + n}`); ids.add(r.op!); }
+    expect(ids.size).toBe(30);
+    hold(s, 1, { n: 7 }); hold(s, 2, { n: 8 });
+    const f = settle(s, { kind: 'refund', why: 'draw' });
+    expect(f.ok && f.settlement.payouts.map(p => p.op)).toEqual([`f-${M}-${tag(1)}-7`, `f-${M}-${tag(2)}-8`]);
+    const h = { match: M, tag: tag(1), op: campHoldOp(M, tag(1), 999_999_999), amount: 1, fund: 0, state: 'held' as const, at: T0, closed: null };
+    for (const op of [campReleaseOp(h), campRefundOp(h), campPayoutOp(M, tag(1)), h.op]) expect(op.length).toBeLessThanOrEqual(64);
+    expect(new Set([campReleaseOp(h), campRefundOp(h), campPayoutOp(M, tag(1)), h.op]).size).toBe(4);
   });
 });
 
@@ -121,7 +144,7 @@ describe('Grand Camp fees: the settlement, once per match', () => {
     for (const i of [1, 3]) expect(bal(s, i)).toBe(6000);
     expect([...s.campOps().values()].filter(o => o.kind === 'payout').length).toBe(5);
     expect(release(s, 2)).toMatchObject({ duplicate: true, amount: 0 });                  // a release after it: nothing
-    expect(reason(hold(s, 2, { op: 'hold-late-after-end' }))).toBe('closed');
+    expect(reason(hold(s, 2, { n: 2 }))).toBe('closed');
   });
   it('« Un seul gagnant »: the whole pool to one player', () => {
     const s = ten();
@@ -183,7 +206,7 @@ describe('Grand Camp fees: conservation', () => {
     let brought = 12 * 3000, n = 0;
     for (let k = 0; k < 1000; k++) {
       const i = 1 + Math.floor(r() * 12), m = matches[Math.floor(r() * 3)], x = r();
-      if (x < 0.45) { const fund = r() < 0.3 ? Math.floor(r() * 1200) : 0; const h = hold(s, i, { match: m, op: `op-${k}-${i}`, fund }); if (h.ok && !h.duplicate) brought += fund; }
+      if (x < 0.45) { const fund = r() < 0.3 ? Math.floor(r() * 1200) : 0; const h = hold(s, i, { match: m, n: k + 1, fund }); if (h.ok && !h.duplicate) brought += fund; }
       else if (x < 0.8) release(s, i, m);
       else if (x < 0.9) {
         const held = s.holds(m).filter(h => h.state === 'held').map(h => h.tag);

@@ -12,6 +12,13 @@ const P = (i: number) => ({ name: `Joueur ${i}`, look: i % 6 });
 const T0 = 1_800_000_000_000;
 const terms = (o: Partial<CampTerms> = {}): CampTerms => ({ fee: 1000, size: 6, dist: 'team', open: true, hub: 'corniche', ...o });
 const reason = (r: { ok: boolean; reason?: string }) => (r.ok ? 'ok' : r.reason);
+/** A « Prêt » request id (a uuid made on the device) and the ledger's answer to the hold it asked for, under the server's own op. */
+const REQ = (i: number) => `00000000-0000-4000-8000-${i.toString(16).padStart(12, '0')}`;
+function ready(l: CampLobby, i: number, req: string, answer?: 'held' | 'refused' | 'unsure') {
+  const r = l.readyAsk(tag(i), req);
+  if (answer && r.ok && r.hold) l.held(tag(i), r.op, answer);
+  return r;
+}
 /** A lobby of `n` (organizer = 1) where everyone joined, `t` ms apart. */
 function filled(n: number, o: Partial<CampTerms> = {}) {
   const l = CampLobby.open('00112233aabbccdd', tag(1), P(1), terms({ size: n as CampTerms['size'], ...o }), T0);
@@ -19,7 +26,7 @@ function filled(n: number, o: Partial<CampTerms> = {}) {
   return l;
 }
 function allReady(l: CampLobby) {
-  for (const p of l.data.players) { const r = l.readyAsk(p.tag, `op-${p.tag}`); expect(r.ok).toBe(true); if (r.ok && r.hold) l.held(p.tag, `op-${p.tag}`, 'held'); }
+  for (const p of l.data.players) { const r = l.readyAsk(p.tag, REQ(p.sid)); expect(r.ok).toBe(true); if (r.ok && r.hold) l.held(p.tag, r.op, 'held'); }
 }
 
 describe('Grand Camp lobby: places and teams', () => {
@@ -68,29 +75,46 @@ describe('Grand Camp lobby: places and teams', () => {
 describe('Grand Camp lobby: « Prêt », the fee, the start', () => {
   it('« Prêt » asks the ledger to hold the fee; ready only once it is held; a refusal leaves the player not ready; a free match needs no hold', () => {
     const l = filled(6);
-    expect(l.readyAsk(tag(2), 'op-a')).toMatchObject({ ok: true, hold: true, again: false });
+    const a = l.readyAsk(tag(2), REQ(1));
+    expect(a).toMatchObject({ ok: true, hold: true, again: false });
     expect(l.view().players[1]).toMatchObject({ ready: false, hold: 'pending' });
-    expect(l.readyAsk(tag(2), 'op-b')).toMatchObject({ ok: true, hold: false, again: true });   // a double tap: the first hold, once
-    l.held(tag(2), 'op-b', 'held');                                                  // another op's answer: nothing
+    expect(l.readyAsk(tag(2), REQ(2))).toMatchObject({ ok: true, hold: false, again: true });   // a double tap: the first hold, once
+    l.held(tag(2), `h-00112233aabbccdd-${tag(2)}-99`, 'held');                     // another op's answer: nothing
     expect(l.view().players[1].hold).toBe('pending');
-    l.held(tag(2), 'op-a', 'held');
+    if (a.ok && a.hold) l.held(tag(2), a.op, 'held');
     expect(l.view().players[1]).toMatchObject({ ready: true, hold: 'held' });
     expect(l.view().pool).toBe(1000);
-    expect(l.readyAsk(tag(3), 'op-c').ok).toBe(true); l.held(tag(3), 'op-c', 'refused');
+    expect(ready(l, 3, REQ(3), 'refused').ok).toBe(true);
     expect(l.view().players[2]).toMatchObject({ ready: false, hold: 'none' });
     expect(l.unready(tag(3))).toMatchObject({ ok: true, release: false });        // nothing held: nothing to return
     expect(l.unready(tag(2))).toMatchObject({ ok: true, release: true });
     expect(l.view().pool).toBe(0);
     const f = filled(6, { fee: 0 });
-    expect(f.readyAsk(tag(2), 'op-a')).toMatchObject({ ok: true, hold: false });
+    expect(f.readyAsk(tag(2), REQ(1))).toMatchObject({ ok: true, hold: false });
     expect(f.view().players[1]).toMatchObject({ ready: true, hold: 'none' });
     expect(f.unready(tag(2))).toMatchObject({ ok: true, release: false });         // a free match touches no money
   });
   it('no answer from the ledger: not ready, and the fee is returned at the next occasion to be safe', () => {
     const l = filled(6);
-    l.readyAsk(tag(2), 'op-a'); l.held(tag(2), 'op-a', 'unsure');
+    ready(l, 2, REQ(1), 'unsure');
     expect(l.view().players[1]).toMatchObject({ ready: false, hold: 'none' });
     expect(l.leave(tag(2))).toMatchObject({ ok: true, release: true });
+  });
+  it('the hold’s op is the server’s own, h-<match>-<tag>-<n>: never the request’s id, never twice in a match (not even after leaving and coming back)', () => {
+    const l = filled(6), seen = new Set<string>();
+    const op = (i: number, req: string) => { const r = l.readyAsk(tag(i), req); expect(r.ok && r.hold).toBe(true); return r.ok && r.hold ? r.op : ''; };
+    const first = op(2, REQ(1));
+    expect(first).toBe(`h-00112233aabbccdd-${tag(2)}-1`);
+    expect(l.seat(tag(2))!.op).toBe(first);
+    seen.add(first);
+    l.held(tag(2), first, 'unsure');
+    expect(op(2, REQ(1))).toBe(first);                                               // the same request again (no answer the first time): the same op
+    l.held(tag(2), first, 'held'); l.unready(tag(2));
+    for (let k = 0; k < 5; k++) { const o = op(2, REQ(10 + k)); expect(seen.has(o)).toBe(false); seen.add(o); l.held(tag(2), o, 'held'); l.unready(tag(2)); }
+    l.leave(tag(2)); l.join(tag(2), P(2), undefined, T0 + 99_000);
+    const back = op(2, REQ(1));                                                     // back in the match, even with an old request id: a new op
+    expect(seen.has(back)).toBe(false);
+    expect([...seen, back].every(o => /^h-00112233aabbccdd-[0-9a-f]{16}-\d{1,9}$/.test(o))).toBe(true);
   });
   it('the start: every place filled and ready, equal teams, everyone connected — not before', () => {
     const l = filled(6);
@@ -99,13 +123,13 @@ describe('Grand Camp lobby: « Prêt », the fee, the start', () => {
     expect(l.startable()).toBe(true);
     l.unready(tag(4));
     expect(l.startable()).toBe(false);
-    l.readyAsk(tag(4), 'op-again'); l.held(tag(4), 'op-again', 'held');
+    ready(l, 4, REQ(41), 'held');
     l.disconnect(tag(5), T0);                                                      // lost the connection before kick-off: the fee goes back
     expect(l.startable()).toBe(false);
     expect(l.view().players[4]).toMatchObject({ on: false, ready: false, hold: 'none' });
     l.reconnect(tag(5));
     expect(l.startable()).toBe(false);                                              // they press « Prêt » again
-    l.readyAsk(tag(5), 'op-5b'); l.held(tag(5), 'op-5b', 'held');
+    ready(l, 5, REQ(51), 'held');
     expect(l.startable()).toBe(true);
     const seats = l.start(T0 + 60_000);
     expect(l.state).toBe('play');
@@ -117,7 +141,7 @@ describe('Grand Camp lobby: « Prêt », the fee, the start', () => {
   });
   it('a ready player cannot change team without « Pas prêt » first', () => {
     const l = filled(6); l.leave(tag(6));
-    l.readyAsk(tag(2), 'op-a'); l.held(tag(2), 'op-a', 'held');
+    ready(l, 2, REQ(1), 'held');
     expect(reason(l.setTeam(tag(2), 0))).toBe('ready');
   });
 });
@@ -138,7 +162,7 @@ describe('Grand Camp lobby: leaving, cancelling, time', () => {
     expect(l.cancel(tag(1)).ok).toBe(true);
     expect(l.state).toBe('over'); expect(l.data.end).toBe('cancel');
     expect(l.outcome('cancel', null, [])).toEqual({ kind: 'refund', why: 'cancel' });
-    expect(reason(l.readyAsk(tag(2), 'op-z'))).toBe('closed');
+    expect(reason(l.readyAsk(tag(2), REQ(9)))).toBe('closed');
   });
   it('time: a dropped player’s place is kept the return window, then freed; the organizer’s role passes on; not started in time closes the lobby', () => {
     const l = filled(6);

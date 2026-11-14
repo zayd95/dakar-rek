@@ -1,4 +1,5 @@
 import type { Tag } from '../online/protocol';
+import { campHoldOp } from '../online/campLedger';
 import { campSingleWinner, type CampGoal } from './campMatch';
 import {
   CAMP_LOBBY_MS, CAMP_RETURN_MS, CAMP_TEAM_NAMES, campFullPool,
@@ -21,8 +22,12 @@ import {
  */
 export interface CampProfile { name: string; look: number; app?: string }
 export interface CampSeat extends CampPlayer {
-  /** The op id of the fee's hold (the « Prêt » request id); `unsure`: the ledger did not answer it (it is returned at the next occasion). */
-  op?: string; unsure?: boolean;
+  /**
+   * The op id of the fee's hold: the server's own (`h-<match>-<tag>-<n>`, src/online/campLedger.ts campHoldOp), never the player's; `req`: the « Prêt »
+   * request id that asked for it (the same request again, unanswered the first time, asks for the same op); `unsure`: the ledger did not answer it (it
+   * is returned at the next occasion).
+   */
+  op?: string; req?: string; unsure?: boolean;
   /** When the connection dropped (ms). */
   off?: number;
 }
@@ -33,8 +38,12 @@ export interface CampLobbyData {
   invited: Tag[]; removed: Tag[];
   frozen: boolean; next: number;
   started?: number; end?: CampEnd; result?: CampResult;
+  /** « Prêt » asked so far in this match (each hold's op number: never twice, not even for a player who left and came back). */
+  holds?: number;
 }
 export type CampOk<T = object> = ({ ok: true } & T) | { ok: false; reason: CampRefusal };
+/** « Prêt »'s answer: the ledger must hold the fee under `op` (the server's), or nothing to ask (`again`: already ready or asked). */
+export type CampReadyAsk = { ok: true; hold: true; again: false; op: string } | { ok: true; hold: false; again: boolean } | { ok: false; reason: CampRefusal };
 export type CampOutcome = { kind: 'team'; winners: Tag[] } | { kind: 'single'; winner: Tag } | { kind: 'refund'; why: Exclude<CampEnd, 'win'> };
 
 const no = (reason: CampRefusal) => ({ ok: false as const, reason });
@@ -119,16 +128,20 @@ export class CampLobby {
     this.data.teams[team] = name;
     return { ok: true };
   }
-  /** « Prêt » (op: the request's id, the hold's op id): `hold` when the ledger must now hold the fee (a free match is ready at once). */
-  readyAsk(tag: Tag, op: string): CampOk<{ hold: boolean; again: boolean }> {
-    const s = this.seat(tag);
-    if (this.data.state !== 'lobby') return no(this.data.state === 'play' ? 'started' : 'closed');
+  /**
+   * « Prêt » (`req`: the request's id, kept for duplicates only): `hold` when the ledger must now hold the fee, under the server's op (a free match is
+   * ready at once). The op is new for every « Prêt » of the match, except the same request again after the ledger did not answer it.
+   */
+  readyAsk(tag: Tag, req: string): CampReadyAsk {
+    const d = this.data, s = this.seat(tag);
+    if (d.state !== 'lobby') return no(d.state === 'play' ? 'started' : 'closed');
     if (!s) return no('not-member');
     if (s.team === null) return no('no-team');
     if (s.ready || s.hold === 'pending') return { ok: true, hold: false, again: true };
-    if (this.data.terms.fee === 0) { s.ready = true; return { ok: true, hold: false, again: false }; }
-    s.hold = 'pending'; s.op = op; s.unsure = false;
-    return { ok: true, hold: true, again: false };
+    if (d.terms.fee === 0) { s.ready = true; return { ok: true, hold: false, again: false }; }
+    const op = s.unsure && s.op && s.req === req ? s.op : campHoldOp(d.match, tag, d.holds = (d.holds ?? 0) + 1);
+    s.hold = 'pending'; s.op = op; s.req = req; s.unsure = false;
+    return { ok: true, hold: true, again: false, op };
   }
   /** The ledger's answer to the hold of `op`: held (the player is ready), refused (nothing taken), or no answer (`unsure`: returned later to be safe). */
   held(tag: Tag, op: string, answer: 'held' | 'refused' | 'unsure'): void {

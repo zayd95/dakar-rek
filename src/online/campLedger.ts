@@ -52,15 +52,25 @@ export type CampSettleResult =
   | { ok: false; reason: 'invalid' };
 
 const whole = (n: unknown): n is number => typeof n === 'number' && Number.isSafeInteger(n);
-const OP = /^[A-Za-z0-9:_-]{8,64}$/;
-/** The op ids the ledger writes for a hold's release, a hold refunded at the end, a winner's payout (server-made, never a client's). */
-export const campReleaseOp = (holdOp: string) => `r-${holdOp}`.slice(0, 64);
-export const campRefundOp = (holdOp: string) => `f-${holdOp}`.slice(0, 64);
+const OP = /^[A-Za-z0-9:_-]{8,64}$/, HOLD_NO = /^\d{1,9}$/;
+/**
+ * Every op id of camp_ops is made by the server, whole (never cut to a length) and from what it is about, so no two can meet and none can be chosen
+ * by a player (a « Prêt » request id is only the match object's duplicate check, src/multiplayer/campProtocol.ts isRequestId):
+ *   h-<match>-<tag>-<n>   a fee held at « Prêt » (`n`: the match's count of « Prêt », src/multiplayer/campRules.ts readyAsk)
+ *   r-<match>-<tag>-<n>   that hold released;   f-<match>-<tag>-<n>   that hold refunded at the end
+ *   w-<match>-<tag>       a winner's payout (a match is settled once)
+ */
+export const campHoldOp = (match: string, tag: Tag, n: number) => `h-${match}-${tag}-${n}`;
+const isHoldOp = (op: string, match: string, tag: Tag) => op.startsWith(`h-${match}-${tag}-`) && HOLD_NO.test(op.slice(match.length + tag.length + 4));
+/** A hold's number in its match, from its op (a hold of another shape, written before these ids: its time, so the ids stay whole and its own). */
+const holdNo = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => (isHoldOp(h.op, h.match, h.tag) ? h.op.slice(h.match.length + h.tag.length + 4) : `t${h.at}`);
+export const campReleaseOp = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => `r-${h.match}-${h.tag}-${holdNo(h)}`;
+export const campRefundOp = (h: Pick<CampHoldRow, 'match' | 'tag' | 'op' | 'at'>) => `f-${h.match}-${h.tag}-${holdNo(h)}`;
 export const campPayoutOp = (match: string, tag: Tag) => `w-${match}-${tag}`;
 
-/** The fee held at « Prêt ». */
+/** The fee held at « Prêt », under the server's op `h-<match>-<tag>-<n>` (any other op: 'invalid'). */
 export function campHold(store: CampStore, r: { match: string; tag: Tag; op: string; terms: CampTermsRow; fund: Francs }, now: number, limits: MoneyLimits): CampHoldResult {
-  if (!OP.test(r.op) || !OP.test(r.match)) return { ok: false, reason: 'invalid' };
+  if (!OP.test(r.op) || !OP.test(r.match) || !isHoldOp(r.op, r.match, r.tag)) return { ok: false, reason: 'invalid' };
   const seen = store.campOp(r.op);
   if (seen) {
     if (seen.kind !== 'hold' || seen.tag !== r.tag || seen.match !== r.match) return { ok: false, reason: 'invalid' };
@@ -105,7 +115,7 @@ export function campRelease(store: CampStore, r: { match: string; tag: Tag }, no
   me.balance += h.amount; store.putAccount(me);
   pool.held -= h.amount; store.putPool(pool);
   store.putHold({ ...h, state: 'released', closed: now });
-  const op = campReleaseOp(h.op);
+  const op = campReleaseOp(h);
   store.putCampOp({ id: op, match: r.match, tag: r.tag, kind: 'release', amount: h.amount, fund: 0, at: now });
   return { ok: true, duplicate: false, amount: h.amount, op, balance: me.balance, pool: pool.held };
 }
@@ -144,7 +154,7 @@ export function campSettle(store: CampStore, r: { match: string; outcome: CampOu
     const a = rolled(store.account(p.tag)!, now);
     a.balance += p.amount; store.putAccount(a);
     const hold = held.find(h => h.tag === p.tag)!;
-    const op = refund ? campRefundOp(hold.op) : campPayoutOp(r.match, p.tag);
+    const op = refund ? campRefundOp(hold) : campPayoutOp(r.match, p.tag);
     store.putCampOp({ id: op, match: r.match, tag: p.tag, kind: refund ? 'refund' : 'payout', amount: p.amount, fund: 0, at: now });
     payouts.push({ tag: p.tag, amount: p.amount, op });
     balances.push({ tag: p.tag, balance: a.balance, today: todayOf(a, now) });

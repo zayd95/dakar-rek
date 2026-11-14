@@ -1,0 +1,74 @@
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { CampRig, type CampObject, type FakeSocket, type MatchHandle } from './helpers/campServerRig';
+import { campPayoutOp } from '../src/online/campLedger';
+
+/**
+ * 1.0.1 Grand Camp: the match object itself (server/camp.ts) on the fakes of tests/helpers/campServerRig.ts — what the review of the release candidate
+ * found there (the review's C1 … M2 and minors), each proved here on the object's real request, socket, alarm and ledger paths.
+ */
+vi.mock('cloudflare:workers', () => ({ DurableObject: class { ctx: unknown; env: unknown; constructor(ctx: unknown, env: unknown) { this.ctx = ctx; this.env = env; } } }));
+
+let Camp: new (ctx: unknown, env: unknown) => CampObject;
+beforeAll(async () => {
+  const path = '../server/camp';                                                     // (not a static import: server code is outside the game's tsconfig)
+  Camp = (await import(/* @vite-ignore */ path) as { GrandCamp: typeof Camp }).GrandCamp;
+});
+const M = 'a1b2c3d4e5f60718', M2 = '0f1e2d3c4b5a6978';
+const tag = (i: number) => i.toString(16).padStart(16, '0');
+const terms = (o: Record<string, unknown> = {}) => ({ fee: 1000, size: 6, dist: 'team', open: true, hub: 'corniche', ...o });
+type Priv = { game: { sim: { score: number[] }; stop(): void; seats: Map<number, { seq: number; body: { x: number; z: number } }>; snapshot(): { players: { sid: number }[] } } | null; stopTimer(): void; tick(): void; lobby: { data: Record<string, unknown> } | null };
+const priv = (m: MatchHandle) => m.obj as unknown as Priv;
+let undo: (() => void) | null = null;
+afterEach(() => { undo?.(); undo = null; });
+
+/** A lobby of six (the organizer = 1), every player with 10 000 F on Teranga Money; `ready`: all of them « Prêt ». */
+async function lobby(rig: CampRig, o: { fee?: number; ready?: boolean; match?: string } = {}) {
+  const match = o.match ?? M, m = await rig.match(), ws: FakeSocket[] = [];
+  for (let i = 1; i <= 6; i++) { rig.ledger.account(tag(i)); ws.push(await m.connect(tag(i), match, `Joueur ${i}`)); }
+  expect((await m.req(ws[0], { type: 'create', terms: terms({ fee: o.fee ?? 1000 }) }))?.ok).toBe(true);
+  for (let i = 2; i <= 6; i++) expect((await m.req(ws[i - 1], { type: 'join' }))?.ok).toBe(true);
+  if (o.ready) for (const w of ws) expect((await m.req(w, { type: 'ready' }))?.ok).toBe(true);
+  return { m, ws };
+}
+/** The match kicked off by `lobby(…, { ready: true })`: its timer stopped (the test steps it), team 0 = players 1, 3, 5. */
+function started(m: MatchHandle) { const p = priv(m); expect(p.game).not.toBeNull(); p.stopTimer(); return p; }
+/** Full time with this score. */
+async function fullTime(m: MatchHandle, score: [number, number]) { const p = priv(m); p.game!.sim.score[0] = score[0]; p.game!.sim.score[1] = score[1]; p.game!.stop(); p.tick(); await m.flush(); }
+
+describe('Grand Camp server: the ledger’s ids are the server’s own (review C1)', () => {
+  it('a « Prêt » whose request id is an opponent’s payout op is refused; the match then settles and pays the winners', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig);
+    const forged = await m.req(ws[3], { type: 'ready', id: campPayoutOp(M, tag(1)) });
+    expect(forged).toBeNull();                                                         // not even a readable id: no answer at all
+    expect(m.seat(tag(4))).toMatchObject({ ready: false, hold: 'none' });
+    expect(rig.ledger.calls.hold).toBe(0);
+    for (const w of ws) expect((await m.req(w, { type: 'ready' }))?.ok).toBe(true);
+    for (let i = 1; i <= 6; i++) expect(m.seat(tag(i))!.op).toMatch(new RegExp(`^h-${M}-${tag(i)}-\\d+$`));
+    started(m);
+    await fullTime(m, [1, 0]);
+    const res = ws[0].last<{ result: { end: string; payouts: { tag: string; amount: number }[]; money: string } }>('result')!.result;
+    expect(res).toMatchObject({ end: 'win', money: 'settled' });
+    expect(res.payouts.map(p => [p.tag, p.amount])).toEqual([[tag(1), 2000], [tag(3), 2000], [tag(5), 2000]]);
+    for (const i of [1, 3, 5]) expect(rig.ledger.balance(tag(i))).toBe(11_000);
+    for (const i of [2, 4, 6]) expect(rig.ledger.balance(tag(i))).toBe(9000);
+  });
+  it('a settlement that keeps failing returns every fee after a bounded number of tries, and says so in the logs', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig, { ready: true });
+    undo = rig.capture();
+    started(m);
+    rig.ledger.settleThrows = r => r.outcome.kind !== 'refund';                    // the winners' settlement throws every time (as a stuck op id did)
+    await fullTime(m, [2, 1]);
+    expect(ws[0].last('result')).toBeUndefined();                                       // nobody is shown a result before the ledger wrote one
+    for (let k = 0; k < 12 && !ws[0].last('result'); k++) await m.ring();
+    const res = ws[0].last<{ result: { end: string; money: string; payouts: { amount: number }[] } }>('result')?.result;
+    expect(res).toMatchObject({ end: 'stopped', money: 'settled' });
+    expect(res!.payouts.map(p => p.amount)).toEqual([1000, 1000, 1000, 1000, 1000, 1000]);
+    for (let i = 1; i <= 6; i++) expect(rig.ledger.balance(tag(i))).toBe(10_000);
+    expect(rig.ledger.calls.settle).toBeLessThanOrEqual(8);
+    expect(rig.logs.some(l => l.event === 'camp-alert' && l.step === 'settle-refund')).toBe(true);
+    const again = await rig.match();                                                    // nobody stays « busy »: player 1 holds a fee in another match
+    const w = await again.connect(tag(1), M2);
+    expect((await again.req(w, { type: 'create', terms: terms() }))?.ok).toBe(true);
+    expect((await again.req(w, { type: 'ready' }))?.ok).toBe(true);
+  });
+});
