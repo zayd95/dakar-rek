@@ -3,10 +3,17 @@ import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag,
 import { parseChatRequest, parseReport, rateLimit, nearRecipients, isPrivateSpace, DedupeMemory, type ChatFailure } from '../src/multiplayer/chatRules';
 import { ECONOMY } from '../src/economy/config';
 import type { HubId } from '../src/core/types';
+import { CAMP_FEATURE, CAMP_VERSION, isMatchId } from '../src/multiplayer/campProtocol';
 import { Social } from './social';
+import { GrandCamp } from './camp';
 
-export { Social };
-interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; SOCIAL: DurableObjectNamespace<Social>; ALLOWED_ORIGINS?: string }
+export { Social, GrandCamp };
+interface Env {
+  ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; SOCIAL: DurableObjectNamespace<Social>;
+  /** 1.0.1 Grand Camp (server/camp.ts): `camp:<match>` and `list:<hub>`. */
+  CAMPS: DurableObjectNamespace<GrandCamp>;
+  ALLOWED_ORIGINS?: string; CAMP_TEST_CLOCK?: string;
+}
 interface Session {
   id: string; name: string; look: number; tag?: string; rec?: string; app?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
   /** Accepted chat timestamps (sliding window) and players already reported by this connection. */
@@ -33,7 +40,7 @@ export async function publicTag(key: string | null): Promise<string | undefined>
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === '/api/health') return Response.json({ ok: true, protocol: PROTOCOL_VERSION, roomCapacity: ROOM_CAPACITY }, { headers: { 'Cache-Control': 'no-store' } });
+    if (url.pathname === '/api/health') return Response.json({ ok: true, protocol: PROTOCOL_VERSION, roomCapacity: ROOM_CAPACITY, features: [CAMP_FEATURE] }, { headers: { 'Cache-Control': 'no-store' } });
     const originRejected = () => { const origin = request.headers.get('Origin'); return !!origin && origin !== url.origin && !env.ALLOWED_ORIGINS?.split(',').map(x => x.trim()).includes(origin); };
     if (url.pathname === '/api/me') {
       // LD2.0-B: the player's own account (Messages, Teranga Money, invitations, meetings): one socket handed to SOCIAL `acct:<tag>`
@@ -45,6 +52,29 @@ export default {
       const forwarded = new URL(request.url); forwarded.searchParams.delete('key');   // the key never goes further than here
       const headers = new Headers(request.headers); headers.set('X-Dakar-Tag', tag);
       return env.SOCIAL.getByName(`acct:${tag}`).fetch(new Request(forwarded, { method: 'GET', headers }));
+    }
+    if (url.pathname === '/api/camp') {
+      // 1.0.1 Grand Camp: one socket per player and match, handed to the match's object `camp:<match>` with the player's tag (the key goes no further)
+      if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required', { status: 426 });
+      if (originRejected()) return new Response('Origin rejected', { status: 403 });
+      const key = deviceKey(url.searchParams.get('key'));
+      if (!key) return new Response('Device key required', { status: 400 });
+      const match = url.searchParams.get('match');
+      if (!isMatchId(match)) return new Response('Unknown match', { status: 400 });
+      const tag = (await publicTag(key))!;
+      const forwarded = new URL(request.url); forwarded.searchParams.delete('key');
+      const headers = new Headers(request.headers); headers.set('X-Dakar-Tag', tag); headers.set('X-Camp-Match', match);
+      return env.CAMPS.getByName(`camp:${match}`).fetch(new Request(forwarded, { method: 'GET', headers }));
+    }
+    if (url.pathname === '/api/camp/list') {
+      // the lobbies of a district that take players (the private ones only to their organizer and the invited: the key, when given, says who asks)
+      if (request.method !== 'GET') return new Response('GET only', { status: 405 });
+      if (originRejected()) return new Response('Origin rejected', { status: 403 });
+      const hub = url.searchParams.get('hub');
+      if (!isHub(hub)) return new Response('Unknown hub', { status: 400 });
+      const key = deviceKey(url.searchParams.get('key')), tag = key ? (await publicTag(key))! : null;
+      const matches = await env.CAMPS.getByName(`list:${hub}`).campList(hub, tag);
+      return Response.json({ feature: CAMP_FEATURE, v: CAMP_VERSION, matches }, { headers: { 'Cache-Control': 'no-store' } });
     }
     if (url.pathname === '/api/presence') {
       if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required', { status: 426 });
@@ -113,7 +143,7 @@ export class CityRoom extends DurableObject<Env> {
     const rec = recordTag(url.searchParams.get('rec')), app = appearanceCode(url.searchParams.get('app'));   // (app: the studio's look, strictly shaped; absent from older clients)
     const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, ...(rec ? { rec } : {}), ...(app ? { app } : {}), hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
     this.ctx.acceptWebSocket(server); server.serializeAttachment(session); this.sessions.set(server, session);
-    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [homeHost(s.peer.space) ? masked(s.peer) : s.peer] : []), features: [BALL_FEATURE] });
+    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [homeHost(s.peer.space) ? masked(s.peer) : s.peer] : []), features: [BALL_FEATURE, CAMP_FEATURE] });
     this.broadcast({ type: 'count', count: this.sessions.size }, server);
     return new Response(null, { status: 101, webSocket: client });
   }
