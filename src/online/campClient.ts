@@ -237,6 +237,11 @@ export class CampClient {
   onEvent(fn: (e: CampEvent) => void) { this.eventListeners.add(fn); return () => { this.eventListeners.delete(fn); }; }
   /** My place in the lobby (team, ready, the fee's state), or null. */
   mySeat(): CampPlayer | null { const l = this.state.lobby, me = this.state.me; return l && me ? l.players.find(p => p.tag === me) ?? null : null; }
+  /** Whether `tag` has a body on the pitch now (in the newest snapshot): a player who dropped or left after kick-off has not. */
+  onPitch(tag: Tag): boolean {
+    const sid = this.state.roster?.find(r => r.tag === tag)?.sid;
+    return sid !== undefined && !!this.state.snap?.players.some(p => p.sid === sid);
+  }
   /** What the end gave me (null: no result yet, or nothing for me). */
   myPayout(): number | null { const r = this.state.result, me = this.state.me; return r && me ? r.payouts.find(p => p.tag === me)?.amount ?? 0 : null; }
   close() {
