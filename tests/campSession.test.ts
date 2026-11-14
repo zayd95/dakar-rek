@@ -29,10 +29,11 @@ const lobby = (o: Partial<CampLobbyView> = {}, mine = true): CampLobbyView => ({
   players: [{ tag: ORG, name: 'Awa', look: 1, team: 0, ready: false, hold: 'none', on: true, at: 1, sid: 1 }, ...(mine ? [{ tag: ME, name: 'Moi', look: 2, team: 1 as const, ready: false, hold: 'none' as const, on: true, at: 2, sid: 2 }] : [])],
   pool: 0, full: 6000, created: 1, closes: 600_001, ...o,
 });
-let store: Store, account: { balance: number; wallet: number; said: [string, string][]; funded: number[] };
+let store: Store, account: { balance: number; wallet: number; said: [string, string][]; funded: number[] }, joined: string[] = [];
 function session(): CampSession {
   const s = new CampSession();
   const deps: CampSessionDeps = {
+    joined: m => { joined.push(m); },
     key: () => 'f'.repeat(32), profile: () => ({ name: 'Moi', look: 2 }), endpoint: 'http://127.0.0.1:9/api/camp', storage: () => store as unknown as Storage,
     wallet: () => account.wallet, WebSocketImpl: FakeWS as unknown as typeof WebSocket,
     account: () => ({
@@ -47,7 +48,7 @@ function session(): CampSession {
 const welcome = (ws: FakeWS, l: CampLobbyView | null) => { ws.open(); ws.recv({ type: 'welcome', feature: 'camp', v: 1, match: l?.match ?? M, you: ME, time: 1, hz: 20, lobby: l }); };
 const ack = (ws: FakeWS, type: string, ok = true, extra: Record<string, unknown> = {}) => { const m = ws.msgs().filter(x => x.type === type).pop()!; ws.recv({ type: 'ack', id: m.id, ok, ...extra }); };
 
-beforeEach(() => { FakeWS.all = []; store = new Store(); account = { balance: 0, wallet: 5000, said: [], funded: [] }; vi.useFakeTimers(); });
+beforeEach(() => { FakeWS.all = []; store = new Store(); account = { balance: 0, wallet: 5000, said: [], funded: [] }; joined = []; vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('Grand Camp session: one match at a time, kept on the device', () => {
@@ -135,5 +136,33 @@ describe('Grand Camp session: invitations', () => {
     ack(ws, 'invite', false, { reason: 'not-org' });
     expect((await no).ok).toBe(false);
     expect(account.said.length).toBe(2);                                          // a refused invitation sends no message
+  });
+});
+
+describe('Grand Camp session: « Coups de pouce » counts a place once per match', () => {
+  it('the server’s yes to « Rejoindre » counts once; an « already in it » answer, a reload’s session and a resent request do not count again', async () => {
+    const s = session(); s.view(M); const ws = FakeWS.last(); welcome(ws, lobby({}, false));
+    const j = s.join(); await Promise.resolve(); ws.recv({ type: 'lobby', lobby: lobby() }); ack(ws, 'join');
+    await j;
+    expect(joined).toEqual([M]);
+    const again = s.join(); await Promise.resolve(); ack(ws, 'join', true, { duplicate: true });      // pressed again: the server says it is already a place
+    await again;
+    const r = session(); r.view(M); const w2 = FakeWS.last(); welcome(w2, lobby());                    // the page reloaded: the place given back, not a new one
+    const j2 = r.join(); await Promise.resolve(); ack(w2, 'join', true, { duplicate: true }); await j2;
+    expect(joined).toEqual([M]);
+  });
+  it('a refused join counts nothing; organizing a match (the first place) counts once', async () => {
+    const s = session(); s.view(M2); const ws = FakeWS.last(); welcome(ws, lobby({ match: M2 }, false));
+    const j = s.join(); await Promise.resolve(); ack(ws, 'join', false, { reason: 'full' });
+    expect((await j).ok).toBe(false);
+    expect(joined).toEqual([]);
+    const o = session(); store.removeItem('dakarrek.camp.match'); o.mine = null;
+    const made = o.create({ fee: 0, size: 6, dist: 'team', open: true, hub: 'corniche' });
+    await vi.waitFor(() => expect(FakeWS.all.length).toBe(2));
+    const w = FakeWS.last(); const m = new URL(w.url).searchParams.get('match')!;
+    welcome(w, null); await vi.waitFor(() => expect(w.msgs().some(x => x.type === 'create')).toBe(true));
+    ack(w, 'create', true, { match: m });
+    expect((await made).ok).toBe(true);
+    expect(joined).toEqual([m]);
   });
 });

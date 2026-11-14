@@ -29,10 +29,17 @@ export interface CampSessionDeps {
     newId(): string; fund(o: { id: string; amount: number }): Promise<Outcome>; say(to: Tag, text: string): Outcome<{ id: string }>;
   } | null;
   wallet: () => number;
+  /**
+   * The server confirmed a place of this player in `match` (joined, or organized: the organizer takes the first place). Called once per match id
+   * (never again on a reconnect or a repeated answer): « Coups de pouce » counts it (src/economy/pouce.ts POUCE_COUNTERS.camp, main.ts).
+   */
+  joined?: (match: string) => void;
   storage?: () => Storage | null;
   WebSocketImpl?: typeof WebSocket; fetchImpl?: typeof fetch; now?: () => number;
 }
 const KEY = 'dakarrek.camp.match';
+/** The matches whose place was already counted (`joined`), on the device: a few ids, the newest last. */
+const COUNTED_KEY = 'dakarrek.camp.counted', COUNTED_MAX = 40;
 
 export class CampSession {
   private d: CampSessionDeps | null = null;
@@ -98,15 +105,16 @@ export class CampSession {
     if (!c) return no('solo');
     if (this.mine) return no('busy');
     const r = await c.create(terms);
-    if (r.ok) this.keep(r.match);
+    if (r.ok) { this.keep(r.match); this.counted(r.match); }
     return r;
   }
   async join(team?: 0 | 1): Promise<Outcome> {
     const c = this.client;
     if (!c?.state.match) return no('no-match');
     if (this.mine && this.mine !== c.state.match) return no('busy');
+    const match = c.state.match;
     const r = await c.join(team);
-    if (r.ok) this.keep(c.state.match);
+    if (r.ok) { this.keep(match); this.counted(match); }
     return r;
   }
   /** How the fee would be paid now (Teranga Money first, then the wallet), or why it cannot be. */
@@ -172,6 +180,17 @@ export class CampSession {
     else if (l && this.mine === l.match && c.state.status === 'open' && !s && l.state === 'lobby') this.forget();   // not a member any more (freed after a long drop)
     this.emit();
   }
+  /** A place the server confirmed: told once per match id (a reconnect, a resent request or an « already in it » answer is not a new place). */
+  private counted(m: string) {
+    let list: string[] = [];
+    const st = this.d?.storage?.() ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+    try { const raw = JSON.parse(st?.getItem(COUNTED_KEY) ?? '[]') as unknown; if (Array.isArray(raw)) list = raw.filter(isMatchId); } catch { /* none yet */ }
+    if (list.includes(m) || this.countedNow.has(m)) return;
+    this.countedNow.add(m); list.push(m);
+    try { st?.setItem(COUNTED_KEY, JSON.stringify(list.slice(-COUNTED_MAX))); } catch { /* the session remembers */ }
+    try { this.d?.joined?.(m); } catch { /* its own */ }
+  }
+  private countedNow = new Set<string>();
   private keep(m: string) { if (this.mine === m) return; this.mine = m; try { (this.d?.storage?.() ?? localStorage).setItem(KEY, m); } catch { /* the session remembers */ } }
   private forget() { this.mine = null; try { (this.d?.storage?.() ?? localStorage).removeItem(KEY); } catch { /* gone anyway */ } }
   private stored(): string | null {

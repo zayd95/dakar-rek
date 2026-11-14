@@ -65,6 +65,7 @@ import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
 import { online, onlineHooks, setOnline } from './online/api';
 import { campSession } from './online/campSession';
+import { POUCE_COUNTERS } from './economy/pouce';
 import { grandCamp } from './game/grandCamp';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
@@ -235,6 +236,8 @@ if (import.meta.env.VITE_MULTIPLAYER === 'true') {
     key: () => deviceChatKey(), profile: () => ({ name: presence.profile.name, look: presence.profile.look, app: presence.appearance ?? null }),
     endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined,
     account: () => online, wallet: () => state.wallet,
+    // « Coups de pouce » (src/economy/pouce.ts): a Grand Camp place the server confirmed, once per match
+    joined: () => { state.count(POUCE_COUNTERS.camp); if (world) saveNow(); },
   });
   campSession.restore();
 }
