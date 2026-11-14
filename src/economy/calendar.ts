@@ -7,7 +7,8 @@ import { CITY_EPOCH_MS } from '../core/clock';
  *
  * The time read is the server's when the game is online (`presence.serverNow()`, wired by src/main.ts) and the device's otherwise. A device clock
  * can be set forward: what bounds it is in monthly.ts (a month is settled once, never again when the clock goes back; a capped catch-up; one batch
- * of settlements per half hour of play). It cannot be prevented while the wallet lives in the local save.
+ * of settlements per half hour of play). It cannot be prevented while the wallet lives in the local save. A clock read more than a month behind a
+ * contract moves the contract's dates back (monthly.ts `rebase`): set forward then back, it is never more than a month without rent.
  */
 export const REAL_DAY_MS = 86_400_000;
 export const ECON_MONTH_DAYS = 7;

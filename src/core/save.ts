@@ -390,7 +390,8 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
 function leaseOf(v: unknown, playedMs: number): MonthlyLease | null {
   if (!v || typeof v !== 'object') return null;
   const x = v as Record<string, unknown>;
-  if (typeof x.start !== 'number' || !Number.isFinite(x.start) || x.start <= 0 || typeof x.rent !== 'number' || !(x.rent > 0)) return null;
+  const lag = typeof x.lag === 'number' && Number.isFinite(x.lag) && x.lag > 0 ? x.lag : 0;      // dates moved back by a clock set back (src/economy/monthly.ts `rebase`)
+  if (typeof x.start !== 'number' || !Number.isFinite(x.start) || x.start + lag <= 0 || typeof x.rent !== 'number' || !(x.rent > 0)) return null;
   const k = clamp(Math.floor(num(x.k, 0)), 0, 100_000), mode = x.mode === 'sublet' || x.mode === 'furnished' ? x.mode : 'live';
   const L: MonthlyLease = {
     start: x.start, k, rent: money(x.rent), charges: money(num(x.charges, 0)), mode,
@@ -401,6 +402,7 @@ function leaseOf(v: unknown, playedMs: number): MonthlyLease | null {
   if (Array.isArray(x.pack)) { const pack = [...new Set((x.pack as unknown[]).filter((u): u is string => typeof u === 'string' && UID.test(u)))].slice(0, 32); if (pack.length) L.pack = pack; }
   const last = x.last as Record<string, unknown> | null;
   if (last && typeof last === 'object') L.last = { k: clamp(Math.floor(num(last.k, 0)), 0, 100_000), occ: clamp(Math.round(num(last.occ, 0)), 0, 100), revenue: money(num(last.revenue, 0)), cost: money(num(last.cost, 0)) };
+  if (lag) L.lag = lag;
   return L;
 }
 /** v3 / v4 → v5: the starter room, its furniture (stored; the game puts each piece back at its usual spot) and the ventures. */

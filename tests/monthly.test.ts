@@ -73,7 +73,8 @@ describe('the F2 by the month', () => {
     const s = fresh(2_000_000); signLease(s, F2, T0); play(s);
     settleMonthly(s, T0 + M);
     const w = s.wallet;
-    play(s); expect(settleMonthly(s, T0 - 30 * M)).toEqual([]); expect(settleMonthly(s, T0 + M / 2)).toEqual([]);
+    play(s); expect(settleMonthly(s, T0 + M / 2)).toEqual([]); expect(settleMonthly(s, T0 - 30 * M)).toEqual([]);
+    expect(settleMonthly(s, T0 + M + 3600_000)).toEqual([]);              // and put right again
     expect(s.wallet).toBe(w);
     const t = fresh(2_000_000); signLease(t, F2, T0);
     expect(settleMonthly(t, T0 + M)).toEqual([]);                          // the month has turned, but nothing was played since the signature
@@ -91,6 +92,81 @@ describe('the F2 by the month', () => {
     expect(takeNotices().join(' ')).toMatch(/dormi/);
     play(s); expect(settleMonthly(s, T0 + 10 * M + 2000)).toEqual([]);
     expect(settleMonthly(s, T0 + 11 * M)).toHaveLength(1);
+  });
+});
+
+describe('a device clock moved by hand (offline: the device\'s clock is the economic one)', () => {
+  const YEAR = 365 * REAL_DAY_MS;
+  const rents = (s: GameState) => s.data.ledger.filter(l => /^Loyer et charges/.test(l.label)).length;
+  /** Real weeks of play: the settlement runs (as the economy's tick does) once the clock is right, then once a week, five hours of play each. */
+  function weeks(s: GameState, from: number, n: number) { let out = 0; for (let w = 1; w <= n; w++) { play(s, 10 * PLAY); out += settleMonthly(s, from + w * M).length; } return out; }
+  it('signed with the clock a year ahead, then put right: the month paid begins when the clock is right, the rent is due every month after', () => {
+    const s = fresh(5_000_000); signLease(s, F2, T0 + YEAR);
+    expect(settleMonthly(s, T0)).toEqual([]);                             // the clock put right: nothing settled, nothing skipped
+    expect(lease(s).lease).toMatchObject({ start: T0, k: 0, accAt: T0 });
+    expect(weeks(s, T0, 52)).toBe(52);
+    expect(s.wallet).toBe(5_000_000 - 53 * COST);                         // a real year: 53 months paid, as signed honestly (the review: 60 000 F)
+    expect(rents(s)).toBe(53);
+  });
+  it('one batch with the clock a year ahead, then put right: the contract goes on from then, never a year without rent', () => {
+    const s = fresh(5_000_000); signLease(s, F2, T0); play(s);
+    const out = settleMonthly(s, T0 + YEAR);
+    expect(out).toHaveLength(ECONOMY.monthly.catchUpMonths); expect(out.at(-1)!.skipped).toBe(48);
+    expect(lease(s).lease.k).toBe(52);
+    takeNotices();
+    expect(settleMonthly(s, T0 + 1000)).toEqual([]);                      // put right half an hour later
+    expect(lease(s).lease.start + 52 * M).toBe(T0 + 1000);                // the month in hand begins now
+    expect(weeks(s, T0 + 1000, 52)).toBe(52);
+    expect(rents(s)).toBe(1 + 4 + 52);                                    // the review: 5 in the real year (300 000 F)
+    expect(s.data.assets.settled!.length).toBe(new Set(s.data.assets.settled).size);   // no month settled twice
+    const r = back(s); expect(lease(r).lease).toEqual(lease(s).lease);    // the moved dates and the lag survive a reload
+  });
+  it('a clock set back by less than a month moves nothing: at most that much is free', () => {
+    const s = fresh(2_000_000); signLease(s, F2, T0); play(s); settleMonthly(s, T0 + M);
+    const L0 = { ...lease(s).lease }, back3 = T0 + M - 3 * REAL_DAY_MS;
+    play(s); expect(settleMonthly(s, back3)).toEqual([]);
+    expect(lease(s).lease).toEqual(L0);
+    expect(settleMonthly(s, back3 + M)).toEqual([]);                      // three days later than it would have been…
+    expect(settleMonthly(s, T0 + 2 * M)).toHaveLength(1);                 // …then due on the contract's own date
+  });
+  it('a clock set back a long way, then put right again: the contract\'s own dates come back, nothing is charged for time that never passed', () => {
+    const s = fresh(2_000_000); signLease(s, F2, T0); play(s); settleMonthly(s, T0 + M);
+    const L0 = { ...lease(s).lease }, w = s.wallet;
+    play(s); expect(settleMonthly(s, T0 - 30 * M)).toEqual([]);
+    expect(lease(s).lease.start).toBe(T0 - 31 * M); expect(lease(s).lease.lag).toBe(31 * M);
+    play(s); expect(settleMonthly(s, T0 + M + 3600_000)).toEqual([]);   // back to the right time: no settlement, no skip
+    expect(lease(s).lease).toEqual(L0);
+    expect(s.wallet).toBe(w);
+    expect(settleMonthly(s, T0 + 2 * M)).toHaveLength(1);
+    // played a real week with the clock still set back: that week is settled once, and putting the clock right after it charges nothing more
+    const t = fresh(2_000_000); signLease(t, F2, T0); play(t); settleMonthly(t, T0 + M);
+    play(t); settleMonthly(t, T0 - 30 * M); play(t);
+    expect(settleMonthly(t, T0 - 29 * M)).toHaveLength(1);                // a real week later, on the set-back clock
+    play(t); expect(settleMonthly(t, T0 + 2 * M + 3600_000)).toEqual([]); // the clock put right a real week after it was set back
+    expect(lease(t).lease).toMatchObject({ start: T0, k: 2 });
+    expect(rents(t)).toBe(3);
+    expect(settleMonthly(t, T0 + 3 * M)).toHaveLength(1);
+  });
+  it('a clock left set back (here by twelve days) and time passing on it: the next rent is due a month after it was set back, then every month', () => {
+    const D = REAL_DAY_MS, s = fresh(2_000_000); signLease(s, F2, T0); play(s); settleMonthly(s, T0 + M);      // the month in hand: [T0 + M, T0 + 2M)
+    const set = T0 + M + 2 * D - 12 * D;                                  // two days into that month, the clock set back twelve days
+    play(s); expect(settleMonthly(s, set)).toEqual([]);
+    expect(lease(s).lease.start + lease(s).lease.k * M).toBe(set);        // the month in hand begins now…
+    for (const t of [set + 3 * D, set + 5 * D, set + M - 1]) { play(s); expect(settleMonthly(s, t), String((t - set) / D)).toEqual([]); }   // …and runs its whole month on the set-back clock
+    expect(settleMonthly(s, set + M)).toHaveLength(1);                    // due seven days after it was set back: two days later than it would have been
+    for (let w = 2; w <= 6; w++) { play(s); expect(settleMonthly(s, set + w * M - 1)).toEqual([]); expect(settleMonthly(s, set + w * M)).toHaveLength(1); }
+    expect(lease(s).lease.lag).toBe(M + 3 * D);
+  });
+  it('a tenant\'s month is counted once, however the clock goes: what one month brings in at most', () => {
+    const s = playerWith(o => o > 0), a = signLease(s, F2, T0)!; furnish(s, a.uid); offer(s, a.uid, 'furnished', T0);
+    const most = T.furnished * occupancyOf(s, lease(s)) / 100;
+    expect(stopOffer(s, a.uid, T0 + M - 1)).toBe('later'); keepOffer(s, a.uid);   // counted to the last moment of the month
+    play(s); settleMonthly(s, T0 - 2 * M);                                          // the clock set back two months: the dates move back…
+    expect(stopOffer(s, a.uid, T0 - M - 1)).toBe('later'); keepOffer(s, a.uid);    // …but what was counted is not counted again
+    expect(lease(s).lease.acc).toBeCloseTo(most * (M - 1) / M, 0);
+    play(s); const out = settleMonthly(s, T0 - M);                                  // settled on the set-back clock
+    expect(out).toHaveLength(1); expect(out[0].revenue).toBeLessThanOrEqual(Math.floor(most));
+    expect(out[0].revenue).toBeGreaterThan(Math.floor(most) - 2);
   });
 });
 
