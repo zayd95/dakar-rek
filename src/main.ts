@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
+import { debugApiFor, dropWorkInHand, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -2197,5 +2197,9 @@ if (DEBUG) {
     ...(testHost ? economy.debug() : {}),
   };
   if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
-  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
+  // the public game: a teleport drops the delivery or ride in hand (unpaid) and the walking marker first, so a jump never reaches a drop-off, a kerb or a marked vehicle
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api, () => {
+    destination = null;
+    if (dropWorkInHand(state.data)) { hud.toast('Saut de test : la livraison ou la course en cours est annulée, rien n’est payé.'); if (world) saveNow(); }
+  });
 }
