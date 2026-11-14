@@ -5,7 +5,7 @@ import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { castById } from '../social/cast';
 import { Percussion, crowdCheer, fallThud, gripSlap, strikeSound } from './audio';
-import { DuelFx, FX, clinchFraming, contactShift, mixFraming, type FxEvent, type Framing } from './fx';
+import { DuelFx, FX, clinchFraming, contactShift, mixFraming, pairHalfWidth, type FxEvent, type Framing } from './fx';
 import { buzz } from '../transport/haptics';
 import { fovFor } from '../core/view';
 import {
@@ -1574,22 +1574,23 @@ export class LambDuel {
    * of view (src/core/view.ts fovFor, as src/main.ts sets it).
    */
   private closeUp(from: Framing): Framing {
-    const room = this.room();
+    const room = this.room(from);
     return clinchFraming(from, { fovY: fovFor(room.w, room.h), h: room.h, top: room.top, bottom: room.bottom, head: 1.9, feet: 0.2 });
   }
   /**
-   * The rows the pair may use (px): under the lowest HUD block over the middle of the screen (the Prise, the lesson's
-   * card, the message), over the highest control there (the duel's buttons, the joystick). Measured as an empoignade
-   * starts (startClinch forgets it), then every half second (the Prise's words may take another line) and when the
-   * screen turns; the middle is the centred 40 % (src/ui/quiet.ts centreZone).
+   * The rows the pair may use (px): under the lowest HUD block over the pair (the Prise, the lesson's card, the
+   * message), over the highest control under it (the duel's buttons, the joystick) — over the pair: within the width it
+   * can take on screen at the closest framing of `from` (fx.ts pairHalfWidth). Measured as an empoignade starts
+   * (startClinch forgets it), then every half second (the Prise's words may take another line) and when the screen turns.
    */
-  private room() {
+  private room(from: Framing) {
     const w = typeof innerWidth === 'undefined' ? 390 : innerWidth, h = typeof innerHeight === 'undefined' ? 844 : innerHeight;
     const now = typeof performance === 'undefined' ? 0 : performance.now();
     if (this.roomAt && this.roomAt.w === w && this.roomAt.h === h && now - this.roomAt.at < 500) return this.roomAt;
     let top = 0, bottom = h;
     if (!this.headless && !this.spectate) {
-      const x0 = w * 0.3, x1 = w * 0.7, across = (r: DOMRect) => r.width > 0 && r.height > 0 && r.left < x1 && r.right > x0;
+      const half = pairHalfWidth(from, fovFor(w, h), w, h), x0 = w / 2 - half, x1 = w / 2 + half;
+      const across = (r: DOMRect) => r.width > 0 && r.height > 0 && r.left < x1 && r.right > x0;
       for (const el of this.ui.querySelectorAll<HTMLElement>('.duel-clinch, .duel-step, .duel-msg')) {
         if (el.hidden || !el.textContent?.trim()) continue;
         const r = el.getBoundingClientRect();

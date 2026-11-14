@@ -40,10 +40,12 @@ export const FX = {
   buzz: { quick: 30, big: 40, stagger: 50, fall: [40, 30, 60], counter: 25 },
   /**
    * The empoignade's close-up: `dist` of the fight's camera distance, `lower` m lower, eased over `ease` s; the heads
-   * `gap` px under the HUD above the pair, the feet `room` px over the controls below it; pulled back no farther than
-   * `farthest` × the fight's distance when the screen is too short for both.
+   * `gap` px under the HUD above the pair, the feet `room` px over the controls below it, each aimed `spare` px further
+   * (the game's camera eases towards its place and may stop a pixel short); pulled back no farther than `farthest` ×
+   * the fight's distance when the screen is too short for both. The HUD and the controls that count are those over the
+   * pair: within `halfWidth` m of its middle (a body and its arms), at the closest framing.
    */
-  clinch: { dist: 0.7, lower: 0.4, ease: 0.4, gap: 12, room: 6, farthest: 1.25 },
+  clinch: { dist: 0.7, lower: 0.4, ease: 0.4, gap: 12, room: 6, spare: 2, farthest: 1.25, halfWidth: 0.9 },
   /** Chest to chest: the centres `dist` m apart (RDA's measured contact separation), closed over `ease` s. */
   contact: { dist: 0.72, ease: 0.15 },
   /**
@@ -153,6 +155,7 @@ export function rowOf(f: Framing, y: number, fovY: number, h: number): number {
  */
 export function clinchFraming(from: Framing, o: { fovY: number; h: number; top: number; bottom: number; head: number; feet: number }): Framing {
   const height = from.height - FX.clinch.lower, far = from.dist * FX.clinch.farthest;
+  o = { ...o, top: o.top > 0 ? o.top + FX.clinch.spare : 0, bottom: o.bottom < o.h ? o.bottom - FX.clinch.spare : o.bottom };
   let f: Framing = { dist: from.dist * FX.clinch.dist, height, look: from.look };
   for (;;) {
     f = { ...f, look: lookFor(f, o) };
@@ -167,6 +170,14 @@ function lookFor(f: Framing, o: { fovY: number; h: number; top: number; head: nu
   if (rowOf({ ...f, look: hi }, o.head, o.fovY, o.h) < o.top) return hi;
   for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (rowOf({ ...f, look: m }, o.head, o.fovY, o.h) >= o.top) hi = m; else lo = m; }
   return hi;
+}
+/**
+ * How far from the screen's middle (px) the pair can reach sideways in the empoignade: `FX.clinch.halfWidth` m at the
+ * closest framing of `from`, on a screen `w` × `h` with the vertical field of view `fovY` (degrees).
+ */
+export function pairHalfWidth(from: Framing, fovY: number, w: number, h: number): number {
+  const tanH = Math.tan((fovY * Math.PI) / 360) * (w / h);
+  return (FX.clinch.halfWidth * (w / 2)) / (from.dist * FX.clinch.dist * tanH);
 }
 /** Between two framings (`k` 0…1). */
 export const mixFraming = (a: Framing, b: Framing, k: number): Framing => ({ dist: a.dist + (b.dist - a.dist) * k, height: a.height + (b.height - a.height) * k, look: a.look + (b.look - a.look) * k });

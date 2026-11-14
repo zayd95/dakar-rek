@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { DuelFx, FX, clinchFraming, contactShift, kickShape, mixFraming, plan, rowOf, type Framing } from '../src/lamb/fx';
+import { DuelFx, FX, clinchFraming, contactShift, kickShape, mixFraming, pairHalfWidth, plan, rowOf, type Framing } from '../src/lamb/fx';
 import { fovFor } from '../src/core/view';
 import { LambDuel } from '../src/lamb/duel';
 import { STYLES } from '../src/lamb/rules';
@@ -109,7 +109,7 @@ describe('« Le choc » · the empoignade’s close-up on a phone', () => {
     expect(f.dist).toBeCloseTo(FIGHT_PORTRAIT.dist * FX.clinch.dist, 6);
     expect(f.height).toBeCloseTo(FIGHT_PORTRAIT.height - FX.clinch.lower, 6);
     const head = rowOf(f, 1.9, fov, 844), feet = rowOf(f, 0.2, fov, 844);
-    expect(head).toBeGreaterThanOrEqual(373 + 12 - 0.01); expect(head).toBeLessThan(373 + 14);
+    expect(head).toBeGreaterThanOrEqual(373 + 12 + FX.clinch.spare - 0.01); expect(head).toBeLessThan(373 + 12 + FX.clinch.spare + 1);
     expect(feet).toBeLessThanOrEqual(690);
     // about 1 / 0.7 = 1.4 × as tall as in the fight's framing
     expect(feet - head).toBeGreaterThan(1.35 * (rowOf(FIGHT_PORTRAIT, 0.2, fov, 844) - rowOf(FIGHT_PORTRAIT, 1.9, fov, 844)));
@@ -140,6 +140,13 @@ describe('« Le choc » · the empoignade’s close-up on a phone', () => {
     expect(f.look).toBe(FIGHT_PORTRAIT.look);
     expect(mixFraming(FIGHT_PORTRAIT, f, 0)).toEqual(FIGHT_PORTRAIT);
     expect(mixFraming(FIGHT_PORTRAIT, f, 1).dist).toBeCloseTo(f.dist, 9);
+  });
+  it('the HUD and controls that count are those over the pair: a button at the side of a landscape screen does not', () => {
+    // 667 × 375 in landscape: « Projeter » spans x 439–499, right of the pair (centre 333)
+    const half = pairHalfWidth(FIGHT_LANDSCAPE, fovFor(667, 375), 667, 375);
+    expect(333 + half).toBeLessThan(439);
+    // 360 × 640 in portrait: « Pivoter » (x 198–258) is over the pair's right side
+    expect(180 + pairHalfWidth(FIGHT_PORTRAIT, fovFor(360, 640), 360, 640)).toBeGreaterThan(198);
   });
   it('chest to chest: each body moves half the way to 0.72 m between centres, never apart', () => {
     expect(contactShift(1.12)).toBeCloseTo(0.2, 9);
