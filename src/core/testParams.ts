@@ -4,7 +4,7 @@
  * Honoured on local dev and on Cloudflare preview hosts (`<branch>-dakar-rek.<account>.workers.dev`), never on the
  * production host: a preview has its own origin, so its wallet is not the production save.
  */
-export interface TestParams { hour: number | null; money: number | null; /** `?avatar=homme|femme|v4|choisir`: forces the player's body for the session, or shows the New Game choice in a `?debug` run (which skips it by default). */ avatar: 'homme' | 'femme' | 'v4' | 'choose' | null; /** `?meteo=pluie|apres|couvert|soleil`: holds the weather (the rain of the Pikine gare is seen on demand). */ weather: 'rain' | 'after' | 'overcast' | 'sun' | null; /** `?intro`: plays the opening fly-in at this start, whatever the device has seen and in a `?debug` run too (src/game/opening.ts, scripts/check-opening.mjs). */ intro: boolean }
+export interface TestParams { hour: number | null; money: number | null; /** `?avatar=homme|femme|v4|choisir`: forces the player's body for the session, or shows the New Game choice in a `?debug` run (which skips it by default). */ avatar: 'homme' | 'femme' | 'v4' | 'choose' | null; /** `?meteo=pluie|apres|couvert|soleil`: holds the weather (the rain of the Pikine gare is seen on demand). */ weather: 'rain' | 'after' | 'overcast' | 'sun' | null; /** `?intro`: plays the opening fly-in at this start, whatever the device has seen and in a `?debug` run too (src/game/opening.ts, scripts/check-opening.mjs). */ intro: boolean; /** `?pouce`: keeps « Coups de pouce » on in a `?debug` run, which has it off otherwise (src/economy/pouce.ts `pouceWanted`, scripts/check-coups-de-pouce.mjs). */ pouce: boolean }
 
 const PREVIEW_HOST = /^[a-z0-9-]+-dakar-rek\.[a-z0-9-]+\.workers\.dev$/;
 /**
@@ -39,7 +39,7 @@ export function debugApiFor<T extends Record<string, unknown>>(hostname: string,
 }
 
 export function readTestParams(hostname: string, search: string): TestParams {
-  const none: TestParams = { hour: null, money: null, avatar: null, weather: null, intro: false };
+  const none: TestParams = { hour: null, money: null, avatar: null, weather: null, intro: false, pouce: false };
   if (!isTestHost(hostname)) return none;
   const q = new URLSearchParams(PREVIEW_BUILD ? import.meta.env.VITE_PREVIEW_SEARCH ?? '' : '');      // a preview build's own link, which a query of the page can still override
   for (const [k, v] of new URLSearchParams(search)) q.set(k, v);
@@ -51,5 +51,6 @@ export function readTestParams(hostname: string, search: string): TestParams {
     avatar: ({ homme: 'homme', femme: 'femme', v4: 'v4', choisir: 'choose' } as const)[q.get('avatar') as 'homme'] ?? null,
     weather: ({ pluie: 'rain', apres: 'after', couvert: 'overcast', soleil: 'sun' } as const)[q.get('meteo') as 'pluie'] ?? null,
     intro: q.has('intro'),
+    pouce: q.has('pouce'),
   };
 }

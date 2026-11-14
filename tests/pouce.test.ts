@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave, migrate, STARTER_HOME } from '../src/core/save';
 import { ECONOMY } from '../src/economy/config';
@@ -10,7 +10,9 @@ import { offer, signLease } from '../src/economy/monthly';
 import { move, reserveOnline, settleOnline } from '../src/economy/money';
 import { recordMatch } from '../src/districts/matchRules';
 import { moveAndLeave } from '../src/economy/moving';
-import { POUCE, POUCE_COUNTERS, POUCE_TOTAL, due, ladderView, nextStep, paid, payDue, pouceLead, received } from '../src/economy/pouce';
+import { POUCE, POUCE_COUNTERS, POUCE_TOTAL, due, ladderView, nextStep, paid, payDue, pouceLead, pouceOn, pouceWanted, received, setPouceOn } from '../src/economy/pouce';
+import { Relations } from '../src/social/relations';
+import { BEATS, applyChoice, suggestion } from '../src/social/beats';
 
 const fresh = (wallet = 3000) => { const s = new GameState(newSave(0)); s.data.wallet = wallet; return s; };
 const reload = (s: GameState) => new GameState(migrate(JSON.parse(JSON.stringify(s.data)))!);
@@ -214,5 +216,39 @@ describe('the goal line and the phone\'s list', () => {
     expect(v.steps.find(x => x.id === 'teranga')?.online).toMatch(/Banque Teranga/);
     expect(holding(s, STARTER_HOME)).toBeTruthy();
     expect(assetByUid(s, 'a1')).toBeTruthy(); expect(saleValue(assetByUid(s, 'a1')!)).toBe(0);
+  });
+});
+
+describe('the test runs\' gate: a ?debug run on a test host keeps the ladder off unless ?pouce', () => {
+  afterEach(() => setPouceOn(true));
+  it('on for every player, on the public host even with ?debug; off only in a ?debug run on a test host without ?pouce', () => {
+    expect(pouceWanted({ testHost: false, debug: false, forced: false }), 'a player on the public host').toBe(true);
+    expect(pouceWanted({ testHost: false, debug: true, forced: false }), 'the public host with ?debug (the public smoke test): untouched').toBe(true);
+    expect(pouceWanted({ testHost: true, debug: false, forced: false }), 'a test host played normally').toBe(true);
+    expect(pouceWanted({ testHost: true, debug: true, forced: false }), 'a check (?debug on a test host)').toBe(false);
+    expect(pouceWanted({ testHost: true, debug: true, forced: true }), '?debug&pouce (scripts/check-coups-de-pouce.mjs)').toBe(true);
+    expect(pouceOn(), 'on by default').toBe(true);
+  });
+  it('off: a delivery pays only its own run, nothing is marked, no goal line and no list; on again, the step is credited once', () => {
+    setPouceOn(false);
+    const s = fresh(); const w0 = s.wallet;
+    const j = deliver(s, 'pk_mame_boutique')!;
+    expect(due(s)).toEqual([]); expect(payDue(s)).toEqual([]);
+    expect(s.wallet - w0).toBe(j.paid);                                                          // the check's exact delta: the run's pay, nothing else
+    expect(lines(s)).toEqual([]); expect(paid(s, 'livraison')).toBe(false);
+    expect(nextStep(s)).toBeNull(); expect(pouceLead(s, 'pikine')).toBeNull();
+    expect(ladderView(s, 'pikine')).toMatchObject({ next: null, on: false, done: 0 });
+    setPouceOn(true);
+    expect(payDue(s).map(p => p.step.id)).toEqual(['livraison']);                               // seen at last: paid once, as an older save's step
+    expect(payDue(s)).toEqual([]); expect(lines(s)).toHaveLength(1);
+  });
+  it('off: the goal line follows the story in its 1.0 order (Ibou\'s reaction after the first delivery)', () => {
+    setPouceOn(false);
+    const s = fresh(), r = new Relations(s.data);
+    const b = BEATS.find(x => x.id === 'ibou_welcome')!; applyChoice(b, b.choices.find(c => c.id === 'oui')!, r, s);
+    deliver(s, 'pk_mame_boutique');
+    expect(suggestion(r, s)?.id).toBe('ibou_tiak');
+    setPouceOn(true);
+    expect(suggestion(r, s)?.id).toBe('pouce_meuble');
   });
 });

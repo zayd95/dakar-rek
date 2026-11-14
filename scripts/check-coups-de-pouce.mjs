@@ -6,6 +6,8 @@
 // DEBUG hooks used: `pouce()` / `board()` / `tiakPoints()` / `interactables()` / `estate()` / `state` / `marked()` / `pos()` / `focus()` / `tiak.at()` /
 // `cityGeometry()` / `furnitureList()` (read); `place()` only to turn the player toward the bike (boardVehicle); needs set to 100 (a rested courier);
 // `save()`; the « older save » is made by removing the ladder's marks from the save (labelled).
+// Every load passes `?pouce`: a `?debug` run on a test host keeps the ladder off without it (src/economy/pouce.ts `pouceWanted`), so that the other checks'
+// wallet deltas see only what they measure.
 // Usage: node scripts/check-coups-de-pouce.mjs <baseUrl> <outDir>
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -136,12 +138,12 @@ async function walkWay(x, z, done = null, tol = 1.4) {
 }
 
 const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.pos().mode === 'play' && window.__dakar.pouce && window.__dakar.phoneInfo, null, { timeout: 240000 });
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready();
 t = await realTouch(page);
 await wait(2500);
 let p = await pouce();
-check('a new game: the ladder has 9 steps, 300 000 F in all, nothing paid; the next is the first delivery (+10 000 F)', p.count === 9 && p.total === 300_000 && p.done === 0 && p.next?.id === 'livraison' && p.next.amount === 10_000 && (await bonusLines()).length === 0, JSON.stringify(p.next));
+check('a new game: the ladder has 9 steps, 300 000 F in all, nothing paid; the next is the first delivery (+10 000 F)', p.on === true && p.count === 9 && p.total === 300_000 && p.done === 0 && p.next?.id === 'livraison' && p.next.amount === 10_000 && (await bonusLines()).length === 0, JSON.stringify(p.next));
 const w0 = await wallet();
 const g0 = await goal();
 check('the goal line, at the start: Tonton Ibou\'s welcome (the first moments) or the first coup de pouce', /Coup de pouce \+10 000 F : ta première livraison Tiak Tiak|Tonton Ibou/.test(g0), g0);
@@ -273,7 +275,7 @@ await d(() => window.__dakar.save());
 const kept = { wallet: await wallet(), lines: await bonusLines(), counters: await d(() => Object.fromEntries(Object.entries(window.__dakar.state.data.counters).filter(([k]) => k.startsWith('pouce:')))) };
 
 // ------------------------------------------------------------------ a real reload: nothing is paid again
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); t = await realTouch(page); await wait(5000);
 p = await pouce();
 const w2 = await wallet(), l2 = await bonusLines();
@@ -284,7 +286,7 @@ await shot('apres-rechargement');
 
 // ------------------------------------------------------------------ a save from before 1.0.1 (DEBUG: the ladder's marks removed from the save): credited once, in ONE notice
 await d(() => { const c = window.__dakar.state.data.counters; for (const k of Object.keys(c)) if (k.startsWith('pouce:')) delete c[k]; window.__dakar.save(); });
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); t = await realTouch(page);
 const wOld = await d(() => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).wallet);
 const n4 = await waitNotice(/Coups de pouce : \+45 000 F/, 30000);
@@ -296,7 +298,7 @@ check('one notice, not a burst', cardsNow <= 1, String(cardsNow));
 const lOld = await bonusLines();
 check('…paid once each (three more wallet lines, one per step, +45 000 F)', lOld.length === 6 && Math.abs((await wallet()) - wOld - 45_000) < 500, JSON.stringify({ lines: lOld.length, was: wOld, now: await wallet() }));
 await d(() => window.__dakar.save());
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); await wait(5000);
 check('and reloaded once more: nothing again', (await bonusLines()).length === 6 && !(await noticeNow()));
 

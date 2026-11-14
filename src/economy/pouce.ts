@@ -85,13 +85,24 @@ export const POUCE: readonly PouceStep[] = [
 /** The whole ladder (F). */
 export const POUCE_TOTAL = POUCE.reduce((t, p) => t + p.amount, 0);
 
+/**
+ * Whether this session runs the ladder. A `?debug` run on a test host (src/core/testParams.ts) keeps it off unless `?pouce` is given, as it skips the
+ * opening: the checks measure a wallet delta to the franc and must see only the action they measure (scripts/check-coups-de-pouce.mjs passes
+ * `?pouce`). Everywhere else it is on: a player's game, and the public host even with `?debug`. Unit-tested (tests/pouce.test.ts).
+ */
+export function pouceWanted(o: { testHost: boolean; debug: boolean; forced: boolean }): boolean { return !o.testHost || !o.debug || o.forced; }
+let ladderOn = true;
+/** Set once at start (src/main.ts, `pouceWanted`). Off: nothing is paid or marked, no goal line, no list; a step met meanwhile is paid when it is on again. */
+export function setPouceOn(on: boolean) { ladderOn = on; }
+export const pouceOn = () => ladderOn;
+
 const KEY = (id: string) => `pouce:${id}`;
 /** Paid already (in this save). */
 export const paid = (s: GameState, id: string) => c(s, KEY(id)) > 0;
 /** Met and not paid yet. */
-export const due = (s: GameState) => POUCE.filter(p => !paid(s, p.id) && p.done(s));
-/** The next step: the first neither paid nor met (null: the ladder is done). */
-export const nextStep = (s: GameState) => POUCE.find(p => !paid(s, p.id) && !p.done(s)) ?? null;
+export const due = (s: GameState) => (ladderOn ? POUCE.filter(p => !paid(s, p.id) && p.done(s)) : []);
+/** The next step: the first neither paid nor met (null: the ladder is done, or off in this session). */
+export const nextStep = (s: GameState) => (ladderOn ? POUCE.find(p => !paid(s, p.id) && !p.done(s)) ?? null : null);
 /** What the ladder has paid so far. */
 export const received = (s: GameState) => POUCE.reduce((t, p) => t + (paid(s, p.id) ? c(s, KEY(p.id)) : 0), 0);
 
@@ -126,6 +137,6 @@ export function ladderView(s: GameState, hub: HubId) {
   return {
     steps: POUCE.map(p => ({ id: p.id, label: p.label, amount: p.amount, paid: paid(s, p.id), next: p === next, online: p.online ?? null })),
     next: next ? { id: next.id, label: next.label, amount: next.amount, hint: next.hint(s, hub) } : null,
-    done: POUCE.filter(p => paid(s, p.id)).length, count: POUCE.length, received: received(s), total: POUCE_TOTAL,
+    done: POUCE.filter(p => paid(s, p.id)).length, count: POUCE.length, received: received(s), total: POUCE_TOTAL, on: ladderOn,
   };
 }
