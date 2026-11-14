@@ -221,9 +221,10 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     await d(page, () => window.__dakar.phone('reglages'));
     await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
     await page.waitForTimeout(600);
-    await d(page, () => { const s = document.querySelector('#phone .ph-screen'); const h = [...s.querySelectorAll('h3')].find(x => x.textContent === 'Langue'); s.scrollTop = h.offsetTop - 12; });
-    const lang = await d(page, () => document.querySelector('#phone [data-act="gloss"]')?.textContent ?? '');
-    check(`${label}: Réglages › Langue has the gloss switch`, /Traduction des expressions wolof/.test(lang), lang);
+    // since 1.0 the switch is in Réglages › Affichage (src/ui/phone/apps/settings.ts): there is no « Langue » group any more
+    await d(page, () => { const s = document.querySelector('#phone .ph-screen'); const t = s.querySelector('[data-act="gloss"]'); if (t) s.scrollTop = Math.max(0, t.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop - 60); });
+    const lang = await d(page, () => document.querySelector('#phone [data-act="gloss"]')?.closest('.row, li, div')?.textContent ?? '');
+    check(`${label}: Réglages › Affichage has the gloss switch`, /Traduction du wolof/.test(lang), lang);
     await page.waitForTimeout(800); await page.screenshot({ path: `${out}/phone-reglages-langue.png` });
     await d(page, () => window.__dakar.phoneClose());
   }
