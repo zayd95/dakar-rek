@@ -99,8 +99,16 @@ const shot = (page, name) => page.screenshot({ path: `${out}/${name}.jpg`, quali
   await shot(page, 'desktop-referee');
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
   await shot(page, 'desktop-friendly-fight');
-  let bout = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async () => page.evaluate(() => window.__dakar.duelGrab()), 150000);
+  let held = null;                                                         // the empoignade, its close-up eased in
+  let bout = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => { if (!held && i?.phase === 'clinch' && i.fx?.close >= 1) held = i; await page.evaluate(() => window.__dakar.duelGrab()); }, 150000);
   check('friendly: bout won by grabbing (projection)', bout?.winner === 'player' && bout.outcome === 'projection', JSON.stringify({ phase: bout?.phase, winner: bout?.winner, outcome: bout?.outcome }));
+  // « Le choc » (docs/wrestling/WRESTLING-PLAN.md §5): the empoignade is felt (a slap, the camera in, chest to chest),
+  // the projection holds the picture, then the fall sans frappe plays slowly and close, and the body lands with a thud
+  if (bout?.phase === 'fall' && bout.fall?.slow) await shot(page, 'desktop-fall-slow');
+  const landed = await until(page, i => !i || i.phase !== 'fall' || i.fall?.landed, null, 60000);
+  check('« Le choc »: sans frappe, the empoignade closes chest to chest under a closer camera; the projection stops the picture, falls slowly in a close shot, and lands with a thud',
+    held?.fx?.cam === 'clinch' && held.fx.clinchDist <= 0.8 && held.fx.slaps >= 1 && bout?.phase === 'fall' && bout.fall?.slow === true && bout.fx?.cam === 'fall' && bout.fx.stops >= 1 && bout.fx.lastStop >= 0.12 && (landed?.fx?.thuds ?? 0) === 1,
+    JSON.stringify({ clinch: held && { dist: held.dist, fx: held.fx }, fall: bout?.fall, fx: bout?.fx, landed: landed && { phase: landed.phase, fall: landed.fall, thuds: landed.fx?.thuds } }));
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 60000);
   await page.waitForTimeout(400);
   await shot(page, 'desktop-friendly-recap');
@@ -190,6 +198,33 @@ for (const [label, vp] of [['phone-portrait', { width: 390, height: 844 }], ['ph
   await wait(page, () => window.__dakar.duelInfo() === null, null, 30000);
   const c = await counters(page);
   check(`${label}: touch abandon flow (cancel resumes, confirm records an abandon)`, resumed && c.lamb_amical_ab === 1 && !c.lamb_amical_d && !c.combats, JSON.stringify(c));
+  // « Le choc »: in the empoignade the camera comes in and the bodies close chest to chest — the heads under the
+  // empoignade's bar, nobody under a button or the joystick
+  await page.evaluate(() => window.__dakar.duelStart('amical', 'rapide'));
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
+  const inClinch = await until(page, i => !i || i.phase !== 'fight' || false, async i => { if (i?.phase === 'fight') await page.evaluate(() => window.__dakar.duelGrab()); }, 60000);
+  let cl = null, prev = null;
+  for (const t0 = Date.now(); inClinch?.phase === 'clinch' && Date.now() - t0 < 40000 * SLOW;) {
+    const now = await page.evaluate(() => {
+      const r = el => { const b = el.getBoundingClientRect(); return { x0: b.left, y0: b.top, x1: b.right, y1: b.bottom, w: b.width }; };
+      const bar = document.querySelector('.duel-clinch');
+      return { i: window.__dakar.duelInfo(), pts: window.__dakar.duelScreen(), bar: bar && !bar.hidden ? r(bar) : null,
+        ctl: [...document.querySelectorAll('.duel-btns button'), document.querySelector('#joy')].map(r) };
+    });
+    if (now.i?.phase !== 'clinch') break;
+    if (now.i.fx?.close >= 1 && prev && Math.abs(now.pts[2].y - prev.pts[2].y) < 0.5 && Math.abs(now.pts[5].y - prev.pts[5].y) < 0.5) { cl = now; break; }
+    prev = now; await page.waitForTimeout(250);
+  }
+  if (cl) await shot(page, `${label}-clinch`);
+  const inBox = (p, r, pad = 4) => r.w > 0 && p.x > r.x0 - pad && p.x < r.x1 + pad && p.y > r.y0 - pad && p.y < r.y1 + pad;
+  const under = cl ? cl.pts.filter(p => cl.ctl.some(r => inBox(p, r))).length : -1;
+  const headGap = cl?.bar ? Math.min(cl.pts[2].y, cl.pts[5].y) - cl.bar.y1 : null;
+  check(`${label}: « Le choc » — the empoignade’s close-up: chest to chest (≤ 0.8 m), both heads ≥ 12 px under its bar, nobody under the buttons or the joystick`,
+    !!cl && cl.i.fx.cam === 'clinch' && cl.i.fx.clinchDist <= 0.8 && headGap >= 12 && under === 0 && cl.pts.every(p => p.x > 0 && p.x < vp.width && p.y > 0 && p.y < vp.height),
+    JSON.stringify({ phase: inClinch?.phase, fx: cl?.i?.fx, headGap, under, heads: cl && [Math.round(cl.pts[2].y), Math.round(cl.pts[5].y)], feet: cl && [Math.round(cl.pts[0].y), Math.round(cl.pts[3].y)], bar: cl?.bar && Math.round(cl.bar.y1) }));
+  await until(page, i => !i || i.phase === 'result', null, 60000);
+  await page.evaluate(() => window.__dakar.duelFinish());
+  await wait(page, () => window.__dakar.duelInfo() === null, null, 30000);
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
