@@ -2,6 +2,7 @@ import type { OnlineStatus } from '../../../online/api';
 import type { AskItem, Francs, InviteItem, Item, MeetItem, MoneyLimits, PayItem, Tag } from '../../../online/protocol';
 import { fcfaText } from '../../../economy/format';
 import { cityTimeAt } from '../../../core/clock';
+import { parseCampInvite } from './campText';
 
 /**
  * The Messages app's words and rules, pure (no DOM): how an amount, a time, a day, a last-seen and a preview read; which actions a card offers to whom
@@ -89,7 +90,7 @@ export function previewOf(item: Item | null, me: Tag | null): string {
   if (!item) return 'Pas encore de message';
   const mine = !!me && item.from === me;
   switch (item.k) {
-    case 'text': return (mine ? 'Toi : ' : '') + item.text;
+    case 'text': return (mine ? 'Toi : ' : '') + (parseCampInvite(item.text) ? '⚽ Invitation au Grand Camp' : item.text);
     case 'loc': return mine ? 'Tu as partagé ta position' : `📍 Position : ${item.name}`;
     case 'pay': return `${F(item.amount)} ${mine ? 'envoyés' : 'reçus'}`;
     case 'ask': return (mine ? `Tu demandes ${F(item.amount)}` : `Te demande ${F(item.amount)}`) + ({ open: '', paid: ' · payée ✓', declined: ' · refusée', cancelled: ' · annulée' } as const)[item.state];

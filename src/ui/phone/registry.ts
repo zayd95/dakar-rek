@@ -1,6 +1,7 @@
 import { phoneHooks } from '../phoneHooks';
 import { online } from '../../online/api';
 import { quietLog } from '../quiet';
+import { campSession } from '../../online/campSession';
 
 /**
  * Every app of the phone, in one registry: its icon (an emoji on a gradient tile), its name, its place on the home screen (`dock`: one of the four
@@ -28,6 +29,8 @@ export interface AppDef {
   hook?: () => (() => void) | undefined;
   /** A count to show on the app's tile (unread messages); 0: none. */
   badge?: () => number;
+  /** Shown only when this says so (a screen app of a feature this build may not have: Grand Camp without the server). */
+  show?: () => boolean;
 }
 
 export const GROUPS: [AppGroup, string][] = [['vie', 'Ma vie'], ['travail', 'Travail'], ['argent', 'Argent et biens'], ['ville', 'En ville'], ['outils', 'Outils']];
@@ -62,6 +65,8 @@ export const APPS: AppDef[] = [
   { id: 'cesoir', label: 'Ce soir', emoji: '🌆', grad: '#fda4af,#be123c', group: 'ville', order: 2, home: 50, screen: 'cesoir' },
   { id: 'actus', label: 'Actus', emoji: '📰', grad: '#fdba74,#c2410c', group: 'ville', order: 3, home: 51, screen: 'actus' },
   { id: 'meteo', label: 'Météo', emoji: '⛅', grad: '#7dd3fc,#1e40af', group: 'ville', order: 4, home: 52, screen: 'meteo' },
+  // 1.0.1 Grand Camp (src/ui/phone/apps/camp.ts): player-organized matches at the Corniche's pitch; only in a build with the server
+  { id: 'grandcamp', label: 'Grand Camp', emoji: '⚽', grad: '#86efac,#15803d', group: 'ville', order: 1.5, home: 24, screen: 'camp', show: () => campSession.enabled },
 
   { id: 'horloge', label: 'Horloge', emoji: '🕰️', grad: '#3f3f46,#09090b', group: 'outils', order: 0, home: 60, screen: 'horloge' },
   { id: 'calcul', label: 'Calculatrice', short: 'Calcul', emoji: '🧮', grad: '#71717a,#18181b', group: 'outils', order: 1, home: 61, screen: 'calcul' },
@@ -71,7 +76,7 @@ export const APPS: AppDef[] = [
 
 export const appById = (id: string) => APPS.find(a => a.id === id);
 /** The apps shown now: a hook app only with its module. */
-export const visibleApps = () => APPS.filter(a => !a.hook || !!a.hook());
+export const visibleApps = () => APPS.filter(a => (!a.hook || !!a.hook()) && (a.show?.() ?? true));
 /** The home screen: the dock's favourites and the grid, each in `home` order (hook apps only with their module). */
 export function homeLayout(): { dock: AppDef[]; grid: AppDef[] } {
   const list = visibleApps().sort((a, b) => a.home - b.home);

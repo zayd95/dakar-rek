@@ -60,10 +60,11 @@ import { phoneHooks } from './ui/phoneHooks';
 import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
-import { PresenceClient, isDefaultName, loadProfile } from './multiplayer/client';
+import { PresenceClient, deviceChatKey, isDefaultName, loadProfile } from './multiplayer/client';
 import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
 import { online, onlineHooks, setOnline } from './online/api';
+import { campSession } from './online/campSession';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
 import { openConversation, startMessageNotices, withdrawReceived } from './ui/phone/apps/messages';
@@ -225,6 +226,16 @@ const onlineAccount = new OnlineAccount({
 // in-memory account of the checks (src/online/fake.ts), never presented to players as real.
 if (fakeOnlineRequested()) installFakeOnline({ now: () => presence.serverNow(), wallet: { get: () => state.wallet, add: (n, label) => { state.addMoney(n, label); } }, save: () => { if (world) saveNow(); }, me: { name: presence.profile.name } });
 else if (import.meta.env.VITE_MULTIPLAYER === 'true') setOnline(onlineAccount);
+// 1.0.1 Grand Camp (src/online/campSession.ts): the device's one player-organized match. A match this player had a place in is opened again AT ONCE,
+// before the city has loaded: the server gives the place back (before kick-off) or the pitch (after it, within its 60 s).
+if (import.meta.env.VITE_MULTIPLAYER === 'true') {
+  campSession.configure({
+    key: () => deviceChatKey(), profile: () => ({ name: presence.profile.name, look: presence.profile.look, app: presence.appearance ?? null }),
+    endpoint: import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined,
+    account: () => online, wallet: () => state.wallet,
+  });
+  campSession.restore();
+}
 // « 💬 Awa : … » for what arrives outside the open conversation. 1.0.1 — money received cannot be missed and is one tap from the wallet: a card (never
 // over the middle of the screen) says « 💸 1 000 F reçus de Awa », where it is (Teranga Money, the server's account: the wallet's figure has not moved),
 // and offers « Retirer » (the server-confirmed withdrawal: the wallet goes up when the server says yes) and « Voir » (the conversation).
@@ -767,6 +778,9 @@ interactions.add(new PlayerSocial(() => presence.peers.values(), p => remoteAvat
   registerPlayerAction({ id: 'invite', label: 'Inviter chez moi', icon: '🏠', order: 30, show: p => hasAccount(p) && !!onlineHooks.homeToInvite,
     disabled: () => offline() ?? (onlineHooks.homeToInvite?.() ? null : 'Tu n’as pas encore de logement où recevoir'), run: p => conv(p, 'invite') });
   registerPlayerAction({ id: 'meet', label: 'Proposer un rendez-vous', icon: '🤝', order: 40, show: p => hasAccount(p) && !!onlineHooks.meetupPlaces, disabled: offline, run: p => conv(p, 'meet') });
+  // 1.0.1 Grand Camp: the organizer invites the player in front of them (the server's list, and a text message in their conversation)
+  registerPlayerAction({ id: 'camp', label: 'Inviter au Grand Camp', icon: '⚽', order: 50, show: p => hasAccount(p) && campSession.enabled,
+    disabled: p => offline() ?? campSession.inviteWhy(p.tag!), run: p => { void campSession.invite([p.tag!]).then(r => hud.toast(r.ok ? `⚽ Invitation au Grand Camp envoyée à ${p.name}` : r.text, r.ok ? 'info' : 'warn')); } });
 }
 remoteAvatars.onEmote = (peer, emo) => { if (emo.to && emo.to === presence.id) hud.toast(`${peer.name} ${EMOTE_INFO[emo.k].toast} ${EMOTE_INFO[emo.k].glyph}`); };
 /** Everyone in the street can be greeted (placed people and walkers). */

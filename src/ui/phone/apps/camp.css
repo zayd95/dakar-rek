@@ -1,0 +1,61 @@
+/* « Grand Camp » (src/ui/phone/apps/camp.ts): the phone's design language (src/ui/phone.css « pk- » pieces); only what the app adds. Team colours as
+   the shirts on the pitch: Rouge #c8302a, Jaune #f2c12e (src/ui/phone/apps/campText.ts TEAM_COLORS). */
+#phone .gc-hero .pk-card { display:flex; flex-direction:column; gap:4px; }
+#phone .gc-hero-tx { display:flex; flex-direction:column; gap:3px; margin:0; }
+#phone .gc-hero-tx b { font-size:16px; }
+#phone .gc-hero-tx span { color:var(--ios-sub); font-size:13.5px; line-height:1.35; }
+#phone .gc-chips { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+#phone .gc-chip { min-height:48px; padding:4px 6px; border:0; border-radius:var(--pk-r-sm); background:var(--ios-card); color:var(--ios-ink); font:700 15px/1.2 var(--ph-font); box-shadow:0 1px 2px rgba(0,0,0,.08); cursor:pointer; }
+#phone .gc-chip.on { background:#fff8e1; box-shadow:0 0 0 2px var(--pk-sun-deep) inset; }
+#phone .gc-chip:active { transform:translateY(1px); }
+#phone .gc-field { display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:13px; color:var(--ios-sub); }
+#phone .gc-field input { min-height:48px; padding:8px 14px; border:0; border-radius:var(--pk-r-sm); background:var(--ios-card); color:var(--ios-ink); font:600 17px/1.2 var(--ph-font); box-shadow:inset 0 0 0 1px var(--ios-sep); }
+#phone .gc-field input:focus { outline:none; box-shadow:inset 0 0 0 2px var(--pk-sun-deep); }
+#phone .gc-fee-why:empty { display:none; }
+#phone .pk-note.warn { color:var(--pk-warn); }
+#phone .gc-sum { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:5px; }
+#phone .gc-sum li { font-size:14.5px; line-height:1.3; }
+#phone .gc-sum li:first-child { font-weight:700; }
+#phone .gc-sum li:last-child { color:var(--pk-gain); font-weight:650; }
+#phone .gc-sum-card { margin-top:14px; }
+#phone .gc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+#phone .gc-head b { font-size:16.5px; }
+#phone .gc-terms { margin:6px 0 10px; color:var(--ios-sub); font-size:13px; line-height:1.35; }
+#phone .gc-pool, #phone .gc-count { margin:10px 0 0; font-size:14px; }
+#phone .gc-count { margin-top:4px; color:var(--ios-sub); }
+#phone .gc-pool small { color:var(--ios-sub); }
+#phone .gc-teams { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+#phone .gc-team { padding:10px 10px 8px; border-radius:var(--pk-r); background:var(--ios-card); box-shadow:inset 0 3px 0 var(--gc-c); }
+#phone .gc-team.t0 { --gc-c:#c8302a; } #phone .gc-team.t1 { --gc-c:#f2c12e; }
+#phone .gc-team h4 { display:flex; align-items:center; gap:6px; margin:2px 0 8px; font-size:14.5px; text-transform:none; letter-spacing:0; }
+#phone .gc-team h4 em { margin-left:auto; font-style:normal; font-size:12.5px; color:var(--ios-sub); font-weight:600; }
+#phone .gc-dot { width:12px; height:12px; flex:none; border-radius:50%; background:var(--gc-c); box-shadow:0 0 0 1px rgba(0,0,0,.15); }
+#phone .gc-tn { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#phone .gc-rename { flex:none; min-width:32px; min-height:32px; border:0; border-radius:50%; background:none; font-size:14px; cursor:pointer; }
+#phone .gc-team ul { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+#phone .gc-p { display:flex; flex-direction:column; gap:3px; font-size:13.5px; }
+#phone .gc-p .pk-badge { align-self:flex-start; min-height:20px; padding:2px 7px; font-size:11px; }
+#phone .gc-pn { overflow-wrap:anywhere; font-weight:650; }
+#phone .gc-pn small { font-weight:500; color:var(--ios-sub); }
+#phone .gc-p.me .gc-pn { color:var(--ios-blue); }
+#phone .gc-free { font-size:12.5px; color:var(--ios-sub); font-style:italic; }
+#phone .gc-money { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+#phone .gc-m { padding:9px 12px; border-radius:var(--pk-r-sm); background:var(--ios-card); font-size:14px; line-height:1.3; }
+#phone .gc-m.wait { background:#fff8e1; } #phone .gc-m.ok { box-shadow:inset 3px 0 0 var(--pk-gain); } #phone .gc-m.warn { background:#fde4e1; color:#9b1c13; }
+#phone .gc-quote { margin:12px 0 0; }
+#phone .gc-acts { display:flex; flex-direction:column; }
+#phone .gc-a[disabled] { opacity:.55; filter:grayscale(.4); }
+#phone .gc-a[disabled] small { color:var(--pk-warn); opacity:1; }
+#phone .gc-status { margin:0 0 10px; padding:8px 12px; border-radius:var(--pk-r-sm); background:#fff8e1; font-weight:650; font-size:14px; text-align:center; }
+#phone .gc-res { display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; }
+#phone .gc-res > i { font-style:normal; font-size:34px; }
+#phone .gc-res b { font-size:18px; }
+#phone .gc-res-sc { font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; }
+#phone .gc-res p { margin:2px 0 0; font-size:14.5px; }
+#phone .gc-res.win b { color:var(--pk-gain); }
+#phone .gc-res.wait p:first-of-type { font-weight:650; }
+#phone .gc-sh-line { margin:0 0 12px; font-size:14.5px; line-height:1.4; }
+#phone .gc-pp.on { background:#fff8e1; }
+#phone .gc-tick { font-style:normal; font-weight:800; color:var(--pk-gain); min-width:20px; text-align:center; }
+body.theme-night #phone .gc-chip.on, body.theme-night #phone .gc-m.wait, body.theme-night #phone .gc-status, body.theme-night #phone .gc-pp.on { background:#3a3220; }
+body.theme-night #phone .gc-m.warn { background:#3d1c1a; color:#ff8a80; }

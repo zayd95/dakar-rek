@@ -42,6 +42,7 @@ import { settingsScreen, newGameScreen, soundTestScreen, restoreSensitivity } fr
 import { arenaScreen, calcScreen, clockScreen, healthScreen, helpScreen, lutteursScreen, newsScreen, skyAt, tonightScreen, weatherScreen } from './phone/apps/misc';
 import { carnetScreen, notifsScreen } from './phone/apps/social';
 import { messagesScreen } from './phone/apps/messages';
+import { campScreen } from './phone/apps/camp';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -71,7 +72,7 @@ const SCREENS: Record<string, Screen> = {
   reglages: settingsScreen, nouvelle: newGameScreen, sontest: soundTestScreen,
   notifs: notifsScreen, sante: healthScreen, carnet: carnetScreen, arene: arenaScreen, lutteurs: lutteursScreen, cesoir: tonightScreen,
   actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen, banque: bankScreen,
-  messages: messagesScreen, vehicules: vehiclesScreen,
+  messages: messagesScreen, vehicules: vehiclesScreen, camp: campScreen,
 };
 /** Other names a screen is opened by: « progression » is the Profile on its Progression tab (the HUD's streak chip). */
 const ALIASES: Record<string, [string, string?]> = { progression: ['profil', 'progression'], argent: ['portefeuille'], maison_hub: ['logement'], travail_hub: ['travailler'] };

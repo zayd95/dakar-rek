@@ -152,7 +152,7 @@ export class PresenceClient {
 
 let chatKey: string | null | undefined;
 /** Private random key for this device; the server only shares a hash of it, so mute/block survive reconnects. */
-function deviceChatKey(): string | null {
+export function deviceChatKey(): string | null {
   if (chatKey !== undefined) return chatKey;
   const fresh = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
   try {

@@ -244,3 +244,7 @@ body.theme-night #phone .mg-dot { box-shadow:0 0 0 2.5px #1c1c1e; }
 
 /* the shell's app badges (src/ui/phone.ts `badges`): on « Toutes les apps » of the home screen, the sum of its apps' counts */
 #phone .hm-tile > .ph-badge.app-n { top:10px; right:10px; left:auto; }
+/* 1.0.1 Grand Camp: an invitation's text, and « Voir le match » under it (src/ui/phone/apps/campText.ts parseCampInvite) */
+#phone .mg-b .mg-camp { display:block; margin:6px 0 2px; min-height:44px; padding:8px 16px; border:0; border-radius:999px; background:var(--pk-sun); color:var(--pk-sun-ink); font:700 15px/1.2 var(--ph-font); box-shadow:0 2px 0 var(--pk-sun-deep); cursor:pointer; }
+#phone .mg-b.me .mg-camp { margin-left:auto; }
+#phone .mg-b .mg-camp:active { transform:translateY(1px); }
