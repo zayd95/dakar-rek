@@ -311,7 +311,9 @@ let savedJson = null;
   for (const [hub, name] of [['almadies', 'Almadies'], ['corniche', 'Corniche']]) {
     await D(page, h => window.__dakar.teleport(h), hub); await page.waitForTimeout(800);
     const ends = await D(page, () => window.__dakar.routeEnds());
-    check(`${name}: the drop-offs of the runs from other districts are existing city places`, ends.length >= 1 && ends.every(e => e.place === e.name), ends.filter(e => e.place !== e.name).map(e => e.name).join(', ') || ends.map(e => e.name).join(', '));
+    // a run from another district names its drop-off with the district (« Restaurant Le Pointe · Almadies » is the Almadies' « Restaurant Le Pointe »)
+    const real = e => !!e.place && (e.place === e.name || e.name.startsWith(e.place + ' · '));
+    check(`${name}: the drop-offs of the runs from other districts are existing city places`, ends.length >= 1 && ends.every(real), ends.map(e => `${e.name} = ${e.place}`).join(', '));
   }
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
