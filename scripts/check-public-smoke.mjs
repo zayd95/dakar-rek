@@ -9,6 +9,11 @@
 // It says that the published build STARTS and its main paths work from that address. It does not say how the game runs on a phone.
 // A local build under the public game's own name (1.0.1: its `?debug` keeps only the public hooks, src/core/testParams.ts): SMOKE_AS_HOST=<public hostname> with a local
 // base URL; the browser resolves that name to the local server and treats the origin as secure, as the real https address is.
+// HOW TO SERVE IT for SMOKE_AS_HOST: the requests carry `Host: <public hostname>:<port>`, which `vite preview` refuses (403 on everything: its allowed-hosts
+// guard). Serve the build folder with a server that answers any Host, e.g.
+//   python3 -m http.server <port> --bind 127.0.0.1 --directory <dist>
+//   SMOKE_AS_HOST=dakar-rek.habibjallow95.workers.dev node scripts/check-public-smoke.mjs http://127.0.0.1:<port>/ <commit> <outDir>
+// Without SMOKE_AS_HOST, `vite preview` is fine.
 import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { realTouch } from './lib/realTouch.mjs';
