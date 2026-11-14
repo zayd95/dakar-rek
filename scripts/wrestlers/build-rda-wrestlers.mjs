@@ -480,7 +480,7 @@ addMesh('Hair_Short', baked.hair, mats.hair, { morph: true });
 addMesh('Ngemb_A', baked.ngembA, mats.cloth, { morph: true });
 addMesh('Ngemb_B', baked.ngembB, mats.cloth, { morph: true });
 for (const b of ['athletic', 'heavy']) for (const part of ['armL', 'armR', 'waist', 'chest']) addMesh(`RDA_Acc_${b}_${part}`, baked[`acc_${b}_${part}`], mats.leather, { extras: { rdaProbes: probes[`${b}_${part}`] } });
-await v4.transform(prune({ keepLeaves: true }));
+await v4.transform(prune({ keepLeaves: true, keepAttributes: true }));   // (keepAttributes: the ngemb's uv has no texture in the file: the game gives it its canvas)
 fs.mkdirSync(OUT, { recursive: true });
 const outputs = {};
 for (const [level, name] of [['high', 'rda_wrestlers.glb'], ['medium', 'rda_wrestlers_m.glb']]) {

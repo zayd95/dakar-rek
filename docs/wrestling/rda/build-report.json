@@ -414,8 +414,8 @@
  "outputs": {
   "high": {
    "file": "public/assets/wrestlers/rda_wrestlers.glb",
-   "bytes": 2242112,
-   "sha256": "981bc1b790b872477148a6722ec7f9fc27fe0875e5ca4e7ec6e2a947c931fdf6",
+   "bytes": 2251748,
+   "sha256": "b54e6517d90dbec5c6d4dd69d6f815e8b6157aff38ed494f2dd35d5a25fe6738",
    "textures": {
     "face": {
      "w": 512,
@@ -445,8 +445,8 @@
   },
   "medium": {
    "file": "public/assets/wrestlers/rda_wrestlers_m.glb",
-   "bytes": 2163164,
-   "sha256": "67bfac2a23643f792f7fd98dcf9fcd4c19ccf2bd81fc5ca4b26749b67b033cc3",
+   "bytes": 2172800,
+   "sha256": "5d911d03969c6b8d9e63d2894ff944739507b6d6b271c4e38030396cc1f5e448",
    "textures": {
     "face": {
      "w": 256,

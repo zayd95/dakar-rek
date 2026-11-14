@@ -142,6 +142,17 @@ describe('the RDA wrestler file on v4\'s rig contract', () => {
     }
     expect(fw.filter(x => x > 0.99).length).toBeGreaterThan(500);
   });
+  it('the ngemb cuts carry the uv the game\'s ngemb canvas needs (round the body; v from the waist to the hem), the hair is there', () => {
+    for (const n of ['Ngemb_A', 'Ngemb_B']) {
+      const m = skinned(rda, n), uv = rda.read(m.prim.attributes.TEXCOORD_0 ?? -1);
+      expect(uv.length, n).toBe((m.P.length / 3) * 2);
+      const vs = uv.filter((_, i) => i % 2 === 1); expect(Math.min(...vs)).toBeGreaterThanOrEqual(0); expect(Math.max(...vs)).toBeLessThanOrEqual(1);
+      expect(m.names).toEqual(['AthleticStudy', 'HeavyStudy']);
+    }
+    const a = skinned(rda, 'Ngemb_A').at(), b = skinned(rda, 'Ngemb_B').at();
+    expect(Math.min(...b.map(p => p.y))).toBeLessThan(Math.min(...a.map(p => p.y)) - 0.1);                 // B is the long cut
+    expect(skinned(rda, 'Hair_Short').P.length).toBeGreaterThan(300);
+  });
   it('the two files differ by their textures only (high and medium)', () => {
     expect(rdaHigh.gltf.meshes.map(m => m.name)).toEqual(rda.gltf.meshes.map(m => m.name));
     expect(rdaHigh.read(rdaHigh.gltf.meshes[0].primitives[0].attributes.POSITION)).toEqual(rda.read(rda.gltf.meshes[0].primitives[0].attributes.POSITION));
