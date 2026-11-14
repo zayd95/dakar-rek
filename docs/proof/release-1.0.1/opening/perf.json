@@ -1,0 +1,61 @@
+{
+ "base": "http://127.0.0.1:4735/",
+ "at": "2026-11-14T01:46:49.707Z",
+ "note": "renderer.info of every frame drawn during the flight (shadow passes included); a software renderer: counts only, no frame times",
+ "rows": [
+  {
+   "quality": "low",
+   "hour": 10,
+   "frames": 19,
+   "peakCalls": 146,
+   "peakTris": 155507,
+   "landedCalls": 137,
+   "landedTris": 154373
+  },
+  {
+   "quality": "low",
+   "hour": 21,
+   "frames": 18,
+   "peakCalls": 165,
+   "peakTris": 168269,
+   "landedCalls": 144,
+   "landedTris": 159445
+  },
+  {
+   "quality": "medium",
+   "hour": 10,
+   "frames": 16,
+   "peakCalls": 156,
+   "peakTris": 200251,
+   "landedCalls": 152,
+   "landedTris": 194809
+  },
+  {
+   "quality": "medium",
+   "hour": 21,
+   "frames": 15,
+   "peakCalls": 208,
+   "peakTris": 237717,
+   "landedCalls": 187,
+   "landedTris": 216199
+  },
+  {
+   "quality": "high",
+   "hour": 10,
+   "frames": 17,
+   "peakCalls": 164,
+   "peakTris": 212579,
+   "landedCalls": 171,
+   "landedTris": 214817
+  },
+  {
+   "quality": "high",
+   "hour": 21,
+   "frames": 15,
+   "peakCalls": 236,
+   "peakTris": 257915,
+   "landedCalls": 229,
+   "landedTris": 255575
+  }
+ ]
+}
