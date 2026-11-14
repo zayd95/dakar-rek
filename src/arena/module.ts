@@ -651,6 +651,7 @@ class ArenaEvening {
     for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
     this.t = PRELIM.walk;
     const b = this.pBout = this.prelimBout(p);
+    b.bodies().right?.setBuild(buildOf(p.style));                          // the physique he walked in with (?rdabody)
     // smaller reactions than the main event's: a murmur at a grab, part of the stands up at a fall
     b.onMoment = (ph, info) => {
       if (b.time < this.catchUpTo - 0.5) return;
