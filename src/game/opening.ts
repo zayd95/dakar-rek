@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GameCtx, GameModule } from './modules';
 import { FollowCamera } from '../actors/camera';
 import { phoneHooks } from '../ui/phoneHooks';
-import { OPENING_FADE_SECONDS, OPENING_SECONDS, SKIP_IN_SECONDS, SKIP_OUT_SECONDS, openingPose, type Pose } from './openingPath';
+import { OPENING_FADE_SECONDS, OPENING_SECONDS, PIKINE_KEYS, SKIP_IN_SECONDS, SKIP_OUT_SECONDS, openingPose, type Pose } from './openingPath';
 import '../ui/opening.css';
 
 /**
@@ -79,6 +79,12 @@ class Opening implements GameModule {
     document.body.classList.add('opening');
     this.mount(fade);
     if (!live) { this.spawnAt.set(w.spawn.x, 0.1 + w.heightAt(w.spawn.x, w.spawn.z), w.spawn.z); this.spawnFollow.snapBehind(w.spawn.yaw); }
+    if (!fade) {
+      // the camera is where the flight starts before the first frame: what the frame's updates size by their distance to the camera (people, bodies'
+      // animation) is sized for the flight's view from that first frame on, not for wherever the camera stood before (the middle of the district at a start)
+      const k = PIKINE_KEYS[0];
+      ctx.camera.position.set(k.pos.x, k.pos.y, k.pos.z); ctx.camera.lookAt(k.look.x, k.look.y, k.look.z); ctx.camera.updateMatrixWorld();
+    }
     return true;
   }
 
