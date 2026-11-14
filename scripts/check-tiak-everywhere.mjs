@@ -141,11 +141,24 @@ const cardsNow = () => d(() => [...document.querySelectorAll('#modal.on .dcard.j
   return { route: e.dataset.route, parts, h: Math.round(r.height), right: Math.round(r.right), dis: e.classList.contains('dis'), extra: e.querySelectorAll('p, small, .chip, .dbadge').length };
 }));
 const compact = c => c.parts.length === 4 && / → /.test(c.parts[0]) && TYPES.includes(c.parts[1].replace(/^★ /, '')) && /^\d[\d\s]*\sF$/.test(c.parts[2]) && c.parts[3] === 'Accepter' && c.extra === 0;
-async function tapCard(route) {
-  const card = page.locator(`#modal.on .dcard.job[data-route="${route}"]`).first();
-  await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(350);
-  const b = await card.boundingBox(); await touch.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await touch.up(5);
+/**
+ * Tap a card or a row of the open sheet with one finger: brought to the middle of the sheet (the sheet keeps its sticky title over the top of its list, and may open
+ * scrolled where the last sheet was left), tapped once it is still and is what lies under its own centre. Returns what was under the finger.
+ */
+async function tapInSheet(loc) {
+  await loc.evaluate(e => e.scrollIntoView({ block: 'center' }));
+  let box = null, mine = false;
+  for (let k = 0; k < 40; k++) {
+    await page.waitForTimeout(150);
+    const b = await loc.boundingBox();
+    mine = !!b && await loc.evaluate((e, [x, y]) => { const h = document.elementFromPoint(x, y); return !!h && (h === e || e.contains(h)); }, [b.x + b.width / 2, b.y + b.height / 2]);
+    if (b && box && mine && Math.abs(b.y - box.y) < 0.5) { box = b; break; }
+    box = b;
+  }
+  await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
+  return mine;
 }
+const tapCard = route => tapInSheet(page.locator(`#modal.on .dcard.job[data-route="${route}"]`).first());
 const placeOf = async id => (await d(() => window.__dakar.interactables())).find(i => i.id === id);
 const pointByName = async name => { const p = (await d(() => window.__dakar.tiakPoints())).find(q => q.name === name); return p?.place ?? null; };
 const goHub = async h => {
@@ -213,9 +226,17 @@ for (const h of process.env.SKIP_A ? [] : HUBS) {
   await shot(`${h}-next-taken`);
   check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   await page.waitForFunction(() => window.__dakar.activeJob(), null, { timeout: 90000 }).catch(() => {});
-  await page.waitForFunction(() => window.__dakar.destination(), null, { timeout: 60000 }).catch(() => {});      // its waypoint, on the next frames
+  // its guidance, on the next frames: the walking marker on its pick-up, or on its drop-off here; a parcel already in hand for another district is guided by the
+  // delivery line, which then names that district (the driving directions take over on the way: src/game/navigation.ts)
+  const guided = () => page.evaluate(([names]) => {
+    const j = window.__dakar.activeJob(); if (!j) return null;
+    const to = /^t:[a-z]+\.[a-z]+>([a-z]+)\./.exec(j.routeId)?.[1] ?? j.hub, line = document.querySelector('#delivery.on')?.textContent ?? '';
+    return window.__dakar.destination() ? 'marker' : j.stage === 'deliver' && to !== j.hub && line.includes(names[to]) ? `line: ${names[to]}` : null;
+  }, [{ pikine: 'Pikine', plateau: 'Plateau', corniche: 'Corniche', almadies: 'Almadies', mermoz: 'Mermoz' }]);
+  await page.waitForFunction(() => !!window.__dakar.activeJob() && (!!window.__dakar.destination() || !!document.querySelector('#delivery.on')), null, { timeout: 60000 }).catch(() => {});
+  let guide = null; for (let k = 0; k < 40 && !(guide = await guided()); k++) await page.waitForTimeout(250);
   const next = await job();
-  check(`${L}: one tap takes the next run, leaving from this district; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!(await d(() => window.__dakar.destination())), JSON.stringify({ next, wallet: await wallet(), was: done.w1, dest: await d(() => window.__dakar.destination()), was1: run.runId }));
+  check(`${L}: one tap takes the next run, leaving from this district, guided at once; nothing more is paid`, !!next && next.hub === h && next.runId !== run.runId && (await wallet()) === done.w1 && !!guide, JSON.stringify({ next, guide, wallet: await wallet(), was: done.w1, was1: run.runId }));
   await d(() => window.__dakar.cancelJob());
   check(`${L}: that run cancelled: no payment`, !(await job()) && (await wallet()) === done.w1);
 }
@@ -238,11 +259,8 @@ if (!process.env.ONLY) {
   // the car rapide's row for that district (« ≈ 25 min de route »; the rows on foot say « de marche »), tapped once it has stopped moving (the sheet scrolls to it first)
   const word = { plateau: 'Plateau', almadies: 'Almadies', pikine: 'Pikine', mermoz: 'Mermoz', corniche: 'Corniche' }[ride.toHub];
   const row = page.locator('#modal.on .item:not(.close)').filter({ hasText: 'min de route' }).filter({ hasText: word }).first();
-  await row.scrollIntoViewIfNeeded();
-  let box = await row.boundingBox();
-  for (let k = 0; k < 40; k++) { await page.waitForTimeout(150); const b = await row.boundingBox(); if (b && box && Math.abs(b.y - box.y) < 0.5) break; box = b; }
-  console.log('  the car rapide row: ' + JSON.stringify(await d(([x, y]) => { const e = document.elementFromPoint(x, y); return { scrollTop: document.querySelector('#modal .panel')?.scrollTop ?? null, at: (e?.closest('.item')?.innerText ?? e?.tagName ?? '').replace(/\s+/g, ' ').slice(0, 60) }; }, [box.x + box.width / 2, box.y + box.height / 2])) + ` fingers held: ${[...touch.fingers.keys()].join(',') || 'none'}`);
-  await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
+  console.log(`  the car rapide sheet opened scrolled by ${await d(() => document.querySelector('#modal .panel')?.scrollTop ?? null)} px`);
+  console.log(`  the car rapide row under the finger: ${await tapInSheet(row)}`);
   await page.waitForFunction(() => window.__dakar.pos().mode !== 'menu', null, { timeout: 60000 }).catch(() => {});
   console.log('  after the tap: ' + JSON.stringify(await d(() => ({ mode: window.__dakar.pos().mode, hub: window.__dakar.pos().hub, modal: !!document.querySelector('#modal.on') }))));
   await page.waitForFunction(h => window.__dakar.pos().hub === h && window.__dakar.pos().mode === 'play', ride.toHub, T).catch(() => {});
