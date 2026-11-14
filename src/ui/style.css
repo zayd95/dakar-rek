@@ -40,7 +40,7 @@ body.touch kbd { display:none; }
 :focus-visible { outline:3px solid var(--ocean); outline-offset:2px; }
 
 /* ------------------------------------------------------------- wallet and needs (top left) */
-#stats { position:absolute; left:calc(10px + var(--sa-l)); top:calc(10px + var(--sa-t)); padding:7px 9px 8px; min-width:148px; max-width:min(46vw, 260px); cursor:pointer; z-index:3; }
+#stats { position:absolute; left:calc(10px + var(--sa-l)); top:calc(10px + var(--sa-t)); padding:12px 10px 12px; min-width:148px; max-width:min(46vw, 260px); cursor:pointer; z-index:3; }
 #wallet { position:relative; display:flex; align-items:baseline; justify-content:space-between; font-weight:800; font-size:17px; letter-spacing:-.2px; color:var(--ink); }
 #money { font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #wallet::after { content:'▾'; font-size:11px; color:var(--ink-3); margin-left:6px; transition:transform .2s; }
@@ -374,7 +374,7 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 
 /* ------------------------------------------------------------- portrait phones */
 @media (max-width:640px) and (orientation:portrait) {
-  #stats { padding:6px 8px 7px; min-width:0; }
+  #stats { padding:12px 9px 13px; min-width:0; }                          /* 44 px, the phone button's height beside it (1.0.1 HUD pass: 33 px) */
   #wallet { font-size:16px; }
   #place { left:auto; right:calc(62px + var(--sa-r)); transform:none; text-align:right; min-width:0; max-width:calc(100vw - 234px); padding:6px 10px; }
   #place b { font-size:12.5px; } #place small { font-size:11px; }
@@ -449,7 +449,7 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* one top row, all of it inside the notch's safe areas: wallet | destination pill … place and time | phone; the
      « En ligne » and « Chat » pills side by side on a second row at the right (src/multiplayer). Nothing of the HUD
      reaches the middle of a ~390 px tall view. */
-  #stats { top:calc(8px + var(--sa-t)); width:156px; min-width:0; padding:6px 8px 7px; }
+  #stats { top:calc(8px + var(--sa-t)); width:156px; min-width:0; padding:12px 9px 13px; }
   #stats.open { width:auto; min-width:200px; }
   #wallet { font-size:16px; }
   #place { top:calc(8px + var(--sa-t)); left:auto; right:calc(62px + var(--sa-r)); transform:none; text-align:right; min-width:0; max-width:200px; padding:6px 10px; }
