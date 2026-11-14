@@ -1,5 +1,5 @@
 // The persistence release blocker, end to end on a phone page (390 × 844, real touches): buy the Teranga, park it in front of the Cité Jàmm, buy the
-// family house through its sheet and make it the principal residence (« Définir comme domicile principal »), furnish it, move and turn a piece in
+// family house through its sheet and make it the principal residence (« Les clés sont à toi » › « Emménager » › the family room kept), furnish it, move and turn a piece in
 // « Aménager », then LEAVE AND COME BACK (the page left from inside the house and opened again) — the house, the residence, every piece with its spot and turn, the car
 // where it was left, the wallet and the spawn come back. Then « Ma chambre »'s options, the save card (honest status, copy), an import into a wiped
 // browser, and a browser whose storage refuses every write (never shown as saved).
@@ -49,20 +49,23 @@ try {
   const rec0 = await d(() => window.__dakar.teranga.info().record);
   check('the Teranga is bought and parked where it was left, beside the Cité Jàmm house', rec0 && rec0.hub === 'pikine' && Math.hypot(rec0.x - SPOT.x, rec0.z - SPOT.z) < 1.5, JSON.stringify(rec0));
 
-  // the family house through its sheet: buy, then the decision « Définir comme domicile principal ? »
+  // the family house through its sheet: buy, then the purchase sequence (1.0.1): « Les clés sont à toi » › « Emménager » › the family room's choice
   await d(() => window.__dakar.assetSheet('maison_cite')); await page.waitForSelector('#modal.on .item');
   await pick(page, 'Acheter');
   check('the purchase asks for one confirmation', /^Acheter : /.test(await title(page)), await title(page));
   await pick(page, 'Acheter');
   const ask = await title(page), askText = await d(() => document.querySelector('#modal.on .panel')?.textContent ?? '');
   await page.screenshot({ path: `${out}/1-domicile-principal.png` });
-  check('right after buying: « Définir comme domicile principal ? », with « Plus tard »', /Définir comme domicile principal/.test(ask) && (await items(page)).some(i => /Plus tard/.test(i.text)), ask);
-  check('the question says where furniture goes either way, and that the family keeps the room', /Keur Meubles livrera ici|pièces te suivent/.test(askText) && /la famille te la garde/.test(askText), askText.slice(0, 240));
+  check('right after buying: « Les clés sont à toi » · « Emménager maintenant ? », with « Plus tard »', /Les clés sont à toi/.test(ask) && /Emménager maintenant/.test(askText) && (await items(page)).some(i => /Plus tard/.test(i.text)), ask);
+  check('the question says where furniture goes', /Keur Meubles livrera ici|pièces te suivent/.test(askText), askText.slice(0, 240));
   const e1 = await d(() => window.__dakar.estate());
   check('bought, not yet the principal residence', e1.home !== 'maison_cite' && e1.assets.some(a => a.spec === 'maison_cite' && a.how === 'owned'), `home=${e1.home}`);
-  await pick(page, 'Définir comme domicile principal');
+  await pick(page, 'Emménager');
+  const leaveText = await d(() => document.querySelector('#modal.on .panel')?.textContent ?? '');
+  check('« Emménager » asks about the family room first: the family keeps it by default', /Et ta chambre/.test(leaveText) && /La famille te la garde/.test(leaveText), leaveText.slice(0, 240));
+  await pick(page, 'Garder comme chambre familiale');
   const e2 = await d(() => window.__dakar.estate());
-  check('« Définir comme domicile principal » makes the house the home', e2.home === 'maison_cite', `home=${e2.home}`);
+  check('« Emménager » › « Garder comme chambre familiale » makes the house the home', e2.home === 'maison_cite', `home=${e2.home}`);
   await d(() => window.__dakar.hud?.closeModal?.()); await page.keyboard.press('Escape').catch(() => {});
 
   // the « Maison » app names it
