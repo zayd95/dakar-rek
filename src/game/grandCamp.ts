@@ -438,6 +438,8 @@ class GrandCamp implements GameModule {
         },
         /** Scene setting for the checks: the organizer's invitation of these tags (as « Inviter » does: the server's list and a text message each). */
         inviteTags: (tags: string[]) => campSession.invite(tags),
+        /** Scene setting for the checks: this player leaves the match being played (as « Quitter le match ») and the device forgets it, to organize the next one. */
+        leaveAndForget: async () => { const r = await campSession.leave(); (campSession as unknown as { forget(): void }).forget(); campSession.client?.close(); return r; },
         /** Scene setting for the checks: a match organized with these terms (the form is checked on its own). */
         organize: (terms: Parameters<typeof campSession.create>[0]) => campSession.create(terms),
         /**

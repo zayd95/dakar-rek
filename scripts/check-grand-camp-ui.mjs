@@ -208,6 +208,41 @@ async function play(p, ms, order = ['dribble', 'pass', 'shot']) {
   return out;
 }
 
+/**
+ * A measurement: page `p` sets the quality first (Réglages, a real tap; the hub is rebuilt before the match, not against its clock), organizes a free
+ * public match of n+1 (the scene), n bots join and ready, `p` taps « Prêt » and « Retour au terrain »; once the n other players are drawn, the draw
+ * calls of 12 frames and the bodies (the match's full ones and figures, the street's full bodies and its budget). Then `p` leaves that match (the scene).
+ */
+async function measure(p, n, q, pitch, seed) {
+  if (q !== (await p.d(() => window.__dakar.phoneInfo().quality))) {
+    await p.d(() => window.__dakar.phone('reglages')); await p.until(() => window.__dakar.phoneInfo().screen === 'reglages');
+    await p.tap(`#phone [data-q="${q}"]`); await p.d(() => window.__dakar.phoneClose());
+    if (!await p.until(qq => window.__dakar.phoneInfo().quality === qq && window.__dakar.pos().hub === 'corniche' && window.__dakar.pos().mode === 'play', q, 600000)) throw new Error(`${q}: the hub was not rebuilt`);
+  }
+  const bs = Array.from({ length: n }, (_, i) => bot(i + seed));                   // (a free match: the bots need no money)
+  await p.d(s => window.__dakar.place(s.x, s.z, 0), { x: pitch.x + (n === 9 ? -3 : 3), z: pitch.z - 19.5 });
+  const m = await p.d(async size => { const r = await window.__dakar.grandCamp.organize({ fee: 0, size, dist: 'team', open: true, hub: 'corniche' }); return r.ok ? r.match : JSON.stringify(r); }, n + 1);
+  if (!/^[0-9a-f]{16}$/.test(m)) throw new Error(`${n + 1} players ${q}: not organized: ${m}`);
+  for (const b of bs) { await b.client.open(m); const r = await b.client.join(); if (!r.ok) throw new Error(`${b.name} could not join: ${r.reason}`); await b.client.ready(); }
+  await p.d(mm => window.__dakar.phoneHooks.openPhone(`grandcamp:${mm}`), m);
+  await p.until(k => !document.querySelector('#phone .gc-a[data-act="ready"]')?.disabled && new RegExp(`${k}/${k}`).test(document.querySelector('#phone .gc-s-head')?.innerText ?? ''), n + 1, 120000);
+  await p.tap('#phone .gc-a[data-act="ready"]');
+  const go = await until(() => bs.every(b => b.client.state.roster), 120000, 200);
+  for (const b of bs) { b.style = lib.STILL; drive(b); }                    // standing at their places: no goal ends the match mid-measure (a draw call does not depend on a pose)
+  await p.until(() => !!document.querySelector('#phone .gc-a[data-act="play"]'), null, 60000);
+  if (await p.d(() => !!document.querySelector('#phone .gc-a[data-act="play"]'))) await p.tap('#phone .gc-a[data-act="play"]'); else await p.d(() => window.__dakar.phoneClose());
+  const drawn = await p.until(k => window.__dakar.grandCamp.info().live && window.__dakar.grandCamp.info().bodies >= k, n, 300000);
+  await p.wait(5000);                                                  // the street's budget has adopted the match's bodies (its scan: every 2 s)
+  const s = await p.d(async () => { const o = []; for (let i = 0; i < 12; i++) { await new Promise(r => requestAnimationFrame(r)); const g = window.__dakar.grandCamp.info(), h = window.__dakar.humanoids(); o.push([window.__dakar.drawCalls(), g.full, g.figures, h.full, h.budget, g.bodies, g.live ? 1 : 0]); } return o; });
+  const out = { started: go && drawn, maxCalls: Math.max(...s.map(x => x[0])), avgCalls: Math.round(s.reduce((a, x) => a + x[0], 0) / s.length), matchBodies: Math.min(...s.map(x => x[5])), matchFull: Math.max(...s.map(x => x[1])),
+    matchFigures: Math.max(...s.map(x => x[2])), streetFull: Math.max(...s.map(x => x[3])), streetBudget: s[0][4], live: s.every(x => x[6] === 1), budget: { low: 180, medium: 300, high: 420 }[q] };
+  await p.shot(`9-match-${n + 1}-${q}`);
+  for (const b of bs) stopBot(b);
+  await p.d(() => window.__dakar.grandCamp.leaveAndForget());
+  for (const b of bs) b.client.close();
+  return out;
+}
+
 const pages = [];
 let W = null;
 try {
@@ -226,9 +261,29 @@ try {
   const spotA = { x: pitch.x, z: pitch.z - 36 }, spotB = { x: pitch.x + 1.4, z: pitch.z - 36 };
   await A.d(s => window.__dakar.place(s.x, s.z, Math.PI / 2), spotA); await B.d(s => window.__dakar.place(s.x, s.z, -Math.PI / 2), spotB);
   for (const [i, p] of pages.slice(2).entries()) await p.d(s => window.__dakar.place(s.x, s.z, 0), { x: pitch.x - 6 + 3 * i, z: pitch.z - 19.5 });   // watching from the touchline
+  /** Stage 9: each size on each quality, one page drawing at a time (the machine's other agents keep it busy). */
+  const stage9 = async forgot => {
+    const perf10 = {}, perf14 = {}, sizes = (process.env.CAMPUI_SIZES ?? '10,14').split(',');
+    if (sizes.includes('10')) {
+      await A.d(() => window.__dakar.pause(true));
+      for (const [i, q] of ['low', 'medium', 'high'].entries()) perf10[q] = await measure(B, 9, q, pitch, 30 + 10 * i);
+      notes.perf10 = perf10;
+      check('9a. a 10-player match (page B + 9 bots) on each quality: draw calls within 180 / 300 / 420; the players drawn full or as figures by the street’s shared budget, the nearest first',
+        ['low', 'medium', 'high'].every(q => perf10[q].started && perf10[q].live && perf10[q].matchBodies >= 9 && perf10[q].maxCalls <= perf10[q].budget), JSON.stringify(perf10));
+    }
+    await B.page.close().catch(() => {});
+    await A.d(() => window.__dakar.pause(false));
+    if (!sizes.includes('14')) return;
+    for (const [i, q] of ['high', 'medium', 'low'].entries()) perf14[q] = await measure(A, 13, q, pitch, 60 + 15 * i);
+    notes.perf14 = perf14;
+    check('9b. a 7 v 7 (page A + 13 bots) on each quality: draw calls within 180 / 300 / 420; on Low at most 12 animated bodies with mine (the farthest players as the cheap figure)',
+      ['low', 'medium', 'high'].every(q => perf14[q].started && perf14[q].live && perf14[q].matchBodies >= 13 && perf14[q].maxCalls <= perf14[q].budget) && perf14.low.streetFull + 1 <= 12 && perf14.low.matchFigures >= 1, JSON.stringify(perf14));
+    if (forgot !== null) check('9c. the main match was closed and forgotten on both pages after its result (« Fermer »), so each could open the next', forgot, '');
+  };
   const seeEach = await A.until(t => window.__dakar.presence().peers.some(p => p.tag === t), B.tag, 60000) && await B.until(t => window.__dakar.presence().peers.some(p => p.tag === t), A.tag, 60000);
   check('0b. the scene: both in the Corniche on the street by the pitch, side by side, in the same presence room', seeEach, JSON.stringify({ pitch }));
 
+  if (process.env.CAMPUI_ONLY === 'measure') { await stage9(null); throw new Error('ONLY:measure'); }
   // ------------------------------------------------------------------ 1. the organizer's form: 1 000 F, 10 players, partage égal, privé
   await A.campApp();
   const listA = await A.screen();
@@ -467,59 +522,12 @@ try {
   for (const p of [A, B]) await p.d(() => window.__dakar.phoneClose());
 
   // ------------------------------------------------------------------ 9. the draw calls and the bodies per quality: a 10-player match (page B + 9 bots), a 7 v 7 (page A + 13 bots)
-  /** A measurement match: `p` organizes it (free, public: the scene), `n` bots join and ready, `p` taps « Prêt »; then, each quality in turn (Réglages, a real tap: the hub is rebuilt, the match goes on), the draw calls of 24 frames and the bodies drawn. */
-  async function measure(p, n, label) {
-    const bs = Array.from({ length: n }, (_, i) => bot(i + (n === 9 ? 30 : 50)));
-    await Promise.all(bs.map(b => account(b.key, b.name, 5000)));
-    await p.d(s => window.__dakar.place(s.x, s.z, 0), { x: pitch.x + (n === 9 ? -3 : 3), z: pitch.z - 19.5 });
-    const m = await p.d(async size => { const r = await window.__dakar.grandCamp.organize({ fee: 0, size, dist: 'team', open: true, hub: 'corniche' }); return r.ok ? r.match : JSON.stringify(r); }, n + 1);
-    if (!/^[0-9a-f]{16}$/.test(m)) throw new Error(`${label}: not organized: ${m}`);
-    for (const b of bs) { await b.client.open(m); const r = await b.client.join(); if (!r.ok) throw new Error(`${b.name} could not join (${label}): ${r.reason}`); await b.client.ready(); }
-    await p.d(mm => window.__dakar.phone(`camp:${mm}`), m);
-    await p.until(k => !document.querySelector('#phone .gc-a[data-act="ready"]')?.disabled && new RegExp(`${k}/${k}`).test(document.querySelector('#phone .gc-s-head')?.innerText ?? ''), n + 1, 30000);
-    await p.tap('#phone .gc-a[data-act="ready"]');
-    const go = await until(() => bs.every(b => b.client.state.roster), 60000, 200);
-    for (const b of bs) { b.style = lib.WARM; drive(b); }
-    await p.until(() => !!document.querySelector('#phone .gc-a[data-act="play"]'), null, 20000);
-    if (await p.d(() => !!document.querySelector('#phone .gc-a[data-act="play"]'))) await p.tap('#phone .gc-a[data-act="play"]'); else await p.d(() => window.__dakar.phoneClose());
-    await p.until(k => window.__dakar.grandCamp.info().live && window.__dakar.grandCamp.info().bodies >= k, n, 60000);
-    const out = {};
-    for (const q of ['low', 'medium', 'high']) {
-      if (q !== (await p.d(() => window.__dakar.phoneInfo().quality))) {
-        await p.d(() => window.__dakar.phone('reglages')); await p.until(() => window.__dakar.phoneInfo().screen === 'reglages');
-        await p.tap(`#phone [data-q="${q}"]`); await p.d(() => window.__dakar.phoneClose());
-        const back = await p.until(([qq, k]) => window.__dakar.phoneInfo().quality === qq && window.__dakar.grandCamp.info().live && window.__dakar.grandCamp.info().bodies >= k, [q, n], 420000);
-        if (!back) {
-          const why = await p.d(() => { const i = window.__dakar.grandCamp.info(), pos = window.__dakar.pos(); return { quality: window.__dakar.phoneInfo().quality, live: i.live, bodies: i.bodies, status: i.status, state: i.state, mine: i.mine, hub: pos.hub, mode: pos.mode, x: pos.x, z: pos.z, phone: window.__dakar.phoneInfo().open }; }).catch(e => String(e));
-          throw new Error(`${label}: the match is not drawn again on ${q} after the hub's rebuild: ${JSON.stringify(why)}`);
-        }
-      }
-      await p.wait(5000);                                                  // the street's budget has adopted the match's bodies (its scan: every 2 s)
-      const s = await p.d(async () => { const o = []; for (let i = 0; i < 30; i++) { await new Promise(r => requestAnimationFrame(r)); const g = window.__dakar.grandCamp.info(), h = window.__dakar.humanoids(); o.push([window.__dakar.drawCalls(), g.full, g.figures, h.full, h.budget, g.bodies, g.live ? 1 : 0]); } return o; });
-      out[q] = { maxCalls: Math.max(...s.map(x => x[0])), avgCalls: Math.round(s.reduce((a, x) => a + x[0], 0) / s.length), matchBodies: Math.min(...s.map(x => x[5])), matchFull: Math.max(...s.map(x => x[1])), matchFigures: Math.max(...s.map(x => x[2])),
-        streetFull: Math.max(...s.map(x => x[3])), streetBudget: s[0][4], live: s.every(x => x[6] === 1), budget: { low: 180, medium: 300, high: 420 }[q] };
-      if (q === 'low') await p.shot(`9-match-${n + 1}-low`);
-    }
-    await p.d(() => window.__dakar.phone('reglages')); await p.until(() => window.__dakar.phoneInfo().screen === 'reglages'); await p.tap('#phone [data-q="low"]'); await p.d(() => window.__dakar.phoneClose());
-    for (const b of bs) { stopBot(b); b.client.close(); }
-    return { started: go, ...out };
-  }
-  await A.d(() => window.__dakar.pause(true));                            // (one page drawn at a time: the machine's other agents keep it busy)
-  const perf10 = await measure(B, 9, '10 players');
-  notes.perf10 = perf10;
-  await B.page.close().catch(() => {});                                  // (the machine draws one page for the 7 v 7)
-  await A.d(() => window.__dakar.pause(false));
-  check('9a. a 10-player match (page B + 9 bots): draw calls within 180 / 300 / 420 on each quality; the players drawn full or as figures by the street’s shared budget, the nearest first',
-    perf10.started && ['low', 'medium', 'high'].every(q => perf10[q].live && perf10[q].matchBodies >= 9 && perf10[q].maxCalls <= perf10[q].budget), JSON.stringify(perf10));
-  const perf14 = await measure(A, 13, '14 players');
-  notes.perf14 = perf14;
-  check('9b. a 7 v 7 (page A + 13 bots): draw calls within 180 / 300 / 420 on each quality; on Low at most 12 animated bodies with mine (the farthest players as the cheap figure)',
-    perf14.started && ['low', 'medium', 'high'].every(q => perf14[q].live && perf14[q].matchBodies >= 13 && perf14[q].maxCalls <= perf14[q].budget) && perf14.low.streetFull + 1 <= 12 && perf14.low.matchFigures >= 1, JSON.stringify(perf14));
-  check('9c. the earlier match was closed and forgotten on both pages after its result (« Fermer »), so each could open the next', forgot, '');
+  await stage9(forgot);
 
   check('no page errors', pages.every(p => !p.errors.length), JSON.stringify(pages.map(p => ({ [p.name]: p.errors.slice(0, 3) }))));
 } catch (e) {
-  check('the check went through', false, e.stack ?? String(e));
+  if (e?.message === 'ONLY:measure') check('no page errors', pages.every(p => !p.errors.length), JSON.stringify(pages.map(p => ({ [p.name]: p.errors.slice(0, 3) }))));
+  else check('the check went through', false, e.stack ?? String(e));
 } finally {
   await browser.close().catch(() => {});
   if (worker) { try { worker.kill('SIGTERM'); } catch { /* gone */ } }
