@@ -345,29 +345,31 @@ try {
   for (const p of six) await p.client.ready();
   await until(() => six.every(p => p.client.state.roster), 15000);
   const team0 = D.client.state.lobby.players.filter(x => x.team === 0).map(x => x.tag);
-  for (const p of six) { p.bot = null; p.style = team0.includes(p.tag) ? lib.STRONG : lib.STILL; if (p !== C) drive(p); }
-  // 12. (during that match) C's page reloads: a new client for the same device, the old socket not closed first; its stick counts from 1 again
-  C.style = lib.STILL; drive(C);
-  await sleep(5000);
+  // 12. (during that match) C's page reloads: a new client for the same device, the old socket not closed first; its stick counts from 1 again.
+  //     Everyone stands meanwhile (no goal, no restart moves the bodies while C's run is measured); then team 0 plays to a result.
+  for (const p of six) { p.bot = null; p.style = lib.STILL; drive(p); }
+  await sleep(3500);
   const sidC = C.client.state.sid, seqOld = A.client.state.snap?.players.find(x => x.sid === sidC)?.seq ?? null;
   stop(C); const oldC = C.client; fresh(C);
   await C.client.open(m4);
   await until(() => C.client.state.sid === sidC && !!C.client.state.snap, 8000);
   const at0 = A.client.state.snap.players.find(x => x.sid === sidC);
   const push = setInterval(() => C.client.input(0, at0.z > 0 ? -1 : 1, at0.z > 0 ? Math.PI : 0), 50);
-  await sleep(3000); clearInterval(push);
+  await sleep(2500); clearInterval(push);
   const at1 = A.client.state.snap.players.find(x => x.sid === sidC), moved = at0 && at1 ? Math.hypot(at1.x - at0.x, at1.z - at0.z) : 0;
   check('12. a page reloaded mid-match (a new client, its stick counter from 1, the old socket replaced): its sticks are applied at once — the body runs, the server’s counter starts again',
     oldC.state.bye === 'replaced' && moved > 3 && at1.seq > 0 && at1.seq <= C.client.seq && seqOld > at1.seq,
-    `moved ${moved.toFixed(1)} m in 3 s · server counter ${seqOld} before the reload, ${at1?.seq} after (the new page sent ${C.client.seq})`);
+    `moved ${moved.toFixed(1)} m in 2.5 s · server counter ${seqOld} before the reload, ${at1?.seq} after (the new page sent ${C.client.seq}) · phase ${A.client.state.snap?.phase}`);
   drive(C);
+  for (const p of six) p.style = team0.includes(p.tag) ? lib.STRONG : lib.STILL;
   await until(() => six.every(p => p.client.state.result), 90000, 200);
   for (const p of six) stop(p);
   const R4 = D.client.state.result, L4 = ledgerRows(V, m4);
   const own = new RegExp(`^(?:[hrf]-${m4}-[0-9a-f]{16}-\\d{1,9}|w-${m4}-[0-9a-f]{16})$`);
+  const c11 = { noAnswer: forgedAck === 0, notReady: aSeat?.ready === false, settled: !!R4 && R4.money === 'settled', closed: !!L4.pools[0] && L4.pools[0].state !== 'open', ours: L4.ops.length > 0 && L4.ops.every(o => own.test(o.id)), notForged: L4.ops.every(o => o.id !== forged || (o.kind === 'payout' && o.tag === D.tag)) };   // (the id is D's own payout's: written as that, if D's team won)
   check('11. a « Prêt » whose id is a winner’s payout op id is refused (no answer, nothing held); the match settles (the result written), and every op id on the ledger is the server’s own',
-    forgedAck === 0 && aSeat?.ready === false && !!R4 && R4.money === 'settled' && L4.pools[0]?.state !== 'open' && L4.ops.length > 0 && L4.ops.every(o => own.test(o.id)) && !L4.ops.some(o => o.id === forged),
-    `end ${R4?.end} ${R4?.score?.join('-')} · pool ${L4.pools[0]?.state} · ops ${L4.ops.map(o => o.id.slice(0, 2) + '…' + o.id.slice(-2)).join(' ')}`);
+    Object.values(c11).every(Boolean),
+    `${JSON.stringify(c11)} · forged id answered ${forgedAck}× · A ready after it ${aSeat?.ready} · end ${R4?.end} ${R4?.score?.join('-')} (${R4?.money}) · pool ${L4.pools[0]?.state} · the forged id on the ledger: ${L4.ops.filter(o => o.id === forged).map(o => `${o.kind} of ${o.tag === D.tag ? 'D' : o.tag}`).join(', ') || 'none'} · ops ${L4.ops.map(o => `${o.id.slice(0, 2)}…${o.id.slice(-2)}${own.test(o.id) ? '' : ' (NOT OURS: ' + o.id + ')'}`).join(' ')}`);
   for (const p of six) p.client.close();
   // 13. a device whose match is gone from the server (a 24 h-old match: its welcome has no lobby), and one whose result was shown: both organize again at once
   const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) }; };
