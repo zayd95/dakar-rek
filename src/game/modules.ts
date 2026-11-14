@@ -62,6 +62,7 @@ import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
 import { tonightModule } from '../arena/tonight';
+import { aroundModule } from './around';
 import { supportersModule } from '../arena/supporters';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
@@ -290,6 +291,7 @@ export const MODULES: GameModule[] = [
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
   tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
+  aroundModule,         // 1.0.1 the phone's « Autour de moi »: Tiak Tiak, Grand Camp, friends online, places and activities here and now (src/game/around.ts)
   supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
   meals,                // table service: the plate in front of the seat, eaten spoonful by spoonful (src/game/meals.ts)
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)

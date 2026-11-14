@@ -27,11 +27,12 @@ import './theme.css';
 import type { Relations } from '../social/relations';
 import { phoneHooks } from './phoneHooks';
 import type { PhoneApi, Screen } from './phone/types';
-import { APPS, appById } from './phone/registry';
+import { APPS, appById, visibleApps } from './phone/registry';
 import { homeScreen, appsScreen, clock, dayName } from './phone/apps/home';
 import { online } from '../online/api';
 import { pistesScreen } from './phone/apps/pistes';
 import { vehiclesScreen } from './phone/apps/vehicles';
+import { aroundScreen } from './phone/apps/around';
 import { profileScreen } from './phone/apps/profile';
 import { moneyScreen } from './phone/apps/money';
 import { bankScreen } from './phone/apps/bank';
@@ -68,7 +69,7 @@ export interface PhoneContext {
 
 /** Every screen of the phone, by id (the ids are kept from the first phone: checks and other modules open them by name). */
 const SCREENS: Record<string, Screen> = {
-  home: homeScreen, apps: appsScreen, profil: profileScreen, portefeuille: moneyScreen, travailler: workScreen, logement: houseScreen, carte: mapScreen,
+  home: homeScreen, apps: appsScreen, autour: aroundScreen, profil: profileScreen, portefeuille: moneyScreen, travailler: workScreen, logement: houseScreen, carte: mapScreen,
   reglages: settingsScreen, nouvelle: newGameScreen, sontest: soundTestScreen,
   notifs: notifsScreen, sante: healthScreen, carnet: carnetScreen, arene: arenaScreen, lutteurs: lutteursScreen, cesoir: tonightScreen,
   actus: newsScreen, meteo: weatherScreen, horloge: clockScreen, calcul: calcScreen, aide: helpScreen, pistes: pistesScreen, banque: bankScreen,
@@ -230,6 +231,15 @@ export class Phone {
     }
     this.render();
     return true;
+  }
+  /**
+   * Whether `open(app)` would open something now, without opening it: a screen of the phone (or its alias), or an app of the registry shown in this
+   * build (a module's app only with its module). « Autour de moi » offers a Grand Camp match only where the phone has the Grand Camp app.
+   */
+  can(app: string): boolean {
+    const cut = app.indexOf(':'), name = cut > 0 ? app.slice(0, cut) : app, a = appById(name);
+    if (a) return visibleApps().some(v => v.id === a.id) && (!!a.hook || !!SCREENS[(ALIASES[name] ?? [a.screen ?? name])[0]]);
+    return !!SCREENS[(ALIASES[name] ?? [name])[0]];
   }
   close() {
     if (!this.isOpen) return;

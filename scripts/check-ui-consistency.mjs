@@ -14,7 +14,8 @@ fs.mkdirSync(out, { recursive: true });
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail: String(detail).slice(0, 400) }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${String(detail).slice(0, 400)}`); };
 // Messages (LD2.0-B): the list, « Nouveau message » and a conversation, on the simulated account (`fakeonline`: also Argent's Teranga Money block)
-const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque', 'messages', 'messages:new', 'messages:a11ce0000000a001'];
+// 1.0.1: « Autour de moi » (src/ui/phone/apps/around.ts)
+const SCREENS = ['home', 'profil', 'portefeuille', 'travailler', 'logement', 'carte', 'reglages', 'notifs', 'sante', 'carnet', 'aide', 'pistes', 'banque', 'messages', 'messages:new', 'messages:a11ce0000000a001', 'autour'];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 try {
@@ -81,6 +82,21 @@ try {
   await page.screenshot({ path: `${out}/sheet-asset.png` });
   judge('sheet of an asset (Cité Jàmm house)', await audit('#modal.on'));
   await d(() => document.querySelector('#modal.on .sh-x, #modal.on [aria-label="Fermer"]')?.click()); await page.waitForTimeout(600);
+
+  // 1.0.1: a sheet opens at its top, whatever the last one was scrolled to (src/ui/sheet.ts: the reset is made once the sheet is shown)
+  const top = () => d(() => { const p = document.querySelector('#modal.on .panel'); return p ? { top: Math.round(p.scrollTop), max: p.scrollHeight - p.clientHeight, title: document.querySelector('#modal.on h2')?.textContent } : null; });
+  const closeSheet = async () => { await d(() => document.querySelector('#modal.on .sh-x')?.click()); await page.waitForFunction(() => !document.querySelector('#modal.on'), null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(500); };
+  await d(() => window.__dakar.places()); await page.waitForSelector('#modal.on .item'); await page.waitForTimeout(700);
+  await d(() => { const p = document.querySelector('#modal.on .panel'); p.scrollTop = p.scrollHeight; }); await page.waitForTimeout(300);
+  const scrolled = await top();
+  await closeSheet();
+  await d(() => window.__dakar.places()); await page.waitForSelector('#modal.on .item'); await page.waitForTimeout(700);
+  const again = await top();
+  await closeSheet();
+  await d(() => window.__dakar.jobsApp()); await page.waitForSelector('#modal.on'); await page.waitForTimeout(700);
+  const other = await top();
+  await closeSheet();
+  check('a sheet opens at its top after another was left scrolled down (the same sheet again, then another)', scrolled.top > 0 && again.top === 0 && other.top === 0, JSON.stringify({ scrolled, again, other }));
 
   check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   fs.writeFileSync(`${out}/audit.json`, JSON.stringify(report, null, 2));

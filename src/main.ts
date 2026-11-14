@@ -34,6 +34,9 @@ import { preloadAssets } from './actors/vehicles';
 import { preloadGlbVehicles } from './actors/glbVehicle';
 import { missionTarget } from './game/missionGuide';
 import { navigation } from './game/navigation';
+import { aroundDeps } from './game/around';
+import { CampClient } from './online/campClient';
+import { DEVICE_KEY } from './core/saveTransfer';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -249,7 +252,7 @@ const onceInTheStreet = (fn: () => void) => { if (started) fn(); else void whenS
 startMessageNotices(m => hud.toast(m), pay => onceInTheStreet(() => {
   let op: string | undefined;                                                         // one withdrawal per notice, however it is tapped (the id is made once)
   hud.toast(pay.text);                                                                // (the Notifications list keeps it; read out for screen readers)
-  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money. Retire-les pour les avoir dans ton portefeuille.', actions: [
+  hud.offer({ icon: '💸', title: `${fcfa(pay.amount)} reçus de ${pay.name}`, line: 'Sur ton Teranga Money : retire-les.', actions: [
     { label: `Retirer ${fcfa(pay.amount)}`, primary: true, run: () => { op ??= online?.newId(); void withdrawReceived(pay, op).then(r => { if (r.ok) hud.moment({ icon: '✅', title: `${fcfa(r.amount)} retirés`, lines: ['Ils sont dans ton portefeuille.'] }, 5000); else hud.toast(`Retrait impossible : ${r.text}`, 'warn'); }); } },
     { label: 'Voir', run: () => { openConversation({ tag: pay.tag, name: pay.name }); } },
   ], keep: true }, 30000);                                                            // (a recap arriving meanwhile waits: it does not push the money away)
@@ -1648,6 +1651,18 @@ mapBridge.destination = () => (destination && destination.hub === world?.id ? de
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 phoneHooks.openPhone = app => ((mode === 'play' || phone.isOpen) ? phone.open(app) : false);
 phoneHooks.closePhone = () => phone.close();
+phoneHooks.canOpenPhone = app => phone.can(app);
+// 1.0.1 « Autour de moi » (src/game/around.ts): the district's open Grand Camp lobbies on this build's server (none without one), and a place's row started
+// where the player stands as its own sheet starts it
+if (import.meta.env.VITE_MULTIPLAYER === 'true') {
+  const campEndpoint = import.meta.env.VITE_PRESENCE_URL ? new URL('/api/camp', import.meta.env.VITE_PRESENCE_URL).href : undefined;
+  aroundDeps.campList = hub => CampClient.list(hub, { key: () => { try { return localStorage.getItem(DEVICE_KEY) ?? ''; } catch { return ''; } }, ...(campEndpoint ? { endpoint: campEndpoint } : {}) });
+}
+aroundDeps.runAction = (placeId, actionId) => {
+  const it = world?.interactables.find(i => i.id === placeId), a = it?.actions.find(x => x.id === actionId);
+  if (!it || !a || mode !== 'play' || (a.visible && !a.visible(state)) || a.requires?.(state)) return false;
+  hud.markAct(); runAction(a, it.npc, it); return true;
+};
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 

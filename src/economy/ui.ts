@@ -463,7 +463,10 @@ export class Economy {
     this.line.classList.toggle('late', late);
     this.line.classList.add('on');
     const goal = document.getElementById('goal');
-    const top = goal && goal.classList.contains('on') ? goal.offsetTop + goal.offsetHeight + 6 : goal ? parseFloat(getComputedStyle(goal).top) || 160 : 160;
+    let top = goal && goal.classList.contains('on') ? goal.offsetTop + goal.offsetHeight + 6 : goal ? parseFloat(getComputedStyle(goal).top) || 160 : 160;
+    // under the minimap when they share the left column (a desktop: it was drawn over the delivery line); a phone keeps the minimap elsewhere (CSS)
+    const mm = document.getElementById('minimap');
+    if (mm?.classList.contains('on')) { const r = mm.getBoundingClientRect(); if (r.left < 160 && r.bottom > top && r.top < top + 40) top = Math.round(r.bottom + 8); }
     this.line.style.top = top + 'px';
   }
 

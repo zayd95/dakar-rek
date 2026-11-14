@@ -36,7 +36,9 @@ export function economyStep(s: GameState): Step | null {
     // the neighbourhood the player is in: its own Tiak Tiak counter (every district has one since 1.0.1), else its own paid services (never another hub's)
     const where = counterLine(s.data.hub);
     if (!where) return { id: 'goal_work', hint: 'Gagne ta vie : « Petits boulots » (téléphone › Travail) liste les services payés de ce quartier.' };
-    return { id: 'goal_tiak', hint: `Gagne ta vie : prends une livraison Tiak Tiak à ${where}.` };
+    // short enough for the goal line's two lines on a phone; the counter is this district's (its name without the district), « au » for « le »
+    const at = where.replace(/ \([^)]*\)$/, '');
+    return { id: 'goal_tiak', hint: `Gagne ta vie : Tiak Tiak ${at.startsWith('le ') ? 'au ' + at.slice(3) : 'à ' + at}.` };
   }
   // After the first piece of furniture, only the goal Ibou suggested stays on the chip (the rest is in the Carnet).
   const first = furnitureCount(s) === 0;
