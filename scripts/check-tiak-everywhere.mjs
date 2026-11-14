@@ -37,31 +37,41 @@ const stats = { runs: [] };
 /** A way on foot from the player to within `reach` m of (x, z), round the district's built colliders (1 m cells, grown by the walker's width): the points a thumb aims at, one after the other. */
 async function wayTo(x, z, reach = 2.2, cellsOnly = false) {
   const { me, cols } = await d(() => ({ me: window.__dakar.pos(), cols: window.__dakar.cityGeometry().colliders.map(c => [c.x0, c.z0, c.x1, c.z1]) }));
-  const H = 200, N = 2 * H, R = 0.75, blocked = new Uint8Array(N * N);
-  for (const [x0, z0, x1, z1] of cols) for (let j = Math.max(0, Math.floor(z0 - R + H)); j <= Math.min(N - 1, Math.floor(z1 + R + H)); j++) for (let i = Math.max(0, Math.floor(x0 - R + H)); i <= Math.min(N - 1, Math.floor(x1 + R + H)); i++) {
-    const cx = i - H + 0.5, cz = j - H + 0.5; if (cx > x0 - R && cx < x1 + R && cz > z0 - R && cz < z1 + R) blocked[j * N + i] = 1;
-  }
+  const H = 200, N = 2 * H;
   const cell = (px, pz) => Math.floor(pz + H) * N + Math.floor(px + H), start = cell(me.x, me.z);
-  const prev = new Int32Array(N * N).fill(-1), queue = [start]; prev[start] = start;
-  let goal = -1;
-  for (let q = 0; q < queue.length; q++) {
-    const k = queue[q], i = k % N, j = Math.floor(k / N);
-    if (Math.hypot(i - H + 0.5 - x, j - H + 0.5 - z) < reach) { goal = k; break; }
-    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N) continue;
-      const n = b * N + a; if (prev[n] >= 0 || blocked[n]) continue;
-      if (di && dj && (blocked[j * N + a] || blocked[b * N + i])) continue;                      // no cutting a corner
-      prev[n] = k; queue.push(n);
+  // the colliders grown by a walker's margin; where the courier stands in a tight spot (a kiosk's tables), the way starts from the open ground around them, and the
+  // margin narrows if no way is found with the wider one
+  for (const R of [0.75, 0.5, 0.35]) {
+    const blocked = new Uint8Array(N * N);
+    for (const [x0, z0, x1, z1] of cols) for (let j = Math.max(0, Math.floor(z0 - R + H)); j <= Math.min(N - 1, Math.floor(z1 + R + H)); j++) for (let i = Math.max(0, Math.floor(x0 - R + H)); i <= Math.min(N - 1, Math.floor(x1 + R + H)); i++) {
+      const cx = i - H + 0.5, cz = j - H + 0.5; if (cx > x0 - R && cx < x1 + R && cz > z0 - R && cz < z1 + R) blocked[j * N + i] = 1;
     }
+    const prev = new Int32Array(N * N).fill(-1), queue = [start]; prev[start] = start;
+    for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const k = cell(me.x + dx, me.z + dz); if (prev[k] < 0 && !blocked[k] && Math.hypot(dx, dz) <= 3) { prev[k] = k; queue.push(k); }
+    }
+    let goal = -1;
+    for (let q = 0; q < queue.length; q++) {
+      const k = queue[q], i = k % N, j = Math.floor(k / N);
+      if (Math.hypot(i - H + 0.5 - x, j - H + 0.5 - z) < reach) { goal = k; break; }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= N || b >= N) continue;
+        const n = b * N + a; if (prev[n] >= 0 || blocked[n]) continue;
+        if (di && dj && (blocked[j * N + a] || blocked[b * N + i])) continue;                      // no cutting a corner
+        prev[n] = k; queue.push(n);
+      }
+    }
+    if (goal < 0) continue;
+    const cells = []; for (let k = goal; ; k = prev[k]) { cells.unshift(k); if (prev[k] === k) break; }
+    const pts = cells.map(k => ({ x: (k % N) - H + 0.5, z: Math.floor(k / N) - H + 0.5 }));
+    const clear = (p, q) => { const n = Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 0.4); for (let t = 0; t <= n; t++) if (blocked[cell(p.x + ((q.x - p.x) * t) / n, p.z + ((q.z - p.z) * t) / n)]) return false; return true; };
+    if (cellsOnly) return pts;
+    const way = []; let from = { x: me.x, z: me.z };
+    for (let i = 0; i < pts.length;) { let j = Math.min(pts.length - 1, i + 40); while (j > i && !clear(from, pts[j])) j--; way.push(pts[j]); from = pts[j]; i = j + 1; }
+    return way;
   }
-  if (goal < 0) return null;
-  const cells = []; for (let k = goal; k !== start; k = prev[k]) cells.unshift(k);
-  const pts = cells.map(k => ({ x: (k % N) - H + 0.5, z: Math.floor(k / N) - H + 0.5 }));
-  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.4); for (let s = 0; s <= n; s++) if (blocked[cell(a.x + ((b.x - a.x) * s) / n, a.z + ((b.z - a.z) * s) / n)]) return false; return true; };
-  if (cellsOnly) return pts;
-  const way = []; let from = { x: me.x, z: me.z };
-  for (let i = 0; i < pts.length;) { let j = Math.min(pts.length - 1, i + 40); while (j > i && !clear(from, pts[j])) j--; way.push(pts[j]); from = pts[j]; i = j + 1; }
-  return way;
+  console.log(`  (no way found on foot from ${me.x.toFixed(1)},${me.z.toFixed(1)} to ${x.toFixed(1)},${z.toFixed(1)})`);
+  return null;
 }
 /**
  * On foot to (x, z) with the joystick, as scripts/lib/realTouch.mjs `walkTo` does (the stick pushed the way the target lies from the camera, re-aimed as the camera follows), but
