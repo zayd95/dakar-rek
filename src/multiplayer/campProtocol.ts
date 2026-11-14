@@ -88,6 +88,8 @@ export interface CampPlayer {
   on: boolean; at: number; sid: number;
   /** After kick-off: left for good (or not back in CAMP_RETURN_MS). They still follow their team's result. */
   gone?: boolean;
+  /** Before kick-off: their fee is still on the ledger, which could not return it yet (the server tries again by itself). */
+  owed?: boolean;
 }
 export type CampEnd = 'win' | 'draw' | 'cancel' | 'empty' | 'timeout' | 'stopped';
 export interface CampResult {
@@ -195,8 +197,11 @@ export type CampServerMessage =
   | { type: 'lobby'; lobby: CampLobbyView }
   | { type: 'ack'; id: string; ok: true; duplicate?: boolean; match?: string }
   | { type: 'ack'; id: string; ok: false; reason: CampRefusal }
-  /** A money step of THIS player, once the ledger has written it: the fee held, returned (`why`), the share paid, the fee refunded at the end. */
-  | { type: 'money'; step: CampMoneyStep; op: string; amount: number; balance?: number; why?: string }
+  /**
+   * A money step of THIS player, once the ledger has written it: the fee held, returned (`why`), the share paid, the fee refunded at the end. With
+   * `failed`: a release the ledger could not do (nothing returned yet: the server tries again by itself, and says it when done).
+   */
+  | { type: 'money'; step: CampMoneyStep; op: string; amount: number; balance?: number; why?: string; failed?: CampRefusal }
   /** Kick-off (and to a player back from a drop): the roster, who kicks off, the rules, the tick now. The events so far follow in `ev` frames. */
   | { type: 'start'; roster: CampRosterEntry[]; kick: 0 | 1; seconds: number; goals: number; tick: number }
   | CampSnapWire

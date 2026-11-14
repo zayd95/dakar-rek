@@ -326,6 +326,12 @@ export class CampClient {
       }
       case 'money': {
         const step = this.state.money.slice().reverse().find(x => x.step === m.step && x.state === 'pending' && (!x.op || x.op === m.op));
+        if (m.failed) {                                                    // a release the ledger could not do yet: said so (the server tries again)
+          const f = { state: 'failed' as const, op: m.op, amount: m.amount, reason: m.failed, text: campRefusalText(m.failed), ...(m.why ? { why: m.why } : {}) };
+          if (step) Object.assign(step, f);
+          else if (!this.state.money.some(x => x.op === m.op && x.step === m.step && x.state === 'failed')) this.moneyStep({ step: m.step, ...f });
+          return this.set({});
+        }
         if (step) Object.assign(step, { state: 'done', op: m.op, amount: m.amount, ...(m.balance !== undefined ? { balance: m.balance } : {}), ...(m.why ? { why: m.why } : {}) });
         else if (!this.state.money.some(x => x.op === m.op && x.step === m.step)) this.moneyStep({ step: m.step, state: 'done', op: m.op, amount: m.amount, ...(m.balance !== undefined ? { balance: m.balance } : {}), ...(m.why ? { why: m.why } : {}) });
         return this.set({});
@@ -376,8 +382,9 @@ export class CampClient {
   private lobbyNow(l: CampLobbyView, back = false) {
     const me = this.state.me, was = this.mySeat();
     const now = l.players.find(p => p.tag === me) ?? null;
-    // the fee came back while this device was away (the connection lost before kick-off): said as done, from the server's lobby
-    if (back && was && was.hold === 'held' && now && now.hold === 'none' && l.state === 'lobby') this.moneyStep({ step: 'release', state: 'done', amount: l.terms.fee, why: 'drop' });
+    // the fee came back while this device was away (the connection lost before kick-off): said as done, from the server's lobby — or, when the ledger
+    // could not return it yet (`owed`), pending until the server's own word
+    if (back && was && was.hold === 'held' && now && now.hold === 'none' && l.state === 'lobby') this.moneyStep({ step: 'release', state: now.owed ? 'pending' : 'done', amount: l.terms.fee, why: 'drop' });
     this.set({ lobby: l, sid: now ? now.sid : this.state.sid, missing: false });
     if (l.result && !this.state.result) this.resultNow(l.result);
   }

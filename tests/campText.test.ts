@@ -142,6 +142,8 @@ describe('Grand Camp money steps, as the server said them', () => {
     expect(N(moneyLine(m({ step: 'release', state: 'done', why: 'unready' })).text)).toBe('Mise rendue : 1 000 F (« Pas prêt »)');
     expect(N(moneyLine(m({ step: 'release', state: 'done', why: 'drop' })).text)).toBe('Mise rendue : 1 000 F (connexion perdue avant le coup d’envoi)');
     expect(moneyLine(m({ step: 'release', state: 'done', amount: 0 })).text).toBe('Rien n’avait été pris');
+    expect(moneyLine(m({ step: 'release', state: 'failed', reason: 'offline' })).tone).toBe('warn');
+    expect(N(moneyLine(m({ step: 'release', state: 'failed', reason: 'offline' })).text)).toBe('Mise de 1 000 F pas encore rendue : le serveur réessaie tout seul.');
     expect(N(moneyLine(m({ step: 'payout', state: 'done', amount: 2000 })).text)).toBe('Gain versé : 2 000 F');
     expect(N(moneyLine(m({ step: 'refund', state: 'done' })).text)).toBe('Mise remboursée : 1 000 F');
   });

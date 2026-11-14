@@ -191,6 +191,24 @@ describe('Grand Camp fees: the settlement, once per match', () => {
     const v = settle(u, { kind: 'team', winners: [tag(1), tag(2), tag(3)] });
     expect(v.ok && v.settlement.payouts.map(p => p.amount)).toEqual([1334, 1333, 1333]);
   });
+  it('a hold left in the pool by a player not on the match’s roster (its release failed) is refunded to them, never shared: 2 × the fee each', () => {
+    // the review's M1 (proof p4): 6 players + 1 stray hold, a team win paid 2 334 / 2 333 / 2 333 and the leaver lost the fee
+    const s = setup(7), T6: CampTermsRow = { fee: 1000, size: 6, dist: 'team' };
+    for (let i = 1; i <= 7; i++) expect(hold(s, i, { terms: T6, n: i }).ok).toBe(true);
+    const roster = [1, 2, 3, 4, 5, 6].map(tag), before = total(s, 7);
+    const r = s.tx(() => campSettle(s, { match: M, outcome: { kind: 'team', winners: [tag(1), tag(2), tag(3)] }, terms: T6, roster }, T0));
+    expect(r.ok && r.settlement.payouts.map(p => [p.tag, p.amount, !!p.stray])).toEqual([[tag(1), 2000, false], [tag(2), 2000, false], [tag(3), 2000, false], [tag(7), 1000, true]]);
+    expect(r.ok && r.settlement.total).toBe(7000);
+    expect(r.ok && r.settlement.payouts.find(p => p.stray)!.op).toBe(campRefundOp(s.hold(M, tag(7))!));
+    expect(bal(s, 7)).toBe(5000); expect(s.hold(M, tag(7))!.state).toBe('refunded');
+    for (const i of [4, 5, 6]) expect(s.hold(M, tag(i))!.state).toBe('lost');
+    expect(total(s, 7)).toBe(before);
+    // « Un seul gagnant » the same way; a winner off the roster is never paid
+    const u = setup(7); for (let i = 1; i <= 7; i++) hold(u, i, { terms: { ...T6, dist: 'single' }, n: i });
+    expect(reason(u.tx(() => campSettle(u, { match: M, outcome: { kind: 'single', winner: tag(7) }, terms: { ...T6, dist: 'single' }, roster }, T0)))).toBe('invalid');
+    const v = u.tx(() => campSettle(u, { match: M, outcome: { kind: 'single', winner: tag(2) }, terms: { ...T6, dist: 'single' }, roster }, T0));
+    expect(v.ok && v.settlement.payouts.map(p => p.amount)).toEqual([6000, 1000]);
+  });
   it('all or nothing: a settlement whose pool does not match its holds writes nothing', () => {
     const s = ten();
     const p = s.pool(M)!; s.putPool({ ...p, held: p.held + 1 });                         // a corrupted pool

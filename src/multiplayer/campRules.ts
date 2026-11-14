@@ -40,6 +40,8 @@ export interface CampLobbyData {
   started?: number; end?: CampEnd; result?: CampResult;
   /** « Prêt » asked so far in this match (each hold's op number: never twice, not even for a player who left and came back). */
   holds?: number;
+  /** Fees the ledger could not return yet (a release that failed: `why` it was asked), seated or not: tried again until it answers. */
+  owed?: { tag: Tag; why: string }[];
 }
 export type CampOk<T = object> = ({ ok: true } & T) | { ok: false; reason: CampRefusal };
 /** « Prêt »'s answer: the ledger must hold the fee under `op` (the server's), or nothing to ask (`again`: already ready or asked). */
@@ -73,7 +75,7 @@ export class CampLobby {
     const d = this.data;
     return {
       match: d.match, state: d.state, terms: { ...d.terms }, frozen: d.frozen, org: d.org, teams: [d.teams[0], d.teams[1]],
-      players: d.players.map(p => ({ tag: p.tag, name: p.name, look: p.look, ...(p.app ? { app: p.app } : {}), team: p.team, ready: p.ready, hold: p.hold, on: p.on, at: p.at, sid: p.sid, ...(p.gone ? { gone: true } : {}) })),
+      players: d.players.map(p => ({ tag: p.tag, name: p.name, look: p.look, ...(p.app ? { app: p.app } : {}), team: p.team, ready: p.ready, hold: p.hold, on: p.on, at: p.at, sid: p.sid, ...(p.gone ? { gone: true } : {}), ...(this.owes(p.tag) ? { owed: true } : {}) })),
       pool: this.pool, full: campFullPool(d.terms), created: d.created, closes: d.created + CAMP_LOBBY_MS, ...(d.result ? { result: d.result } : {}),
     };
   }
@@ -159,6 +161,11 @@ export class CampLobby {
     s.ready = false; s.hold = 'none'; s.unsure = false;
     return { ok: true, release };
   }
+  /** The ledger could not return `tag`'s fee: kept (with why it was asked) to be tried again, shown on their place. */
+  owe(tag: Tag, why: string) { const d = this.data; d.owed = [...(d.owed ?? []).filter(o => o.tag !== tag), { tag, why }]; }
+  /** Nothing of `tag`'s is owed any more (returned, or held again for a new « Prêt »). */
+  repaid(tag: Tag) { const d = this.data; if (!d.owed) return; d.owed = d.owed.filter(o => o.tag !== tag); if (!d.owed.length) delete d.owed; }
+  owes(tag: Tag) { return !!this.data.owed?.some(o => o.tag === tag); }
   /** The fee of this seat may be on the ledger: held, or asked for without an answer. */
   private mustRelease(s: CampSeat) { return this.data.terms.fee > 0 && (s.hold === 'held' || s.hold === 'pending' || !!s.unsure); }
   cancel(tag: Tag): CampOk {

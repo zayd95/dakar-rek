@@ -94,3 +94,39 @@ describe('Grand Camp server: a reload mid-match plays on (review C2)', () => {
     } finally { clock.mockRestore(); }
   });
 });
+
+describe('Grand Camp server: a fee release the ledger could not do (review M1)', () => {
+  it('« Pas prêt » while the ledger fails: the player is told it failed (not « nothing taken »), and the server returns the fee later by itself', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig);
+    expect((await m.req(ws[1], { type: 'ready' }))?.ok).toBe(true);
+    expect(rig.ledger.balance(tag(2))).toBe(9000);
+    rig.ledger.fail.release = 1;
+    expect((await m.req(ws[1], { type: 'unready' }))?.ok).toBe(true);              // « Pas prêt » is done: the place is not ready any more
+    expect(ws[1].money().pop()).toMatchObject({ step: 'release', amount: 1000, failed: 'offline', why: 'unready' });
+    expect(m.shown(tag(2))).toMatchObject({ ready: false, hold: 'none', owed: true });
+    expect(rig.ledger.balance(tag(2))).toBe(9000);
+    expect(m.storage.alarm).not.toBeNull();
+    await m.ring();                                                                  // the alarm tries again
+    expect(ws[1].money().pop()).toMatchObject({ step: 'release', amount: 1000, why: 'unready' });
+    expect(ws[1].money().pop()!.failed).toBeUndefined();
+    expect(rig.ledger.balance(tag(2))).toBe(10_000);
+    expect(m.shown(tag(2))!.owed).toBeUndefined();
+  });
+  it('kick-off waits while a stray hold could not be returned; the match then starts with exactly its players’ fees', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig);
+    expect((await m.req(ws[5], { type: 'ready' }))?.ok).toBe(true);
+    rig.ledger.fail.release = 2;                                                    // its « Quitter » and the start's own try both fail
+    expect((await m.req(ws[5], { type: 'leave' }))?.ok).toBe(true);
+    expect(ws[5].money().pop()).toMatchObject({ step: 'release', failed: 'offline' });
+    rig.ledger.account(tag(7)); const w7 = await m.connect(tag(7), M, 'Joueur 7');
+    expect((await m.req(w7, { type: 'join' }))?.ok).toBe(true);
+    for (const w of [...ws.slice(0, 5), w7]) expect((await m.req(w, { type: 'ready' }))?.ok).toBe(true);
+    expect(priv(m).game).toBeNull();                                                 // not started with player 6's fee in the pool
+    expect(rig.ledger.s.hold(M, tag(6))!.state).toBe('held');
+    await m.ring();
+    expect(priv(m).game).not.toBeNull();
+    priv(m).stopTimer();
+    expect(rig.ledger.balance(tag(6))).toBe(10_000);
+    expect(rig.ledger.s.pool(M)!.held).toBe(6000);
+  });
+});

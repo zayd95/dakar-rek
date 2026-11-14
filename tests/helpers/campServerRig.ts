@@ -187,5 +187,7 @@ export class MatchHandle {
   /** The player's network drops this socket (the runtime then calls webSocketClose). */
   async drop(ws: FakeSocket) { ws.readyState = 3; await this.obj.webSocketClose(ws, 1006, '', false); await this.flush(); }
   async ring() { await this.obj.alarm(); await this.flush(); }
+  /** A player as the lobby's view shows them (what the clients see). */
+  shown(tag: Tag) { return (this.priv.lobby as unknown as { view(): { players: (Record<string, unknown> & { tag: string })[] } } | null)?.view().players.find(p => p.tag === tag); }
   seat(tag: Tag) { return this.priv.lobby?.data.players.find(p => p.tag === tag) as (Record<string, unknown> & { hold: string; ready: boolean; sid: number; op?: string }) | undefined; }
 }

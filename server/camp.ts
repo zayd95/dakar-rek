@@ -238,7 +238,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
     catch (e) { console.log(JSON.stringify({ event: 'camp-ledger', step: 'hold', error: String(e) })); }
     if (!res) { l.held(tag, op, 'unsure'); await this.changed(); return no('offline'); }
     if (!res.ok) { l.held(tag, op, 'refused'); await this.changed(); return no(refusal(res.reason)); }
-    l.held(tag, op, 'held');
+    l.held(tag, op, 'held'); l.repaid(tag);                                // (a fee owed back and held again is this « Prêt »'s)
     const seat = l.seat(tag); if (seat) seat.op = res.hold.op;            // (a duplicate answer is the player's one hold, under its own op)
     this.money(tag, 'hold', res.hold.op, res.hold.amount, res.balance);
     this.tellBalance(tag);
@@ -246,13 +246,31 @@ export class GrandCamp extends DurableObject<CampEnv> {
     await this.maybeStart();
     return yes(res.duplicate ? { duplicate: true } : {});
   }
-  /** The ledger returns a player's held fee (nothing held: nothing happens). A failure is mended before kick-off (`maybeStart`) or by the end's refund. */
-  private async release(tag: Tag, why: string) {
-    if (!this.lobby || this.lobby.terms.fee === 0) return;
+  /**
+   * The ledger returns a player's held fee (nothing held: nothing happens). Not reached: the player is told so (their money step fails, never « nothing
+   * was taken »), and the fee is owed: tried again by the alarm and before kick-off (which waits for it), refunded by the end's settlement at the latest.
+   */
+  private async release(tag: Tag, why: string, tell = true): Promise<boolean> {
+    const l = this.lobby;
+    if (!l || l.terms.fee === 0) return true;
     try {
       const r = await this.ledger().campRelease({ match: this.match!, tag });
+      l.repaid(tag);
       if (!r.duplicate && r.op) { this.money(tag, 'release', r.op, r.amount, r.balance ?? undefined, why); this.tellBalance(tag); }
-    } catch (e) { console.log(JSON.stringify({ event: 'camp-ledger', step: 'release', why, error: String(e) })); }
+      return true;
+    } catch (e) {
+      console.log(JSON.stringify({ event: 'camp-ledger', step: 'release', match: this.match, why, error: String(e) }));
+      l.owe(tag, why);
+      if (tell) this.money(tag, 'release', `r-${this.match}-${tag}`, l.terms.fee, undefined, why, 'offline');
+      return false;
+    }
+  }
+  /** The fees still owed back, asked again (the alarm's, until the ledger answers; the lobby's end refunds whatever is left). */
+  private async retryOwed() {
+    const l = this.lobby, owed = l?.state === 'lobby' ? l.data.owed ?? [] : [];
+    if (!owed.length) return;
+    for (const o of [...owed]) await this.release(o.tag, o.why, false);
+    await this.changed();
   }
 
   // ================================================================== kick-off, the match, the end
@@ -264,7 +282,10 @@ export class GrandCamp extends DurableObject<CampEnv> {
       let pool: { pool: CampPoolRow | null; holds: CampHoldRow[] };
       try { pool = await this.ledger().campPool(this.match!); } catch { return; }   // asked again at the next change
       const seated = new Set(l.data.players.map(p => p.tag));
-      for (const h of pool.holds) if (h.state === 'held' && !seated.has(h.tag)) await this.release(h.tag, 'leave');
+      let stray = false;
+      for (const h of pool.holds) if (h.state === 'held' && !seated.has(h.tag) && !(await this.release(h.tag, l.data.owed?.find(o => o.tag === h.tag)?.why ?? 'leave'))) stray = true;
+      for (const o of l.data.owed ?? []) if (!pool.holds.some(h => h.tag === o.tag && h.state === 'held')) l.repaid(o.tag);   // (returned after all)
+      if (stray) { await this.changed(); return; }                         // never kicked off with a fee that is not a player's: the alarm tries again
       let missing = false;
       for (const p of l.data.players) if (!pool.holds.some(h => h.tag === p.tag && h.state === 'held')) { p.ready = false; p.hold = 'none'; missing = true; }
       if (missing || !l.startable()) { await this.changed(); return; }
@@ -335,18 +356,20 @@ export class GrandCamp extends DurableObject<CampEnv> {
     let s: CampSettlement | null = null;
     if (t.fee > 0) {
       try {
-        let r = await this.ledger().campSettle({ match: this.match!, outcome: o, terms: { fee: t.fee, size: t.size, dist: t.dist } });
+        const roster = l.data.players.map(p => p.tag);                    // (a hold of anyone else is refunded to them, never shared)
+        let r = await this.ledger().campSettle({ match: this.match!, outcome: o, terms: { fee: t.fee, size: t.size, dist: t.dist }, roster });
         if (!r.ok) {                                                       // winners the ledger does not see holding: every fee goes back instead
           console.log(JSON.stringify({ event: 'camp-ledger', step: 'settle', outcome: o.kind, error: r.reason }));
-          r = await this.ledger().campSettle({ match: this.match!, outcome: { kind: 'refund', why: 'stopped' }, terms: { fee: t.fee, size: t.size, dist: t.dist } });
+          r = await this.ledger().campSettle({ match: this.match!, outcome: { kind: 'refund', why: 'stopped' }, terms: { fee: t.fee, size: t.size, dist: t.dist }, roster });
         }
         if (!r.ok) throw new Error(r.reason);
         s = r.settlement;
         for (const p of s.payouts) {
           const b = r.balances.find(x => x.tag === p.tag);
-          this.money(p.tag, s.kind === 'refund' ? 'refund' : 'payout', p.op, p.amount, b?.balance);
+          this.money(p.tag, s.kind === 'refund' || p.stray ? 'refund' : 'payout', p.op, p.amount, b?.balance);
           this.tellBalance(p.tag);
         }
+        delete l.data.owed;
       } catch (e) {
         const tries = ++this.settleTries;
         console.log(JSON.stringify({ event: 'camp-ledger', step: 'settle', match: this.match, outcome: o.kind, tries, error: String(e) }));
@@ -362,10 +385,11 @@ export class GrandCamp extends DurableObject<CampEnv> {
       }
     }
     const g = this.game, end = l.data.end ?? 'stopped';
-    const money = !!s && s.total > 0;
+    const mine = s ? s.payouts.filter(p => !p.stray) : [], total = mine.reduce((a, p) => a + p.amount, 0);   // the match's own pool (a stray's refund is theirs)
+    const money = !!s && total > 0;
     const result: CampResult = {
       end: s && s.kind === 'refund' && end === 'win' ? 'stopped' : end, score: g ? g.score : [0, 0], winner: end === 'win' && g ? g.winner : null, dist: t.dist, fee: t.fee,
-      total: s?.total ?? 0, payouts: s ? s.payouts.map(p => ({ tag: p.tag, amount: p.amount })) : [],
+      total, payouts: mine.map(p => ({ tag: p.tag, amount: p.amount })),
       ...(s && s.kind === 'single' && s.payouts[0] ? { single: s.payouts[0].tag } : !s && o.kind === 'single' ? { single: o.winner } : {}),
       money: money ? 'settled' : 'none', at: Date.now(),
     };
@@ -383,6 +407,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
     let t = Infinity;
     if (l) { const d = l.deadline(); if (d !== null) t = Math.min(t, d); }
     if (l?.state === 'play') t = Math.min(t, Date.now() + WATCH_MS);
+    if (l?.state === 'lobby' && l.data.owed?.length) t = Math.min(t, Date.now() + RETRY_MS);
     if (this.outcome) t = Math.min(t, Date.now() + Math.min(RETRY_MAX_MS, RETRY_MS * 2 ** Math.max(0, this.settleTries - 1)));
     if (l?.state === 'over' && l.data.result) t = Math.min(t, l.data.result.at + KEEP_MS);
     if (!Number.isFinite(t)) { await this.ctx.storage.deleteAlarm(); return; }
@@ -398,6 +423,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
         await this.finish('stopped'); return;
       }
       if (this.outcome) { await this.settle(); return; }
+      if (l.state === 'lobby') { await this.retryOwed(); await this.maybeStart(); if (this.game) return; }
       if (l.state === 'over' && l.data.result && Date.now() >= l.data.result.at + KEEP_MS) {
         for (const ws of this.ctx.getWebSockets()) { this.send(ws, { type: 'bye', reason: 'over' }); try { ws.close(1000, 'Over'); } catch { /* gone */ } }
         await this.ctx.storage.deleteAll(); this.lobby = null; this.match = null; return;
@@ -430,8 +456,8 @@ export class GrandCamp extends DurableObject<CampEnv> {
   private broadcastLobby() { if (this.lobby) this.broadcast({ type: 'lobby', lobby: this.lobby.view() }); }
   /** The match's frames go to its players on the roster only (not a stranger's socket, nor a player who left for good). */
   private toPlayers(s: string) { const l = this.lobby; for (const ws of this.ctx.getWebSockets()) { const t = this.ctx.getTags(ws)[0], seat = t ? l?.seat(t) : undefined; if (seat && !seat.gone) { try { ws.send(s); } catch { /* closing */ } } } }
-  private money(tag: Tag, step: CampMoneyStep, op: string, amount: number, balance?: number, why?: string) {
-    const m: CampServerMessage = { type: 'money', step, op, amount, ...(balance !== undefined ? { balance } : {}), ...(why ? { why } : {}) };
+  private money(tag: Tag, step: CampMoneyStep, op: string, amount: number, balance?: number, why?: string, failed?: CampRefusal) {
+    const m: CampServerMessage = { type: 'money', step, op, amount, ...(balance !== undefined ? { balance } : {}), ...(why ? { why } : {}), ...(failed ? { failed } : {}) };
     for (const ws of this.ctx.getWebSockets(tag)) this.send(ws, m);
   }
   /** The player's account sockets get the new Teranga Money balance (the account's own `balance` message). */
