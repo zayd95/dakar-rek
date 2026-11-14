@@ -10,7 +10,10 @@
 //   (read from its own SQLite file) shows one settlement, the pot equal to the holds, each winner's +2 000 F, each loser's −1 000 F, a bystander
 //   untouched, totals conserved.
 //   Run 2 (a second worker, CAMP_TEST_CLOCK=20: a 20 s match): a cancelled lobby refunds everyone; a player without the fee cannot be ready (told
-//   why); a draw at full time refunds everyone; a 0 F match touches no money.
+//   why); a draw at full time refunds everyone; a 0 F match touches no money. Then what the review of the release candidate found (1.0.1 camp
+//   fixes): a « Prêt » whose id is a winner's payout id is refused and the match settles; a page reloaded mid-match moves its body again at once; a
+//   device whose match is finished or gone from the server can organize the next one; a fee release the ledger could not do (CAMP_TEST_FAIL=release:
+//   the first one of each match object fails) is shown as failed, then returned by the server by itself.
 // Usage: node scripts/check-grand-camp.mjs          Ports: CAMP_PORT (default 8743) and the next one, inspectors at +500. Logs and results: CAMP_TMP.
 import { spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -34,7 +37,7 @@ const F = n => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} F`;
 // ------------------------------------------------------------------ the client module and the bots, as the game ships them (TypeScript → one ES module)
 const esbuild = createRequire(import.meta.url)(path.join(ROOT, 'node_modules/esbuild'));
 await esbuild.build({
-  stdin: { contents: "export { CampClient } from './src/online/campClient'; export { CampBot, STRONG, WEAK, STILL, WARM } from './tests/helpers/campBot';", resolveDir: ROOT, loader: 'ts' },
+  stdin: { contents: "export { CampClient } from './src/online/campClient'; export { CampSession } from './src/online/campSession'; export { CampBot, STRONG, WEAK, STILL, WARM } from './tests/helpers/campBot'; export { moneyLine } from './src/ui/phone/apps/campText';", resolveDir: ROOT, loader: 'ts' },
   bundle: true, format: 'esm', platform: 'neutral', target: 'es2022', outfile: path.join(TMP, 'camp-lib.mjs'), logLevel: 'warning',
 });
 const lib = await import(pathToFileURL(path.join(TMP, 'camp-lib.mjs')).href);
@@ -269,7 +272,7 @@ try {
   W.proc.kill('SIGTERM');
 
   // ==================================================================================================== run 2: cancel, no fee, a draw, a free match (a 20 s clock)
-  const V = await startWorker(PORT + 1, 'short', ['CAMP_TEST_CLOCK:20']);
+  const V = await startWorker(PORT + 1, 'short', ['CAMP_TEST_CLOCK:20', 'CAMP_TEST_FAIL:release']);
   const qs = Array.from({ length: 7 }, (_, i) => player(V.base, i));
   const v0 = {};
   for (const p of qs) { const a = await account(V.base, p.key, p.name); const r = await a.req({ type: 'fund', amount: p.i === 6 ? 300 : 5000 }); v0[p.tag] = r?.balance; await a.close(); }
@@ -327,6 +330,78 @@ try {
     !!RF && RF.money === 'none' && RF.total === 0 && RF.payouts.length === 0 && six.every(p => p.client.state.money.length === 0) && bal3.every(b => b === 5000) && LF.pools.length === 0 && LF.ops.length === 0,
     `end ${RF?.end} ${RF?.score?.join('-')} · ${D.client.state.events.filter(e => e.k === 'goal').length} goals · balances ${bal3.join(' ')}`);
   for (const p of six) p.client.close();
+
+  // ------------------------------------------------------------------ the release candidate's review (1.0.1 camp fixes)
+  const fresh = p => { p.client = new lib.CampClient({ key: () => p.key, profile: () => ({ name: p.name, look: 1 }), endpoint: new URL('/api/camp', V.base).href, WebSocketImpl: WebSocket, fetchImpl: fetch }); p.bot = null; return p; };
+  for (const p of six) fresh(p);
+  const m4 = (await D.client.create({ fee: 1000, size: 6, dist: 'team', open: true, hub: 'plateau' })).match;
+  for (const p of six.slice(1)) { await p.client.open(m4); await p.client.join(); }
+  await until(() => D.client.state.lobby?.players.length === 6);
+  // 11. a « Prêt » whose request id is another player's payout op id: no answer (not a request id), nothing held; the match then settles
+  const forged = `w-${m4}-${D.tag}`, acks0 = A.client.wire.ack?.n ?? 0;
+  A.client.ws.send(JSON.stringify({ type: 'ready', id: forged }));                   // (the client's own socket: a hand-made frame, as a script would send)
+  await sleep(1500);
+  const forgedAck = (A.client.wire.ack?.n ?? 0) - acks0, aSeat = seat(A, D);
+  for (const p of six) await p.client.ready();
+  await until(() => six.every(p => p.client.state.roster), 15000);
+  const team0 = D.client.state.lobby.players.filter(x => x.team === 0).map(x => x.tag);
+  for (const p of six) { p.bot = null; p.style = team0.includes(p.tag) ? lib.STRONG : lib.STILL; if (p !== C) drive(p); }
+  // 12. (during that match) C's page reloads: a new client for the same device, the old socket not closed first; its stick counts from 1 again
+  C.style = lib.STILL; drive(C);
+  await sleep(5000);
+  const sidC = C.client.state.sid, seqOld = A.client.state.snap?.players.find(x => x.sid === sidC)?.seq ?? null;
+  stop(C); const oldC = C.client; fresh(C);
+  await C.client.open(m4);
+  await until(() => C.client.state.sid === sidC && !!C.client.state.snap, 8000);
+  const at0 = A.client.state.snap.players.find(x => x.sid === sidC);
+  const push = setInterval(() => C.client.input(0, at0.z > 0 ? -1 : 1, at0.z > 0 ? Math.PI : 0), 50);
+  await sleep(3000); clearInterval(push);
+  const at1 = A.client.state.snap.players.find(x => x.sid === sidC), moved = at0 && at1 ? Math.hypot(at1.x - at0.x, at1.z - at0.z) : 0;
+  check('12. a page reloaded mid-match (a new client, its stick counter from 1, the old socket replaced): its sticks are applied at once — the body runs, the server’s counter starts again',
+    oldC.state.bye === 'replaced' && moved > 3 && at1.seq > 0 && at1.seq <= C.client.seq && seqOld > at1.seq,
+    `moved ${moved.toFixed(1)} m in 3 s · server counter ${seqOld} before the reload, ${at1?.seq} after (the new page sent ${C.client.seq})`);
+  drive(C);
+  await until(() => six.every(p => p.client.state.result), 90000, 200);
+  for (const p of six) stop(p);
+  const R4 = D.client.state.result, L4 = ledgerRows(V, m4);
+  const own = new RegExp(`^(?:[hrf]-${m4}-[0-9a-f]{16}-\\d{1,9}|w-${m4}-[0-9a-f]{16})$`);
+  check('11. a « Prêt » whose id is a winner’s payout op id is refused (no answer, nothing held); the match settles (the result written), and every op id on the ledger is the server’s own',
+    forgedAck === 0 && aSeat?.ready === false && !!R4 && R4.money === 'settled' && L4.pools[0]?.state !== 'open' && L4.ops.length > 0 && L4.ops.every(o => own.test(o.id)) && !L4.ops.some(o => o.id === forged),
+    `end ${R4?.end} ${R4?.score?.join('-')} · pool ${L4.pools[0]?.state} · ops ${L4.ops.map(o => o.id.slice(0, 2) + '…' + o.id.slice(-2)).join(' ')}`);
+  for (const p of six) p.client.close();
+  // 13. a device whose match is gone from the server (a 24 h-old match: its welcome has no lobby), and one whose result was shown: both organize again at once
+  const mem = () => { const m = new Map(); return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) }; };
+  const sessionOf = (p, mine) => { const st = mem(); if (mine) st.setItem('dakarrek.camp.match', mine); const s = new lib.CampSession(); s.configure({ key: () => p.key, profile: () => ({ name: p.name, look: 1 }), endpoint: new URL('/api/camp', V.base).href, storage: () => st, wallet: () => 0, account: () => null, WebSocketImpl: WebSocket, fetchImpl: fetch }); return s; };
+  const lost = sessionOf(E, 'abcdef0123456789'), lostWas = lost.mine;
+  lost.restore();
+  const forgotLost = await until(() => lost.mine === null, 10000);
+  const madeLost = await lost.create({ fee: 0, size: 6, dist: 'team', open: true, hub: 'plateau' });
+  const done = sessionOf(D, m4);
+  done.restore();
+  await until(() => !!done.client.state.result, 10000);
+  const keptBefore = done.mine; done.shown(m4);                                        // as the result card at the pitch (or the phone) does
+  const madeDone = await done.create({ fee: 0, size: 6, dist: 'team', open: true, hub: 'plateau' });
+  check('13. a device kept on a match the server no longer has is freed (forgotten at the welcome) and organizes at once; one kept on a finished match is freed once its result is shown',
+    lostWas === 'abcdef0123456789' && forgotLost && madeLost.ok && keptBefore === m4 && madeDone.ok && done.mine === madeDone.match,
+    JSON.stringify({ forgotLost, madeLost: madeLost.ok || madeLost.reason, keptBefore: keptBefore === m4, madeDone: madeDone.ok || madeDone.reason }));
+  await lost.client.cancel(); lost.client.close(); await done.client.cancel(); done.client.close();
+  await sleep(800);                                                                 // (the district's list drops the cancelled lobbies)
+  // 14. « Pas prêt » while the ledger cannot return the fee (CAMP_TEST_FAIL: the first release of this match fails): failed, said so — never
+  //     « Rien n’avait été pris » — then returned by the server by itself
+  for (const p of [E, G]) fresh(p);
+  const m5 = (await E.client.create({ fee: 1000, size: 6, dist: 'team', open: true, hub: 'plateau' })).match;
+  const gBefore = await balance(V.base, G.key);
+  await G.client.open(m5); await G.client.join(); await G.client.ready();
+  const gHeld = await balance(V.base, G.key);
+  const unG = await G.client.unready();
+  const failedStep = G.client.state.money.find(m => m.step === 'release');
+  const owedShown = await until(() => seat(G)?.owed === true, 3000);
+  const backG = await until(async () => G.client.state.money.some(m => m.step === 'release' && m.state === 'done' && m.amount === 1000), 30000, 250);
+  const gAfter = await balance(V.base, G.key);
+  check('14. « Pas prêt » whose release the ledger could not do: the money step failed (« Mise de 1 000 F pas encore rendue : le serveur réessaie tout seul. »), never « Rien n’avait été pris »; the server returns the fee by itself (a done release of 1 000 F), Teranga Money as before',
+    unG.ok && failedStep?.state === 'failed' && /pas encore rendue/.test(lib.moneyLine(failedStep).text.replace(/[  ]/g, ' ')) && !G.client.state.money.some(m => /Rien/.test(lib.moneyLine(m).text)) && owedShown && backG && gHeld === gBefore - 1000 && gAfter === gBefore,
+    `steps ${G.client.state.money.map(m => `${m.step}:${m.state}:${m.amount}`).join(' ')} · « ${failedStep ? lib.moneyLine(failedStep).text : ''} » · balance ${gHeld} → ${gAfter}`);
+  for (const p of [E, G]) p.client.close();
 } catch (e) {
   check('the check went through', false, e.stack ?? String(e));
 } finally {

@@ -37,6 +37,12 @@ export interface CampEnv {
    * checked quickly. Never set in production (wrangler.jsonc has no such variable).
    */
   CAMP_TEST_CLOCK?: string;
+  /**
+   * Checks only (`--var CAMP_TEST_FAIL:release`, scripts/check-grand-camp.mjs): the first fee release each match object asks of the ledger fails, as
+   * an unreachable ledger would, so the failed release, its retry and the kick-off that waits for it are checked on the real runtime. Never set in
+   * production (wrangler.jsonc has no such variable).
+   */
+  CAMP_TEST_FAIL?: string;
 }
 /** A socket's player; `replaced`: another socket of theirs took the place (a reload): nothing more of this one is read. */
 interface Attach { tag: Tag; name: string; look: number; app?: string; replaced?: true }
@@ -69,7 +75,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
   private outcome: CampOutcome | null = null;
   private interrupted = false; private ending = false;
   /** Failed tries of the settlement in hand (kept with it: a restart does not start the count again); of the kick-off's pool check. */
-  private settleTries = 0; private poolTries = 0;
+  private settleTries = 0; private poolTries = 0; private testFailed = false;
   private timer: ReturnType<typeof setInterval> | null = null;
   private acc = 0; private last = 0; private lastDue = 0; private lastArm = 0;
   private queue: Promise<void> = Promise.resolve();
@@ -269,6 +275,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
     const l = this.lobby;
     if (!l || l.terms.fee === 0) return true;
     try {
+      if (this.env.CAMP_TEST_FAIL === 'release' && !this.testFailed) { this.testFailed = true; throw new Error('CAMP_TEST_FAIL: the ledger did not answer'); }
       const r = await this.ledger().campRelease({ match: this.match!, tag });
       l.repaid(tag);
       if (!r.duplicate && r.op) { this.money(tag, 'release', r.op, r.amount, r.balance ?? undefined, why); this.tellBalance(tag); }

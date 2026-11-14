@@ -6,7 +6,8 @@
 //   menu; B gets the message and opens the match from its « Voir le match »; both walk to the pitch (the stick); 8 bots are invited, join and ready;
 //   both pages press « Prêt » (the fee pending → done); kick-off; the pages play with PASSE · DRIBBLE · TIR through real taps (a finger on the stick, a
 //   second one on the buttons); a goal, and every page shows the server's score; A's socket drops (« Reconnexion… ») and comes back; B reloads mid-match
-//   and is back on the pitch within 60 s; full time; the result and the payout only after the server's settlement; Teranga Money matches the ledger.
+//   and is back on the pitch within 60 s — and its stick moves its body again at once; full time; the result and the payout only after the server's
+//   settlement; Teranga Money matches the ledger; the result card at the pitch frees the device for the next Grand Camp. The crown shows during the match.
 //   Then the draw calls and the bodies drawn per quality, during that 10-player match and a 14-player one (page A + 13 bots).
 // Debug hooks only set the scene (a district, a place to stand, the bots' invitation, the quality) and read state; nothing is paid or played by them.
 // Usage: npx vite build --mode online --outDir <dist> && node scripts/check-grand-camp-ui.mjs <dist> [outDir]
@@ -402,6 +403,8 @@ try {
   check('5b. the nine other players drawn from the snapshots (their look, their team’s shirt), the NPCs’ match and kickabout aside, presence avatars of the players not drawn twice',
     bodiesA && iA2.bodies === 9 && (await A.d(() => window.__dakar.kickabout()?.booked)) === true && (await A.d(() => window.__dakar.presence().visible)) <= PAGES - 2,
     JSON.stringify({ bodies: iA2.bodies, full: iA2.full, figures: iA2.figures, presenceDrawn: await A.d(() => window.__dakar.presence().visible) }));
+  const crown = await A.until(() => window.__dakar.grandCamp.info().live && window.__dakar.presence().selfMarker === true, null, 10000);
+  check('5e. during the match the crown is over my head (the other players are the match’s bodies, not presence avatars)', crown, JSON.stringify({ presenceDrawn: await A.d(() => window.__dakar.presence().visible), crown }));
   // a third (fourth) page that is not in the match watches from the touchline: the street's presence shows the players on the pitch
   for (const X of pages.slice(2)) {
     const onGrass = await X.until(([tags, pt]) => { const ps = window.__dakar.presence().peers.filter(p => tags.includes(p.tag)); return ps.length === tags.length && ps.every(p => Math.abs(p.x - pt.x) < 22 && Math.abs(p.z - pt.z) < 17); }, [[A.tag, B.tag], pitch], 30000);
@@ -463,6 +466,7 @@ try {
   let backAt = null, dropAt = null;
   const offEv = bots[0].client.onEvent(e => { if (e.who !== sidB) return; if (e.k === 'drop' && dropAt === null) dropAt = Date.now(); if (e.k === 'back' && backAt === null) backAt = Date.now(); });
   await A.d(() => { window.__dakar.step(1 / 30, 1); window.__dakar.pause(true); });   // (A's stick at rest; its game loop paused while B reloads: CPU for B)
+  const seqB0 = bots[0].client.state.snap?.players.find(x => x.sid === sidB)?.seq ?? null;   // the server's stick counter of B's page before the reload
   const tR = Date.now();
   await B.page.reload({ timeout: 300000 });
   B.t = await realTouch(B.page);
@@ -477,6 +481,14 @@ try {
   check('7b. B reloads mid-match: the page opens the match’s socket again at once (before the city has loaded); the server has B back on the pitch within 60 s (same place on the roster, not gone); the page draws and plays it again once loaded',
     serverBackS !== null && serverBackS < 60 && liveB && !!iB.me && bSeat && !bSeat.gone && bSeat.on && iB.sid === sidB,
     `server: back on the pitch ${serverBackS === null ? 'never' : serverBackS.toFixed(1) + ' s'} after the reload began (drop ${dropAt ? ((dropAt - tR) / 1000).toFixed(1) + ' s' : 'none'}) · page live again in ${backS.toFixed(1)} s (this machine's full reload of the game) · events since: ${bots[0].client.state.events.slice(ev0).filter(e => e.who === sidB).map(e => e.k).join(',')} · ${JSON.stringify({ sid: iB.sid, seat: bSeat ? { on: bSeat.on, gone: !!bSeat.gone } : null })}`);
+  // the reloaded page's stick (its counter from 1 again) moves its body at once: a finger forward, then back, the server's own positions of B traced
+  const jB = await B.t.centre('#joy'), traceB = [], tM = Date.now();
+  await B.t.down(3, jB.x, jB.y);
+  while (Date.now() - tM < 4000) { const back = Date.now() - tM > 2000 ? 1 : -1; await B.t.move(3, jB.x, jB.y + 38 * back, 1); const q = bots[0].client.state.snap?.players.find(x => x.sid === sidB); if (q) traceB.push(q); await sleep(100); }
+  await B.t.up(3);
+  const ranB = traceB.length ? Math.max(...traceB.map(q => Math.hypot(q.x - traceB[0].x, q.z - traceB[0].z))) : 0, seqB1 = traceB.at(-1)?.seq ?? null;
+  check('7c. the reloaded page plays at once: its stick (the counter from 1 again) moves its body on the server — not frozen for as long as it had played',
+    ranB > 2 && seqB1 !== null && seqB1 > 0 && (seqB0 === null || seqB1 < seqB0), JSON.stringify({ ranB: +ranB.toFixed(1), seqBefore: seqB0, seqAfter: seqB1, samples: traceB.length }));
   notes.reloadServerBackS = serverBackS === null ? null : +serverBackS.toFixed(1);
   notes.reloadPageLiveS = +backS.toFixed(1);
 
@@ -501,6 +513,8 @@ try {
     ended && !!R && pool && (pool.state === 'settled' || pool.state === 'refunded') && payOps.reduce((a, o) => a + o.amount, 0) === R.total && order.every(o => !!o.result && o.result.at === R.at)
     && pageMoney.every(m => (m.payout[0] ?? 0) === m.expect) && !notes.pagePlayersSeen.gone.some(n => n === 'Awa' || n === 'Moussa'),
     JSON.stringify({ end: R?.end, score: R?.score, winner: R?.winner, total: R?.total, pool: pool?.state, pageMoney, gone: notes.pagePlayersSeen.gone, pageEvents: notes.pagePlayersSeen.events }));
+  const freedByCard = await Promise.all([A, B].map(p => p.until(() => !window.__dakar.grandCamp.info().mine && window.__dakar.grandCamp.info().log.results >= 1, null, 15000)));
+  check('8d. the result card at the pitch frees the device: the match is forgotten once its result was shown (no « Fermer » needed to organize the next one)', freedByCard.every(Boolean), JSON.stringify(freedByCard));
   await A.d(m => window.__dakar.phone(`camp:${m}`), match);
   await A.until(() => /Fermer/.test(document.querySelector('#phone .gc-s-result')?.innerText ?? ''), null, 30000);
   await A.wait(600);
