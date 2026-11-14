@@ -35,19 +35,19 @@ What the boards actually offered over 30 city days (simulated draw of the real g
 
 ## 2. Deliveries played by the script (real touch, game clock)
 
-One run of `scripts/check-tiak-everywhere.mjs` (SwiftShader, the joystick pushed to its edge, the way found round the buildings). « Walked » is the path really covered, pick-up leg included; a leg longer than about 170 m was cut to its last 80 m with a debug hook, so these are not full approach times.
+The final run of `scripts/check-tiak-everywhere.mjs` on this branch (77/77 checks; SwiftShader, the joystick pushed to its edge, the way found round the buildings). « Walked » is the path really covered on foot; a leg longer than about 170 m was cut to its last 80 m with a debug hook, so these are not full approach times. The car rapide's journey is not in the « delivery leg » column.
 
-| District | Run | Pay | Way counted for the pay | Walked | Pick-up leg | Delivery leg | Time allowed |
+| District | Run | Pay (stated = paid, once) | Way counted for the pay | Walked | Pick-up leg | Delivery leg | Time allowed |
 |---|---|---|---|---|---|---|---|
-| Pikine | Maïga → Chez Pathé | 1 150 F | 144 m | 266 m | 41 s | 39 s | 104 s |
-| Plateau | Dibiterie → Chez Fatou | 1 000 F | 26 m | 102 m | 23 s | 7 s | 60 s |
-| Mermoz | Boulangerie → Arrêt du car | 1 000 F | 89 m | 142 m | 21 s | 18 s | 80 s |
-| Corniche | Salle de sport → Café Touba | 1 000 F | 82 m | 190 m | 30 s | 13 s | 77 s |
-| Almadies | Place → Café Touba | 1 000 F | 88 m | 234 m | 33 s | 28 s | 79 s |
-| Corniche → Almadies (car rapide) | Marché au poisson → Le Pointe | 2 500 F stated, **1 500 F paid: late** | 417 m | 286 m | 39 s | 35 s + the car rapide | 226 s |
-| Mermoz (with a reload) | Boulangerie → Café Touba | 1 000 F | 46 m | 113 m | 21 s | 10 s | 61 s |
+| Pikine | Garage → Grand-place | 1 400 F | 219 m | 323 m | 42 s | 41 s | 138 s |
+| Plateau | Chez Fatou → Place | 1 000 F | 39 m | 89 m | 17 s | 11 s | 60 s |
+| Mermoz | Café Touba → Boulangerie | 1 000 F | 46 m | 147 m | 32 s | 10 s | 61 s |
+| Corniche | Place → Maïga | 1 000 F | 99 m | 154 m | 17 s | 24 s | 84 s |
+| Almadies | Maison Dakar → Embarcadère | 1 150 F | 139 m | 227 m | 22 s | 37 s | 102 s |
+| Corniche → Pikine (car rapide) | Maïga de Fann → Garage Modou | 6 400 F | 2 048 m | 212 m | 19 s | 41 s + the car rapide | 954 s |
+| Mermoz, reloaded mid-run | Arrêt du car → Café Touba | 1 050 F | 113 m | 107 m | 2 s | 29 s | 90 s |
 
-Read from it: the script covered 3.3 to 4.4 m per played second on foot (3.7 on average), slower than the 5.6 m/s the time limits assume, and every delivery on foot inside a district was well inside its limit. **The short hop to the next district is late when the car rapide is taken**: the car rapide's journey counts on the run's clock (18 min of road × 0.15 = 162 s) and Corniche → Almadies allows 226 s. That is today's rule (the limit comes from the length of the way); a ride of 1.5 km or more allows 700 s and more and keeps room for it. See « For the owner » below.
+Read from it: the script covered 3.2 to 3.9 m per played second on foot (about 3.6 on average; 3.7 in an earlier run, the pace used in section 3), slower than the 5.6 m/s the time limits assume, and every delivery was well inside its limit. **An earlier run took the short hop Corniche → Almadies (2 500 F, 417 m, 226 s allowed) by car rapide and arrived late (paid 1 500 F)**: the car rapide's journey counts on the run's clock (18 min of road × 0.15 = 162 played seconds). That is today's rule (the limit comes from the length of the way); a ride of 1.5 km or more allows 700 s and more and keeps room for it. See « For the owner » below.
 
 ## 3. Deliveries and income per real hour (simulated)
 
@@ -104,3 +104,4 @@ Deliveries at the mean pay of that row; hours at the net income of that row (sim
 1. **The level of pay was kept, not changed.** A run inside a district pays what the fixed routes paid (1 000–1 400 F for the same hops, up to 2 000 F for the longest); a ride to another district pays by its length around the 5 000–6 500 F of 1.0. Two things are new and are yours to confirm: a ride across two roads reaches 10 000 F (12 500 F as an express), twice the dearest VTC ride (5 000 F), and the first month of the F2 costs about an hour of deliveries.
 2. **The short hop Corniche ↔ Almadies (2 500 F) is late by car rapide** (section 2). Riding or walking the border street it is on time. If the car rapide should stay a fair way to deliver, the time limit of a ride to another district needs a floor (not changed here: the brief asked for the limit as today).
 3. The variety bonus (+5 % per other activity practised, up to +15 %) is not in any number above.
+4. **Not Tiak Tiak, seen by its check:** a sheet (`src/ui/sheet.ts` `open`) can open scrolled where the previous one was left (the car rapide's sheet opened 181–229 px down, showing the rows on foot first). `p.scrollTop = 0` runs while `#modal` is still `display:none`, so it does nothing; setting it after `classList.add('on')` would fix it. Not changed here (shared UI, outside this package).
