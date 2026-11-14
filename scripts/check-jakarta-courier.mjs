@@ -66,7 +66,11 @@ const p1 = await AT(), pad = await d(() => { window.__padStop = true; return win
 // loaded machine's touch latency, which made this slide anything from 0.14 to 0.25 m for the same game)
 const released = pad.filter(s => s.down).at(-1) ?? trace[trace.length - 1];
 const first = trace.find(s => s.v < -0.05), minV = Math.min(...trace.map(s => s.v));
-check('the brake held at a standstill: nothing for a short deliberate pause (0.7 s of game time), then the bike moves backwards', first && first.t >= 0.6, JSON.stringify(first));
+// the hold as the game counts it (src/transport/controls.ts REVERSE_DELAY, 0.55 s since the 1.0 driving pass; 0.7 when this check was written): a whole frame
+// of hold from the first frame the pedal is down, so it starts at the last frame drawn with the pedal up, and ends at the first frame moving backwards
+const d0 = pad.findIndex(s => s.down), up0 = d0 > 0 ? pad[d0 - 1] : null, back = d0 >= 0 ? pad.slice(d0).find(s => s.v < -0.05) : null;
+const hold = up0 && back ? +(back.t - up0.t).toFixed(2) : null;
+check('the brake held at a standstill: nothing for a short deliberate pause (0.55 s of game time), then the bike moves backwards', hold !== null && hold >= 0.54, JSON.stringify({ hold, lastUp: up0, firstBack: back, harnessFirstLook: first }));
 // a slow walk: PADDLE_SPEED, 1.15 m/s since the 1.0 driving pass (8ac1e7f0: 0.85 before, when this bound was written), src/transport/controls.ts
 check('pushed with the feet: a slow walk at most (never an engine reverse)', minV < -0.4 && minV >= -1.2, `min ${minV.toFixed(2)} m/s`);
 check('the rider\'s legs come down (the « RidePaddle » pose) while it moves backwards, and no « R » shows', trace.filter(s => s.v < -0.2).every(s => s.paddling && s.clip === 'RidePaddle' && !s.r), JSON.stringify(trace.filter(s => s.v < -0.2).slice(0, 3)));
