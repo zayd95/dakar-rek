@@ -80,7 +80,7 @@ describe('Tonton Ibou\'s welcome: done once, gone for good', () => {
     for (let i = 0; i < 3; i++) { const j = acceptJob(s, 'pk_mame_boutique', true, 600_000); expect(j).not.toBeNull(); expect(completeJob(s, j!.runId)?.paid).toBeGreaterThan(0); }
     expect(welcomeEarly(s.data)).toBe(false);
     const here = suggestionHere(r, s, 'pikine', 17.6);
-    expect(here?.id).toBe('ibou_tiak');                                                     // Ibou heard of the first delivery
+    expect(here?.id).toBe('pouce_meuble');                                                  // 1.0.1: the next coup de pouce leads the local leads (Ibou's reaction follows)
     expect(pickGoal({ evening: 'Combat ce soir à l’arène (Pikine)', local: here?.hint })).toEqual({ kind: 'evening', text: 'Combat ce soir à l’arène (Pikine)' });
     // and a brand-new player at 17.6 h: the welcome leads the local leads, the gala still comes first
     const n = fresh();

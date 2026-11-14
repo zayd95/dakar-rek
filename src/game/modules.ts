@@ -22,6 +22,7 @@ import { pikineDnaModule } from './pikineDna';
 import { signFitModule } from './signFit';
 import { transport } from '../transport/module';
 import { moto, tiakMoto } from '../transport/motoModule';
+import { pouceModule } from '../economy/pouceModule';
 import { car } from '../transport/carModule';
 import { berline, suv } from '../transport/premiumCars';
 import { gainde, ndiayeSales, rafet, sarrSales, teranga } from '../transport/modelCars';
@@ -261,7 +262,7 @@ export const MODULES: GameModule[] = [
   wolofModule,
   ESTATE_MODULE,        // before the parked cars (assetKit): the homes' gates and directory entries are places they keep clear of
   banaModule,           // the player's bana-bana table by the Maïga du marché (src/economy/banaModule.ts): before the street dressing, which keeps off its ground
-  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, teranga, rafet, berline, suv, gainde, garage, prestige, ndiayeSales, sarrSales, sarrAuto, streak, pistesModule, pouceModule, creditClock, bankModule, vtc, navigation, arrivalSignsModule, taxi, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
