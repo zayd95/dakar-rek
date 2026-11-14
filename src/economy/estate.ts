@@ -23,6 +23,7 @@ import {
   cannotEndNow, cannotFurnish, cannotOffer, cannotSign, contractOf, contracts, endNow, furnish, keepOffer, offer, owed, setNotice, signLease, stopOffer, tenantIn, viewOf, type OfferMode,
 } from './monthly';
 import { ECON_MONTH_DAYS, ECON_MONTH_MS, dateLabel, econNow, inLabel, shiftEconClock } from './calendar';
+import { cannotMoveAndLeave, decide, followers, forgetGone, leaveOptions, markAsked, moveAndLeave, question, standing, type LeaveChoice, type MoveResult } from './moving';
 import { STARTER_HOME } from '../core/save';
 import {
   AIRCRAFT, BILLBOARDS, GRADE_LABEL, HOMES, KIND_ICON, KIND_LABEL, LAND, VEHICLES, VENTURES, furnitureSpec, homeSpec, specOf,
@@ -124,6 +125,7 @@ class Estate {
     installFurnitureKit();                                             // the 3D asset lane's models (src/world/furnitureKit.ts)
     this.editor = new HomeEditor(ctx);
     normalize(ctx.state);
+    forgetGone(ctx.state);                                             // the purchase sequence's marks of homes no longer held (src/economy/moving.ts)
     phoneHooks.openAssets = () => this.openAssets();
     phoneHooks.openAsset = id => this.openSheet(id);
     phoneHooks.openHome = () => this.openHomeApp();
@@ -538,6 +540,9 @@ class Estate {
     const sp = specOf(specId);
     if (!sp) { if (specId.startsWith('business:')) this.talkBusiness(specId.slice('business:'.length)); return; }
     const s = this.s, a = holding(s, specId), home = homeSpec(specId), reopen = () => this.openSheet(specId);
+    // a home whose question was never put (a save from before 1.0.1, src/economy/moving.ts `question`): asked once, here, never at load
+    const q = a && home ? question(s, a) : null;
+    if (a && q) { markAsked(s, a.uid); this.ctx.save(); if (q === 'move') this.keysSheet(a, 'older'); else this.homeQuestion(a); return; }
     const items: MenuItem[] = [], rows: string[] = [];
     rows.push(`${KIND_ICON[sp.kind]} ${esc(sp.what)}`);
     rows.push(`${esc(sp.where ?? '')}${sp.size ? ` · ${sp.size.toLocaleString('fr-FR')} m²` : ''}`);
@@ -578,9 +583,9 @@ class Estate {
         if (!inside && this.inHub(sp) && this.tenantHome(specId)) items.push({ icon: '🚪', label: 'Entrer chez toi', detail: 'Ton locataire est chez lui jusqu’à l’échéance', disabled: true, onPick: () => {} });
         else if (!inside && this.inHub(sp)) items.push({ icon: '🚪', label: 'Entrer chez toi', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(home.home.door); } });
         if (inside) items.push({ icon: '🛋️', label: 'Aménager', detail: 'Déplacer, tourner, ranger tes meubles', onPick: () => { this.ctx.hud.closeModal(); const v = this.ownViewInside(); if (v) this.editor.open(v); } });
-        const why = cannotMoveIn(s, a.uid);
-        if (why !== 'Tu y habites déjà' && !given) items.push({ icon: '⭐', label: 'Définir comme domicile principal', detail: why ?? `Tu y vis, on t’y livre ; tes meubles suivent et s’installent où il y a de la place (${furnitureIn(s, currentHome(s).uid).length} pièces)`, disabled: !!why,
-          onPick: () => this.setPrincipal(a, reopen) });
+        const why = cannotMoveIn(s, a.uid), n = followers(s, currentHome(s)).length;
+        if (why !== 'Tu y habites déjà' && !given) items.push({ icon: '⭐', label: 'Emménager ici', detail: why ?? `Ton domicile principal : ${n ? `tes ${n} meubles suivent` : 'on t’y livre'}, puis tu choisis pour ${leftWord(s, currentHome(s))}`, disabled: !!why,
+          onPick: () => this.moveSheet(a, reopen) });
         if (room) this.roomItems(items, reopen);
         if (a.lease) this.contractItems(a, items, reopen);
         else if (a.how === 'rented' && mo) items.push({ icon: '📝', label: 'Passer au bail au mois', right: perMonth(mo.rent + mo.charges), detail: cannotSign(s, specId) ?? `Fini le loyer à l’heure : ${fcfa(mo.rent)} + ${fcfa(mo.charges)} de charges, une fois par mois (${MONTH_IS})`, disabled: !!cannotSign(s, specId), onPick: () => this.confirmSign(sp) });
@@ -620,12 +625,92 @@ class Estate {
     else if (ENTRY[specId] && !this.near(specId)) items.push({ icon: '📍', label: 'Y aller à pied', detail: 'Pose le repère de la ville', onPick: () => { this.ctx.walkTo(ENTRY[specId]); this.done(`Repère : ${sp.name}`); } });
     this.open(sp.name.split(' · ')[0], `${KIND_LABEL[sp.kind]}${sp.where ? ' · ' + sp.where : ''}`, items, `<div class="kv">${rows.filter(Boolean).join('<br>')}</div>`);
   }
-  /** Make a home the principal residence: the player lives there, Keur Meubles delivers there, the furniture follows. */
-  private setPrincipal(a: AssetState, after: () => void) {
-    const s = this.s, from = currentHome(s), sp = specOfAsset(a);
-    if (!moveIn(s, a.uid, true)) return;
-    const room = from.spec === STARTER_HOME ? ' · ta chambre reste à toi comme chambre familiale' : '';
-    this.done(`Domicile principal : ${sp.name.split(' · ')[0]} ✓ · tes meubles ont suivi${room}`, after);
+  // ---------------------------------------------------------------- the purchase sequence (1.0.1, src/economy/moving.ts)
+  /**
+   * Right after a purchase, a lease or a signature (and once for a home of an older save, `older`): the home is the player's now — the sheet says
+   * where it is listed, that its door opens, and the walking marker leads there — then « Emménager maintenant ? »: « Emménager » (the furniture
+   * follows, then the one choice about the home left) or « Plus tard » (it stays empty and can be let; « Emménager ici » stays on its sheet).
+   */
+  private keysSheet(a: AssetState, how: 'bought' | 'rented' | 'signed' | 'older') {
+    const s = this.s, sp = specOfAsset(a), short = sp.name.split(' · ')[0], back = () => this.openSheet(sp.id);
+    markAsked(s, a.uid);
+    const living = s.data.assets.home === a.uid, from = currentHome(s), n = followers(s, from).length;
+    const way = how === 'older' ? null : this.leadTo(sp);
+    const rows: [string, string][] = [
+      ['Logement', `${short} · ${standing(s, a)}`],
+      ['Dans « Biens »', a.how === 'owned' ? `à toi · valeur ${fcfa(valueOf(a))}` : a.lease ? `loué par toi · ${perMonth(a.lease.rent + a.lease.charges)}` : `loué par toi · ${perDay(rentOf(a))}`],
+      ['La porte', 'elle s’ouvre pour toi : « Entrer chez toi »'],
+    ];
+    if (way) rows.push(['Y aller', way]);
+    if (how === 'bought' && living) rows.push(['Ta location', 'elle s’est arrêtée : il est à toi']);
+    else if (!living) rows.push(['Tes meubles', n ? `si tu emménages, tes ${n} pièces te suivent` : `si tu emménages, Keur Meubles livrera ici`]);
+    const html = `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+    const title = how === 'older' ? short : 'Les clés sont à toi';
+    if (living) {
+      this.open(title, 'Tu y habites déjà', [
+        ...(this.inHub(sp) && this.ownViewInside()?.spec.id !== sp.id ? [{ icon: '🚪', label: 'Entrer chez toi', onPick: () => { this.ctx.hud.closeModal(); this.ctx.enter(homeSpec(sp.id)!.home.door); } }] : []),
+        { icon: '↩️', label: 'Voir la fiche', onPick: back },
+      ], html);
+      return;
+    }
+    this.open(title, 'Emménager maintenant ?', [
+      { icon: '✅', label: 'Emménager', detail: `Ton domicile principal : ${n ? `tes ${n} meubles suivent` : 'on t’y livre'}, puis tu choisis pour ${leftWord(s, from)}`, onPick: () => this.moveSheet(a, back) },
+      { icon: '⏳', label: 'Plus tard', detail: `Tu restes ${from.spec === STARTER_HOME ? 'dans ta chambre' : `à ${specOfAsset(from).name.split(' · ')[0]}`} ; il reste vide et peut se louer · « Emménager ici » reste sur sa fiche`,
+        onPick: () => this.done(`${short} t’attend, vide · « Emménager ici » sur sa fiche quand tu veux`, back) },
+    ], html);
+  }
+  /**
+   * « Emménager »: the home the player lives in now gets its one choice, each with its money (moving.ts `leaveOptions`); picking one moves in and
+   * applies it together. « Pas maintenant » changes nothing.
+   */
+  private moveSheet(to: AssetState, back: () => void) {
+    const s = this.s, spTo = specOfAsset(to), short = spTo.name.split(' · ')[0], why = cannotMoveIn(s, to.uid);
+    if (why) { this.ctx.toast(why); back(); return; }
+    const from = currentHome(s), fromName = specOfAsset(from).name.split(' · ')[0], n = followers(s, from).length;
+    const rows: [string, string][] = [
+      ['Tu emménages', short], ['Tes meubles', n ? `les ${n} pièces te suivent` : 'aucun à déménager'], ['Livraisons', 'Keur Meubles livrera ici'],
+      ['Tu quittes', `${fromName} · ${standing(s, from)}`],
+    ];
+    const html = `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+    const items: MenuItem[] = leaveOptions(s, from, to.uid).map(o => ({
+      icon: o.icon, label: o.label, right: o.right, detail: o.why ?? (o.preset ? `${o.detail} · par défaut` : o.detail), disabled: !!o.why,
+      onPick: () => {
+        const r = moveAndLeave(s, to.uid, o.id);
+        if (!r) { this.ctx.toast(cannotMoveAndLeave(s, to.uid, o.id) ?? 'Pas possible maintenant'); return; }
+        this.done(movedLine(r, short), () => this.openSheet(spTo.id));
+      },
+    }));
+    items.push({ icon: '↩️', label: 'Pas maintenant', detail: 'Tu restes où tu es : rien ne change', onPick: back });
+    this.open(`Emménager : ${short}`, `Et ${leftWord(s, from)} ? Un choix, rien ne se fait sans toi`, items, html);
+  }
+  /** The one question about a home the player does not live in (a save from before 1.0.1): let, sell, keep, hand back… or move in. */
+  private homeQuestion(a: AssetState) {
+    const s = this.s, sp = specOfAsset(a), short = sp.name.split(' · ')[0], back = () => this.openSheet(sp.id);
+    const rows: [string, string][] = [['Logement', `${short} · ${standing(s, a)}`], ['Tu habites', specOfAsset(currentHome(s)).name.split(' · ')[0]]];
+    const html = `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+    const items: MenuItem[] = leaveOptions(s, a).map(o => ({
+      icon: o.icon, label: o.label, right: o.right, detail: o.why ?? (o.preset ? `${o.detail} · c’est le cas` : o.detail), disabled: !!o.why,
+      onPick: () => {
+        const got = decide(s, a.uid, o.id);
+        if (got === null) { this.ctx.toast('Pas possible maintenant'); return; }
+        this.done(`${short} : ${choiceWords(o.id, got)}`, back);
+      },
+    }));
+    if (!cannotMoveIn(s, a.uid)) items.push({ icon: '⭐', label: 'Emménager ici', detail: 'Ton domicile principal : tes meubles suivent', onPick: () => this.moveSheet(a, back) });
+    items.push({ icon: '↩️', label: 'Voir la fiche', detail: 'Tout reste comme c’est ; chaque choix est aussi sur la fiche', onPick: back });
+    this.open(short, 'Que faire de ce logement ?', items, html);
+  }
+  /**
+   * The walking marker toward a home just bought or rented (its directory entry, in this district or another: the goal line leads there), and
+   * what the sheet says about the way. Null when the player is in it or at its door already.
+   */
+  private leadTo(sp: AssetSpec): string | null {
+    const id = ENTRY[sp.id];
+    if (this.ownViewInside()?.spec.id === sp.id) return 'tu y es';
+    if (!id || !sp.hub) return null;
+    if (this.inHub(sp) && this.near(sp.id)) return 'tu y es, devant la porte';
+    phoneHooks.markPlace?.(id, sp.hub, sp.name.split(' · ')[0]);
+    return this.inHub(sp) ? 'le repère t’y mène : suis la ligne d’objectif' : `à ${sp.where ?? sp.hub} : le repère t’y attend`;
   }
   /** « Ma chambre » once the player lives elsewhere: kept as a family room (the default), given back, or (later) sublet with the family's word. */
   private roomItems(items: MenuItem[], reopen: () => void) {
@@ -671,13 +756,8 @@ class Estate {
       () => {
         const a = buyAsset(s, sp.id); if (!a) return;
         this.ctx.toast(`${sp.name.split(' · ')[0]} est à toi ✓  −${fcfa(sp.price!)}`); this.ctx.save();
-        // The decision that follows a home's purchase: make it the principal residence (the player lives there, furniture is delivered there) or not yet.
-        if (homeSpec(sp.id) && !cannotMoveIn(s, a.uid)) {
-          const from = currentHome(s), n = furnitureIn(s, from.uid).filter(f => !furnitureSpec(f.spec)?.fixed).length, fromName = from.spec === STARTER_HOME ? 'ta chambre' : specOfAsset(from).name.split(' · ')[0];
-          this.confirm('Définir comme domicile principal ?', [['Logement', sp.name.split(' · ')[0]], ['Tes meubles', n ? `les ${n} pièces te suivent` : 'Keur Meubles livrera ici'],
-            ['Plus tard', `tu restes à ${fromName} : les meubles achetés y seront livrés`], ...(from.spec === STARTER_HOME ? [['Ta chambre', 'la famille te la garde ; tu pourras la rendre depuis sa fiche'] as [string, string]] : [])],
-          'Définir comme domicile principal', '', null, () => this.setPrincipal(a, back), back, 'Plus tard', 'Tu y vis : la carte, le téléphone et les livraisons le suivent');
-        } else back();
+        // a home: the keys are the player's at once, then « Emménager maintenant ? » and the home left (the purchase sequence, src/economy/moving.ts)
+        if (homeSpec(sp.id)) this.keysSheet(a, 'bought'); else back();
       }, back);
   }
   private confirmRent(sp: AssetSpec) {
@@ -685,7 +765,7 @@ class Estate {
     this.confirm(`Louer : ${sp.name.split(' · ')[0]}`, [
       ['Loyer', `${perDay(sp.rent!)} · soit ${fcfa(sp.rent! / 24)} chaque heure en ville`], ['Payé', 'au fil du jeu, pendant que tu joues (rien hors ligne)'],
       ['Débloque', 'En faire ton domicile principal, y mettre tes meubles, cuisiner et te doucher chez toi'], ['Impayé', `après ${ECONOMY.property.evictDays} jours de loyer impayé, le propriétaire reprend les clés`],
-    ], 'Louer', perDay(sp.rent!), cannotRent(s, sp.id), () => { if (rentAsset(s, sp.id)) this.done(`Clés en main ✓ · ${sp.name.split(' · ')[0]}`, back); }, back);
+    ], 'Louer', perDay(sp.rent!), cannotRent(s, sp.id), () => { const a = rentAsset(s, sp.id); if (!a) return; this.ctx.toast(`Clés en main ✓ · ${sp.name.split(' · ')[0]}`); this.ctx.save(); this.keysSheet(a, 'rented'); }, back);
   }
   /** Sign the monthly lease (the F2): the terms, then one tap. */
   private confirmSign(sp: AssetSpec) {
@@ -695,7 +775,11 @@ class Estate {
       ['Aujourd’hui', `le premier mois : ${fcfa(first)}`], ['Prochaine échéance', dateLabel(econNow() + ECON_MONTH_MS)],
       ['Ensuite', `y vivre, ou le sous-louer : vide jusqu’à ${perMonth(mo.sublet)}, meublé jusqu’à ${perMonth(mo.furnished)} (occupation jamais garantie)`],
       ['Impayé', `${ECONOMY.monthly.evictMonths} mois impayés : le propriétaire reprend les clés, et la dette reste due`], ['Il te restera', this.left(first)],
-    ], 'Signer le bail', '−' + fcfa(first), cannotSign(s, sp.id), () => { if (signLease(s, sp.id)) this.done(`Bail signé ✓ · ${sp.name.split(' · ')[0]} · premier mois payé`, back); }, back);
+    ], 'Signer le bail', '−' + fcfa(first), cannotSign(s, sp.id), () => {
+      const day = holding(s, sp.id), a = signLease(s, sp.id); if (!a) return;
+      this.ctx.toast(`Bail signé ✓ · ${sp.name.split(' · ')[0]} · premier mois payé`); this.ctx.save();
+      if (day) back(); else this.keysSheet(a, 'signed');            // a per-day lease turned monthly: the same home, nothing new to move into
+    }, back);
   }
   /** A monthly contract on the home's sheet (« Biens »): this month's occupancy, revenue, costs, profit, and the next settlement. */
   private contractRows(a: AssetState): string[] {
@@ -834,7 +918,7 @@ class Estate {
       { icon: '🛒', label: 'Commander chez Keur Meubles', detail: 'Livré et installé chez toi', onPick: () => this.openCatalogue() },
       ...homes.map(a => ({ icon: s.data.assets.home === a.uid ? '★' : '🏠', label: specOfAsset(a).name, onPick: () => this.openSheet(a.spec),
         detail: s.data.assets.home === a.uid ? 'Domicile principal' : a.spec === STARTER_HOME ? (roomReturned(s) ? 'Rendue à la famille · la redemander' : 'Chambre familiale · la garder ou la rendre')
-          : a.lease ? 'Bail au mois · suivre le contrat, meubler, sous-louer' : a.how === 'rented' ? 'Loué par toi · domicile principal, rendre les clés' : 'À toi · domicile principal, louer, vendre' })),
+          : a.lease ? 'Bail au mois · suivre le contrat, meubler, sous-louer' : a.how === 'rented' ? 'Loué par toi · emménager, rendre les clés' : a.leased ? 'À toi · loué à une famille' : 'À toi · emménager, louer, vendre' })),
       { icon: '🔑', label: 'Tous mes biens', onPick: () => this.openAssets() },
     ];
     const name = (f: AssetState) => `${furnitureSpec(f.spec)!.emoji} ${esc(furnitureSpec(f.spec)!.name)}${f.at || furnitureSpec(f.spec)!.fixed ? '' : ' (rangé)'}`;
@@ -927,6 +1011,26 @@ function levelsBlurb(plan: NonNullable<ReturnType<typeof planFor>>): string {
 function roomFrame0(plan: NonNullable<ReturnType<typeof planFor>>, r: NonNullable<ReturnType<typeof planFor>>['rooms'][number]) {
   const i = innerOf(plan, r);
   return { x0: i.x0, x1: i.x1, z0: i.z0, z1: i.z1, cx: (i.x0 + i.x1) / 2, cz: (i.z0 + i.z1) / 2, w: i.x1 - i.x0, d: i.z1 - i.z0 };
+}
+/** The home the player leaves, as the purchase sequence names it: « ta chambre », else « ton ancien logement » (named in the sheet's rows). */
+const leftWord = (s: GameCtx['state'], from: AssetState) => (from.spec === STARTER_HOME && !roomReturned(s) ? 'ta chambre' : 'ton ancien logement');
+/** What became of the home left, in a few words (the sequence's last line). */
+function choiceWords(c: LeaveChoice, money: number): string {
+  switch (c) {
+    case 'keep_room': return 'chambre familiale ✓';
+    case 'return_room': return 'rendue à la famille ✓';
+    case 'end_lease': return 'clés rendues ✓';
+    case 'keep_lease': return 'la location continue ✓';
+    case 'sublet': return 'en sous-location ✓';
+    case 'let': return 'en location ✓';
+    case 'sell': return `vente +${fcfa(money)} ✓`;
+    case 'keep_empty': return 'à toi, vide ✓';
+  }
+}
+/** « Tu habites ici : Appartement F2 ✓ · 6 meubles ont suivi · ta chambre : chambre familiale ✓ ». */
+function movedLine(r: MoveResult, short: string): string {
+  const pieces = r.moved ? ` · ${r.moved} meuble${r.moved > 1 ? 's ont' : ' a'} suivi` : '';
+  return `Tu habites ici : ${short} ✓${pieces} · ${r.from.spec === STARTER_HOME ? 'ta chambre' : r.fromName} : ${choiceWords(r.choice, r.money)}`;
 }
 /** A home the player holds and could live in instead (not the principal residence, not let, not the family room): the furniture sheet points to it. */
 const otherHome = (s: GameCtx['state']) => assetsOf(s, 'home').find(a => a.uid !== s.data.assets.home && a.spec !== STARTER_HOME && !a.leased && a.how !== 'given');
