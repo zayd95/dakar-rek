@@ -61,6 +61,22 @@ export function route(from, k, { cruise = 6, slow = 2.2, avoid = [] } = {}) {
   return pts;
 }
 
+/**
+ * From a car standing in a street's parking lane (a kerb bay: a VTC passenger's, a taxi's), the two waypoints a driver takes first: out into the right-hand lane,
+ * slowly, a few metres ahead, then along it. The cars parked further along the same kerb are passed in the lane instead of driven into (`route` aims at the next
+ * junction at once, and from the kerb its first metres stay in the parking lane: the VTC journey met the row of motorbikes parked 8 m past the Gare de Pikine's
+ * bay, a head-on at 27 km/h). Empty when the car is already in its lane. Prepend it to a `route` started from the last waypoint, with the car's heading.
+ */
+export function pullOut(from, { first = 5, then = 12 } = {}) {
+  const f = { x: Math.sin(from.yaw), z: Math.cos(from.yaw) };
+  if (Math.abs(f.z) >= Math.abs(f.x)) {
+    const s = Math.sign(f.z) || 1, lane = near(from.x) - s * (LANE - 0.4);
+    return Math.abs(from.x - lane) < 1.2 ? [] : [{ x: lane, z: from.z + s * first, tol: 1.2, speed: 2 }, { x: lane, z: from.z + s * then, tol: 2, speed: 3 }];
+  }
+  const s = Math.sign(f.x) || 1, lane = near(from.z) + s * (LANE - 0.4);
+  return Math.abs(from.z - lane) < 1.2 ? [] : [{ x: from.x + s * first, z: lane, tol: 1.2, speed: 2 }, { x: from.x + s * then, z: lane, tol: 2, speed: 3 }];
+}
+
 /** The kerb spot for a place (the same rule as src/transport/taxiRules.ts kerbSpot): on the nearest street, in its parking lane, heading the way the traffic goes there. */
 export function kerbOf(p) {
   const rx = near(p.x), rz = near(p.z), alongZ = Math.abs(p.x - rx) <= Math.abs(p.z - rz), side = Math.sign(alongZ ? p.x - rx : p.z - rz) || -1;
