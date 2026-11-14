@@ -160,11 +160,15 @@ async function tapInSheet(loc) {
   let box = null, mine = false;
   for (let k = 0; k < 40; k++) {
     await page.waitForTimeout(150);
-    const b = await loc.boundingBox();
+    // the sheet's own slide-in and scroll must be over: at a few frames a second two reads can see the same frame of a moving sheet
+    const moving = await page.evaluate(() => (document.querySelector('#modal')?.getAnimations({ subtree: true }) ?? []).some(a => a.playState === 'running'));
+    const b = moving ? null : await loc.boundingBox();
     mine = !!b && await loc.evaluate((e, [x, y]) => { const h = document.elementFromPoint(x, y); return !!h && (h === e || e.contains(h)); }, [b.x + b.width / 2, b.y + b.height / 2]);
     if (b && box && mine && Math.abs(b.y - box.y) < 0.5) { box = b; break; }
-    box = b;
+    if (b) box = b;
   }
+  box ??= await loc.boundingBox();
+  if (!mine) console.log('  (the row was not under the finger when it was tapped)');
   await touch.down(5, box.x + box.width / 2, box.y + box.height / 2); await page.waitForTimeout(60); await touch.up(5);
   return mine;
 }
