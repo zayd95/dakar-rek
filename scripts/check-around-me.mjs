@@ -171,6 +171,7 @@ async function district(h, label) {
   await tapWhere(k => [...document.querySelectorAll('#phone .pg-autour [data-row]')].find(r => r.dataset.row === k)?.querySelector('button'), pick.key);
   await until(tid => window.__dakar.destination() === tid && !window.__dakar.phoneInfo().open, target.id, 30000);
   await until(() => window.__dakar.uiMarkers().pin, null, 30000);
+  await until(n => (document.getElementById('goal')?.innerText ?? '').includes(n), target.name.split(' · ')[0], 15000);   // the goal line is refreshed four times a second
   const m = await d(() => ({ dest: window.__dakar.destination(), pin: window.__dakar.uiMarkers(), goal: document.getElementById('goal')?.innerText.replace(/\s+/g, ' ') ?? '', mode: window.__dakar.pos().mode }));
   check(`${label}: « Y aller » on ${target.name}: the phone closes, the walking marker and the pin are on it, the goal line names it`, m.dest === target.id && m.pin.pin && Math.hypot(m.pin.pinAt.x - target.x, m.pin.pinAt.z - target.z) < 3 && m.goal.includes(target.name.split(' · ')[0]) && m.mode === 'play', JSON.stringify(m));
   await shot(`${h}-venue-marker`);
