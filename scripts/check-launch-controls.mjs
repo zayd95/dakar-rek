@@ -116,14 +116,34 @@ try {
   // so its content is made taller than the screen here: what is tested is the touch scroll of the sheet itself.
   const fit = await page.locator('#modal .panel').evaluate(el => ({ sh: el.scrollHeight, ch: el.clientHeight }));
   await page.locator('#modal .panel').evaluate(el => { const s = document.createElement('div'); s.className = 'check-spacer'; s.style.height = '480px'; el.appendChild(s); });
+  // The sheet moves from its portrait bottom form to the landscape side form after the resize (layout, its .2 s transform
+  // transition): on a slow runner the finger must not be placed from a box read mid-move. Wait for a box that holds still
+  // over a few frames, then put the finger on a point that really is the panel (not a toast or another layer over it).
+  await page.evaluate(() => new Promise((done, fail) => {
+    const box = () => JSON.stringify(document.querySelector('#modal .panel')?.getBoundingClientRect()), t0 = performance.now();
+    const frames = (n, then) => n ? requestAnimationFrame(() => frames(n - 1, then)) : then();
+    const look = () => { const a = box(); frames(3, () => {
+      if (a === box() && !document.querySelector('#modal .sheet')?.getAnimations().length) done();
+      else if (performance.now() - t0 > 10000) fail(new Error('the profile sheet was still moving 10 s after the turn to landscape'));
+      else look();
+    }); };
+    look();
+  }));
   const panel = await page.locator('#modal .panel').boundingBox();
   const cdp = await ctx.newCDPSession(page);
-  const tx = panel.x + panel.width / 2, ty = panel.y + panel.height - 25;
+  const tx = panel.x + panel.width / 2;
+  const aim = await page.evaluate(([x, y0, top]) => {
+    const p = document.querySelector('#modal .panel'), name = e => e ? `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : ''}` : 'nothing';
+    const first = document.elementFromPoint(x, y0);
+    for (let y = y0; y > top + 60; y -= 20) if (p.contains(document.elementFromPoint(x, y))) return { y, over: p.contains(first) ? '' : name(first) };
+    return { y: y0, over: name(first) };
+  }, [tx, panel.y + panel.height - 25, panel.y]);
+  const ty = aim.y;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tx, y: ty }] });
   for (let i = 1; i <= 8; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tx, y: ty - i * 20 }] }); await sleep(60); }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(500);
   const scrolled = await page.locator('#modal .panel').evaluate(el => el.scrollTop);
-  check('landscape profile panel scrolls with an actual touch gesture', scrolled > 20, `scrollTop ${scrolled} · profile alone ${fit.sh}/${fit.ch} px`);
+  check('landscape profile panel scrolls with an actual touch gesture', scrolled > 20, `scrollTop ${scrolled} · profile alone ${fit.sh}/${fit.ch} px · finger at ${Math.round(tx)},${Math.round(ty)}${aim.over ? ` (moved up: ${aim.over} lay over the panel's foot)` : ''}`);
   await page.getByRole('button', { name: 'Fermer', exact: true }).tap();
   const recovery = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); contexts.push(recovery);
   await recovery.addInitScript(() => {
