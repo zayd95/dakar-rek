@@ -90,11 +90,17 @@ try {
   const chair = e3.assets.find(a => a.spec === 'chaise_bois');
   await d(uid => window.__dakar.placer.select(uid), chair.uid);
   await d(() => { window.__dakar.placer.rotate(); window.__dakar.placer.rotate(); window.__dakar.placer.rotate(); });
-  await d(() => window.__dakar.placer.move(0.5, 0)); await d(() => window.__dakar.placer.put());
+  // moved to the nearest spot of the editor's grid where the house's rules let it stand turned (the chair is delivered into a corner of the salon: half a
+  // metre east, as this check first did, is outside the room — « Ce meuble ne tient pas dans la pièce » — so the editor's own verdict picks the spot)
+  const moved = await d(at => {
+    const P = window.__dakar.placer, steps = [[0, -1], [0, 1], [-1, 0], [1, 0], [0, -2], [0, 2], [-2, 0], [2, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+    for (const [i, j] of steps) { P.moveTo(at.x + i * 0.5, at.z + j * 0.5); const v = P.info(); if (!v.why && (Math.abs(v.pending.x - at.x) > 0.2 || Math.abs(v.pending.z - at.z) > 0.2)) return { to: v.pending, put: P.put() }; }
+    return { to: null, put: false, why: P.info().why };
+  }, target.at);
   await page.waitForTimeout(500);
   await d(() => window.__dakar.placer.close()); await page.waitForTimeout(800);
   const e4 = await d(() => window.__dakar.estate()), chair4 = e4.assets.find(a => a.uid === chair.uid);
-  check('« Aménager »: the chair moved (on the editor\'s grid) and turned three quarters', chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && chair4.at.x > target.at.x, JSON.stringify({ before: target.at, after: chair4.at }));
+  check('« Aménager »: the chair moved (on the editor\'s grid, where the house\'s rules let it stand) and turned three quarters', moved.put === true && chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && Math.hypot(chair4.at.x - target.at.x, chair4.at.z - target.at.z) > 0.2 && Math.abs(chair4.at.x - moved.to.x) < 0.01 && Math.abs(chair4.at.z - moved.to.z) < 0.01, JSON.stringify({ before: target.at, after: chair4.at, moved }));
   await page.screenshot({ path: `${out}/3-amenage.png` });
   // what the page holds when it is left: the save written on the way out (the house's upkeep is counted each in-game hour, so the wallet is read there)
   await d(() => window.dispatchEvent(new Event('pagehide')));
