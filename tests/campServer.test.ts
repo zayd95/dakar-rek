@@ -72,3 +72,25 @@ describe('Grand Camp server: the ledger’s ids are the server’s own (review C
     expect((await again.req(w, { type: 'ready' }))?.ok).toBe(true);
   });
 });
+
+describe('Grand Camp server: a reload mid-match plays on (review C2)', () => {
+  it('the reloaded page’s socket replaces the old one (not closed yet): its sticks count from 1 and move the body; the old socket’s late frames are ignored', async () => {
+    const rig = new CampRig(Camp), { m, ws } = await lobby(rig, { fee: 0, ready: true }), p = started(m);
+    let now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      const sid = m.seat(tag(2))!.sid, seat = () => p.game!.seats.get(sid)!;
+      for (let s = 1; s <= 400; s++) { now += 50; await m.raw(ws[1], JSON.stringify({ type: 'in', s, mx: 0, mz: 0.3, f: 0 })); p.tick(); }   // 20 s of play
+      expect(seat().seq).toBe(400);
+      const b = await m.connect(tag(2), M, 'Joueur 2');                                  // the reloaded page: a new CampClient, its counter at 0
+      expect(ws[1].closed?.code).toBe(4000);
+      expect(b.last('start')).toBeDefined();
+      const at = { ...seat().body };
+      for (let s = 1; s <= 40; s++) { now += 50; await m.raw(b, JSON.stringify({ type: 'in', s, mx: 0, mz: -1, f: Math.PI })); p.tick(); }
+      expect(seat().seq).toBe(40);
+      expect(Math.hypot(seat().body.x - at.x, seat().body.z - at.z)).toBeGreaterThan(5);
+      await m.raw(ws[1], JSON.stringify({ type: 'in', s: 900, mx: 1, mz: 0, f: 0 }));     // a frame of the old page, late
+      expect(seat().seq).toBe(40);
+    } finally { clock.mockRestore(); }
+  });
+});

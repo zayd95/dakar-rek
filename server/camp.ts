@@ -38,7 +38,8 @@ export interface CampEnv {
    */
   CAMP_TEST_CLOCK?: string;
 }
-interface Attach { tag: Tag; name: string; look: number; app?: string }
+/** A socket's player; `replaced`: another socket of theirs took the place (a reload): nothing more of this one is read. */
+interface Attach { tag: Tag; name: string; look: number; app?: string; replaced?: true }
 type Request_ = Exclude<CampClientMessage, { type: 'in' }>;
 type Ack = Extract<CampServerMessage, { type: 'ack' }>;
 interface ListRow { e: CampListing; invited: Tag[]; at: number }
@@ -96,7 +97,12 @@ export class GrandCamp extends DurableObject<CampEnv> {
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server, [tag]);
     server.serializeAttachment(a);
-    for (const old of this.ctx.getWebSockets(tag)) if (old !== server) { this.send(old, { type: 'bye', reason: 'replaced' }); try { old.close(4000, 'Replaced'); } catch { /* gone */ } }
+    for (const old of this.ctx.getWebSockets(tag)) if (old !== server) {
+      const oa = old.deserializeAttachment() as Attach | null; if (oa) old.serializeAttachment({ ...oa, replaced: true } satisfies Attach);
+      this.send(old, { type: 'bye', reason: 'replaced' }); try { old.close(4000, 'Replaced'); } catch { /* gone */ }
+    }
+    const seat = this.lobby?.seat(tag);
+    if (seat && this.game) this.game.rebase(seat.sid);                    // a reloaded page counts its sticks from 1 again (the review's C2)
     this.send(server, { type: 'welcome', feature: CAMP_FEATURE, v: CAMP_VERSION, match, you: tag, time: Date.now(), hz: CAMP_TICK_HZ, lobby: this.visible(tag) ? this.lobby!.view() : null });
     this.later(() => this.arrived(server, tag));
     return new Response(null, { status: 101, webSocket: client });
@@ -104,6 +110,7 @@ export class GrandCamp extends DurableObject<CampEnv> {
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const a = ws.deserializeAttachment() as Attach | null;
     if (!a) { ws.close(1011, 'Session lost'); return; }
+    if (a.replaced) return;                                                // a late frame of a page that was reloaded
     if (typeof message !== 'string' || message.length > CAMP_MAX_FRAME) { ws.close(1009, 'Frame too large'); return; }
     let data: unknown; try { data = JSON.parse(message); } catch { this.meter.invalid++; return; }
     const p = parseCampClient(data), now = Date.now();
