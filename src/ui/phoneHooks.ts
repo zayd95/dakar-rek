@@ -127,4 +127,13 @@ export const phoneHooks: {
   openPresence?: () => void;
   /** Réglages › Caméra › « Revoir l'ouverture »: the first launch's fly-in over Pikine again (src/game/opening.ts). */
   replayOpening?: () => void;
+  /** Whether `openPhone(app)` would open something in this build now (a screen, or an app shown here), without opening it (main.ts: Phone.can). */
+  canOpenPhone?: (app: string) => boolean;
+  /**
+   * « Autour de moi » (src/game/around.ts, the page src/game/aroundPage.ts): the page now; the server reads it needs (on open, then every few seconds
+   * while it is shown); a row's one action (a line to say back, or null).
+   */
+  around?: () => import('../game/aroundPage').AroundSection[];
+  aroundRefresh?: () => void;
+  aroundDo?: (act: import('../game/aroundPage').AroundAct) => string | null;
 } = {};

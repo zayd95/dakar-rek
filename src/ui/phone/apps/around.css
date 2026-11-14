@@ -1,0 +1,11 @@
+/* « Autour de moi » (src/ui/phone/apps/around.ts): « Ce soir »'s rows (icon, line, detail, one action on the right), a reason in red when the action waits. */
+#phone .ph-around .ph-rows > div > span { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+#phone .ph-around .ph-rows > div > span > i { flex:none; width:24px; font-style:normal; font-size:18px; line-height:1.25; text-align:center; }
+#phone .ph-around .ph-rows > div > span > span { min-width:0; line-height:1.3; overflow-wrap:anywhere; }
+#phone .ph-around .ph-rows small.ar-why { color:#b42318; font-weight:600; }
+#phone .ph-around .ph-go.off { background:#ececf0; color:#6e6e73; }
+#phone .ph-around .ph-go.shake { animation:ar-shake .32s; }
+@keyframes ar-shake { 25% { transform:translateX(-4px); } 75% { transform:translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { #phone .ph-around .ph-go.shake { animation:none; } }
+body.theme-night #phone .ph-around .ph-rows small.ar-why { color:#ff8a80; }
+body.theme-night #phone .ph-around .ph-go.off { background:#26262b; color:#a1a1aa; }

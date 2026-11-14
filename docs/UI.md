@@ -211,6 +211,27 @@ Profil, with an icon, a line and its detail; « Y aller » (44 px) sits on the r
   `cesoir:<key>` in this hub, like the fighter's path).
 - **Debug.** `__dakar.tonight()`, `__dakar.tonightGo(key)`.
 
+## Phone › Autour de moi (1.0.1; src/game/around.ts, src/game/aroundPage.ts)
+
+« What can I do right here, right now? » One screen (the « Autour de moi » tile of the home grid), ONE action a row, the nearest first, empty
+sections left out. The page is a pure assembly (`aroundPage`, tests/aroundPage.test.ts) of live facts (`aroundFacts`), drawn like « Ce soir ».
+- **Tiak Tiak.** The district's board now (`phoneHooks.tiakOffers`), at the pay the board shows: route, kind, pay, how far the pick-up is,
+  « Accepter » (the board's own accept, greyed with its reason: « Trop fatigué »). A run in hand replaces them: « En cours », « Y aller ».
+- **Grand Camp.** The district's open lobbies (`CampClient.list`, online only): organizer, fee, places left, « Voir »
+  (`openPhone('grandcamp:<match>')`), and « Organiser » (`openPhone('grandcamp')`) — the actions only where the phone has the Grand Camp app
+  (`Phone.can`).
+- **Amis en ligne.** The account's conversations whose player is online now; where, only as far as they share it (in sight in this presence
+  room; their district from the account's `find`, an accepted meeting or invitation): « Rejoindre » (the marker on them, or their district's
+  directions and their room, src/online/visit.ts `followInto`; no teleport), else « Message ».
+- **Lieux.** The places open now and what is going on (the living places' hours of people: Le Patio, the terraces, la plage de Ngor; a
+  mosque's prayers; a dibiterie's busy hours; tonight's card at the arena), how far: « Y aller » (the walking marker and the pin).
+- **Activités.** What the places offer now (dancing, praying, fishing, a hand at work, a crossing) and the city places' free moments:
+  « Commencer » where the player stands (the activity's own start), else « Y aller ».
+- **Offline.** The online rows become one « Hors ligne » row; the rest works.
+- **Refresh.** On opening and every 5 s while shown (the phone's tick: nothing runs when it is closed); drawn again only when a row changed.
+- **Check.** `scripts/check-around-me.mjs` (local Workers runtime, real touch, Pikine and the Corniche, a second client's lobby, offline).
+  Debug: `__dakar.around()`, `__dakar.aroundDo(act)`.
+
 ## Follow camera (src/actors/camera.ts)
 
 Behind and above the player, never inside a wall or inside a tree's leaves:

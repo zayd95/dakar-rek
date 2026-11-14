@@ -58,6 +58,8 @@ export const APPS: AppDef[] = [
   { id: 'vehicules', label: 'Mes véhicules', short: 'Véhicules', emoji: '🚗', grad: '#93c5fd,#0e7490', group: 'argent', order: 4.5, home: 23.5, screen: 'vehicules' },
 
   { id: 'carte', label: 'Carte', emoji: '🗺️', grad: '#7dd3fc,#2563eb', group: 'ville', order: 0, home: 0, dock: true, screen: 'carte' },
+  // 1.0.1 « Autour de moi » (src/ui/phone/apps/around.ts): what can be done right here, right now, one action a row; on the grid's third row, beside « Mes véhicules »
+  { id: 'autour', label: 'Autour de moi', short: 'Autour', emoji: '📡', grad: '#fde68a,#ea580c', group: 'ville', order: -1, home: 23.2, screen: 'autour' },
   { id: 'quartier', label: 'Coins du quartier', short: 'Quartier', emoji: '📍', grad: '#6ee7b7,#0f766e', group: 'ville', order: 1, home: 43, hook: () => phoneHooks.openPlaces },
   { id: 'cesoir', label: 'Ce soir', emoji: '🌆', grad: '#fda4af,#be123c', group: 'ville', order: 2, home: 50, screen: 'cesoir' },
   { id: 'actus', label: 'Actus', emoji: '📰', grad: '#fdba74,#c2410c', group: 'ville', order: 3, home: 51, screen: 'actus' },
