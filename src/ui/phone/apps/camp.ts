@@ -22,6 +22,8 @@ import './camp.css';
  *   – a match's lobby (its id): the two teams and their places, who is ready, the fee and the pool, my money as the server has said it, the buttons
  *     (campText.ts `lobbyActions`: « Rejoindre », « Changer d’équipe », « Prêt » / « Pas prêt », « Quitter »; the organizer's « Inviter »,
  *     « Retirer un joueur », « Annuler le match »), the rules; at the end the result, the payout or refund only once the server has written it.
+ * Routes (other modules open it through phoneHooks.openPhone): 'grandcamp' — the list; 'grandcamp:<match id>' — that match's lobby, the list under it
+ * (joining stays the player's tap). The screen's own id is 'camp' ('camp', 'camp:<match id>' work alike).
  * Every request answers in words (the server's reason, src/online/campClient.ts campRefusalText). Nothing about money shows as done before the server
  * said so: the money lines are `client.state.money`. The lobby is redrawn piece by piece, only the pieces that changed (a button replaced under a finger
  * would lose its tap).

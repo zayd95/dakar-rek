@@ -4,7 +4,7 @@ import { newSave } from '../src/core/save';
 import { Relations } from '../src/social/relations';
 import { creditWork } from '../src/economy/streak';
 import { contextualShortcut, debtsNow, highlights, historyRows, missionNow, residenceLine, statRows, streakChip, streakView } from '../src/ui/phone/selectors';
-import { APPS, GROUPS, homeLayout } from '../src/ui/phone/registry';
+import { APPS, GROUPS, appById, homeLayout } from '../src/ui/phone/registry';
 import { campSession } from '../src/online/campSession';
 import { phoneHooks } from '../src/ui/phoneHooks';
 import { dayName } from '../src/ui/phone/apps/home';
@@ -77,6 +77,8 @@ describe('phone: the player\'s life hub', () => {
     expect(bare.grid.some(a => a.hook)).toBe(false);                         // no module registered here: no hook app, no empty tile
     expect(bare.grid.slice(0, 3).map(a => a.id)).toEqual(['notifs', 'profil', 'logement']);
     expect(bare.grid.some(a => a.id === 'grandcamp')).toBe(false);           // Grand Camp only in a build with the server (main.ts configures it)
+    // its routes for other modules (phoneHooks.openPhone): 'grandcamp' → the list, 'grandcamp:<match>' → that lobby (the shell's `app:arg`)
+    expect(appById('grandcamp')).toMatchObject({ screen: 'camp' });
     const keys = ['openVtc', 'openJobs', 'openAssets', 'openCredits', 'openBusiness', 'openHome', 'openPeople', 'openPlaces'] as const;
     for (const k of keys) phoneHooks[k] = () => {};
     campSession.configure({ key: () => null, profile: () => ({ name: 'Test', look: 0 }), account: () => null, wallet: () => 0, storage: () => null });

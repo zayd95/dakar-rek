@@ -215,7 +215,7 @@ class GrandCamp implements GameModule {
     const v = resultView(r, { me: c.state.me, team: me?.team ?? null, teams: l.teams, names: t => l.players.find(p => p.tag === t)?.name ?? null });
     const match = l.match;
     ctx.hud.offer({ icon: v.icon, title: v.title, line: [v.score, ...v.lines].filter(Boolean).join(' · '), keep: true,
-      actions: [{ label: 'Voir le résultat', primary: true, run: () => { phoneHooks.openPhone?.(`camp:${match}`); } }] }, 20000);
+      actions: [{ label: 'Voir le résultat', primary: true, run: () => { phoneHooks.openPhone?.(`grandcamp:${match}`); } }] }, 20000);
   }
 
   // ------------------------------------------------------------------ the bodies
@@ -440,8 +440,16 @@ class GrandCamp implements GameModule {
         inviteTags: (tags: string[]) => campSession.invite(tags),
         /** Scene setting for the checks: a match organized with these terms (the form is checked on its own). */
         organize: (terms: Parameters<typeof campSession.create>[0]) => campSession.create(terms),
-        /** The match's socket drops as a network would drop it (the client reconnects by itself: « Reconnexion… », then the pitch back). */
-        dropSocket: () => { const ws = (campSession.client as unknown as { ws: WebSocket | null } | null)?.ws; try { ws?.close(4003, 'Dropped (check)'); } catch { /* gone */ } return !!ws; },
+        /**
+         * The match's socket drops as a network would drop it: the client reconnects by itself (« Reconnexion… », then the pitch back), its own
+         * back-off starting `holdMs` in (a network that takes a few seconds to come back; DevTools' offline mode does not cut WebSockets).
+         */
+        dropSocket: (holdMs = 0) => {
+          const c = campSession.client as unknown as { ws: WebSocket | null; attempt: number } | null, ws = c?.ws;
+          if (c && holdMs > 0) c.attempt = Math.max(c.attempt, holdMs >= 5000 ? 4 : holdMs >= 2500 ? 3 : 2);
+          try { ws?.close(4003, 'Dropped (check)'); } catch { /* gone */ }
+          return !!ws;
+        },
         /** The view's players in world space (screenshots, the checks' driver: where the ball and my body are). */
         view: () => {
           const v = this.view, pt = this.pitch, c = campSession.client; if (!v || !pt || !c) return null;
