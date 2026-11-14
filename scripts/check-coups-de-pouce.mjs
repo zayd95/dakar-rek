@@ -223,7 +223,10 @@ const beforeBike = await d(() => window.__dakar.pos());
   try { await boardVehicle(page, t, 'tiak'); } catch (e) { console.log('  ' + e.message); }
 }
 const a0 = await d(() => window.__dakar.tiak.at());
-check('on the Tiak Tiak bike (« Monter » with the action button)', a0?.driving === true, JSON.stringify(a0));
+// on a failure, what the game was doing: its mode, the focus, the phone, a sheet, the action button and what lies under its centre
+const why0 = a0?.driving ? null : await d(() => { const a = document.getElementById('act'), r = a?.getBoundingClientRect(), hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+  return { mode: window.__dakar.pos().mode, focus: window.__dakar.focus()?.id ?? null, phone: window.__dakar.phoneInfo?.()?.open ?? null, sheet: document.querySelector('#modal.on h2')?.textContent ?? null, act: a ? `${a.innerText.replace(/\s+/g, ' ')} ${a.className}` : null, hit: hit ? `${hit.tagName}#${hit.id}.${hit.className}`.slice(0, 60) : null, activity: window.__dakar.activity?.()?.id ?? null }; });
+check('on the Tiak Tiak bike (« Monter » with the action button)', a0?.driving === true, JSON.stringify(why0 ? { ...a0, why: why0 } : a0));
 { const g = await t.centre('#ridepad .rp-gas'); await t.down(7, g.x, g.y); }                        // a finger on the gas, then on the brake (as check-tiak-moto rides it)
 await until(() => (window.__dakar.tiak.at()?.speed ?? 0) > 3, null, 40000);
 await t.up(7); { const b = await t.centre('#ridepad .rp-brake'); await t.down(8, b.x, b.y); }

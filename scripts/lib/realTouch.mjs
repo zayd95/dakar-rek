@@ -237,15 +237,20 @@ export async function turnAround(page, t, key, target, { area, tol = 0.3, margin
 /**
  * Get into the player's parked vehicle with real touch: walk to its left side (the driver's door / the saddle's side), face it, tap the action button and wait for the pad.
  * `key` is the debug namespace of the vehicle (`berline`, `moto`, …). Leaves the player at the wheel.
+ * The button acts on the nearest thing in reach (src/interact/system.ts): when someone stands nearer than the vehicle (a passer-by beside the lent Tiak Tiak bike
+ * held « Saluer Passant » in 1.0.1's coups-de-pouce check, and every tap greeted him), the player steps closer, then round to the other side, as a player does
+ * until the button says « Monter ». What held the button is printed when no spot gives the vehicle.
  */
 export async function boardVehicle(page, t, key, { tries = 3 } = {}) {
   for (let n = 0; n < tries; n++) {
     const c = await page.evaluate(k => window.__dakar[k].at(), key), L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) }, F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
-    for (const [side, along] of [[2.0, 0.4], [2.4, 0], [1.6, -1.2]]) {
+    let onIt = false;
+    for (const [side, along] of [[2.0, 0.4], [2.4, 0], [1.6, -1.2], [1.3, 0], [-2.0, 0.4], [-1.3, 0]]) {
       await walkTo(page, t, c.x + L.x * side + F.x * along, c.z + L.z * side + F.z * along, { tol: 0.9, ms: 40000 });
       const me = await page.evaluate(() => window.__dakar.pos()); await page.evaluate(([x, z, yaw]) => window.__dakar.place(x, z, yaw), [me.x, me.z, Math.atan2(c.x - me.x, c.z - me.z)]);
-      if (await page.waitForFunction(k => window.__dakar.focus()?.id === `${k}:parked`, key, { timeout: 6000 }).then(() => true, () => false)) break;
+      if ((onIt = await page.waitForFunction(k => window.__dakar.focus()?.id === `${k}:parked`, key, { timeout: 6000 }).then(() => true, () => false))) break;
     }
+    if (!onIt) console.log(`  boardVehicle: the button is not the ${key} here: ${JSON.stringify(await page.evaluate(() => { const f = window.__dakar.focus(); return f && { id: f.id, primary: f.primary, name: f.name }; }))}`);
     await t.tap('#act');
     if (await page.waitForFunction(k => window.__dakar[k].at().driving && document.body.classList.contains('ridepad'), key, { timeout: 60000 }).then(() => true, () => false)) { await page.waitForTimeout(600); return; }
   }
