@@ -2,7 +2,7 @@
 //  A. In each of the five districts: the phone's « Tiak Tiak » board opened with taps, at least three cards in the compact form (route / kind / pay / « Accepter », nothing else, no
 //     paragraph), one run inside the district accepted with a tap; the waypoint is on the pick-up; walked there with the joystick along the streets (a way found round the built
 //     colliders, re-aimed as a thumb does; a leg longer than about 170 m is cut to its last 80 m with the debug hook, said in the output); the waypoint moves to the drop-off; walked there; paid exactly the pay the card stated, once (one wallet line); the card after the
-//     delivery says what was paid and offers the next run nearby, taken with one tap (then cancelled: nothing paid).
+//     delivery says what was paid and offers the next run nearby (the board's run whose pick-up is nearest, wherever it goes), taken with one tap (then cancelled: nothing paid).
 //  B. One delivery to another district end to end: accepted on the board, picked up on foot, the car rapide taken at the district's stop with taps (the action button, the menu),
 //     handed over on foot in the other district: paid the stated pay once; the board there offers runs leaving from THAT district.
 //  C. A reload in the middle of a run: the parcel is still in hand with the same pay; delivered: paid once; a second reload pays nothing more.
@@ -232,14 +232,24 @@ for (const h of process.env.SKIP_A ? [] : HUBS) {
   const run = await deliver(L, local, cards);
   const drop = await pointByName(local.to);
   const done = await handOver(L, run, drop);
-  // the card after the delivery: the pay, and the next run nearby in one tap
+  // the card after the delivery: the pay, and the next run nearby in one tap. « Nearby » is the game's rule (src/economy/ui.ts nextNearby): of this district's
+  // board, the run whose PICK-UP is nearest the courier, wherever it goes (a run to another district leaving from where the parcel was handed over is the nearest)
   await page.waitForSelector('#toast .mo.bc .bc-go', { timeout: 60000 }).catch(() => {});
   // read and tapped at once: the card stays 12 s on screen, and a screenshot of SwiftShader on a loaded machine can take longer than that (it comes after the tap)
-  const after = await d(() => { const c = document.querySelector('#toast .mo.bc'); return c ? { text: c.innerText.replace(/\s+/g, ' '), go: c.querySelector('.bc-go')?.innerText.replace(/\s+/g, ' ') ?? null } : null; });
+  const after = await d(done => {
+    const c = document.querySelector('#toast .mo.bc'); if (!c) return null;
+    const k = window.__dakar, at = k.pos(), pts = Object.fromEntries(k.tiakPoints().filter(p => p.place).map(p => [p.place.id, p.place]));
+    const near = k.board().filter(b => b.id !== done && !b.blocked && pts[b.fromPlace]).map(b => ({ id: b.id, m: Math.round(Math.hypot(pts[b.fromPlace].x - at.x, pts[b.fromPlace].z - at.z)) }));
+    return { text: c.innerText.replace(/\s+/g, ' '), go: c.querySelector('.bc-go')?.innerText.replace(/\s+/g, ' ') ?? null, near };
+  }, local.id);
   if (after?.go) await touch.tap('#toast .mo.bc .bc-go');
   await shot(`${h}-next-taken`);
-  check(`${L}: the card after the delivery shows the reward and offers the next run nearby`, !!after && after.text.includes('Payé') && money(after.text.match(/Payé\s*([\d\s]+F)/)?.[1] ?? '') === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? ''), JSON.stringify(after));
   await page.waitForFunction(() => window.__dakar.activeJob(), null, { timeout: 90000 }).catch(() => {});
+  // the reward as a phone shows it since the 1.0.1 HUD pass: « Livraison réussie · +1 150 F » on the title's line (the « Payé » row is the wider screens')
+  const shown = money(after?.text.match(/(?:Payé|\+)\s*([\d\s]+F)/)?.[1] ?? ''), taken = (await job())?.routeId ?? null;
+  const offered = after?.near.find(n => n.id === taken), nearest = Math.min(...(after?.near ?? []).map(n => n.m));
+  check(`${L}: the card after the delivery shows the reward and offers the next run nearby (the board's nearest pick-up)`, !!after && shown === run.stated && / → /.test(after.go ?? '') && /Accepter/.test(after.go ?? '') && !!offered && offered.m <= nearest + 2,
+    JSON.stringify({ text: after?.text, shown, stated: run.stated, taken, offered, nearest }));
   // its guidance, on the next frames: the walking marker on its pick-up, or on its drop-off here; a parcel already in hand for another district is guided by the
   // delivery line, which then names that district (the driving directions take over on the way: src/game/navigation.ts)
   const guided = () => page.evaluate(([names]) => {

@@ -68,7 +68,7 @@ import { SelfMarker } from './multiplayer/selfMarker';
 import { OnlineAccount } from './online/client';
 import { online, onlineHooks, setOnline } from './online/api';
 import { campSession } from './online/campSession';
-import { POUCE_COUNTERS } from './economy/pouce';
+import { POUCE_COUNTERS, pouceWanted, setPouceOn } from './economy/pouce';
 import { grandCamp } from './game/grandCamp';
 import { visitDeps } from './online/visit';
 import { fakeOnlineRequested, installFakeOnline } from './online/fake';
@@ -136,6 +136,7 @@ const WORK_CATEGORIES = new Set(['livraison', 'service', 'commerce', 'combat', '
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const TEST = readTestParams(location.hostname, location.search);   // preview-only test links (src/core/testParams.ts)
+setPouceOn(pouceWanted({ testHost: isTestHost(location.hostname), debug: DEBUG, forced: TEST.pouce }));   // « Coups de pouce »: off in a ?debug run on a test host unless ?pouce
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;

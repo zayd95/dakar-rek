@@ -53,7 +53,8 @@ try {
   // 3 — the phone's home and the Profile
   await tap('#menuBtn'); await page.waitForTimeout(900);
   const home = await phoneText();
-  check('3a. the phone opens on its home: the name, the district, the wallet, the five destinations', /Awa/.test(home) && /Pikine/.test(home) && ['Carte', 'Travailler', 'Ma vie', 'Maison', 'Argent'].every(w => home.includes(w)), home.replace(/\s+/g, ' ').slice(0, 200));
+  // the five destinations as the smartphone shell names them since 1.0 (« Ma vie » became « Profil »; Carte, Travailler and Argent are the dock's)
+  check('3a. the phone opens on its home: the name, the district, the wallet, the five destinations', /Awa/.test(home) && /Pikine/.test(home) && /Solde/.test(home) && ['Carte', 'Travailler', 'Profil', 'Maison', 'Argent'].every(w => home.includes(w)), home.replace(/\s+/g, ' ').slice(0, 400));
   check('3b. nothing of the HUD shows over the open phone', await d(() => getComputedStyle(document.getElementById('joy')).visibility === 'hidden' || getComputedStyle(document.getElementById('joy')).display === 'none'));
   await shot('3-phone-home');
   await phoneOpen('profil');

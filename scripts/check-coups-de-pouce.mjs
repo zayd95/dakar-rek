@@ -6,6 +6,8 @@
 // DEBUG hooks used: `pouce()` / `board()` / `tiakPoints()` / `interactables()` / `estate()` / `state` / `marked()` / `pos()` / `focus()` / `tiak.at()` /
 // `cityGeometry()` / `furnitureList()` (read); `place()` only to turn the player toward the bike (boardVehicle); needs set to 100 (a rested courier);
 // `save()`; the « older save » is made by removing the ladder's marks from the save (labelled).
+// Every load passes `?pouce`: a `?debug` run on a test host keeps the ladder off without it (src/economy/pouce.ts `pouceWanted`), so that the other checks'
+// wallet deltas see only what they measure.
 // Usage: node scripts/check-coups-de-pouce.mjs <baseUrl> <outDir>
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -125,7 +127,7 @@ async function walkWay(x, z, done = null, tol = 1.4) {
   for (let plan = 0; plan < 6; plan++) {
     const way = await wayTo(x, z, tol); if (!way) break;
     for (const p of way) {
-      await walkTo(page, t, p.x, p.z, { tol: 0.9, ms: 40000 });
+      await walkTo(page, t, p.x, p.z, { tol: 0.9, ms: 120000 });   // (wall clock: a leg of 40 m is a few game seconds, but over a minute at a frame every 1.5 s)
       if (done && await d(done)) return true;
       const me = await d(() => window.__dakar.pos());
       if (Math.hypot(x - me.x, z - me.z) <= tol) return done ? !!(await until(done, null, 5000)) : true;
@@ -136,12 +138,12 @@ async function walkWay(x, z, done = null, tol = 1.4) {
 }
 
 const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.pos().mode === 'play' && window.__dakar.pouce && window.__dakar.phoneInfo, null, { timeout: 240000 });
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready();
 t = await realTouch(page);
 await wait(2500);
 let p = await pouce();
-check('a new game: the ladder has 9 steps, 300 000 F in all, nothing paid; the next is the first delivery (+10 000 F)', p.count === 9 && p.total === 300_000 && p.done === 0 && p.next?.id === 'livraison' && p.next.amount === 10_000 && (await bonusLines()).length === 0, JSON.stringify(p.next));
+check('a new game: the ladder has 9 steps, 300 000 F in all, nothing paid; the next is the first delivery (+10 000 F)', p.on === true && p.count === 9 && p.total === 300_000 && p.done === 0 && p.next?.id === 'livraison' && p.next.amount === 10_000 && (await bonusLines()).length === 0, JSON.stringify(p.next));
 const w0 = await wallet();
 const g0 = await goal();
 check('the goal line, at the start: Tonton Ibou\'s welcome (the first moments) or the first coup de pouce', /Coup de pouce \+10 000 F : ta première livraison Tiak Tiak|Tonton Ibou/.test(g0), g0);
@@ -216,12 +218,18 @@ await rest();
 await until(() => !!window.__dakar.tiak?.at(), null, 60000);
 const beforeBike = await d(() => window.__dakar.pos());
 { // to its left side with the planner (round the buildings), then « Monter » with the action button (scripts/lib/realTouch.mjs boardVehicle)
+  // (within 1.6 m: the planner's cells are a metre and it keeps 1.95 m round a parked bike, so no cell lay within the 1.0 m first asked for and no way was
+  // ever found: from Boutique Diallo's counter, where today's shortest run ends, the player never left the shop; boardVehicle walks the last metres)
   const c = await d(() => window.__dakar.tiak.at());
-  await walkWay(c.x + Math.cos(c.yaw) * 2.0, c.z - Math.sin(c.yaw) * 2.0, null, 1.0);
+  const there = await walkWay(c.x + Math.cos(c.yaw) * 2.0, c.z - Math.sin(c.yaw) * 2.0, null, 1.6);
+  if (!there) console.log(`  the way to the bike was not found or not walked: ${JSON.stringify(await d(([x, z]) => { const p = window.__dakar.pos(); return { at: [p.x, p.z], metres: +Math.hypot(p.x - x, p.z - z).toFixed(1) }; }, [c.x, c.z]))}`);
   try { await boardVehicle(page, t, 'tiak'); } catch (e) { console.log('  ' + e.message); }
 }
 const a0 = await d(() => window.__dakar.tiak.at());
-check('on the Tiak Tiak bike (« Monter » with the action button)', a0?.driving === true, JSON.stringify(a0));
+// on a failure, what the game was doing: its mode, the focus, the phone, a sheet, the action button and what lies under its centre
+const why0 = a0?.driving ? null : await d(() => { const a = document.getElementById('act'), r = a?.getBoundingClientRect(), hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+  return { at: [window.__dakar.pos().x, window.__dakar.pos().z], mode: window.__dakar.pos().mode, focus: window.__dakar.focus()?.id ?? null, phone: window.__dakar.phoneInfo?.()?.open ?? null, sheet: document.querySelector('#modal.on h2')?.textContent ?? null, act: a ? `${a.innerText.replace(/\s+/g, ' ')} ${a.className}` : null, hit: hit ? `${hit.tagName}#${hit.id}.${hit.className}`.slice(0, 60) : null, activity: window.__dakar.activity?.()?.id ?? null }; });
+check('on the Tiak Tiak bike (« Monter » with the action button)', a0?.driving === true, JSON.stringify(why0 ? { ...a0, why: why0 } : a0));
 { const g = await t.centre('#ridepad .rp-gas'); await t.down(7, g.x, g.y); }                        // a finger on the gas, then on the brake (as check-tiak-moto rides it)
 await until(() => (window.__dakar.tiak.at()?.speed ?? 0) > 3, null, 40000);
 await t.up(7); { const b = await t.centre('#ridepad .rp-brake'); await t.down(8, b.x, b.y); }
@@ -273,7 +281,7 @@ await d(() => window.__dakar.save());
 const kept = { wallet: await wallet(), lines: await bonusLines(), counters: await d(() => Object.fromEntries(Object.entries(window.__dakar.state.data.counters).filter(([k]) => k.startsWith('pouce:')))) };
 
 // ------------------------------------------------------------------ a real reload: nothing is paid again
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); t = await realTouch(page); await wait(5000);
 p = await pouce();
 const w2 = await wallet(), l2 = await bonusLines();
@@ -284,7 +292,7 @@ await shot('apres-rechargement');
 
 // ------------------------------------------------------------------ a save from before 1.0.1 (DEBUG: the ladder's marks removed from the save): credited once, in ONE notice
 await d(() => { const c = window.__dakar.state.data.counters; for (const k of Object.keys(c)) if (k.startsWith('pouce:')) delete c[k]; window.__dakar.save(); });
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); t = await realTouch(page);
 const wOld = await d(() => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).wallet);
 const n4 = await waitNotice(/Coups de pouce : \+45 000 F/, 30000);
@@ -296,7 +304,7 @@ check('one notice, not a burst', cardsNow <= 1, String(cardsNow));
 const lOld = await bonusLines();
 check('…paid once each (three more wallet lines, one per step, +45 000 F)', lOld.length === 6 && Math.abs((await wallet()) - wOld - 45_000) < 500, JSON.stringify({ lines: lOld.length, was: wOld, now: await wallet() }));
 await d(() => window.__dakar.save());
-await page.goto(`${base}?debug&touch&heure=11`, { timeout: 180000 });
+await page.goto(`${base}?debug&pouce&touch&heure=11`, { timeout: 180000 });
 await ready(); await wait(5000);
 check('and reloaded once more: nothing again', (await bonusLines()).length === 6 && !(await noticeNow()));
 

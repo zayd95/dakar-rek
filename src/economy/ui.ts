@@ -705,7 +705,8 @@ export class Economy {
       practise: (a: Activity | 'services') => { practise(s, a === 'services' ? 'service' : a); return polyLine(s); },
       compact: (n: number) => fcfaShort(n),
       /** Every Tiak Tiak pick-up / drop-off of the current hub, resolved against the city's existing places. */
-      routeEnds: () => (this.world ? ROUTES.filter(r => r.hub === this.world!.id).flatMap(r => [r.from, r.to]).map(p => ({ name: p.name, place: this.placeOf(p.frag)?.name ?? null })) : []),
+      /** The fixed routes' pick-ups and drop-offs that stand in this district (a run between districts has its drop-off in the other), with the place each resolves to here. */
+      routeEnds: () => (this.world ? ROUTES.flatMap(r => [{ p: r.from, hub: r.hub }, { p: r.to, hub: deliveryHub(r) }]).filter(e => e.hub === this.world!.id).map(({ p }) => ({ name: p.name, place: this.placeOf(p.frag)?.name ?? null })) : []),
       marker: () => ({ visible: this.marker.visible, x: this.marker.position.x, z: this.marker.position.z }),
     };
   }

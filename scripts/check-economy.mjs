@@ -48,7 +48,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ desktop: the whole loop
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug`, { waitUntil: 'load' }); await ready(page);
   await D(page, () => localStorage.clear()); await page.reload({ waitUntil: 'load' }); await ready(page);
@@ -72,6 +72,7 @@ let savedJson = null;
   await D(page, () => window.__dakar.playBeat('ibou_welcome', 'oui'));
   check('after the welcome, the chip points to Tiak Tiak', (await D(page, () => window.__dakar.suggestion())) === 'goal_tiak');
   const endsPk = await D(page, () => window.__dakar.routeEnds());
+  // (`routeEnds`: the fixed routes' ends that stand in Pikine, a run from Plateau's drop-off included; a run to another district is checked where it hands over)
   check('Pikine: every Tiak Tiak pick-up and drop-off is an existing city place', endsPk.length >= 10 && endsPk.every(e => e.place === e.name), endsPk.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${endsPk.length} ends`);
 
   // accept a delivery at the pick-up point (Gargote Mame Diarra), through the action menu
@@ -155,13 +156,13 @@ let savedJson = null;
   await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
   await pick(page, 'ranger le stock');
   // the service is played in the world (to the shelves and back with the cartons): wait for its end
-  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 120000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 300000 }).catch(() => {});   // (game time: slower in wall time on a loaded machine)
   const led2 = await D(page, () => window.__dakar.ledger());
   check('a city service (Boutique Diallo stock) is in the ledger, paid with the polyvalence bonus', stockPay > 1500 && led2[0]?.amount === stockPay && /Boutique Diallo/.test(led2[0].label), `${stockPay} · ${JSON.stringify(led2[0])}`);
 
   // Ibou reacts to the first delivery and suggests a goal (UI)
-  // 1.0.1: the next coup de pouce (a first piece of furniture) leads the suggestions; Ibou's beat is offered when he is met (src/economy/pouce.ts)
-  check('the next coup de pouce is suggested (a first piece of furniture)', (await D(page, () => window.__dakar.suggestion())) === 'pouce_meuble');
+  // (a ?debug run keeps « Coups de pouce » off, src/economy/pouce.ts pouceWanted: the story's own order; with the ladder on, its next step leads, scripts/check-coups-de-pouce.mjs)
+  check('Ibou’s delivery beat is suggested', (await D(page, () => window.__dakar.suggestion())) === 'ibou_tiak');
   await D(page, () => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
   await pick(page, 'Le Tiak Tiak');
   await page.screenshot({ path: `${out}/desktop-ibou-tiak.png` });
@@ -171,7 +172,7 @@ let savedJson = null;
   check('Ibou sets the goal (radio)', (await D(page, () => window.__dakar.flags())).includes('objectif:radio'));
   const goalId = await D(page, () => window.__dakar.suggestion());
   await closeModal(page);
-  check('the chip still points to a first piece of furniture (the coup de pouce; Ibou\'s radio is its first candidate)', goalId === 'pouce_meuble', goalId);
+  check('the chip now points to buying the radio', goalId === 'goal_buy', goalId);
 
   // buy the radio at the stall (UI)
   await goNear(page, shop.x, shop.z + 1.5, Math.PI, shop.name);
@@ -269,7 +270,7 @@ let savedJson = null;
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
   await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
   await D(page, () => { window.__dakar.setHour(16); window.__dakar.teleport('pikine'); }); await page.waitForTimeout(600);
@@ -306,6 +307,14 @@ let savedJson = null;
   await D(page, () => window.__dakar.teleport('plateau')); await page.waitForTimeout(800);
   const endsPl = await D(page, () => window.__dakar.routeEnds()), jobsPl = await D(page, () => window.__dakar.jobs());
   check('Plateau: Tiak Tiak routes on existing city places', endsPl.length >= 8 && endsPl.every(e => e.place === e.name) && jobsPl.length >= 4, endsPl.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${jobsPl.length} offers`);
+  // the runs between districts hand over in another district: each drop-off is checked where it stands (`routeEnds`: the ends in the loaded district)
+  for (const [hub, name] of [['almadies', 'Almadies'], ['corniche', 'Corniche']]) {
+    await D(page, h => window.__dakar.teleport(h), hub); await page.waitForTimeout(800);
+    const ends = await D(page, () => window.__dakar.routeEnds());
+    // a run from another district names its drop-off with the district (« Restaurant Le Pointe · Almadies » is the Almadies' « Restaurant Le Pointe »)
+    const real = e => !!e.place && (e.place === e.name || e.name.startsWith(e.place + ' · '));
+    check(`${name}: the drop-offs of the runs from other districts are existing city places`, ends.length >= 1 && ends.every(real), ends.map(e => `${e.name} = ${e.place}`).join(', '));
+  }
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -314,7 +323,7 @@ let savedJson = null;
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await ctx.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save', JSON.stringify({ schemaVersion: 2, guestId: 'recovery-test', hub: 'pikine', x: 1040, z: 0, wallet: 7777 })); sessionStorage.setItem('seeded', '1'); } });
-  const page = await ctx.newPage();
+  const page = await ctx.newPage(); page.setDefaultTimeout(300000);   // a page load on a loaded machine's software renderer outlasts Playwright's 30 s
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(800);
   const r = await D(page, () => ({ p: window.__dakar.pos(), w: window.__dakar.state.wallet, ledger: window.__dakar.ledger().length, owned: window.__dakar.furniture().owned.length, ver: window.__dakar.state.data.schemaVersion }));

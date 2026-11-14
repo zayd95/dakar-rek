@@ -2,7 +2,8 @@
 // Usage: node scripts/check-opening.mjs <baseUrl> [outDir=docs/proof/release-1.0.1/opening] [parts=flight,skip,first,reduced,replay,perf,shots]
 //   flight   a new game (the New Game studio, real taps) plays the flight: the camera moves for 12–18 s with the HUD hidden, lands on the play camera
 //            without a jump, the HUD and the welcome come back, the stick walks the player; no JavaScript error;
-//   skip     a tap anywhere during the flight lands on the same play camera within a second (« Passer » shown meanwhile), and the player walks;
+//   skip     a tap anywhere during the flight lands on the same play camera within a second (« Passer » shown meanwhile), and the player walks; on a renderer slower
+//            than 4 frames a second: on the first frame drawn after the page received the tap (or the next), the wall clock printed;
 //   first    without ?debug (the public path): a first launch plays it, a reload does not, a New Game on the same device does not either;
 //   reduced  prefers-reduced-motion: a short fade to the play camera, the camera never moving;
 //   replay   Réglages › « Revoir l'ouverture » plays it again in Pikine (and says where it can be seen elsewhere);
@@ -48,6 +49,9 @@ async function phone({ quality = 'medium', dsf = 1, reduced = false } = {}) {
     };
     const loop = () => { setTimeout(sample, 0); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
+    // the moment the page receives each finger (part « skip »): on a loaded machine a tap reaches a busy page later than the harness sends it
+    window.__downs = [];
+    addEventListener('pointerdown', () => window.__downs.push(performance.now()), true);
     // every message the HUD gives as it comes (src/ui/hud.ts toast: read out in #toast's live region, and shown, or kept in the phone's notifications by the
     // quiet screen's rules, src/ui/quiet.ts): a slow renderer can outlast one between two looks
     window.__toasts = [];
@@ -139,11 +143,17 @@ if (parts.has('skip')) {
   const back = rec.find(r => r.ms > tapAt && r.mode === 'play'), dipped = rec.some(r => r.ms > tapAt && (r.phase === 'out' || r.phase === 'in'));
   const between = back ? rec.filter(r => r.ms > tapAt && r.ms < back.ms).length : Infinity;
   const cam = await page.evaluate(() => window.__dakar.camera().at);
-  // the dip is 0.2 s of wall clock, then the controls are back: under a second on a renderer of 4 frames a second or more; on a slower one, the frame
-  // that saw the tap and at most one more (its 0.2 s can span two irregular frames)
-  const ms = back ? back.ms - tapAt : Infinity, onTime = frameS <= 0.25 ? ms < 1000 : between <= 2;
-  check('a tap skips it within a second, onto the same play camera', onTime && dipped && (!landed || d3(cam, landed) < 0.25) && (!landed || d3(back.cam, landed) < 0.25),
-    `the controls back ${between} frame(s) and ${Math.round(ms)} ms of wall clock after the tap (a frame every ${frameS.toFixed(2)} s here); camera ${cam.map(n => n.toFixed(2))}${landed ? ` vs the flight's landing ${landed.map(n => n.toFixed(2))}` : ''}`);
+  const seen = (await page.evaluate(() => window.__downs)).find(ms => ms > tapAt) ?? null;
+  const afterSeen = back && seen !== null ? rec.filter(r => r.ms > seen && r.ms < back.ms).length : Infinity;
+  // The skip dips for 0.2 s of the opening's clock (its wall clock, a frame counting one second at most), then the controls are back.
+  // - A renderer of 4 frames a second or more (a phone, a desktop): judged on the wall clock, from the finger: under a second.
+  // - A slower one (this machine's software renderer, a frame every 0.4–2 s): one frame covers the dip, so it is judged frame by frame from the moment the
+  //   page received the tap: the controls are back on the first frame drawn after it, or the next one when the tap came in while a frame was on its way.
+  //   The wall clock and the frames between the harness sending the tap and the page receiving it (that machine's input latency, not the game's) are printed, not judged.
+  const ms = back ? back.ms - tapAt : Infinity, fast = frameS <= 0.25, onTime = fast ? ms < 1000 : afterSeen <= 1;
+  check(fast ? 'a tap skips it within a second (wall clock), onto the same play camera' : 'a tap skips it on the next frame drawn after it (a slow renderer: judged in frames), onto the same play camera',
+    onTime && dipped && (!landed || d3(cam, landed) < 0.25) && (!landed || d3(back.cam, landed) < 0.25),
+    `the controls back ${afterSeen} frame(s) after the page received the tap (${between} after it was sent; ${seen === null ? 'not seen' : `${Math.round(seen - tapAt)} ms to reach the page`}), ${Math.round(ms)} ms of wall clock after it was sent (a frame every ${frameS.toFixed(2)} s here${fast ? '' : ': wall clock not judged'}); camera ${cam.map(n => n.toFixed(2))}${landed ? ` vs the flight's landing ${landed.map(n => n.toFixed(2))}` : ''}`);
   const hud = await page.evaluate(() => ({ ui: +getComputedStyle(document.getElementById('ui')).opacity, layer: !!document.getElementById('opening') }));
   check('the HUD is back and the layer gone after the skip', hud.ui > 0.95 && !hud.layer, JSON.stringify(hud));
   const m = await walk(page, t);
