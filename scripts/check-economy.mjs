@@ -72,6 +72,7 @@ let savedJson = null;
   await D(page, () => window.__dakar.playBeat('ibou_welcome', 'oui'));
   check('after the welcome, the chip points to Tiak Tiak', (await D(page, () => window.__dakar.suggestion())) === 'goal_tiak');
   const endsPk = await D(page, () => window.__dakar.routeEnds());
+  // (`routeEnds`: the fixed routes' ends that stand in Pikine, a run from Plateau's drop-off included; a run to another district is checked where it hands over)
   check('Pikine: every Tiak Tiak pick-up and drop-off is an existing city place', endsPk.length >= 10 && endsPk.every(e => e.place === e.name), endsPk.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${endsPk.length} ends`);
 
   // accept a delivery at the pick-up point (Gargote Mame Diarra), through the action menu
@@ -306,6 +307,12 @@ let savedJson = null;
   await D(page, () => window.__dakar.teleport('plateau')); await page.waitForTimeout(800);
   const endsPl = await D(page, () => window.__dakar.routeEnds()), jobsPl = await D(page, () => window.__dakar.jobs());
   check('Plateau: Tiak Tiak routes on existing city places', endsPl.length >= 8 && endsPl.every(e => e.place === e.name) && jobsPl.length >= 4, endsPl.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${jobsPl.length} offers`);
+  // the runs between districts hand over in another district: each drop-off is checked where it stands (`routeEnds`: the ends in the loaded district)
+  for (const [hub, name] of [['almadies', 'Almadies'], ['corniche', 'Corniche']]) {
+    await D(page, h => window.__dakar.teleport(h), hub); await page.waitForTimeout(800);
+    const ends = await D(page, () => window.__dakar.routeEnds());
+    check(`${name}: the drop-offs of the runs from other districts are existing city places`, ends.length >= 1 && ends.every(e => e.place === e.name), ends.filter(e => e.place !== e.name).map(e => e.name).join(', ') || ends.map(e => e.name).join(', '));
+  }
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
