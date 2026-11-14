@@ -5,7 +5,9 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4203/';
-const out = process.argv[3] ?? 'docs/screenshots/lamb';
+// RDABODY=1: the same checks with the Roi des Arènes wrestlers (?rdabody=force: every quality; docs/wrestling/RDA-INTEGRATION.md), output in <outDir>-rda
+const RDA = process.env.RDABODY ? `&rdabody=${process.env.RDABODY === '1' ? 'force' : process.env.RDABODY}` : '';
+const out = (process.argv[3] ?? 'docs/screenshots/lamb') + (RDA ? '-rda' : '');
 fs.mkdirSync(out, { recursive: true });
 const results = [];
 const check = (name, ok, extra = '') => { results.push({ name, ok, extra }); console.log(ok ? 'PASS' : 'FAIL', name, extra); };
@@ -29,8 +31,9 @@ async function open(vp, touch, quality) {
     if (/ws|websocket|8787/i.test(m.text() + url)) return;                               // no presence server here
     errors.push(`${m.text()} ${url}`);
   });
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { waitUntil: 'load' });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${RDA}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar && window.__dakar.pos().hub, null, { timeout: 60000 });
+  if (RDA) { await page.waitForFunction(() => window.__dakar.rda().ready, null, { timeout: 120000 }).catch(() => {}); console.log('RDA', JSON.stringify(await page.evaluate(() => window.__dakar.rda().load))); }
   await page.evaluate(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(16); });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, { timeout: 30000 });
   return { ctx, page, errors };

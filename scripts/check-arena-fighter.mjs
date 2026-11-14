@@ -16,7 +16,9 @@ import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4234/';
 const L2 = process.env.LAMB2 === '1';
-const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '');
+// RDABODY=1: the same checks with the Roi des Arènes wrestlers (?rdabody=force: every quality; docs/wrestling/RDA-INTEGRATION.md), output in <outDir>-rda
+const RDA = process.env.RDABODY ? `&rdabody=${process.env.RDABODY === '1' ? 'force' : process.env.RDABODY}` : '';
+const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '') + (RDA ? '-rda' : '');
 fs.mkdirSync(out, { recursive: true });
 const SLOW = Number(process.env.SLOW ?? 3);
 const WALL_R = 21.7;
@@ -35,8 +37,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await context.addInitScript(at => { const real = Date.now.bind(Date), off = at - real(); Date.now = () => real() + off; }, at);
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}${RDA}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.fighter, null, { timeout: 120000 * SLOW });
+  if (RDA) { await page.waitForFunction(() => window.__dakar.rda().ready, null, { timeout: 120000 }).catch(() => {}); console.log('RDA', JSON.stringify(await page.evaluate(() => window.__dakar.rda().load))); }
   const d = (fn, arg) => page.evaluate(fn, arg);
   const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout: timeout * SLOW, polling: 250 }).then(() => true).catch(() => false);
   const shot = async name => {
