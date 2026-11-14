@@ -31,7 +31,7 @@ let form: CampForm = campFormDefault();
 export const campScreen: Screen = {
   title: arg => (arg === 'new' ? 'Organiser un Grand Camp' : arg ? 'Grand Camp · le match' : 'Grand Camp'),
   mount(page, api, arg) {
-    if (!campSession.enabled || !campSession.client) { page.innerHTML = empty('⚽', 'Grand Camp se joue en ligne : il n’est pas disponible dans cette version du jeu.'); return; }
+    if (!campSession.enabled || !campSession.client) { page.innerHTML = empty('⚽', 'Grand Camp se joue en ligne : il n’est pas disponible dans cette version du jeu.'); return; }
     if (arg === 'new') return formView(page, api);
     if (arg) return lobbyView(page, api, arg);
     return listView(page);
@@ -42,9 +42,9 @@ export const campScreen: Screen = {
 function mineRow(c: CampClient): string {
   const l = c.state.lobby, me = l ? seatOf(l, c.state.me) : null;
   if (!campSession.mine) return '';
-  const what = !l ? 'Connexion…' : l.state === 'play' ? 'Match en cours' : l.state === 'over' ? 'Terminé : voir le résultat'
+  const what = !l ? 'Connexion…' : l.state === 'play' ? 'Match en cours' : l.state === 'over' ? 'Terminé : voir le résultat'
     : `${l.players.length}/${l.terms.size} joueurs · ${me?.ready ? 'tu es prêt' : 'tu n’es pas encore prêt'}`;
-  return section('Ton Grand Camp', rows([row({ icon: '⚽', label: l ? `Grand Camp de ${l.players.find(p => p.tag === l.org)?.name ?? 'l’organisateur'}` : 'Ton match', sub: [l ? termsLine(l.terms) : '', what].filter(Boolean).join(' · '), go: 'camp', arg: campSession.mine })]), ' class="pk-sec gc-mine"');
+  return section('Ton Grand Camp', rows([row({ icon: '⚽', label: l ? `Grand Camp de ${l.players.find(p => p.tag === l.org)?.name ?? 'l’organisateur'}` : 'Ton match', sub: [l ? termsLine(l.terms) : '', what].filter(Boolean).join(' · '), go: 'camp', arg: campSession.mine })]), ' data-gc="mine"');
 }
 function listView(page: HTMLElement) {
   const c = campSession.client!;
@@ -113,7 +113,7 @@ function formView(page: HTMLElement, api: PhoneApi) {
       busy = false;
       if (!page.isConnected) return;
       if (!r.ok) { api.notify(r.text, 'warn'); b.querySelector('span')!.firstChild!.textContent = 'Organiser le match'; sum(); return; }
-      api.notify('Grand Camp ouvert : invite tes amis');
+      api.notify('Grand Camp ouvert : invite tes amis');
       form = campFormDefault();
       api.back(); api.go('camp', r.match);
     }
@@ -149,7 +149,7 @@ function headHtml(l: CampLobbyView): string {
   const state = l.state === 'play' ? badge('Match en cours', 'gain') : l.state === 'over' ? badge('Terminé', 'mute') : badge(l.terms.open ? 'Public' : 'Privé', 'info');
   return card(`<div class="gc-head"><b>Grand Camp de ${esc(org)}</b>${state}</div><p class="gc-terms">${esc(termsLine(l.terms))} · ${esc(CAMP_PLACE)}</p>
     <ul class="gc-sum">${campSummary(l.terms).map(s => `<li>${esc(s)}</li>`).join('')}</ul>
-    ${l.terms.fee ? `<p class="gc-pool">Cagnotte maintenant : <b>${esc(F(l.pool))}</b> <small>(${l.players.filter(p => p.hold === 'held').length} mise${l.players.filter(p => p.hold === 'held').length > 1 ? 's' : ''} prise${l.players.filter(p => p.hold === 'held').length > 1 ? 's' : ''})</small></p>` : ''}
+    ${l.terms.fee ? `<p class="gc-pool">Cagnotte maintenant : <b>${esc(F(l.pool))}</b> <small>(${l.players.filter(p => p.hold === 'held').length} mise${l.players.filter(p => p.hold === 'held').length > 1 ? 's' : ''} prise${l.players.filter(p => p.hold === 'held').length > 1 ? 's' : ''})</small></p>` : ''}
     <p class="gc-count">${l.players.length}/${l.terms.size} joueurs</p>`, 'gc-head-card');
 }
 function actsHtml(list: CampAct[]): string {
@@ -160,7 +160,7 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
   const c = campSession.client!;
   const live = campSession.view(match);
   if (!live) {
-    page.innerHTML = `${empty('⚽', 'Tu es déjà inscrit à un autre Grand Camp : un seul match à la fois. Quitte-le avant d’en rejoindre un autre.', btn('Voir mon Grand Camp', { go: 'camp', arg: campSession.mine ?? '', kind: 'primary', inline: true }))}`;
+    page.innerHTML = `${empty('⚽', 'Tu es déjà inscrit à un autre Grand Camp : un seul match à la fois. Quitte-le avant d’en rejoindre un autre.', btn('Voir mon Grand Camp', { go: 'camp', arg: campSession.mine ?? '', kind: 'primary', inline: true }))}`;
     return;
   }
   page.innerHTML = `<p class="gc-status" role="status" hidden></p><div class="gc-s-head"></div><div class="gc-s-result"></div><div class="gc-s-teams"></div>
@@ -174,7 +174,7 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
     const st = page.querySelector<HTMLElement>('.gc-status')!, word = s.status === 'open' ? '' : STATUS_WORDS[s.status] ?? '';
     st.hidden = !word || (!l && s.status === 'connecting'); st.textContent = word;
     if (!l) {
-      put('.gc-s-head', s.status === 'open' && s.match === match ? empty('🔒', 'Ce match n’est pas visible pour toi : il est privé, ou il n’existe plus.') : `<p class="pk-note">Connexion au match…</p>`);
+      put('.gc-s-head', s.status === 'open' && s.match === match ? empty('🔒', 'Ce match n’est pas visible pour toi : il est privé, ou il n’existe plus.') : `<p class="pk-note">Connexion au match…</p>`);
       return;
     }
     const seat = seatOf(l, s.me);
@@ -191,7 +191,7 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
     put('.gc-s-acts', actsHtml(acts));
     const q = page.querySelector<HTMLElement>('.gc-quote')!;
     const showQuote = !!seat && l.state === 'lobby' && !seat.ready && seat.hold === 'none' && l.terms.fee > 0;
-    const quote = showQuote ? campSession.quote() : null, qt = quote ? quote.why ?? `Mise de ${F(l.terms.fee)} : ${quoteLine(quote)}` : '';
+    const quote = showQuote ? campSession.quote() : null, qt = quote ? quote.why ?? `Mise de ${F(l.terms.fee)} : ${quoteLine(quote)}` : '';
     q.hidden = !qt; if (q.textContent !== qt) q.textContent = qt; q.classList.toggle('warn', !!quote?.why);
     put('.gc-s-rules', more('Les règles du match', rulesLines(l.terms).map(x => `<p>${esc(x)}</p>`).join(''), 'gc-rules'));
   };
@@ -220,7 +220,7 @@ function lobbyView(page: HTMLElement, api: PhoneApi, match: string) {
       case 'go': api.launch(() => campHooks.goToPitch?.()); break;
       case 'play': api.launch(() => campHooks.playNow?.()); break;
       case 'leave': confirmSheet(page, 'Quitter le match ?', l.terms.fee && seatOf(l, c.state.me)?.hold !== 'none' ? `Ta mise de ${F(l.terms.fee)} t’est rendue.` : 'Ta place sera libérée.', 'Quitter', () => ask(() => campSession.leave(), 'Tu as quitté le match').then(() => { if (page.isConnected) api.back(); })); break;
-      case 'abandon': confirmSheet(page, 'Quitter le match en cours ?', 'Ton équipe joue à un de moins. Tu suis son résultat : payé si elle gagne, pas remboursé si elle perd.', 'Quitter le match', () => ask(() => campSession.leave(), 'Tu as quitté le match')); break;
+      case 'abandon': confirmSheet(page, 'Quitter le match en cours ?', 'Ton équipe joue à un de moins. Tu suis son résultat : payé si elle gagne, pas remboursé si elle perd.', 'Quitter le match', () => ask(() => campSession.leave(), 'Tu as quitté le match')); break;
       case 'cancel': confirmSheet(page, 'Annuler le match ?', l.pool > 0 ? 'Chaque mise prise est rendue à son joueur.' : 'Personne n’a encore payé de mise.', 'Annuler le match', () => ask(() => c.cancel(), 'Match annulé')); break;
       case 'invite': inviteSheet(page, api, l); break;
       case 'remove': removeSheet(page, api, c, l); break;
@@ -255,7 +255,7 @@ function inviteSheet(from: HTMLElement, api: PhoneApi, l: CampLobbyView) {
     sh.body.innerHTML = people.length ? `<p class="gc-sh-line">Ils voient ton match dans leur Grand Camp et reçoivent un message.</p>
       <div class="pk-rows gc-pick">${people.map(p => `<button type="button" class="pk-row tap gc-pp${picked.has(p.tag) ? ' on' : ''}" data-tag="${esc(p.tag)}" role="checkbox" aria-checked="${picked.has(p.tag)}"><span class="pk-tx"><b>${esc(p.name)}</b><small>${esc(p.sub)}</small></span><em class="gc-tick" aria-hidden="true">${picked.has(p.tag) ? '✓' : ''}</em></button>`).join('')}</div>
       ${btn(picked.size ? `Inviter (${picked.size})` : 'Inviter', { act: 'send', kind: 'primary', cls: 'gc-send' })}`
-      : empty('👥', 'Personne à inviter pour l’instant : écris d’abord à tes amis dans Messages, ou approche-toi d’eux.');
+      : empty('👥', 'Personne à inviter pour l’instant : écris d’abord à tes amis dans Messages, ou approche-toi d’eux.');
     const s = sh.body.querySelector<HTMLButtonElement>('.gc-send'); if (s) s.disabled = !picked.size;
   };
   let busy = false;

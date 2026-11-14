@@ -53,10 +53,10 @@ export function formTerms(f: CampForm, hub: HubId = CAMP_HUB): { ok: true; terms
  * words: « Cagnotte totale si tous les joueurs participent : 10 000 F », « Gain par gagnant : 2 000 F », « Sans commission ».
  */
 export function campSummary(t: Pick<CampTerms, 'fee' | 'size' | 'dist'>): string[] {
-  if (t.fee === 0) return ['Match gratuit : pas de mise, pas de cagnotte', 'Sans commission'];
+  if (t.fee === 0) return ['Match gratuit : pas de mise, pas de cagnotte', 'Sans commission'];
   return [
-    `Cagnotte totale si tous les joueurs participent : ${F(campFullPool(t))}`,
-    t.dist === 'team' ? `Gain par gagnant : ${F(campWinnerShare(t))}` : `Gain du gagnant : ${F(campWinnerShare(t))}`,
+    `Cagnotte totale si tous les joueurs participent : ${F(campFullPool(t))}`,
+    t.dist === 'team' ? `Gain par gagnant : ${F(campWinnerShare(t))}` : `Gain du gagnant : ${F(campWinnerShare(t))}`,
     'Sans commission',
   ];
 }
@@ -69,12 +69,12 @@ export function rulesLines(t: CampTerms): string[] {
   const out: string[] = [];
   if (t.fee > 0) {
     out.push(`Ta mise de ${F(t.fee)} est prise quand tu appuies sur « Prêt » (Teranga Money d’abord), et rendue si tu te retires avant le coup d’envoi.`);
-    out.push(t.dist === 'team' ? `L’équipe gagnante se partage la cagnotte : ${F(campWinnerShare(t))} chacun si le match est complet.`
-      : 'Un seul gagnant : le meilleur buteur de l’équipe gagnante prend toute la cagnotte (à égalité, le premier à avoir marqué).');
-    out.push('Match nul : chaque mise est rendue.');
-  } else out.push('Match gratuit : rien n’est pris, rien n’est gagné.');
+    out.push(t.dist === 'team' ? `L’équipe gagnante se partage la cagnotte : ${F(campWinnerShare(t))} chacun si le match est complet.`
+      : 'Un seul gagnant : le meilleur buteur de l’équipe gagnante prend toute la cagnotte (à égalité, le premier à avoir marqué).');
+    out.push('Match nul : chaque mise est rendue.');
+  } else out.push('Match gratuit : rien n’est pris, rien n’est gagné.');
   out.push(`Premier à ${CAMP_MATCH.goals} buts, ${Math.round(CAMP_MATCH.seconds / 60)} minutes au plus, au terrain de la Corniche.`);
-  out.push(t.open ? 'Public : ouvert à tous les joueurs du quartier.' : 'Privé : sur invitation de l’organisateur.');
+  out.push(t.open ? 'Public : ouvert à tous les joueurs du quartier.' : 'Privé : sur invitation de l’organisateur.');
   return out;
 }
 
@@ -153,13 +153,13 @@ const WHY: Record<string, string> = { unready: '« Pas prêt »', leave: 'tu as 
 /** One money step of mine in words: pending until the server answered, then done (with the amount it wrote) or failed (with its reason). */
 export function moneyLine(m: CampMoneyView): MoneyLine {
   const amt = F(m.amount);
-  if (m.state === 'pending') return { tone: 'wait', text: m.step === 'hold' ? `Mise de ${amt} : en attente du serveur…` : m.step === 'release' ? `Remboursement de ${amt} : en attente du serveur…` : 'En attente du serveur…' };
-  if (m.state === 'failed') return { tone: 'warn', text: `${m.step === 'hold' ? 'Mise refusée' : 'Refusé'} : ${m.text ?? campRefusalText(m.reason ?? '')}` };
+  if (m.state === 'pending') return { tone: 'wait', text: m.step === 'hold' ? `Mise de ${amt} : en attente du serveur…` : m.step === 'release' ? `Remboursement de ${amt} : en attente du serveur…` : 'En attente du serveur…' };
+  if (m.state === 'failed') return { tone: 'warn', text: `${m.step === 'hold' ? 'Mise refusée' : 'Refusé'} : ${m.text ?? campRefusalText(m.reason ?? '')}` };
   switch (m.step) {
-    case 'hold': return { tone: 'ok', text: m.amount > 0 ? `Mise prise : ${amt}${m.balance !== undefined ? ` · Teranga Money ${F(m.balance)}` : ''}` : 'Prêt (match gratuit)' };
-    case 'release': return { tone: 'ok', text: m.amount > 0 ? `Mise rendue : ${amt}${m.why && WHY[m.why] ? ` (${WHY[m.why]})` : ''}` : 'Rien n’avait été pris' };
-    case 'payout': return { tone: 'ok', text: `Gain versé : ${amt}` };
-    case 'refund': return { tone: 'ok', text: `Mise remboursée : ${amt}` };
+    case 'hold': return { tone: 'ok', text: m.amount > 0 ? `Mise prise : ${amt}${m.balance !== undefined ? ` · Teranga Money ${F(m.balance)}` : ''}` : 'Prêt (match gratuit)' };
+    case 'release': return { tone: 'ok', text: m.amount > 0 ? `Mise rendue : ${amt}${m.why && WHY[m.why] ? ` (${WHY[m.why]})` : ''}` : 'Rien n’avait été pris' };
+    case 'payout': return { tone: 'ok', text: `Gain versé : ${amt}` };
+    case 'refund': return { tone: 'ok', text: `Mise remboursée : ${amt}` };
   }
 }
 /**
@@ -168,15 +168,15 @@ export function moneyLine(m: CampMoneyView): MoneyLine {
  */
 export function feeQuote(fee: number, tm: number | null, wallet: number, fundLeft: number | null = null): { fromOnline: number; fromWallet: number; why?: string } {
   if (fee <= 0) return { fromOnline: 0, fromWallet: 0 };
-  if (tm === null) return { fromOnline: 0, fromWallet: 0, why: 'Teranga Money n’est pas connecté : réessaie dans un instant.' };
+  if (tm === null) return { fromOnline: 0, fromWallet: 0, why: 'Teranga Money n’est pas connecté : réessaie dans un instant.' };
   const fromOnline = Math.min(fee, Math.max(0, tm)), fromWallet = fee - fromOnline;
-  if (fromWallet > wallet) return { fromOnline, fromWallet, why: `Solde insuffisant : il te manque ${F(fromWallet - wallet)}.` };
+  if (fromWallet > wallet) return { fromOnline, fromWallet, why: `Solde insuffisant : il te manque ${F(fromWallet - wallet)}.` };
   if (fundLeft !== null && fromWallet > fundLeft) return { fromOnline, fromWallet, why: campRefusalText('limit-fund') };
   return { fromOnline, fromWallet };
 }
 export function quoteLine(q: { fromOnline: number; fromWallet: number }): string {
   if (!q.fromOnline && !q.fromWallet) return '';
-  if (!q.fromWallet) return `Payée avec Teranga Money : ${F(q.fromOnline)}`;
+  if (!q.fromWallet) return `Payée avec Teranga Money : ${F(q.fromOnline)}`;
   return q.fromOnline ? `${F(q.fromOnline)} de Teranga Money + ${F(q.fromWallet)} du portefeuille` : `${F(q.fromWallet)} du portefeuille, par Teranga Money`;
 }
 
@@ -211,21 +211,21 @@ export function resultView(r: CampResult | null, o: { me: Tag | null; team: 0 | 
   if (!r) return { icon: '⏳', title: 'Fin du match', score: '', lines: ['Résultat en attente du serveur…', 'Les gains et les remboursements arrivent une fois écrits par le serveur.'], tone: 'wait' };
   const mine = o.me ? r.payouts.find(p => p.tag === o.me)?.amount ?? 0 : 0, sc = scoreText(o.teams, r.score), settled = r.money === 'settled';
   const back = (why: string): ResultView => ({ icon: '🤝', title: why, score: r.end === 'draw' || r.end === 'stopped' ? sc : '', tone: 'even',
-    lines: [settled && mine > 0 ? `Ta mise t’est rendue : ${F(mine)}` : r.fee > 0 ? 'Aucune mise n’avait été prise.' : 'Match gratuit : rien à rendre.'] });
+    lines: [settled && mine > 0 ? `Ta mise t’est rendue : ${F(mine)}` : r.fee > 0 ? 'Aucune mise n’avait été prise.' : 'Match gratuit : rien à rendre.'] });
   switch (r.end) {
     case 'draw': return back('Match nul');
     case 'cancel': return back('Match annulé');
-    case 'empty': return back('Match annulé : plus personne');
-    case 'timeout': return back('Match annulé : pas commencé à temps');
+    case 'empty': return back('Match annulé : plus personne');
+    case 'timeout': return back('Match annulé : pas commencé à temps');
     case 'stopped': return back('Match arrêté par le serveur');
     case 'win': {
       const w = r.winner ?? 0, won = o.team === w, single = r.single ? (r.single === o.me ? 'toi' : o.names?.(r.single) ?? 'un joueur') : null;
       const lines: string[] = [];
-      if (!settled) lines.push(r.fee > 0 ? 'Aucune mise n’avait été prise.' : 'Match gratuit : pas de gain.');
-      else if (mine > 0) lines.push(r.dist === 'single' ? `Tu prends toute la cagnotte : ${F(mine)}` : `Ta part de la cagnotte : ${F(mine)}`);
+      if (!settled) lines.push(r.fee > 0 ? 'Aucune mise n’avait été prise.' : 'Match gratuit : pas de gain.');
+      else if (mine > 0) lines.push(r.dist === 'single' ? `Tu prends toute la cagnotte : ${F(mine)}` : `Ta part de la cagnotte : ${F(mine)}`);
       else if (won && r.dist === 'single' && single) lines.push(`La cagnotte (${F(r.total)}) va à ${single}, meilleur buteur.`);
       else if (!won && o.team !== null) lines.push(`Ta mise de ${F(r.fee)} va aux gagnants.`);
-      return { icon: won ? '🏆' : '⚽', title: o.team === null ? `Victoire des ${o.teams[w]}` : won ? `Victoire ! Les ${o.teams[w]} gagnent` : `Défaite : les ${o.teams[w]} gagnent`, score: sc, lines, tone: won ? 'win' : 'lose' };
+      return { icon: won ? '🏆' : '⚽', title: o.team === null ? `Victoire des ${o.teams[w]}` : won ? `Victoire ! Les ${o.teams[w]} gagnent` : `Défaite : les ${o.teams[w]} gagnent`, score: sc, lines, tone: won ? 'win' : 'lose' };
     }
   }
 }
@@ -237,7 +237,7 @@ const INVITE = /Grand Camp\b[\s\S]*?·\s*match\s+([0-9a-f]{16})\s*$/;
  * its end and turns it into « Voir le match ». The invitation itself is the server's list (the organizer's `invite`); the text only points to it.
  */
 export function campInviteText(t: Pick<CampTerms, 'fee' | 'size'>, match: string): string {
-  return `Je t’invite à mon Grand Camp au terrain de la Corniche : ${t.fee ? `mise ${F(t.fee)}` : 'match gratuit'}, ${sizeLabel(t.size)} · match ${match}`;
+  return `Je t’invite à mon Grand Camp au terrain de la Corniche : ${t.fee ? `mise ${F(t.fee)}` : 'match gratuit'}, ${sizeLabel(t.size)} · match ${match}`;
 }
 /** An invitation's text: its match, and the words to show (the id put aside). Null for any other text. */
 export function parseCampInvite(text: string): { match: string; text: string } | null {

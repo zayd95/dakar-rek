@@ -198,11 +198,11 @@ class GrandCamp implements GameModule {
     this.wasPlay = false;
     const seat = l.players.find(p => p.tag === c.state.me);
     const ready = !!seat && (seat.ready || seat.hold === 'held');
-    if (!ready || !this.ctx.world() || this.atPitch(AWAY_M)) { this.awayT = 0; this.unreadyAsked = false; return; }
+    if (!ready || !ctx.world() || this.atPitch(AWAY_M)) { this.awayT = 0; this.unreadyAsked = false; return; }
     this.awayT += dt;
     if (this.awayT < 2.5 || this.unreadyAsked || c.state.status !== 'open') return;
     this.unreadyAsked = true;
-    void c.unready().then(r => { if (r.ok) ctx.toast(`Tu t’es éloigné du terrain : tu n’es plus prêt.${l.terms.fee ? ' Ta mise t’est rendue.' : ''}`); else this.unreadyAsked = false; });
+    void c.unready().then(r => { if (r.ok) ctx.toast(`Tu t’es éloigné du terrain : tu n’es plus prêt.${l.terms.fee ? ' Ta mise t’est rendue.' : ''}`); else this.unreadyAsked = false; });
   }
 
   /** The end, once the server's result has arrived (never before): a card with the score and what came back to me; « en attente » meanwhile in the band. */
@@ -351,7 +351,7 @@ class GrandCamp implements GameModule {
     pad.id = 'campPad'; pad.className = 'cp'; pad.setAttribute('role', 'group'); pad.setAttribute('aria-label', 'Passe, dribble, tir');
     pad.innerHTML = `<button type="button" class="cp-b cp-pass" data-a="pass" aria-label="Passe"><span class="cp-ic" aria-hidden="true">↗</span><b>PASSE</b><kbd aria-hidden="true">E</kbd></button>
       <button type="button" class="cp-b cp-dribble" data-a="dribble" aria-label="Dribble"><span class="cp-ic" aria-hidden="true">»</span><b>DRIBBLE</b><kbd aria-hidden="true">C</kbd></button>
-      <button type="button" class="cp-b cp-shot" data-a="shot" aria-label="Tir : maintenir pour doser"><i class="cp-fill" aria-hidden="true"></i><span class="cp-ic" aria-hidden="true">🥅</span><b>TIR</b><kbd aria-hidden="true">F</kbd></button>`;
+      <button type="button" class="cp-b cp-shot" data-a="shot" aria-label="Tir : maintenir pour doser"><i class="cp-fill" aria-hidden="true"></i><span class="cp-ic" aria-hidden="true">🥅</span><b>TIR</b><kbd aria-hidden="true">F</kbd></button>`;
     if (typeof pad.addEventListener !== 'function') return;
     for (const b of pad.querySelectorAll<HTMLButtonElement>('.cp-b')) {
       const a = b.dataset.a as CampAction;
@@ -428,7 +428,7 @@ class GrandCamp implements GameModule {
           return {
             enabled: campSession.enabled, mine: campSession.mine, live: this.live, status: s?.status ?? null, match: s?.match ?? null, state: s?.lobby?.state ?? null, sid: s?.sid ?? null,
             phase: v?.phase ?? null, clock: v ? +v.clock.toFixed(1) : null, score: s?.result?.score ?? v?.score ?? null, result: s?.result ?? null, money: s?.money.map(m => ({ ...m })) ?? [],
-            me: v?.me && pt ? { x: +(pt.x + v.me.x).toFixed(2), z: +(pt.z + v.me.z).toFixed(2) } : null, pos: { x: +this.ctx.player.pos.x.toFixed(2), z: +this.ctx.player.pos.z.toFixed(2) },
+            me: v?.me && pt ? { x: +(pt.x + v.me.x).toFixed(2), z: +(pt.z + v.me.z).toFixed(2) } : null, pos: this.ctx ? { x: +this.ctx.player.pos.x.toFixed(2), z: +this.ctx.player.pos.z.toFixed(2) } : null,
             ball: v && pt ? { x: +(pt.x + v.ball.x).toFixed(2), z: +(pt.z + v.ball.z).toFixed(2), own: v.own } : null, pitch: pt,
             players: v?.players.length ?? 0, bodies: this.bodies.size, full: foreign.filter(f => f.full).length, figures: foreign.filter(f => !f.full).length,
             pad: this.padShown, band: this.band?.classList.contains('on') ? this.band.textContent : null, atPitch: this.atPitch(NEAR_M), hold: +this.hold.toFixed(2),
@@ -436,6 +436,12 @@ class GrandCamp implements GameModule {
             wire: c ? Object.fromEntries(Object.entries(c.wire).map(([k, w]) => [k, { ...w }])) : {}, events: s?.events.length ?? 0,
           };
         },
+        /** Scene setting for the checks: the organizer's invitation of these tags (as « Inviter » does: the server's list and a text message each). */
+        inviteTags: (tags: string[]) => campSession.invite(tags),
+        /** Scene setting for the checks: a match organized with these terms (the form is checked on its own). */
+        organize: (terms: Parameters<typeof campSession.create>[0]) => campSession.create(terms),
+        /** The match's socket drops as a network would drop it (the client reconnects by itself: « Reconnexion… », then the pitch back). */
+        dropSocket: () => { const ws = (campSession.client as unknown as { ws: WebSocket | null } | null)?.ws; try { ws?.close(4003, 'Dropped (check)'); } catch { /* gone */ } return !!ws; },
         /** The view's players in world space (screenshots, the checks' driver: where the ball and my body are). */
         view: () => {
           const v = this.view, pt = this.pitch, c = campSession.client; if (!v || !pt || !c) return null;

@@ -52,7 +52,7 @@ describe('Grand Camp form → terms and the live summary', () => {
       // equal teams: both distributions divide the pool exactly (nothing rounded)
       expect((size / 2) * fee * 2).toBe(fee * size);
     }
-    expect(campSummary({ fee: 0, size: 14, dist: 'team' })).toEqual(['Match gratuit : pas de mise, pas de cagnotte', 'Sans commission']);
+    expect(campSummary({ fee: 0, size: 14, dist: 'team' }).map(N)).toEqual(['Match gratuit : pas de mise, pas de cagnotte', 'Sans commission']);
     expect(N(termsLine({ fee: 1000, size: 10, dist: 'team', open: false, hub: 'corniche' }))).toBe('Mise 1 000 F · 5 contre 5 · partage égal · privé');
     expect(N(termsLine({ fee: 0, size: 14, dist: 'single', open: true, hub: 'corniche' }))).toBe('Gratuit · 7 contre 7 · un seul gagnant · public');
   });
@@ -133,7 +133,8 @@ describe('Grand Camp lobby: the buttons from the lobby’s state', () => {
 describe('Grand Camp money steps, as the server said them', () => {
   const m = (o: Partial<CampMoneyView>): CampMoneyView => ({ step: 'hold', state: 'pending', amount: 1000, at: 1, ...o });
   it('pending until the server answered; done with the amount and Teranga Money’s balance it wrote; failed with its French reason', () => {
-    expect(moneyLine(m({}))).toEqual({ tone: 'wait', text: 'Mise de 1 000 F : en attente du serveur…' });
+    expect(moneyLine(m({})).tone).toBe('wait'); expect(N(moneyLine(m({})).text)).toBe('Mise de 1 000 F : en attente du serveur…');
+    expect(moneyLine(m({})).text).toContain('F\u00a0: ');                          // a no-break space before « : » (never a colon alone at a line's start)
     expect(N(moneyLine(m({ state: 'done', balance: 4000 })).text)).toBe('Mise prise : 1 000 F · Teranga Money 4 000 F');
     expect(N(moneyLine(m({ state: 'failed', reason: 'insufficient', text: 'Solde insuffisant : Teranga Money ne couvre pas le droit d’entrée.' })).text)).toBe('Mise refusée : Solde insuffisant : Teranga Money ne couvre pas le droit d’entrée.');
     expect(moneyLine(m({ state: 'failed', reason: 'busy' })).text).toMatch(/déjà pris pour un autre match/);
@@ -175,7 +176,7 @@ describe('Grand Camp result and moments', () => {
     expect(draw).toMatchObject({ title: 'Match nul', tone: 'even', score: 'Rouge 1 – 1 Jaune' }); expect(N(draw.lines[0])).toBe('Ta mise t’est rendue : 1 000 F');
     expect(resultView(r({ end: 'cancel', winner: null, payouts: [{ tag: ME, amount: 1000 }] }), { me: ME, team: 1, teams: ['Rouge', 'Jaune'] }).title).toBe('Match annulé');
     expect(resultView(r({ end: 'stopped', winner: null, payouts: [{ tag: ME, amount: 1000 }] }), { me: ME, team: 1, teams: ['Rouge', 'Jaune'] }).title).toBe('Match arrêté par le serveur');
-    expect(resultView(r({ fee: 0, total: 0, money: 'none' }), { me: ME, team: 0, teams: ['Rouge', 'Jaune'] }).lines[0]).toBe('Match gratuit : pas de gain.');
+    expect(N(resultView(r({ fee: 0, total: 0, money: 'none' }), { me: ME, team: 0, teams: ['Rouge', 'Jaune'] }).lines[0])).toBe('Match gratuit : pas de gain.');
   });
   it('the band’s clock and the moments: a goal (mine or theirs, an own goal), half time, full time; drops and returns said in a line', () => {
     expect(clockText(0)).toBe('0:00'); expect(clockText(65.9)).toBe('1:05'); expect(clockText(240)).toBe('4:00');
