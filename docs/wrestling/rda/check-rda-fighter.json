@@ -1,0 +1,162 @@
+{
+ "results": [
+  {
+   "name": "v4: without ?rdabody nothing is loaded and nothing changes",
+   "ok": true,
+   "detail": {
+    "mode": "off",
+    "ready": false
+   }
+  },
+  {
+   "name": "v4: the bout runs to its result as always (a throw, a fall)",
+   "ok": true,
+   "detail": {
+    "outcome": "projection",
+    "winner": "player",
+    "sawAttempt": true,
+    "sawSlow": true
+   }
+  },
+  {
+   "name": "v4: no page error",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "rda: the medium file loads and validates (behind ?rdabody, the phone's quality)",
+   "ok": true,
+   "detail": {
+    "level": "medium",
+    "ok": true,
+    "ms": 191
+   }
+  },
+  {
+   "name": "rda: the entrance's wrestlers are RDA bodies, each with his physique (by the bill's styles)",
+   "ok": true,
+   "detail": "rda/athletic rda/athletic"
+  },
+  {
+   "name": "rda: the watched gala bout's two wrestlers are RDA bodies",
+   "ok": true,
+   "detail": "rda/athletic rda/athletic"
+  },
+  {
+   "name": "rda: both physiques in the player's bout — the player athletic, Gora (costaud) heavy — their face maps on",
+   "ok": true,
+   "detail": "athletic+face athletic+face athletic+face heavy+face"
+  },
+  {
+   "name": "rda: the accessory pieces are on (the switch), four pieces and six pouches on each wrestler",
+   "ok": true,
+   "detail": "6 6 6 6"
+  },
+  {
+   "name": "rda: the bout runs to its result as always (a throw, a fall)",
+   "ok": true,
+   "detail": {
+    "outcome": "projection",
+    "winner": "player",
+    "sawAttempt": true,
+    "sawSlow": true
+   }
+  },
+  {
+   "name": "rda: no page error",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "rda: every pouch stays on its bone through the entrance, the watched bout, the fête and the player's bout (drift < 2 mm)",
+   "ok": true,
+   "detail": {
+    "frames": 266,
+    "pouches": 12,
+    "worstDriftMm": 0,
+    "worst": ""
+   }
+  },
+  {
+   "name": "rda: no detached or exploded vertex (each body's skinned box < 2.4 m, every sampled vertex within 1.6 m of its hips)",
+   "ok": true,
+   "detail": {
+    "maxSize": 2.365,
+    "maxReach": 1.464,
+    "minY": -0.245,
+    "maxY": 2.789
+   }
+  },
+  {
+   "name": "rda: both physiques were drawn, every body with its face maps",
+   "ok": true,
+   "detail": "athletic heavy"
+  },
+  {
+   "name": "fallback (missing file): v4 wrestlers, the bout starts as always, no page error",
+   "ok": true,
+   "detail": {
+    "ready": false,
+    "load": {
+     "level": "medium",
+     "ok": false,
+     "ms": 15
+    },
+    "bodies": "v4 v4",
+    "errors": []
+   }
+  },
+  {
+   "name": "fallback (corrupt file): v4 wrestlers, the bout starts as always, no page error",
+   "ok": true,
+   "detail": {
+    "ready": false,
+    "load": {
+     "level": "medium",
+     "ok": false,
+     "ms": 16
+    },
+    "bodies": "v4 v4",
+    "errors": []
+   }
+  },
+  {
+   "name": "captures: entrance, standing, clinch, throw, fall, result side by side",
+   "ok": true,
+   "detail": "docs/wrestling/rda/1-entrance.jpg, docs/wrestling/rda/2-standing.jpg, docs/wrestling/rda/3-clinch.jpg, docs/wrestling/rda/4-throw.jpg, docs/wrestling/rda/5-fall.jpg, docs/wrestling/rda/6-result.jpg"
+  }
+ ],
+ "samples": {
+  "frames": 266,
+  "pouches": [
+   "athletic:RDA_Acc_athletic_armL:0",
+   "athletic:RDA_Acc_athletic_armR:1",
+   "athletic:RDA_Acc_athletic_waist:2",
+   "athletic:RDA_Acc_athletic_waist:3",
+   "athletic:RDA_Acc_athletic_waist:4",
+   "athletic:RDA_Acc_athletic_chest:5",
+   "heavy:RDA_Acc_heavy_armL:0",
+   "heavy:RDA_Acc_heavy_armR:1",
+   "heavy:RDA_Acc_heavy_waist:2",
+   "heavy:RDA_Acc_heavy_waist:3",
+   "heavy:RDA_Acc_heavy_waist:4",
+   "heavy:RDA_Acc_heavy_chest:5"
+  ],
+  "worstDrift": 0,
+  "worstPiece": "",
+  "boxes": {
+   "maxSize": 2.365,
+   "maxReach": 1.464,
+   "minY": -0.245,
+   "maxY": 2.789
+  },
+  "render": {
+   "calls": 269,
+   "triangles": 353673
+  },
+  "memory": {
+   "geometries": 161,
+   "textures": 1050
+  }
+ }
+}
