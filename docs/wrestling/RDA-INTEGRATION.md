@@ -11,8 +11,9 @@ authenticity, original generic forms, a named Senegalese adviser before any prom
 ## 1. What it does
 
 Behind `?rdabody` (or the dev setting `localStorage['dakarrek.rdabody'] = '1'`), every wrestler of a bout is an RDA body on Dakar's own
-rig: the opponent and the player's wrestler in the duel, the écurie lesson and drills, the fighter's entrance, ring and exit, the
-evening's entrance ceremony, its preliminaries and its watched main event, and the fête that carries the winner. Every clip (Stance,
+rig: the opponent and the player's wrestler in the duel, the écurie lesson and drills, on the fighter's path the bout in the ring and
+the opponent's walk-out on the player's gala night (the player walks the tunnel in their own body, as today), the evening's entrance
+ceremony, its preliminaries and its watched main event, and the fête that carries the winner. Every clip (Stance,
 Grab, Fall_Back, Prep, Celebrate, Dance_A/B, Entrance_Walk), the `StrikeRig` aims, the computed gait, the fête's carry and the referee
 scenes run unchanged: they address the same 20 bones.
 
@@ -99,10 +100,11 @@ Shared by every RDA wrestler, loaded once (in the background, never waited on):
 | File | 2.25 MB | 2.17 MB | 0.62 MB |
 | Geometry on the GPU | 1.47 MB vertex data + 0.58 MB morph texture (two physiques) | same | 0.32 + 0.18 MB |
 | Textures, decoded (RGBA8; ×1.33 with mipmaps) | 4.1 MB (5.4 MB): face 512×1230, eyes 512², brows and lashes 256² | 1.0 MB (1.4 MB): face 256×615, eyes 256², brows and lashes 128² | — (the ngemb canvas 64², shared) |
-| Load and set-up, local server (parse, clips, pose solvers) | 268 ms | 247–273 ms | — |
+| Load and set-up, local server (parse, clips, pose solvers) | 268 ms | 177–273 ms | — |
 
 Of the 2.2 MB, the accessory pieces of both physiques are 0.87 MB (a separate file loaded only when their switch is on would save it:
-§6). Over a phone's network the file is 2.2 MB more for the arena's first bout of a session.
+§6). It is fetched in the background as the game starts (when the switch is on): 2.2 MB more per session over a phone's network
+(a later version could fetch it only on the way to the arena or the écurie).
 
 In the game (`scripts/perf-rda.mjs`, phone viewport 390×844, `docs/wrestling/rda/perf-rda.json`): the player's bout avec frappe at
 the arena (two wrestlers, the referee, the duel's crowd) and the evening's entrance (two wrestlers walking out, the evening's stands).
