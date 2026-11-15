@@ -54,7 +54,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       const j = await tr.centre('#joy');
       if (V.moto && !back) { const g = await tr.centre('#ridepad .rp-gas'); await tr.down(1, g.x, g.y); await hold(); await tr.up(1); }
       else if (V.moto) { const b = await tr.centre('#ridepad .rp-brake'); await tr.down(1, b.x, b.y); await hold(); await tr.up(1); }
-      else await padDrive(page, tr, { brake: back, hold });
+      else await padDrive(page, tr, { brake: back, fwd: back ? undefined : 0.8, hold });   // the toe low on the pedal (full throttle), inside it: `fwd` 1 is its very bottom edge
     };
     const ledger = () => d(() => window.__dakar.state.data.ledger.length), wallet = () => d(() => window.__dakar.state.wallet);
     const counters = () => d(a => Object.keys(window.__dakar.state.data.counters).filter(k => k.startsWith(`vehicle:${a}:`)), V.asset);
@@ -143,7 +143,7 @@ async function floorTrial({ tag, label, dealer, w0, l0, openDesk, items, info, w
     await page.waitForFunction(() => /Essayer gratuitement/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, W).catch(() => {});
     const m = await items();
     await page.locator('#modal .item', { hasText: 'Essayer gratuitement' }).first().click();
-    await page.waitForFunction(() => /Prendre les clés/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, W).catch(() => {});
+    await page.waitForFunction(() => /Prendre les clés/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});   // he walks to the car (slow frames under SwiftShader: a minute or two)
     await page.locator('#modal .item', { hasText: 'Prendre les clés' }).first().click({ timeout: 10000 }).catch(() => {});
     await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, W).catch(() => {});
     return m;
@@ -164,11 +164,16 @@ async function floorTrial({ tag, label, dealer, w0, l0, openDesk, items, info, w
     if (touch) await tr.tap('#ridepad .rp-off'); else await d(() => window.__dakar.act());
     await page.waitForFunction(() => { const i = window.__veh().info(); return !i.driving && !i.exit && window.__dakar.pos().mode === 'play'; }, null, W).catch(() => {});
   };
-  /** The driver's door of the car where it stands now (the floor slot's step, carried with the car's pose). */
-  const bay = (await info()).floor[0];
-  const off = (() => { const c = Math.cos(bay.yaw), s = Math.sin(bay.yaw), dx = bay.step.x - bay.x, dz = bay.step.z - bay.z; return { lx: dx * c - dz * s, lz: dx * s + dz * c }; })();
+  /**
+   * The driver's door of the car where it stands now: the floor slot's step in the car's own frame, carried with its pose. The slot's heading is the car's while it
+   * still stands in its bay (`atBay`, read at the wheel before it moves: the info's floor rows carry no heading). Never a NaN to `place` (a NaN position stops
+   * every frame of the game at the roads' projection).
+   */
+  let off = null;
+  const atBay = car => { const b = car.floor[0], c = Math.cos(car.yaw), s = Math.sin(car.yaw), dx = b.step.x - b.x, dz = b.step.z - b.z; off = { lx: dx * c - dz * s, lz: dx * s + dz * c }; };
   const toCar = async re => {
     const c = await info();
+    if (![off?.lx, off?.lz, c.x, c.z, c.yaw].every(Number.isFinite)) throw new Error(`toCar: no finite door spot ${JSON.stringify({ off, x: c.x, z: c.z, yaw: c.yaw })}`);
     await d(([c, o]) => { const co = Math.cos(c.yaw), si = Math.sin(c.yaw), x = c.x + co * o.lx + si * o.lz, z = c.z - si * o.lx + co * o.lz; window.__dakar.place(x, z, Math.atan2(c.x - x, c.z - z)); }, [c, off]);
     await page.waitForFunction(r => new RegExp(r).test(window.__dakar.focus()?.name ?? ''), re, { timeout: 20000 }).catch(() => {});
   };
@@ -189,6 +194,7 @@ async function floorTrial({ tag, label, dealer, w0, l0, openDesk, items, info, w
   const f1 = await getIn();
   check(`${tag}: the test car can be got into (« ${f1?.primary} » at the driver's door)`, /Ouvrir/.test(f1?.primary ?? ''), JSON.stringify(f1));
   const x0 = await info();
+  if (x0.driving) atBay(x0);
   check(`${tag}: at the controls`, x0.driving && x0.trial && !x0.owned && x0.trialSlot === slot?.slot, JSON.stringify({ driving: x0.driving, trial: x0.trial, trialSlot: x0.trialSlot }));
   await drive(p => { const m = window.__veh().info(); return Math.hypot(m.x - p.x, m.z - p.z) > 6 && m.speed > 2; }, { x: x0.x, z: x0.z });
   const x1 = await info();
