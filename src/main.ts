@@ -2178,6 +2178,8 @@ if (DEBUG) {
     duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number; grip?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
     /** Checks only: hold the opponent, the round's clock and the referee still while a position is set up (avec frappe). */
     duelHold(on: boolean) { if (lambScene instanceof LambDuel) lambScene.debugHold(on); },
+    /** Checks only: the opponent throws this strike now (avec frappe), as his AI does when it decides to strike. */
+    duelAiStrike(kind: 'quick' | 'big' = 'big') { return lambScene instanceof LambDuel ? lambScene.debugAiStrike(kind) : false; },
     /** Checks only: the seconds left in the round. */
     duelClock(seconds: number) { if (lambScene instanceof LambDuel) lambScene.debugClock(seconds); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),

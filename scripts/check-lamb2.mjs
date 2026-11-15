@@ -152,12 +152,17 @@ async function closeUp(page) {
     const boxes = [...document.querySelectorAll('.duel-btns button'), document.getElementById('joy'), document.querySelector('[data-k=mebar]'), document.querySelector('[data-k=aibar]')].filter(shown).map(r);
     return { i: window.__dakar.duelInfo(), pts: window.__dakar.duelScreen(), prise: shown(prise) ? r(prise) : null, boxes, vw: innerWidth, vh: innerHeight };
   });
+  // settled: the camera eases towards its framing (src/main.ts, 3/s), so the heads are read once they hold still across three
+  // drawn frames (< 0.1 px) — two reads 250 ms apart could be two reads of one frame on a slow software renderer, the camera
+  // still a few pixels short of its framing
+  const frames = n => page.evaluate(k => new Promise(r => { let i = 0; const f = () => (++i >= k ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
+  const still = (a, b) => !!a && !!b && [2, 5].every(k => Math.abs(a.pts[k].y - b.pts[k].y) < 0.1);
   let now = await read(), prev = null;
   for (const t0 = Date.now(); now.i?.phase === 'clinch' && Date.now() - t0 < 40000 * SLOW; prev = now, now = await read()) {
-    if (now.i.fx?.close >= 1 && prev && [2, 5].every(k => Math.abs(now.pts[k].y - prev.pts[k].y) < 0.5)) break;
-    await page.waitForTimeout(250);
+    if (now.i.fx?.close >= 1 && still(now, prev)) break;
+    await frames(3);
   }
-  const settled = now.i?.phase === 'clinch' && now.i.fx?.close >= 1 && !!prev && [2, 5].every(k => Math.abs(now.pts[k].y - prev.pts[k].y) < 0.5);
+  const settled = now.i?.phase === 'clinch' && now.i.fx?.close >= 1 && still(now, prev);
   const headGap = now.prise ? Math.round(Math.min(now.pts[2].y, now.pts[5].y) - now.prise.b) : null;
   const under = (now.pts ?? []).flatMap((p, n) => now.boxes.filter(b => p.x > b.l - 4 && p.x < b.r + 4 && p.y > b.t - 4 && p.y < b.b + 4).map(b => `${['feet', 'waist', 'head'][n % 3]}${n < 3 ? '·toi' : '·lui'}/${b.k}`));
   const onScreen = (now.pts ?? []).every(p => p.x > 0 && p.x < now.vw && p.y > 0 && p.y < now.vh);
@@ -240,25 +245,27 @@ const closeUpOk = c => c.settled && c.fx?.cam === 'clinch' && c.fx.clinchDist <=
     check('a grab on a staggered opponent goes straight into the empoignade, with a strong grip (step 2)', /VACILLE/.test(label) && cl?.phase === 'clinch' && cl.clinch.by === 'player' && cl.clinch.entry === 'stagger' && cl.clinch.grip >= 40, { label, phase: cl?.phase, clinch: cl?.clinch });
   }
 
-  // the guard: the opponent's strikes are absorbed for endurance
-  // the opponent may grab before he strikes (an empoignade with no strike to guard): break it and guard again, a few times
-  let g, gd, guards0 = 0;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    g = await info(page);
-    if (g?.phase === 'clinch') g = await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => window.__dakar.duelBreak()), 30000);
-    if (g?.phase !== 'fight') break;
-    await page.evaluate(() => window.__dakar.duelGuard(true));
-    // a guard counted during this step is the absorbed strike; the opponent may grab right after it (the slower level 1–2
-    // AI often does), so the strike read last can already be another one by the time the wait ends
-    guards0 = g.score?.player?.guards ?? 0;
-    gd = await until(page, i => !i || i.phase !== 'fight' || (i.score?.player?.guards ?? 0) > guards0 || (i.lastStrike?.by === 'opponent' && i.lastStrike.result === 'guarded'), async i => { if (i?.phase === 'fight' && i.dist > 1.7) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 90000);
+  // the guard: the opponent's strikes are absorbed for endurance. Free, Gora answers a raised guard with a grab about as
+  // often as with a strike (a guard stops strikes, not a grab: src/lamb/stand.ts decide): replayed headless on the real
+  // duel, the old step (wait for his strike, break his grab and try again, four times) met no strike in about one run in
+  // five, whatever the build, the frame time or « Le choc » — and the bout's later steps fell with it. So, as « Le choc »'s
+  // steps do, he is held (duelHold: no decision of his, no grab), the player raises the guard and steps into his reach, and
+  // he throws his big strike (duelAiStrike: the strike his AI starts, landing by the rules): the guard's absorbing and
+  // counting is what is checked, every run (tests/lamb2Hold.test.ts replays it on eight seeds).
+  let g = await info(page), gd = null, guards0 = 0;
+  if (g?.phase === 'clinch') g = await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => window.__dakar.duelBreak()), 30000);
+  if (g?.phase === 'fight') {
+    await page.evaluate(() => { window.__dakar.duelHold(true); window.__dakar.duelGuard(true); });
+    const near = await until(page, i => !i || i.phase !== 'fight' || i.dist <= 1.6, async i => { if (i?.phase === 'fight' && i.dist > 1.6) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 30000);
     await page.keyboard.up('KeyD');
-    await page.evaluate(() => window.__dakar.duelGuard(false));
-    if ((gd?.score?.player?.guards ?? 0) > guards0 || gd?.phase !== 'clinch') break;
+    guards0 = near?.score?.player?.guards ?? 0;
+    if (near?.phase === 'fight' && await page.evaluate(() => window.__dakar.duelAiStrike('big'))) {
+      gd = await until(page, i => !i || i.phase !== 'fight' || (i.score?.player?.guards ?? 0) > guards0, null, 30000);
+    }
+    await page.evaluate(() => { window.__dakar.duelGuard(false); window.__dakar.duelHold(false); });
   }
-  if (g?.phase === 'fight' || gd) {
-    check('guard: the opponent’s strike is absorbed (guarded) and counted', (gd?.score?.player?.guards ?? 0) > guards0, { phase: gd?.phase, last: gd?.lastStrike, guards: [guards0, gd?.score?.player?.guards] });
-  }
+  check('guard: the opponent’s strike is absorbed (guarded) and counted', (gd?.score?.player?.guards ?? 0) > guards0 && gd?.lastStrike?.by === 'opponent' && gd.lastStrike.result === 'guarded',
+    { phase: gd?.phase ?? g?.phase, last: gd?.lastStrike, guards: [guards0, gd?.score?.player?.guards] });
 
   // step 3: the empoignade is played — the buttons change, reading his move and answering it wins the exchange
   const ANSWER = { push: 'pull', pull: 'pivot', pivot: 'push' };

@@ -753,6 +753,26 @@ export class Humanoid {
   readonly rda: RdaParts | null = null;
   /** The wrestling attire last put on (setWrestler), to dress again when an RDA piece switch changes. */
   protected dressed: { look: WrestlerLook; cut: 'A' | 'B' } | null = null;
+  /** The top of the meshes shown, in the rest pose (rig units; -1: to measure again, after a change of dress). */
+  private topRest = -1;
+  /**
+   * How high the top of this body stands above its feet (m, at its drawn scale): the highest of the meshes it shows now
+   * (the head and its hair: v4's wrestler 2.09 m, the Roi des Arènes body 1.94 m), from their rest-pose bounds, measured once
+   * per dress. The duel frames its close-up on it and the checks read the head there (src/lamb/duel.ts).
+   */
+  headTop(): number {
+    if (this.topRest < 0) {
+      let top = 0;
+      this.root.traverse(o => {
+        const m = o as THREE.SkinnedMesh;
+        if (!m.isSkinnedMesh || !m.visible) return;                          // (the socket placeholders are small rigid props)
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        top = Math.max(top, m.geometry.boundingBox!.max.y);
+      });
+      this.topRest = top;
+    }
+    return this.topRest * this.group.scale.y;
+  }
   /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
   setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
   /** Barefoot (the mosque's hall): v4 hides its shoe meshes; a Meshy body, whose shoes are baked into its shell, paints them as feet. */
@@ -841,6 +861,7 @@ export class Humanoid {
 
   /** City clothing. */
   setLook(l: PersonLook) {
+    this.topRest = -1;
     const vest = this.vestOn; if (vest) this.setVest(false);               // refitted below to what the new look wears on its trunk
     this.clearAccessories();
     this.setSkin(l.skin);
@@ -878,7 +899,7 @@ export class Humanoid {
   /** Wrestling attire: ngemb (cut A short, B long with knot) and accessories on sockets. Cosmetic only. */
   setWrestler(look: WrestlerLook, cut: 'A' | 'B' = 'A', skin?: number) {
     if (skin !== undefined) this.setSkin(skin);
-    this.dressed = { look, cut };
+    this.dressed = { look, cut }; this.topRest = -1;
     const tex = ngembTexture(look.ngembColor, look.ngembPattern).clone();
     tex.flipY = false; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1); tex.needsUpdate = true;
     const mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });

@@ -668,6 +668,16 @@ export class LambDuel {
    * his push), through the same inputs as the buttons — a slow browser cannot miss the call's window.
    */
   debugDrillAnswer(on: boolean) { this.drillAuto = on; }
+  /**
+   * Checks only: the opponent throws this strike now — what his AI starts when it decides to strike (`startStrike`), and it
+   * lands by the rules like any other. With `debugHold` it lets a check meet his strike every run (scripts/check-lamb2.mjs,
+   * the guard step), where his own choice would often be a grab: a raised guard stops strikes, not a grab (stand.ts decide).
+   */
+  debugAiStrike(kind: StrikeKind): boolean {
+    if (this.phase !== 'fight' || !this.frappe) return false;
+    this.aiGuardHold = 0; this.ai.guard = false;
+    return startStrike(this.ai, kind);
+  }
   /** Checks only: the seconds left in the round (a long check's earlier steps do not eat the later ones' time). */
   debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
   setGuard(on: boolean) { this.guardHeld = on; }
@@ -695,7 +705,9 @@ export class LambDuel {
     out[0] = me.x; out[1] = me.z; out[2] = ai.x; out[3] = ai.z;
     return out;
   }
-  fighterPoints(): [number, number, number][] { const p = new THREE.Vector3(); return [this.me, this.ai].flatMap(f => { this.placeOf(f, p); return [0.1, 1, 1.8].map(h => [p.x, p.y + h, p.z] as [number, number, number]); }); }
+  fighterPoints(): [number, number, number][] { const p = new THREE.Vector3(); return [this.me, this.ai].flatMap(f => { this.placeOf(f, p); return [0.1, 1, this.headOf(f)].map(h => [p.x, p.y + h, p.z] as [number, number, number]); }); }
+  /** How high a wrestler's head stands above his feet: the top of the body drawn (v4's or the Roi des Arènes'), 1.8 m without one. */
+  private headOf(f: Fighter): number { return f.w ? f.w.headTop() : 1.8; }
   info() {
     const c = this.phase === 'clinch' ? this.clinchState() : null;
     return {
@@ -1575,7 +1587,9 @@ export class LambDuel {
    */
   private closeUp(from: Framing): Framing {
     const room = this.room(from);
-    return clinchFraming(from, { fovY: fovFor(room.w, room.h), h: room.h, top: room.top, bottom: room.bottom, head: 1.9, feet: 0.2 });
+    // the heads: the top of the taller of the two bodies drawn (its hair), so the whole head is under the Prise, whichever body
+    const head = this.o.y + Math.max(this.headOf(this.me), this.headOf(this.ai));
+    return clinchFraming(from, { fovY: fovFor(room.w, room.h), h: room.h, top: room.top, bottom: room.bottom, head, feet: 0.2 });
   }
   /**
    * The rows the pair may use (px): under the lowest HUD block over the pair (the Prise, the lesson's card, the

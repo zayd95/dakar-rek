@@ -135,6 +135,16 @@ describe('« Le choc » · the empoignade’s close-up on a phone', () => {
       expect(rowOf(f, 0.2, fov, h)).toBeLessThanOrEqual(h - 6);
     }
   });
+  it('framed on the body drawn: the top of v4’s wrestler (2.19 m over the sand) or of the Roi des Arènes body (2.04 m) under the Prise, the feet over the controls, on the four screens of check-lamb2', () => {
+    // the rows the HUD leaves (check-lamb2's runs: the Prise's bottom + 12, the controls' top − 6, or the screen's foot)
+    const SCREENS = [[390, 844, 386, 684, FIGHT_PORTRAIT], [844, 390, 208, 390, FIGHT_LANDSCAPE], [360, 640, 386, 486, FIGHT_PORTRAIT], [667, 375, 224, 375, FIGHT_LANDSCAPE]] as const;
+    for (const head of [2.193, 2.043]) for (const [w, h, top, bottom, fight] of SCREENS) {
+      const fov = fovFor(w, h), f = clinchFraming(fight, { fovY: fov, h, top, bottom, head, feet: 0.2 });
+      expect(rowOf(f, head, fov, h), `${w}×${h} head ${head}`).toBeGreaterThanOrEqual(top + FX.clinch.spare - 0.01);
+      expect(rowOf(f, 0.2, fov, h), `${w}×${h} feet`).toBeLessThanOrEqual(bottom);
+      expect(f.dist).toBeLessThanOrEqual(fight.dist * FX.clinch.farthest + 1e-9);
+    }
+  });
   it('nothing over the pair: the look point stays the fight’s; the blend goes from one framing to the other', () => {
     const fov = fovFor(390, 844), f = clinchFraming(FIGHT_PORTRAIT, { fovY: fov, h: 844, top: 0, bottom: 844, head: 1.9, feet: 0.2 });
     expect(f.look).toBe(FIGHT_PORTRAIT.look);
