@@ -226,7 +226,7 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), addGrain(new THREE.MeshLambertMaterial({ color: sp.ground }), 1.2, 0.5, false, generatedTexture('sand'), 3));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true; group.add(ground);
 
-  const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };
+  const bounds = hubBounds(id);                                                     // the streets, and the sea front or the beach where there is one
   const seaMat = new THREE.MeshLambertMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35 });
   yield;
   let esplanadePeople: HubWorld['people'] = [];
@@ -297,13 +297,11 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     // road-side railing blocks the player except at each street end
     for (let k = 0; k < NB; k++) wallC(PX + 1.8, roadC(k) + 3, PX + 2.1, roadC(k + 1) - 3, 1.1);
     wallC(PX + 1.8, -HALF - 30, PX + 2.1, roadC(0) - 3, 1.1); wallC(PX + 1.8, roadC(NB) + 3, PX + 2.1, HALF + 30, 1.1);
-    bounds.x0 = BAY.shoreX;
     const esplanade = buildEsplanade({ plain, G, lite });
     colliders.push(...esplanade.colliders); esplanadePeople = esplanade.people;
     gamesDressing = () => colliders.push(...buildGamesDressing({ plain, sign: addSign, lite }));        // (once the hub's signs can be painted: below)
     colliders.push(...buildShoreLandmarks({ plain, lite }));
     landmarks.push({ name: 'phare', file: 'phare_mamelles.glb', x: MAMELLES.x, z: MAMELLES.z, y: MAMELLES.top - 0.1, height: MAMELLES.lighthouse, yaw: Math.PI / 2 });
-    bounds.x0 = ESPLANADE.x0 - 1;                                                    // the headland is walked on; everywhere else the shore stops where it did (the esplanade's own walls)
     // concrete median with gaps at the crossings; tall orange double-arm lamps on it
     for (let k = 0; k < NB; k++) {
       const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
@@ -332,7 +330,6 @@ export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail)
     plain.box(size + 40, 0.1, dry, 0, 0, -HALF + 4 - dry / 2, 0xe9d9a8);
     wetSand(plain, -HALF - 20, HALF + 20, lite);
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 700), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.05, -HALF - 36 - 350); group.add(sea);
-    bounds.z0 = -HALF - 30;
   }
 
   // Roads, sidewalks, block slabs.
@@ -2202,6 +2199,16 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
 export function hubSurface(id: HubId): { ground: number; road: number; walk: number; banlieue: boolean } {
   const sp = SPECS[id];
   return { ground: sp.ground, road: sp.road, walk: sp.walk, banlieue: sp.style === 'banlieue' };
+}
+
+/**
+ * The rectangle a district's ground covers, its streets and, on a coast, the sea front (`HubWorld.bounds`; beyond it only the roads that leave the district, src/road):
+ * the Corniche's to the headland of the esplanade (the shore stops at the bay's sea wall and the esplanade's own walls), the Almadies' down the beach. Known without
+ * building the district: a parked vehicle's record is checked against it at load (src/transport/ownedModule.ts `onDistrictGround`).
+ */
+export function hubBounds(id: HubId): { x0: number; x1: number; z0: number; z1: number } {
+  const sea = SPECS[id].sea;
+  return { x0: sea === 'west' ? ESPLANADE.x0 - 1 : -HALF - 3, x1: HALF + 3, z0: sea === 'north' ? -HALF - 30 : -HALF - 3, z1: HALF + 3 };
 }
 
 export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {

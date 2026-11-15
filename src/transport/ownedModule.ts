@@ -21,12 +21,12 @@ import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
 import { driveSteps, newDriveState, stopping, type DriveState } from './drive';
 import { DriveControls, type DriveCmd } from './controls';
-import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
+import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, pushNotice, setCondition } from '../economy/assets';
 import type { AssetState } from '../core/types';
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
-import { forgetIfSold, migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, setPaintSeed, unpark, type VehicleAsset } from './owned';
+import { forgetIfSold, migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, returnStranded, setPaintSeed, unpark, type VehicleAsset } from './owned';
 import { prestige, roadTestAt, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
 import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
@@ -46,11 +46,24 @@ import { transport } from './module';
 import { driveFeel } from './driveFeel';
 import { speedo, speedOver } from './speedo';
 import type { DriveSpec, VehicleSpec } from './spec';
+import { hubBounds } from '../world/builder';
+import { HUB_NAMES } from '../world/content';
+import { roadsOf } from '../road/routes';
 
 /** The brake (m/s²) the braking sound was mixed against (src/transport/vehicleAudio.ts `brakeIntensity`). */
 const BRAKE_AS_MIXED = 7.6;
 /** How much quicker the chase view's heading catches up per radian it is behind the driven vehicle's (src/transport/camera.ts `chase`). */
 const CAM_CHASE = 6.5;
+
+/**
+ * Where a vehicle can stand in a district, known without building it (a parked record of any district is checked at load: src/transport/owned.ts `returnStranded`):
+ * its streets (`HubWorld.bounds`, src/world/builder.ts `hubBounds`) or the ground of a road that leaves it, in the district's frame (`HubWorld.corridors` once loaded).
+ */
+export function onDistrictGround(hub: HubId, x: number, z: number): boolean {
+  const b = hubBounds(hub);
+  if (x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1) return true;
+  return roadsOf(hub).some(r => { const o = r.offset(hub); return r.ground.contains(x - o.x, z - o.z, 0); });
+}
 
 /**
  * A vehicle the player owns and drives (the Jakarta motorbike, the used saloon…), on the same vehicle framework as the
@@ -332,10 +345,22 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (this.dd) this.buildDealer(ctx, hub);
     migrateOwned(ctx.state);                                    // a save from before the asset model
     migrateLegacyVehicles(ctx.state);                           // a retired vehicle (the old « Voiture d'occasion ») becomes its successor, same asset
+    this.returnIfStranded();
     this.sync(); this.rev = assetsRevision();
     if (this.carry) this.resume();
   }
 
+  /**
+   * This model's record on no ground of its district (a save hit by the road swap of 1.0 and the 1.0.1 candidate, src/transport/owned.ts `rehomeOnRoad`): it goes back
+   * to its dealer's kerb (the lent motorbike to the Tiak Tiak counter), and the player is told where.
+   */
+  private returnIfStranded() {
+    const s = this.ctx.state, a = this.def.asset;
+    if (!returnStranded(s.data, onDistrictGround, a).length || !ownsVehicle(s, a)) return;
+    if (this.def.loaner) { pushNotice(`${this.def.text.mine} n’était sur aucune route : elle est rentrée au dépôt, reprends-la au comptoir Tiak Tiak`); return; }
+    const at = [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d).map(d => `${d.name} (${HUB_NAMES[d.hub].split(' · ')[0]})`);
+    pushNotice(`${this.def.text.mine} n’était sur aucune route ni dans aucune rue : dépannage gratuit jusque devant ${at.join(' ou ') || 'son concessionnaire'}`);
+  }
   /** The model's dealership in hub `h` (the main one or a branch). */
   private dealerFor(h: HubId): DealerDef | null { return [this.def.dealer, ...(this.def.branches ?? [])].find(d => d?.hub === h) ?? null; }
   /** The salesperson of this hub's floor. */

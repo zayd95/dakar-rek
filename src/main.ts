@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
+import { debugApiFor, dropWorkInHand, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -683,7 +683,7 @@ function corridorStep(dt: number) {
  */
 function corridorSwap(sw: Swap) {
   const w = world!, b = w.bounds;
-  rehomeOnRoad(state.data, sw.from, sw.to, sw.dx, sw.dz, (x, z) => inRect(b, x, z));                         // vehicles parked on the road follow the frame (every model)
+  rehomeOnRoad(state.data, sw, (x, z) => inRect(b, x, z));                                                     // vehicles parked on this road follow the frame (every model)
   for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
   corridors.prepare(sw.road);
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
@@ -1971,6 +1971,7 @@ async function start() {
   const welcome = () => {
     if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
     else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+    else if (restored.includes('monthly')) hud.toast('Ton bail au mois a été retrouvé (et ce qui restait dû) : la partie avait été ouverte avec une version plus ancienne du jeu.');
   };
   // 1.0.1: the first launch on this device flies in over Pikine once the character is made (src/game/opening.ts); the welcome comes with the HUD, when it lands
   if (openingWanted({ made: !!made, debug: DEBUG, forced: TEST.intro, seen: openingSeen() })) opening.play(ctx, { done: welcome });
@@ -2196,5 +2197,9 @@ if (DEBUG) {
     ...(testHost ? economy.debug() : {}),
   };
   if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
-  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
+  // the public game: a teleport drops the delivery or ride in hand (unpaid) and the walking marker first, so a jump never reaches a drop-off, a kerb or a marked vehicle
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api, () => {
+    destination = null;
+    if (dropWorkInHand(state.data)) { hud.toast('Saut de test : la livraison ou la course en cours est annulée, rien n’est payé.'); if (world) saveNow(); }
+  });
 }
