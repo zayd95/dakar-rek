@@ -483,6 +483,54 @@ easing). Roughly 200 lines.
 **Not in this stage**: the replay, commentary, the referee's arm sans frappe (stage 3); the opponent's colours and the
 stance gait (stage 2); any rule.
 
+### Built (W2, branch `wp/wrestling-choc`)
+
+All of the table above, in `src/lamb/fx.ts` (pure: the plan of each event, the stop's and the push's course, the
+close-up's framing), applied by `src/lamb/duel.ts` only when the duel has a DOM and is not watched (`fx` is null
+otherwise, so the seeded `rand`, the fixed steps and every headless number are untouched: the balance series, the 396
+roster bouts of `lamb2Styles`, sixteen watched evenings and a pupil's full trace dumped before and after are
+byte-identical). One more file than planned: `src/main.ts` adds the duel's push **after** its 3/s camera lerp (the lerp
+would have swallowed a 0.3 s push) and takes it off before the next frame's.
+
+| Piece | As built | Why it differs from the starting numbers |
+|---|---|---|
+| Hit-stop | quick hit 0.06 s · big hit 0.10 · stagger 0.13 · a throw that lands (both disciplines, the lesson and drills too) 0.13 · a throw turned by a counter 0.12 · a big strike guarded 0.045; the longest wins; **held for at least two drawn frames**; the duel's `update` returns before the clock, the AI and the pose, presses are kept (a Garde tap is latched, so a « Tirer » pressed and released inside a stop still counts) | On a 30 fps phone 0.05 s is one or two frames and reads as a dropped frame; a hair longer, and never less than two frames, reads as weight. Still ≤ 0.13 s: never a pause |
+| Camera push | along the camera's own axis, in over 0.05 s, back over 0.25 s: quick 3 %, big 6 %, stagger 7 %, a body landing 8 %; a smaller push never restarts a bigger one | Calmer than 4/8/10 %: on a phone the pair fills more of the screen than on a monitor, and in the empoignade the camera is already 30 % closer |
+| Close-up | the fight's framing → 70 % of its distance, 0.4 m lower, eased over 0.4 s (then main.ts's lerp); the look point raised just enough for both heads to sit **12 px under the lowest HUD block over the pair** (the Prise, the lesson's card, the message), and the camera pulled back, up to 1.25 × the fight's distance, until the feet are 6 px over the controls under it (the buttons, the joystick); « over the pair » is within 0.9 m of its middle at the closest framing (so a button at the side of a landscape screen does not count); each limit aimed 2 px further (main.ts's easing stops a pixel short); measured from the page at the empoignade's start and every 0.5 s; the field of view from `fovFor`, as main.ts sets it | A fixed look point cannot serve 390 × 844 (room from y 385 to 690) and 360 × 640 (385 to ~490) at once: on the small phone the close-up is held back (heads first, then feet), on the tall one it comes all the way in |
+| Contact | chest to chest at 0.72 m over 0.15 s, drawn only (each body moves half the gap along the pair's line; the rules' places, the separation, the ring and the referee are untouched), through the fall; the `grip` aim (upper arms forward over his shoulders, forearms round his neck and back) under push/pull/pivot; the rig is now made sans frappe too (player's bout) | — |
+| Slow fall sans frappe | 0.3 × for 0.9 s and the low close shot, held 1.6 s (avec frappe keeps 1.2 s for the referee's walk) | — |
+| Sound | `fallThud()` (66→55 Hz, 0.25 s, and 0.14 s of low-passed noise) at 1.15 s into the fall, when `Fall_Back` (0.6 s long, on the sand at 0.55 s) reaches the ground after its slow part; `gripSlap()` (two 0.04 s slaps) as the empoignade starts | — |
+| Haptics | `buzz()` of `src/transport/haptics.ts` (its « Vibrations » setting, Android only): a clean hit taken 30 ms, big 40, stagger 50; the player's fall 40-30-60; a counter landed by the player (a throw turned or blocked, an exchange won by reading his move) 25 | Stronger contact, stronger buzz; each well under the 100 ms the module leaves between buzzes |
+
+`duelInfo().fx`: `{ stops, lastStop, holding, cam: 'fight' | 'clinch' | 'fall', close, kick, clinchDist, thuds, slaps,
+buzzes, lastBuzz, room }`; `duelInfo().fall.landed`. Stage 0 done here: the streak chip is hidden in a bout (`duel.ts`),
+the heads are kept under the Prise (by the close-up above, not by moving the panel), and the four `check-arena-fighter`
+failures were the check's: since « UI V2 step 0 » (`src/ui/quiet.ts` `route`) a plain notice that does not answer an
+action goes to the quiet log, not on screen; the check now reads the log too. Left for stage 0: the tunnel camera
+(`src/actors/camera.ts`, another package's files), the bàkk hint, the after-bout card's « Palmarès » on 390 px.
+
+**Results** (W2 build, the same machine and method as §1; SwiftShader: nothing here says how a phone feels):
+
+| Check | Before (§1) | After | New steps |
+|---|---|---|---|
+| unit, the wrestling stack | 37 files, 392 tests | 38 files, 409 tests | `tests/duelFx.test.ts` (17) |
+| `check-lamb` | 24 / 24 | 27 / 27 | the sans-frappe empoignade, projection, slow fall and thud; the close-up on a phone in portrait and landscape |
+| `check-lamb2` | 53 / 53 | 58 / 58 | quick and big stops; the close-up on 390 × 844, 844 × 390, 360 × 640, 667 × 375 |
+| `check-arena-fighter` | 40 / 44 | 44 / 44 | (the check reads the quiet log) |
+| `check-arena-fighter` `LAMB2=1` | 44 / 48 | 48 / 48 | |
+| `check-arena-visit` `LAMB2=1`, the same evening on both builds (`AT`: city day 2405) | 43 / 43 (the baseline build, desktop) | 129 / 129 (desktop, phone, landscape: 43 each) | the same watched evening on both: preliminary « Abdou l’emporte par chute », main event Daouda – Ousmane, « Ousmane l’emporte par projection », the referee's arm raised; only the stands' animation at a given instant and one draw call differ |
+
+In the empoignade on 390 × 844 each wrestler is now 149–150 px tall (106 before), both heads 12–15 px under the
+Prise (they were under it); on 360 × 640 the camera stays back (the screen has no room for more) with the heads still
+under the Prise and the feet over « Pivoter »; on 667 × 375, 108 px.
+
+**Phone captures** (`docs/wrestling/choc/`, each « avant | après » side by side): the bout's moments of §1 recaptured
+on both builds with the same script at deviceScaleFactor 2 (`sf-*`, `af-*`); the fighter's path from
+`check-arena-fighter`'s phone run at deviceScaleFactor 1, as §1's (`entrance-*`, `af-2-knockdown-announced`).
+
+**Still to do on a real phone** (acceptance 6): whether the stops read as weight and the push stays calm, and the
+buzzes on an Android phone with « Vibrations » on (iPhone Safari has no vibration: nothing pretends there).
+
 ## 6. Decisions for the owner
 
 | # | Decision | Options | Recommendation | Blocks |

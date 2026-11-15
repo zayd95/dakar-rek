@@ -369,6 +369,8 @@ const debugWalkers: { h: Humanoid; vx: number; vz: number; x0: number; z0: numbe
 const dbgRand = rng(42);
 const randomLookDbg = () => randomLook(dbgRand);
 let lambScene: LambScene | LambDuel | null = null;
+/** The duel's camera push added this frame (taken off before the next one's smoothing). */
+const lambKick = new THREE.Vector3();
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
@@ -1290,7 +1292,7 @@ function stopScene() {
 function endScene() {
   if (!lambScene) return;
   const done = lambScene.onDone;
-  extra.remove(lambScene.group); lambScene.dispose(); lambScene = null;
+  extra.remove(lambScene.group); lambScene.dispose(); lambScene = null; lambKick.set(0, 0, 0);
   hud.setScene(null); mode = 'play'; input.enabled = true;
   npcLife.setVisible(true);
   if (playerBody) player.group.visible = false;
@@ -1833,7 +1835,13 @@ function frameStep(now: number, dt: number, draw = true) {
     if (mode !== 'menu') state.tick(dt * 1000);
   } else if (lambScene) {
     const f = lambScene.update(dt);
+    // a duel's push of the camera (« Le choc », src/lamb/fx.ts) is added after the smoothing, which would swallow it,
+    // and taken off again before the next frame's
+    camera.position.sub(lambKick);
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
+    const kick = (f as { kick?: THREE.Vector3 }).kick;
+    if (kick) lambKick.copy(kick); else lambKick.set(0, 0, 0);
+    camera.position.add(lambKick);
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
   } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked)) {

@@ -134,10 +134,14 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: out through the tunnel and the wrestlers' gate: the path ends`, outside && /Ba beneen yoon/.test(await d(() => document.getElementById('toast')?.textContent ?? '')), JSON.stringify(await d(() => window.__dakar.pos())));
 
   // ---------------------------------------------------------------- the player's own gala night (src/arena/myGala.ts)
-  // every toast of the evening, kept (the ceremony's lines follow each other quickly)
+  // every message of the evening, kept (the ceremony's lines follow each other quickly): the lines on screen, and — since
+  // the quiet screen (src/ui/quiet.ts route, UI V2 step 0) — the quiet log, where a plain notice that does not answer
+  // what the player just did goes (the corner's « Les préliminaires d’abord… », « Prêt : … » after the debug act())
   await d(() => {
     window.__toasts = []; const box = document.getElementById('toast');
-    new MutationObserver(() => { for (const c of box.children) { const m = c.dataset?.msg; if (m && !window.__toasts.includes(m)) window.__toasts.push(m); } }).observe(box, { childList: true });
+    const keep = m => { if (m && !window.__toasts.includes(m)) window.__toasts.push(m); };
+    new MutationObserver(() => { for (const c of box.children) keep(c.dataset?.msg); }).observe(box, { childList: true });
+    setInterval(() => { for (const m of window.__dakar.quietLog?.().entries ?? []) keep(m); }, 200);
   });
   const toasts = () => d(() => window.__toasts.slice());
   // a record from the career first (two ranked wins), so the announcer and the griot have one to read
