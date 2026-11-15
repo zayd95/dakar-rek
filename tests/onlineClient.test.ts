@@ -237,6 +237,20 @@ describe('the account client', () => {
     for (let i = 0; i < t.length; i++) expect(t.filter(x => x >= t[i] && x < t[i] + 1000).length).toBeLessThanOrEqual(15);
   });
 
+  it('a device clock set back an hour does not hold the send window full: the next frame goes within the second (the window counts on the page\'s clock)', async () => {
+    FakeWS.server = new FakeServer();
+    const { client } = setup();
+    await online(client);
+    const tags = Array.from({ length: 15 }, (_, i) => `22222222222222${i.toString(16).padStart(2, '0')}`);
+    for (const t of tags) client.seen(t);                                 // 15 frames: the second's window is full
+    await vi.waitFor(() => expect(FakeWS.server.received.filter(m => m.type === 'conv')).toHaveLength(15), { timeout: 2000 });
+    try {
+      vi.setSystemTime(Date.now() - 3_600_000);                            // the device clock an hour back (Date only; the timers stay real)
+      client.seen('3333333333333333');
+      await vi.waitFor(() => expect(FakeWS.server.received.filter(m => m.type === 'conv')).toHaveLength(16), { timeout: 2500 });
+    } finally { vi.useRealTimers(); }
+  });
+
   it('a confirmation tapped twice: one request, the same answer for both taps', async () => {
     FakeWS.server = new FakeServer();
     const { client } = setup();

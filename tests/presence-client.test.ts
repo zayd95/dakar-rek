@@ -134,7 +134,8 @@ describe('presence connection lifecycle', () => {
 describe('the server\'s time while online, when the device clock is moved', () => {
   const YEAR = 365 * 86_400_000;
   let mono = 0;
-  const pass = (ms: number) => { vi.advanceTimersByTime(ms); mono += ms; };
+  /** Time passes on both clocks together, half a second at a time (a timer that fires reads the page's clock at its own moment). */
+  const pass = (ms: number) => { for (let left = ms; left > 0; left -= 500) { const d = Math.min(500, left); mono += d; vi.advanceTimersByTime(d); } };
   beforeEach(() => {
     vi.useFakeTimers(); vi.spyOn(Math, 'random').mockReturnValue(0); vi.spyOn(performance, 'now').mockImplementation(() => mono); mono = 5000;
     listeners = new Map(); network = { onLine: true }; FakeSocket.instances = [];
@@ -164,6 +165,18 @@ describe('the server\'s time while online, when the device clock is moved', () =
     const t1 = online(client, 3000 - YEAR);                                  // the server answers again: its own time
     expect(client.serverNow()).toBe(t1);
     expect(Math.abs(t1 - (t0 + 31_000))).toBeLessThan(1000);
+  });
+  it('set back a year: the heartbeat still finds a server gone quiet, and a server that answers keeps the socket', () => {
+    const client = join(); online(client);
+    const socket = FakeSocket.instances.at(-1)!;
+    pass(2000); vi.setSystemTime(Date.now() - YEAR);
+    pass(58_000); expect(client.status).toBe('online');                     // 60 s of page time without a pong: not yet
+    pass(20_000); expect(client.status).toBe('reconnecting');               // 80 s: closed (with the device's clock, « now − last pong » stayed negative: never)
+    expect(socket.close).toHaveBeenCalled();
+    pass(1000); const next = FakeSocket.instances.at(-1)!; expect(next).not.toBe(socket);
+    online(client); vi.setSystemTime(Date.now() - YEAR);
+    for (let i = 0; i < 10; i++) { pass(20_000); next.onmessage?.({ data: 'pong' }); }   // a server that answers every ping
+    expect(client.status).toBe('online'); expect(next.close).not.toHaveBeenCalled();
   });
   it('set back a year: the server\'s time does not go back (and a peer\'s time stamp does not drag it)', () => {
     const client = join(), t0 = online(client);

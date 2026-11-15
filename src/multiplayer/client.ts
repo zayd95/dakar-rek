@@ -21,7 +21,8 @@ export class PresenceClient {
   private requestedRoom: number | null = null;
   private retry = 0; private handshake = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
   private lastSentAt = 0; private lastMove = ''; private latest: Move | null = null; private clockOffset = 0;
-  private lastPong = 0;
+  /** When the server last answered a ping: on the device's clock, and on the page's monotonic clock (a device clock set back leaves the first behind). */
+  private lastPong = 0; private lastPongMono = 0;
   /** The device clock and the page's monotonic clock when the offset was last checked (0: no server time known yet on this page). */
   private wallAt = 0; private monoAt = 0;
   constructor(public profile: Profile, private enabled: boolean, private endpoint?: string) {
@@ -124,19 +125,19 @@ export class PresenceClient {
     }, 8000);
     ws.onmessage = event => {
       if (generation !== this.generation) return;
-      if (event.data === 'pong') { this.lastPong = Date.now(); return; }
+      if (event.data === 'pong') { this.lastPong = Date.now(); this.lastPongMono = performance.now(); return; }
       let message: ServerMessage; try { message = JSON.parse(event.data as string) as ServerMessage; } catch { return; }
       if (message.type === 'welcome') {
         if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
         clearTimeout(this.handshake); this.handshake = 0;
         this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now(); this.wallAt = Date.now(); this.monoAt = performance.now() || 1;
-        this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now();
+        this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now(); this.lastPongMono = performance.now();
         this.features.clear(); if (Array.isArray(message.features)) for (const f of message.features) if (typeof f === 'string') this.features.add(f);
         for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
         this.setStatus('online');
         if (this.latest) this.publish(this.latest);
         this.heartbeat = window.setInterval(() => {
-          if (Date.now() - this.lastPong > 65000) { ws.close(); return; }
+          if (Date.now() - this.lastPong > 65000 || performance.now() - this.lastPongMono > 65000) { ws.close(); return; }   // either clock: a phone back from sleep (its page clock may have stood still), or a device clock set back (« now − last pong » negative)
           if (ws.readyState === WebSocket.OPEN) ws.send('ping');
         }, 20000);
       } else if (message.type === 'peer') {
