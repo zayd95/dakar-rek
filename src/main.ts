@@ -37,7 +37,9 @@ import { navigation } from './game/navigation';
 import { aroundDeps } from './game/around';
 import { CampClient } from './online/campClient';
 import { DEVICE_KEY } from './core/saveTransfer';
-import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
+import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, preloadBody, dropBody, bodyReady, liveWrestlers, type Clip, type PersonLook } from './actors/humanoid';
+import { buildOf, rdaLevel, rdaMode, rdaUrl, rdaWanted, type RdaLevel, type RdaPartsOn } from './actors/rdaFlag';
+import { liveRdaParts, measureRda } from './actors/rdaLook';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
 import { NpcLife } from './social/npcLife';
@@ -301,6 +303,19 @@ async function makePlayerBody() {
   playerBody.setAppearance(state.data.appearance);                  // the creator's skin, hair and outfit (null: the body as it was)
   scene.add(playerBody.group); player.group.visible = false;
   old?.dispose();
+}
+/**
+ * The Roi des Arènes wrestlers (docs/wrestling/RDA-INTEGRATION.md), behind `?rdabody` (src/actors/rdaFlag.ts): their file for this quality (medium
+ * and high; low keeps v4 unless forced), loaded in the background. A wrestler made before it is ready, or when it fails to load or to
+ * validate, is the v4 one, as always. Dropped when the quality goes to low.
+ */
+let rdaLoaded: RdaLevel | null = null, rdaLoad: { level: RdaLevel; ok: boolean; ms: number } | null = null;
+async function loadRdaBodies() {
+  if (!rdaWanted(quality)) { if (rdaLoaded) { dropBody('rda'); rdaLoaded = null; } return; }
+  const level = rdaLevel(quality); if (rdaLoaded === level) return;
+  rdaLoaded = level; dropBody('rda');
+  const t0 = performance.now(), ok = await preloadBody('rda', rdaUrl(level, import.meta.env.BASE_URL));
+  rdaLoad = { level, ok, ms: Math.round(performance.now() - t0) };
 }
 /** New Game (no save, not a ?debug run): the character studio (src/ui/characterStudio.ts) opens at once, before the assets finish loading. Test links can force the body (src/core/testParams.ts). */
 const creating = isNewGame && TEST.avatar !== 'homme' && TEST.avatar !== 'femme' && TEST.avatar !== 'v4' && (TEST.avatar === 'choose' || !DEBUG);
@@ -1218,6 +1233,7 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   if (who) { style = { ...(STYLES[who.wrestler.style as StyleId] ?? style), name: who.wrestler.name }; level = who.level; }
   const opponent = who ? { attrs: who.attrs, stand: who.stand, clinch: who.clinch, line: who.line } : undefined;
   const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6, discipline, attrs, opponent });
+  duel.bodies().opponent?.setBuild(buildOf(style.id));                     // an RDA body (?rdabody): heavy for « costaud », athletic otherwise
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
     const r = duel.result; if (!r) return;
@@ -1265,6 +1281,7 @@ function startDrill(a: Action, npc?: string, it?: Interactable) {
   const notes = key ? attrMoves(c, { ...c, [key]: (c[key] ?? 0) + 1 }) : [];
   const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: 0, mode: 'entrainement', style: PARTNER, level: 1, ring: 5,
     discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'] });
+  duel.bodies().opponent?.setBuild(buildOf(PARTNER.id));
   duel.onDone = () => {
     const r = duel.drillResult();
     if (!r || r.outcome === 'abandon') { hud.toast('Exercice interrompu : rien n’est compté'); return; }
@@ -1560,6 +1577,7 @@ function setQuality(q: Quality) {
   const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
   quality = q; applyQuality();
   if (state.data.avatar && humanoidReady()) void makePlayerBody();      // the light body files on the low preset
+  void loadRdaBodies();                                                  // the RDA wrestlers' file for this quality, or v4 (?rdabody)
   if (world) {
     loadHub(world.id, at);
     // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
@@ -1964,6 +1982,7 @@ let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
   const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
+  void loadRdaBodies();                                                         // (behind ?rdabody; never waited on)
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
     name: isDefaultName(presence.profile.name, state.data.guestId) ? '' : presence.profile.name }) : null;
@@ -2112,6 +2131,14 @@ if (DEBUG) {
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
+    /** The Roi des Arènes wrestlers (?rdabody): the switch, the file loaded, and every RDA body drawn now (its build, pieces, pouch probes, skinned box). */
+    rda: () => ({ mode: rdaMode(), wanted: rdaWanted(quality), ready: bodyReady('rda'), load: rdaLoad, quality,
+      bodies: liveRdaParts().filter(p => p.inScene()).map(measureRda), render: { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles }, memory: { ...renderer.info.memory } }),
+    /** Every wrestler drawn now (in the scene, every parent visible): its body (v4 or rda), its physique, where it stands and faces. */
+    wrestlers: () => liveWrestlers().filter(w => { let o: THREE.Object3D | null = w.group; while (o) { if ((o as THREE.Scene).isScene) return true; if (!o.visible) return false; o = o.parent; } return false; })
+      .map(w => { const p = w.group.getWorldPosition(new THREE.Vector3()); return { body: w.body, build: w.rda?.build ?? null, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +w.group.rotation.y.toFixed(3), clip: w.clipName }; }),
+    /** Checks: the RDA piece switches on every RDA wrestler drawn now (and the defaults of those made after are the page's). */
+    rdaParts(p: Partial<RdaPartsOn>) { for (const r of liveRdaParts()) { r.setParts(p); r.redress?.(); } },
     body: () => playerBody,
     faceCamera() { follow.pin(); follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
