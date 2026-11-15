@@ -143,6 +143,20 @@ describe('the guarded moto parking by the arena', () => {
     const side = { x: s.x - HALF_W - 0.5, z: s.z };
     expect(pickTarget([motoAt(s, side), gardien(true)], 'street', side.x, side.z, Math.PI / 2)?.id).toBe('moto:parked');
   });
+  it('just paid, still in front of him: a word with the gardien, not the moto he has just put in its place, even turned a little; beside it, the moto', () => {
+    const motoAt = (m: { x: number; z: number }, me: { x: number; z: number }): Target => ({
+      id: 'moto:parked', name: 'Ta moto Jakarta', kind: 'vehicle', space: 'street', radius: 1.8, bias: -0.2, affordances: () => [],
+      x: m.x + Math.max(-HALF_W, Math.min(HALF_W, me.x - m.x)), z: m.z + Math.max(-HALF_LEN, Math.min(HALF_LEN, me.z - m.z)),
+    });
+    const gardien = (bias: number): Target => ({ id: 'gardien', name: 'Le gardien de motos', kind: 'person', space: 'street', x: lot.gardien.x, z: lot.gardien.z, radius: 2.6, bias, affordances: () => [] });
+    const s = lot.slots[lot.reserved], me = { x: lot.gardien.x, z: lot.gardien.z - 1.3 };   // where check-arena-arrival pays him; the moto stowed in its place
+    for (const facing of [-0.75, -0.4, 0, 0.4, 0.7, 0.75]) expect(pickTarget([motoAt(s, me), gardien(gardienBias(false, true))], 'street', me.x, me.z, facing)?.id, `facing ${facing}`).toBe('gardien');
+    // without the rule: turned 0.7 rad toward the moto (as the browser check found the player after paying), the moto by a few millimetres
+    expect(pickTarget([motoAt(s, me), gardien(gardienBias(false))], 'street', me.x, me.z, 0.7)?.id).toBe('moto:parked');
+    // after the gala, beside the moto in its place, to ride away: the moto, him keeping it or not
+    const by = { x: s.x - 1.0, z: s.z - 0.6 };
+    for (const keeping of [true, false]) expect(pickTarget([motoAt(s, by), gardien(gardienBias(false, keeping))], 'street', by.x, by.z, 0)?.id).toBe('moto:parked');
+  });
 });
 
 describe('getting there: the goal line names the moto, the car rapide carries fans', () => {
