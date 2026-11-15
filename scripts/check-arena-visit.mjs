@@ -7,6 +7,8 @@
 // chip, the announcer as one subtitle line, nothing over the middle of the screen — on a phone on its side too (landscape 844×390).
 // Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone|landscape]
 // LAMB2=1: with ?lamb2 (the watched bout avec frappe: referee's arm, the stands at the fall); captures and results suffixed -lamb2.
+// AT=<ms since 1970>: the device's clock (so the city's day, src/core/clock.ts) starts there at each page load — two builds
+// then watch the same evening, whose seeded bouts must end alike (« Le choc » left them untouched: compare the results).
 // Run it under the shared lock: flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs …
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -29,6 +31,7 @@ const VIEWS = [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['pho
 for (const [label0, viewport, touch, quality] of VIEWS) {
   const label = L2 ? `${label0}-lamb2` : label0;
   const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
+  if (process.env.AT) await ctx.addInitScript(at => { const real = Date.now.bind(Date), off = at - real(); Date.now = () => real() + off; }, Number(process.env.AT));
   await ctx.addInitScript(q => { if (!sessionStorage.getItem('arena-visit')) { localStorage.clear(); localStorage.setItem('dakarrek.quality', q); sessionStorage.setItem('arena-visit', '1'); } }, quality);
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
