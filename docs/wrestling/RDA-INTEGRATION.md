@@ -134,17 +134,19 @@ the checks' phone runs at Low draw them too) and waits for the file; the outputs
 | `tests/rdaWrestler.test.ts` (new) | — | **15 / 15** | — |
 | Wrestling unit stack (37 files) + body tests (`humanoid`, `gait`, `wrestlerRate`, `humanoid-animation`, `cabinFit`) | 37 files / 392 | 37 / 392 (+ 15 new) · 6 files / 60 | — |
 | `check-rda-fighter` (new) | — | (its v4 half: 3 / 3) | **16 / 16** |
-| `check-lamb2` | 53 / 53 | not run yet | 43 / 51 at the default time budget; **53 / 53** with `LAMB_SLOW=8` |
-| `check-lamb` | 24 / 24 | not run yet | not run yet |
-| `check-arena-fighter` | 40 / 44 | not run yet | **40 / 44**, the same four failures as the baseline |
-| `check-arena-fighter` `LAMB2=1` | 44 / 48 | not run yet | not run yet |
+| `check-lamb2` | 53 / 53 | **53 / 53** | 43 / 51 at the default time budget; **53 / 53** with `LAMB_SLOW=8` |
+| `check-lamb` | 24 / 24 | **24 / 24** | **24 / 24** (`LAMB_SLOW=8`) |
+| `check-arena-fighter` | 40 / 44 | **40 / 44** (the same four) | **40 / 44**, the same four failures as the baseline |
+| `check-arena-fighter` `LAMB2=1` | 44 / 48 | **44 / 48** (the same four) | **44 / 48** (the same four) |
 
 - `check-lamb2` with the RDA bodies at the default budget: one sequence of the desktop bout failed and the next seven checks of the
   same bout followed it (the guard step waited for a strike while the opponent kept grabbing; the bout then ran into the clinch and the
   fall before the checks looked). The checks' budgets are wall-clock (`LAMB_SLOW`) and the RDA bodies make SwiftShader's frames slower
   (perf table above), so the same budget buys the game less time; with the budget doubled (`LAMB_SLOW=8`) every check passes, 53 / 53.
   Nothing in the bout's logic reads the body.
-- `check-arena-fighter`'s four failures are the baseline's (the gala night's « préliminaires d'abord » and « Prêt » toasts, which W0
+- Without the flag every check gives the baseline's count (the RDA code is not reached: no file is fetched, `new Wrestler()` makes the
+  v4 body, `setBuild` does nothing on it).
+- `check-arena-fighter`'s four failures are the baseline's, with and without the RDA bodies, both disciplines (the gala night's « préliminaires d'abord » and « Prêt » toasts, which W0
   traced to a check out of step with the 1.0.1 HUD; « Le choc » owns that fix).
 - `check-rda-fighter` (`scripts/check-rda-fighter.mjs`, phone 390×844, touch, Medium, deviceScaleFactor 2; results in
   `docs/wrestling/rda/check-rda-fighter.json`): the medium file loads and validates (177–273 ms locally); the entrance's two wrestlers,
