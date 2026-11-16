@@ -12,7 +12,8 @@ import { Percussion, crowdCheer, paChime } from '../lamb/audio';
 import { hasGestured } from './exteriorAudio';
 import { arenaHearing } from './hearing';
 import { STYLES } from '../lamb/rules';
-import { rosterLook } from '../career/roster';
+import { rosterLook, wrestlerById } from '../career/roster';
+import { buildOf } from '../actors/rdaFlag';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
@@ -537,6 +538,7 @@ class ArenaEvening {
       this.clearEntrance();
       if (this.mine || this.remote) return;                                    // the player's own duel, or a friend's: never simulated
       this.bout = new WatchedBout({ x: this.cx, z: this.cz }, rosterLook(this.bill().left.id)?.look ?? LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
+      { const bl = this.bill(), b = this.bout.bodies(); b.left?.setBuild(buildOf(wrestlerById(bl.left.id)?.style)); b.right?.setBuild(buildOf(wrestlerById(bl.right.id)?.style)); }   // RDA bodies (?rdabody): by who they are
       this.bout.onMoment = (p, i) => {
         if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
         if (p === 'clinch') this.react('clinch');
@@ -610,6 +612,7 @@ class ArenaEvening {
     const cx = this.cx, cz = this.cz, tz = cz + TUNNEL_MOUTH_R + 2.5;
     const lw = new Wrestler(0x5b3420); lw.setLook(p.look, p.look.ngembPattern === 'bordure' ? 'B' : 'A');
     const rw = new Wrestler(0x4e2e1c); rw.setLook({ ngembColor: STYLES[p.style].ngemb, ngembPattern: 'uni', accessories: [] }, 'A');
+    rw.setBuild(buildOf(p.style));                                          // an RDA body (?rdabody): heavy for « costaud »
     // a short walk to their marks (where the duel puts them), no dances: the ceremony is the main event's
     for (const [h, sx, t0] of [[lw, 1, 0.2], [rw, -1, 0.7]] as const) {
       h.group.position.set(cx + sx * 0.8, 0.1, tz); this.show.add(h.group);
@@ -648,6 +651,7 @@ class ArenaEvening {
     for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
     this.t = PRELIM.walk;
     const b = this.pBout = this.prelimBout(p);
+    b.bodies().right?.setBuild(buildOf(p.style));                          // the physique he walked in with (?rdabody)
     // smaller reactions than the main event's: a murmur at a grab, part of the stands up at a fall
     b.onMoment = (ph, info) => {
       if (b.time < this.catchUpTo - 0.5) return;

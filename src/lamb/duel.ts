@@ -4,7 +4,10 @@ import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { castById } from '../social/cast';
-import { Percussion, crowdCheer, strikeSound } from './audio';
+import { Percussion, crowdCheer, fallThud, gripSlap, strikeSound } from './audio';
+import { DuelFx, FX, clinchFraming, contactShift, mixFraming, pairHalfWidth, type FxEvent, type Framing } from './fx';
+import { buzz } from '../transport/haptics';
+import { fovFor } from '../core/view';
 import {
   AVERAGE, STAND, STAND_STYLES, STRIKES, URGE, decide, frappeBreath, frappeFactor, frappePace, frappeSlow, rangeOf, urgeOf, free, land, react, reactDelay, standState, startStrike, tick,
   type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
@@ -153,6 +156,17 @@ export class LambDuel {
    */
   private fallFx: { loser: Fighter; winner: Fighter; refFrom: THREE.Vector3; refTo: THREE.Vector3; cheered: boolean } | null = null;
   private refRig: StrikeRig | null = null;
+  /**
+   * « Le choc » (src/lamb/fx.ts): the hit-stop, the camera's push and close-up, the bodies chest to chest, the thud and
+   * the buzz — the player's own bout only (null in a watched bout and without a DOM: those play exactly as before).
+   */
+  private fx: DuelFx | null = null;
+  /** The player's own bout, after a projection (both disciplines): who goes down, and whether he has landed yet. */
+  private feelFall: { loser: Fighter; winner: Fighter; landed: boolean } | null = null;
+  /** Where the HUD leaves the pair room in the empoignade (px rows), measured once per empoignade and screen size. */
+  private roomAt: { top: number; bottom: number; w: number; h: number; at: number } | null = null;
+  /** Garde pressed since the last frame (in the empoignade it is « Tirer »): a tap is kept through a hit-stop. */
+  private guardTapped = false;
   /** The referee has raised the winner's arm (avec frappe; kept for the checks once the bout is over). */
   private refRaised = false;
   /** The referee's raised arm was told (onMoment 'arm'), once. */
@@ -240,7 +254,7 @@ export class LambDuel {
   private onHidden = () => { if (document.hidden) this.releaseControls(); };
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
-    if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
+    if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { if (down && !e.repeat && !this.paused) this.guardTapped = true; this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
     if (!down || e.repeat) return;
     if (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter') {
       if (e.target instanceof HTMLButtonElement && this.ui.contains(e.target)) return;   // let a focused dialog button act
@@ -257,6 +271,7 @@ export class LambDuel {
   constructor(opts: DuelOptions) {
     const { origin, look, input, crowdSize } = opts;
     this.input = input; this.mode = opts.mode; this.style = opts.style; this.level = opts.level; this.spectate = !!opts.spectate;
+    if (!this.spectate && !this.headless) this.fx = new DuelFx();
     this.discipline = opts.discipline ?? 'sans_frappe'; this.frappe = this.discipline === 'avec_frappe';
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
@@ -279,7 +294,7 @@ export class LambDuel {
     const mk = (skin: number, l: WrestlerLook, x: number, max: number, regen: number, attrs: Attributes): Fighter => {
       const w = wrestlerReady() ? new Wrestler(skin) : null;
       if (w) { w.setLook(l, l.ngembPattern === 'bordure' ? 'B' : 'A'); this.group.add(w.group); }
-      return { ...standState(attrs, max), w, pos: new THREE.Vector3(origin.x + x, 0.1, origin.z), facing: 0, regen, busy: 0, clip: 'Prep', windup: 0, effort: 0, score: emptyScore(), rig: w && this.frappe ? new StrikeRig(w) : null, move: null };
+      return { ...standState(attrs, max), w, pos: new THREE.Vector3(origin.x + x, 0.1, origin.z), facing: 0, regen, busy: 0, clip: 'Prep', windup: 0, effort: 0, score: emptyScore(), rig: w && (this.frappe || this.fx) ? new StrikeRig(w) : null, move: null };
     };
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
     // so the player starts at +x and is seen on the left, the opponent on the right
@@ -344,7 +359,7 @@ export class LambDuel {
     (d.querySelector('.duel-head small') as HTMLElement).textContent = sub;
     const st = document.createElement('style');
     st.textContent = `.duel-ui{position:fixed;inset:0;pointer-events:none;z-index:30;font:600 14px system-ui,sans-serif;color:#fff}
-      body.induel #stats,body.induel #place,body.induel #sceneTag,body.induel #menuBtn,body.induel #presenceBtn,body.induel #goal{display:none!important}
+      body.induel #stats,body.induel #place,body.induel #sceneTag,body.induel #menuBtn,body.induel #presenceBtn,body.induel #goal,body.induel #streakChip{display:none!important}
       body.induel.touch #joy{display:block!important}
       .duel-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:8px}
       .duel-head{flex:1;min-width:0;background:rgba(15,23,42,.72);border-radius:10px;padding:5px 10px;line-height:1.2}
@@ -407,7 +422,7 @@ export class LambDuel {
       .duel-recap ul{margin:4px 0 0;padding-left:18px;font-size:13px;font-weight:500}.duel-recap small{display:block;color:#fbbf24;font-size:11px;margin-top:8px}`;
     d.appendChild(st);
     const guard = d.querySelector<HTMLButtonElement>('[data-k=guard]')!, grab = d.querySelector<HTMLButtonElement>('[data-k=grab]')!, brk = d.querySelector<HTMLButtonElement>('[data-k=break]')!;
-    const hold = (on: boolean) => (e: Event) => { e.preventDefault(); this.guardHeld = on; guard.classList.toggle('on', on); };
+    const hold = (on: boolean) => (e: Event) => { e.preventDefault(); if (on && !this.guardHeld && !this.paused) this.guardTapped = true; this.guardHeld = on; guard.classList.toggle('on', on); };
     guard.addEventListener('pointerdown', hold(true)); guard.addEventListener('pointerup', hold(false)); guard.addEventListener('pointerleave', hold(false)); guard.addEventListener('pointercancel', hold(false));
     const tap = (b: HTMLButtonElement, f: () => void) => {
       b.addEventListener('pointerdown', e => { e.preventDefault(); b.classList.add('on'); f(); });
@@ -555,6 +570,7 @@ export class LambDuel {
     };
     if (outcome === 'projection' || outcome === 'decision' || outcome === 'egalite') {
       this.phase = 'fall'; this.phaseT = 0;
+      if (this.fx && outcome === 'projection' && winner) this.feelFall = winner === 'player' ? { loser: this.ai, winner: this.me, landed: false } : { loser: this.me, winner: this.ai, landed: false };
       if (this.frappe && winner && this.official) {
         const w = winner === 'player' ? this.me : this.ai, l = winner === 'player' ? this.ai : this.me;
         // the referee comes up beside the winner, on the far side from the camera so he stays in view
@@ -572,6 +588,18 @@ export class LambDuel {
     if (this.armTold || !this.winner || this.phaseT <= 1.8) return;
     this.armTold = true;
     this.onMoment?.('arm', this.winner);
+  }
+
+  /**
+   * « Le choc » (src/lamb/fx.ts): what a contact does in the player's own bout — the stop and the camera's push (held
+   * by `fx`), the sound, the buzz (src/transport/haptics.ts: Android, the « Vibrations » setting). `mine`: the player did
+   * it; `taken`: the player took it. Nothing in a watched bout or without a DOM.
+   */
+  private feel(e: FxEvent, mine = false, taken = false) {
+    const fx = this.fx; if (!fx) return;
+    const p = fx.hit(e, { mine, taken });
+    if (p.sound === 'thud') fallThud(); else if (p.sound === 'slap') gripSlap();
+    if (p.buzz !== null) buzz(p.buzz);
   }
 
   private showRecap() {
@@ -640,6 +668,16 @@ export class LambDuel {
    * his push), through the same inputs as the buttons — a slow browser cannot miss the call's window.
    */
   debugDrillAnswer(on: boolean) { this.drillAuto = on; }
+  /**
+   * Checks only: the opponent throws this strike now — what his AI starts when it decides to strike (`startStrike`), and it
+   * lands by the rules like any other. With `debugHold` it lets a check meet his strike every run (scripts/check-lamb2.mjs,
+   * the guard step), where his own choice would often be a grab: a raised guard stops strikes, not a grab (stand.ts decide).
+   */
+  debugAiStrike(kind: StrikeKind): boolean {
+    if (this.phase !== 'fight' || !this.frappe) return false;
+    this.aiGuardHold = 0; this.ai.guard = false;
+    return startStrike(this.ai, kind);
+  }
   /** Checks only: the seconds left in the round (a long check's earlier steps do not eat the later ones' time). */
   debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
   setGuard(on: boolean) { this.guardHeld = on; }
@@ -667,7 +705,9 @@ export class LambDuel {
     out[0] = me.x; out[1] = me.z; out[2] = ai.x; out[3] = ai.z;
     return out;
   }
-  fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
+  fighterPoints(): [number, number, number][] { const p = new THREE.Vector3(); return [this.me, this.ai].flatMap(f => { this.placeOf(f, p); return [0.1, 1, this.headOf(f)].map(h => [p.x, p.y + h, p.z] as [number, number, number]); }); }
+  /** How high a wrestler's head stands above his feet: the top of the body drawn (v4's or the Roi des Arènes'), 1.8 m without one. */
+  private headOf(f: Fighter): number { return f.w ? f.w.headTop() : 1.8; }
   info() {
     const c = this.phase === 'clinch' ? this.clinchState() : null;
     return {
@@ -686,8 +726,11 @@ export class LambDuel {
         t: Math.round(this.phaseT * 100) / 100, slow: this.outcome === 'projection' && this.phaseT < 0.9, cheered: this.fallFx.cheered,
         referee: Math.round(this.official.group.position.distanceTo(this.fallFx.winner.pos) * 100) / 100,
         refereeFrom: Math.round(this.fallFx.refFrom.distanceTo(this.fallFx.winner.pos) * 100) / 100,
-        arm: this.phaseT > 1.8,
+        arm: this.phaseT > 1.8, ...(this.feelFall ? { landed: this.feelFall.landed } : {}),
+      } } : this.phase === 'fall' && this.feelFall ? { fall: {
+        t: Math.round(this.phaseT * 100) / 100, slow: this.outcome === 'projection' && this.phaseT < FX.fall.slowFor, landed: this.feelFall.landed,
       } } : {}),
+      ...(this.fx ? { fx: this.fxInfo() } : {}),
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline, identity: this.identity, ...(this.frappe ? { refereeRaised: this.refRaised } : {}),
       ...(this.lesson ? { lesson: { step: this.lesson.step, done: this.lesson.done, skipped: this.lesson.skipped } } : {}),
@@ -700,6 +743,24 @@ export class LambDuel {
         stagger: this.me.stagger > 0 ? 'player' : this.ai.stagger > 0 ? 'opponent' : null,
         lastStrike: this.lastStrike,
       } : {}),
+    };
+  }
+
+  /**
+   * « Le choc » for the checks (`duelInfo().fx`): stops started and the last one's length, the camera (the fight's
+   * framing, the empoignade's close-up, the fall's close shot) with its close-up blend and push, the distance the bodies
+   * are drawn apart, thuds, slaps and buzzes asked of the phone.
+   */
+  private fxInfo() {
+    const fx = this.fx!, a = this.placeOf(this.me, new THREE.Vector3()), b = this.placeOf(this.ai, new THREE.Vector3());
+    const down = this.fallFx?.loser ?? this.feelFall?.loser;
+    const fall = this.phase === 'fall' && !!down && this.outcome === 'projection' && this.phaseT < (this.fallFx ? 1.2 : FX.fall.close);
+    return {
+      stops: fx.stops, lastStop: fx.lastStop, holding: fx.holding,
+      cam: fall ? 'fall' : this.phase === 'clinch' ? 'clinch' : 'fight', close: Math.round(fx.close * 100) / 100, kick: Math.round(fx.kick * 1000) / 1000,
+      clinchDist: Math.round(Math.hypot(a.x - b.x, a.z - b.z) * 100) / 100,
+      thuds: fx.thuds, slaps: fx.slaps, buzzes: fx.buzzes, lastBuzz: fx.lastBuzz,
+      ...(this.roomAt ? { room: { top: Math.round(this.roomAt.top), bottom: Math.round(this.roomAt.bottom) } } : {}),
     };
   }
 
@@ -762,17 +823,29 @@ export class LambDuel {
     if (this.ai.windup > 0) this.responded('dodge');
   }
 
-  update(dt: number): { cam: THREE.Vector3; look: THREE.Vector3 } {
-    if (this.paused) { this.grabTaps = 0; this.breakPresses = 0; return this.frame(0); }
+  update(dt: number): { cam: THREE.Vector3; look: THREE.Vector3; kick?: THREE.Vector3 } {
+    // « Le choc »: the camera's push and close-up run in real time; a hit-stop holds the bout itself — no clock, no AI,
+    // no pose — and keeps the presses made meanwhile for the frame it ends on
+    const fx = this.fx;
+    if (fx) {
+      fx.tick(dt, this.phase === 'clinch', this.phase === 'clinch' || (this.phase === 'fall' && !!this.feelFall));
+      if (!this.paused && fx.holds(dt)) return this.aim(this.gap);
+    }
+    if (this.paused) { this.grabTaps = 0; this.breakPresses = 0; this.guardTapped = false; return this.frame(0); }
     this.t += dt;
     const tPrev = this.phaseT; this.phaseT += dt; this.msgHold = Math.max(0, this.msgHold - dt);
     const me = this.me, ai = this.ai;
     const taps = this.grabTaps; this.grabTaps = 0;
     const breaks = this.breakPresses; this.breakPresses = 0;
     const quick = this.quickPresses, big = this.bigPresses; this.quickPresses = 0; this.bigPresses = 0;
-    const guardPress = this.guardHeld && !this.guardWas; this.guardWas = this.guardHeld;
+    const guardPress = (this.guardHeld && !this.guardWas) || this.guardTapped; this.guardWas = this.guardHeld; this.guardTapped = false;
     for (const f of [me, ai]) { f.busy = Math.max(0, f.busy - dt); if (!this.frappe) f.open = Math.max(0, f.open - dt); }
     const step = this.stepId();
+    const down = this.feelFall;
+    if (this.phase === 'fall' && down && !down.landed && this.phaseT >= FX.fall.land) {
+      down.landed = true;
+      this.feel('fall', down.winner === me, down.loser === me);
+    }
 
     if (this.phase === 'intro') {
       // referee check, kept to plain words (no invented ritual wording)
@@ -899,8 +972,8 @@ export class LambDuel {
     } else if (this.phase === 'result') {
       if (this.phaseT > 10) this.done = true;
     }
-    // the fall's first moment plays slowly
-    return this.frame(!this.spectate && this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 0.9 ? dt * 0.3 : dt);
+    // the fall's first moment plays slowly (sans frappe too, in the player's own bout: « Le choc »)
+    return this.frame(!this.spectate && this.phase === 'fall' && (this.fallFx || this.feelFall) && this.outcome === 'projection' && this.phaseT < FX.fall.slowFor ? dt * FX.fall.slow : dt);
   }
 
   // ---------------------------------------------------------------- avec frappe: the stand-up exchange (Làmb 2.0)
@@ -1103,6 +1176,8 @@ export class LambDuel {
     const by: Side = att === me ? 'player' : 'opponent';
     if (at.counter) {
       const c = counterThrow(def, att, -gAtt);
+      // a counter landed: the player's buzzes; one that turns the throw holds the picture too
+      this.feel(c.result === 'reverse' ? 'counter' : 'read', def === me, att === me);
       this.lastThrow = { by, result: c.result === 'reverse' ? 'countered' : 'blocked' };
       if (this.lesson) this.lessonHear({ k: 'throw', by, result: this.lastThrow.result });
       if (c.result === 'reverse') { this.msg(def === me ? 'Contre ! Il part au sol !' : 'Il contre ta projection…', 1.2); this.resolveClinch(def === me); return; }
@@ -1226,6 +1301,7 @@ export class LambDuel {
     const NOUN: Record<ClinchMove, [string, string]> = { push: ['sa poussée', 'ta poussée'], pull: ['sa traction', 'ta traction'], pivot: ['son pivot', 'ton pivot'] };
     let text = '';
     if (e.result === 'counter') {
+      this.feel('read', winner === 'player', winner === 'opponent');
       const won = winner === 'player', m = e.winner === 'a' ? e.move : e.against!, lost = e.winner === 'a' ? e.against! : e.move;
       text = won ? `Contre ! Tu ${MOVES[m].doing}s sur ${NOUN[lost][0]} : il glisse !` : `Il ${MOVES[m].doing} sur ${NOUN[lost][1]} : tu glisses !`;
       crowdCheer(0.8, 0.07);
@@ -1306,6 +1382,8 @@ export class LambDuel {
       d.balance = Math.max(d.balance, 80); d.stagger = 0; d.composure = 100;   // the pads take it
     }
     strikeSound(l.kind, l.result);
+    if (l.result === 'hit' || l.result === 'stagger') this.feel(l.result === 'stagger' ? 'stagger' : l.kind, mine, !mine);
+    else if (l.result === 'guarded' && l.kind === 'big') this.feel('guarded', mine, !mine);
     if (l.result === 'hit' || l.result === 'stagger') a.score.hits = (a.score.hits ?? 0) + 1;
     if (l.result === 'stagger') { a.score.staggers = (a.score.staggers ?? 0) + 1; crowdCheer(1.6, 0.14); }
     else if (l.result === 'hit' && l.kind === 'big') crowdCheer(0.9, 0.08);
@@ -1323,6 +1401,7 @@ export class LambDuel {
   }
 
   private resolveClinch(playerWins: boolean) {
+    this.feel('throw', playerWins, !playerWins);
     if (this.drill) {
       if (!playerWins) this.drillHear({ k: 'fall' });
       this.msg(playerWins ? 'Il est au sol : on se relève.' : 'Tu es au sol… On se relève.', 1.2);
@@ -1379,6 +1458,8 @@ export class LambDuel {
     this.standT = 0; this.urged = false;
     if (this.lesson) this.lessonHear({ k: 'clinch', by: by === this.me ? 'player' : 'opponent' });
     if (this.frappe) { this.aiThink = 0.5; this.autoT = 0.5; }
+    this.roomAt = null;                                                    // the HUD of this empoignade is measured afresh
+    this.feel('grip');
     this.msg(text, 0.9);
   }
   /** End an empoignade without a fall: push the wrestlers apart; `exposed` (if any) is left open briefly. */
@@ -1422,10 +1503,12 @@ export class LambDuel {
   poseBodies(): { cam: THREE.Vector3; look: THREE.Vector3 } {
     const me = this.me, ai = this.ai, dt = this.poseDt, dist = this.gap;
     this.poseDt = 0;
+    const hold = this.fx ? this.fx.contact : 0;
     for (const f of [me, ai]) if (f.w) {
-      f.w.group.position.copy(f.pos); f.w.group.rotation.y = f.facing; f.w.hold = f.clip; f.w.animate(dt, 0);
-      if (f.rig && this.phase === 'fight') f.rig.pose(f, dt);
-      else if (f.rig && this.phase === 'clinch' && this.frappe) {
+      this.placeOf(f, f.w.group.position); f.w.group.rotation.y = f.facing; f.w.hold = f.clip; f.w.animate(dt, 0);
+      if (f.rig && this.phase === 'fight' && this.frappe) f.rig.pose(f, dt);
+      else if (f.rig && this.phase === 'clinch' && hold > 0) f.rig.grip(hold);     // « Le choc »: arms round each other, then the move
+      if (f.rig && this.phase === 'clinch' && this.frappe) {
         const at = this.attempt;
         if (at) f.rig.hold(at.by === f ? 'push' : 'pull', Math.min(1, at.t / 0.25), at.by === f ? f.balance : Math.min(f.balance, 30));
         else f.rig.hold(f.move?.kind ?? null, f.move ? Math.min(1, f.move.t / 0.3) : 0, f.balance);
@@ -1450,24 +1533,90 @@ export class LambDuel {
     }
     for (const h of this.crowd) h.animate(dt, 0);
     this.draw();
+    return this.aim(dist);
+  }
 
+  /**
+   * Where a wrestler is drawn (into `out`): where the rules put him, or — « Le choc », the player's own bout — moved
+   * along the pair's line towards the other in the empoignade, chest to chest (the pair's middle is kept, so the rules'
+   * places, the separation and the ring are untouched).
+   */
+  private placeOf(f: Fighter, out: THREE.Vector3): THREE.Vector3 {
+    out.copy(f.pos);
+    const k = this.fx ? this.fx.contact : 0; if (k <= 0) return out;
+    const o = f === this.me ? this.ai : this.me, dx = o.pos.x - f.pos.x, dz = o.pos.z - f.pos.z, d = Math.hypot(dx, dz);
+    if (d > 1e-4) { const m = (contactShift(d) * k) / d; out.x += dx * m; out.z += dz * m; }
+    return out;
+  }
+
+  /** The side camera's view of the pair `dist` m apart (the rules' distance), with the push of « Le choc » apart. */
+  private aim(dist: number): { cam: THREE.Vector3; look: THREE.Vector3; kick?: THREE.Vector3 } {
+    const me = this.me, ai = this.ai, fx = this.fx;
     // side camera on the pair, always from the -z side; farther in portrait so both wrestlers fit
     const mid = me.pos.clone().add(ai.pos).multiplyScalar(0.5);
     const side = new THREE.Vector3(-(ai.pos.z - me.pos.z), 0, ai.pos.x - me.pos.x).normalize();
     if (!Number.isFinite(side.x) || side.lengthSq() < 0.5) side.set(0, 0, -1);
     if (side.z > 0) side.multiplyScalar(-1);
     const portrait = typeof innerWidth !== 'undefined' && innerWidth < innerHeight;
-    const cam = mid.clone().addScaledVector(side, (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6)).setY(portrait ? 3.4 : 3.0);
-    if (!this.spectate && this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 1.2) {
-      // close and low on the wrestler going down, then back out for the referee
-      const down = this.fallFx.loser.pos, c = down.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
+    let fr: Framing = { dist: (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6), height: portrait ? 3.4 : 3.0, look: portrait ? 0.9 : 1.1 };
+    if (fx && fx.close > 0) fr = mixFraming(fr, this.closeUp(fr), fx.close);   // « Le choc »: the empoignade's close-up
+    const cam = mid.clone().addScaledVector(side, fr.dist).setY(fr.height);
+    let view: { cam: THREE.Vector3; look: THREE.Vector3 };
+    const down = this.fallFx?.loser ?? this.feelFall?.loser;
+    if (!this.spectate && this.phase === 'fall' && down && this.outcome === 'projection' && this.phaseT < (this.fallFx ? 1.2 : FX.fall.close)) {
+      // close and low on the wrestler going down, then back out (avec frappe: for the referee)
+      const at = this.placeOf(down, new THREE.Vector3()), c = at.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
-      return (this.view = { cam: c, look: down.clone().setY(0.6) });
+      view = { cam: c, look: at.setY(0.6) };
+    } else {
+      // camera-relative movement axes
+      this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();
+      this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);           // forward × up
+      view = { cam, look: mid.clone().setY(fr.look) };
     }
-    // camera-relative movement axes
-    this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();
-    this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);           // forward × up
-    return (this.view = { cam, look: mid.clone().setY(portrait ? 0.9 : 1.1) });
+    this.view = view;
+    // the push towards the pair along the camera's own axis: given apart, so the caller adds it after its own smoothing
+    if (!fx) return view;
+    return { ...view, kick: view.look.clone().sub(view.cam).multiplyScalar(fx.kick) };
+  }
+
+  /**
+   * The empoignade's framing from the fight's (src/lamb/fx.ts clinchFraming): closer and lower, the heads under the HUD
+   * over the pair (the Prise panel) and the feet over the controls under it, on this screen with the game camera's field
+   * of view (src/core/view.ts fovFor, as src/main.ts sets it).
+   */
+  private closeUp(from: Framing): Framing {
+    const room = this.room(from);
+    // the heads: the top of the taller of the two bodies drawn (its hair), so the whole head is under the Prise, whichever body
+    const head = this.o.y + Math.max(this.headOf(this.me), this.headOf(this.ai));
+    return clinchFraming(from, { fovY: fovFor(room.w, room.h), h: room.h, top: room.top, bottom: room.bottom, head, feet: 0.2 });
+  }
+  /**
+   * The rows the pair may use (px): under the lowest HUD block over the pair (the Prise, the lesson's card, the
+   * message), over the highest control under it (the duel's buttons, the joystick) — over the pair: within the width it
+   * can take on screen at the closest framing of `from` (fx.ts pairHalfWidth). Measured as an empoignade starts
+   * (startClinch forgets it), then every half second (the Prise's words may take another line) and when the screen turns.
+   */
+  private room(from: Framing) {
+    const w = typeof innerWidth === 'undefined' ? 390 : innerWidth, h = typeof innerHeight === 'undefined' ? 844 : innerHeight;
+    const now = typeof performance === 'undefined' ? 0 : performance.now();
+    if (this.roomAt && this.roomAt.w === w && this.roomAt.h === h && now - this.roomAt.at < 500) return this.roomAt;
+    let top = 0, bottom = h;
+    if (!this.headless && !this.spectate) {
+      const half = pairHalfWidth(from, fovFor(w, h), w, h), x0 = w / 2 - half, x1 = w / 2 + half;
+      const across = (r: DOMRect) => r.width > 0 && r.height > 0 && r.left < x1 && r.right > x0;
+      for (const el of this.ui.querySelectorAll<HTMLElement>('.duel-clinch, .duel-step, .duel-msg')) {
+        if (el.hidden || !el.textContent?.trim()) continue;
+        const r = el.getBoundingClientRect();
+        if (across(r) && r.bottom < h * 0.8) top = Math.max(top, r.bottom + FX.clinch.gap);
+      }
+      for (const el of [...this.ui.querySelectorAll<HTMLElement>('.duel-btns button'), document.getElementById('joy')]) {
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (across(r) && r.top > h * 0.35) bottom = Math.min(bottom, r.top - FX.clinch.room);
+      }
+    }
+    return (this.roomAt = { top, bottom, w, h, at: now });
   }
 
   dispose() {
