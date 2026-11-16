@@ -140,10 +140,8 @@ the checks' phone runs at Low draw them too) and waits for the file; the outputs
 | `check-arena-fighter` `LAMB2=1` | 44 / 48 | **44 / 48** (the same four) | **44 / 48** (the same four) |
 
 - `check-lamb2` with the RDA bodies at the default budget: one sequence of the desktop bout failed and the next seven checks of the
-  same bout followed it (the guard step waited for a strike while the opponent kept grabbing; the bout then ran into the clinch and the
-  fall before the checks looked). The checks' budgets are wall-clock (`LAMB_SLOW`) and the RDA bodies make SwiftShader's frames slower
-  (perf table above), so the same budget buys the game less time; with the budget doubled (`LAMB_SLOW=8`) every check passes, 53 / 53.
-  Nothing in the bout's logic reads the body.
+  same bout followed it. This first reading (a time budget) was wrong: see « With Le choc » below — the guard step was a coin toss on
+  every build (about one run in five), now made deterministic.
 - Without the flag every check gives the baseline's count (the RDA code is not reached: no file is fetched, `new Wrestler()` makes the
   v4 body, `setBuild` does nothing on it).
 - `check-arena-fighter`'s four failures are the baseline's, with and without the RDA bodies, both disciplines (the gala night's « préliminaires d'abord » and « Prêt » toasts, which W0
@@ -159,6 +157,59 @@ the checks' phone runs at Low draw them too) and waits for the file; the outputs
   `2-standing.jpg`, `3-clinch.jpg`, `4-throw.jpg`, `5-fall.jpg`, `6-result.jpg` (the pieces switched on for the captures). Review
   images: `bodies-v4-athletic-heavy.jpg` (v4, athletic, heavy with the pieces; front and back), `bodies-clips.jpg` (Stance, Celebrate),
   `face.jpg` (the game's light, `proof/rda/viewer.html`).
+
+### With « Le choc » (`wp/wrestling` @ f17f293f, fixed in 30be5b95 and bc7b0d31)
+
+On the combined branch `check-lamb2` with the RDA bodies gave 48 / 57: the desktop guard step and the seven checks of its bout, and the
+844×390 close-up's `headGap 11` (≥ 12 wanted).
+
+- **The guard step was a coin toss, on every build.** It waited for Gora to strike a raised guard; free, he grabs it about as often
+  (`decide` in `src/lamb/stand.ts`: a guard stops strikes, not a grab), and after a grab the player's break can fail and he throws.
+  Replayed headless on the real duel (300 seeds each; headless means no body at all), the old step met no strike in **15.7 %** of runs
+  at the 0.1 s frame step of a slow renderer and **19.7 %** at 1/60 s, **identical with « Le choc »'s effects forced on**; Gora struck
+  before grabbing in 48–52 % of his choices. Not the bodies, not the frame time, not « Le choc »: chance. The step now holds him
+  (`duelHold`, as « Le choc »'s steps do: no decision, no grab of his), the player raises the guard and steps into reach, and he throws
+  his big strike (`duelAiStrike`, a check-only control: the strike his AI starts, landing by the rules); the check still asks that the
+  strike is guarded and counted, and now also that the last strike is his, guarded (`tests/lamb2Hold.test.ts`, eight seeds).
+  Why this is the same test, not a weaker one: what the step checks is the player's guard against his strike, and that path is
+  untouched. `duelAiStrike` calls `startStrike`, the very function his AI calls when it decides to strike (same endurance cost, same
+  windup); the strike then lands through the bout's own `strikeLands` → `land` (`src/lamb/stand.ts`), which reads the player's guard
+  as it is (held, not busy, not open, not staggering), takes the guard's endurance and balance cost and counts the guard, exactly as
+  for a strike he chose. Only his *choice* of a strike over a grab is taken out of this step — that choice is the AI's (tested
+  headless in `lamb2Styles` and `lamb2Balance`), not the guard's, and it is what made the step fail one run in five. The check is
+  also stricter than before: it now asks that the last strike be his and guarded, not only that a guard was counted.
+- **The close-up's heads were read before the camera arrived.** The head points were a fixed 1.8 m (no body involved) and the camera
+  eases to its framing at 3/s; the check called it settled after two reads 250 ms apart with < 0.5 px of movement, which a slow
+  software renderer can satisfy with one frame drawn twice. Measured: heads 208–209 px, short of the framing's 210.6. The check now
+  reads them once still across three drawn frames (< 0.1 px). And, as asked, the framing and the head points now use the **top of the
+  body drawn** (`Humanoid.headTop`: v4's wrestler 2.09 m — its hair — the RDA body 1.94 m, so it is not taller), so the whole head sits
+  under the Prise for either body (on v4 the old 1.8 m point left the top 0.29 m of the head unaccounted for); the four phone screens
+  keep the feet over the controls (`tests/duelFx.test.ts`).
+- **Frame time** in the player's bout (standing, the opponent held), phone 390×844, SwiftShader (median of the game's frame interval;
+  the game's own JS: update + render submit; one render forced to completion with the game paused):
+
+  | Build | Medium: frame / JS / forced render | High: frame / JS / forced render | Triangles (Medium) |
+  |---|---|---|---|
+  | v4 alone (17fa9811) | 283 / 3 + 14 / 300 ms | 317 / 3 + 14 / 332 ms | 249k |
+  | RDA alone (94a86de1) | 317 / 3 + 14 / 297 ms | 350 / 3 + 15 / 358 ms | 263k |
+  | « Le choc » alone (c9be8f58) | 267 / 3 + 13 / 287 ms | 317 / 3 + 13 / 345 ms | 238k |
+  | Combined (f17f293f), RDA | 300 / 3 + 12 / 331 ms | 350 / 3 + 16 / 373 ms | 264k |
+  | Combined, v4 | 283 / 3 + 13 / 305 ms | — | 243k |
+
+  The RDA bodies cost 6–12 % more frame time here and « Le choc » nothing measurable; the game's own CPU work (update 3 ms, submit
+  12–16 ms) is the same in every build: the rest is SwiftShader rasterising and vertex-shading on the CPU. On a phone that part runs on
+  the GPU, where two 7k-vertex skinned bodies are a small share; it is not a reason to expect a 5× slowdown on a phone (a device pass
+  is still owed: decision 1). The 45-minute RDA run was the failing steps waiting out their budgets at `LAMB_SLOW=8`; with the fix the
+  same run takes 6 minutes.
+
+- **The detached-vertex check of `check-rda-fighter`** gave 15 / 16 on the fix's first run: a body measured 2.50 m across (bound 2.4)
+  with a 1.52 m reach and no pouch drift. The 2.4 m was a guess below a real pose (a 1.94 m body lying with its arms overhead spans
+  about 2.5 m). It is now judged by what skinning guarantees: every vertex the skin carries on one bone alone keeps its rest
+  distance to that bone within 5 mm (exact under linear blend skinning; tested on the GLB under a stride and a strike), with
+  anatomical bounds beside it (reach from the hips < 1.7 m, size < 2.6 m). A detached vertex now shows from 5 mm, not 40 cm.
+- **Counts on the combined branch**, before (f17f293f) → after (the fix): `check-lamb2` without the RDA bodies 58 / 58 → 58 / 58; with
+  them (`LAMB_SLOW=8`) 48 / 57 → 58 / 58, and 58 / 58 at the default budget too (6 minutes instead of 45); `check-lamb` 27 / 27 →
+  27 / 27; `check-rda-fighter` 16 / 16 → 15 / 16 at 30be5b95 (the 2.4 m bound) → **16 / 16** (one-bone drift 0 mm over 1 349 vertices and 186 frames, reach 1.52 m, size 2.50 m); wrestling unit stack 39 files / 424 → 39 / 434 (+ the body tests, 5 files / 46).
 
 ## 5. Decisions for the owner
 
