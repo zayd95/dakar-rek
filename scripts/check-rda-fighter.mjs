@@ -4,7 +4,7 @@
 //     winner carried) and the player's own bout avec frappe all draw RDA bodies, heavy for « costaud », athletic otherwise;
 //  2. with the accessory pieces on (an owner decision, off by default: ?rdaparts=arms,chest), every pouch stays on its bone through the
 //     entrance, the watched bout, the fête and the player's bout (distance to its bone over every sampled frame), and no vertex is
-//     detached or exploded (the skinned box of each body per frame);
+//     detached or exploded (its distance to its bone, its reach from the hips, the skinned box of each body per frame);
 //  3. a missing or a corrupt file: the v4 wrestlers, the bout as always, no page error;
 //  4. phone captures (entrance, standing, clinch, throw, fall, result), old (v4) and new (RDA) side by side in docs/wrestling/rda/.
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-rda-fighter.mjs [baseUrl] [outDir=docs/wrestling/rda]   (RAW=dir keeps the raw captures)
@@ -52,13 +52,14 @@ async function until(page, cond, act, budget = 120000) {
 }
 /** The pouches' distances to their bones and the bodies' boxes, sampled: the first sample of each pouch is its reference. */
 function sampler() {
-  const ref = new Map(), s = { frames: 0, bodies: 0, worstDrift: 0, worstPiece: '', boxes: { maxSize: 0, maxReach: 0, minY: Infinity, maxY: -Infinity }, pouches: new Set(), builds: new Set(), face: true };
+  const ref = new Map(), s = { frames: 0, bodies: 0, worstDrift: 0, worstPiece: '', boxes: { maxSize: 0, maxReach: 0, boneDrift: 0, rigidVertices: 0, minY: Infinity, maxY: -Infinity }, pouches: new Set(), builds: new Set(), face: true };
   s.add = r => {
     if (!r) return;
     s.frames++;
     for (const [k, b] of r.bodies.entries()) {
       s.bodies = Math.max(s.bodies, r.bodies.length); s.builds.add(b.build); s.face &&= b.faceMaps;
-      s.boxes.maxSize = Math.max(s.boxes.maxSize, ...b.box.size); s.boxes.maxReach = Math.max(s.boxes.maxReach, b.reach); s.boxes.minY = Math.min(s.boxes.minY, b.box.min[1]); s.boxes.maxY = Math.max(s.boxes.maxY, b.box.min[1] + b.box.size[1]);
+      s.boxes.maxSize = Math.max(s.boxes.maxSize, ...b.box.size); s.boxes.maxReach = Math.max(s.boxes.maxReach, b.reach);
+      s.boxes.boneDrift = Math.max(s.boxes.boneDrift, b.boneDrift.worst); s.boxes.rigidVertices = Math.max(s.boxes.rigidVertices, b.boneDrift.n); s.boxes.minY = Math.min(s.boxes.minY, b.box.min[1]); s.boxes.maxY = Math.max(s.boxes.maxY, b.box.min[1] + b.box.size[1]);
       b.probes.forEach((p, i) => {
         const key = `${b.build}:${k}:${p.piece}:${i}`; s.pouches.add(`${b.build}:${p.piece}:${i}`);
         if (!ref.has(key)) ref.set(key, p.d);
@@ -165,8 +166,13 @@ const neu = await evening('rda');
 const S = neu.S;
 check('rda: every pouch stays on its bone through the entrance, the watched bout, the fête and the player\'s bout (drift < 2 mm)', S.frames > 20 && S.pouches.size >= 12 && S.worstDrift < 0.002,
   { frames: S.frames, pouches: S.pouches.size, worstDriftMm: +(S.worstDrift * 1000).toFixed(2), worst: S.worstPiece });
-// (the box's height above the sand is not a criterion: the fête lifts the winner onto his people's shoulders, his head near 2.8 m)
-check('rda: no detached or exploded vertex (each body\'s skinned box < 2.4 m, every sampled vertex within 1.6 m of its hips)', S.frames > 20 && S.boxes.maxSize < 2.4 && S.boxes.maxReach < 1.6, S.boxes);
+// A detached or exploded vertex, judged three ways over every sampled frame: (1) every vertex the skin carries on one bone alone keeps
+// its rest distance to that bone (linear blend skinning keeps it exactly: 5 mm is float and morph rounding); (2) no sampled vertex
+// farther than 1.7 m from its hips (the farthest a 1.94 m body reaches: collarbone raised, arm straight up, about 1.6 m); (3) no body
+// wider or taller than 2.6 m (lying with the arms overhead it spans about 2.5 m). The box's height above the sand is no criterion:
+// the fête lifts the winner onto his people's shoulders.
+check('rda: no detached or exploded vertex (one-bone vertices keep their distance to their bone within 5 mm, every sampled vertex within 1.7 m of its hips, every body within 2.6 m)',
+  S.frames > 20 && S.boxes.rigidVertices > 200 && S.boxes.boneDrift < 0.005 && S.boxes.maxReach < 1.7 && S.boxes.maxSize < 2.6, S.boxes);
 check('rda: both physiques were drawn, every body with its face maps', S.builds.has('heavy') && S.builds.has('athletic') && S.face, [...S.builds].join(' '));
 
 // a missing file, then a corrupt one: the v4 wrestlers, the bout as always

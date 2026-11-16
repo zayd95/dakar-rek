@@ -143,6 +143,39 @@ export function measureRda(p: RdaParts) {
   let reach = 0;
   for (let i = 0; i < pos.count; i += 12) { p.body.getVertexPosition(i, PV); p.body.localToWorld(PV); box.expandByPoint(PV); reach = Math.max(reach, PV.distanceTo(hips)); }
   const size = box.getSize(BV);
-  // reach: the farthest sampled vertex from the hips (a body is about 1.2 m from its hips to a raised hand; a detached vertex is not)
-  return { build: p.build, parts: { ...p.parts }, faceMaps: p.faceMaps, probes, reach: +reach.toFixed(3), box: { min: box.min.toArray().map(x => +x.toFixed(3)), size: size.toArray().map(x => +x.toFixed(3)) } };
+  // reach: the farthest sampled vertex from the hips (with the collarbone raised and the arm up, about 1.6 m on this body; a detached
+  // vertex is not); boneDrift: every vertex the skin carries on one bone alone keeps its rest distance to that bone, in any pose
+  const boneDrift = rigidDrift(p);
+  return { build: p.build, parts: { ...p.parts }, faceMaps: p.faceMaps, probes, reach: +reach.toFixed(3), boneDrift, box: { min: box.min.toArray().map(x => +x.toFixed(3)), size: size.toArray().map(x => +x.toFixed(3)) } };
+}
+
+/** The body's vertices carried by one bone alone (weight ≥ 0.999), every third one: their bone, per body geometry (shared by clones). */
+const rigidOf = new WeakMap<THREE.BufferGeometry, { v: number[]; b: number[] }>();
+const RV = new THREE.Vector3(), RB = new THREE.Vector3(), RM = new THREE.Matrix4(), RS = new THREE.Vector3();
+/**
+ * For the checks: how far (m, the largest) a vertex carried by one bone alone has moved from its rest distance to that bone — 0 in
+ * any pose by linear blend skinning, so anything above a few millimetres is a detached or exploded vertex. The rest distances
+ * are taken in the bind pose with this body's physique (its morph) applied.
+ */
+function rigidDrift(p: RdaParts): { worst: number; n: number } {
+  const body = p.body, g = body.geometry, si = g.getAttribute('skinIndex'), sw = g.getAttribute('skinWeight'), pos = g.getAttribute('position');
+  let r = rigidOf.get(g);
+  if (!r) {
+    r = { v: [], b: [] };
+    for (let i = 0; i < pos.count; i += 3) for (let k = 0; k < 4; k++) if (sw.getComponent(i, k) >= 0.999) { r.v.push(i); r.b.push(si.getComponent(i, k)); break; }
+    rigidOf.set(g, r);
+  }
+  const bones = body.skeleton.bones, inv = body.skeleton.boneInverses, morph = g.morphAttributes.position ?? [], inf = body.morphTargetInfluences ?? [];
+  const scale = body.getWorldScale(RS).x;
+  let worst = 0;
+  for (let n = 0; n < r.v.length; n++) {
+    const i = r.v[n], b = r.b[n];
+    RV.fromBufferAttribute(pos, i);
+    for (let t = 0; t < morph.length; t++) if (inf[t]) RV.addScaledVector(RB.fromBufferAttribute(morph[t], i), inf[t]);
+    const rest = RV.distanceTo(RB.setFromMatrixPosition(RM.copy(inv[b]).invert()));              // in the bind (rig) space
+    body.getVertexPosition(i, RV); body.localToWorld(RV);
+    const now = RV.distanceTo(bones[b].getWorldPosition(RB)) / scale;
+    worst = Math.max(worst, Math.abs(now - rest) * scale);
+  }
+  return { worst: +worst.toFixed(4), n: r.v.length };
 }

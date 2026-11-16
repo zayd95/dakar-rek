@@ -224,6 +224,29 @@ describe('a pose the gait solves and StrikeRig aims, on the RDA body', () => {
   });
 });
 
+describe('the checks\' detached-vertex measure (src/actors/rdaLook.ts rigidDrift)', () => {
+  it('a vertex carried by one bone alone keeps its rest distance to that bone under a stride and a strike, for both physiques', () => {
+    for (const build of ['athletic', 'heavy'] as const) {
+      const g = readGlb('wrestlers/rda_wrestlers_m.glb'), body = skinned(g, 'RDA_Body', build);
+      const jn = g.gltf.skins[0].joints.map(j => g.nodes[j]);
+      const rigid: number[] = [];
+      for (let i = 0; i < body.W.length / 4; i += 3) if (Math.max(body.W[i * 4], body.W[i * 4 + 1], body.W[i * 4 + 2], body.W[i * 4 + 3]) >= 0.999) rigid.push(i);
+      expect(rigid.length).toBeGreaterThan(200);
+      const boneOf = (i: number) => { let k = 0; for (let c = 1; c < 4; c++) if (body.W[i * 4 + c] > body.W[i * 4 + k]) k = c; return jn[body.J[i * 4 + k]]; };
+      const rest = body.at(), restD = rigid.map(i => rest[i].distanceTo(boneOf(i).getWorldPosition(new THREE.Vector3())));
+      const gs = new GaitState(), gr = GaitRig.from(g.root)!;
+      for (let t = 0; t < 1.2; t += 1 / 30) gs.update(1 / 30, 0, t * 1.4, 0, 1, 1.4);
+      gr.apply(gs, 1);
+      new StrikeRig({ group: g.root, fullRate: false } as unknown as Humanoid).apply(AIMS.big, 1);
+      g.root.updateMatrixWorld(true);
+      const now = body.at();
+      let worst = 0;
+      rigid.forEach((i, n) => { worst = Math.max(worst, Math.abs(now[i].distanceTo(boneOf(i).getWorldPosition(new THREE.Vector3())) - restD[n])); });
+      expect(worst).toBeLessThan(1e-4);
+    }
+  });
+});
+
 describe('the switch (src/actors/rdaFlag.ts)', () => {
   it('off unless asked; ?rdabody for medium and high; force for every quality; the address wins over the stored choice', () => {
     expect(resolveRdaBody('', null)).toBe('off');
