@@ -66,6 +66,7 @@ describe('the Sabar 600: the sport motorbike, its price and its two dealers', ()
     expect(side.paints[0].texture).toBe('embedded');
     expect(readFileSync(new URL(`../public/assets/vehicles/${side.paints[1].texture}`, import.meta.url)).length).toBeGreaterThan(50_000);   // a real 1024-px JPEG
     expect(sabar.def.sound).toBe('sport'); expect(sabar.def.kit).toBe('moto');
+    expect(sabar.def.visual).toBeTypeOf('function');                                                // the bike on show is its own body (the kit's motorbike only if it did not load)
   });
 
   it('its price card names the bike, the price and the colourway; a car\'s card is unchanged', () => {

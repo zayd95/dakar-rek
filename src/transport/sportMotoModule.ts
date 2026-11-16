@@ -50,7 +50,7 @@ export function sabarNdiaye(hub: HubWorld): DealerSite | null {
 const P = SABAR_PAINTS;
 export const sabar = new OwnedVehicleModule({
   key: 'sabar', asset: SABAR_ASSET, detail: SABAR_DETAIL, icon: '🏍️', kit: 'moto', sound: 'sport',
-  seed: () => sabarSeedOf(0), spec: sabarSpec, height: 1.2, space: 'moto:sabar',
+  seed: () => sabarSeedOf(0), spec: sabarSpec, visual: seed => sabarSpec().build({ seed }), height: 1.2, space: 'moto:sabar',   // the bike on show: its own body in that stand's colourway
   dealer: {
     hub: 'pikine', name: 'Garage Modou · Motos sportives', catalogue: 'motos', site: sabarModou, paint: { seed: sabarSeedOf(0), colour: P[0].name },
     sign: { bg: '#c3121e', band: '#f2f2ee', title: 'SABAR 600', sub: 'Garage Modou · Pikine', subColor: '#c3121e' },
