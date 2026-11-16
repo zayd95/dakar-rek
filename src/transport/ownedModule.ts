@@ -496,7 +496,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
     const input = this.leaving ? stopping() : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
-    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : this.spec.driver.clip ?? 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // (the sport bike's tucked 'RideSport')   // pushing it backwards: both feet on the ground
+    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : this.spec.driver.clip ?? 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground; riding, the seat's own pose (the sport bike's tucked 'RideSport')
     const held = this.trial && !this.road.ok;                                     // « essai à l'arrêt »: the engine runs, the car stays in its bay
     const rev = held ? Math.max(cmd.fwd, cmd.boost ? 1 : 0) : 0;
     if (held) {
