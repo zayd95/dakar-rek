@@ -158,6 +158,8 @@ export interface OwnedDef {
   exit: 'left' | 'pavement';
   /** How close to the body « Monter » is offered (m). */
   reach: number;
+  /** Its engine and horn (src/transport/vehicleAudio.ts PROFILES / HORNS) when they are not its kit's: the sport motorbike's bigger engine. */
+  sound?: string;
 }
 
 export interface DealerDef {
@@ -170,6 +172,11 @@ export interface DealerDef {
   counterBias?: number;
   /** Not on the phone's list of dealers (a model no longer shown on the floor: still delivered when bought from the catalogue, still the owners' own). */
   unlisted?: boolean;
+  /**
+   * A kerb dealer's own colourway of the model (the sport motorbike: one at Garage Modou, another at Ndiaye Auto): its display, its test ride and the one it
+   * delivers wear this paint (a seed of the model's, saved with the vehicle: src/transport/owned.ts `paintSeed`), named on its price card and in its menus.
+   */
+  paint?: { seed: number; colour: string };
 }
 
 const HINT = '↑ accélérer (Maj : à fond) · ↓ freiner · ← → tourner · H klaxon';
@@ -241,7 +248,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private st: DriveState = newDriveState(0, 0, 0);
   private driving = false;
   /** The horn button went down or up (ridePad.onHorn): the horn sounds from the touch itself. */
-  private readonly hornEvent = (on: boolean) => { if (on && this.driving && this.ctx.mode() === 'play') { vehicleAudio.hornOn(this.def.kit); buzz(HORN_TICK); } else if (!on) vehicleAudio.hornOff(); };
+  private readonly hornEvent = (on: boolean) => { if (on && this.driving && this.ctx.mode() === 'play') { vehicleAudio.hornOn(this.def.sound ?? this.def.kit); buzz(HORN_TICK); } else if (!on) vehicleAudio.hornOff(); };
   /** « Descendre » asked while moving: brake, then get off. */
   private leaving = false;
   private cam = new PassengerCamera();
@@ -488,7 +495,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
     const input = this.leaving ? stopping() : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
-    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground
+    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : this.spec.driver.clip ?? 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // (the sport bike's tucked 'RideSport')   // pushing it backwards: both feet on the ground
     const held = this.trial && !this.road.ok;                                     // « essai à l'arrêt »: the engine runs, the car stays in its bay
     const rev = held ? Math.max(cmd.fwd, cmd.boost ? 1 : 0) : 0;
     if (held) {
@@ -526,13 +533,13 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     // (the squeal is judged against the brakes this was mixed with, 7.6 m/s²: the stronger brakes of today stop shorter, they are not louder; a full stop sounds as it did)
     const bi = brakeIntensity((-this.st.accel * Math.sign(this.st.speed || 1) * BRAKE_AS_MIXED) / Math.max(1, drv.brake), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
-    if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
+    if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.sound ?? this.def.kit));       // the first tap may come after getting in: the engine joins then (never for a dead car)
     vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
     if (vehicleAudio.running) vehicleAudio.update(dt, this.st.speed, drv.boostSpeed ?? drv.maxSpeed, held ? rev : input.throttle);
     // the car's radio (src/transport/radio.ts): scheduled while the player is at the wheel, under the engine when accelerating, lowered by the horn and the phone
     if (!moto) radio.update(vehicleAudio.radioBus(), { throttle: held ? rev : Math.max(0, ('target' in input ? (input.target ?? 0) / (drv.boostSpeed ?? drv.maxSpeed) : input.throttle)), horn: vehicleAudio.honking, phone: ctx.mode() === 'menu' });
     ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
-    if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
+    if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.sound ?? this.def.kit); else vehicleAudio.hornOff();
     this.fx.hard = Math.max(0, this.fx.hard - dt);
     if (this.leaving && Math.abs(this.st.speed) < 0.3) this.getOff(true);
     this.cardT -= dt;
@@ -934,10 +941,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       [this.def.key]: {
         info: () => ({ id: this.def.asset, drive: this.spec?.drive ? { maxSpeed: this.spec.drive.maxSpeed, boostSpeed: this.spec.drive.boostSpeed ?? null, turnRadius: this.spec.drive.turnRadius, grip: this.spec.drive.grip ?? null, accel: this.spec.drive.accel } : null, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, trial: this.trial, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
           floor: this.floorCars().map(c => ({ slot: c.slot, state: c.state, x: c.x, z: c.z, stand: c.stand, step: c.step, colour: c.colour, here: !!this.floor[c.slot]?.vehicle })), entry: !!this.entry, exit: !!this.exit, door: +this.doorK.toFixed(2), road: { ...this.road }, trialSlot: this.trialSlot, returned: this.returned, seed: this.seed, paint: paintSeed(ctx.state.data, this.def.asset), cockpit: !!this.vehicle?.hasDoor,
-          dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
+          dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card, colour: this.dd?.paint?.colour ?? null, display: this.dealer.site.displays[this.dealer.site.forSale ?? 0] ?? null, cardAt: this.dealer.site.card ?? null, owned: this.dd ? this.ownedLine() : null } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
-        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null } : null,
+        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null, model: this.vehicle.body.children[0]?.name ?? null, steer: +this.st.steer.toFixed(3), fork: +((this.vehicle.body.children[0]?.userData.glbRig as { angle?: number } | undefined)?.angle ?? 0).toFixed(3), lean: +this.lean.toFixed(3) } : null,
         card: () => this.card?.text ?? '',
         /** Checks: what the compact speedometer reads (« 43 km/h », empty when hidden) and how many times its text was written. */
         speedo: () => ({ text: speedo.text, on: speedo.active, writes: speedo.writes }),
@@ -1021,7 +1028,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       const sg = new THREE.Group(); sg.name = `${this.def.key}:for-sale`; sg.add(b.group); g.add(sg);
       sale = { group: sg, cols };
       if (!site.card) return;
-      card = cardTexture(this.label(), fcfa(this.price()), D.sign);
+      card = cardTexture(this.label(), fcfa(this.price()), D.sign, D.paint?.colour, this.def.kit === 'moto' ? 'MOTO' : 'VOITURE');
       const c = site.card, white = new THREE.MeshLambertMaterial({ color: 0xf2f2ee }), chrome = new THREE.MeshLambertMaterial({ color: 0xc9cdd2 });
       const k = 1;
       const pole = mesh(new THREE.BoxGeometry(0.03, 0.92 * k, 0.03), chrome); pole.position.set(c.x, 0.12 + 0.46 * k, c.z);
@@ -1096,22 +1103,33 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
    */
   private showSale() {
     const s = this.dealer?.sale, cs = this.hub?.colliders; if (!s || !cs) return;
-    const on = !ownsVehicle(this.ctx.state, this.def.asset);
+    // a dealer of one colourway keeps its own on show when the player's is the other dealer's colour (one bike: the other dealer's listing is « already yours »)
+    const paint = this.dd?.paint, on = !ownsVehicle(this.ctx.state, this.def.asset) || (!!paint && paintSeed(this.ctx.state.data, this.def.asset) !== paint.seed);
     s.group.visible = on;
     for (const c of s.cols) { const i = cs.indexOf(c); if (on && i < 0) cs.push(c); else if (!on && i >= 0) cs.splice(i, 1); }
   }
 
   private openCatalogue() {
     if (this.dealer?.site.floor) { this.sales().openCatalogue(this.ctx); return; }
-    const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
+    const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset), owned = this.ownedLine(), colour = this.dd?.paint ? ` ${this.dd.paint.colour}` : '';
     // the free test drive comes first and says so: a player should meet « Essayer gratuitement » before the price
     ctx.menu(this.dd!.name, 'Essaie d’abord, c’est gratuit. Le prix est affiché avant de confirmer l’achat.', [{
-      icon: '🔑', label: 'Essayer gratuitement', detail: mine ? this.def.text.owned : `${this.label()} · rien n’est payé · le vendeur la reprend quand tu descends`, right: 'Gratuit',
+      icon: '🔑', label: 'Essayer gratuitement', detail: mine ? owned : `${this.label()}${colour} · rien n’est payé · le vendeur la reprend quand tu descends`, right: 'Gratuit',
       disabled: mine || !!this.vehicle, onPick: () => this.tryOut(),
     }, {
-      icon: this.def.icon, label: `Acheter · ${this.label()}`, detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
+      icon: this.def.icon, label: `Acheter · ${this.label()}${colour}`, detail: mine ? owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
       onPick: () => this.confirm(),
     }]);
+  }
+  /**
+   * Why this dealer's model cannot be bought again: « already yours ». At a dealer of one colourway (the sport motorbike), when the one owned is another
+   * dealer's colour, it says which: the player has ONE of the model, in the colour of the dealer where it was bought.
+   */
+  private ownedLine(): string {
+    const p = this.dd?.paint, seed = paintSeed(this.ctx.state.data, this.def.asset);
+    if (!p || seed === null || seed === p.seed) return this.def.text.owned;
+    const other = [this.def.dealer, ...(this.def.branches ?? [])].find(d => d?.paint?.seed === seed)?.paint?.colour;
+    return other ? `Tu as déjà ta ${this.label()} ${other}` : this.def.text.owned;
   }
 
   /**
@@ -1123,7 +1141,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     ctx.hud.closeModal(); ctx.setMode('play');
     if (!this.dealer || !this.hub || this.vehicle || ownsVehicle(ctx.state, this.def.asset)) return;
     const d = this.dealer.site.delivery;
-    this.trial = true;
+    this.trial = true; this.seed = this.dd?.paint?.seed ?? 0;                 // a dealer of one colourway lends that one
     this.road = { ok: true, supervised: false, line: '', saidHeld: false, saidEdge: false, t: 0, called: false };   // a kerb test ride (the Jakarta at Modou's) is a ride, never a floor trial's held car
     this.parkedTarget.name = 'Véhicule d’essai';
     this.spawn(d.x, d.z, d.yaw);
@@ -1132,7 +1150,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   /** The test drive is over: the vehicle goes back to the dealer (nothing was saved). */
   private endTrial() {
-    this.trial = false;
+    this.trial = false; this.seed = 0;
     this.parkedTarget.name = this.def.text.mine;
     this.setSolid(false);
     this.vehicle?.dispose(); this.vehicle = null;
@@ -1141,7 +1159,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   private confirm() {
     const ctx = this.ctx, price = this.price(), why = cannotBuy(ctx.state, this.def.asset);
-    ctx.menu(this.def.text.confirm, `Prix : ${fcfa(price)} · Ton argent : ${fcfa(ctx.state.wallet)}`, [
+    ctx.menu(this.def.text.confirm, `Prix : ${fcfa(price)} · Ton argent : ${fcfa(ctx.state.wallet)}${this.dd?.paint ? ` · ${this.label()} ${this.dd.paint.colour}` : ''}`, [
       { icon: '🔑', label: 'Essayer gratuitement d’abord', detail: 'Rien n’est payé', right: 'Gratuit', disabled: !!this.vehicle, onPick: () => this.tryOut() },
       { icon: '✅', label: 'Confirmer l’achat', right: '−' + fcfa(price), detail: why ?? this.def.text.delivered, disabled: !!why, onPick: () => this.buy() },
       { icon: '↩️', label: 'Pas maintenant', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
@@ -1160,6 +1178,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const why = cannotBuy(s, a);
     if (why) { ctx.toast(why); return; }
     park(s.data, { asset: a, hub: this.hub.id, ...this.dealer.site.delivery });   // where sync() delivers it
+    if (this.dd?.paint) setPaintSeed(s.data, a, this.dd.paint.seed);              // in this dealer's colourway, kept with it in the save
     if (!buyAsset(s, a)) return;
     this.bought++;
     s.count('vehicules');
@@ -1216,7 +1235,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.setRidden(true);
     this.cam.begin(ctx.camera, m.pose); this.camMs = 0;
     // the door shuts, the engine cranks and catches, the camera settles a little
-    const prof = profileFor(this.def.kit);
+    const prof = profileFor(this.def.sound ?? this.def.kit);
     if (this.def.kit !== 'moto' && doorSound) vehicleAudio.door(false);
     const dead = this.hp() <= 0;
     const catches = dead ? 0 : vehicleAudio.start(prof);
@@ -1523,19 +1542,24 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 }
 
-/** The price card of the vehicle for sale, in the dealer's colours: its catalogue name and price (fictional names only). */
-function cardTexture(name: string, price: string, o: NonNullable<OwnedDef['dealer']>['sign']): THREE.CanvasTexture | null {
+/** What a kerb dealer's price card says, top to bottom: the kind of vehicle, its catalogue name, its price, and its colourway (when the dealer sells one) or « À VENDRE ». */
+export function cardLines(name: string, price: string, colour?: string, head = 'VOITURE') {
+  return { head, name, price, foot: colour ? `${colour.toUpperCase()} · PRIX FIXE` : 'À VENDRE · PRIX FIXE' };
+}
+/** The price card of the vehicle for sale, in the dealer's colours: its catalogue name and price (fictional names only), its colourway if it has one. */
+function cardTexture(name: string, price: string, o: NonNullable<OwnedDef['dealer']>['sign'], colour?: string, head = 'VOITURE'): THREE.CanvasTexture | null {
   if (typeof document === 'undefined') return null;
   const cv = document.createElement('canvas'); cv.width = 240; cv.height = 160;
   const c = cv.getContext('2d'); if (!c) return null;
+  const L = cardLines(name, price, colour, head);
   c.fillStyle = o.band; c.fillRect(0, 0, 240, 160);
   c.fillStyle = '#ffffff'; c.fillRect(6, 6, 228, 148);
   c.fillStyle = o.bg; c.fillRect(6, 6, 228, 36);
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = o.band; c.font = '900 24px system-ui, sans-serif'; c.fillText('VOITURE', 120, 25, 216);
-  c.fillStyle = '#1d1f24'; c.font = '700 19px system-ui, sans-serif'; c.fillText(name, 120, 66, 216);
-  c.font = '900 34px system-ui, sans-serif'; c.fillText(price, 120, 106, 220);
-  c.fillStyle = o.bg; c.font = '800 15px system-ui, sans-serif'; c.fillText('À VENDRE · PRIX FIXE', 120, 140, 216);
+  c.fillStyle = o.band; c.font = '900 24px system-ui, sans-serif'; c.fillText(L.head, 120, 25, 216);
+  c.fillStyle = '#1d1f24'; c.font = '700 19px system-ui, sans-serif'; c.fillText(L.name, 120, 66, 216);
+  c.font = '900 34px system-ui, sans-serif'; c.fillText(L.price, 120, 106, 220);
+  c.fillStyle = o.bg; c.font = '800 15px system-ui, sans-serif'; c.fillText(L.foot, 120, 140, 216);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 

@@ -1913,7 +1913,7 @@ function frameStep(now: number, dt: number, draw = true) {
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing, eating at a table): a narrow list, anything else is Idle
   // (a Meshy body dances through its v4 stand-in, src/actors/playerBody.ts: what others see is the stand-in's pose)
   const shown = proxy && ngembBody ? ngembBody : playerBody;
-  const seen = shown?.clipName ? prayerPresence(shown.clipName) ?? shown.clipName : null;     // a prayer posture: standing or kneeling
+  const seen = shown?.clipName ? prayerPresence(shown.clipName) ?? (shown.clipName === 'RideSport' ? 'Ride' : shown.clipName) : null;     // a prayer posture: standing or kneeling; on the sport motorbike, others see a rider
   const clip = mode !== 'scene' && seen && PRESENCE_CLIPS.includes(seen as PresenceClip) ? seen as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
@@ -1955,7 +1955,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
+  const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde', 'sabar'])]);
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
     name: isDefaultName(presence.profile.name, state.data.guestId) ? '' : presence.profile.name }) : null;

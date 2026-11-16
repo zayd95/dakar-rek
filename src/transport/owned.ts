@@ -14,9 +14,12 @@ import { addOwned, holds } from '../economy/assets';
  * Every vehicle the player can have, cheapest first: THE list (the road swap, the phone's « Mes véhicules », the maps and the tests read this one; src/transport/fleet.ts
  * has the module of each). 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold.
  */
-export const VEHICLE_ASSETS = ['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as const;
+export const VEHICLE_ASSETS = ['jakarta', 'sabar', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as const;
 export type VehicleAsset = (typeof VEHICLE_ASSETS)[number];
 export const isVehicleAsset = (id: string): id is VehicleAsset => (VEHICLE_ASSETS as readonly string[]).includes(id);
+/** The two-wheelers among them (the Jakarta, the Sabar 600, the lent Tiak bike): never a car for a VTC ride or a car loan's advice. */
+export const MOTO_ASSETS: readonly VehicleAsset[] = ['jakarta', 'sabar', 'tiak'];
+export const isMotoAsset = (id: string) => (MOTO_ASSETS as readonly string[]).includes(id);
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;

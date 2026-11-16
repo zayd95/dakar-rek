@@ -9,6 +9,7 @@ import * as P from '../activity/primitives';
 import { fcfaText } from '../economy/format';
 import { MOTO_GUARD } from '../i18n/lines';
 import { moto } from '../transport/motoModule';
+import { sabar } from '../transport/sportMotoModule';
 import { motoSpec } from '../transport/moto';
 import { footprint } from '../transport/ownedModule';
 import { clearKerb } from '../transport/passengers';
@@ -37,6 +38,12 @@ import {
 
 /** Distance within which the parking is drawn. */
 const VIEW = 80;
+/** The player's own motorbikes the gardien keeps: the Jakarta and the Sabar 600 (src/transport/sportMotoModule.ts). */
+const MOTOS = [moto, sabar] as const;
+/** The one that counts now: the one ridden, else the one standing in the lot, else the first parked in this district, else the Jakarta. */
+function motoOf(lot: MotoLot) {
+  return MOTOS.find(m => m.ridden) ?? MOTOS.find(m => { const p = m.parkedHere(); return !!p && inLot(lot, p.x, p.z); }) ?? MOTOS.find(m => !!m.parkedHere()) ?? moto;
+}
 /** Kit seeds of the other motos (three looks, one instanced mesh each). */
 const SEEDS = [5, 23, 61];
 const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), S1 = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
@@ -72,7 +79,7 @@ class Arrival {
     this.group.name = 'arena_moto_parking'; this.group.userData.noLod = true;
     // places that a builder's collider already covers are dropped (the reserved one moves to the next free place)
     // (the player's own moto, parked in its place after a reload, is not in the way of its own place)
-    const mine = moto.parkedHere(), own = (c: Collider) => !!mine && c.h <= 1.2 && Math.hypot((c.x0 + c.x1) / 2 - mine.x, (c.z0 + c.z1) / 2 - mine.z) < 1.6;
+    const mine = MOTOS.map(m => m.parkedHere()), own = (c: Collider) => c.h <= 1.2 && mine.some(p => !!p && Math.hypot((c.x0 + c.x1) / 2 - p.x, (c.z0 + c.z1) / 2 - p.z) < 1.6);
     const free = (s: { x: number; z: number }) => !hub.colliders.some(c => !own(c) && s.x > c.x0 - 0.45 && s.x < c.x1 + 0.45 && s.z > c.z0 - 1.05 && s.z < c.z1 + 1.05);
     const ok = this.lot.slots.map(free);
     if (!ok[this.lot.reserved]) { const r = ok.findIndex(Boolean); if (r >= 0) this.lot.reserved = r; }
@@ -126,7 +133,7 @@ class Arrival {
   /** The gardien is there whenever the arena's street is alive (set-up, doors, after the gala). */
   present() { return this.street !== 'quiet'; }
   paid() { return paidTonight(this.ctx.state.data.counters, this.day()); }
-  private mineInLot() { const p = moto.parkedHere(); return !!p && inLot(this.lot, p.x, p.z); }
+  private mineInLot() { const p = motoOf(this.lot).parkedHere(); return !!p && inLot(this.lot, p.x, p.z); }
   private say(line: string) { this.heard(line); this.ctx.toast(line); }
   /** A line of his the player heard through another channel (the payment's own line, shown by the activity runner). */
   private heard(line: string) { this.said.push(line); if (this.said.length > 8) this.said.shift(); }
@@ -145,9 +152,9 @@ class Arrival {
   }
   /** The player's moto into the place he keeps (when it stands in the parking). */
   private stow() {
-    const p = moto.parkedHere(), s = this.lot.slots[this.lot.reserved];
+    const m = motoOf(this.lot), p = m.parkedHere(), s = this.lot.slots[this.lot.reserved];
     if (!p || !inLot(this.lot, p.x, p.z) || !s) return false;
-    if (Math.hypot(p.x - s.x, p.z - s.z) > 0.05) moto.moveParked(s.x, s.z, s.yaw);
+    if (Math.hypot(p.x - s.x, p.z - s.z) > 0.05) m.moveParked(s.x, s.z, s.yaw);
     this.shownKey = '';
     return true;
   }
@@ -164,7 +171,7 @@ class Arrival {
     { const mine = this.present() && this.mineInLot(); this.anchor.bias = gardienBias(mine && !this.paid(), mine && this.paid()); }   // the fee due (or paid, the moto in his care): he wins the focus when faced
 
     // the player's moto: getting off in the parking, riding away from it
-    const riding = moto.ridden, parked = moto.parkedHere();
+    const riding = MOTOS.some(m => m.ridden), parked = motoOf(this.lot).parkedHere();
     if (this.wasRiding && !riding && parked && inLot(this.lot, parked.x, parked.z) && this.present()) {
       if (this.paid()) { this.stow(); this.say(MOTO_GUARD.again()); } else this.say(MOTO_GUARD.hello(MOTO_FEE));
     }
@@ -211,7 +218,7 @@ class Arrival {
     return {
       street: this.street, present: this.present(), paid: this.paid(), fee: MOTO_FEE, day: this.day(),
       gardien: this.lot.gardien, reserved: this.lot.slots[this.lot.reserved], area: this.lot.area, slots: this.lot.slots.length,
-      motos: this.taken.length, taken: this.taken.map(i => this.lot.slots[i]), mine: moto.parkedHere(), riding: moto.ridden,
+      motos: this.taken.length, taken: this.taken.map(i => this.lot.slots[i]), mine: motoOf(this.lot).parkedHere(), riding: MOTOS.some(m => m.ridden), which: motoOf(this.lot).def.key,
       inLot: this.mineInLot(), said: [...this.said], drawCalls: this.rows.filter(r => r.mesh.count > 0).length,
     };
   }

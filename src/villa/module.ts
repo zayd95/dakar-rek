@@ -32,7 +32,7 @@ import { VillaReception } from './reception';
  * Debug (`?debug`): `__dakar.villa`.
  */
 const VILLA_HUB = 'almadies';
-const ALL_VEHICLES: VehicleAsset[] = ['jakarta', 'compacte', 'teranga', 'rafet', 'berline', 'tout_terrain', 'gainde'];
+const ALL_VEHICLES: VehicleAsset[] = ['jakarta', 'sabar', 'compacte', 'teranga', 'rafet', 'berline', 'tout_terrain', 'gainde'];
 const BAY_DETAIL = BAYS_HUB.map(b => `Place ${b.i + 1} · elle t’attend ici, même après une pause`);
 
 class VillaModule implements GameModule {
