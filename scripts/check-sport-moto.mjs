@@ -186,8 +186,8 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('5-ndiaye-owned'); await closeModal();
 
   // ---------------------------------------------------------------- 6. sold from « Biens »
-  const w2 = await d(() => window.__dakar.state.wallet), uid = await d(() => window.__dakar.estate().assets.find(a => a.spec === 'sabar')?.uid);
-  await d(u => window.__dakar.assetSheet(u), uid);
+  const w2 = await d(() => window.__dakar.state.wallet);
+  await d(() => window.__dakar.assetSheet('sabar'));                                    // its sheet in « Biens »
   await page.waitForFunction(() => /Vendre/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   await page.locator('#modal .item', { hasText: 'Vendre' }).first().click();
   await page.waitForTimeout(600);
