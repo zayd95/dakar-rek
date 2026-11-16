@@ -41,8 +41,8 @@ function bouts(): Record<string, string[]> {
 describe('combat · watched bouts are untouched (golden traces from 87076f3f)', () => {
   it('twelve watched bouts, both disciplines, replay exactly as recorded before the combat package', () => {
     const now = bouts();
-    if (process.env.GOLDEN_WRITE) { fs.mkdirSync(new URL('./fixtures/', import.meta.url), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(now)); }
-    const before = JSON.parse(fs.readFileSync(FILE, 'utf8')) as Record<string, string[]>;
+    if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.GOLDEN_WRITE) { fs.mkdirSync(new URL('./fixtures/', import.meta.url), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(now)); }
+    const before = JSON.parse(new TextDecoder().decode(fs.readFileSync(FILE))) as Record<string, string[]>;
     expect(Object.keys(now)).toEqual(Object.keys(before));
     for (const k of Object.keys(before)) expect(now[k], k).toEqual(before[k]);
     for (const k of Object.keys(before)) expect(before[k].length, k).toBeGreaterThan(8);
