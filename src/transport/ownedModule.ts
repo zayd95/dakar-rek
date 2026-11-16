@@ -400,6 +400,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     }
     if (this.vehicle || !this.hub) return;
     let p = parked(s.data, a);
+    if (!p && !this.def.loaner && this.dealer && this.dd?.paint && paintSeed(s.data, a) === null) { setPaintSeed(s.data, a, this.dd.paint.seed); this.showSale(); }   // bought from « Biens »: delivered here in this dealer's colourway
     this.seed = paintSeed(s.data, a) ?? 0;                      // a car bought from a showroom's floor keeps the paint of the one chosen
     if (this.def.loaner && (!p || p.hub !== this.hub.id)) { const d = this.def.loaner.depot(this.hub); p = d ? { asset: a, hub: this.hub.id, ...d } : null; }   // lent: at this hub's depot until left elsewhere
     else if (!p && this.dealer) { p = { asset: a, hub: this.hub.id, ...this.dealer.site.delivery }; park(s.data, p); }
