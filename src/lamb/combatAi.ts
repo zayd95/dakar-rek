@@ -188,7 +188,7 @@ export class CombatAi {
     // its own initiative, at its pace
     this.think -= dt;
     if (this.think <= 0 && v.me.free) {
-      this.think = lvl.pace * (0.6 + 0.8 * rand()) * (v.phase === 'clinch' ? 0.55 : 1) / (1 + 0.6 * v.urge);
+      this.think = lvl.pace * (0.6 + 0.8 * rand()) * (v.phase === 'clinch' ? 0.7 : 1) / (1 + 0.6 * v.urge);
       if (v.phase === 'fight') this.ownStanding(v, rand, out); else this.ownClinch(v, rand, out);
     }
     if (len(out.stick) < 0.01) out.stick = v.phase === 'fight' ? this.footwork(v, rand) : { ...this.weight };
@@ -279,6 +279,8 @@ export class CombatAi {
   private ownClinch(v: AiView, rand: () => number, out: Intent) {
     const lvl = this.lvl, me = v.me, st = this.clinch;
     if (me.throwing || me.moving) return;
+    // out of breath: break free to breathe (when its hold allows it), else hold still — a wrestler keeps his breath
+    if (me.stamina < 22) { if (v.grip > -30 && me.stamina >= 20 && rand() < 0.5 + 0.4 * lvl.learn) out.brk = true; return; }
     // the throw, when what it sees of him allows it (a young wrestler goes too early); pressed by the referee, sooner
     if (v.best && me.stamina >= THROWS[v.best.id].cost + 4 && v.best.score >= COMBAT.throwAt + lvl.margin - 14 * v.urge
       && rand() < Math.min(0.9, (0.5 + st.throwChance) * (1 + v.urge))) { out.throw = true; return; }

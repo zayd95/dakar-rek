@@ -42,7 +42,8 @@ describe('combat · grips: control against exposure', () => {
   it('a tap reaches for the nape, a hold for the belt, and a man leaning in gives his leg', () => {
     expect(reachFor('tap', man())).toBe('nuque');
     expect(reachFor('hold', man())).toBe('ceinture');
-    expect(reachFor('tap', leaning(1, 0, 0.2))).toBe('jambe');
+    expect(reachFor('tap', leaning(1, 0, 0.25))).toBe('jambe');
+    expect(reachFor('tap', leaning(1, 0, 0.12))).toBe('nuque');                // a little forward is not yet a leg given
     expect(reachFor('hold', man({ weight: { f: 1, s: 0 } }))).toBe('jambe');
     expect(legOpen(leaning(-1, 0, 0.3))).toBe(false);
     const e = entryHolds('ceinture', 32);

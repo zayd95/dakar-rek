@@ -85,7 +85,7 @@ export const COMBAT = {
   /** Below this endurance a brace weakens (to 30 % at 0): a tired wrestler slips. */
   braceTired: 30,
   /** A throw takes the other down at this score; bracing a throw takes up to `braceThrow` off it and costs `braceCost` + `braceCostMore` × quality. */
-  throwAt: 45, braceThrow: 55, braceCost: 6, braceCostMore: 8,
+  throwAt: 48, braceThrow: 55, braceCost: 4, braceCostMore: 6,
   /** A throw that fails: the thrower over-committed (balance, in his own direction) and let go (strength). */
   failBalance: 20, failStr: 20,
   /** Contrer while braced right is easier (counter score +). */
@@ -101,7 +101,15 @@ export const COMBAT = {
   /** Lean (balance per second) a wrestler driven back or dragged without bracing takes. */
   dragLean: 7,
   /** The referee separates an empoignade that goes nowhere after this long (not while one is about to fall). */
-  clinchMax: 12,
+  clinchMax: 10,
+  /**
+   * The empoignade's economy in the new bout, against Làmb 2.0's (src/lamb/clinch.ts): an exchange moves the balance this
+   * share of Làmb 2.0's (a bout is decided by a throw on a man set up, not by attrition), a move costs this share of its
+   * endurance, the hold's drain is this share, and a man not moving gets this much balance back a second on top.
+   */
+  exchange: 0.5, moveCost: 0.4, drain: 0.35, regen: 4,
+  /** Breath got back a second in the empoignade by a man neither moving nor bracing (he holds and breathes). */
+  breathe: 3,
 } as const;
 
 /** The hold's control and exposure (none: as bare hands). */
@@ -292,7 +300,7 @@ export function reachFor(kind: 'tap' | 'hold', him: Pick<Combatant, 'balance' | 
   return kind === 'hold' ? 'ceinture' : 'nuque';
 }
 /** His leg is there to take: he leans in (his weight or his imbalance forward, towards you). */
-export const legOpen = (him: Pick<Combatant, 'balance' | 'dir' | 'weight'>) => lean(him).f > 0.1 || him.weight.f > 0.55;
+export const legOpen = (him: Pick<Combatant, 'balance' | 'dir' | 'weight'>) => lean(him).f > 0.2 || him.weight.f > 0.75;
 /** The holds an empoignade starts with: the one reached (strength by how it was entered) and the other's reflex hold. */
 export function entryHolds(kind: GripKind, bonus: number): { att: Hold; def: Hold } {
   const base = kind === 'jambe' ? 55 : kind === 'ceinture' ? 50 : 42;
