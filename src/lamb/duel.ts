@@ -1636,10 +1636,10 @@ export class LambDuel {
     const mine = by === this.me;
     if (this.attempt) return false;
     if (!by.hold.kind) { if (mine) this.msg('Pas de prise : saisis-le d’abord', 0.7); return false; }
-    if (by.deeper > 0) { if (mine) this.msg('Pas en changeant de prise', 0.6); return false; }
+    if (by.deeper > 0 || by.recover > 0) { if (mine) this.msg(by.deeper > 0 ? 'Pas en changeant de prise' : 'Pas au milieu d’un mouvement', 0.6); return false; }
     const id = force ?? bestThrow(by, def)!.id, t = THROWS[id];
     if (by.stamina < t.cost) { if (mine) this.msg('Plus assez d’endurance pour projeter', 0.8); return false; }
-    by.stamina -= t.cost; by.idle = 0; by.tally.throws++; by.recover = 0;   // the throw takes over his own move being set up (a thumb on the stick can throw)
+    by.stamina -= t.cost; by.idle = 0; by.tally.throws++;                  // the throw takes over his own move being set up (a thumb on the stick can throw)
     const moving = !!def.move;
     this.me.move = this.ai.move = null;
     this.attempt = { by, t: 0, counter: false, counterAt: Infinity, id, braceSum: 0, braceT: 0, moving };
