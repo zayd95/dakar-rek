@@ -299,6 +299,8 @@ export class LambDuel {
   /** A press's own clock (ms, real time): a tap or a hold is the thumb's time, whatever the frame rate. */
   private static now = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
   private deeperPresses = 0; private throwPresses = 0;
+  /** A Projeter pressed during the short pause after a move landed is kept this long (s) and thrown as the pause ends. */
+  private throwBuffer = 0;
   /** How the bout ended in the new bout: the throw (or a slip, a reversal) and how he landed (the fall rule). */
   fallKind: FallKind | null = null;
   throwName: string | null = null;
@@ -1476,6 +1478,8 @@ export class LambDuel {
     const urge = this.cl ? 0 : clinchUrge(this.phaseT);
     const mi = this.playerIntent(breaks, quick, big), ai_ = this.aiIntent(dt, urge);
     if (big > 0 && !mi.counter) mi.throw = true;                            // (debug and K: the big-strike key is Projeter here)
+    // a press kept from the pause after a move: thrown as soon as that pause is over
+    if (this.throwBuffer > 0) { this.throwBuffer -= dt; if (me.recover <= 0 && !this.attempt) { mi.throw = true; this.throwBuffer = 0; } }
     me.weight = mi.stick; ai.weight = this.held ? { f: 0, s: 0 } : ai_.stick;
     if (this.cl && this.combatLessonClinch(dt)) return;
     if (this.drill) this.drillStep(dt);
@@ -1638,7 +1642,13 @@ export class LambDuel {
     const mine = by === this.me;
     if (this.attempt) return false;
     if (!by.hold.kind) { if (mine) this.msg('Pas de prise : saisis-le d’abord', 0.7); return false; }
-    if (by.deeper > 0 || by.recover > 0) { if (mine) this.msg(by.deeper > 0 ? 'Pas en changeant de prise' : 'Pas au milieu d’un mouvement', 0.6); return false; }
+    if (by.deeper > 0) { if (mine) this.msg('Pas en changeant de prise', 0.6); return false; }
+    if (by.recover > 0) {
+      // the button lit (he is ready to fall) and pressed in the short pause after a move: kept, thrown as the pause ends
+      const b = mine ? bestThrow(by, def) : null;
+      if (b && throwScore(b.id, by, def) >= COMBAT.throwAt) this.throwBuffer = 0.35;
+      return false;
+    }
     const id = force ?? bestThrow(by, def)!.id, t = THROWS[id];
     if (by.stamina < t.cost) { if (mine) this.msg('Plus assez d’endurance pour projeter', 0.8); return false; }
     by.stamina -= t.cost; by.idle = 0; by.tally.throws++;                  // the throw takes over his own move being set up (a thumb on the stick can throw)
