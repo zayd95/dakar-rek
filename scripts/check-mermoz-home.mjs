@@ -92,8 +92,8 @@ const a1 = await held();
 check('rented: the lease is held and nothing is paid at once', !!a1 && a1.how === 'rented' && (await wallet()) === w0, JSON.stringify({ how: a1?.how, wallet: await wallet() }));
 log('after renting: sheet', (await sheet())?.slice(0, 200), JSON.stringify(await items())); await shot('after-rent');
 await page.waitForTimeout(1500);
-// 5. move in (« Définir comme domicile principal »), then « Entrer chez toi » from the same sheet
-await tapItem('Définir comme domicile principal');
+// 5. move in (the purchase sequence, 1.0.1: « Les clés sont à toi » › « Emménager » › the family room kept), then « Entrer chez toi » from the same sheet
+await tapItem('Emménager'); await page.waitForTimeout(800); await tapItem('Garder comme chambre familiale');
 await page.waitForTimeout(1500);
 const homeNow = await d(() => window.__dakar.state.data.assets.home);
 check('moved in: the F3 is the principal residence', homeNow === a1?.uid, JSON.stringify({ home: homeNow, uid: a1?.uid }));

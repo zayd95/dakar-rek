@@ -94,6 +94,8 @@ export function worldMarkers(): GameModule {
       uiToast: (m: string, kind: 'info' | 'warn' = 'info') => ctx.hud.toast(m, kind),
       /** A moment card (the checks: one at a time, at the side). */
       uiMoment: (title: string, lines: string[] = []) => { ctx.hud.moment({ icon: '⭐', title, lines }); },
+      /** An offer card (the checks and the HUD captures: the money-received notice, kept), its buttons doing nothing. */
+      uiOffer: (m: { icon: string; title: string; line: string; actions: { label: string; primary?: boolean }[]; keep?: boolean }) => { ctx.hud.offer({ ...m, actions: m.actions.map(a => ({ ...a, run: () => {} })) }, 30000); },
       uiMarkers: () => ({ job: pinJob, bay: bayGroup.visible ? { x: bayGroup.position.x, z: bayGroup.position.z, yaw: bayGroup.rotation.y } : null, pinColor: '#' + pinMat.color.getHexString(), focus: focus.visible, focusAt: focus.visible ? { x: focus.position.x, z: focus.position.z } : null, grey: focus.visible && grey, pin: pin.visible, pinAt: pin.visible ? { x: pin.position.x, z: pin.position.z } : null }),
     }),
   };

@@ -28,6 +28,27 @@ uncapped (Habib, 9 Oct): the ladders climb to hundreds of millions and billions.
   (the Moto Jakarta and the used car are for sale and drivable — src/transport; the other vehicles and the jet are in
   the model, marked as coming later). Wallet: cash, assets, total wealth, income, charges.
 
+## The purchase sequence (1.0.1)
+
+Buying a home, renting one, or signing the F2's monthly lease is one sequence, in the sheets' usual style (`src/economy/moving.ts`, pure and
+unit-tested; the sheets in `src/economy/estate.ts`):
+
+1. **« Les clés sont à toi »** at once: the home is listed in « Biens » as his (or rented, with its rent), its door opens (« Entrer chez toi »)
+   and the walking marker leads there (the goal line shows the way; in another district it waits there).
+2. **« Emménager maintenant ? »**: « Emménager » (the furniture follows, as `moveIn` does) or « Plus tard » (the home stays empty and can be
+   let; « Emménager ici » stays on its sheet).
+3. **The home left**, asked in the same step, one choice each with its money; the move and the choice happen together (`moveAndLeave`: every
+   check first, so a refused choice never leaves half a move):
+   - the family room: « Garder comme chambre familiale » (the default, free) or « La rendre à la famille »;
+   - a rented home: « Rendre les clés » (the rent stops) or « Garder la location » (its rent said by the day or the month), and for the F2's
+     monthly contract « Sous-louer » (the tenant model of `src/economy/monthly.ts`: 80 % occupancy on average, never guaranteed);
+   - an owned home: « Mettre en location » (the existing letting: its rent per city hour of play), « Vendre » (90 % of its value at once) or
+     « Garder vide » (what it still costs: the family house's upkeep).
+
+Nothing is lost: the furniture goes where the player lives (a furnishing pack stays with its F2), and every choice can be changed later from the
+home's sheet (« Biens », « Maison »). The question about a home is put once (the story flag `logement:<uid>`): a save from before 1.0.1 that
+holds another home gets it the next time that home's sheet is opened, never as a pop-up at load (docs/SAVES.md).
+
 Income and charges count per in-game hour **of play** (1 city hour = 1 real minute), nothing offline, at most a city day at
 once, settled in one ledger line each way. Unpaid rent piles up; after three in-game days of it the landlord takes the keys
 back (the debt is dropped, the furniture comes home). Religious practice brings no reward and never counts for
@@ -39,6 +60,7 @@ polyvalence.
 | --- | --- |
 | Catalogue (data, prices) | `src/economy/catalog.ts` · rules in `src/economy/config.ts` (`property`) |
 | Asset logic (buy, rent, let, upgrade, sell, income, charges, net worth) | `src/economy/assets.ts` (pure, unit-tested) |
+| The purchase sequence (move in, the home left, the question put once) | `src/economy/moving.ts` (pure, `tests/moving.test.ts`) |
 | Ventures on the model | `src/economy/business.ts` |
 | Furniture purchases, starter pieces | `src/economy/furniture.ts` |
 | Placement rules (walls, built-ins, passages, auto-placement) | `src/economy/placement.ts` (pure) |
@@ -66,6 +88,11 @@ stove, table lamp and the mattress upgrade keep the built-in models (no kit piec
 phone 390×844: earn → buy a chair at Keur Meubles → it is at home → move it → sit on it; plot and billboard bought and let,
 hourly income; apartment rented, moved in, cook and shower; phone Biens and wallet; reload mid-flow and at the end; a v4
 save migrating). Screenshots in `docs/screenshots/ownership/`.
+
+`node scripts/check-buy-home.mjs <baseUrl> <outDir>` (1.0.1, phone 390×844, real touch): the F2 bought from the family room through « Biens »,
+« Les clés sont à toi », « Emménager », the room kept; the goal line walked to the Résidence and « Entrer chez toi »; from the F2 the Cité Jàmm
+house rented, moved into, the F2 « Mettre en location »; a reload keeps it all; a save without the marks gets no pop-up at load and the question
+once on the room's sheet. Screenshots in `docs/proof/release-1.0.1/ownership/`.
 
 ## Known gaps
 

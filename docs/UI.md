@@ -41,7 +41,7 @@ phones. Animations only use `transform` and `opacity`; `prefers-reduced-motion` 
 | Place and time | `#place` (`#hubName`, `#clock`, `#placeTag`, `#placeEv`, `#placeMore`) | top centre (desktop, landscape); right of the wallet in portrait | the weekday and time (« Samedi · 15:00 », never a city day number) and a red « Gala ce soir » chip Friday–Sunday until the gala is over (inline; own line in portrait); in portrait only the hub's first name (« Pikine »). **The event of the moment** (src/ui/placeEvent.ts) under them: a tag (« LÀMB » red, a line's number sun, « CE SOIR » purple) and one short line, a second small line where there is room (not in portrait), a request in red; it replaces « Gala ce soir »; a tap opens the details under the chip (closes by itself after 10 s) |
 | Phone | `#menuBtn` (`.badge`) | 44 × 44, top right | opens the phone; a red badge counts the quiet log's unseen notices (read in the phone's Notifications) |
 | Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; a distance at the end of a line (« … · 72 m ») always sits in the right-hand slot (never wrapped away from its number, the « · » kept for screen readers); hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
-| Moment card | `#toast > .mo` (`hud.moment`) | one at a time, at the side: on the right under the social buttons (desktop, ≤ min(360 px, 30 vw − 20 px)); on the left under the goal line (landscape phone, ≤ 30 vw); at the top left of the social buttons, ending above 33 % of the height (portrait); never over the middle, the action button or the joystick; taller than its room, it scrolls inside | icon, title, a few lines (a bout's recap, a new word on a gauge, Tonton Ibou's word); tap anywhere or ✕ to dismiss, 6–12 s; a new card replaces it; five lines on a landscape phone |
+| Moment card | `#toast > .mo` (`hud.moment`) | one at a time, at the side: on the right under the social buttons (desktop, ≤ min(360 px, 30 vw − 20 px)); on the right under the phone button and the streak chip (landscape phone, ≤ 30 vw: the left column is the minimap's and the delivery line's); at the top left of the social buttons, ending above 33 % of the height, under the delivery line when one shows (portrait); never over the middle, the action button or the joystick; taller than its room, it scrolls inside | icon, title, a few lines (a bout's recap, a new word on a gauge, Tonton Ibou's word); tap anywhere or ✕ to dismiss, 6–12 s; a new card replaces it; five lines on a landscape phone. An offer (`hud.offer`: « Mes pistes », the money received) and the card after a delivery with the next run end above the middle too: on a phone the offer has no icon and its buttons in one row (sticky at its foot), the delivery card says what was paid and the next run over the button's width |
 | After-bout card | `#toast > .mo.bc` (`hud.boutCard`) | a moment card in the same place (portrait: a 30 px icon) | after a bout on the arena's fighter path (docs/CAREER.md): the result and who against, rows `Palmarès` · `Classement` · `Réputation` · `Influence` · `Cachet` (· `Forme` · `Ceinture`) — what (12 px), where it stands now (13.5 px), the change in green or red, a short note — then « Ensuite » on a sun-tinted block; 16–24 s, tap anywhere or ✕ to dismiss; it replaces the card on screen and a recap that comes meanwhile waits for it (two at most wait; older ones go to the quiet log); landscape phone: no icon, the result and the opponent on one line, notes inline, the first next step only |
 | The transient line | `#toast > .t` (`.say` / `.now`) | ONE at a time. `.say`, a spoken line: the subtitle, centred at the bottom above the controls (desktop 76 px up, ≤ 56 vw; portrait full width above the controls' row, three lines at most; landscape between « Courir » and the action column, two lines); `.now`, a refusal or the answer to the player's action: right above the action column; over an open sheet: at the top | `.say`: dark band, the speaker's name in sun, then the words; `.now`: « part  part » becomes chips, amounts coloured, `warn` in red; the next line replaces it; 2.6–7 s (time to read it); hidden from screen readers, who hear `#toast > .sr` |
 | Quiet log | `quietLog` (src/ui/quiet.ts) → phone › Notifications | not on screen | every other notice (purchases, pay, ledger lines, tips, arrivals, tonight's call): newest first, the last 60, the unseen ones bold with a dot; a badge on `#menuBtn` and on the app, the latest two on the phone's lock screen; opening Notifications marks them seen |
@@ -210,6 +210,27 @@ Profil, with an icon, a line and its detail; « Y aller » (44 px) sits on the r
 - **« Y aller ».** It closes the phone and sets the way-finding pin and the goal line (an invisible marker
   `cesoir:<key>` in this hub, like the fighter's path).
 - **Debug.** `__dakar.tonight()`, `__dakar.tonightGo(key)`.
+
+## Phone › Autour de moi (1.0.1; src/game/around.ts, src/game/aroundPage.ts)
+
+« What can I do right here, right now? » One screen (the « Autour de moi » tile of the home grid), ONE action a row, the nearest first, empty
+sections left out. The page is a pure assembly (`aroundPage`, tests/aroundPage.test.ts) of live facts (`aroundFacts`), drawn like « Ce soir ».
+- **Tiak Tiak.** The district's board now (`phoneHooks.tiakOffers`), at the pay the board shows: route, kind, pay, how far the pick-up is,
+  « Accepter » (the board's own accept, greyed with its reason: « Trop fatigué »). A run in hand replaces them: « En cours », « Y aller ».
+- **Grand Camp.** The district's open lobbies (`CampClient.list`, online only): organizer, fee, places left, « Voir »
+  (`openPhone('grandcamp:<match>')`), and « Organiser » (`openPhone('grandcamp')`) — the actions only where the phone has the Grand Camp app
+  (`Phone.can`).
+- **Amis en ligne.** The account's conversations whose player is online now; where, only as far as they share it (in sight in this presence
+  room; their district from the account's `find`, an accepted meeting or invitation): « Rejoindre » (the marker on them, or their district's
+  directions and their room, src/online/visit.ts `followInto`; no teleport), else « Message ».
+- **Lieux.** The places open now and what is going on (the living places' hours of people: Le Patio, the terraces, la plage de Ngor; a
+  mosque's prayers; a dibiterie's busy hours; tonight's card at the arena), how far: « Y aller » (the walking marker and the pin).
+- **Activités.** What the places offer now (dancing, praying, fishing, a hand at work, a crossing) and the city places' free moments:
+  « Commencer » where the player stands (the activity's own start), else « Y aller ».
+- **Offline.** The online rows become one « Hors ligne » row; the rest works.
+- **Refresh.** On opening and every 5 s while shown (the phone's tick: nothing runs when it is closed); drawn again only when a row changed.
+- **Check.** `scripts/check-around-me.mjs` (local Workers runtime, real touch, Pikine and the Corniche, a second client's lobby, offline).
+  Debug: `__dakar.around()`, `__dakar.aroundDo(act)`.
 
 ## Follow camera (src/actors/camera.ts)
 

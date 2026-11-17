@@ -1,6 +1,6 @@
 import type { GameState } from '../core/state';
 import { fcfaText } from './format';
-import { pickupFrags, routeById } from './jobs';
+import { counterLine, routeById } from './jobs';
 import { currentTour } from './tour';
 import type { HubId } from '../core/types';
 import { furnitureCount, goalItem, owns, priceOf } from './furniture';
@@ -33,10 +33,12 @@ export function economyStep(s: GameState): Step | null {
       : { id: 'goal_deliver', hint: `Tiak Tiak : livre le colis à ${r.to.name}.` };
   }
   if ((s.data.counters.livraisons ?? 0) === 0) {
-    // the neighbourhood the player is in: its own Tiak Tiak pick-up, else its own paid services (never another hub's)
-    if (!pickupFrags(s.data.hub).length) return { id: 'goal_work', hint: 'Gagne ta vie : « Petits boulots » (téléphone › Travail) liste les services payés de ce quartier.' };
-    const where = s.data.hub === 'plateau' ? 'la Gargote Chez Fatou (Plateau)' : 'la Gargote Mame Diarra (Pikine)';
-    return { id: 'goal_tiak', hint: `Gagne ta vie : prends une livraison Tiak Tiak à ${where}.` };
+    // the neighbourhood the player is in: its own Tiak Tiak counter (every district has one since 1.0.1), else its own paid services (never another hub's)
+    const where = counterLine(s.data.hub);
+    if (!where) return { id: 'goal_work', hint: 'Gagne ta vie : « Petits boulots » (téléphone › Travail) liste les services payés de ce quartier.' };
+    // short enough for the goal line's two lines on a phone; the counter is this district's (its name without the district), « au » for « le »
+    const at = where.replace(/ \([^)]*\)$/, '');
+    return { id: 'goal_tiak', hint: `Gagne ta vie : Tiak Tiak ${at.startsWith('le ') ? 'au ' + at.slice(3) : 'à ' + at}.` };
   }
   // After the first piece of furniture, only the goal Ibou suggested stays on the chip (the rest is in the Carnet).
   const first = furnitureCount(s) === 0;

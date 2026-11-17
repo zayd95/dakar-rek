@@ -21,7 +21,10 @@ export class PresenceClient {
   private requestedRoom: number | null = null;
   private retry = 0; private handshake = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
   private lastSentAt = 0; private lastMove = ''; private latest: Move | null = null; private clockOffset = 0;
-  private lastPong = 0;
+  /** When the server last answered a ping: on the device's clock, and on the page's monotonic clock (a device clock set back leaves the first behind). */
+  private lastPong = 0; private lastPongMono = 0;
+  /** The device clock and the page's monotonic clock when the offset was last checked (0: no server time known yet on this page). */
+  private wallAt = 0; private monoAt = 0;
   constructor(public profile: Profile, private enabled: boolean, private endpoint?: string) {
     addEventListener('online', () => { if (this.hub && this.enabled && this.status !== 'online') this.open(); });
     addEventListener('offline', () => { if (this.enabled) { this.stopSocket(); this.setStatus('offline'); } });
@@ -78,10 +81,29 @@ export class PresenceClient {
    */
   private refineClock(serverMs: unknown) {
     if (typeof serverMs !== 'number' || !Number.isFinite(serverMs)) return;
+    this.followDevice();
     const o = serverMs - Date.now();
     if (o > this.clockOffset && o - this.clockOffset < 5000) this.clockOffset = o;
   }
-  serverNow() { return Date.now() + (this.status === 'online' ? this.clockOffset : 0); }
+  /**
+   * A device clock moved by hand (forward or back) moves `Date.now()` but not the page's monotonic clock: the difference is taken out of the offset at once, so the
+   * server's time goes on as it was until the server answers again (a reconnection's welcome sets the offset afresh). The monthly economy reads this time
+   * (src/economy/calendar.ts): it never sees the jump (it used to for up to 20 s after a jump forward, until the heartbeat reconnected, and for good after a jump back).
+   */
+  private followDevice() {
+    const wall = Date.now(), mono = performance.now();
+    if (this.monoAt) { const jump = wall - this.wallAt - (mono - this.monoAt); if (Math.abs(jump) > 2000) this.clockOffset -= jump; }
+    this.wallAt = wall; this.monoAt = mono;
+  }
+  /**
+   * The server's time (ms): once it is known on this page, while online and while reconnecting (the time it gave, gone on by the page's own clock); the device's
+   * before the first welcome, offline and solo.
+   */
+  serverNow() {
+    if (!this.monoAt || this.status === 'offline' || this.status === 'solo') return Date.now();
+    this.followDevice();
+    return Date.now() + this.clockOffset;
+  }
   private open() {
     this.stopSocket();
     if (!this.hub || !navigator.onLine) { this.setStatus('offline'); return; }
@@ -103,19 +125,19 @@ export class PresenceClient {
     }, 8000);
     ws.onmessage = event => {
       if (generation !== this.generation) return;
-      if (event.data === 'pong') { this.lastPong = Date.now(); return; }
+      if (event.data === 'pong') { this.lastPong = Date.now(); this.lastPongMono = performance.now(); return; }
       let message: ServerMessage; try { message = JSON.parse(event.data as string) as ServerMessage; } catch { return; }
       if (message.type === 'welcome') {
         if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
         clearTimeout(this.handshake); this.handshake = 0;
-        this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now();
-        this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now();
+        this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now(); this.wallAt = Date.now(); this.monoAt = performance.now() || 1;
+        this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now(); this.lastPongMono = performance.now();
         this.features.clear(); if (Array.isArray(message.features)) for (const f of message.features) if (typeof f === 'string') this.features.add(f);
         for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
         this.setStatus('online');
         if (this.latest) this.publish(this.latest);
         this.heartbeat = window.setInterval(() => {
-          if (Date.now() - this.lastPong > 65000) { ws.close(); return; }
+          if (Date.now() - this.lastPong > 65000 || performance.now() - this.lastPongMono > 65000) { ws.close(); return; }   // either clock: a phone back from sleep (its page clock may have stood still), or a device clock set back (« now − last pong » negative)
           if (ws.readyState === WebSocket.OPEN) ws.send('ping');
         }, 20000);
       } else if (message.type === 'peer') {
@@ -152,7 +174,7 @@ export class PresenceClient {
 
 let chatKey: string | null | undefined;
 /** Private random key for this device; the server only shares a hash of it, so mute/block survive reconnects. */
-function deviceChatKey(): string | null {
+export function deviceChatKey(): string | null {
   if (chatKey !== undefined) return chatKey;
   const fresh = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
   try {
@@ -163,10 +185,24 @@ function deviceChatKey(): string | null {
   return chatKey;
 }
 
+/**
+ * 1.0.1 — the name of a player who never chose one: a first name of the city, always the same for the same save (from its guest id), instead of
+ * « Dakarois 4F2A » (a fragment of an id nobody can read or say). The character studio still asks for the player's own.
+ */
+export const DEFAULT_NAMES = ['Awa', 'Moussa', 'Fatou', 'Ibou', 'Aïda', 'Modou', 'Khady', 'Cheikh', 'Ndeye', 'Pape', 'Astou', 'Omar', 'Coumba', 'Lamine', 'Mame', 'Babacar',
+  'Sokhna', 'Aliou', 'Bineta', 'Demba', 'Rama', 'Malick', 'Yacine', 'Assane'] as const;
+export function defaultName(guestId: string): string {
+  const h = [...guestId].reduce((n, c) => (Math.imul(n, 31) + c.charCodeAt(0)) >>> 0, 7);
+  return DEFAULT_NAMES[h % DEFAULT_NAMES.length];
+}
+/** The 1.0 default (« Dakarois 4F2A »), wherever it was kept. */
+const OLD_DEFAULT = /^Dakarois( [0-9A-F]{4})?$/;
+/** A name the player did not choose (the default of this save, or the 1.0 one): the studio starts from an empty field. */
+export const isDefaultName = (name: string, guestId: string) => OLD_DEFAULT.test(name) || name === defaultName(guestId);
 export function loadProfile(storage: Storage | null, guestId: string): Profile {
   try { const saved = JSON.parse(storage?.getItem('dakarrek.presence.profile') ?? 'null') as Profile | null;
-    if (saved) return { name: nickname(saved.name), look: lookIndex(saved.look) };
+    if (saved) { const name = nickname(saved.name); return { name: OLD_DEFAULT.test(name) ? defaultName(guestId) : name, look: lookIndex(saved.look) }; }
   } catch { /* private browsing or corrupt profile */ }
   const hash = [...guestId].reduce((n, c) => n + c.charCodeAt(0), 0);
-  return { name: `Dakarois ${guestId.slice(0, 4).toUpperCase()}`, look: hash % 6 };
+  return { name: defaultName(guestId), look: hash % 6 };
 }

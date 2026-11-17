@@ -18,7 +18,9 @@ import { refusalText } from './accountRules';
  *   – Text and locations are shown at once (« sending ») and kept in an outbox: sent again with the same id after a reconnect or a reload (the server
  *     keeps them once), until the server answers. A refusal is shown (« failed ») and never sent again by itself.
  *   – Money: the device's side (src/economy/money.ts). The wallet part of a top-up or a send is reserved and the game saved before anything is sent; the
- *     server's yes closes it, its no gives it back, once; without an answer the same id goes again at the next connection.
+ *     server's yes closes it, its no gives it back, once; without an answer the same id goes again at the next connection. A send shows in its
+ *     conversation at once as « en attente de confirmation » (1.0.1) and becomes the server's card, or a refusal, when the answer comes — whoever is
+ *     still waiting for it; with nobody waiting (the sheet closed, the page reloaded) the outcome is told through `onlineHooks.moneySettled`.
  *   – A build without the server (`enabled` false) is 'solo': nothing is sent, every request says so.
  */
 export interface OnlineDeps {
@@ -37,6 +39,10 @@ export const CACHE_KEY = 'dakarrek.online.v1';
 /** The legacy chat panel's local list (src/multiplayer/chat.ts): its blocks are sent to the account at the first connection. */
 const CHAT_KEY = 'dakarrek.chat.v1';
 const DEVICE_KEY = 'dakarrek.chat.key';
+/** The account's name for a player it has not heard from yet (server/social.ts ensureConv). */
+export const UNKNOWN_NAME = 'Joueur';
+/** How many times a money op the server answered « undecided » is sent again on one connection (1.5 s, 3 s, 4.5 s…; then at the next connection). */
+const MONEY_RETRIES = 5;
 const CONVS_MAX = 60, ITEMS_PER_CONV = 120, REQUEST_MS = 15_000, MONEY_WAIT_MS = 15_000, RESEND_GAP_MS = 1_100;
 /** Frames sent per second at most: the account closes a socket past 20 (server/social.ts), so a burst (a list asking who is online) waits its turn. */
 const SEND_RATE = 15;
@@ -63,7 +69,7 @@ export class OnlineAccount implements OnlineApi {
   status: OnlineStatus;
   private cache: Cache;
   private socket: WebSocket | null = null;
-  private retry = 0; private handshake = 0; private heartbeat = 0; private homeTimer = 0; private retryAttempt = 0; private generation = 0; private lastPong = 0;
+  private retry = 0; private handshake = 0; private heartbeat = 0; private homeTimer = 0; private retryAttempt = 0; private generation = 0; private lastPong = 0; private lastPongMono = 0;
   private clockOffset = 0; private live = false;
   private where: { hub: HubId | null; room: number } = { hub: null, room: 0 };
   private seenMap = new Map<Tag, Seen>();
@@ -71,6 +77,8 @@ export class OnlineAccount implements OnlineApi {
   private waiters = new Map<string, { list: ((m: ServerMessage | null) => void)[]; timer: number }>();
   private moneyWaiters = new Map<string, ((o: Outcome<{ op: LedgerOp }>) => void)[]>();
   private moneyDone = new Map<string, Outcome<{ op: LedgerOp }>>();
+  /** Money ops the server answered « undecided » (`offline`), and how many times each was sent again on this connection. */
+  private moneyRetries = new Map<string, number>();
   private convWaiters = new Map<Tag, ((more: boolean) => void)[]>();
   private historyWaiters: ((m: { ops: LedgerOp[]; more: boolean } | null) => void)[] = [];
   private listeners = new Set<() => void>();
@@ -100,7 +108,8 @@ export class OnlineAccount implements OnlineApi {
   convs(): ConvSummary[] {
     const at = (c: ConvSummary) => Math.max(c.last?.at ?? 0, ...(this.cache.items[c.with] ?? []).map(i => i.at));
     return this.cache.convs.map(c => {
-      const own = (this.cache.items[c.with] ?? []).reduce<ItemView | null>((n, i) => (!n || i.at >= n.at ? i : n), null);
+      // (a send still waiting for the server, or refused, is not the conversation's last line: the list never says « envoyés » before the server did)
+      const own = (this.cache.items[c.with] ?? []).filter(i => !(i.k === 'pay' && i.status)).reduce<ItemView | null>((n, i) => (!n || i.at >= n.at ? i : n), null);
       const last = own && (!c.last || own.at >= c.last.at) ? stripView(own) : c.last;
       return { ...c, last, blocked: this.isBlocked(c.with), seen: this.seenMap.get(c.with) ?? c.seen };
     }).sort((a, b) => at(b) - at(a));
@@ -211,6 +220,8 @@ export class OnlineAccount implements OnlineApi {
     const r = reserveOnline(this.d.state, p, this.d.saveNow, Date.now());
     if (!r.ok) return Promise.resolve(this.no(r.why === 'duplicate' ? 'closed' : r.why === 'busy' ? 'rate-limited' : r.why));
     const waiting = this.waitMoney(p.id);
+    // a send is in its conversation from now on, as what it is: waiting for the server (never « envoyés » before the answer)
+    if (p.kind === 'pay' && p.to) this.upsert(p.to, { id: p.id, k: 'pay', from: p.tag, at: this.serverNow(), amount: p.amount, op: p.id, ...(p.note ? { note: p.note } : {}), ...(p.req ? { req: p.req } : {}), status: 'sending' });
     this.sendMoney(r.pending);
     this.changed();
     return waiting;
@@ -218,7 +229,7 @@ export class OnlineAccount implements OnlineApi {
   private waitMoney(id: string): Promise<Outcome<{ op: LedgerOp }>> {
     return new Promise(resolve => {
       const list = this.moneyWaiters.get(id) ?? []; list.push(resolve); this.moneyWaiters.set(id, list);
-      setTimeout(() => {                                         // no answer yet: said as such (the op stays pending and is settled when the answer comes)
+      setTimeout(() => {                                         // no answer yet: said as such, 'pending' (the op stays pending and is settled when the answer comes; asking again with the same id waits for it again)
         const l = this.moneyWaiters.get(id), i = l?.indexOf(resolve) ?? -1;
         if (i >= 0) { l!.splice(i, 1); if (!l!.length) this.moneyWaiters.delete(id); resolve(this.no('pending')); }
       }, MONEY_WAIT_MS);
@@ -232,13 +243,26 @@ export class OnlineAccount implements OnlineApi {
   private moneyAnswer(m: Extract<ServerMessage, { type: 'ack' }>) {
     const pending = this.d.state.data.online.pending.find(p => p.id === m.id);
     if (!pending && !this.moneyWaiters.has(m.id)) return false;
-    if (!m.ok && m.reason === 'offline') return true;             // undecided on the server: kept, sent again at the next connection
+    if (!m.ok && m.reason === 'offline') {                        // undecided on the server (it could not reach its ledger): kept, and the same id goes again
+      // a little later on this connection (1.0.1: it used to wait for the next connection while the sheet said « en attente »), then at the next one
+      const n = (this.moneyRetries.get(m.id) ?? 0) + 1, gen = this.generation;
+      this.moneyRetries.set(m.id, n);
+      if (pending && n <= MONEY_RETRIES) window.setTimeout(() => { if (gen === this.generation && this.d.state.data.online.pending.some(x => x.id === pending.id)) this.sendMoney(pending); }, 1_500 * n);
+      return true;
+    }
+    this.moneyRetries.delete(m.id);
     const r = settleOnline(this.d.state, m.id, m.ok ? { ok: true, ...(typeof m.balance === 'number' ? { balance: m.balance } : {}) } : { ok: false });
     if (r !== 'none' || m.ok) this.d.saveNow();
     const out: Outcome<{ op: LedgerOp }> = m.ok ? (m.op ? { ok: true, op: m.op } : this.no('invalid')) : this.no(m.reason);
     if (m.ok && m.item) this.upsert(m.op?.to ?? m.item.from, m.item);
+    else if (!m.ok && pending?.kind === 'pay' && pending.to) {       // the waiting card becomes a refusal (kept, never resent): nothing left, the wallet part is back
+      const list = this.cache.items[pending.to] ?? [], at = list.findIndex(x => x.id === m.id);
+      if (at >= 0 && list[at].status === 'sending') list[at] = { ...list[at], status: 'failed', reason: m.reason };
+    }
     this.moneyDone.set(m.id, out);
-    for (const fn of this.moneyWaiters.get(m.id) ?? []) fn(out);
+    const waiters = this.moneyWaiters.get(m.id) ?? [];
+    for (const fn of waiters) fn(out);
+    if (!waiters.length && pending) { try { onlineHooks.moneySettled?.({ kind: pending.kind, amount: pending.amount, ...(pending.to ? { to: pending.to } : {}) }, out); } catch { /* a notice's error is its own */ } }
     this.moneyWaiters.delete(m.id);
     this.changed();
     return true;
@@ -323,6 +347,7 @@ export class OnlineAccount implements OnlineApi {
     if (!r.tag) return this.no('unknown-recipient');
     const p = { name: nickname(r.name), look: lookIndex(r.look), ...(appearanceCode(r.app) ? { app: r.app } : {}) };
     this.cache.names[r.tag] = p; this.persist();
+    const known = this.cache.convs.find(c => c.with === r.tag); if (known) { known.name = p.name; known.look = p.look; }
     return { ok: true, tag: r.tag, ...p };
   }
   async find(tag: Tag): Promise<Outcome<{ hub: HubId | null; room: number }>> {
@@ -389,17 +414,17 @@ export class OnlineAccount implements OnlineApi {
     this.drain();
     return true;
   }
-  /** Sends what waits, never more than SEND_RATE frames in a second (the rest goes a little later, in order). */
+  /** Sends what waits, never more than SEND_RATE frames in a second (the rest goes a little later, in order). The second is the page's own (`performance.now`): a device clock set back cannot hold the window full. */
   private drain() {
     clearTimeout(this.backlogT); this.backlogT = 0;
-    const now = Date.now();
+    const now = performance.now();
     this.sentAt = this.sentAt.filter(t => now - t < 1000);
     while (this.backlog.length && this.sentAt.length < SEND_RATE) {
       if (this.socket?.readyState !== WebSocket.OPEN) { this.backlog = []; return; }
       try { this.socket.send(this.backlog.shift()!); } catch { this.backlog = []; return; }
-      this.sentAt.push(Date.now());                            // each frame's own time: a busy page takes milliseconds over a burst, and the window must count them
+      this.sentAt.push(performance.now());                     // each frame's own time: a busy page takes milliseconds over a burst, and the window must count them
     }
-    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (Date.now() - this.sentAt[0]) + 1));
+    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (performance.now() - this.sentAt[0]) + 1));
   }
 
   // ================================================================== the socket
@@ -422,7 +447,7 @@ export class OnlineAccount implements OnlineApi {
     this.handshake = window.setTimeout(() => { if (generation === this.generation && this.socket === ws) this.scheduleRetry(); }, 8000);
     ws.onmessage = e => {
       if (generation !== this.generation) return;
-      if (e.data === 'pong') { this.lastPong = Date.now(); return; }
+      if (e.data === 'pong') { this.lastPong = Date.now(); this.lastPongMono = performance.now(); return; }
       let raw: unknown; try { raw = JSON.parse(e.data as string); } catch { return; }
       const m = parseServerMessage(raw); if (m) this.onMessage(m, ws);
     };
@@ -437,7 +462,7 @@ export class OnlineAccount implements OnlineApi {
   }
   private stopSocket() {
     this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); clearInterval(this.homeTimer); clearTimeout(this.backlogT);
-    this.backlog = []; this.sentAt = [];                         // what was waiting is sent again from the outboxes at the next welcome
+    this.backlog = []; this.sentAt = []; this.moneyRetries.clear();   // what was waiting is sent again from the outboxes at the next welcome
     this.retry = this.handshake = this.heartbeat = this.homeTimer = 0; this.live = false;
     if (this.socket) { this.socket.onclose = null; try { this.socket.close(); } catch { /* closed */ } this.socket = null; }
     for (const [, w] of this.waiters) { clearTimeout(w.timer); for (const fn of w.list) fn(null); }
@@ -458,7 +483,8 @@ export class OnlineAccount implements OnlineApi {
     switch (m.type) {
       case 'item': {
         const fresh = !this.cache.items[m.with]?.some(i => i.id === m.item.id);
-        if (m.name !== undefined) this.cache.names[m.with] = { name: nickname(m.name), look: lookIndex(m.look), ...(appearanceCode(m.app) ? { app: m.app } : {}) };
+        // (« Joueur » is the account's placeholder for someone it has not heard from yet: it never replaces a name this device already knows)
+        if (m.name !== undefined && !(m.name === UNKNOWN_NAME && this.cache.names[m.with])) this.cache.names[m.with] = { name: nickname(m.name), look: lookIndex(m.look), ...(appearanceCode(m.app) ? { app: m.app } : {}) };
         this.upsert(m.with, m.item);
         const c = this.cache.convs.find(x => x.with === m.with);
         if (c && fresh && m.item.from !== this.me?.tag) c.unread += 1;
@@ -484,7 +510,7 @@ export class OnlineAccount implements OnlineApi {
     clearTimeout(this.handshake); this.handshake = 0;
     if (this.cache.tag && this.cache.tag !== m.tag) { const keep = this.cache.migrated; this.cache = emptyCache(); this.cache.migrated = keep; }   // another account on this device (an imported key)
     this.cache.tag = m.tag; this.cache.code = m.code; this.cache.limits = m.limits; this.cache.today = m.today;
-    this.clockOffset = m.time - Date.now(); this.retryAttempt = 0; this.lastPong = Date.now();
+    this.clockOffset = m.time - Date.now(); this.retryAttempt = 0; this.lastPong = Date.now(); this.lastPongMono = performance.now();
     const o = this.d.state.data.online;
     o.tag = m.tag; noteBalance(this.d.state, m.balance);
     // the list: the server's, with any conversation only this device holds (an older one, or one with messages still to send)
@@ -495,7 +521,7 @@ export class OnlineAccount implements OnlineApi {
     this.live = true;
     this.setStatus('online');
     this.heartbeat = window.setInterval(() => {
-      if (Date.now() - this.lastPong > 65000) { ws.close(); return; }
+      if (Date.now() - this.lastPong > 65000 || performance.now() - this.lastPongMono > 65000) { ws.close(); return; }   // either clock: a phone back from sleep (its page clock may have stood still), or a device clock set back (« now − last pong » negative)
       if (ws.readyState === WebSocket.OPEN) ws.send('ping');
     }, 20000);
     if (this.where.hub !== null || this.where.room) this.sendRaw({ type: 'where', ...this.where });
@@ -609,8 +635,12 @@ export class OnlineAccount implements OnlineApi {
       c.migrated = raw.migrated === true;
       c.here = (Array.isArray(raw.here) ? raw.here : []).filter(x => typeof x === 'string').slice(-100);
       for (const [t, n] of Object.entries(raw.names ?? {})) if (isTag(t) && n && typeof n.name === 'string') c.names[t] = { name: nickname(n.name), look: lookIndex(n.look), ...(appearanceCode(n.app) ? { app: n.app } : {}) };
+      // a send still waiting for the server stays so while the save holds its pending operation (sent again at the next connection); one the save no
+      // longer waits for was answered: its card is the server's (it comes with the conversation), the waiting copy goes
+      const waiting = new Set(this.d.state.data.online.pending.map(p => p.id));
+      for (const [peer, list] of Object.entries(c.items)) c.items[peer] = list.filter(i => !(i.k === 'pay' && i.status === 'sending' && !waiting.has(i.id)));
       // a « sending » item without its outbox entry (the outbox was cut) is failed, never silently lost
-      for (const list of Object.values(c.items)) for (const i of list) if (i.status === 'sending' && !c.outbox.some(m => m.id === i.id)) { i.status = 'failed'; i.reason = 'offline'; }
+      for (const list of Object.values(c.items)) for (const i of list) if (i.k !== 'pay' && i.status === 'sending' && !c.outbox.some(m => m.id === i.id)) { i.status = 'failed'; i.reason = 'offline'; }
     } catch { return emptyCache(); }
     return c;
   }

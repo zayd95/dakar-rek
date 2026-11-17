@@ -1,0 +1,13 @@
+/* 1.0.1: the opening fly-in (src/game/opening.ts). The HUD steps aside while the camera flies and comes back when the player takes over; a tap
+   anywhere skips (the layer over the game), « Passer » says so in a corner; the veil is the arrival card's dark, for the dip of a skip and the
+   reduced-motion fade. */
+#ui { transition: opacity .6s ease; }
+body.opening #ui { opacity: 0; }
+body.opening #ui, body.opening #ui > * { pointer-events: none !important; }
+#opening { position: fixed; inset: 0; z-index: 39; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+#opening.in { pointer-events: none; }
+#opening .op-veil { position: absolute; inset: 0; background: #0d1220; opacity: 0; pointer-events: none; }
+#opening .op-skip { position: absolute; right: calc(14px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); appearance: none; border: 0; margin: 0; min-height: 36px; padding: 0 15px;
+  border-radius: 18px; background: rgba(13, 18, 32, .4); color: rgba(255, 255, 255, .9); font: 600 14px/36px var(--font); letter-spacing: .02em; cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+#opening.fade .op-skip, #opening.in .op-skip { display: none; }

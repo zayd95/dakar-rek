@@ -1,0 +1,309 @@
+{
+ "base": "http://127.0.0.1:4824/",
+ "when": "2026-11-14T01:37:07.906Z",
+ "passed": 60,
+ "total": 60,
+ "results": [
+  {
+   "name": "a new game: the player lives in the family room, 20 000 000 F in the wallet",
+   "ok": true,
+   "detail": "chambre_pikine"
+  },
+  {
+   "name": "two pieces of furniture stand in the family room",
+   "ok": true,
+   "detail": "[{\"uid\":\"a2\",\"spec\":\"chaises\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a1\",\"at\":{\"x\":-2.55,\"z\":1.09,\"rot\":1},\"upgrades\":[],\"condition\":100},{\"uid\":\"a3\",\"spec\":\"radio\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a1\",\"at\":{\"x\":-0.9,\"z\":-2.2,\"rot\":0},\"upgrades\":[],\"condition\":100}]"
+  },
+  {
+   "name": "« Biens » opens from the phone with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Annonces » with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the F2's listing with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Acheter » with a tap: its confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the confirmation shows the price and what is left",
+   "ok": true,
+   "detail": "Acheter : Appartement F2Vérifie avant de confirmer :Prix15 000 000 FIl te restera5 000 000 FSurface63 m² · sur un étage : cuisine et salle de bainDébloqueEn faire ton domicile principal, y mettre tes "
+  },
+  {
+   "name": "« Acheter » is confirmed with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the home is his at once: owned, 15 000 000 F gone once",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Les clés sont à toi » — Emménager maintenant ?",
+   "ok": true,
+   "detail": "Les clés sont à toi | Les clés sont à toiEmménager maintenant ?LogementAppartement F2 · à toiDans « Biens »à toi · valeur 15 000 000 FLa porteelle s’ouvre pour toi : « Entrer chez to"
+  },
+  {
+   "name": "it says it is listed in Biens as his, that its door opens, and the way there",
+   "ok": true,
+   "detail": "Les clés sont à toiEmménager maintenant ?LogementAppartement F2 · à toiDans « Biens »à toi · valeur 15 000 000 FLa porteelle s’ouvre pour toi : « Entrer chez toi »Y allerle repère t’y mène : suis la ligne d’objectifTes meublessi tu emménages, tes 2 pièces te suivent✅EmménagerTon domicile principal : tes 2 meubles suivent, puis tu choisis pour ta chambre⏳Plus tardTu restes dans ta chambre ; il rest"
+  },
+  {
+   "name": "the furniture is said to follow: « si tu emménages, tes 2 pièces te suivent »",
+   "ok": true,
+   "detail": "Les clés sont à toiEmménager maintenant ?LogementAppartement F2 · à toiDans « Biens »à toi · valeur 15 000 000 FLa porteelle s’ouvre pour toi : « Entrer chez toi »Y allerle repère t’y mène : suis la ligne d’objectifTes meublessi tu emménages, tes 2 pièces te suivent✅EmménagerTon domicile principal : tes 2 meubles suivent, puis tu choisis pour ta chambre⏳Plus tardTu restes dans ta chambre ; il rest"
+  },
+  {
+   "name": "two answers: « Emménager » (the furniture follows) and « Plus tard »",
+   "ok": true,
+   "detail": "[\"✅EmménagerTon domicile principal : tes 2 meubles suivent, pu\",\"⏳Plus tardTu restes dans ta chambre ; il reste vide et peut \"]"
+  },
+  {
+   "name": "the walking marker is set on the Résidence Jàmm (the goal line leads there)",
+   "ok": true,
+   "detail": "{\"id\":\"pikine:city:jamm\",\"hub\":\"pikine\",\"name\":\"Appartement F2\"}"
+  },
+  {
+   "name": "« Emménager » with a tap: the choice about the family room",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Emménager : Appartement F2 » asks « Et ta chambre ? »: keep it (free, the default) or give it back, with the money",
+   "ok": true,
+   "detail": "[\"🏠Garder comme chambre familialeLa famille te la garde, sans loyer : tu peux y revenir qua\",\"🤲La rendre à la familleElle redevient la leur ; tu pourras la redemander depuis sa fiche0\",\"↩️Pas maintenantTu restes où tu es : rien ne change\"]"
+  },
+  {
+   "name": "nothing has moved yet: the room is still the home, its two pieces in it",
+   "ok": true,
+   "detail": "Emménager : Appartement F2Et ta chambre ? Un choix, rien ne se fait sans toiTu emménagesAppartement F2Tes meublesles 2 pièces te suiventLivraisonsKeur Meubles livrera iciTu quittesTa chambre · prêtée par la famille, sans loyer🏠Garder comme chambre familialeLa famille te la garde, sans loyer : tu pe"
+  },
+  {
+   "name": "« Garder comme chambre familiale » with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "moved in: the F2 is the principal residence, the family keeps the room (not given back)",
+   "ok": true,
+   "detail": "appart_jamm"
+  },
+  {
+   "name": "the last line says it: « Tu habites ici : Appartement F2 ✓ · 2 meubles ont suivi · ta chambre : chambre familiale ✓ »",
+   "ok": true,
+   "detail": "Tu habites ici : Appartement F2 ✓ · 2 meubles ont suivi · ta chambre : chambre familiale ✓Tu habites ici : Appartement F2 ✓ · 2 meubles ont suivi · ta chambre : chambre familiale ✓"
+  },
+  {
+   "name": "the two pieces followed into the F2, set up there; nothing is left behind or lost",
+   "ok": true,
+   "detail": "[{\"uid\":\"a2\",\"spec\":\"chaises\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a4\",\"at\":{\"x\":-1.33,\"z\":0.32,\"rot\":0},\"upgrades\":[],\"condition\":100},{\"uid\":\"a3\",\"spec\":\"radio\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a4\",\"at\":{\"x\":-2.33,\"z\":0.25,\"rot\":0},\"upgrades\":[],\"condition\":100}]"
+  },
+  {
+   "name": "back on the F2's sheet: « À toi · … ton domicile principal », no « Emménager ici » (lived in)",
+   "ok": true,
+   "detail": "Appartement F2Logement · Pikine · Cité Jàmm🏠 Entrée, séjour, cuisine, chambre et salle de bain, au premier étagePikine · Cité Jàmm · 63 m²À toi · valeur 15 000 000 F · ton domicile principal🚪Entrer chez toi💼Mettre en location à une familleTu y habites : emm"
+  },
+  {
+   "name": "« Biens » again, from the phone",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "in « Biens » the F2 is listed as owned and the principal residence, the room as the family's",
+   "ok": true,
+   "detail": "🏠Appartement F2 · Résidence Jàmm★ domicile principal · à toi15 000 000 F | 🏠Ta chambre · Pikineprêtée par la famille"
+  },
+  {
+   "name": "the goal line leads to the Résidence Jàmm, with the distance",
+   "ok": true,
+   "detail": "{\"on\":true,\"text\":\"Résidence Jàmm · appartements ·\",\"dist\":\"23 m\"}"
+  },
+  {
+   "name": "walked there with the joystick, along the goal line's marker",
+   "ok": true,
+   "detail": "23 m as the crow flies, 0.4 m left"
+  },
+  {
+   "name": "arrived: the marker is done (« Te voilà »)",
+   "ok": true,
+   "detail": "null"
+  },
+  {
+   "name": "at the Résidence's door the action button offers « Entrer chez toi »",
+   "ok": true,
+   "detail": "{\"id\":\"appart_jamm:sign\",\"name\":\"Appartement F2\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez toi\",\"all\":[\"Entrer chez toi\",\"Gérer ton logement\"],\"why\":[]}"
+  },
+  {
+   "name": "a tap on the action button: inside his F2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Biens » from inside the F2",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Annonces »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the house's listing",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Louer » (16 700 F a day): its confirmation",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the rent confirmation says the rent by the day and by the hour",
+   "ok": true,
+   "detail": "Louer : Maison familialeVérifie avant de confirmer :Loyer16 700 F / jour · soit 696 F chaque heure en villePayéau fil du jeu, pendant que tu joues (rien hors ligne)DébloqueEn faire ton domicile princi"
+  },
+  {
+   "name": "« Louer » is confirmed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "rented at once: « Les clés sont à toi », listed in Biens with its rent",
+   "ok": true,
+   "detail": "Les clés sont à toiEmménager maintenant ?LogementMaison familiale · loué par toi · 16 700 F / jourDans « Biens »loué par toi · 16 700 F / jourLa porteelle s’ouvre pour toi : « Entrer chez toi »Y allerle repère t’y mène : suis la ligne d’objectifTes meublessi tu emménages, tes 2 pièces te suivent✅Emm"
+  },
+  {
+   "name": "« Emménager »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Et ton ancien logement ? » — the F2: let it (+213 F / h), sell it (+13 500 000 F) or keep it empty (0 F / h)",
+   "ok": true,
+   "detail": "[\"💼Mettre en locationLoué à une famille : payé chaque heure en ville, pendant que tu joues+213 F / h\",\"💰VendrePayé tout de suite : 90 % de sa valeur ; tes meubles te suivent+13 500 000 F\",\"🔒Garder videIl reste à toi, vide : il ne coûte rien0 F / h\",\"↩️Pas maintenantTu restes où tu es : rien ne change\"]"
+  },
+  {
+   "name": "« Mettre en location » with a tap",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "moved into the house; the F2 is let (owned, earning +213 F / h); the room is still the family's",
+   "ok": true,
+   "detail": "{\"home\":\"maison_cite\",\"f2\":{\"uid\":\"a4\",\"spec\":\"appart_jamm\",\"kind\":\"home\",\"how\":\"owned\",\"leased\":true,\"ownAd\":false,\"home\":null,\"at\":null,\"upgrades\":[],\"condition\":100},\"income\":213}"
+  },
+  {
+   "name": "the two pieces followed again, into the house: the F2 is let empty",
+   "ok": true,
+   "detail": "[{\"uid\":\"a2\",\"spec\":\"chaises\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":-5.62,\"z\":-0.22,\"rot\":1},\"upgrades\":[],\"condition\":100},{\"uid\":\"a3\",\"spec\":\"radio\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":-1.57,\"z\":-4.2,\"rot\":0},\"upgrades\":[],\"condition\":100}]"
+  },
+  {
+   "name": "the last line: « Tu habites ici : Maison familiale ✓ … Appartement F2 : en location ✓ »",
+   "ok": true,
+   "detail": "Tu habites ici : Maison familiale ✓ · 2 meubles ont suivi · Appartement F2 : en location ✓Tu habites ici : Maison familiale ✓ · 2 meubles ont suivi · Appartement F2 : en location ✓"
+  },
+  {
+   "name": "« Biens » shows it all",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Biens »: the F2 « à toi · loué » (+213 F/h), the house « ★ domicile principal · loué par toi · 16 700 F / jour »",
+   "ok": true,
+   "detail": "🏠Appartement F2 · Résidence Jàmmà toi · loué+213 F/h | 🏠Maison familiale · Cité Jàmm★ domicile principal · loué par toi · 16 700 F / jour−696 F/h"
+  },
+  {
+   "name": "after a reload: the two pieces are in the house, where they were set up",
+   "ok": true,
+   "detail": "[{\"uid\":\"a2\",\"spec\":\"chaises\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":-5.62,\"z\":-0.22,\"rot\":1},\"upgrades\":[],\"condition\":100},{\"uid\":\"a3\",\"spec\":\"radio\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":-1.57,\"z\":-4.2,\"rot\":0},\"upgrades\":[],\"condition\":100}]"
+  },
+  {
+   "name": "after a reload: the house is the home, the F2 owned and let, the room kept, the house rented",
+   "ok": true,
+   "detail": "[{\"uid\":\"a1\",\"spec\":\"chambre_pikine\",\"kind\":\"home\",\"how\":\"given\",\"leased\":false,\"ownAd\":false,\"home\":null,\"at\":null,\"upgrades\":[],\"condition\":100},{\"uid\":\"a4\",\"spec\":\"appart_jamm\",\"kind\":\"home\",\"how\":\"owned\",\"leased\":true,\"ownAd\":false,\"home\":null,\"at\":null,\"upgrades\":[],\"condition\":100},{\"uid\":\"a5\",\"spec\":\"maison_cite\",\"kind\":\"home\",\"how\":\"rented\",\"leased\":false,\"ownAd\":false,\"home\":null,\"at\":nul"
+  },
+  {
+   "name": "after a reload: the wallet is what was saved (less at most a few city hours of the house's rent net of the F2's)",
+   "ok": true,
+   "detail": "5000000 → 5000000"
+  },
+  {
+   "name": "no question pops up at load",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the marks of the homes asked are kept",
+   "ok": true,
+   "detail": "[\"logement:a4\",\"logement:a1\",\"logement:a5\"]"
+  },
+  {
+   "name": "« Biens » after the reload",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the F2's sheet opens as a sheet (its question was answered)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the F2's sheet: let, the choices still there to change (« Arrêter la location », « Vendre », « Emménager ici »)",
+   "ok": true,
+   "detail": "[\"🚪Entrer chez toi\",\"⭐Emménager iciIl est loué à quelqu’un : arrête la \",\"⏹️Arrêter la locationIl ne rapporte plus rien, il \",\"⭐Ventilateur au plafondDes nuits plus fraîches : +\",\"⭐Peinture neuveMurs repeints : le logement se loue\",\"💰VendrePayé tout de suite+13 500 000 F\"]"
+  },
+  {
+   "name": "an older save: nothing pops up at load",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Biens »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the family room's row",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the room's sheet asks once: « Que faire de ce logement ? », keep it (as it is) or give it back, or move back in",
+   "ok": true,
+   "detail": "[\"🏠Garder comme chambre familialeLa famille te la garde, sans loyer : t\",\"🤲La rendre à la familleElle redevient la leur ; tu pourras la redeman\",\"⭐Emménager iciTon domicile principal : tes meubles suivent\",\"↩️Voir la ficheTout reste comme c’est ; chaque choix est aussi sur la \"]"
+  },
+  {
+   "name": "« Garder comme chambre familiale »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "kept: still the family's room, nothing else changed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the next time, the room's sheet is its sheet (asked once)",
+   "ok": true,
+   "detail": "Ta chambreLogement · Pikine🏠 La chambre que la famille te prête, en face de la Cité JàmmPikine · 29 m²Prêtée par la famille · gardée comme chambre familiale🚪Entrer chez toi⭐Emménager iciTon domicile"
+  },
+  {
+   "name": "no JavaScript errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

@@ -9,6 +9,7 @@ import { VENTURES, nextPrice, ownedOf, perHourOf } from './business';
 import { C, dealerOffer, dueBy, missedWith, openLoans, standing } from './credit';
 import { assetsOf } from './assets';
 import { specOf } from './catalog';
+import { isMotoAsset } from '../transport/owned';
 
 /**
  * Banque Teranga v1 (pure rules on the money contract of src/economy/money.ts, unit-tested; the counter and the conseillère are
@@ -193,7 +194,7 @@ export function bankAdvice(s: GameState, o: { trust?: number } = {}): string[] {
   }
 
   // a car for the VTC rides: Pape Sarr's credit, as his rules would answer today (once the player has the price of a first venture)
-  const cars = assetsOf(s, 'vehicle').filter(a => a.spec !== 'jakarta').length;
+  const cars = assetsOf(s, 'vehicle').filter(a => !isMotoAsset(a.spec)).length;                    // (a motorbike, the Sabar too, is no car for the VTC)
   if (!cars && first && cash >= first.amount) {
     const sc = sarrCredit(s, o.trust);
     if (sc.verdict !== 'refuse') add(50, `Une voiture pour les courses VTC ? Pape Sarr (Sarr Auto, Pikine) étudiera ta demande de crédit pour une Teranga.`);

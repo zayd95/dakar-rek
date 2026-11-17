@@ -2,17 +2,17 @@
   {
     "name": "chat button below the multiplayer button, clear of the hub title (390 px)",
     "ok": true,
-    "detail": "{\"c\":[306.6875,125,380,165],\"p\":[244.171875,77,380,117],\"t\":[160,10,328,69]}"
+    "detail": "{\"c\":[308.296875,231,380,275],\"p\":[0,0,0,0],\"t\":[202.640625,10,328,70]}"
   },
   {
     "name": "chat button below the multiplayer button, clear of the hub title (320 px)",
     "ok": true,
-    "detail": "{\"c\":[236.6875,125,310,165],\"p\":[174.171875,77,310,117],\"t\":[160,10,258,97]}"
+    "detail": "{\"c\":[238.296875,231,310,275],\"p\":[0,0,0,0],\"t\":[152,10,258,70]}"
   },
   {
     "name": "proximity message acknowledged as received by one nearby player",
     "ok": true,
-    "detail": "{\"id\":\"99e5bd46-102f-4430-8b87-0b684b72bc0a\",\"name\":\"Toi\",\"text\":\"Salaam aleekum Moussa, na nga def ? 🙏🏾\",\"mine\":true,\"status\":\"sent\",\"delivered\":1}"
+    "detail": "{\"id\":\"7c3fbe0a-ac23-4fac-8f29-67f34e84b256\",\"name\":\"Toi\",\"text\":\"Salaam aleekum Moussa, na nga def ? 🙏🏾\",\"mine\":true,\"status\":\"sent\",\"delivered\":1}"
   },
   {
     "name": "speaker sees their own bubble and the \"reçu\" status",
@@ -40,9 +40,9 @@
     "detail": ""
   },
   {
-    "name": "personal room: proximity message refused with a readable status",
+    "name": "personal room: a proximity message reaches nobody outside the home",
     "ok": true,
-    "detail": "{\"id\":\"2b6f5bb1-977f-4159-a12d-9d3fd7bbf77b\",\"name\":\"Toi\",\"text\":\"Allô ?\",\"mine\":true,\"status\":\"failed\",\"reason\":\"private-space\"}"
+    "detail": "{\"id\":\"e9cda10b-cc8b-4652-b8fe-09133fc856ce\",\"name\":\"Toi\",\"text\":\"Allô ?\",\"mine\":true,\"status\":\"sent\",\"delivered\":0}"
   },
   {
     "name": "Escape closes the chat panel without opening the game menu",
@@ -52,17 +52,17 @@
   {
     "name": "desktop: typing W in the chat field does not move the player",
     "ok": true,
-    "detail": "[{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+    "detail": "[{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":3.141592653589793,\"cam\":3.141592653589793},{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":3.141592653589793,\"cam\":3.141592653589793}]"
   },
   {
     "name": "phone: joystick ignored while the keyboard field is focused",
     "ok": true,
-    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":0,\"cam\":0},{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":0,\"cam\":0}]"
   },
   {
     "name": "phone: joystick works again once the chat is closed",
     "ok": true,
-    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-6,\"y\":0.1,\"z\":-29.44,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":0,\"cam\":0},{\"x\":-6,\"y\":0.1,\"z\":-29.450000000000003,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null,\"yaw\":0,\"cam\":0}]"
   },
   {
     "name": "draft kept after closing and reopening the panel",
@@ -70,9 +70,14 @@
     "detail": ""
   },
   {
-    "name": "private message acknowledged",
+    "name": "« Messages privés » closes the panel and opens the phone’s Messages",
     "ok": true,
-    "detail": "{\"id\":\"b2cc95cf-7a82-426c-a2ae-e4beb3bc737a\",\"name\":\"Toi\",\"text\":\"Rendez-vous au Maïga ce soir ?\",\"mine\":true,\"status\":\"sent\",\"delivered\":1}"
+    "detail": ""
+  },
+  {
+    "name": "private message sent and acknowledged by the account (« envoyé »)",
+    "ok": true,
+    "detail": ""
   },
   {
     "name": "private message delivered to the recipient only, with an unread badge",
@@ -80,12 +85,7 @@
     "detail": ""
   },
   {
-    "name": "reconnected player keeps the same public tag (mute/block survive reconnects)",
-    "ok": true,
-    "detail": ""
-  },
-  {
-    "name": "resending the same message id after a reconnect does not duplicate it",
+    "name": "reconnected player keeps the same public tag (mute/block survive reconnects) and the private message is kept once on both sides",
     "ok": true,
     "detail": ""
   },
@@ -95,9 +95,9 @@
     "detail": ""
   },
   {
-    "name": "sixth message in ten seconds is rate-limited, with a retry button",
+    "name": "message 11 in ten seconds is rate-limited, with a retry button",
     "ok": true,
-    "detail": "[\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"failed:rate-limited\"]"
+    "detail": "[\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"failed:rate-limited\"]"
   },
   {
     "name": "mute: no bubble and no history line from the muted player",
@@ -130,12 +130,12 @@
     "detail": ""
   },
   {
-    "name": "server rejects over 200 characters and private messages to absent players",
+    "name": "server rejects over 500 characters and private messages to absent players",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "server rate limit: five per ten seconds per connection",
+    "name": "server rate limit: 10 per ten seconds per connection",
     "ok": true,
     "detail": ""
   },

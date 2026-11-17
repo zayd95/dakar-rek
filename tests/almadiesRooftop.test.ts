@@ -15,6 +15,8 @@ import type { HubWorld } from '../src/world/types';
  */
 stubCanvas();
 const hotel = SITES.find(s => variantOf(s).id === 'hotel-boutique')!;
+/** What the game gives a module (src/game/modules.ts GameCtx), as much of it as the rooftop venue reads: the player in the street, the evening, the graphics preset. */
+const gameCtx = () => ({ interactions: { add() {} }, addInterior() {}, quality: () => 'medium' as const, space: () => 'street', hour: () => 21 }) as unknown as GameCtx;
 
 describe('the rooftop restaurant\'s stair door', () => {
   it('is given by the boutique hotel: on its street face, inside its site, facing the street', () => {
@@ -52,7 +54,7 @@ describe('in the hub', () => {
     const f = hub.rooftopDoor!;
     expect(f, 'the hub has the rooftop door').toBeTruthy();
     const { RooftopModule } = await import('../src/venues/rooftop');
-    const ctx = { interactions: { add() {} }, addInterior() {} } as unknown as GameCtx;
+    const ctx = gameCtx();
     const before = hub.interactables.length;
     RooftopModule.hubLoaded?.(ctx, hub);
     const door = hub.interactables.slice(before).find(i => i.id === 'almadies:rooftop:almadies')!;
@@ -60,6 +62,11 @@ describe('in the hub', () => {
     expect(door.x).toBeCloseTo(f.x, 6); expect(door.z).toBeCloseTo(f.z, 6);
     // not behind the hotel: the hotel's lot is x −53…−7, z −113…−91 (the sea road to the north): the door is in its north half
     expect(door.z).toBeLessThan(-100); expect(door.x).toBeGreaterThan(-53); expect(door.x).toBeLessThan(-7);
+    // the terrace's guests (src/venues/venueLife.ts) are made the first time the player is up there: never by building the venue, nor by a frame in the street
+    const guests = () => (RooftopModule.debug!(ctx) as { rooftop: { life(): unknown } }).rooftop.life();
+    expect(guests()).toBeNull();
+    RooftopModule.update?.(ctx, 0.1);
+    expect(guests()).toBeNull();
   }, 120000);
   it('the other hubs keep the venue\'s own search (no door given)', async () => {
     const { buildHub } = await import('../src/world/builder');
@@ -106,7 +113,7 @@ describe('the rooftop restaurant\'s name on the hotel\'s roof', () => {
     const hub: HubWorld = buildHub('almadies', false);
     expect(hub.rooftopSign?.panels).toHaveLength(4);
     const before = hub.signs.length, kids = hub.group.children.length;
-    RooftopModule.hubLoaded?.({ interactions: { add() {} }, addInterior() {} } as unknown as GameCtx, hub);
+    RooftopModule.hubLoaded?.(gameCtx(), hub);
     const added = hub.signs.slice(before);
     expect(added, 'one sign: the door\'s old one is gone').toHaveLength(1);
     const m = added[0];
@@ -127,7 +134,7 @@ describe('the rooftop restaurant\'s name on the hotel\'s roof', () => {
     const hub: HubWorld = buildHub('plateau', true);
     expect(hub.rooftopSign).toBeUndefined();
     const before = hub.signs.length;
-    RooftopModule.hubLoaded?.({ interactions: { add() {} }, addInterior() {} } as unknown as GameCtx, hub);
+    RooftopModule.hubLoaded?.(gameCtx(), hub);
     expect(hub.signs.length - before).toBe(1); expect(hub.signs[hub.signs.length - 1].geometry.type).toBe('PlaneGeometry');
   }, 120000);
 });

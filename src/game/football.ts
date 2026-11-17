@@ -76,8 +76,8 @@ const PW = new THREE.Vector3(), TW = new THREE.Vector3(), PL = new THREE.Vector3
 const TT = new THREE.Vector3(), HW = new THREE.Vector3(), G1 = new THREE.Vector3(), G2 = new THREE.Vector3(), AX = new THREE.Vector3();
 const QB = new THREE.Quaternion();
 
-/** A plain ball of the game's own design: white with dark patches. */
-function ballMesh(shadows: boolean) {
+/** A plain ball of the game's own design: white with dark patches (also the Grand Camp's ball, src/game/grandCamp.ts). */
+export function ballMesh(shadows: boolean) {
   const c = document.createElement('canvas'); c.width = 128; c.height = 64;
   const g = c.getContext('2d');
   if (g) {
@@ -121,6 +121,53 @@ function netsMesh(cx: number, cz: number) {
   m.name = 'football_nets';
   return m;
 }
+
+/**
+ * The leg of a kick, a touch, a trap or a block on a body (the instep on the ball at the contact; src/actors/gesture.ts leg IK): the swing back and
+ * through before the contact (`u` 0…1 of the swing), the foot ON the ball's back at the contact frame (`now`), the follow-through after it (`post`
+ * 0…1). `st` keeps where the foot was when this kick's swing began (`key`: the kick it belongs to). Returns, at the contact, the gap between the
+ * instep and the ball (m; the checks measure it), else null. The NPCs' match and the Grand Camp's players (src/game/grandCamp.ts) both pose with it.
+ */
+export function poseKick(h: Humanoid, st: { k: unknown; s0: THREE.Vector3 }, key: unknown, kind: KickKind, sideSign: 1 | -1, yaw: number, ball: THREE.Vector3,
+  before: boolean, now: boolean, u: number, post: number): number | null {
+  const side = sideSign > 0 ? 'R' : 'L', sgn = sideSign, amp = AMP[kind];
+  const n = N.set(Math.sin(yaw), 0, Math.cos(yaw)), r = RV.set(-Math.cos(yaw), 0, Math.sin(yaw));
+  // the instep's target: the back of the ball (the side the body comes from), a little under its centre
+  const C = CW.copy(ball).addScaledVector(n, -(BALL_R + 0.03)); C.y = ball.y - 0.015;
+  if (st.k !== key) { st.k = key; footStrike(h, side, st.s0); }
+  const soft = kind === 'trap' || kind === 'save';
+  const A = soft ? AW.copy(C).addScaledVector(n, -0.05).addScaledVector(UP, 0.15).addScaledVector(r, sgn * 0.06)
+    : AW.copy(C).addScaledVector(n, -0.42 * amp).addScaledVector(UP, 0.08 + 0.26 * amp);
+  const F = soft ? FW.copy(C).addScaledVector(n, -0.12).addScaledVector(UP, 0.04)
+    : FW.copy(C).addScaledVector(n, 0.45 * amp).addScaledVector(UP, 0.05 + 0.35 * amp);
+  const P = PW;
+  let w: number;
+  if (now) { P.copy(C); w = 1; }
+  else if (before) {
+    if (u < 0.55) P.lerpVectors(st.s0, A, ease(u / 0.55)); else { const q = (u - 0.55) / 0.45; P.lerpVectors(A, C, q * q); }
+    w = smooth(0, 0.3, u);
+  } else { P.lerpVectors(C, F, easeOut(Math.min(1, post / 0.6))); w = 1 - smooth(0.45, 1, post); }
+  if (w <= 1e-3) return null;
+  // lower on the standing leg, the trunk over the ball (back a little for a strike)
+  crouch(h, (kind === 'shot' ? 0.09 : 0.06) * w);
+  bend(h, (kind === 'shot' ? -0.06 : 0.12) * w);
+  const [out, down] = TOE[kind];
+  const toe = TW.copy(n).multiplyScalar(Math.cos(out)).addScaledVector(r, sgn * Math.sin(out)).multiplyScalar(Math.cos(down)).addScaledVector(UP, -Math.sin(down)).normalize();
+  const pole = PL.copy(n).addScaledVector(UP, 0.4).addScaledVector(r, sgn * 0.25);
+  const foot = h.bone(`foot.${side}`);
+  if (!foot) return null;
+  // twice: the ankle placed so that the instep, not the ankle, lands on the target
+  for (let i = 0; i < 2; i++) {
+    foot.getWorldPosition(KW);
+    const S = footStrike(h, side, SW);
+    legTo(h, side, TT.copy(P).sub(S).add(KW), pole, w);
+    pointFoot(h, side, toe, w);
+  }
+  if (kind === 'pass' || kind === 'shot') reach(h, sgn > 0 ? 'L' : 'R', bodyPoint(h, 0.18, 1.12, -sgn * 0.55, HW), PL2.set(0, -1, 0).addScaledVector(r, -sgn), 0.45 * w);
+  return now ? footStrike(h, side, SW).distanceTo(ball) - BALL_R : null;
+}
+/** Where a body's feet stand on the pitch's grass (world y), and the grass's top: the Grand Camp's players stand where the NPCs do. */
+export const PITCH_FEET = FEET, PITCH_GRASS = GRASS;
 
 class Football implements GameModule {
   readonly name = 'football';
@@ -169,6 +216,21 @@ class Football implements GameModule {
   private m3 = { said: [] as string[], cards: [] as { title: string; rows: string[] }[], results: [] as Result[], recognised: 0, joined: 0, left: 0, finished: 0, asked: { pass: 0, shot: 0 } };
   /** The checks: the simulated ball's last TRACK_N frames (shared time ms, x, z of pitch space), a ring with no allocation. */
   private track = new Float64Array(TRACK_N * 3); private trackI = 0;
+  /**
+   * 1.0.1 Grand Camp (src/game/grandCamp.ts): a players' match holds the pitch. Meanwhile the NPCs' match and the kickabout wait, the footballers stand at
+   * the touchline and the spectators follow that match's ball (`booked()`: where it is now, pitch space). Null: the pitch is the NPCs' again.
+   */
+  private booked: (() => { x: number; z: number }) | null = null;
+  /** The Grand Camp takes the pitch (its ball's place, pitch space) or gives it back (null). */
+  book(ball: (() => { x: number; z: number }) | null) {
+    if (!!ball === !!this.booked) { this.booked = ball; return; }
+    this.booked = ball;
+    if (ball) {
+      if (this.me) this.leave('Un Grand Camp prend le terrain : la partie s’arrête.');
+      if (this.kbOn) this.kbOff();
+      this.syncT = 0;                                                        // the footballers go to the touchline at the next frame
+    }
+  }
 
   init(ctx: GameCtx) {
     this.ctx = ctx;
@@ -203,6 +265,7 @@ class Football implements GameModule {
     if (!on) { if (this.near) this.release(); return; }
     this.near = true;
     if ((this.syncT -= dt) <= 0) { this.syncT = 0.25; this.sync(); }
+    if (this.booked) { if (this.kbOn) this.kbOff(); this.aside(dt); return; }
     if (!this.active) { if (this.me) this.leave('La partie s’arrête : il n’y a plus assez de joueurs.'); this.kickabout(ctx, dt); return; }
     if (this.kbOn) this.kbOff();
     if (this.me) this.humanFrame(ctx, dt);
@@ -247,6 +310,13 @@ class Football implements GameModule {
       p.drive = drive; this.fans.set(p, { person: p, drive, cheer: 0 });
     }
     if (this.bench && this.match && this.match.t > this.bench.until) this.bench = null;   // back on: the next balance puts him on a team
+    if (this.booked) {                                                         // a Grand Camp on the pitch: every footballer waits at the touchline
+      for (const e of this.entries.values()) if (e.team >= 0) { m.remove(e.id); e.team = -1; }
+      this.bench = null; this.active = false;
+      for (const e of this.entries.values()) e.person.drive = e.drive;
+      if (this.ball) this.ball.visible = false;                                // the Grand Camp draws its own ball
+      return;
+    }
     this.balance();
     const n0 = this.count(0), n1 = this.count(1), was = this.active;
     this.active = n0 >= 2 && n1 >= 2;
@@ -371,6 +441,31 @@ class Football implements GameModule {
       f.drive.hold = f.cheer > 0 ? 'Celebrate' : null;
     }
   }
+
+  /** A Grand Camp holds the pitch: the footballers wait by the halfway line beyond the touchline, everyone on the touchlines follows its ball. */
+  private aside(dt: number) {
+    const pt = this.pitch!, b = this.booked!();
+    let wait = 0;
+    for (const e of this.entries.values()) {
+      const a = e.person, d = e.drive;
+      const tx = pt.x - 5 + 1.1 * (wait % 10), tz = pt.z - PITCH.hz - 3.4 - 1.2 * Math.floor(wait / 10), dx = tx - a.x, dz = tz - a.z, dd = Math.hypot(dx, dz);
+      wait++;
+      const step = Math.min(dd, 1.3 * dt);
+      if (dd > 0.05) { a.x += (dx / dd) * step; a.z += (dz / dd) * step; }
+      d.speed = dd > 0.1 ? 1.3 : 0;
+      const face = dd > 0.3 ? Math.atan2(dx, dz) : Math.atan2(pt.x + b.x - a.x, pt.z + b.z - a.z);
+      a.yaw += clamp(Math.atan2(Math.sin(face - a.yaw), Math.cos(face - a.yaw)), -4 * dt, 4 * dt);
+      a.y = this.groundY(a.x - pt.x, a.z - pt.z);
+      d.hold = null; d.overlay = null; d.every = false;
+    }
+    for (const f of this.fans.values()) {
+      f.drive.look = Math.atan2(pt.x + b.x - f.person.x, pt.z + b.z - f.person.z);
+      if (f.cheer > 0) f.cheer -= dt;
+      f.drive.hold = f.cheer > 0 ? 'Celebrate' : null;
+    }
+  }
+  /** A goal of the Grand Camp: the touchline is up for a few seconds, as for the NPCs' match. */
+  cheer() { for (const f of this.fans.values()) f.cheer = 5 + Math.random() * 1.5; }
 
   /** The one ball mesh at a ball of pitch space (plus a drawn offset), rolling on its way. */
   private drawBall(b: Ball, ox: number, oz: number, oh: number, dt: number) {
@@ -579,7 +674,7 @@ class Football implements GameModule {
   /** The action button at the pitch: « Rejoindre le match » at the touchline; the ball at the foot in a match; a regular at the ataya. */
   private matchFocus(space: string, x: number, z: number, out: Target[]) {
     const pt = this.pitch, m = this.match, ctx = this.ctx;
-    if (!pt || !m || space !== 'street' || ctx.player.seated() || !this.near) return;
+    if (!pt || !m || space !== 'street' || ctx.player.seated() || !this.near || this.booked) return;
     if (this.me) {
       if (!m.humanInReach(HUMAN, 0.9) && !m.humanHas(HUMAN)) return;
       const t = this.ballT ?? (this.ballT = {
@@ -743,48 +838,15 @@ class Football implements GameModule {
     else if (p.dive) this.hands(e, h, null, p);
   }
 
-  /** A kick, a touch, a trap, a block: the swing back and through, the instep on the ball at the contact, the follow-through. */
+  /** A kick, a touch, a trap, a block: the swing back and through, the instep on the ball at the contact, the follow-through (poseKick). */
   private leg(e: Entry, h: Humanoid, k: Kick) {
-    const m = this.match!, pt = this.pitch!, side = k.side > 0 ? 'R' : 'L', sgn = k.side;
+    const m = this.match!, pt = this.pitch!;
     const before = k.hit < 0, now = k.hit === m.frame;
     const u = before ? 1 - k.left / Math.max(1e-3, k.swing) : 1;
     if (before && u <= 0) return;
-    const post = before ? 0 : clamp(1 - k.after / AFTER[k.kind], 0, 1), amp = AMP[k.kind];
-    const n = N.set(Math.sin(k.yaw), 0, Math.cos(k.yaw)), r = RV.set(-Math.cos(k.yaw), 0, Math.sin(k.yaw));
-    const ball = BW.set(pt.x + k.bx, GRASS + k.bh, pt.z + k.bz);
-    // the instep's target: the back of the ball (the side the body comes from), a little under its centre
-    const C = CW.copy(ball).addScaledVector(n, -(BALL_R + 0.03)); C.y = ball.y - 0.015;
-    if (e.k !== k) { e.k = k; footStrike(h, side, e.s0); }
-    const soft = k.kind === 'trap' || k.kind === 'save';
-    const A = soft ? AW.copy(C).addScaledVector(n, -0.05).addScaledVector(UP, 0.15).addScaledVector(r, sgn * 0.06)
-      : AW.copy(C).addScaledVector(n, -0.42 * amp).addScaledVector(UP, 0.08 + 0.26 * amp);
-    const F = soft ? FW.copy(C).addScaledVector(n, -0.12).addScaledVector(UP, 0.04)
-      : FW.copy(C).addScaledVector(n, 0.45 * amp).addScaledVector(UP, 0.05 + 0.35 * amp);
-    const P = PW;
-    let w: number;
-    if (now) { P.copy(C); w = 1; }
-    else if (before) {
-      if (u < 0.55) P.lerpVectors(e.s0, A, ease(u / 0.55)); else { const q = (u - 0.55) / 0.45; P.lerpVectors(A, C, q * q); }
-      w = smooth(0, 0.3, u);
-    } else { P.lerpVectors(C, F, easeOut(Math.min(1, post / 0.6))); w = 1 - smooth(0.45, 1, post); }
-    if (w <= 1e-3) return;
-    // lower on the standing leg, the trunk over the ball (back a little for a strike)
-    crouch(h, (k.kind === 'shot' ? 0.09 : 0.06) * w);
-    bend(h, (k.kind === 'shot' ? -0.06 : 0.12) * w);
-    const [out, down] = TOE[k.kind];
-    const toe = TW.copy(n).multiplyScalar(Math.cos(out)).addScaledVector(r, sgn * Math.sin(out)).multiplyScalar(Math.cos(down)).addScaledVector(UP, -Math.sin(down)).normalize();
-    const pole = PL.copy(n).addScaledVector(UP, 0.4).addScaledVector(r, sgn * 0.25);
-    const foot = h.bone(`foot.${side}`);
-    if (!foot) return;
-    // twice: the ankle placed so that the instep, not the ankle, lands on the target
-    for (let i = 0; i < 2; i++) {
-      foot.getWorldPosition(KW);
-      const S = footStrike(h, side, SW);
-      legTo(h, side, TT.copy(P).sub(S).add(KW), pole, w);
-      pointFoot(h, side, toe, w);
-    }
-    if (k.kind === 'pass' || k.kind === 'shot') reach(h, sgn > 0 ? 'L' : 'R', bodyPoint(h, 0.18, 1.12, -sgn * 0.55, HW), PL2.set(0, -1, 0).addScaledVector(r, -sgn), 0.45 * w);
-    if (now) this.measure(k, footStrike(h, side, SW).distanceTo(ball) - BALL_R);
+    const post = before ? 0 : clamp(1 - k.after / AFTER[k.kind], 0, 1);
+    const gap = poseKick(h, e, k, k.kind, k.side, k.yaw, BW.set(pt.x + k.bx, GRASS + k.bh, pt.z + k.bz), before, now, u, post);
+    if (now && gap !== null) this.measure(k, gap);
   }
 
   /** A keeper's hands to the ball (a save), or short of it (beaten: `dive`). */
@@ -840,7 +902,7 @@ class Football implements GameModule {
       /** The kickabout: on, the ball (world and pitch space), who owns it, the receiver ahead, this session's goals, counts. */
       kickabout: () => {
         const pt = this.pitch, kb = this.kb, b = kb.ball; if (!pt) return null;
-        return { on: this.kbOn, matchActive: this.active, near: this.near, self: this.ctx.ballNet.self(), owner: kb.owner, touch: kb.touch,
+        return { on: this.kbOn, matchActive: this.active, near: this.near, booked: !!this.booked, self: this.ctx.ballNet.self(), owner: kb.owner, touch: kb.touch,
           ball: { x: +(pt.x + b.x).toFixed(3), z: +(pt.z + b.z).toFixed(3), h: +b.h.toFixed(3), px: +b.x.toFixed(3), pz: +b.z.toFixed(3), speed: +ballSpeed(b).toFixed(2), net: b.net },
           drawn: this.ball ? { x: +this.ball.position.x.toFixed(3), z: +this.ball.position.z.toFixed(3), visible: this.ball.visible } : null,
           pitch: { x: pt.x, z: pt.z }, receiver: this.recv, myGoals: this.myGoals, hold: +this.hold.toFixed(2), celebrating: this.celebrate > 0,

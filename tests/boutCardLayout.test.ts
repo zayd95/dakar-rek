@@ -46,11 +46,21 @@ describe('the moment card (the after-bout card above all) keeps clear of the mid
     }
     expect(px(mo, 'right')).toBeGreaterThanOrEqual(110);                                        // left of the presence and chat buttons
   });
-  it('on a phone on its side: on the left, 30 vw wide at most, ending above the joystick and « Courir »', () => {
-    const mo = rule(landscape, '#toast .mo');
-    expect(mo).toMatch(/width:calc\(30vw - 20px - var\(--sa-l\)\)/);                            // from 10 px: its right edge < 30 vw
-    expect(px(mo, 'left')).toBe(10);
-    expect(Number(/max-height:calc\(100vh - (\d+)px - (\d+)px/.exec(mo)![2])).toBeGreaterThanOrEqual(Math.max(joyTop, runTop) + 8);
+  it('on a phone on its side: on the right under the phone button and the streak chip, 30 vw wide at most, ending above the action column (1.0.1: the left column is the minimap\'s and the delivery line\'s)', () => {
+    const mo = rule(landscape, '#toast .mo'), lbar = rule(landscape, '#ui > #actbar');
+    expect(mo).toMatch(/width:calc\(30vw - 20px - var\(--sa-r\)\)/);                            // from 10 px on the right: its left edge > 70 vw
+    expect(mo).toMatch(/left:auto/);
+    expect(px(mo, 'right')).toBe(10);
+    expect(px(mo, 'top')).toBeGreaterThanOrEqual(60 + 44 + 8);                                   // under the streak chip (top 60 px, 44 px tall)
+    expect(Number(/max-height:calc\(100vh - (\d+)px - (\d+)px/.exec(mo)![2])).toBeGreaterThanOrEqual(px(lbar, 'bottom') + px(act, 'min-height') + px(more, 'height') + 8);
+  });
+  it('1.0.1 HUD pass, portrait: an offer and the card after a delivery end above the middle like any card (no taller exception); under the delivery line when it shows', () => {
+    for (const sel of ['#toast .mo.of', '#toast .mo.bc.go']) expect(rule(portrait, sel)).not.toMatch(/max-height/);
+    const under = rule(portrait, '#ui:has(#delivery.on) #toast .mo'), top = px(under, 'top'), cap = /max-height:calc\(33vh - (\d+)px - var\(--sa-t\)\)/.exec(under);
+    expect(top).toBeGreaterThanOrEqual(84 + 41 + 6 + 32);                                        // the goal line's two lines, then the delivery line
+    expect(cap).not.toBeNull();
+    expect(top + 844 * 0.33 - Number(cap![1])).toBeLessThanOrEqual(centreZone(390, 844).top);
+    expect(844 * 0.33 - Number(cap![1])).toBeGreaterThanOrEqual(100);                           // the title, a line and its buttons on a 390 × 844 phone
   });
 });
 

@@ -27,7 +27,7 @@ import { SWIM_POSES, assembleSwimClips, type SwimClip } from './swimStroke';
  */
 export const HAND_REST = 0.4;
 export function handClosure(clip: string | null): number {
-  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'Drive') return 1;
+  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'RideSport' || clip === 'Drive') return 1;
   if (clip === 'Grab') return 0.75;
   if (clip?.startsWith('Pray')) return 0.12;
   if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
@@ -37,7 +37,7 @@ export function handClosure(clip: string | null): number {
 }
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip | SwimClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
-export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | 'RideSport' | CarClip;
 /**
  * In a car (src/transport/cabinFit.ts): 'SitCar' a passenger, the back against a reclined seat and the legs out in front, hands on the thighs (far lower
  * than the chair Sit, whose upright back and hanging shins put the head through a hatch's roof and the shoes under its sills); 'Drive' the same body
@@ -282,6 +282,20 @@ export const POSES: Record<PoseClip, PoseDef> = {
     },
     palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
     reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
+  },
+  // astride the sport motorbike (src/transport/sportMoto.ts, the Sabar 600): tucked forward over the tank, the hands down and out on the clip-ons, the knees
+  // against the tank, the feet up and back on the rear-set pegs; the neck lifted so the eyes look up the road (SABAR_RIDER: the grips and pegs in this space)
+  RideSport: {
+    hipsY: 0.5, hips: [0.12, 0, 0],
+    aim: {
+      spine: [0, 1, 0.62], chest: [0, 1, 0.8], neck: [0, 1, 0.42], head: [0, 1, 0.08],
+      upper_armL: [0.45, -0.88, 0.14], forearmL: [-0.12, -0.13, 0.98], handL: [-0.05, -0.25, 1],
+      upper_armR: [-0.45, -0.88, 0.14], forearmR: [0.12, -0.13, 0.98], handR: [0.05, -0.25, 1],
+      thighL: [0.2, -0.38, 0.9], shinL: [-0.06, -0.8, -0.6], footL: [0.04, -0.25, 1],
+      thighR: [-0.2, -0.38, 0.9], shinR: [0.06, -0.8, -0.6], footR: [-0.04, -0.25, 1],
+    },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },
+    reach: { L: [0.31, 0.67, 0.64], R: [-0.31, 0.67, 0.64], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.6, -1, -0.2] },   // the Sabar's clip-ons (sportMoto.ts SABAR_RIDER.grips)
   },
   // in a car seat (chair convention: the origin SIT_HIPS under the cushion): the back reclined about 25°, the thighs nearly level, the shins down and
   // forward under the seat ahead, so the shoes are a hand lower than the hips, not a shin; the head upright, looking ahead; hands on the thighs

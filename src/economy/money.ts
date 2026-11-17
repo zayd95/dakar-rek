@@ -133,8 +133,10 @@ export function settleOnline(s: GameState, id: string, answer: { ok: boolean; ba
   o.pending.splice(i, 1);
   o.refs.push(id); if (o.refs.length > ONLINE_REFS_MAX) o.refs.splice(0, o.refs.length - ONLINE_REFS_MAX);
   if (answer.ok) {
+    if (p.kind === 'pay') s.count('teranga:envois');                     // the server's yes only (« Coups de pouce », src/economy/pouce.ts)
     if (p.kind !== 'cashout') return 'closed';
     s.addMoney(p.amount, ONLINE_LABELS.cashout, now);
+    s.count('teranga:retraits');
     return 'credited';
   }
   if (p.fund > 0) { s.addMoney(p.fund, ONLINE_LABELS.refund, now); return 'refunded'; }

@@ -3,6 +3,7 @@ import type { GameState } from '../core/state';
 import { Relations, PLAYER, pairKey } from './relations';
 import { castById } from './cast';
 import { economyStep, stepHub, type Step } from '../economy/progress';
+import { pouceLead } from '../economy/pouce';
 import { furnitureCount } from '../economy/furniture';
 import { quote, say } from '../i18n/wolof';
 
@@ -251,13 +252,19 @@ export function settleWelcome(r: Relations, s: GameState): boolean {
   return true;
 }
 
-/** The leads in the order they are suggested (see `suggestion`). */
+/**
+ * The leads in the order they are suggested (see `suggestion`). 1.0.1: when no job is in hand, the next « coup de pouce » (src/economy/pouce.ts)
+ * leads, before Ibou's reactions and the other steps: the notice that pays a step names the next one, and the goal line agrees.
+ */
 export function leads(r: Relations, s: GameState): (Beat | Step)[] {
   const open = (b: Beat) => !r.beatDone(b.id) && b.when(r, s);
   const welcome = BEATS[0], out: (Beat | Step)[] = [];
   if (open(welcome) && welcomeEarly(s.data)) out.push(welcome);
+  const step = economyStep(s), inHand = !!s.data.jobs.active;
+  if (step && inHand) out.push(step);                                                // the task in hand first
+  else { const p = pouceLead(s, s.data.hub); if (p) out.push(p); }
   out.push(...BEATS.filter(b => (b.id === 'ibou_tiak' || b.id === 'ibou_meuble') && open(b)));
-  const step = economyStep(s); if (step) out.push(step);
+  if (step && !inHand && !out.some(x => x.id === step.id)) out.push(step);
   out.push(...BEATS.filter(b => b !== welcome && b.id !== 'ibou_tiak' && b.id !== 'ibou_meuble' && open(b)));
   if (open(welcome) && !out.includes(welcome)) out.push(welcome);                     // optional, last
   return out;

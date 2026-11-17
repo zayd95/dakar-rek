@@ -207,8 +207,8 @@ export interface Player {
    * dribble while running, a trap standing) and passes or shoots when asked (`humanAsk`) — every touch through the match's own contacts.
    */
   human: boolean;
-  /** The human's pass or shot asked for, waiting for the ball at the foot until `until` (match s); its power (0–1). */
-  ask: { kind: 'pass' | 'shot'; power: number; until: number } | null;
+  /** The human's pass or shot asked for (1.0.1 Grand Camp: or a push, the ball knocked ahead to run onto), waiting for the ball at the foot until `until` (match s); its power (0–1). */
+  ask: { kind: 'pass' | 'shot' | 'push'; power: number; until: number } | null;
   /** The human's next automatic touch, not before (match s). */
   /** The match time of the last touch, and until when the foot leaves the ball alone after a kick (the control model's cadence is `planTouch`'s). */
   touchedAt: number; restUntil: number;
@@ -326,6 +326,8 @@ export const HUMAN_KEEP = 3;
 export const HUMAN_TOUCH_GAP = 0.26, HUMAN_ASK_HOLD = 1.2;
 /** M3: the human's shot: speed (m/s) and lift (m/s up) from no power to full. */
 export const HUMAN_SHOT = { v0: 12, v1: 24, h0: 0.5, h1: 3.2 } as const;
+/** 1.0.1 Grand Camp: the human's push (« Dribbler »): the ball knocked ahead along the facing, along the ground, at this speed (m/s) from no power to full (≈ 5 to 16 m of roll). */
+export const HUMAN_PUSH = { v0: 3.5, v1: 7 } as const;
 
 export class Match {
   readonly ball: Ball = newBall();
@@ -940,8 +942,8 @@ export class Match {
     const p = this.byId.get(id); if (!p || !p.human) return;
     p.x = x; p.z = z; p.vx = vx; p.vz = vz; p.yaw = wrap(yaw); p.tx = x; p.tz = z; p.ts = 0;
   }
-  /** A pass or a shot asked for (the action button, « Frappe » released): played as soon as the ball is at the foot, for HUMAN_ASK_HOLD s. */
-  humanAsk(id: number, kind: 'pass' | 'shot', power = 0) {
+  /** A pass or a shot asked for (the action button, « Frappe » released): played as soon as the ball is at the foot, for HUMAN_ASK_HOLD s. 1.0.1: or a push (HUMAN_PUSH). */
+  humanAsk(id: number, kind: 'pass' | 'shot' | 'push', power = 0) {
     const p = this.byId.get(id); if (!p || !p.human) return false;
     p.ask = { kind, power: clamp(power, 0, 1), until: this.t + HUMAN_ASK_HOLD };
     return true;
@@ -1000,6 +1002,8 @@ export class Match {
         const D = hyp(tx - b.x, tz - b.z) || 1;
         dx = (tx - b.x) / D; dz = (tz - b.z) / D; speed = Math.min(16, passSpeed(D, 2.5 + 0.1 * D)); to = q.id;
       } else { dx = fx; dz = fz; speed = 9; }
+    } else if (p.ask?.kind === 'push') {
+      kind = 'touch'; dx = fx; dz = fz; speed = HUMAN_PUSH.v0 + (HUMAN_PUSH.v1 - HUMAN_PUSH.v0) * p.ask.power; rest = HUMAN_TOUCH_GAP;
     } else {
       // no kick asked for: the control model (a dribbling touch, a turn, a trap), at its own cadence
       const plan = this.t >= p.restUntil ? planTouch({ x: p.x, z: p.z, facing: p.yaw, vx: p.vx, vz: p.vz }, b, this.t - p.touchedAt, Math.abs(wrap(p.yaw - p.touchFace))) : null;

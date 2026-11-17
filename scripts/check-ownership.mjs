@@ -186,11 +186,15 @@ let savedJson = null;
   check('apartment sheet: buy or rent, visit', m.items.some(t => /^🔑Acheter/.test(t)) && m.items.some(t => /^📝Louer/.test(t)) && m.items.some(t => /Visiter/.test(t)), m.items.join(' | ').slice(0, 200));
   await pick(page, /^📝Louer/);
   m = await modal(page);
-  check('rent confirmation: rent per day and per hour, what it unlocks', /6\s000\sF \/ jour/.test(m.text) && /Débloque/.test(m.text), m.text.slice(0, 220));
+  // 1.0.1: the F2 is let by the economic month (src/economy/monthly.ts): rent and charges paid in advance, the first month at the signature
+  check('rent confirmation (by the month): rent and charges per month, paid in advance, the first month today, the next due date, what it allows', /^Louer au mois : Appartement F2/.test(m.title) && /Loyer\s*50\s000\sF \/ mois/.test(m.text) && /Charges\s*10\s000\sF \/ mois/.test(m.text) && /payé d’avance/.test(m.text) && /le premier mois : 60\s000\sF/.test(m.text) && /Prochaine échéance/.test(m.text) && /y vivre, ou le sous-louer/.test(m.text), m.text.slice(0, 400));
   await page.screenshot({ path: `${out}/desktop-confirm-rent.png` });
+  const wLease = await D(page, () => window.__dakar.state.wallet);
   await pick(page, /^✅/);
   check('apartment rented', (await est(page)).assets.some(a => a.spec === 'appart_jamm' && a.how === 'rented'));
-  await pick(page, 'Définir comme domicile principal');
+  const ledLease = await D(page, () => window.__dakar.ledger());
+  check('the first month paid once at the signature: 60 000 F, one wallet line', wLease - (await D(page, () => window.__dakar.state.wallet)) === 60000 && ledLease[0]?.amount === -60000 && /^Loyer et charges · Appartement F2 · 1er mois/.test(ledLease[0].label) && ledLease.filter(l => /Appartement F2 · 1er mois/.test(l.label)).length === 1, JSON.stringify(ledLease[0]));
+  await pick(page, 'Emménager'); await pick(page, 'Garder comme chambre familiale');   // the purchase sequence (1.0.1)
   e = await est(page);
   const appart = e.assets.find(a => a.spec === 'appart_jamm');
   check('moved in: the chair followed and is set up there', e.home === 'appart_jamm' && e.assets.find(a => a.uid === chair.uid).home === appart.uid && !!e.assets.find(a => a.uid === chair.uid).at, JSON.stringify(e.assets.find(a => a.uid === chair.uid)));
@@ -213,10 +217,12 @@ let savedJson = null;
   await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.state.data.needs.hygiene > 80, null, { timeout: 90000 }).catch(() => {});
   check('the shower washes', (await D(page, () => window.__dakar.state.data.needs.hygiene)) > 80);
   await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T); await settle(page, 600);
+  const led1 = await D(page, () => window.__dakar.ledger());
   const rentPaid = await D(page, ms => window.__dakar.advancePlayed(ms), hourMs);
   const led2 = await D(page, () => window.__dakar.ledger());
-  // the rent runs at 250 F per in-game hour of play (the minutes played since renting count too)
-  check('the next hour: rents in, the apartment’s rent out (250 F per in-game hour)', led2.some(l => /^Loyer · Appartement F2/.test(l.label) && l.amount <= -250 && l.amount % 1 === 0), `${rentPaid} · ${led2.slice(0, 2).map(l => l.label + ' ' + l.amount).join(' | ')}`);
+  const same = (a, b) => !!a && !!b && a.at === b.at && a.label === b.label && a.amount === b.amount, k = led2.findIndex(l => same(l, led1[0])), hour = k < 0 ? led2 : led2.slice(0, k);
+  // 1.0.1: the F2's month was paid in advance at the signature, so an hour of play brings the rents in and takes nothing for the apartment
+  check('the next hour: rents in, nothing for the apartment (its month paid in advance)', hour.some(l => /^Revenus · /.test(l.label) && l.amount > 0) && !hour.some(l => /Appartement F2/.test(l.label) && l.amount < 0), `${rentPaid} · ${hour.map(l => l.label + ' ' + l.amount).join(' | ')}`);
 
   // phone: « Biens » and the wallet
   // since the phone became the life hub (U2), « Biens » is one of the apps: the home's « Apps » destination, then its tile
@@ -234,7 +240,9 @@ let savedJson = null;
   await closeModal(page);
   await D(page, () => window.__dakar.phone('portefeuille')); await settle(page, 400);
   const wtxt = await D(page, () => document.querySelector('#phone .ph-screen').textContent);
-  check('wallet: value of assets, total wealth, income and charges per hour', /Valeur de tes biens/.test(wtxt) && /Fortune totale/.test(wtxt) && /Revenus et charges/.test(wtxt) && /Loyers et charges/.test(wtxt), wtxt.slice(0, 400));   // the « Argent » app's wording since LD2.0-A
+  // the « Argent » app's wording since LD2.0-A; « Loyers et charges » (per hour) only when something is charged by the hour: not the F2, paid by the month (1.0.1)
+  const perHour = (await est(page)).charges;
+  check('wallet: value of assets, total wealth, income, and charges per hour when there are any', /Valeur de tes biens/.test(wtxt) && /Fortune totale/.test(wtxt) && /Revenus et charges/.test(wtxt) && /Loyers et charges/.test(wtxt) === perHour > 0, `charges per hour ${perHour} · ${wtxt.slice(0, 400)}`);
   await page.screenshot({ path: `${out}/desktop-phone-wallet.png` });
   await D(page, () => window.__dakar.phoneClose());
   // the Dibi (venues module) talks business through the ownership sheet

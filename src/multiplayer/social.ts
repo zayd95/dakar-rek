@@ -51,7 +51,41 @@ export class Emoter {
   reset() { this.emo = null; }
 }
 
-/** The players next to you, as targets: « Saluer <name> » and the other gestures behind it. */
+/**
+ * 1.0.1 — the ONE menu a player gets on another player next to them: « Saluer » first, then what the modules registered here (main.ts: « Message »,
+ * « Envoyer de l’argent », « Inviter chez moi », « Proposer un rendez-vous »), then the other gestures. A later feature adds its line with one call:
+ *
+ *   registerPlayerAction({ id: 'camp', label: 'Inviter au Grand Camp', icon: '⛺', order: 50, run: peer => …, disabled: peer => (… ? 'Pourquoi pas' : null) });
+ *
+ * `show` hides the line for a peer it cannot apply to (no account tag from an older server, a build without Messages); `disabled` keeps it, greyed, with
+ * the sentence that says why. Lower `order` first; the same id registered again replaces the line.
+ */
+export interface PlayerAction {
+  id: string; label: string; icon: string; order: number;
+  /** One short line under the label. */
+  detail?: (peer: Peer) => string | undefined;
+  show?: (peer: Peer) => boolean;
+  disabled?: (peer: Peer) => string | null;
+  run: (peer: Peer) => void;
+}
+const playerActions: PlayerAction[] = [];
+export function registerPlayerAction(a: PlayerAction): () => void {
+  const i = playerActions.findIndex(x => x.id === a.id);
+  if (i >= 0) playerActions.splice(i, 1);
+  playerActions.push(a); playerActions.sort((x, y) => x.order - y.order);
+  return () => { const j = playerActions.indexOf(a); if (j >= 0) playerActions.splice(j, 1); };
+}
+/** The registered lines that apply to `peer`, in order. */
+export const playerActionsFor = (peer: Peer): PlayerAction[] => playerActions.filter(a => a.show?.(peer) ?? true);
+/** A name short enough for a button or a nameplate: whole when it fits, else its first word, else cut with « … ». */
+export function shortName(name: string, max = 14): string {
+  const n = name.trim();
+  if ([...n].length <= max) return n;
+  const first = n.split(' ')[0];
+  return [...first].length <= max && [...first].length >= 2 ? first : [...n].slice(0, max - 1).join('') + '…';
+}
+
+/** The players next to you, as targets: the action button opens their menu (« Saluer », the registered actions, the other gestures). */
 export class PlayerSocial implements TargetSource {
   readonly name = 'players';
   constructor(private peers: () => Iterable<Peer>, private hidden: (p: Peer) => boolean, private act: (kind: EmoteKind, peer: Peer) => void) {}
@@ -61,13 +95,18 @@ export class PlayerSocial implements TargetSource {
       if (p.space !== space || Math.abs(p.x - x) > GREET_REACH || Math.abs(p.z - z) > GREET_REACH || this.hidden(p)) continue;
       out.push({
         id: 'peer:' + p.id, name: p.name, kind: 'person', space, x: p.x, z: p.z, y: 2.15, radius: GREET_REACH, bias: 1.3,   // a free seat next to a seated player (bias 1) is offered before the greeting: sitting together comes first
-        affordances: () => EMOTES.map(k => ({ id: k, verb: 'greet' as const, label: EMOTE_INFO[k].label, icon: EMOTE_INFO[k].glyph, run: () => this.act(k, p) })),
+        menu: { label: shortName(p.name), icon: '👋' },
+        affordances: () => {
+          const emote = (k: EmoteKind) => ({ id: k, verb: 'greet' as const, label: EMOTE_INFO[k].label, icon: EMOTE_INFO[k].glyph, run: () => this.act(k, p) });
+          const [first, ...rest] = EMOTES;
+          return [emote(first), ...playerActionsFor(p).map(a => ({ id: a.id, verb: 'greet' as const, label: a.label, icon: a.icon, detail: a.detail?.(p), disabled: a.disabled?.(p) ?? null, run: () => a.run(p) })), ...rest.map(emote)];
+        },
       });
     }
   }
 }
 
-/** One quiet line when a real player comes close (« Dakarois 4F2A est près de toi »): each once, and not more than one per NOTICE_GAP_MS. */
+/** One quiet line when a real player comes close (« Awa est près de toi »): each once, and not more than one per NOTICE_GAP_MS. */
 export class Notice {
   private seen = new Set<string>(); private at = -Infinity;
   next(peers: Iterable<Peer>, me: { x: number; z: number; space: string }, hidden: (p: Peer) => boolean, now: number): Peer | null {

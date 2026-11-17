@@ -5,6 +5,7 @@ import { HUB_NAMES } from '../world/content';
 import { relLevel } from '../venues/venue';
 import { dealerOffer } from './credit';
 import { specOf } from './catalog';
+import { isMotoAsset } from '../transport/owned';
 import { assetsOf } from './assets';
 import { villaFactsOf } from '../villa/facts';
 import { nextPrice, unitsOwned } from './business';
@@ -56,7 +57,7 @@ class PistesModule implements GameModule {
     return {
       hub, hour: ctx.hour(), wallet: s.wallet, savings: d.bank.savings,
       deliveries: d.counters.livraisons ?? 0, vtcTrips: d.vtc.trips,
-      cars: assetsOf(s, 'vehicle').filter(a => a.spec !== 'jakarta').length,
+      cars: assetsOf(s, 'vehicle').filter(a => !isMotoAsset(a.spec)).length,                 // the motorbikes are not cars
       sarr,
       bank: phoneHooks.openBank ? { place: { id: `${bankHub}:city:bank`, hub: bankHub, name: `Banque Teranga · ${short(bankHub)}` }, opened: d.bank.opened >= 0 } : null,
       ventures: unitsOwned(s),
