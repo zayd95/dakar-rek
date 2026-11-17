@@ -72,14 +72,14 @@ export interface AiView {
  * over its head says what it sets up (levels 1–2, and the lesson).
  */
 export const AI_COMBAT = {
-  react: [0.6, 0.5, 0.38, 0.31, 0.25],
-  read: [0.22, 0.32, 0.48, 0.58, 0.68],
-  brace: [0.22, 0.32, 0.48, 0.6, 0.7],
-  counter: [0.04, 0.07, 0.12, 0.18, 0.24],
+  react: [0.6, 0.52, 0.46, 0.38, 0.29],
+  read: [0.22, 0.28, 0.35, 0.46, 0.6],
+  brace: [0.22, 0.28, 0.35, 0.48, 0.62],
+  counter: [0.04, 0.06, 0.1, 0.15, 0.2],
   learn: [0.45, 0.6, 0.8, 0.9, 1],
-  pace: [1.55, 1.35, 1.05, 0.92, 0.82],
-  slow: [1.6, 1.4, 1.15, 1.05, 1],
-  margin: [-8, -4, 2, 5, 8],
+  pace: [1.55, 1.35, 1.15, 0.95, 0.85],
+  slow: [1.6, 1.45, 1.32, 1.15, 1],
+  margin: [-8, -5, -3, 0, 4],
   breath: [0.85, 0.9, 1, 1, 1],
   tells: [true, true, false, false, false],
 } as const;

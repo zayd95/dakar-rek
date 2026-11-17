@@ -157,7 +157,7 @@ describe('combat · the opponent reads the player', () => {
       if (d.phase === 'fight') { d.pressReach('tap'); run(d, 2, i => i.phase === 'clinch'); }
       if (d.phase !== 'clinch') break;
       d.debugSet('player', { hold: ['nuque', 70], stamina: 100, balance: 100 });
-      d.debugSet('opponent', { balance: 55, lean: [-1, 0], stamina: 90 });
+      d.debugSet('opponent', { balance: 62, lean: [-1, 0], stamina: 90 });   // set up a little short: the try fails, the bout goes on
       d.debugHold(false);
       d.pressGrab();
       let brace = 0;
