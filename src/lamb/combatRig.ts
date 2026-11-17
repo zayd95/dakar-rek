@@ -77,6 +77,8 @@ export class CombatRig {
   private lastX = NaN; private lastZ = NaN; private vx = 0; private vz = 0;
   /** Checks: steps taken, how far a planted foot slid (m), the hands' distance to their targets, the trunk's lean (rad, own frame), the hips' drop (m). */
   steps = 0; slid = 0; handGap = -1; trunk = { f: 0, s: 0 }; drop = 0; kneeBend = 0;
+  /** Checks: the head's height over the sand as drawn (m): a man thrown is seen on the sand. */
+  headY = 0;
   private sprite: THREE.Sprite | null = null;
   private signText: string | null = null;
   private fallYaw = 0;
@@ -162,7 +164,7 @@ export class CombatRig {
   /** Checks (`duelInfo().combat.body`): what the body shows now. */
   info() {
     const r = (x: number) => Math.round(x * 100) / 100;
-    return { steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText };
+    return { head: r(this.headY), steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText };
   }
 
   pose(p: PoseIn) {
@@ -174,7 +176,7 @@ export class CombatRig {
     this.lastX = g.position.x; this.lastZ = g.position.z;
     const fighting = p.phase === 'fight' || p.phase === 'clinch';
     g.rotation.order = 'YXZ'; g.rotation.x = 0;
-    if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); return; }
+    if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     this.fallYaw = 0;
     const legsOn = fighting || (p.phase === 'fall' && !p.won);
     this.wLegs += clamp((legsOn ? 1 : 0) - this.wLegs, -dt / 0.25, dt / 0.25);
@@ -190,6 +192,7 @@ export class CombatRig {
     else this.handGap = -1;
     p.after?.();
     this.keep();
+    this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y;
   }
 
   /** The crouched stance: the hips low over the lean, the feet planted where they stand, stepping when the body has moved off them. */
