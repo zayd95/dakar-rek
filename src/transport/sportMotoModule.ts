@@ -32,12 +32,15 @@ function stand(o: { x: number; z: number }, along: { x: number; z: number }, out
   };
 }
 
-/** Garage Modou (Pikine): 14 m west of the workshop's door, on its pavement (the road z = 0 in front of it), past the repair bay and the Jakarta's corner. */
+/**
+ * Garage Modou (Pikine): on the pavement just west of the workshop (the road z = 0 in front of it), in the gap between it and the quincaillerie, clear of
+ * the repair bay and of the Jakarta's corner at its east end.
+ */
 export function sabarModou(hub: HubWorld): DealerSite | null {
   const garage = hub.interactables.find((i: Interactable) => i.id === 'pikine:garage:31');
   if (!garage) return null;
   const road = Math.round(garage.z / 60) * 60, side = Math.sign(garage.z - road) || -1;
-  return stand({ x: garage.x - 12, z: road }, { x: side < 0 ? -1 : 1, z: 0 }, { x: 0, z: side }, sabarSeedOf(0));
+  return stand({ x: garage.x - 10.5, z: road }, { x: side < 0 ? -1 : 1, z: 0 }, { x: 0, z: side }, sabarSeedOf(0));
 }
 
 /** Ndiaye Auto (Plateau): the showroom is open on the road x = 120 (src/world/city.ts); the stand is on its pavement just past the showroom's south corner. */

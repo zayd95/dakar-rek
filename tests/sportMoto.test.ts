@@ -21,6 +21,7 @@ import { newSave } from '../src/core/save';
 import type { DriveSpec } from '../src/transport/spec';
 import type { HubWorld, Interactable } from '../src/world/types';
 import { loadRig, posed } from './rig';
+import { QUINCAILLERIE, quincaillerieAt } from '../src/economy/stall';
 import side from '../public/assets/vehicles/sabar.json';
 
 const speedAfter = (d: DriveSpec, seconds: number) => { const s = newDriveState(0, 0, 0); for (let i = 0; i < seconds * 30; i++) driveStep(s, { throttle: 1, steer: 0 }, d, 1 / 30, () => false); return s.speed; };
@@ -83,6 +84,8 @@ describe('the Sabar 600: the sport motorbike, its price and its two dealers', ()
     expect(modou.delivery).toMatchObject({ z: -4.3 }); expect(Math.abs(modou.delivery.yaw + Math.PI / 2)).toBeLessThan(1e-9);    // the kerb lane, heading with that side's traffic
     expect(modou.displays[0].z).toBeLessThan(-5.2); expect(modou.displays[0].z).toBeGreaterThan(-7.5);                              // on the pavement
     expect(modou.displays[0].x).toBeLessThan(garage.x - 1.5 - 2.7 - 1);                                                              // west of the repair bay (x 97.8–103.2) and the Jakarta's delivery
+    const q = quincaillerieAt({ x: 78, z: -5.5 });                                                                                    // the shop west of the garage (Maïga's neighbour), open on the road
+    for (const p of [modou.counter, modou.card!, modou.displays[0], modou.sign]) { expect(p.x, JSON.stringify(p)).toBeGreaterThan(q.x + QUINCAILLERIE.w / 2); expect(p.x).toBeLessThan(garage.x - 1.5 - 2.7); }
     const nd = sabarNdiaye({ id: 'plateau', interactables: [] } as unknown as HubWorld)!;
     expect(nd.displays[0].seed).toBe(sabarSeedOf(1));
     expect(nd.delivery).toMatchObject({ x: NDIAYE_SABAR.road - 4.3, z: NDIAYE_SABAR.z });
