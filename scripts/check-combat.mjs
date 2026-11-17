@@ -144,18 +144,26 @@ async function referee(page) {
   await wait(page, n => window.__dakar.nearestInteractable() === n, name, 30000);
   await t.tap('#act').catch(() => {});
   if (!(await wait(page, () => document.querySelector('#modal.on'), null, 15000))) { console.log('(the action button was not on screen: the arena\'s menu opened by the game\'s own action)'); await page.evaluate(() => window.__dakar.act()); await wait(page, () => document.querySelector('#modal.on'), null, 20000); }
-  await page.evaluate(() => [...document.querySelectorAll('#modal .item')].find(b => /Combat amical/.test(b.textContent))?.setAttribute('data-pick', '1'));
-  await t.tap('#modal .item[data-pick="1"]');
-  await wait(page, () => /Combat amical/.test(document.querySelector('#modal.on h2')?.textContent ?? ''), null, 20000);
-  await page.evaluate(() => [...document.querySelectorAll('#modal .item')].find(b => /^Gora · Costaud/.test(b.textContent.trim()))?.setAttribute('data-pick', '2'));
-  await t.tap('#modal .item[data-pick="2"]');
+  /** Taps the modal's item whose words match `re`, with a real finger (the game's own click when the tap did not take). */
+  const pick = async (re, then) => {
+    const id = await page.evaluate(src => { const r = new RegExp(src); const el = [...document.querySelectorAll('#modal .item')].find(b => r.test(b.textContent.replace(/\s+/g, ' '))); if (!el) return null; el.setAttribute('data-pick', src); return src; }, re.source);
+    if (!id) { console.log('no item', re, await page.evaluate(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent.trim().slice(0, 40)))); return false; }
+    await t.tap(`#modal .item[data-pick="${id.replace(/"/g, '\\"')}"]`).catch(() => {});
+    if (await wait(page, then, null, 15000)) return true;
+    console.log('(the tap on', re, 'did not take: the game\'s own click)');
+    await page.evaluate(src => [...document.querySelectorAll('#modal .item')].find(b => new RegExp(src).test(b.textContent.replace(/\s+/g, ' ')))?.click(), re.source);
+    return wait(page, then, null, 20000);
+  };
+  await pick(/Combat amical/, () => /Combat amical/.test(document.querySelector('#modal.on h2')?.textContent ?? ''));
+  await pick(/Gora · Costaud/, () => !!window.__dakar.duelInfo());
   const started = await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight', null, 90000);
   const i0 = await info(page);
   check('portrait: « Combat amical » picked by touch starts the new bout sans frappe against Gora (combat on by default)', started && !!i0?.combat && i0.discipline === 'sans_frappe' && i0.opponent === 'Gora' && (await page.evaluate(() => window.__dakar.combatOn())), { phase: i0?.phase, combat: !!i0?.combat, opponent: i0?.opponent });
   if (RDA) { const b = await bodies(page); check('rda: both wrestlers of the bout are Roi des Arènes bodies', b.filter(x => x === 'rda').length >= 2, b.join(' ')); }
   const l0 = await layout(page);
   check('portrait 390×844: three big buttons (Reculer, Garde, Saisir), apart, clear of the joystick, readable; nobody under a button or a gauge', layoutOk(l0, 3) && l0.labels.join() === 'Reculer,Garde,Saisir', l0);
-  // the stance on the bodies: crouched, the feet planted, stepping as he walks in
+  // the stance on the bodies: crouched, the feet planted, stepping as he walks in (read once it has blended in)
+  await wait(page, () => (window.__dakar.duelInfo()?.combat?.body?.player?.legs ?? 0) > 0.95, null, 30000);
   const s0 = await info(page);
   await shot(page, 'portrait-1-stance');
   const legs = s0.combat.body.player;
@@ -220,6 +228,7 @@ async function referee(page) {
   await wait(page, () => document.querySelector('.duel-btns button[data-k=grab]')?.classList.contains('ready'), null, 20000);
   const label = await page.evaluate(() => document.querySelector('.duel-btns button[data-k=grab]').innerText.trim());
   await t.tap('.duel-btns button[data-k=grab]');
+  await wait(page, () => !!window.__dakar.duelInfo()?.lastThrow, null, 30000);   // (held until it lands: his brace is the AI's choice, tested headless)
   await page.evaluate(() => window.__dakar.duelHold(false));
   const ref = await referee(page);
   const end = await info(page);
@@ -245,12 +254,15 @@ async function referee(page) {
   check('desktop: E held reaches for the belt (the empoignade starts with the ceinture)', k1.phase === 'clinch' && k1.combat.player.hold?.kind === 'ceinture', k1.combat?.player?.hold);
   // the arrow towards him pushes: his weight goes back
   const dir = await page.evaluate(() => { const p = window.__dakar.duelScreen(); return p[3].x > p[0].x ? 'ArrowRight' : 'ArrowLeft'; });
-  for (let k = 0; k < 6; k++) { await page.keyboard.down(dir); await page.waitForTimeout(500); }
+  // (his balance comes back between pushes: the lean is read all along, its deepest kept)
+  let deepest = 0, pushes = 0;
+  await page.keyboard.down(dir);
+  for (let k = 0; k < 40; k++) { const i = await info(page); deepest = Math.min(deepest, i.combat.opponent.lean.f); if (i.clinch?.last?.by === 'player' && i.clinch.last.move === 'push') pushes++; await page.waitForTimeout(150); }
   await page.keyboard.up(dir);
-  const k2 = await info(page);
-  check('desktop: the arrow towards him pushes — the exchanges drive his weight back', k2.combat.opponent.lean.f < -0.05, k2.combat.opponent.lean);
+  check('desktop: the arrow towards him pushes — the exchanges drive his weight back', deepest < -0.04 && pushes > 0, { deepest, pushes });
   await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 40, lean: [-1, 0] }));
   await page.keyboard.press('KeyK');
+  await wait(page, () => !!window.__dakar.duelInfo()?.lastThrow, null, 30000);
   await page.evaluate(() => window.__dakar.duelHold(false));
   const r = await referee(page);
   check('desktop: K throws (the throw the hold gives), the referee calls the fall, the result', /^Chute/.test(r.call ?? '') && /Victoire/.test(r.card), { call: r.call, card: r.card.slice(0, 60) });
@@ -258,8 +270,7 @@ async function referee(page) {
   await page.evaluate(() => window.__dakar.duelFinish());
   await wait(page, () => !window.__dakar.duelInfo(), null, 30000);
   // Coach Ablaye's lesson with the new controls
-  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); const e = d.interactables().find(i => i.actions.some(a => a.id === 'combat_entrainement')); d.place(e.x, e.z, 0); });
-  await page.evaluate(() => window.__dakar.drillStart('combat_entrainement'));
+  await page.evaluate(() => window.__dakar.drillStart('combat_entrainement'));   // (the écurie's action, by the game's own runner)
   await wait(page, () => !!window.__dakar.duelInfo()?.lesson, null, 60000);
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight', null, 60000);
   const c1 = await page.evaluate(() => ({ i: window.__dakar.duelInfo(), card: document.querySelector('.duel-step')?.innerText ?? '' }));

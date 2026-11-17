@@ -332,12 +332,20 @@ export class CombatRig {
     else if (id === 'souleve') { turn = Math.PI; lift = 0.8 * Math.sin(Math.PI * clamp(t / 0.75, 0, 1)); }
     else if (id === 'balayage') { turn = Math.PI / 2; lift = 0.15 * Math.sin(Math.PI * clamp(t / 0.4, 0, 1)); }
     else if (id === 'jambe') lift = 0.08 * Math.sin(Math.PI * clamp(t / 0.3, 0, 1));
-    if (f.kind === 'appuis') pitch = 0.55 * k;
+    if (f.kind === 'appuis') { pitch = 1.0 * k; lift -= 0.12 * k; }        // over onto his hands: the body pitched forward, lower
     this.fallYaw = turn * k;
     g.rotation.y += this.fallYaw;
     g.position.y += lift;
     g.rotation.x = pitch;                                                  // (order YXZ: a pitch about his own side, forward)
     g.updateMatrixWorld(true);
+    if (f.kind === 'appuis') {
+      // the four supports: both arms straight down to the sand, a little ahead of the shoulders
+      const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
+      for (const [ua, fa] of [['upper_armL', 'forearmL'], ['upper_armR', 'forearmR']] as const) {
+        this.aimWorld(this.b[ua], V3.set(fx * 0.25, -1, fz * 0.25), k);
+        this.aimWorld(this.b[fa], V3.set(fx * 0.1, -1, fz * 0.1), k);
+      }
+    }
   }
 
   dispose() {

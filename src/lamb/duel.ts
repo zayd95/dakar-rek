@@ -130,7 +130,7 @@ export interface DuelResult {
 }
 
 const R = RULES.sans_frappe;
-/** The new bout: Saisir held this long is a reach for the belt; Frappe held this long arms the big strike (s). */
+/** The new bout: Saisir held this long is a reach for the belt; Frappe held this long arms the big strike (s, real time: the thumb's). */
 const COMBAT_HOLD = { grab: 0.28, strike: 0.22 } as const;
 /** The écurie drills with the new controls: their keys and the controls highlighted (the drills themselves: src/lamb/drills.ts). */
 const COMBAT_DRILL: Record<DrillId, { keys: string; touch: string[] }> = {
@@ -296,6 +296,8 @@ export class LambDuel {
   /** Saisir and Frappe held (a hold is the belt, a big strike), since when, and whether the hold has fired. */
   private grabHeld = false; private grabHeldT = 0; private grabFired = false; private reachTap = 0; private reachHold = 0;
   private quickHeld = false; private quickHeldT = 0; private quickFired = false;
+  /** A press's own clock (ms, real time): a tap or a hold is the thumb's time, whatever the frame rate. */
+  private static now = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
   private deeperPresses = 0; private throwPresses = 0;
   /** How the bout ended in the new bout: the throw (or a slip, a reversal) and how he landed (the fall rule). */
   fallKind: FallKind | null = null;
@@ -1073,8 +1075,9 @@ export class LambDuel {
     if (this.paused) { this.grabTaps = 0; this.breakPresses = 0; this.guardTapped = false; this.reachTap = 0; this.reachHold = 0; this.throwPresses = 0; this.deeperPresses = 0; return this.frame(0); }
     if (this.combat) {
       // the new bout: Saisir held past COMBAT_HOLD.grab is a reach for the belt, Frappe held past COMBAT_HOLD.strike the big strike
-      if (this.grabHeld && !this.grabFired && (this.grabHeldT += dt) >= COMBAT_HOLD.grab) { this.grabFired = true; if (this.phase === 'fight') this.reachHold++; }
-      if (this.quickHeld && !this.quickFired && (this.quickHeldT += dt) >= COMBAT_HOLD.strike) { this.quickFired = true; if (this.phase === 'fight') this.bigPresses++; }
+      const now = LambDuel.now();
+      if (this.grabHeld && !this.grabFired && now - this.grabHeldT >= COMBAT_HOLD.grab * 1000) { this.grabFired = true; if (this.phase === 'fight') this.reachHold++; }
+      if (this.quickHeld && !this.quickFired && now - this.quickHeldT >= COMBAT_HOLD.strike * 1000) { this.quickFired = true; if (this.phase === 'fight') this.bigPresses++; }
     }
     this.t += dt;
     const tPrev = this.phaseT; this.phaseT += dt; this.msgHold = Math.max(0, this.msgHold - dt);
@@ -1238,7 +1241,7 @@ export class LambDuel {
     if (this.paused || this.done) return;
     if (this.phase === 'result') { this.finish(); return; }
     if (this.phase === 'clinch') { this.throwPresses++; return; }
-    this.grabHeld = true; this.grabHeldT = 0; this.grabFired = false;
+    this.grabHeld = true; this.grabHeldT = LambDuel.now(); this.grabFired = false;
   }
   private grabRelease() {
     if (!this.grabHeld) return;
@@ -1246,7 +1249,7 @@ export class LambDuel {
     if (!this.grabFired && this.phase === 'fight') this.reachTap++;
   }
   /** Frappe (avec frappe): a tap is the quick strike, held past COMBAT_HOLD.strike it arms the big one. */
-  private quickPress() { if (this.paused || this.phase !== 'fight') return; this.quickHeld = true; this.quickHeldT = 0; this.quickFired = false; }
+  private quickPress() { if (this.paused || this.phase !== 'fight') return; this.quickHeld = true; this.quickHeldT = LambDuel.now(); this.quickFired = false; }
   private quickRelease() {
     if (!this.quickHeld) return;
     this.quickHeld = false;

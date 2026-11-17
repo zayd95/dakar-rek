@@ -205,7 +205,22 @@ phones (the pupils are scripts, not players).
 
 ## 8. The preview
 
-{{PREVIEW}}
+Build this branch (`npx vite build`) and host it; then open, on a phone or a desktop:
+
+| Address (append to the host) | What it opens |
+| --- | --- |
+| `/?debug&bout=gora` | straight into a friendly at Pikine's arena against **Gora** (costaud), **sans frappe**, v4 bodies |
+| `/?debug&bout=gora&rdabody=force` | the same with the **Roi des Arènes bodies** (at every quality) |
+| `/?debug&lamb2&bout=gora&frappe&rdabody=force` | Gora **avec frappe**, RDA bodies |
+| `/?debug&lamb2&bout=daouda&rdabody=force` | Daouda (grand lutteur de saisie) avec frappe; also `bout=pape`, `saliou`, `ousmane`, `malick` |
+| `/?debug&touch&bout=pape` | Pape (rapide) with the phone's controls forced on a desktop |
+| add `&combat0` | the bout as it was before this package (to compare) |
+
+`?debug` skips the character studio (a fresh browser starts straight in Pikine); the bout starts as soon as Pikine is loaded
+(a few seconds), the opponent at the friendly level of a fresh save (1). After the result, **Revanche** plays him again;
+**Continuer** returns to the arena, where « Combat amical » (all opponents; avec frappe with `&lamb2`), « Combat classé » and
+the écurie's « Entraînement » (Coach Ablaye's new lesson) are on the menus as usual. Without `?debug` the game is unchanged
+apart from the new bout itself (the default on this branch).
 
 ## 9. Captures
 
@@ -213,4 +228,28 @@ phones (the pupils are scripts, not players).
 
 ## 10. Left for phase 2, and decisions for the owner
 
-{{LEFT}}
+**Phase 2 (not started here, not blocked):** the entrances, the sabar and the crowd answering the bout (`onMoment` still
+fires avec frappe exactly as before; sans frappe it is not yet wired to the stands), a replay of the fall and commentary
+(stage 3), the cinematics. The new bout's events are ready for them: the fall's kind and throw (`duelInfo().combat.fall`,
+`throwName`), the referee's words (`combat.referee`), the read habits.
+
+**Also left:**
+- **Watched bouts** keep the old engine (deterministic, tested byte for byte). They could take the new one later: its AI is
+  seeded and fixed-step already, but the evening's 396-bout tables would have to be re-measured.
+- **A device pass on real phones** (Android mid-range, iPhone): the feel of the stick in the empoignade (dead zone 55 %),
+  the tells' timing, the hold-to-belt delay (0.28 s), the frame time. SwiftShader says nothing about it.
+- **Tuning with people**: the headless pupils are scripts. The step from level 2 to 3 is the one to watch.
+- **Animation**: throws and falls are procedural poses over the existing clips (Fall_Back, Kneel); paired, authored throw
+  animations (and a closing hand: v4 and RDA have no finger bones) would make contact read better in close-up.
+- **`check-arena-fighter`, `check-arena-visit`, `check-career`** were not run on this branch: the fighter's path now plays
+  the new bout (its steps may read the old bout's hooks); the watched evening is unchanged (tested headless).
+
+**Decisions for the owner:**
+
+| # | Decision | Options | Recommendation |
+| --- | --- | --- | --- |
+| 1 | The new bout as the game's bout | keep it on this branch's switch; ship it as the default; ship it behind `?combat1` first | default after a phone pass; `?combat0` stays as the way back |
+| 2 | Out of the circle | a point (now); a fall; nothing | a point (2), as now: it keeps the bout going and gives the push a purpose |
+| 3 | The sans-frappe opponent's attributes | now his style's shape at the friendly level (as avec frappe) | keep |
+| 4 | « Revanche » | friendlies only (now); also ranked (the career picks the opponent) | friendlies only |
+| 5 | The player's attributes sans frappe | now the career's trained attributes (as avec frappe), so training matters in both | keep |

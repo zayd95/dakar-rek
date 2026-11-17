@@ -8,7 +8,8 @@
 // JS per frame (relative), draw calls, triangles, the heap's growth.
 // Usage: flock /tmp/dakar-browser.lock node scripts/perf-combat.mjs <baseUrl> <out.json> [baseline.json]
 //   With a baseline (the same script on 87076f3f) the budgets are asserted: update JS ≤ +15 % (+0.5 ms), render submit ≤
-//   +15 % (+0.5 ms), draw calls ≤ +3, triangles ≤ +3 %, heap growth ≤ 4 MB and ≤ the baseline's + 2 MB, the bout's load
+//   +15 % (+0.5 ms), draw calls ≤ +3, triangles ≤ +3 %, heap growth ≤ the baseline's + 2 MB (the bouts are started again as
+//   they end: both builds' heaps grow with each new bout's bodies and crowd, so the growth is compared, not bounded), the bout's load
 //   ≤ +25 % (+150 ms).
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -84,7 +85,7 @@ if (baseFile && fs.existsSync(baseFile)) {
     ck(`${q}: render submit per frame within +15 % (+0.5 ms)`, r.jsSubmitMs.mean <= o.jsSubmitMs.mean * 1.15 + 0.5, { now: r.jsSubmitMs, before: o.jsSubmitMs });
     ck(`${q}: draw calls within +3`, r.drawCalls.median <= o.drawCalls.median + 3, { now: r.drawCalls, before: o.drawCalls });
     ck(`${q}: triangles within +3 %`, r.triangles.median <= o.triangles.median * 1.03, { now: r.triangles, before: o.triangles });
-    ck(`${q}: JS heap growth over the bouts ≤ 4 MB and ≤ the baseline's + 2 MB`, r.heapMB && r.heapMB.growth <= 4 && r.heapMB.growth <= (o.heapMB?.growth ?? 0) + 2, { now: r.heapMB, before: o.heapMB });
+    ck(`${q}: JS heap growth over the 60 s of bouts (after a collection) ≤ the baseline's + 2 MB`, r.heapMB && r.heapMB.growth <= (o.heapMB?.growth ?? 0) + 2, { now: r.heapMB, before: o.heapMB });
     ck(`${q}: the bout's load within +25 % (+150 ms)`, r.boutLoadMs.median <= o.boutLoadMs.median * 1.25 + 150, { now: r.boutLoadMs, before: o.boutLoadMs });
     ck(`${q}: no page error`, r.errors.length === 0, r.errors);
   }
