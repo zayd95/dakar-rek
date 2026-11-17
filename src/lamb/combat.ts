@@ -266,9 +266,9 @@ export function bestThrow(att: Pick<Combatant, 'hold' | 'stamina'>, def: Pick<Co
 export function throwScore(id: ThrowId, att: Pick<Combatant, 'hold' | 'balance' | 'attrs' | 'stamina'>, def: Pick<Combatant, 'balance' | 'dir' | 'stamina' | 'weight'>, o: { brace?: number; moving?: boolean } = {}): number {
   const v = throwVec(id, def);
   return 110 * setup(id, att, def)
-    + (att.hold.str * control(att.hold) - 50) * 0.3
-    + (att.balance - 50) * 0.15
-    + (k(att.attrs.force) + k(att.attrs.technique) - 2) * 40
+    + (att.hold.str * control(att.hold) - 50) * 0.2
+    + (att.balance - 50) * 0.1
+    + (k(att.attrs.force) + k(att.attrs.technique) - 2) * 30
     + (o.moving ? 10 : 0)
     + (def.stamina < 20 ? (20 - def.stamina) * 0.6 : 0)
     + Math.max(0, dot(def.weight, v)) * 15
@@ -278,9 +278,13 @@ export function throwScore(id: ThrowId, att: Pick<Combatant, 'hold' | 'balance' 
 export function braceAgainst(id: ThrowId, def: Pick<Combatant, 'weight' | 'stamina' | 'dir'>): number {
   return Math.max(0, -dot(def.weight, throwVec(id, def))) * braceStamina(def.stamina);
 }
-/** A throw that failed: the thrower over-committed (his balance goes his own way: forward, back for a lift) and let go. */
+/**
+ * A throw that failed: the thrower over-committed and let go — his imbalance deepens the way it already went (forward,
+ * or back for a lift, when he stood straight), and his hold weakens. It always costs: it never gives him his feet back.
+ */
 export function throwFails(id: ThrowId, att: Pick<Combatant, 'balance' | 'dir' | 'attrs' | 'hold'>) {
-  shove(att, { f: THROWS[id].dir === 'haut' ? -1 : 1, s: 0 }, COMBAT.failBalance / k(att.attrs.equilibre));
+  const was = 1 - att.balance / 100 > 0.05 ? { ...att.dir } : { f: THROWS[id].dir === 'haut' ? -1 : 1, s: 0 };
+  shove(att, was, COMBAT.failBalance / k(att.attrs.equilibre));
   wear(att.hold, COMBAT.failStr);
 }
 /** Bracing a throw costs breath: more for a fuller brace. */

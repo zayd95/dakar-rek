@@ -727,7 +727,7 @@ export class LambDuel {
 
   private end(outcome: BoutOutcome, winner: Side | null) {
     this.outcome = outcome; this.winner = winner;
-    if (this.brain && this.mode !== 'entrainement' && outcome !== 'abandon') remember(this.style.name, this.brain.habits);   // what he saw of the player, for the next time
+    if (this.brain && this.mode !== 'entrainement') remember(this.style.name, this.brain.habits);   // what he saw of the player, for the next time (an abandon too)
     const seconds = this.mode === 'entrainement' ? this.t : this.round - Math.max(0, this.timeLeft);
     this.result = {
       mode: this.mode, outcome, winner, seconds,
@@ -877,6 +877,15 @@ export class LambDuel {
     if (this.phase !== 'fight' || !this.frappe) return false;
     this.aiGuardHold = 0; this.ai.guard = false;
     return startStrike(this.ai, kind);
+  }
+  /**
+   * Checks and tests only: the opponent starts this throw now (the one his hold gives when `id` is omitted) — what his AI
+   * starts when it decides to throw (`startCombatThrow`); it lands by the rules like any other, braced or countered.
+   */
+  debugAiThrow(id?: ThrowId): boolean {
+    if (!this.combat || this.phase !== 'clinch' || this.attempt) return false;
+    this.ai.move = null; this.ai.recover = 0; this.ai.deeper = 0;
+    return this.startCombatThrow(this.ai, this.me, id);
   }
   /** Checks only: the seconds left in the round (a long check's earlier steps do not eat the later ones' time). */
   debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
@@ -1324,7 +1333,7 @@ export class LambDuel {
   }
   /** The opponent's intent this step: its AI (none while a check holds it, in a drill, or in the lesson: the partner is scripted). */
   private aiIntent(dt: number, urge: number): Intent {
-    if (this.held || this.drill || this.cl || !this.brain) return idleIntent();
+    if (this.held || this.drill || this.cl || !this.brain) { this.brain?.rest(); return idleIntent(); }
     const it = this.brain.step(dt, this.aiView(urge), this.rand);
     if (this.brain.lastRead) { this.msg('Il a compris ton jeu !', 1.2); this.brain.lastRead = null; }
     return it;

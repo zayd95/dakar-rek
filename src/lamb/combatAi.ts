@@ -144,7 +144,9 @@ export class CombatAi {
   readonly reads = new Set<string>();
   lastRead: Read | null = null;
   private think = 0.8;
-  private pending: { at: number; i: Partial<Intent>; hold?: number }[] = [];
+  /** Answers scheduled after its reaction time, each to something it saw (`why`): dropped if that is gone when it is due. */
+  private pending: { at: number; i: Partial<Intent>; hold?: number; why: 'reach' | 'strike' | 'move' | 'throw' }[] = [];
+  private phaseWas = '';
   private seen = new Set<string>();
   private weight: Vec = { f: 0, s: 0 };
   private weightFor = 0;
@@ -163,18 +165,21 @@ export class CombatAi {
     const t = kind === 'throw' ? this.habits.throws : kind === 'open' ? this.habits.opens : kind === 'reach' ? this.habits.reaches : this.habits.answers;
     (t as Record<string, number>)[key] = ((t as Record<string, number>)[key] ?? 0) + 1;
   }
-  /** Has it read this habit (seen it twice before: the third time it knows)? */
+  /** Has it read this habit (the duel counts a try as it starts: the third time, it knows)? */
   knows(kind: 'throw' | 'reach', key: string): boolean {
     const n = (kind === 'throw' ? this.habits.throws : this.habits.reaches)[key as never] ?? 0;
-    return n >= 2;
+    return n >= 3;
   }
   private tell(r: Read) { const key = `${r.what}:${r.key}`; if (!this.reads.has(key)) { this.reads.add(key); this.lastRead = r; } }
 
+  /** Held still (a check, the lesson's script): what it was answering and leaning for is dropped. */
+  rest() { this.pending.length = 0; this.seen.clear(); this.weight = { f: 0, s: 0 }; this.weightFor = 0; this.phaseWas = ''; }
   /** One step: what it does now. */
   step(dt: number, v: AiView, rand: () => number): Intent {
     this.t += dt;
     const out = idle(), lvl = this.lvl;
     // what it sees coming, answered after its reaction time
+    if (v.phase !== this.phaseWas) { this.phaseWas = v.phase; this.pending.length = 0; this.seen.clear(); }   // a new phase: what it was answering is gone
     if (v.phase === 'fight') this.seeStanding(v, rand); else this.seeClinch(v, rand);
     // the weight it holds (a brace, or leaning for its own move): kept for a while, else neutral
     this.weightFor = Math.max(0, this.weightFor - dt);
@@ -182,6 +187,8 @@ export class CombatAi {
     for (let j = this.pending.length - 1; j >= 0; j--) {
       const p = this.pending[j]; if (p.at > this.t) continue;
       this.pending.splice(j, 1);
+      const still = p.why === 'reach' ? !!v.him.reach : p.why === 'strike' ? !!v.him.strike : p.why === 'throw' ? !!v.him.throwing : !!v.him.move;
+      if (!still) continue;                                                  // too late: what it answered has landed
       Object.assign(out, p.i);
       if (p.i.stick && p.hold) { this.weight = { ...p.i.stick }; this.weightFor = p.hold; }
     }
@@ -211,7 +218,7 @@ export class CombatAi {
         const known = this.knows('reach', h.reach.kind);
         if (known) this.tell({ what: 'reach', key: h.reach.kind });
         const p = clamp(lvl.brace * 1.3 + (known ? 0.35 * lvl.learn : 0), 0, 0.95);
-        if (rand() < p) this.pending.push({ at: this.t + lvl.react * (known ? 0.5 : 0.8 + 0.3 * rand()), i: h.reach.kind === 'nuque' && rand() < 0.5 ? { guard: true } : { back: true } });
+        if (rand() < p) this.pending.push({ at: this.t + lvl.react * (known ? 0.5 : 0.8 + 0.3 * rand()), i: h.reach.kind === 'nuque' && rand() < 0.5 ? { guard: true } : { back: true }, why: 'reach' });
       }
     } else this.seen.delete('reach');
     // avec frappe, his strike being armed: guard, step back, or a quick strike first (a big one only), by style
@@ -220,9 +227,9 @@ export class CombatAi {
         this.seen.add('strike');
         const r = this.stand.react, sharp = 0.55 + 0.6 * lvl.learn, x = rand();
         const at = this.t + lvl.react * (h.strike.kind === 'big' ? 0.7 : 0.45);
-        if (x < r.guard * sharp) this.pending.push({ at, i: { guard: true }, hold: 0.45 });
-        else if (x < (r.guard + r.back) * sharp) this.pending.push({ at, i: { back: true } });
-        else if (h.strike.kind === 'big' && x < (r.guard + r.back + r.counter) * sharp) this.pending.push({ at, i: { strike: 'quick' } });
+        if (x < r.guard * sharp) this.pending.push({ at, i: { guard: true }, hold: 0.45, why: 'strike' });
+        else if (x < (r.guard + r.back) * sharp) this.pending.push({ at, i: { back: true }, why: 'strike' });
+        else if (h.strike.kind === 'big' && x < (r.guard + r.back + r.counter) * sharp) this.pending.push({ at, i: { strike: 'quick' }, why: 'strike' });
       }
     } else this.seen.delete('strike');
   }
@@ -257,7 +264,7 @@ export class CombatAi {
       const p = clamp((lvl.read * this.clinch.read) / 0.4 * (0.6 + 0.4 * v.me.balance / 100), 0, 0.92);
       if (!this.seen.has(`mv:${h.move.kind}`)) {
         this.seen.add(`mv:${h.move.kind}`);
-        if (rand() < p) this.pending.push({ at: this.t + lvl.react * (0.75 + 0.3 * rand()), i: { stick: moveStick(answer(h.move.kind)) }, hold: 0.3 });
+        if (rand() < p) this.pending.push({ at: this.t + lvl.react * (0.75 + 0.3 * rand()), i: { stick: moveStick(answer(h.move.kind)) }, hold: 0.3, why: 'move' });
       }
     } else for (const s of [...this.seen]) if (s.startsWith('mv:')) this.seen.delete(s);
     // his throw, set up on his body: brace against its way (or turn it); a throw he has tried twice is known at once
@@ -270,15 +277,15 @@ export class CombatAi {
         const pb = clamp(lvl.brace + (known ? 0.4 * lvl.learn : 0), 0, 0.95), pc = lvl.counter + (known ? 0.15 * lvl.learn : 0);
         const x = rand();
         const brace = against(id, h);
-        if (x < pc && v.me.balance > 45 && v.me.stamina > 12) this.pending.push({ at: this.t + lvl.react * (known ? 0.5 : 0.9), i: { counter: true, stick: brace }, hold: 0.6 });
-        else if (x < pc + pb) this.pending.push({ at: this.t + lvl.react * (known ? 0.45 : 0.85 + 0.3 * rand()), i: { stick: brace }, hold: 0.7 });
-        else if (x < pc + pb + 0.15) this.pending.push({ at: this.t + lvl.react, i: { stick: { f: -brace.f, s: -brace.s } }, hold: 0.5 });   // read wrong: leans into it
+        if (x < pc && v.me.balance > 45 && v.me.stamina > 12) this.pending.push({ at: this.t + lvl.react * (known ? 0.5 : 0.9), i: { counter: true, stick: brace }, hold: 0.6, why: 'throw' });
+        else if (x < pc + pb) this.pending.push({ at: this.t + lvl.react * (known ? 0.45 : 0.85 + 0.3 * rand()), i: { stick: brace }, hold: 0.7, why: 'throw' });
+        else if (x < pc + pb + 0.15) this.pending.push({ at: this.t + lvl.react, i: { stick: { f: -brace.f, s: -brace.s } }, hold: 0.5, why: 'throw' });   // read wrong: leans into it
       }
     } else for (const s of [...this.seen]) if (s.startsWith('th:')) this.seen.delete(s);
   }
   private ownClinch(v: AiView, rand: () => number, out: Intent) {
     const lvl = this.lvl, me = v.me, st = this.clinch;
-    if (me.throwing || me.moving) return;
+    if (me.throwing || me.moving || v.him.throwing) return;                // (his throw under way: it braces or counters, nothing else)
     // out of breath: break free to breathe (when its hold allows it), else hold still — a wrestler keeps his breath
     if (me.stamina < 22) { if (v.grip > -30 && me.stamina >= 20 && rand() < 0.5 + 0.4 * lvl.learn) out.brk = true; return; }
     // the throw, when what it sees of him allows it (a young wrestler goes too early); pressed by the referee, sooner

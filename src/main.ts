@@ -58,8 +58,8 @@ import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
 import { ATTRS, fighterAttributes, type Counters } from './career/career';
 import { drillOfAction } from './lamb/drills';
-import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
-import { lamb2On } from './lamb/flag';
+import { FRIENDLY_MORE, STYLE_MAP, rosterAttributes, rosterOpponent } from './lamb/opponents';
+import { combatOn, lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
 import { dealerDirectory } from './transport/dealers';
@@ -1165,6 +1165,8 @@ function startScene(kind: SceneKind, onDone?: () => void) {
  * or `localStorage['dakarrek.lamb2'] = '1'`. Without it the arena offers the sans-frappe bouts only, as before.
  */
 const LAMB2 = lamb2On();
+/** The new bout (docs/wrestling/COMBAT.md, src/lamb/flag.ts): the player's own bout in both disciplines; `?combat0` gives the old one. */
+const COMBAT = combatOn();
 // with ?lamb2 the arena's and the écurie's bouts say which làmb they are
 if (LAMB2) for (const a of [...ACTIONS.arena, ...ACTIONS.ecurie]) {
   if (a.id === 'combat') a.detail = 'Sans frappe ou avec frappe · choisis ton adversaire';
@@ -1227,12 +1229,14 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   if (pick) { style = { ...(STYLES[pick.style as StyleId] ?? style), name: pick.name }; level = pick.level; }
   else if (named) style = { ...style, name: named };                          // a friendly avec frappe against a named wrestler
   // avec frappe, the player's attributes come from what he trained (src/career, data only); they shape numbers by ±20 % at most
-  const attrs = discipline === 'avec_frappe' ? fighterAttributes(state.data.counters) : undefined;
+  const attrs = discipline === 'avec_frappe' || COMBAT ? fighterAttributes(state.data.counters) : undefined;
   // avec frappe, a wrestler of the city's roster fights as himself: his style, his level, his season record (src/lamb/opponents.ts)
-  const who = discipline === 'avec_frappe' && boutMode !== 'entrainement' ? rosterOpponent(style.name, ctx.day(), (state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career) : null;
-  if (who) { style = { ...(STYLES[who.wrestler.style as StyleId] ?? style), name: who.wrestler.name }; level = who.level; }
-  const opponent = who ? { attrs: who.attrs, stand: who.stand, clinch: who.clinch, line: who.line } : undefined;
-  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6, discipline, attrs, opponent });
+  // (the new bout: sans frappe too — his style of the six and his line, at the level the sans-frappe record gives)
+  const who = (discipline === 'avec_frappe' || COMBAT) && boutMode !== 'entrainement' ? rosterOpponent(style.name, ctx.day(), (state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career) : null;
+  if (who && discipline === 'avec_frappe') { style = { ...(STYLES[who.wrestler.style as StyleId] ?? style), name: who.wrestler.name }; level = who.level; }
+  const opponent = who ? { attrs: discipline === 'avec_frappe' ? who.attrs : rosterAttributes({ style: who.style, level }), stand: who.stand, clinch: who.clinch, line: who.line } : undefined;
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6, discipline, attrs, opponent,
+    combat: COMBAT, rematchable: COMBAT && boutMode === 'amical' && !after });   // the new bout; « Revanche » for a friendly outside the fighter's path
   duel.bodies().opponent?.setBuild(buildOf(style.id));                     // an RDA body (?rdabody): heavy for « costaud », athletic otherwise
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
@@ -1248,6 +1252,7 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
     hud.toast([r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
       : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
+    if (duel.rematch) setTimeout(() => startDuel(boutMode, styleId, after, discipline, named), 0);   // the new bout's « Revanche » (recorded first, as any bout)
   };
   if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
   // avec frappe: the bout's moments go to the modules as they happen (the arena's stands react to the fall and the result)
@@ -1280,7 +1285,7 @@ function startDrill(a: Action, npc?: string, it?: Interactable) {
   const c = state.data.counters, key = a.counter;
   const notes = key ? attrMoves(c, { ...c, [key]: (c[key] ?? 0) + 1 }) : [];
   const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: 0, mode: 'entrainement', style: PARTNER, level: 1, ring: 5,
-    discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'] });
+    discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'], combat: COMBAT });
   duel.bodies().opponent?.setBuild(buildOf(PARTNER.id));
   duel.onDone = () => {
     const r = duel.drillResult();
@@ -2004,10 +2009,24 @@ async function start() {
   else welcome();
   started = true; markStarted();
   requestAnimationFrame(frame);
+  if (DEBUG && params.get('bout')) void previewBout(params.get('bout')!);   // the new bout's preview address (docs/wrestling/COMBAT.md « Aperçu »)
   if (made) requestAnimationFrame(() => requestAnimationFrame(() => made.arrive()));   // the arrival card fades once the game has drawn
   else setTimeout(() => { profilePortrait(); }, 1500);                               // a save without its Profile picture yet gets it drawn, soon after the start
 }
 void start();
+
+/**
+ * The new bout's preview (docs/wrestling/COMBAT.md « Aperçu »): `?debug&bout=<name>` (gora, pape, saliou; with `&lamb2`
+ * also ousmane, malick, daouda, avec frappe) drops a tester at Pikine's arena straight into a friendly against him;
+ * `&frappe` asks for the bout avec frappe (with `&lamb2`), `&rdabody` gives the Roi des Arènes bodies. Debug only.
+ */
+async function previewBout(name: string) {
+  const w = rosterOpponent(name[0].toUpperCase() + name.slice(1).toLowerCase(), ctx.day()); if (!w) return;
+  if (world?.id !== 'pikine') loadHub('pikine');
+  for (let i = 0; i < 600 && !(world?.id === 'pikine' && world.arena && !staged); i++) await new Promise(r => setTimeout(r, 100));
+  const frappe = LAMB2 && (params.has('frappe') || !['gora', 'pape', 'saliou'].includes(name.toLowerCase()));   // Ousmane, Malick, Daouda fight avec frappe only
+  startDuel('amical', w.wrestler.style as StyleId, undefined, frappe ? 'avec_frappe' : 'sans_frappe', w.wrestler.name);
+}
 
 if (DEBUG) {
   // ?debug works on every host (the public smoke test uses it), but on the public game only the hooks that read and the smoke test's moves exist:
@@ -2184,6 +2203,12 @@ if (DEBUG) {
     duelClock(seconds: number) { if (lambScene instanceof LambDuel) lambScene.debugClock(seconds); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
+    /** The new bout (checks): the stick in the player's own frame (f towards him, s to his left) for `secs` of bout, a reach (tap or hold of Saisir), going deeper. */
+    duelStick(f: number, s: number, secs = 0.5) { if (lambScene instanceof LambDuel) lambScene.debugStick(f, s, secs); },
+    duelReach(how: 'tap' | 'hold' = 'tap') { if (lambScene instanceof LambDuel) lambScene.pressReach(how); },
+    duelDeeper() { if (lambScene instanceof LambDuel) lambScene.pressDeeper(); },
+    duelAiThrow(id?: Parameters<LambDuel['debugAiThrow']>[0]) { return lambScene instanceof LambDuel ? lambScene.debugAiThrow(id) : false; },
+    combatOn: () => COMBAT,
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
     duelBreak() { if (lambScene instanceof LambDuel) lambScene.pressBreak(); },
     duelAbandon(confirm = true) { if (lambScene instanceof LambDuel) { if (confirm) lambScene.abandon(); else lambScene.askAbandon(true); } },
