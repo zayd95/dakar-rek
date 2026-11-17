@@ -52,7 +52,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); if (boost) await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW');
     } else {
       const gas = await touch_.centre('#ridepad .rp-gas'), R = await padRig(page, touch_);
-      await touch_.down(1, gas.x, gas.y + (boost ? 40 : 18)); if (steer) await R.rocker(2)(steer);
+      await touch_.down(1, gas.x, gas.y + 18); if (steer) await R.rocker(2)(steer);
       await hold();
       await touch_.upAll();
     }
@@ -63,14 +63,14 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     await ride(180000, 0, ([m, t]) => window.__dakar[m].at().t > t, [mod, t0 + secs], true);
     return d(m => window.__dakar[m].at(), mod);
   };
-  /** Stand at a dealer's counter and open its catalogue: the menu's items as text. */
+  /** Stand at a dealer's counter and open its catalogue: the menu's items as text, and whether each is greyed (src/ui/sheet.ts: class `dis`). */
   const catalogue = async dealer => {
     await d(p => window.__dakar.place(p.x, p.z, Math.PI), dealer);
     await page.waitForFunction(() => /Motos sportives/.test(window.__dakar.focus()?.name ?? ''), null, { timeout: 60000 }).catch(() => {});
     const f = await d(() => window.__dakar.focus());
     await d(() => window.__dakar.act());
     await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-    return { focus: f, items: await d(() => [...document.querySelectorAll('#modal.on .item')].map(b => ({ text: b.textContent ?? '', off: /disabled|off/.test(b.className) || b.hasAttribute('disabled') }))) };
+    return { focus: f, items: await d(() => [...document.querySelectorAll('#modal.on .item')].map(b => ({ text: b.textContent ?? '', off: /\bdis\b|disabled/.test(b.className) || b.hasAttribute('disabled') }))) };
   };
   const standShot = async (dealer, name) => {
     const s = dealer.display, back = touch ? 6.5 : 5;   // from the road, a little ahead of the bike
@@ -87,15 +87,31 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const c0 = await catalogue(nd0);
   const buyNd = c0.items.find(i => /Acheter/.test(i.text));
   check(`${label}: its counter « Motos sportives » sells « Sabar 600 jaune et noir » at 2 000 000 F, the free ride first`, /Essayer/.test(c0.items[0]?.text ?? '') && /Sabar 600 jaune et noir/.test(buyNd?.text ?? '') && digits(buyNd?.text).includes('2000000') && !buyNd.off, JSON.stringify(c0));
-  await shot('1-ndiaye-catalogue'); await closeModal();
+  await shot('1-ndiaye-catalogue');
+  // the free test ride: that dealer's own colour at the kerb, ridden, handed back when the player gets off; nothing paid, nothing saved
+  const wt = await d(() => window.__dakar.state.wallet);
+  await page.locator('#modal .item', { hasText: 'Essayer' }).first().click();
+  await page.waitForFunction(() => window.__dakar.sabar.info().trial && window.__dakar.sabar.info().here, null, { timeout: 60000 }).catch(() => {});
+  const tr = await info();
+  await d(r => window.__dakar.place(r.x + 1.3, r.z, 0), { x: tr.x, z: tr.z });
+  await page.waitForFunction(() => /essai/i.test(window.__dakar.focus()?.name ?? ''), null, { timeout: 60000 }).catch(() => {});
+  await d(() => window.__dakar.act());
+  await page.waitForFunction(() => window.__dakar.sabar.info().driving, null, { timeout: 60000 }).catch(() => {});
+  const tr1 = await at();
+  await ready(); await d(() => window.__dakar.act());
+  await page.waitForFunction(() => !window.__dakar.sabar.info().here && window.__dakar.pos().mode === 'play', null, { timeout: 60000 }).catch(() => {});
+  const tr2 = await info();
+  check(`${label}: the free test ride: Ndiaye's jaune et noir at the kerb, ridden, handed back on getting off, nothing paid or owned`,
+    tr.trial && tr.seed === 1001 && tr1?.driving && tr1.model === 'glb_sabar' && !tr2.here && !tr2.owned && (await d(() => window.__dakar.state.wallet)) === wt, JSON.stringify({ seed: tr.seed, model: tr1?.model, after: { here: tr2.here, owned: tr2.owned } }));
 
   await d(() => window.__dakar.travelTo('pikine'));
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.sabar.info().dealer && window.__dakar.pos().mode === 'play', null, T);
   const md = (await info()).dealer;
-  check(`${label}: Garage Modou (Pikine) shows a Sabar 600 rouge et blanc with its price card, its own stand`, md?.colour === 'rouge et blanc' && md.onSale === true && md.card === true && md.display?.seed === 1000 && (await info()).model !== undefined, JSON.stringify(md));
+  check(`${label}: Garage Modou (Pikine) shows a Sabar 600 rouge et blanc with its price card, its own stand`, md?.colour === 'rouge et blanc' && md.onSale === true && md.card === true && md.display?.seed === 1000, JSON.stringify(md));
   await standShot(md, 'modou-stand');
 
   // ---------------------------------------------------------------- 2. bought there: the price, then confirmed, paid once, delivered at the kerb in its colour
+  if (await d(() => !!document.querySelector('#modal.on'))) await closeModal();
   const c1 = await catalogue(md);
   check(`${label}: the counter offers « Voir les articles » and lists « Sabar 600 rouge et blanc » at its price`, /Motos sportives/.test(c1.focus?.name ?? '') && c1.items.some(i => /Sabar 600 rouge et blanc/.test(i.text) && digits(i.text).includes('2000000')), JSON.stringify(c1));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
@@ -116,7 +132,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   check(`${label}: « Biens » lists the Sabar 600 once`, biens.filter(t => /Sabar 600/.test(t)).length === 1, JSON.stringify(biens.filter(t => /Sabar/.test(t))));
 
   // ---------------------------------------------------------------- 3. riding it: tucked, quicker than a Jakarta, the fork turning
-  await d(r => window.__dakar.place(r.x + 1.3, r.z, -Math.PI / 2), { x: b1.x, z: b1.z });
+  await d(r => window.__dakar.place(r.x - 0.2, r.z + 1.1, Math.PI), { x: b1.x, z: b1.z });       // on its left, the road side (it faces west), clear of the stand's counter
   await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta Sabar 600', null, { timeout: 60000 }).catch(() => {});
   const f2 = await d(() => window.__dakar.focus());
   check(`${label}: walking up to it offers « Monter sur la moto »`, f2?.primary === 'Monter sur la moto', JSON.stringify(f2));
@@ -138,21 +154,21 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     await d(() => window.__dakar.render()); await capture('fork-steered');
     await d(() => { window.__dakar.cam(null); window.__dakar.pause(false); }); }
   // a sprint from a standstill along the road, 3 s of the bike's own clock
-  await d(([x, z]) => window.__dakar.sabar.place(x, z, -Math.PI / 2), [b1.x + 4, b1.z]);
+  const LANE = { x: md.delivery.x + 5, z: md.delivery.z + 2.5 };                          // the driving lane in front of the garage, heading west
+  await d(L => window.__dakar.sabar.place(L.x, L.z, -Math.PI / 2), LANE);
   await page.waitForTimeout(500);
   const sab = await sprint('sabar', 3);
   await capture('riding');
   await shot('3-riding');
   // the same 3 s on a Jakarta (the player's own, bought for the comparison: its corner is at Garage Modou too)
   await d(() => window.__dakar.sabar.boost(0));
-  await d(([x, z]) => window.__dakar.sabar.place(x, z, -Math.PI / 2), [b1.x - 26, b1.z]);
+  await d(([x, z]) => window.__dakar.sabar.place(x, z, -Math.PI / 2), [b1.x - 22, b1.z]);    // parked at the kerb further down the road
   await ready(); await d(() => window.__dakar.act());                                     // « Descendre »
   await page.waitForFunction(() => !window.__dakar.sabar.info().driving && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   await d(() => { window.__dakar.state.data.wallet += 150_000; window.__dakar.moto.own(); });
   await page.waitForFunction(() => window.__dakar.moto.info().here, null, T).catch(() => {});
-  const jr = (await d(() => window.__dakar.moto.info())).record;
-  await d(r => window.__dakar.moto.place(r.x + 4, r.z, -Math.PI / 2), jr);
-  await d(r => window.__dakar.place(r.x + 4 + 1.2, r.z, -Math.PI / 2), jr);
+  await d(L => window.__dakar.moto.place(L.x, L.z, -Math.PI / 2), LANE);                   // the same start, the same heading
+  await d(L => window.__dakar.place(L.x - 0.2, L.z + 1.0, Math.PI), LANE);
   await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, { timeout: 60000 }).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.moto.info().driving, null, T).catch(() => {});
@@ -192,12 +208,14 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.locator('#modal .item', { hasText: 'Vendre' }).first().click();
   await page.waitForTimeout(600);
   await page.locator('#modal .item', { hasText: 'Vendre' }).first().click().catch(() => {});
-  await page.waitForFunction(() => !window.__dakar.sabar.info().owned, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__dakar.sabar.info().owned && window.__dakar.sabar.info().record === null, null, { timeout: 60000 }).catch(() => {});   // the record goes on the module's next frame
   const sold = await info(), w3 = await d(() => window.__dakar.state.wallet);
   await closeModal();
   check(`${label}: sold from « Biens »: no longer owned, no parking record, paid back once`, !sold.owned && sold.record === null && w3 > w2 && w3 - w2 <= 2_000_000, JSON.stringify({ w2, w3, record: sold.record }));
   await page.waitForTimeout(800);
-  check(`${label}: once sold, Ndiaye Auto offers it again`, (await info()).dealer.onSale === true);
+  const c3 = await catalogue((await info()).dealer), again = c3.items.find(i => /Acheter/.test(i.text));
+  check(`${label}: once sold, Ndiaye Auto sells it again`, !!again && !again.off && /jaune et noir/.test(again.text), JSON.stringify(again));
+  await closeModal();
 
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await context.close();
@@ -213,7 +231,7 @@ if (!process.env.ONLY || process.env.ONLY === 'poses') for (const avatar of ['v4
   await d(() => { window.__dakar.state.data.wallet = 3_000_000; window.__dakar.sabar.own(); });
   await page.waitForFunction(() => window.__dakar.sabar.info().here, null, T).catch(() => {});
   const r = (await d(() => window.__dakar.sabar.info())).record;
-  await d(p => window.__dakar.place(p.x + 1.3, p.z, -Math.PI / 2), r);
+  await d(p => window.__dakar.place(p.x - 0.2, p.z + 1.1, Math.PI), r);
   await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta Sabar 600', null, { timeout: 60000 }).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.sabar.info().driving && window.__dakar.clip() === 'RideSport', null, { timeout: 60000 }).catch(() => {});
