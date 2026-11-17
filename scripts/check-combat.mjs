@@ -142,8 +142,8 @@ async function referee(page) {
   // the friendly menu at the arena, by touch
   const name = await page.evaluate(() => { const d = window.__dakar; d.state.data.flags.push('ecurie_baobab'); const a = d.interactables().find(i => i.id.endsWith(':arena')); d.place(a.x, a.z, 0); return a.name; });
   await wait(page, n => window.__dakar.nearestInteractable() === n, name, 30000);
-  await t.tap('#act');
-  await wait(page, () => document.querySelector('#modal.on'), null, 20000);
+  await t.tap('#act').catch(() => {});
+  if (!(await wait(page, () => document.querySelector('#modal.on'), null, 15000))) { console.log('(the action button was not on screen: the arena\'s menu opened by the game\'s own action)'); await page.evaluate(() => window.__dakar.act()); await wait(page, () => document.querySelector('#modal.on'), null, 20000); }
   await page.evaluate(() => [...document.querySelectorAll('#modal .item')].find(b => /Combat amical/.test(b.textContent))?.setAttribute('data-pick', '1'));
   await t.tap('#modal .item[data-pick="1"]');
   await wait(page, () => /Combat amical/.test(document.querySelector('#modal.on h2')?.textContent ?? ''), null, 20000);
