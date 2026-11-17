@@ -1215,6 +1215,8 @@ export class LambDuel {
         for (const h of this.crowd) h.hold = 'Celebrate';
       }
       if (t > 1.3 && this.outcome === 'projection') fx.winner.clip = 'Celebrate';
+      // the new bout: « le dos au sol » is drawn as such — Fall_Back ends sitting on the sand; once there, he goes flat on his back
+      if (this.combat && this.outcome === 'projection' && this.fallKind === 'dos' && t > 1.25) fx.loser.clip = 'Lie';
       if (this.frappe) this.armMoment();
       const name = this.style.name;
       // the new bout: the referee calls the fall by the rule (the back, or the four supports)
