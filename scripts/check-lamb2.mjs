@@ -40,7 +40,9 @@ async function open(vp, touch, flag) {
     if (/ws|websocket|8787/i.test(m.text() + url)) return;
     errors.push(`${m.text()} ${url}`);
   });
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}${flag ? '&lamb2' : ''}${RDA}`, { waitUntil: 'load' });
+  // Làmb 2.0's bout as it was (src/lamb/flag.ts: the new bout is the default on this branch; ?combat0 gives this one, which
+  // the evening's watched bouts still fight): kept whole here; the new bout has its own check (scripts/check-combat.mjs)
+  await page.goto(`${base}?debug&combat0${touch ? '&touch' : ''}${flag ? '&lamb2' : ''}${RDA}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar && window.__dakar.pos().hub, null, { timeout: 60000 * SLOW });
   if (RDA) { await page.waitForFunction(() => window.__dakar.rda().ready, null, { timeout: 120000 }).catch(() => {}); console.log('RDA', JSON.stringify(await page.evaluate(() => window.__dakar.rda().load))); }
   await page.evaluate(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(16); });

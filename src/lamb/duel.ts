@@ -1382,6 +1382,7 @@ export class LambDuel {
     this.grip = gripAdvantage(me.hold, ai.hold);
     this.pairVel.set(0, 0, 0); this.pairSpin = 0;
     this.msg(by === me ? `Tu le tiens : ${GRIPS[kind].label} !` : `Il te tient : ${GRIPS[kind].label}`, 0.9);
+    if (this.cl) this.combatLessonHear({ k: 'clinch', by: by === me ? 'player' : 'opponent' });
   }
 
   /** A strike (avec frappe) in the new bout: the AI answers it by what it sees, not by the old reaction draw. */
@@ -2170,6 +2171,7 @@ export class LambDuel {
     const l = land(a, d, dist), mine = a === this.me, name = this.style.name;
     this.lastStrike = { by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result };
     if (this.lesson) this.lessonHear({ k: 'strike', by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result });
+    if (this.cl) this.combatLessonHear({ k: 'strike', by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result });
     if (this.mode !== 'entrainement' && (l.result === 'hit' || l.result === 'stagger')) this.onMoment?.(l.result === 'stagger' ? 'stagger' : 'strike', mine ? 'player' : 'opponent', { kind: l.kind });
     if (this.drill && mine) {
       this.drillHear({ k: 'land', kind: l.kind, result: l.result });
