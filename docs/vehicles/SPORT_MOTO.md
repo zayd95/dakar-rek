@@ -16,7 +16,7 @@ new catalogue id: the save format is unchanged) on the same owned-vehicle system
 ## The model and its source
 
 Meshy text-to-3D through the pinned CLI (`npm exec --package=meshy-cli@0.4.0`, credentials in `~/.config/meshy`), every preview looked at (rendered from six
-sides) before paying for the next step. Balance **840 → 785: 55 credits**.
+sides) before paying for the next step. Balance **840 → 785: 55 credits** (each task's own `consumed_credits` below; a reading the next day showed 1 015: credits added to the account since, nothing spent).
 
 | Step | Task id | Credits | Kept? |
 |---|---|---|---|
