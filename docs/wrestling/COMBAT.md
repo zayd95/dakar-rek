@@ -1,0 +1,216 @@
+# The bout, phase 1: a real wrestling fight (branch `wp/wrestling-combat`)
+
+Work package « combat », 16–17 Nov 2026, from `wp/wrestling` @ 87076f3f. The owner: « turn this base into a real Senegalese
+wrestling bout, fluid, physical and fun, with grips, balance, resistance, throws, a smart opponent, and victory and defeat.
+Gameplay first. » This package is the bout itself; entrances, sabar, crowd and cinematics are phase 2.
+
+Cultural status: **unverified**. Every throw, hold and word here is a movement placeholder of our game, with generic names,
+not the reproduction of a real technique or rule; nothing is claimed authentic. RDA's status is kept (`RDA-INTEGRATION.md`).
+The game's own rules: `docs/LAMB_RULES.md` (« C'est notre jeu, on crée nos règles »), section « 1 bis ».
+
+## 1. Comment jouer (pour le joueur)
+
+Le combat se joue au **joystick** (les pieds, puis le poids du corps) et à **trois gros boutons** (quatre avec frappe).
+
+| | Téléphone | Clavier |
+| --- | --- | --- |
+| Se déplacer, en garde basse | joystick | flèches / ZQSD / WASD |
+| **Saisir** : la nuque (appui bref) · la ceinture (maintenu) · **« Jambe ! »** quand il se penche vers toi | gros bouton jaune | E / Espace (maintenu : ceinture) |
+| Garde (avec frappe : contre les frappes ; levée au bon moment : pare une main à la nuque) | bouton bleu, maintenu | G / Maj |
+| Reculer (ses saisies et ses frappes tombent dans le vide) | bouton gris | X |
+| Frappe (avec frappe) : rapide (appui bref) · **grosse** (maintenu) | bouton orange | J (maintenu : grosse) · K |
+| **Dans l'empoignade** | | |
+| Pousser · tirer · pivoter : le joystick **vers lui**, **loin de lui**, **de côté** | joystick | flèches |
+| **Projeter** : le bouton dit la projection que ta prise et son déséquilibre donnent (« Croc », « Hanche »…) ; **vert** quand il est prêt à tomber | gros bouton jaune | E / K |
+| **Contrer** : le même bouton, vert, pendant qu'il tente la sienne | gros bouton jaune | E / K |
+| Aller plus loin : nuque → bras → ceinture | bouton bleu | G |
+| Casser (sortir de l'empoignade) | bouton gris | X |
+
+**Le cœur du combat.** Saisis-le. Dans l'empoignade, ton poids est le joystick : vers lui tu pousses, loin de lui tu tires,
+de côté tu pivotes. Chaque poussée réussie l'envoie en arrière, chaque traction vers toi, chaque pivot sur le côté — tu le
+vois à son corps (dos cambré, buste plié, appuis qui reculent). Quand il penche assez du côté qu'une projection demande, le
+gros bouton s'allume et dit laquelle : **Croc** quand il recule, **Hanche** ou **Ramené** quand il vient vers toi,
+**Balayage** quand il penche sur un côté, **Soulevé** à la ceinture quand il est fatigué, **Jambe** si tu tiens sa jambe. Une
+projection sur un homme bien planté et frais rate, et c'est toi qui te retrouves déséquilibré.
+
+**Lis-le.** Penché en avant, il pousse : **tire** (Tirer bat Pousser, Pivoter bat Tirer, Pousser bat Pivoter). Quand il tente
+sa projection, son corps la montre : **penche-toi contre** (joystick à l'opposé de là où il t'envoie : loin de lui contre sa
+hanche, vers lui contre son croc) ou **Contre** — plus risqué, mais il part au sol. Ça coûte du souffle : épuisé, tu ne tiens
+plus, tu glisses ; casse pour respirer debout.
+
+**Les prises.** La **nuque** se prend vite et sans risque, mais contrôle peu. La **ceinture** se voit venir et t'expose
+(poitrine contre poitrine, ses hanches contre les tiennes) mais donne les grandes projections. La **jambe** est la plus
+décisive et la plus risquée (tête basse : s'il s'étale, c'est toi qui touches des quatre appuis). Une prise se gagne,
+s'use quand tu fatigues ou perds les échanges, et se casse.
+
+**La chute.** Le combat se gagne quand l'autre a **le dos au sol** ou **les quatre appuis**. L'arbitre l'annonce et lève le
+bras. Sortir du cercle n'est pas une chute : 2 points à la décision pour celui qui reste dedans. Celui qui n'attaque pas reçoit
+des **avertissements** (1 point pour l'autre chacun) : tenir la garde ne fait plus match nul. Après un combat amical,
+**Revanche** relance le même combat.
+
+**L'adversaire** lit ton corps, pas tes doigts. Aux niveaux 1 et 2, un petit panneau au-dessus de sa tête dit ce qu'il prépare
+(« → pousse », « ↘ ceinture », « Hanche ! »). Il retient tes habitudes : la même projection trois fois, il l'a comprise
+(« Il a compris ton jeu ! ») — et il s'en souvient la prochaine fois que tu l'affrontes. Chaque style a sa projection
+favorite : le costaud pousse et crochète, le technicien fait tourner et balaie, le rapide plonge sur la jambe, le défensif
+attend ta poussée et te charge sur la hanche, le bon frappeur te ramène par la nuque, le grand lutteur de saisie prend la
+ceinture et soulève.
+
+**La leçon de Coach Ablaye** (« Entraînement » à l'écurie) apprend tout cela pas à pas avec les nouvelles commandes ; les
+trois exercices aussi (frappes au bouton Frappe, échanges et gainage au joystick).
+
+## 2. The switch, and what is kept
+
+- **One switch** (`src/lamb/flag.ts`): `COMBAT_DEFAULT = true` on this branch; `?combat0` (or `localStorage['dakarrek.combat']
+  = '0'`) gives the bout as it was (Làmb 2.0 avec frappe, the 2.6 s empoignade sans frappe); `?combat1` forces the new one.
+- **What takes the new bout**: the player's own bout in both disciplines — the friendly and ranked menus, the fighter's path
+  and the gala (through `startDuel`), the écurie's lesson and its three drills.
+- **What does not**: watched bouts (the evening's main event, the preliminaries: `spectate`, `autopilot`) never take it —
+  seeded, fixed-step, the same for every friend in the stands; twelve watched bouts' full traces recorded at 87076f3f replay
+  byte for byte (`tests/combatWatchedGolden.test.ts`).
+- **Unchanged**: the career, purses, records (`lamb_*`, `lamb_af_*`), rewards, the save (no field added: the opponent's
+  memory of the player is kept in memory only), the protocol, « Le choc » (stops, push, close-up, contact at 0.72 m, thud,
+  buzz, the slow fall), the RDA bodies and their pieces, the `onMoment` hooks (avec frappe, as before), Làmb 2.0's code.
+- **Shared files touched**: `src/main.ts` only (≈ 25 lines, each commented: the switch into `startDuel` / `startDrill`, the
+  sans-frappe opponent as himself, « Revanche », five debug hooks, the preview address). No HUD or `style.css` change (the
+  new buttons' styles live in the duel's own stylesheet).
+
+## 3. The systems and their numbers (`src/lamb/combat.ts`, pure, tested)
+
+It extends Làmb 2.0 (`stand.ts`, `clinch.ts`): the same endurance, balance 0–100 and composure, the same strikes, the same
+push / pull / pivot triangle and counter.
+
+**Balance with a direction.** Each wrestler's imbalance is a vector in his own frame (`f` towards the other man, `s` to his
+left): its length is the balance lost, its direction where the weight went. A push sends him back, a pull forward, a pivot
+sideways, a strike back; pushes stack, a pull after a push gives him his feet back. **Weight** is the stick: leaning commits
+the body (up to 0.18 of imbalance that way), braces against the opposite effect (−60 %, less when tired) and worsens an effect
+the same way (+35 %). Footwork: charging in at full stick leans you in — his leg reach opens (« Jambe ! »).
+
+**Holds** (control × exposure; reach time):
+
+| Hold | Taken by | Control | Exposure | Reach | Throws |
+| --- | --- | --- | --- | --- | --- |
+| Nuque (nape and shoulders) | Saisir, a tap | 0.85 | 0.85 | 0.22 s | Croc, Balayage, Ramené |
+| Bras (arm and shoulder) | going deeper from the nape | 1.0 | 1.0 | — | Hanche, Croc, Balayage |
+| Ceinture (the ngemb) | Saisir held (0.28 s), or deeper from the arm | 1.25 | 1.15 | 0.5 s | Hanche, Croc, Soulevé |
+| Jambe | Saisir while he leans in | 1.3 | 1.4 | 0.32 s | Jambe |
+
+A hold's strength drifts to 35 + 65 × min(1, endurance / 60) (it slides out of tired hands at 12/s), firms up 8 on an exchange
+won, wears 10 × exposure on one lost; worn out it falls back to the shallower hold, then is lost. The Prise bar is the
+holds' strengths times their control, from the player's side (Làmb 2.0's grip advantage, so its slip and break rules apply).
+
+**Throws** (each needs its hold and his imbalance its way; score ≥ 48 takes him down):
+
+| Throw | Holds | Sets it up | Fall | Windup | Cost |
+| --- | --- | --- | --- | --- | --- |
+| Hanche | bras, ceinture | his weight forward (pull him) | back | 0.55 s | 12 |
+| Croc | nuque, bras, ceinture | his weight back (push him) | back | 0.5 s | 10 |
+| Balayage | nuque, bras | his weight on a side (pivot him) | back | 0.45 s | 10 |
+| Soulevé | ceinture | any imbalance, and more breath than his | back | 0.75 s | 18 |
+| Jambe | jambe | his weight back (on the held leg) | back | 0.42 s | 12 |
+| Ramené | nuque | his head and weight forward | four supports | 0.42 s | 8 |
+
+Score = 110 × set-up (depth × how well it points the throw's way) + hold (≤ ±15) + own balance (≤ ±5) + Force and Technique
+(≤ ±12) + 10 if caught mid-move + up to 12 if he is spent + up to 15 if he leans into it − up to 55 for his brace. On a
+balanced, fresh man every throw fails, from anyone (tested on the real duel for all six, and for the city's best). A failed
+throw deepens its author's own imbalance by 20 and wears his hold by 20: it always costs.
+
+**Resistance.** Bracing a throw = the weight against its way over its last 60 %: its quality (0–1) takes up to 55 off, for
+4 + 6 × quality endurance; below 30 endurance a brace weakens to 30 %: a tired man slips. Contrer (Làmb 2.0's counter, +12
+when braced right) turns it (the thrower falls; a sprawled leg pick ends on the four supports) or blocks it.
+
+**Economy.** Against Làmb 2.0: an exchange moves 50 % of its balance, a move costs 40 % of its endurance, the hold's drain is
+35 %, a man holding still breathes 3/s and gets 4 balance/s back. The pair moves together: the weights drive it (0.7 m/s per
+unit of drive × each man's force, breath and balance), a landed move shoves it; a man moved back without bracing, or drawn
+forward without sitting back, loses balance that way (7/s per m/s). The referee separates an empoignade after 10 s (unless
+one is about to fall).
+
+## 4. The opponent (`src/lamb/combatAi.ts`)
+
+The AI returns the very intents the player's stick and buttons make (`Intent`), applied by the same code for both sides. It
+sees an `AiView`: itself, and the player as his body and the screen show him (his lean and weight, his hold, a move / reach /
+throw / strike while it is set up, his gauges) — never his inputs, and only after its reaction time; a reaction to something
+that has already landed is dropped.
+
+| Level | 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- |
+| Reaction (s) | 0.6 | 0.52 | 0.46 | 0.38 | 0.29 |
+| Reads a move / braces a throw | 22 % / 22 % | 28 / 28 | 35 / 35 | 46 / 48 | 60 / 62 |
+| Tries to counter | 4 % | 6 | 10 | 15 | 20 |
+| Learns (weight of a read habit) | 0.45 | 0.6 | 0.8 | 0.9 | 1 |
+| Sets up slower (its tells) | ×1.6 | ×1.45 | ×1.32 | ×1.15 | ×1 |
+| Throws at score ≥ 48 + | −8 (too early) | −5 | −3 | 0 | +4 |
+| Breath | ×0.85 | ×0.9 | ×1 | ×1 | ×1 |
+| Sign over his head | yes | yes | — | — | — |
+
+**Signatures** (each style works towards its throw: its moves set it up): costaud → croc (belt), technicien → balayage,
+rapide → jambe, défensif → hanche (waits for the push), bon frappeur → ramené, grand lutteur de saisie → soulevé (belt).
+**Habits**: it counts the throws the player tries, the move he opens with, the reach he uses; the third time it knows (a known
+throw is braced with +40 % × learning, faster, and countered more; « Il a compris ton jeu ! »); a move the player opens with
+half the time is answered in advance. **Memory**: at a bout's end (an abandon too) what it saw is added to a memory by
+wrestler (in memory only, never in the save); the next bout against him starts with half of it.
+
+## 5. The bodies (`src/lamb/combatRig.ts`)
+
+On the 20-bone rig, v4 or RDA alike, after the clip: a **crouched fighting stance whose feet stay planted and step** (the
+game's own two-bone leg IK, `GaitRig`, fed a state of our own — no shared file changed; a foot steps when the body has gone
+0.13 m from it, one at a time, in 0.17–0.25 s, with a 7 cm lift); the **weight** in the hips (over the lean, lower when braced
+or off balance) and the trunk (arched back when pushed, folded forward when pulled or diving); the **hands on the hold** by
+two-bone arm IK on the other man's bones (his neck, his arm, his hips for the belt, his thigh), reaching there while the reach
+runs; the moves' and throws' tells (the hip turned in, the leg behind his, the sweep, the squat under him); **the falls by the
+throw** (over the hip, backwards, swept to a side, lifted and dropped, on the four supports); the tell sign (a sprite, one
+draw call while shown). A bone the clip did not write again is put back first, so nothing adds up.
+
+## 6. Tests and checks
+
+**Unit and headless tests (new, 68)**, all on the pure rules or the real `LambDuel` without a browser:
+
+| File | Tests | What it proves |
+| --- | --- | --- |
+| `tests/combat.test.ts` | 24 | holds' trade-offs, strength sliding, wearing to a shallower hold; the balance's direction (pushes stack, a pull gives the feet back); the weight braces and exposes; each of the six throws fails on a balanced fresh man, takes down a man set up its way, fails the other way; the button's throw by his lean; bracing, a tired man's brace, a failed throw's cost; the fall rule; no held-guard draw at the decision |
+| `tests/combatDuel.test.ts` | 30 | on the real duel: each throw only with its set-up (and its fall: back or four supports), the push seen in his lean; his throw braced or not, a tired brace, Contrer turning or only blocking; a hold going deeper and Casser; **the habit read**: the third try of the same throw is braced far more often (and « Il a compris ton jeu ! »), and **remembered across bouts** against the same wrestler; **no exploit**: a held guard never wins nor draws (levels 1, 3, 5, ranked), mashing and throw-spamming lose; both outcomes; the same seed and inputs give the same bout; the city's best does not throw a balanced man |
+| `tests/combatLesson.test.ts` | 9 | Coach Ablaye's lesson played through with the new controls in both disciplines; the three drills scored full with the stick and the strike button; the AI's level table never easier a level up; six distinct signatures; the memory by wrestler |
+| `tests/combatBalance.test.ts` | 4 | the balance bands below (seeded) |
+| `tests/combatWatchedGolden.test.ts` | 1 | twelve watched bouts (both disciplines, main events and preliminaries) replay byte for byte as recorded at 87076f3f |
+
+**Balance** (`tests/combatPupil.ts`: three headless players and three exploits, through the same inputs as a thumb, seeing
+only what the screen and bodies show; a fresh save after the lesson; each cell the mean of the six styles × 10 seeded bouts;
+win rate · median bout length, both disciplines):
+
+| Player | Discipline | Level 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Novice | sans frappe | 40 % · 18 s | 18 % · 17 s | 8 % · 20 s | 3 % · 14 s | 0 % · 8 s |
+| Novice | avec frappe | 27 % · 18 s | 15 % · 17 s | 10 % · 15 s | 8 % · 16 s | 5 % · 10 s |
+| Correct (decent) | sans frappe | 50 % · 24 s | 40 % · 18 s | 18 % · 31 s | 13 % · 18 s | 8 % · 9 s |
+| Correct (decent) | avec frappe | 55 % · 23 s | 45 % · 24 s | 32 % · 34 s | 10 % · 22 s | 15 % · 12 s |
+| Expert | sans frappe | 68 % · 32 s | 60 % · 31 s | 52 % · 45 s | 43 % · 73 s | 52 % · 70 s |
+| Expert | avec frappe | 62 % · 25 s | 68 % · 51 s | 40 % · 59 s | 28 % · 67 s · nul 2 % | 32 % · 50 s |
+| Garde tenue (turtle, classé) | sans frappe | 0 % · 10 s | 0 % · 9 s | 0 % · 8 s | 0 % · 7 s | 0 % · 7 s |
+| Garde tenue (turtle, classé) | avec frappe | 0 % · 11 s | 0 % · 9 s | 0 % · 8 s | 0 % · 7 s | 0 % · 7 s |
+| Tout presser (masher) | sans frappe | 3 % · 11 s | 0 % · 13 s | 2 % · 11 s | 0 % · 12 s | 0 % · 12 s |
+| Tout presser (masher) | avec frappe | 0 % · 13 s | 0 % · 15 s | 0 % · 13 s | 0 % · 14 s | 0 % · 11 s |
+| Projeter sans cesse (spammer) | sans frappe | 0 % · 10 s | 0 % · 10 s | 0 % · 10 s | 0 % · 10 s | 0 % · 5 s |
+| Projeter sans cesse (spammer) | avec frappe | 0 % · 10 s | 0 % · 10 s | 0 % · 7 s | 0 % · 8 s | 0 % · 9 s |
+
+Medians at levels 1–3 are 17–34 s for novice and decent players (the old sans-frappe bout: 4–7 s); 90–100 % end by the fall
+rule. An expert's bouts against levels 4–5 go long (both read and brace well: some go to the referee). A held guard never wins
+and never draws (the old bout drew 100 % of ranked bouts at levels 1, 3 and 5); mashing wins 0–3 %, spamming the throw 0 %.
+The one hard step is from level 2 to 3, where the opponent starts to read and brace reliably — to be tuned with people on
+phones (the pupils are scripts, not players).
+
+{CHECKS}
+
+## 7. Performance
+
+{{PERF}}
+
+## 8. The preview
+
+{{PREVIEW}}
+
+## 9. Captures
+
+{{CAPTURES}}
+
+## 10. Left for phase 2, and decisions for the owner
+
+{{LEFT}}

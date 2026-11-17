@@ -204,6 +204,7 @@ export class CombatRig {
     let py = RIG.hipY - (0.12 + 0.05 * brace) * c - 0.07 * deep;
     if (p.throwing?.id === 'souleve') py -= 0.16 * smooth(throwK / 0.7) - 0.2 * smooth((throwK - 0.7) / 0.3);
     if (p.throwing?.id === 'jambe' || (p.hold === 'jambe' && p.phase === 'clinch')) py -= 0.12;
+    else if (p.hold === 'ceinture' && p.phase === 'clinch') py -= 0.06;
     if (p.reach && p.reach.kind !== 'nuque') py -= 0.14 * smooth(p.reach.k);
     gs.py = py;
     gs.px = 0.08 * p.lean.s + 0.03 * p.weight.s;
@@ -266,7 +267,9 @@ export class CombatRig {
   /** The trunk over the weight: arched back when pushed, folded forward when pulled or diving, turned with a pivot; the move and the throw set up on top. */
   private trunkPose(p: PoseIn) {
     const lf = p.lean.f, ls = p.lean.s, c = p.crouch;
-    const fold = 0.28 * c + 0.9 * lf + 0.35 * p.weight.f + (p.hold === 'jambe' && p.phase === 'clinch' ? 0.7 : 0) + (p.reach && p.reach.kind !== 'nuque' ? 0.6 * smooth(p.reach.k) : 0);
+    // a deep hold folds the trunk over him (the belt: heads over shoulders; the leg: head down)
+    const holdFold = p.phase === 'clinch' ? (p.hold === 'jambe' ? 0.7 : p.hold === 'ceinture' ? 0.75 : p.hold === 'bras' ? 0.25 : 0) : 0;
+    const fold = 0.28 * c + 0.9 * lf + 0.35 * p.weight.f + holdFold + (p.reach && p.reach.kind !== 'nuque' ? 0.6 * smooth(p.reach.k) : 0);
     const side = 0.9 * ls + 0.25 * p.weight.s;
     this.aimChar({ spine: [side * 0.6, 1, fold * 0.7], chest: [side, 1, fold], head: [side * 0.3, 1, Math.min(0.4, fold * 0.3)] }, 0.85 * Math.max(this.wLegs, this.wHands));
     if (p.move) this.aimChar(AIMS[p.move.kind], 0.7 * p.move.k);
@@ -296,7 +299,7 @@ export class CombatRig {
       const [ua, fa, ha] = ARM[i], mySide = i === 0 ? 1 : -1;   // my left hand goes to his right side (we face each other)
       if (kind === 'nuque') { pt('neck', T); T.addScaledVector(hisLeft, -mySide * 0.07).addScaledVector(hisBack, 0.07); T.y -= 0.02; }
       else if (kind === 'bras') { if (i === 0) { pt('upper_armR', T); pt('forearmR', E); T.lerp(E, 0.35); } else { pt('neck', T); T.addScaledVector(hisLeft, 0.1).addScaledVector(hisBack, 0.05); } }
-      else if (kind === 'ceinture') { pt('hips', T); T.addScaledVector(hisLeft, -mySide * 0.15).addScaledVector(hisBack, 0.09); T.y += 0.04; }
+      else if (kind === 'ceinture') { pt('hips', T); T.addScaledVector(hisLeft, -mySide * 0.16).addScaledVector(hisBack, 0.02); T.y += 0.06; }   // the ngemb at his sides
       else { pt(i === 0 ? 'thighR' : 'thighR', T); pt('shinR', E); T.lerp(E, i === 0 ? 0.25 : 0.55); T.addScaledVector(hisBack, 0.05); }
       // the shoulder, the arm's own lengths, the elbow out and down
       const sh = this.b[ua].getWorldPosition(S), el = this.b[fa].getWorldPosition(V1), hd = this.b[ha].getWorldPosition(V2);
