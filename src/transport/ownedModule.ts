@@ -28,6 +28,11 @@ import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
 import { forgetIfSold, migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, returnStranded, setPaintSeed, unpark, type VehicleAsset } from './owned';
 import { prestige, roadTestAt, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
+
+/** A kerb dealer's price card is drawn within this distance of it only (m): farther, its 0.5 m face is a few unreadable pixels. */
+export const CARD_LOD = 30;
+/** … and its pole sign within this one. */
+export const SIGN_LOD = 45;
 import { SUPERVISED_S } from './trialRules';
 import { streak } from '../economy/streakModule';
 import { trafficPositions } from '../actors/npc';
@@ -1036,16 +1041,23 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       const back = mesh(new THREE.BoxGeometry(0.52 * k, 0.36 * k, 0.015), white); back.position.set(c.x, 0.12 + 1.08 * k, c.z); back.rotation.y = c.yaw;
       const face = mesh(new THREE.PlaneGeometry(0.5 * k, 0.333 * k), new THREE.MeshBasicMaterial({ map: card }));
       face.position.set(c.x + Math.sin(c.yaw) * 0.009, back.position.y, c.z + Math.cos(c.yaw) * 0.009); face.rotation.y = c.yaw;
-      for (const m of [pole, back, face]) { m.removeFromParent(); sg.add(m); }
+      // the card's three meshes are drawn only within CARD_LOD of it (a 0.5 m card is unreadable farther): three draw calls saved per stand seen from afar
+      const cardLod = new THREE.LOD(); cardLod.name = `${this.def.key}:card`; cardLod.position.set(c.x, 0, c.z);
+      const near = new THREE.Group();
+      for (const m of [pole, back, face]) { m.removeFromParent(); m.position.x -= c.x; m.position.z -= c.z; near.add(m); }
+      cardLod.addLevel(near, 0); cardLod.addLevel(new THREE.Object3D(), CARD_LOD); sg.add(cardLod);
     });
     const sign = signTexture(D.sign);
     const extraTex: THREE.Texture[] = [];
-    {                                                           // a stand has its pole sign
+    {                                                           // a stand has its pole sign, drawn within SIGN_LOD of it (farther, a 1.5 m plate is a few pixels on a phone)
       const sw = site.sign.w ?? 1.5, sh = sw / 3, top = 2.5 + sh;
       const pole = mesh(new THREE.BoxGeometry(0.08, top, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
-      pole.position.set(site.sign.x, 0.12 + top / 2, site.sign.z);
+      pole.position.set(0, 0.12 + top / 2, 0);
       const plate = mesh(new THREE.BoxGeometry(sw, sh, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
-      plate.position.set(site.sign.x, 2.5 + sh / 2, site.sign.z); plate.rotation.y = site.sign.yaw;
+      plate.position.set(0, 2.5 + sh / 2, 0); plate.rotation.y = site.sign.yaw;
+      const signLod = new THREE.LOD(); signLod.name = `${this.def.key}:sign`; signLod.position.set(site.sign.x, 0, site.sign.z);
+      const near = new THREE.Group(); for (const m of [pole, plate]) { m.removeFromParent(); near.add(m); }
+      signLod.addLevel(near, 0); signLod.addLevel(new THREE.Object3D(), SIGN_LOD); g.add(signLod);
     }
     if (site.desk) this.buildForecourt(site, D.sign, sign, mesh, hub);
     if (site.desk) {
