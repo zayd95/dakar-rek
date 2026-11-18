@@ -270,7 +270,7 @@ async function referee(page) {
   await page.evaluate(() => window.__dakar.duelFinish());
   await wait(page, () => !window.__dakar.duelInfo(), null, 30000);
   // Coach Ablaye's lesson with the new controls
-  await page.evaluate(() => window.__dakar.drillStart('combat_entrainement'));   // (the écurie's action, by the game's own runner)
+  await page.evaluate(() => { const d = window.__dakar; if (!d.state.data.flags.includes('ecurie_baobab')) d.state.data.flags.push('ecurie_baobab'); d.state.data.needs.energie = 100; d.drillStart('combat_entrainement'); });   // (a member of the écurie; its action by the game's own runner)
   await wait(page, () => !!window.__dakar.duelInfo()?.lesson, null, 60000);
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight', null, 60000);
   const c1 = await page.evaluate(() => ({ i: window.__dakar.duelInfo(), card: document.querySelector('.duel-step')?.innerText ?? '' }));
