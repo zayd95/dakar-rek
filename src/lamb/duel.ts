@@ -579,7 +579,7 @@ export class LambDuel {
     const tl = this.timeLeft;
     this.q('timer').textContent = tl === Infinity ? '—' : `${Math.floor(Math.max(0, Math.ceil(tl)) / 60)}:${String(Math.max(0, Math.ceil(tl)) % 60).padStart(2, '0')}`;
     const step = this.q('step');
-    if (this.lesson || this.drill) {
+    if (this.lesson || this.drill || this.cl) {                              // (the new bout's lesson too: Coach Ablaye's card)
       const card = this.stepCard(document.body.classList.contains('touch'));
       step.hidden = !card;
       if (card) {
