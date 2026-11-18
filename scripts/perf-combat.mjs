@@ -8,7 +8,8 @@
 // JS per frame (relative), draw calls, triangles, the heap's growth.
 // Usage: flock /tmp/dakar-browser.lock node scripts/perf-combat.mjs <baseUrl> <out.json> [baseline.json]
 //   With a baseline (the same script on 87076f3f) the budgets are asserted: update JS ≤ +15 % (+0.5 ms), render submit ≤
-//   +15 % (+0.5 ms), draw calls ≤ +3, triangles ≤ +3 %, heap growth ≤ the baseline's + 2 MB (the bouts are started again as
+//   +15 % (+0.5 ms), draw calls ≤ +3 and triangles ≤ +3 % at the same two views (the bell; the empoignade's close-up, the
+//   opponent held: the camera of free play looks at other parts of the arena on each build, so those are only reported), heap growth ≤ the baseline's + 2 MB (the bouts are started again as
 //   they end: both builds' heaps grow with each new bout's bodies and crowd, so the growth is compared, not bounded), the bout's load
 //   ≤ +25 % (+150 ms).
 import { chromium } from 'playwright';
@@ -33,6 +34,24 @@ for (const quality of ['medium', 'high']) {
   await page.waitForTimeout(3000);
   await page.evaluate(() => { let n = 0; const f = () => { n++; requestAnimationFrame(f); }; requestAnimationFrame(f); window.__fcount = () => n; });   // frames drawn, to take this bout's from the game's ring
   const gcHeap = () => page.evaluate(() => { if (window.gc) { window.gc(); window.gc(); } return performance.memory?.usedJSHeapSize ?? null; });
+  // the same two views on any build, the opponent held: the bell (standing, the side camera) and the empoignade's close-up
+  // once settled — what the bout itself draws, whatever the camera happens to look at during free play
+  const views = {};
+  {
+    const sample = async () => { const c = [], t = []; for (let k = 0; k < 8; k++) { await page.waitForTimeout(300); const r = await page.evaluate(() => ({ c: window.__dakar.drawCalls(), t: window.__dakar.tris() })); c.push(r.c); t.push(r.t); } return { drawCalls: stat(c).median, triangles: stat(t).median }; };
+    await page.evaluate(() => window.__dakar.duelStart('amical', 'costaud', 'avec_frappe', 'Gora'));
+    await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 300000 });
+    await page.evaluate(() => { window.__dakar.duelHold(true); window.__dakar.duelClock?.(90); });
+    await page.waitForTimeout(2500);
+    views.standing = await sample();
+    for (let k = 0; k < 200; k++) { const i = await page.evaluate(() => window.__dakar.duelInfo()); if (i.phase !== 'fight') break; if (i.dist > 1.3) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } await page.waitForTimeout(150); }
+    await page.keyboard.up('KeyD');
+    await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'clinch', null, { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    views.clinch = (await page.evaluate(() => window.__dakar.duelInfo()?.phase)) === 'clinch' ? await sample() : null;
+    await page.evaluate(() => { window.__dakar.duelAbandon?.(true); window.__dakar.duelFinish?.(); });
+    await page.waitForTimeout(1500); await page.evaluate(() => window.__dakar.duelFinish?.()); await page.waitForTimeout(800);
+  }
   const upd = [], sub = [], calls = [], tris = [], loads = [];
   let boutTime = 0, bouts = 0, heap0 = null;
   while (boutTime < BOUT_SECONDS) {
@@ -66,7 +85,7 @@ for (const quality of ['medium', 'high']) {
   }
   const heap1 = await gcHeap();
   const row = {
-    quality, bouts, boutSeconds: +boutTime.toFixed(1), jsUpdateMs: stat(upd), jsSubmitMs: stat(sub), drawCalls: stat(calls), triangles: stat(tris),
+    quality, views, bouts, boutSeconds: +boutTime.toFixed(1), jsUpdateMs: stat(upd), jsSubmitMs: stat(sub), drawCalls: stat(calls), triangles: stat(tris),
     heapMB: heap0 && heap1 ? { start: +(heap0 / 1048576).toFixed(1), end: +(heap1 / 1048576).toFixed(1), growth: +((heap1 - heap0) / 1048576).toFixed(2) } : null,
     boutLoadMs: stat(loads), errors: errors.slice(0, 3),
   };
@@ -83,8 +102,11 @@ if (baseFile && fs.existsSync(baseFile)) {
     const q = r.quality;
     ck(`${q}: update JS per frame within +15 % (+0.5 ms) of 87076f3f`, r.jsUpdateMs.mean <= o.jsUpdateMs.mean * 1.15 + 0.5, { now: r.jsUpdateMs, before: o.jsUpdateMs });
     ck(`${q}: render submit per frame within +15 % (+0.5 ms)`, r.jsSubmitMs.mean <= o.jsSubmitMs.mean * 1.15 + 0.5, { now: r.jsSubmitMs, before: o.jsSubmitMs });
-    ck(`${q}: draw calls within +3`, r.drawCalls.median <= o.drawCalls.median + 3, { now: r.drawCalls, before: o.drawCalls });
-    ck(`${q}: triangles within +3 %`, r.triangles.median <= o.triangles.median * 1.03, { now: r.triangles, before: o.triangles });
+    for (const v of ['standing', 'clinch']) {
+      const a = r.views?.[v], z = o.views?.[v];
+      ck(`${q}, ${v} (the same view): draw calls within +3`, !!a && !!z && a.drawCalls <= z.drawCalls + 3, { now: a, before: z });
+      ck(`${q}, ${v} (the same view): triangles within +3 %`, !!a && !!z && a.triangles <= z.triangles * 1.03, { now: a, before: z });
+    }
     ck(`${q}: JS heap growth over the 60 s of bouts (after a collection) ≤ the baseline's + 2 MB`, r.heapMB && r.heapMB.growth <= (o.heapMB?.growth ?? 0) + 2, { now: r.heapMB, before: o.heapMB });
     ck(`${q}: the bout's load within +25 % (+150 ms)`, r.boutLoadMs.median <= o.boutLoadMs.median * 1.25 + 150, { now: r.boutLoadMs, before: o.boutLoadMs });
     ck(`${q}: no page error`, r.errors.length === 0, r.errors);

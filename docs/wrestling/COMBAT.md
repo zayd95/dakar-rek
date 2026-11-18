@@ -197,7 +197,37 @@ and never draws (the old bout drew 100 % of ranked bouts at levels 1, 3 and 5); 
 The one hard step is from level 2 to 3, where the opponent starts to read and brace reliably — to be tuned with people on
 phones (the pupils are scripts, not players).
 
-{CHECKS}
+**Checks, before (87076f3f) and after (this branch), on this shared machine** (headless Chromium with SwiftShader, one browser
+at a time under `flock /tmp/dakar-browser.lock`; SwiftShader says nothing about a phone's frame rate):
+
+| Check | 87076f3f | After | Note |
+| --- | --- | --- | --- |
+| `npx tsc --noEmit` | clean | clean | |
+| Full unit suite | 4 050 passed, 4 skipped (as given) | **4 118 passed**, 4 skipped (278 files) | + the 68 combat tests |
+| `check-lamb2` (v4) | 57 / 58 (one « Le choc » step: his quick hit landed before the player's — chance) | **59 / 59** (58 + the conditional « guarded ») | loads `?combat0` |
+| `check-lamb2` `RDABODY=1` | 59 / 59 (58 + the conditional) | **58 / 58** (the conditional not met this run) | loads `?combat0` |
+| `check-lamb` | 27 / 27 | **27 / 27** | loads `?combat0` |
+| `check-rda-fighter` | 16 / 16 | **16 / 16** | on the **new** bout: the RDA bodies under the new rig (pouches, one-bone drift, size) |
+| `check-combat` (new, v4) | — | {CC_V4} | |
+| `check-combat` `RDABODY=1` | — | {CC_RDA} | |
+
+**What changed in the existing checks, and why (nothing they guard is loosened):** `check-lamb` and `check-lamb2` now load
+`?combat0`. They encode the bout before this package step by step (the 2.6 s tapping empoignade, the five avec-frappe
+buttons and their meanings), which the brief deliberately replaces as the player's bout; that bout stays in the game behind
+the switch and in every watched bout, so they keep guarding it exactly, and the new bout's equivalents (layout on the phone,
+the close-up's heads under the Prise and feet over the controls, the lesson, records, no page error) are in
+`check-combat`. This follows LAMB2.md's own rule for a flip (`?lamb1`). `check-rda-fighter` is unchanged and runs on the new
+bout.
+
+**`scripts/check-combat.mjs`** (real touch through Chrome's input pipeline, `scripts/lib/realTouch.mjs`): on a phone in
+portrait, « Combat amical » picked by touch; three big buttons clear of the joystick and of both wrestlers; the crouched stance
+on the bodies; **a whole bout won by a thumb** (joystick: walk in, push / pull / pivot, brace his throws; buttons: Saisir,
+Projeter when it lights, Casser; « Revanche » by touch after a loss), with the hands on the hold (≤ 15 cm), his trunk leaning
+the way his balance goes, the loser's head on the sand, the referee's call (« Chute : le dos au sol ! » / « … les quatre
+appuis ! ») and raised arm, « Victoire »; **a whole bout lost** with the guard held (never a draw); the records as before.
+In landscape: four buttons, the empoignade at 0.72 m with hands on him and the heads under the Prise, a lit « Croc » thrown by
+touch. On a desktop: the keys, E held for the belt, the arrow pushing (his lean read all along), K throwing, the lesson's new
+steps. No page error anywhere. Its output and captures: `docs/wrestling/combat/check-combat*.json` (results only).
 
 ## 7. Performance
 
@@ -224,7 +254,21 @@ apart from the new bout itself (the default on this branch).
 
 ## 9. Captures
 
-{{CAPTURES}}
+`docs/wrestling/combat/` — `scripts/capture-combat.mjs`, deviceScaleFactor 2, the Roi des Arènes bodies at Medium, Gora (costaud)
+avec frappe; each moment set up with the checks' hooks (the opponent held still, a balance, a hold, his throw started), then
+played by the rules. `portrait-*` at 390 × 844, `landscape-*` at 844 × 390:
+
+| # | Moment |
+| --- | --- |
+| 1 `grip-fight` | his reach for the belt seen coming (« ↘ ceinture » over him at his level), the player's dive |
+| 2 `grips` | the empoignade at contact: the player at the belt (folded over him), Gora at the nape; the Prise in words |
+| 3 `imbalance` | pushed back: Gora leans away, the button lit « Croc », « Croc ! Il est prêt à tomber » |
+| 4 `throw-croc`, 5 `fall-croc` | the croc set up, then Gora going down backwards |
+| 6 `referee-call` | Gora flat on his back, the referee raising the arm (and, at an evening, the announcer) |
+| 7 `result` | the result card: the throw and the fall (« Le croc · le dos au sol »), the tally |
+| 8 `throw-hanche`, 9 `fall-hanche` | the hip throw from the arm: turned in, Gora carried over the hip |
+| 10 `his-throw-contrer` | his croc under way: « Il tente le croc ! Résiste ou contre ! », the button green « Contrer » |
+| 11 `counter-fall` | the croc turned: « Contre ! le croc se retourne contre lui ! », Gora down |
 
 ## 10. Left for phase 2, and decisions for the owner
 
