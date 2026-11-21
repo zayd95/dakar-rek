@@ -208,8 +208,8 @@ at a time under `flock /tmp/dakar-browser.lock`; SwiftShader says nothing about 
 | `check-lamb2` `RDABODY=1` | 59 / 59 (58 + the conditional) | **58 / 58** (the conditional not met this run) | loads `?combat0` |
 | `check-lamb` | 27 / 27 | **27 / 27** | loads `?combat0` |
 | `check-rda-fighter` | 16 / 16 | **16 / 16** | on the **new** bout: the RDA bodies under the new rig (pouches, one-bone drift, size) |
-| `check-combat` (new, v4) | — | {CC_V4} | |
-| `check-combat` `RDABODY=1` | — | {CC_RDA} | |
+| `check-combat` (new, v4) | — | **22 / 22** (at 51bc3edf) | |
+| `check-combat` `RDABODY=1` | — | **23 / 23** (at 51bc3edf) | |
 
 **What changed in the existing checks, and why (nothing they guard is loosened):** `check-lamb` and `check-lamb2` now load
 `?combat0`. They encode the bout before this package step by step (the 2.6 s tapping empoignade, the five avec-frappe
@@ -231,7 +231,40 @@ steps. No page error anywhere. Its output and captures: `docs/wrestling/combat/c
 
 ## 7. Performance
 
-{{PERF}}
+`scripts/perf-combat.mjs`: phone viewport 390 × 844, the RDA bodies, the player's bout avec frappe against Gora, 60 s of bout
+time (bouts restarted as they end), the same script on 87076f3f and on this branch at 51bc3edf (before the « feel » pass
+below). **SwiftShader renders on this shared machine's CPU: its frame rates say nothing about a phone.** What carries over:
+the game's JS per frame, draw calls and triangles, the heap's growth.
+
+| Quality | Measure | 87076f3f | This branch | Budget |
+| --- | --- | --- | --- | --- |
+| Medium | update JS / frame (mean, ms) | 3.21 | 3.33 | ≤ +15 % +0.5 ms |
+| | render submit / frame (mean, ms) | 17.15 | 22.12 | ≤ +15 % +0.5 ms |
+| | draw calls, at the bell (same view) | 187 | 181 | ≤ +3 |
+| | triangles, at the bell (same view) | 271 501 | 264 775 | ≤ +3 % |
+| | draw calls, empoignade close-up (same view) | 180 | 173 | ≤ +3 |
+| | triangles, empoignade close-up (same view) | 265 523 | 258 683 | ≤ +3 % |
+| | draw calls / triangles in free play (median; the camera differs) | 180 / 262 975 | 180 / 259 497 | reported |
+| | JS heap growth over 60 s of bouts, after GC (MB) | 17.32 | 20.13 | ≤ baseline + 2 |
+| | the bout's load (median, ms) | 739 | 659 | ≤ +25 % +150 ms |
+| High | update JS / frame (mean, ms) | 3.57 | 3.71 | ≤ +15 % +0.5 ms |
+| | render submit / frame (mean, ms) | 16.49 | 19.23 | ≤ +15 % +0.5 ms |
+| | draw calls, at the bell (same view) | 192 | 219 | ≤ +3 |
+| | triangles, at the bell (same view) | 284 953 | 304 905 | ≤ +3 % |
+| | draw calls, empoignade close-up (same view) | 191 | 212 | ≤ +3 |
+| | triangles, empoignade close-up (same view) | 283 449 | 299 077 | ≤ +3 % |
+| | draw calls / triangles in free play (median; the camera differs) | 199 / 287 891 | 227 / 306 103 | reported |
+| | JS heap growth over 60 s of bouts, after GC (MB) | 18.91 | 14 | ≤ baseline + 2 |
+| | the bout's load (median, ms) | 791 | 1223 | ≤ +25 % +150 ms |
+
+
+Read: the game's own update JS is within the budget (+4 %); the render submit's mean moves with the machine's load (Medium's
+median is lower than the baseline's, its mean higher: outliers on a shared CPU). At **Medium** the same views draw 6–7 calls
+and 2–3 % triangles *fewer* than 87076f3f. At **High** they draw 21–27 calls and 5–7 % triangles more — **over budget, not yet
+explained** (nothing added draws per quality; to investigate with `__dakar.renderBreakdown()` before shipping). The heap's
+growth over restarted bouts is within 3 MB of the baseline's (+2.8 MB at Medium, −4.9 at High); the High load median rests on
+4 bouts (noisy). Allocations per frame: the rig's springs and the dust are allocation-free; the AI's view and the HUD's
+throw readout still allocate small objects each step (young-generation garbage, not growth) — a pass left to do.
 
 ## 8. The preview
 
@@ -269,6 +302,35 @@ played by the rules. `portrait-*` at 390 × 844, `landscape-*` at 844 × 390:
 | 8 `throw-hanche`, 9 `fall-hanche` | the hip throw from the arm: turned in, Gora carried over the hip |
 | 10 `his-throw-contrer` | his croc under way: « Il tente le croc ! Résiste ou contre ! », the button green « Contrer » |
 | 11 `counter-fall` | the croc turned: « Contre ! le croc se retourne contre lui ! », Gora down |
+
+## 9 bis. The fighting-game pass (the owner's new direction, 21 Nov)
+
+On top of the engine above, for the eye and the hand (`src/lamb/combatRig.ts`, `duel.ts`):
+
+- **Bodies with springs**: the hips lead (a stiff spring towards the weight and the lean), the trunk follows them with lag and
+  overshoot (under-damped), a hit to the balance buckles the knees (an impulse that springs back) and takes a **stumble step**
+  the way it went; feet stay planted and step by the stance rig. Allocation-free.
+- **Impacts**: sand dust at a body landing and on a counter (a pooled set of points, one draw call only while grains fly);
+  a camera shake scaled to the force (a strike 0.02–0.07, a throw 0.06, a landing 0.13), on top of « Le choc »'s push and stop.
+- **Camera**: a throw set up punches in (16 %); a **combo** or a style's **signature throw** punches in more (30 %), drops and
+  swings round the pair (0.5 rad), like a super; the fall's slow close shot stays.
+- **Banners**: « LÀMB ! » at the bell, « COMBO ! Hanche », « Gora : Croc ! » for his signature, « TERRE ! » at the fall.
+- **Clinch combos** read from the exchanges won: pull → pivot → **Hanche**, push → push → **Croc** (or **Jambe**), pivot → pivot
+  → **Balayage**, pull → pull → **Ramené**, push → pull → **Soulevé**: two exchanges won in a row within 3 s, then that throw,
+  +10 to its score — for both wrestlers alike (tested).
+- **Input**: tap or hold timed on the thumb's real clock; Projeter on a lit button during the pause after a move is kept and
+  thrown as the pause ends; Projeter takes over a move being set up.
+- **Video**: `docs/wrestling/combat/combat-bout.mp4` (25 s, 30 fps, the game stepped frame by frame, phone portrait, RDA bodies
+  at Medium: walk-in, dive to the belt, the empoignade, the combo pull → pivot → hip, « TERRE ! » and the referee, then Gora's
+  signature croc as a super) and `combat-strip.jpg` (eight moments). `scripts/video-combat.mjs` makes both.
+
+**Meshy (not spent):** the owner's go-ahead reached this session through the coordinator; the paid step was refused by the
+session's permission system, so no credit was spent (balance 1 015). Plan, if run: rig one humanoid once (Meshy's own
+skeleton), then one animation task with ten library clips (`--action-ids 21,20,524,187,183,184,344,113,421,389`: Walk Fight
+Forward/Back, Cautious Crouch Walk Forward, Knock Down, Fall Backward, Fall Forward, Stand Up, Stagger, Over Shoulder Throw,
+Grip and Throw Down — generic library motions, licence-clean, nothing from MK or SF), billed per action; retarget offline onto
+the 20-bone rig (a clip retargeter by bone map and rest pose: the transplant pipeline moves meshes, not clips — to be written)
+and blend under the IK layer: the falls and landings first (`Fall_Back` ends sitting), the stumble, the get-up.
 
 ## 10. Left for phase 2, and decisions for the owner
 

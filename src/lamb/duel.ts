@@ -514,7 +514,7 @@ export class LambDuel {
       body.induel .duel-ui.combat .duel-btns.combat button.dim{filter:saturate(.55) brightness(.92)}
       body.induel .duel-ui.combat .duel-btns.combat button[hidden]{display:none}
       .duel-recap button[data-k=again]{background:#4ade80}
-      .duel-banner{position:absolute;left:0;right:0;top:38%;text-align:center;font:italic 900 clamp(44px,15vw,96px)/1 system-ui,sans-serif;color:#fde047;letter-spacing:.02em;
+      .duel-banner{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 132px);text-align:center;font:italic 900 clamp(44px,15vw,96px)/1 system-ui,sans-serif;color:#fde047;letter-spacing:.02em;
         -webkit-text-stroke:3px #1c1917;text-shadow:0 6px 0 #7c2d12,0 10px 24px rgba(0,0,0,.6);opacity:0;pointer-events:none;transform:scale(.6)}
       .duel-banner.combo,.duel-banner.special{font-size:clamp(30px,9vw,60px);color:#fb923c}
       .duel-banner.go{animation:duelbanner 1.15s cubic-bezier(.2,1.6,.4,1) forwards}
