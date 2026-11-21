@@ -70,7 +70,7 @@ trois exercices aussi (frappes au bouton Frappe, échanges et gainage au joystic
 - **Unchanged**: the career, purses, records (`lamb_*`, `lamb_af_*`), rewards, the save (no field added: the opponent's
   memory of the player is kept in memory only), the protocol, « Le choc » (stops, push, close-up, contact at 0.72 m, thud,
   buzz, the slow fall), the RDA bodies and their pieces, the `onMoment` hooks (avec frappe, as before), Làmb 2.0's code.
-- **Shared files touched**: `src/main.ts` only (≈ 25 lines, each commented: the switch into `startDuel` / `startDrill`, the
+- **Shared files touched**: `src/main.ts` only (36 lines added, 5 changed, each commented: the switch into `startDuel` / `startDrill`, the
   sans-frappe opponent as himself, « Revanche », five debug hooks, the preview address). No HUD or `style.css` change (the
   new buttons' styles live in the duel's own stylesheet).
 
