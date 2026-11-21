@@ -36,6 +36,9 @@ const S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Vector3(),
 const Q1 = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), Q3 = new THREE.Quaternion(), QC = new THREE.Quaternion();
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const smooth = (u: number) => { const x = clamp(u, 0, 1); return x * x * (3 - 2 * x); };
+/** One step of a damped spring towards `to` (angular frequency `w`, damping ratio `z`): [x, v]. */
+const SP = { x: 0, v: 0 };
+const spring = (x: number, v: number, to: number, w: number, z: number, h: number) => { SP.v = v + (w * w * (to - x) - 2 * z * w * v) * h; SP.x = x + SP.v * h; return SP; };
 
 /** What the duel gives the rig each frame. */
 export interface PoseIn {
@@ -82,6 +85,16 @@ export class CombatRig {
   private sprite: THREE.Sprite | null = null;
   private signText: string | null = null;
   private fallYaw = 0;
+  /**
+   * The body's springs (fighting-game feel, src/lamb/combatRig.ts): the hips lead (a stiff spring), the trunk follows
+   * them with lag and a little overshoot (a softer, under-damped one), a knee buckle when the balance is hit hard
+   * (an impulse that springs back: the recovery). Plain numbers, no allocation.
+   */
+  private hx = 0; private hz = 0; private hvx = 0; private hvz = 0;
+  private tf = 0; private ts = 0; private tvf = 0; private tvs = 0;
+  private buckle = 0; private bv = 0; private depthWas = 0;
+  /** Checks: stumble steps taken (a step the way the balance went when it was hit). */
+  stumbles = 0;
 
   constructor(readonly w: Wrestler) {
     const root = w.group.children.find(c => c.name === 'Scene') ?? w.group.children[0] ?? w.group;
@@ -164,7 +177,7 @@ export class CombatRig {
   /** Checks (`duelInfo().combat.body`): what the body shows now. */
   info() {
     const r = (x: number) => Math.round(x * 100) / 100;
-    return { head: r(this.headY), steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText };
+    return { head: r(this.headY), stumbles: this.stumbles, buckle: r(this.buckle), steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText };
   }
 
   pose(p: PoseIn) {
@@ -206,9 +219,19 @@ export class CombatRig {
     if (p.throwing?.id === 'jambe' || (p.hold === 'jambe' && p.phase === 'clinch')) py -= 0.12;
     else if (p.hold === 'ceinture' && p.phase === 'clinch') py -= 0.06;
     if (p.reach && p.reach.kind !== 'nuque') py -= 0.14 * smooth(p.reach.k);
-    gs.py = py;
-    gs.px = 0.08 * p.lean.s + 0.03 * p.weight.s;
-    gs.pz = -0.01 + 0.1 * p.lean.f + 0.06 * p.weight.f;
+    // the balance hit hard (its depth jumps): the knees buckle, then spring back; a stumble step the way it went
+    const depth = Math.hypot(p.lean.f, p.lean.s), jump = depth - this.depthWas; this.depthWas = depth;
+    if (jump > 0.04 && p.dt > 0) { this.bv -= jump * 2.2; if (jump > 0.06) this.stumble(p, depth); }
+    // springs (sub-stepped: stable at any frame time): hips stiff (they lead), the buckle under-damped (it recovers with a bounce)
+    for (let t = p.dt; t > 1e-6; t -= 0.02) {
+      const h = Math.min(0.02, t);
+      { const o = spring(this.hx, this.hvx, 0.08 * p.lean.s + 0.03 * p.weight.s, 16, 0.6, h); this.hx = o.x; this.hvx = o.v; }
+      { const o = spring(this.hz, this.hvz, -0.01 + 0.1 * p.lean.f + 0.06 * p.weight.f, 16, 0.6, h); this.hz = o.x; this.hvz = o.v; }
+      { const o = spring(this.buckle, this.bv, 0, 9, 0.32, h); this.buckle = o.x; this.bv = o.v; }
+    }
+    gs.py = py + Math.max(-0.16, Math.min(0.04, this.buckle));
+    gs.px = this.hx;
+    gs.pz = this.hz;
     gs.pyaw = 0.12; gs.proll = -0.18 * p.lean.s;
     this.drop = (RIG.hipY - py) * sc;
     // the stance's spots under the hips (character space): left foot ahead, right foot back and turned out, wider when braced
@@ -264,6 +287,18 @@ export class CombatRig {
     if (!this.feet[0].swing) this.slid = Math.max(this.slid * 0.98, Math.hypot(ankle.x - this.feet[0].x, ankle.z - this.feet[0].z) - 0.12 * sc);
   }
 
+  /** A stumble: the foot on the side the balance went steps out that way at once (short and quick), to catch the body. */
+  private stumble(p: PoseIn, depth: number) {
+    if (!this.placed || this.feet[0].swing || this.feet[1].swing) return;
+    const g = this.w.group, i = p.lean.s >= 0 ? 0 : 1, f = this.feet[i];
+    const u = 0.22 + 0.25 * Math.min(1, depth), lf = p.lean.f / (depth || 1), ls = p.lean.s / (depth || 1);
+    // his own frame to the world: forward is the group's facing, his left its +x
+    const c = Math.cos(g.rotation.y), sn = Math.sin(g.rotation.y);
+    const wx = f.x + (lf * sn + ls * c) * u, wz = f.z + (lf * c - ls * sn) * u;
+    f.swing = { fx: f.x, fz: f.z, fyaw: f.yaw, tx: wx, tz: wz, tyaw: f.yaw, s: 0, dur: 0.14 };
+    this.stumbles++;
+  }
+
   /** The trunk over the weight: arched back when pushed, folded forward when pulled or diving, turned with a pivot; the move and the throw set up on top. */
   private trunkPose(p: PoseIn) {
     const lf = p.lean.f, ls = p.lean.s, c = p.crouch;
@@ -271,7 +306,14 @@ export class CombatRig {
     const holdFold = p.phase === 'clinch' ? (p.hold === 'jambe' ? 0.7 : p.hold === 'ceinture' ? 0.75 : p.hold === 'bras' ? 0.25 : 0) : 0;
     const fold = 0.28 * c + 0.9 * lf + 0.35 * p.weight.f + holdFold + (p.reach && p.reach.kind !== 'nuque' ? 0.6 * smooth(p.reach.k) : 0);
     const side = 0.9 * ls + 0.25 * p.weight.s;
-    this.aimChar({ spine: [side * 0.6, 1, fold * 0.7], chest: [side, 1, fold], head: [side * 0.3, 1, Math.min(0.4, fold * 0.3)] }, 0.85 * Math.max(this.wLegs, this.wHands));
+    // the trunk follows the hips with lag and overshoot (an under-damped spring): a push snaps the chest back past its lean, then settles
+    for (let t = p.dt; t > 1e-6; t -= 0.02) {
+      const h = Math.min(0.02, t);
+      { const o = spring(this.tf, this.tvf, fold, 10, 0.38, h); this.tf = o.x; this.tvf = o.v; }
+      { const o = spring(this.ts, this.tvs, side, 10, 0.38, h); this.ts = o.x; this.tvs = o.v; }
+    }
+    const f2 = this.tf, s2 = this.ts;
+    this.aimChar({ spine: [s2 * 0.6, 1, f2 * 0.7], chest: [s2, 1, f2], head: [s2 * 0.3, 1, Math.min(0.4, f2 * 0.3)] }, 0.85 * Math.max(this.wLegs, this.wHands));
     if (p.move) this.aimChar(AIMS[p.move.kind], 0.7 * p.move.k);
     if (p.throwing) {
       const k = p.throwing.k, id = p.throwing.id;
@@ -351,4 +393,53 @@ export class CombatRig {
   dispose() {
     if (this.sprite) { (this.sprite.material as THREE.SpriteMaterial).map?.dispose(); (this.sprite.material as THREE.SpriteMaterial).dispose(); this.sprite.removeFromParent(); this.sprite = null; }
   }
+}
+
+/**
+ * Sand thrown up at an impact (a body landing, a hard exchange): a small pool of points, one draw call while any grain is
+ * in the air, none otherwise. Its own little random stream (presentation only: never the bout's seeded `rand`).
+ */
+export class SandDust {
+  readonly points: THREE.Points;
+  private pos: Float32Array; private vel: Float32Array; private life: Float32Array;
+  private seed = 7; private alive = 0;
+  constructor(private n = 48) {
+    this.pos = new Float32Array(n * 3); this.vel = new Float32Array(n * 3); this.life = new Float32Array(n);
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    this.points = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xcaa874, size: 0.16, transparent: true, opacity: 0.8, depthWrite: false }));
+    this.points.frustumCulled = false; this.points.visible = false; this.points.renderOrder = 5;
+    for (let i = 0; i < n; i++) this.pos[i * 3 + 1] = -100;
+  }
+  private r() { this.seed = (this.seed * 16807) % 2147483647; return this.seed / 2147483647; }
+  /** A burst at (x, y, z), `force` 0…1 (how many grains, how far they fly). */
+  burst(x: number, y: number, z: number, force: number) {
+    let k = Math.round(10 + 30 * force);
+    for (let i = 0; i < this.n && k > 0; i++) {
+      if (this.life[i] > 0) continue;
+      const a = this.r() * Math.PI * 2, sp = (0.5 + 1.6 * this.r()) * (0.5 + force);
+      this.pos[i * 3] = x + Math.cos(a) * 0.25; this.pos[i * 3 + 1] = y + 0.05; this.pos[i * 3 + 2] = z + Math.sin(a) * 0.25;
+      this.vel[i * 3] = Math.cos(a) * sp; this.vel[i * 3 + 1] = 0.6 + 1.2 * this.r() * (0.5 + force); this.vel[i * 3 + 2] = Math.sin(a) * sp;
+      this.life[i] = 0.45 + 0.45 * this.r(); k--; this.alive++;
+    }
+    this.points.visible = true;
+  }
+  tick(dt: number, floor: number) {
+    if (!this.points.visible) return;
+    let alive = 0;
+    for (let i = 0; i < this.n; i++) {
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt;
+      if (this.life[i] <= 0) { this.pos[i * 3 + 1] = -100; continue; }
+      alive++;
+      this.vel[i * 3 + 1] -= 6 * dt;
+      const d = Math.exp(-2.5 * dt); this.vel[i * 3] *= d; this.vel[i * 3 + 2] *= d;
+      this.pos[i * 3] += this.vel[i * 3] * dt; this.pos[i * 3 + 1] = Math.max(floor + 0.02, this.pos[i * 3 + 1] + this.vel[i * 3 + 1] * dt); this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
+    }
+    this.alive = alive;
+    (this.points.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    if (!alive) this.points.visible = false;
+  }
+  /** Checks: grains in the air. */
+  get grains() { return this.alive; }
+  dispose() { this.points.geometry.dispose(); (this.points.material as THREE.Material).dispose(); this.points.removeFromParent(); }
 }

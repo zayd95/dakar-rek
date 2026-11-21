@@ -142,6 +142,32 @@ describe('combat · resistance and counters', () => {
   });
 });
 
+describe('combat · clinch combos', () => {
+  it('pull, pivot, then the hip: read from the two exchanges won in a row, a combo — the throw scores more (and only with its recipe)', () => {
+    const d = clinch();
+    d.debugSet('player', { hold: ['bras', 70], stamina: 100 });
+    // two exchanges won against a held man: a pull, then a pivot
+    d.debugStick(-1, 0, 0.6); run(d, 1.2, i => i.clinch?.last?.move === 'pull');
+    d.debugStick(0.2, 1, 0.6); run(d, 1.2, i => i.clinch?.last?.move === 'pivot');
+    run(d, 0.3);                                                         // (the short pause after a landed move)
+    d.debugSet('opponent', { balance: 70, lean: [1, 0] });              // set up a little short: alone, the hip would fail
+    d.pressGrab(); run(d, 0.1);
+    expect(info(d).combat.combo).toEqual({ combo: true, special: false });
+    expect(info(d).combat.banner).toMatch(/COMBO/);
+    run(d, 3, i => i.phase !== 'clinch');
+    expect(info(d).lastThrow).toMatchObject({ by: 'player', throw: 'hanche', result: 'fall' });
+  });
+  it('the same throw without its recipe is no combo, and fails short of its set-up', () => {
+    const d = clinch();
+    d.debugSet('player', { hold: ['bras', 70], stamina: 100 });
+    d.debugSet('opponent', { balance: 70, lean: [1, 0] });
+    d.pressGrab(); run(d, 0.1);
+    expect(info(d).combat.combo).toEqual({ combo: false, special: false });
+    run(d, 3, i => !!i.lastThrow);
+    expect(info(d).lastThrow.result).not.toBe('fall');
+  });
+});
+
 describe('combat · the opponent reads the player', () => {
   /**
    * The player tries the croc from the nape on a man pushed back, `n` times; the AI (défensif: its own pulls lean it back,

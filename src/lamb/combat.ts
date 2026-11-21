@@ -102,6 +102,8 @@ export const COMBAT = {
   dragLean: 7,
   /** The referee separates an empoignade that goes nowhere after this long (not while one is about to fall). */
   clinchMax: 10,
+  /** A combo (the two exchanges a throw's recipe asks for, won in a row within `comboWindow` s, then the throw): +`combo` to its score. */
+  combo: 10, comboWindow: 3,
   /**
    * The empoignade's economy in the new bout, against Làmb 2.0's (src/lamb/clinch.ts): an exchange moves the balance this
    * share of Làmb 2.0's (a bout is decided by a throw on a man set up, not by attrition), a move costs this share of its
@@ -187,6 +189,17 @@ export function commitTick(c: Pick<Combatant, 'balance' | 'dir' | 'weight'>, dt:
   const u = { f: c.weight.f / w, s: c.weight.s / w }, along = dot(lean(c), u);
   if (along < COMBAT.commit * w) shove(c, u, Math.min(COMBAT.commitRate * dt, 100 * (COMBAT.commit * w - along)));
 }
+
+/**
+ * Clinch combos: the two exchanges won in a row that set a throw up best, then the throw — for both wrestlers alike
+ * (pull, pivot, then the hip: he comes forward and turns onto it; push, push, then the croc; pivot, pivot, the sweep…).
+ */
+export const COMBOS: Record<ThrowId, [ClinchMove, ClinchMove]> = {
+  hanche: ['pull', 'pivot'], croc: ['push', 'push'], balayage: ['pivot', 'pivot'], ramene: ['pull', 'pull'], souleve: ['push', 'pull'], jambe: ['push', 'push'],
+};
+/** Do the last two exchanges won (`a` then `b`, at `ta` and `tb`, now `t`) make the combo of throw `id`? */
+export const isCombo = (id: ThrowId, a: ClinchMove | null, b: ClinchMove | null, ta: number, tb: number, t: number) =>
+  !!a && !!b && a === COMBOS[id][0] && b === COMBOS[id][1] && t - ta <= COMBAT.comboWindow && tb >= ta;
 
 /** The direction (own frame of the one it hurts) a move sends him: a push back, a pull forward, a pivot to a side. */
 export function moveDir(kind: ClinchMove, side = 1): Vec {

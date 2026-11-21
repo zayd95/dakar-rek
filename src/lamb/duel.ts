@@ -24,12 +24,12 @@ import {
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 import {
   COMBAT, GRIPS, PASSIVE, THROWS, aimLoss, bestThrow, braceAgainst, braceCost, braceFactor, combatDecision, combatPoints, commitTick, control, emptyTally, entryHolds, exposure,
-  gripAdvantage, gripTick, lean, legOpen, moveDir, reachFor, reverseFall, shove, slipFall, stickMove, throwFails, throwScore, wear,
+  gripAdvantage, gripTick, isCombo, lean, legOpen, moveDir, reachFor, reverseFall, shove, slipFall, stickMove, throwFails, throwScore, wear,
   type CombatTally, type FallKind, type GripKind, type Hold, type ThrowId, type Vec,
 } from './combat';
 import { CombatAi, SIGNATURE, idle as idleIntent, recall, remember, type AiView, type Intent } from './combatAi';
 import { COMBAT_LESSON, combatAdvance, combatCoachLine, combatFeedback, combatHear, combatStepNumber, startCombatLesson, type CombatLesson, type CombatLessonEvent } from './combatLesson';
-import { CombatRig } from './combatRig';
+import { CombatRig, SandDust } from './combatRig';
 import { STYLE6_IDS, k, type Style6 } from './stand';
 import {
   RULES, RULES_STATUS, OUTCOME_TEXT, boutRewards, breakWindowOpen, clinchStrength, emptyScore, levelFactor, points, refereeDecision,
@@ -67,6 +67,8 @@ interface Fighter extends StandState {
   deeper: number; guardFor: number; side: number; sec: string; secT: number;
   tally: CombatTally; idle: number;
   look: CombatRig | null;
+  /** The last two exchanges he won in the empoignade (the move, when): a combo's recipe is read from them. */
+  c1: ClinchMove | null; c2: ClinchMove | null; t1: number; t2: number;
 }
 /**
  * Avec frappe, the moments of a bout as they happen (onMoment; not in the écurie's lesson or drills): a clean strike, a
@@ -130,6 +132,7 @@ export interface DuelResult {
 }
 
 const R = RULES.sans_frappe;
+const UP = new THREE.Vector3(0, 1, 0), V_DUST = new THREE.Vector3();
 /** The new bout: Saisir held this long is a reach for the belt; Frappe held this long arms the big strike (s, real time: the thumb's). */
 const COMBAT_HOLD = { grab: 0.28, strike: 0.22 } as const;
 /** The écurie drills with the new controls: their keys and the controls highlighted (the drills themselves: src/lamb/drills.ts). */
@@ -273,7 +276,7 @@ export class LambDuel {
   /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
   identity: string | null = null;
   /** A throw being attempted in the empoignade (step 5): who, since when, and the other's counter (when it comes). */
-  private attempt: { by: Fighter; t: number; counter: boolean; counterAt: number; id?: ThrowId; braceSum?: number; braceT?: number; moving?: boolean } | null = null;
+  private attempt: { by: Fighter; t: number; counter: boolean; counterAt: number; id?: ThrowId; braceSum?: number; braceT?: number; moving?: boolean; combo?: boolean; special?: boolean } | null = null;
   /** Last throw attempt and how it ended (for the checks); the new bout says which throw. */
   lastThrow: { by: Side; result: string; throw?: ThrowId } | null = null;
   /** Last exchange in the empoignade (for the checks and the HUD). */
@@ -283,6 +286,11 @@ export class LambDuel {
   lastStrike: { by: Side; kind: StrikeKind; result: string } | null = null;
   /** The new bout (src/lamb/combat.ts): on in the player's own bout when asked (DuelOptions.combat), never when watched. */
   readonly combat: boolean;
+  /** The new bout's impacts: sand thrown up, and a shake of the camera scaled to the force (on top of « Le choc »'s push). */
+  private dust: SandDust | null = null;
+  private shakeAmp = 0; private shakeT = 9;
+  /** Checks: combos thrown, banners shown (the last one). */
+  combos = 0; bannerSaid: string | null = null;
   /** The new bout's opponent (src/lamb/combatAi.ts): the same intents as the player's stick and buttons. */
   private brain: CombatAi | null = null;
   /** The new bout at the écurie: Coach Ablaye's lesson (src/lamb/combatLesson.ts). */
@@ -365,7 +373,7 @@ export class LambDuel {
       return {
         ...standState(attrs, max), w, pos: new THREE.Vector3(origin.x + x, 0.1, origin.z), facing: 0, regen, busy: 0, clip: 'Prep', windup: 0, effort: 0, score: emptyScore(), rig: w && (this.frappe || this.fx) ? new StrikeRig(w) : null, move: null,
         dir: { f: 0, s: 0 }, weight: { f: 0, s: 0 }, hold: { kind: null, str: 0 }, reach: null, deeper: 0, guardFor: 0, side: 1, sec: '', secT: 0, tally: emptyTally(), idle: 0,
-        look: w && this.combat ? new CombatRig(w) : null,
+        look: w && this.combat ? new CombatRig(w) : null, c1: null, c2: null, t1: -9, t2: -9,
       };
     };
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
@@ -402,6 +410,7 @@ export class LambDuel {
     }
     if (this.mode !== 'entrainement') this.drums.start(122);
     this.ui = this.headless ? (null as unknown as HTMLDivElement) : this.buildUi();
+    if (this.combat && !this.headless && wrestlerReady()) { this.dust = new SandDust(); this.group.add(this.dust.points); }
     if (this.spectate || this.headless) return;               // watched from the stands: no keys, no controls
     addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
     addEventListener('blur', this.releaseControls); document.addEventListener('visibilitychange', this.onHidden);
@@ -437,7 +446,7 @@ export class LambDuel {
       ${this.combat ? `<div class="duel-btns combat${this.frappe ? ' strikes' : ''}"><button data-k="break">Reculer</button><button data-k="guard">Garde</button><button data-k="grab">Saisir</button>${this.frappe ? '<button data-k="quick">Frappe</button>' : ''}</div>`
         : `<div class="duel-btns${this.frappe ? ' frappe' : ''}"><button data-k="break">${this.frappe ? 'Reculer' : 'Dégager'}</button><button data-k="guard">Garde</button><button data-k="grab">Saisir</button>${this.frappe ? '<button data-k="quick">Frappe</button><button data-k="big">Grosse<br>frappe</button>' : ''}</div>`}
       <div class="duel-confirm" data-k="confirm" hidden><div><b>Abandonner le combat ?</b><p>Compté comme un abandon, à part des défaites : ce n’est pas une chute, et il n’y a aucune récompense.</p><button data-k="yes">Abandonner</button><button data-k="no">Continuer le combat</button></div></div>
-      <div class="duel-recap" data-k="recap" hidden></div>`;
+      <div class="duel-recap" data-k="recap" hidden></div>${this.combat ? '<div class="duel-banner" data-k="banner"></div>' : ''}`;
     (d.querySelector('.duel-head b') as HTMLElement).textContent = title;
     (d.querySelector('.duel-head small') as HTMLElement).textContent = sub;
     const st = document.createElement('style');
@@ -505,6 +514,12 @@ export class LambDuel {
       body.induel .duel-ui.combat .duel-btns.combat button.dim{filter:saturate(.55) brightness(.92)}
       body.induel .duel-ui.combat .duel-btns.combat button[hidden]{display:none}
       .duel-recap button[data-k=again]{background:#4ade80}
+      .duel-banner{position:absolute;left:0;right:0;top:38%;text-align:center;font:italic 900 clamp(44px,15vw,96px)/1 system-ui,sans-serif;color:#fde047;letter-spacing:.02em;
+        -webkit-text-stroke:3px #1c1917;text-shadow:0 6px 0 #7c2d12,0 10px 24px rgba(0,0,0,.6);opacity:0;pointer-events:none;transform:scale(.6)}
+      .duel-banner.combo,.duel-banner.special{font-size:clamp(30px,9vw,60px);color:#fb923c}
+      .duel-banner.go{animation:duelbanner 1.15s cubic-bezier(.2,1.6,.4,1) forwards}
+      .duel-banner.end.go{animation-duration:1.9s}
+      @keyframes duelbanner{0%{opacity:0;transform:scale(1.9) skewX(-8deg)}14%{opacity:1;transform:scale(.94) skewX(-8deg)}24%{transform:scale(1.04) skewX(-8deg)}72%{opacity:1;transform:scale(1) skewX(-8deg)}100%{opacity:0;transform:scale(1.08) skewX(-8deg)}}
       .duel-confirm,.duel-recap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.55);pointer-events:auto}
       .duel-confirm[hidden],.duel-recap[hidden],.duel-step[hidden],.duel-clinch[hidden]{display:none}
       .duel-confirm>div,.duel-recap>div{background:#0f172a;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px;width:min(88vw,380px);max-height:86vh;overflow:auto}
@@ -739,6 +754,7 @@ export class LambDuel {
       stamina: { player: Math.round(this.me.stamina), opponent: Math.round(this.ai.stamina) },
       rewards: this.drill ? this.drillRewards(outcome) : boutRewards({ mode: this.mode, outcome, winner }),
     };
+    if (this.combat && !this.cl && !this.drill) this.banner(outcome === 'projection' ? 'TERRE !' : outcome === 'abandon' ? 'ABANDON' : 'TEMPS !', 'end');
     if (outcome === 'projection' || outcome === 'decision' || outcome === 'egalite') {
       this.phase = 'fall'; this.phaseT = 0;
       if (this.fx && outcome === 'projection' && winner) this.feelFall = winner === 'player' ? { loser: this.ai, winner: this.me, landed: false } : { loser: this.me, winner: this.ai, landed: false };
@@ -768,6 +784,10 @@ export class LambDuel {
    */
   private feel(e: FxEvent, mine = false, taken = false) {
     const fx = this.fx; if (!fx) return;
+    if (this.combat) {                                                     // the shake, by force
+      const a = ({ quick: 0.02, big: 0.05, stagger: 0.07, guarded: 0.02, throw: 0.06, counter: 0.06, read: 0.03, grip: 0.015, fall: 0.13 } as Record<string, number>)[e] ?? 0;
+      if (a >= this.shakeAmp * Math.exp(-9 * this.shakeT)) { this.shakeAmp = a; this.shakeT = 0; }
+    }
     const p = fx.hit(e, { mine, taken });
     if (p.sound === 'thud') fallThud(); else if (p.sound === 'slap') gripSlap();
     if (p.buzz !== null) buzz(p.buzz);
@@ -986,6 +1006,8 @@ export class LambDuel {
       pair: { v: r2(Math.hypot(this.pairVel.x, this.pairVel.z)), spin: r2(this.pairSpin) },
       body: { player: this.me.look?.info() ?? null, opponent: this.ai.look?.info() ?? null },
       rematchable: this.rematchable,
+      combos: this.combos, banner: this.bannerSaid, dust: this.dust?.grains ?? 0, shake: Math.round(1000 * this.shakeAmp * Math.exp(-9 * this.shakeT)) / 1000,
+      combo: at && at.id ? { combo: !!at.combo, special: !!at.special } : null,
     };
   }
 
@@ -1072,6 +1094,7 @@ export class LambDuel {
     const fx = this.fx;
     if (fx) {
       fx.tick(dt, this.phase === 'clinch', this.phase === 'clinch' || (this.phase === 'fall' && !!this.feelFall));
+      this.shakeT += dt;
       if (!this.paused && fx.holds(dt)) return this.aim(this.gap);
     }
     if (this.paused) { this.grabTaps = 0; this.breakPresses = 0; this.guardTapped = false; this.reachTap = 0; this.reachHold = 0; this.throwPresses = 0; this.deeperPresses = 0; return this.frame(0); }
@@ -1094,6 +1117,7 @@ export class LambDuel {
     if (this.phase === 'fall' && down && !down.landed && this.phaseT >= FX.fall.land) {
       down.landed = true;
       this.feel('fall', down.winner === me, down.loser === me);
+      this.dustAt(down.loser, 1);
     }
 
     if (this.phase === 'intro') {
@@ -1102,7 +1126,7 @@ export class LambDuel {
       const lead = this.identity ? 1.3 : 0;
       this.msg(this.phaseT < lead ? `Face à toi : ${this.identity}` : this.phaseT < lead + 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
       me.clip = ai.clip = 'Prep';
-      if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
+      if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); if (this.combat) this.banner('LÀMB !', 'start'); }
     } else if ((this.lesson || this.cl) && this.lessonEnd > 0 && (this.lessonEnd -= dt) <= 0) {
       this.end('entrainement', null);                                       // the lesson is over: the training's recap
     } else if (this.drill && this.drillEnd > 0 && (this.drillEnd -= dt) <= 0) {
@@ -1392,6 +1416,16 @@ export class LambDuel {
     if (this.cl) this.combatLessonHear({ k: 'clinch', by: by === me ? 'player' : 'opponent' });
   }
 
+  /** A burst of sand at a wrestler's feet (`force` 0…1). */
+  private dustAt(f: Fighter, force: number) { if (this.dust) { const p = this.placeOf(f, V_DUST); this.dust.burst(p.x, this.o.y, p.z, force); } }
+  /** A fighting-game banner over the bout (« LÀMB ! », « COMBO ! », « TERRE ! »), restarted each time. */
+  private banner(text: string, kind: 'start' | 'combo' | 'special' | 'end') {
+    this.bannerSaid = text;
+    if (this.headless || this.spectate) return;
+    const el = this.ui.querySelector<HTMLElement>('[data-k=banner]'); if (!el) return;
+    el.textContent = text; el.className = `duel-banner ${kind}`; void el.offsetWidth; el.classList.add('go');
+  }
+
   /** A strike (avec frappe) in the new bout: the AI answers it by what it sees, not by the old reaction draw. */
   private combatStrike(f: Fighter, kind: StrikeKind) {
     if (f.open > 0 || !free(f) || f.busy > 0 || f.reach) return;
@@ -1575,6 +1609,9 @@ export class LambDuel {
       const amount = e.balance * COMBAT.exchange * control(winner.hold) * exposure(victim.hold) * (victim.deeper > 0 ? 1.3 : 1) * braceFactor(victim, d);
       shove(victim, d, amount);
       winner.hold.str = Math.min(100, winner.hold.str + COMBAT.winStr);
+      winner.c1 = winner.c2; winner.t1 = winner.t2; winner.c2 = kind; winner.t2 = this.t;   // (for a combo)
+      victim.c1 = victim.c2 = null;
+      if (e.result === 'counter') this.dustAt(victim, 0.3);
       if (wear(victim.hold, COMBAT.loseStr * exposure(victim.hold)) && victim === this.me) this.msg(victim.hold.kind ? `Ta prise glisse : ${GRIPS[victim.hold.kind].label}` : 'Tu as perdu ta prise', 0.8);
     } else if (e.result === 'clash' && e.balance) { shove(a, moveDir(e.move), 3); shove(b, moveDir(e.move), 3); }
     // the pair moves together: the push drives, the pull draws, the pivot turns
@@ -1654,8 +1691,14 @@ export class LambDuel {
     by.stamina -= t.cost; by.idle = 0; by.tally.throws++;                  // the throw takes over his own move being set up (a thumb on the stick can throw)
     const moving = !!def.move;
     this.me.move = this.ai.move = null;
-    this.attempt = { by, t: 0, counter: false, counterAt: Infinity, id, braceSum: 0, braceT: 0, moving };
+    // a combo: the two exchanges its recipe asks for, won in a row just before (the same for both wrestlers)
+    const combo = isCombo(id, by.c1, by.c2, by.t1, by.t2, this.t);
+    const special = !mine && !!this.brain && id === SIGNATURE[this.brain.style].throw;
+    by.c1 = by.c2 = null;
+    this.attempt = { by, t: 0, counter: false, counterAt: Infinity, id, braceSum: 0, braceT: 0, moving, combo, special };
     if (mine) this.brain?.saw('throw', id);
+    if (combo) { this.combos++; this.banner(mine ? `COMBO ! ${t.label}` : `Combo : ${t.label} !`, 'combo'); }
+    else if (special) this.banner(`${this.style.name} : ${t.label} !`, 'special');
     this.msg(mine ? `Tu tentes ${t.name}…` : `Il tente ${t.name} ! Résiste ou contre !`, t.windup);
     return true;
   }
@@ -1694,7 +1737,7 @@ export class LambDuel {
       this.msg(def === me ? 'Projection bloquée' : 'Il bloque ta projection', 0.9);
       return;
     }
-    const score = throwScore(id, att, def, { brace, moving: at.moving });
+    const score = throwScore(id, att, def, { brace, moving: at.moving }) + (at.combo ? COMBAT.combo : 0);
     if (brace > 0.05) def.stamina = Math.max(0, def.stamina - braceCost(brace));
     if (score >= COMBAT.throwAt) {
       this.lastThrow = { by, result: 'fall', throw: id };
@@ -2334,6 +2377,7 @@ export class LambDuel {
         else f.rig.hold(f.move?.kind ?? null, f.move ? Math.min(1, f.move.t / 0.3) : 0, f.balance);
       }
     }
+    this.dust?.tick(dt, this.o.y);
     if (this.official) {
       const mid0 = me.pos.clone().add(ai.pos).multiplyScalar(0.5), fx = this.phase === 'fall' ? this.fallFx : null;
       if (fx) {
@@ -2400,7 +2444,15 @@ export class LambDuel {
     const portrait = typeof innerWidth !== 'undefined' && innerWidth < innerHeight;
     let fr: Framing = { dist: (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6), height: portrait ? 3.4 : 3.0, look: portrait ? 0.9 : 1.1 };
     if (fx && fx.close > 0) fr = mixFraming(fr, this.closeUp(fr), fx.close);   // « Le choc »: the empoignade's close-up
-    const cam = mid.clone().addScaledVector(side, fr.dist).setY(fr.height);
+    // the new bout: a throw set up punches the camera in; a combo or a style's signature throw swings it round (a « super »)
+    const at = this.combat && fx ? this.attempt : null;
+    let orbit = 0;
+    if (at && at.id) {
+      const k = Math.min(1, at.t / (THROWS[at.id].windup * (at.by.slow ?? 1))), big = !!(at.combo || at.special);
+      fr = { dist: fr.dist * (1 - (big ? 0.3 : 0.16) * k), height: fr.height - (big ? 0.6 : 0.25) * k, look: fr.look - (big ? 0.15 : 0) * k };
+      if (big) orbit = 0.5 * k * (at.by === me ? 1 : -1);
+    }
+    const cam = orbit ? mid.clone().addScaledVector(side.clone().applyAxisAngle(UP, orbit), fr.dist).setY(fr.height) : mid.clone().addScaledVector(side, fr.dist).setY(fr.height);
     let view: { cam: THREE.Vector3; look: THREE.Vector3 };
     const down = this.fallFx?.loser ?? this.feelFall?.loser;
     if (!this.spectate && this.phase === 'fall' && down && this.outcome === 'projection' && this.phaseT < (this.fallFx ? 1.2 : FX.fall.close)) {
@@ -2417,7 +2469,10 @@ export class LambDuel {
     this.view = view;
     // the push towards the pair along the camera's own axis: given apart, so the caller adds it after its own smoothing
     if (!fx) return view;
-    return { ...view, kick: view.look.clone().sub(view.cam).multiplyScalar(fx.kick) };
+    const kick = view.look.clone().sub(view.cam).multiplyScalar(fx.kick);
+    const sh = this.shakeAmp * Math.exp(-9 * this.shakeT);
+    if (sh > 0.002) { kick.addScaledVector(this.camRight, sh * Math.sin(this.shakeT * 55)); kick.y += 0.6 * sh * Math.sin(this.shakeT * 43); }
+    return { ...view, kick };
   }
 
   /**
@@ -2468,6 +2523,7 @@ export class LambDuel {
       this.ui.remove(); document.body.classList.remove('induel');
     }
     for (const f of [this.me, this.ai]) { f.look?.dispose(); f.w?.dispose(); }
+    this.dust?.dispose();
     this.official?.dispose();
     for (const h of this.crowd) h.dispose();
     this.group.removeFromParent();
