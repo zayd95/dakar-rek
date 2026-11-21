@@ -577,6 +577,20 @@ body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(e
   body.induel .duel-ui.frappe .duel-note { top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 6px); }
 }
 
+/* the new bout (fighting-game HUD): everything at the top, the middle of the screen left to the bodies — the message on one
+   line under the gauges, the Prise a thin bar under it without its words, the rules' line gone */
+body.induel .duel-ui.frappe.combat .duel-note { display:none; }
+body.induel .duel-ui.frappe.combat .duel-msg, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-msg {
+  top:calc(env(safe-area-inset-top,0px) + 126px); font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92vw; }
+body.induel .duel-ui.frappe.combat .duel-clinch, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-clinch {
+  top:calc(env(safe-area-inset-top,0px) + 154px); padding:4px 10px 6px; width:min(70vw, 300px); }
+body.induel .duel-ui.frappe.combat .duel-clinch > em { display:none; }
+body.induel .duel-ui.frappe.combat .duel-clinch > i { margin-top:13px; height:9px; }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui.frappe.combat .duel-msg, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 58px); font-size:16px; }
+  body.induel .duel-ui.frappe.combat .duel-clinch, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 84px); }
+}
+
 /* ============================================================= HUD: only what matters now (UX lane)
    Always: the wallet and the needs, the place and the time, the phone button, the streak chip, the controls of the mode. Contextual: the job's guidance,
    ONE primary nearby action, the speed and condition at the wheel, a short completion card, an activity's own controls. */

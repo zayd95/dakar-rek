@@ -29,6 +29,7 @@ import {
 } from './combat';
 import { CombatAi, SIGNATURE, idle as idleIntent, recall, remember, type AiView, type Intent } from './combatAi';
 import { COMBAT_LESSON, combatAdvance, combatCoachLine, combatFeedback, combatHear, combatStepNumber, startCombatLesson, type CombatLesson, type CombatLessonEvent } from './combatLesson';
+import { loadCombatClips, combatClips } from './combatClips';
 import { CombatRig, SandDust } from './combatRig';
 import { STYLE6_IDS, k, type Style6 } from './stand';
 import {
@@ -348,6 +349,7 @@ export class LambDuel {
     if (!this.spectate && !this.headless) this.fx = new DuelFx();
     this.discipline = opts.discipline ?? 'sans_frappe'; this.frappe = this.discipline === 'avec_frappe';
     this.combat = !!opts.combat && !this.spectate && !opts.autopilot;
+    if (this.combat && opts.look) void loadCombatClips();                // the bodies' clips (procedural until they are in)
     this.rematchable = !!opts.rematchable && this.combat;
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
@@ -1004,7 +1006,7 @@ export class LambDuel {
       tell: this.tellText, fall: this.fallKind, throwName: this.throwName, referee: this.refereeSaid,
       points: { player: combatPoints(this.me.score, this.me.tally, this.ai.tally), opponent: combatPoints(this.ai.score, this.ai.tally, this.me.tally) },
       pair: { v: r2(Math.hypot(this.pairVel.x, this.pairVel.z)), spin: r2(this.pairSpin) },
-      body: { player: this.me.look?.info() ?? null, opponent: this.ai.look?.info() ?? null },
+      body: { player: this.me.look?.info() ?? null, opponent: this.ai.look?.info() ?? null }, clips: !!combatClips(),
       rematchable: this.rematchable,
       combos: this.combos, banner: this.bannerSaid, dust: this.dust?.grains ?? 0, shake: Math.round(1000 * this.shakeAmp * Math.exp(-9 * this.shakeT)) / 1000,
       combo: at && at.id ? { combo: !!at.combo, special: !!at.special } : null,
@@ -1242,7 +1244,7 @@ export class LambDuel {
       }
       if (t > 1.3 && this.outcome === 'projection') fx.winner.clip = 'Celebrate';
       // the new bout: « le dos au sol » is drawn as such — Fall_Back ends sitting on the sand; once there, he goes flat on his back
-      if (this.combat && this.outcome === 'projection' && this.fallKind === 'dos' && t > 1.25) fx.loser.clip = 'Lie';
+      if (this.combat && this.outcome === 'projection' && this.fallKind === 'dos' && t > 1.25 && !combatClips()) fx.loser.clip = 'Lie';   // (the Meshy clips lie him down themselves)
       if (this.frappe) this.armMoment();
       const name = this.style.name;
       // the new bout: the referee calls the fall by the rule (the back, or the four supports)
@@ -2442,7 +2444,11 @@ export class LambDuel {
     if (!Number.isFinite(side.x) || side.lengthSq() < 0.5) side.set(0, 0, -1);
     if (side.z > 0) side.multiplyScalar(-1);
     const portrait = typeof innerWidth !== 'undefined' && innerWidth < innerHeight;
-    let fr: Framing = { dist: (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6), height: portrait ? 3.4 : 3.0, look: portrait ? 0.9 : 1.1 };
+    // the new bout is framed as a fighting game: side-on at chest height and close, the pair filling the screen (the gap
+    // widens the shot as they part); the old bout keeps its high, far side camera
+    let fr: Framing = this.combat
+      ? { dist: (portrait ? 3.3 : 2.7) + dist * (portrait ? 1.5 : 0.6), height: portrait ? 1.35 : 1.25, look: portrait ? 0.92 : 1.0 }
+      : { dist: (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6), height: portrait ? 3.4 : 3.0, look: portrait ? 0.9 : 1.1 };
     if (fx && fx.close > 0) fr = mixFraming(fr, this.closeUp(fr), fx.close);   // « Le choc »: the empoignade's close-up
     // the new bout: a throw set up punches the camera in; a combo or a style's signature throw swings it round (a « super »)
     const at = this.combat && fx ? this.attempt : null;
@@ -2457,9 +2463,9 @@ export class LambDuel {
     const down = this.fallFx?.loser ?? this.feelFall?.loser;
     if (!this.spectate && this.phase === 'fall' && down && this.outcome === 'projection' && this.phaseT < (this.fallFx ? 1.2 : FX.fall.close)) {
       // close and low on the wrestler going down, then back out (avec frappe: for the referee)
-      const at = this.placeOf(down, new THREE.Vector3()), c = at.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
+      const at = this.placeOf(down, new THREE.Vector3()), c = at.clone().addScaledVector(side, this.combat ? (portrait ? 4.4 : 3.2) : portrait ? 5 : 3.6).setY(this.combat ? 1.2 : 1.5);
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
-      view = { cam: c, look: at.setY(0.6) };
+      view = { cam: c, look: at.setY(this.combat ? 0.75 : 0.6) };
     } else {
       // camera-relative movement axes
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();

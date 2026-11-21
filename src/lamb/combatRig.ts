@@ -5,6 +5,7 @@ import type { Wrestler } from '../actors/humanoid';
 import { AIMS } from './strikeRig';
 import type { FallKind, GripKind, ThrowId, Vec } from './combat';
 import type { ClinchMove } from './clinch';
+import { ClipPlayer, combatClips, CLIP_REST_HIPS, type ClipId } from './combatClips';
 
 /**
  * The new bout's bodies (docs/wrestling/COMBAT.md « Les corps »): what the rules do, seen on the 20-bone rig — v4's body or
@@ -23,14 +24,30 @@ import type { ClinchMove } from './clinch';
  *   them (over the hip, backwards, swept to a side, lifted and dropped, onto the four supports).
  * - **The sign over his head** (levels 1–2 and the lesson): what he sets up, in a few words.
  *
+ * **The clips underneath** (src/lamb/combatClips.ts, once loaded): the retargeted Meshy wrestling clips are the base pose
+ * — the stance, the fight walks matched to his speed, the drive and the sprawl in the clinch, the throw's own clip
+ * time-warped onto its wind-up, the man thrown on his back, the falls, the stagger, the get-up, the victory — and all of
+ * the above goes on top: the feet planted by IK (the clip's hips height kept), the trunk turned by the springs and the
+ * weight, the hands on the hold (the pair stays bound), the sign. Without them the body is the procedural one alone.
+ *
  * Bones are only turned; a bone the clip did not write again since the last frame is first put back to the clip's value
  * (three's mixer writes a bone only when its value changes), so nothing adds up frame after frame.
  */
 const ARM: readonly ['upper_armL' | 'upper_armR', 'forearmL' | 'forearmR', 'handL' | 'handR'][] = [['upper_armL', 'forearmL', 'handL'], ['upper_armR', 'forearmR', 'handR']];
-const TOUCHED = ['root', 'hips', 'spine', 'chest', 'neck', 'head', 'upper_armL', 'forearmL', 'handL', 'upper_armR', 'forearmR', 'handR', 'thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR'] as const;
+const TOUCHED = ['root', 'hips', 'spine', 'chest', 'neck', 'head', 'shoulderL', 'shoulderR', 'upper_armL', 'forearmL', 'handL', 'upper_armR', 'forearmR', 'handR', 'thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR'] as const;
 type Bone = (typeof TOUCHED)[number];
 
 const Y = new THREE.Vector3(0, 1, 0);
+const ARMS: ReadonlySet<string> = new Set(['shoulderL', 'upper_armL', 'forearmL', 'handL', 'shoulderR', 'upper_armR', 'forearmR', 'handR']);
+/** Each throw's clip: the wind-up's span (driven by its progress), then the follow-through's end (s, clip time). */
+const THROW_CLIP: Record<ThrowId, { clip: ClipId; from: number; to: number; end: number }> = {
+  hanche: { clip: 'hip_throw', from: 0.25, to: 1.35, end: 2.6 },
+  souleve: { clip: 'lift_drop', from: 0.2, to: 1.05, end: 1.5 },
+  balayage: { clip: 'shoulder_throw', from: 0.6, to: 2.9, end: 4.2 },
+  ramene: { clip: 'grip_throw', from: 0.4, to: 2.6, end: 3.6 },
+  croc: { clip: 'push_drive', from: 0.3, to: 1.6, end: 2.6 },
+  jambe: { clip: 'push_drive', from: 0.5, to: 1.7, end: 2.7 },
+};
 const V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3(), V4 = new THREE.Vector3(), V5 = new THREE.Vector3();
 const S = new THREE.Vector3(), T = new THREE.Vector3(), E = new THREE.Vector3(), P = new THREE.Vector3();
 const Q1 = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), Q3 = new THREE.Quaternion(), QC = new THREE.Quaternion();
@@ -95,6 +112,15 @@ export class CombatRig {
   private buckle = 0; private bv = 0; private depthWas = 0;
   /** Checks: stumble steps taken (a step the way the balance went when it was hit). */
   stumbles = 0;
+  /** The clips' layer, its weight (eased in once they are loaded), the clip's own drop of the hips (m, own frame). */
+  private player = new ClipPlayer();
+  private wClip = 0; private clipDrop = 0; private clipLegs = 0;
+  private restHips = new THREE.Vector3();
+  /** The root bone at rest: with the clips on, it stays there (the clips move the hips; the body's own clip — Fall_Back — must not lower the root under them). */
+  private restRoot: { p: THREE.Vector3; q: THREE.Quaternion } | null = null;
+  private downWas = false; private resT = 0; private wonT = 0; private lastThrow: ThrowId | null = null;
+  /** Checks: the clip under the body now, and its time. */
+  clip: ClipId | null = null; clipT = 0;
 
   constructor(readonly w: Wrestler) {
     const root = w.group.children.find(c => c.name === 'Scene') ?? w.group.children[0] ?? w.group;
@@ -103,6 +129,8 @@ export class CombatRig {
     this.ok = ok;
     this.space = this.b.root?.parent ?? root;                              // the gait's character space: the root bone's parent
     this.gaitRig = ok ? GaitRig.from(root) : null;                       // its rest: the bind pose, as made
+    if (ok) this.restHips.copy(this.b.hips.position);
+    if (ok && this.b.root) this.restRoot = { p: this.b.root.position.clone(), q: this.b.root.quaternion.clone() };
     this.g.m = 0;
     w.fullRate = true;
   }
@@ -147,6 +175,17 @@ export class CombatRig {
     }
   }
 
+  /** Turns `bone` in the world about his own side axis (`pitch`: forward) and forward axis (`roll`: to his left). */
+  private tilt(bone: THREE.Object3D, pitch: number, roll: number) {
+    if (!bone.parent || (Math.abs(pitch) < 1e-4 && Math.abs(roll) < 1e-4)) return;
+    this.space.getWorldQuaternion(QC);
+    V1.set(1, 0, 0).applyQuaternion(QC); V2.set(0, 0, 1).applyQuaternion(QC);
+    Q1.setFromAxisAngle(V1, pitch); Q2.setFromAxisAngle(V2, -roll); Q1.multiply(Q2);
+    bone.getWorldQuaternion(Q3); Q3.premultiply(Q1);
+    bone.parent.getWorldQuaternion(Q2); bone.quaternion.copy(Q2.invert().multiply(Q3));
+    bone.updateMatrixWorld(true);
+  }
+
   /** The world point of a bone of this body (for the other's hands). */
   point(name: Bone, out: THREE.Vector3): THREE.Vector3 { return this.b[name] ? this.b[name].getWorldPosition(out) : out.copy(this.w.group.position); }
 
@@ -177,7 +216,7 @@ export class CombatRig {
   /** Checks (`duelInfo().combat.body`): what the body shows now. */
   info() {
     const r = (x: number) => Math.round(x * 100) / 100;
-    return { head: r(this.headY), stumbles: this.stumbles, buckle: r(this.buckle), steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText };
+    return { head: r(this.headY), stumbles: this.stumbles, buckle: r(this.buckle), steps: this.steps, slid: r(this.slid), handGap: r(this.handGap), trunk: { f: r(this.trunk.f), s: r(this.trunk.s) }, drop: r(this.drop), kneeBend: r(this.kneeBend), legs: r(this.wLegs), hands: r(this.wHands), planted: this.feet.map(f => !f.swing), sign: this.signText, clip: this.clip, clipT: r(this.clipT), clipW: r(this.wClip) };
   }
 
   pose(p: PoseIn) {
@@ -189,15 +228,22 @@ export class CombatRig {
     this.lastX = g.position.x; this.lastZ = g.position.z;
     const fighting = p.phase === 'fight' || p.phase === 'clinch';
     g.rotation.order = 'YXZ'; g.rotation.x = 0;
+    // the clips underneath (once loaded): the base pose, everything below on top
+    const lib = combatClips();
+    this.wClip += clamp((lib ? 1 : 0) - this.wClip, -dt / 0.3, dt / 0.3);
+    this.clipLegs = 0;
+    if (lib && this.restRoot && this.b.root) { this.b.root.position.copy(this.restRoot.p); this.b.root.quaternion.copy(this.restRoot.q); }
+    if (lib) this.baseClip(p);
     if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     this.fallYaw = 0;
-    const legsOn = fighting || (p.phase === 'fall' && !p.won);
+    const legsOn = (fighting || (p.phase === 'fall' && !p.won)) && this.clipLegs < 0.5;
     this.wLegs += clamp((legsOn ? 1 : 0) - this.wLegs, -dt / 0.25, dt / 0.25);
+    if (!legsOn && this.wLegs < 0.05) this.placed = false;               // the clip walks: the feet are put down afresh when it stops
     const holdOn = p.phase === 'clinch' && !!p.hold || !!p.reach;
     this.wHands += clamp((holdOn ? 1 : 0) - this.wHands, -dt / 0.2, dt / 0.15);
     const throwK = p.throwing?.k ?? 0;
     // the throw's own turn of the body (the hip turned in: his back comes against the other's chest)
-    if (p.throwing && (p.throwing.id === 'hanche' || p.throwing.id === 'balayage')) g.rotation.y += (p.throwing.id === 'hanche' ? 1.25 : 0.55) * smooth(throwK / 0.8);
+    if (p.throwing && (p.throwing.id === 'hanche' || p.throwing.id === 'balayage')) g.rotation.y += (p.throwing.id === 'hanche' ? 1.25 : 0.55) * smooth(throwK / 0.8) * (1 - 0.5 * this.wClip);
     g.updateMatrixWorld(true);
     if (this.wLegs > 0.01) this.legs(p, throwK);
     this.trunkPose(p);
@@ -208,13 +254,76 @@ export class CombatRig {
     this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y;
   }
 
+  /**
+   * The clip under the body for what the rules do now, written onto the bones (cross-faded): the stance (back and forth
+   * over its crouch), the fight walks at his own speed, the drive and the sprawl in the clinch, the throw's clip on its
+   * wind-up's clock then its follow-through, the man thrown, the falls by the throw, the stagger (arms kept), the get-up
+   * after the fall, the victory.
+   */
+  private baseClip(p: PoseIn) {
+    const pl = this.player, g = this.w.group, dt = p.dt;
+    let skip: ReadonlySet<string> | undefined;
+    const down = !!p.fall, wasDown = this.downWas;
+    if (down) this.downWas = true;
+    if (p.phase !== 'fall' && p.phase !== 'result') { this.downWas = false; this.wonT = 0; }
+    this.resT = p.phase === 'result' ? this.resT + dt : 0;
+    if (p.throwing) this.lastThrow = p.throwing.id;
+    if (p.fall) {
+      const t = p.fall.t, id = p.fall.throw;
+      if (p.fall.kind === 'appuis' || id === 'ramene') { pl.play('fall_fwd', { mode: 'driven', from: 0.25, to: 1.45, fade: 0.12 }); pl.at(t / 0.95); }
+      else if (id === 'hanche' || id === 'souleve') {
+        // over the hip in the air (thrown_back's flight), then down on his back as the rule says (fall_back's last second)
+        if (t < 0.75) { pl.play('thrown_back', { mode: 'driven', from: 0.35, to: 1.35, fade: 0.1 }); pl.at(t / 0.75); }
+        else { pl.play('fall_back', { mode: 'driven', from: 2.35, to: 3.05, fade: 0.22 }); pl.at((t - 0.75) / 0.6); }
+      }
+      else if (id === 'balayage') { pl.play('knock_down', { mode: 'driven', from: 0.2, to: 1.75, fade: 0.1 }); pl.at(t / 1.25); }
+      else { pl.play('fall_back', { mode: 'driven', from: 1.25, to: 3.05, fade: 0.12 }); pl.at(t / 1.4); }
+      this.clipLegs = 1;
+    } else if (p.phase === 'result' && wasDown) {
+      // he gets up off the sand, then stands
+      if (this.resT < 0.8) pl.at(1);
+      else { pl.play('stand_up', { mode: 'once', rate: 2.4, from: 0, fade: 0.35 }); }
+      this.clipLegs = 1;
+    } else if (p.won || (p.phase === 'result' && !wasDown && this.wonT > 0)) {
+      this.wonT += dt;
+      const th = this.lastThrow ? THROW_CLIP[this.lastThrow] : null;
+      if (th && this.wonT < 1.1 && p.phase === 'fall') { pl.play(th.clip, { mode: 'driven', from: th.to, to: th.end, fade: 0.1 }); pl.at(this.wonT / 1.1); }
+      else pl.play('victory', { mode: 'pingpong', from: 0.35, to: 2.3, fade: 0.3 });
+      this.clipLegs = 1;
+    } else if (p.throwing) {
+      const th = THROW_CLIP[p.throwing.id];
+      pl.play(th.clip, { mode: 'driven', from: th.from, to: th.to, fade: 0.12 }); pl.at(p.throwing.k);
+    } else if (p.stagger > 0) {
+      pl.play('stagger', { mode: 'loop', rate: 1.3, fade: 0.2 }); skip = ARMS; this.clipLegs = 1;
+    } else if (p.phase === 'clinch') {
+      // driving him (my weight on him, or my move a push) or holding him off (weight back, the sprawl)
+      if (p.thrown || p.weight.f < -0.3) pl.play('resist_sprawl', { mode: 'pingpong', from: 0.5, to: 2.8, fade: 0.25 });
+      else if (p.weight.f > 0.3 || p.move?.kind === 'push') pl.play('push_drive', { mode: 'pingpong', from: 0.35, to: 2.4, fade: 0.25 });
+      else pl.play('stance', { mode: 'pingpong', from: 0.05, to: 0.85, rate: 0.7, fade: 0.25 });
+    } else {
+      // the stance, or the fight walks at his own speed (forward or back: his facing against his motion)
+      const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y), along = this.vx * fx + this.vz * fz, sp = Math.hypot(this.vx, this.vz);
+      if (sp > 0.3 && (p.phase === 'fight' || p.phase === 'intro')) {
+        const id: ClipId = along >= -0.1 ? 'walk_fwd' : 'walk_back', c = combatClips()!.get(id)!;
+        pl.play(id, { mode: 'loop', fade: 0.2 }); pl.rate(clamp(sp / (c.speed || 0.9), 0.6, 1.7)); this.clipLegs = 1;
+      } else pl.play('stance', { mode: 'pingpong', from: 0.05, to: 0.85, rate: 0.6, fade: 0.25 });
+    }
+    pl.tick(dt);
+    this.clip = pl.id; this.clipT = pl.time;
+    this.player.apply(this.b, this.wClip, CLIP_REST_HIPS, this.restHips, skip);
+    // the clip's own drop of the hips (the IK keeps it: the stance's crouch, the drive's, the throw's squat)
+    this.clipDrop = (this.b.hips.position.z - this.restHips.z) * this.wClip;   // (root space: z up)
+    this.b.hips.updateMatrixWorld(true);
+  }
+
   /** The crouched stance: the hips low over the lean, the feet planted where they stand, stepping when the body has moved off them. */
   private legs(p: PoseIn, throwK: number) {
     const g = this.w.group, gs = this.g, sc = g.scale.x || 1, c = p.crouch;
     const brace = Math.max(0, -p.weight.f) * 0.4 + Math.max(0, p.weight.f) * 0.25;
     const deep = Math.hypot(p.lean.f, p.lean.s);
     // the hips: low in the stance, lower when braced or off balance, over the lean (the weight seen in the hips)
-    let py = RIG.hipY - (0.12 + 0.05 * brace) * c - 0.07 * deep;
+    // with a clip underneath, its own crouch sets the hips' height (the rules' brace and lean still lower them)
+    let py = this.wClip > 0 ? RIG.hipY + this.clipDrop * 0.9 - (0.12 * (1 - this.wClip) + 0.05 * brace) * c - 0.07 * deep : RIG.hipY - (0.12 + 0.05 * brace) * c - 0.07 * deep;
     if (p.throwing?.id === 'souleve') py -= 0.16 * smooth(throwK / 0.7) - 0.2 * smooth((throwK - 0.7) / 0.3);
     if (p.throwing?.id === 'jambe' || (p.hold === 'jambe' && p.phase === 'clinch')) py -= 0.12;
     else if (p.hold === 'ceinture' && p.phase === 'clinch') py -= 0.06;
@@ -278,7 +387,10 @@ export class CombatRig {
       foot.yaw = Math.atan2(Math.sin(yaw - g.rotation.y), Math.cos(yaw - g.rotation.y));
       foot.pitch = 0; foot.clear = lift > 0 ? lift / sc : 0; foot.shinW = 0; foot.alpha = 0;
     }
+    // the IK sets the pelvis upright: the clip's trunk (its lean over the hips) is kept in the world through it
+    if (this.wClip > 0) this.b.spine.getWorldQuaternion(Q3);
     this.gaitRig!.apply(gs, this.wLegs);
+    if (this.wClip > 0) { this.b.hips.getWorldQuaternion(Q1); Q2.copy(Q1).invert().multiply(Q3); this.b.spine.quaternion.slerp(Q2, this.wClip * this.wLegs); this.b.spine.updateMatrixWorld(true); }
     // checks: the knee's bend (the angle between thigh and shin)
     const th = this.b.thighL.getWorldPosition(V1), sh = this.b.shinL.getWorldPosition(V2), ft = this.b.footL.getWorldPosition(V3);
     this.kneeBend = Math.PI - V4.subVectors(th, sh).angleTo(V5.subVectors(ft, sh));
@@ -312,17 +424,19 @@ export class CombatRig {
       { const o = spring(this.tf, this.tvf, fold, 10, 0.38, h); this.tf = o.x; this.tvf = o.v; }
       { const o = spring(this.ts, this.tvs, side, 10, 0.38, h); this.ts = o.x; this.tvs = o.v; }
     }
-    const f2 = this.tf, s2 = this.ts;
-    this.aimChar({ spine: [s2 * 0.6, 1, f2 * 0.7], chest: [s2, 1, f2], head: [s2 * 0.3, 1, Math.min(0.4, f2 * 0.3)] }, 0.85 * Math.max(this.wLegs, this.wHands));
-    if (p.move) this.aimChar(AIMS[p.move.kind], 0.7 * p.move.k);
-    if (p.throwing) {
+    const f2 = this.tf, s2 = this.ts, wc = this.wClip, wa = 1 - wc;
+    // procedural alone: the trunk aimed; on a clip: the clip's trunk turned by the weight (the crouch's own fold taken off)
+    this.aimChar({ spine: [s2 * 0.6, 1, f2 * 0.7], chest: [s2, 1, f2], head: [s2 * 0.3, 1, Math.min(0.4, f2 * 0.3)] }, wa * 0.85 * Math.max(this.wLegs, this.wHands));
+    if (wc > 0) { const pf = (f2 - 0.28 * c) * 0.45 * wc, ps = s2 * 0.45 * wc; this.tilt(this.b.spine, pf, ps); this.tilt(this.b.chest, pf, ps); }
+    if (p.move) this.aimChar(AIMS[p.move.kind], (0.7 - 0.4 * wc) * p.move.k);
+    if (p.throwing && wc < 1) {
       const k = p.throwing.k, id = p.throwing.id;
-      if (id === 'hanche' || id === 'ramene') this.aimChar(AIMS.pull, 0.8 * k);
-      else if (id === 'croc' || id === 'jambe') this.aimChar(AIMS.push, 0.8 * k);
-      else if (id === 'balayage') this.aimChar(AIMS.pivot, 0.8 * k);
-      else this.aimChar({ spine: [0, 1, k < 0.7 ? 0.35 : -0.35], chest: [0, 1, k < 0.7 ? 0.3 : -0.45] }, 0.9);
+      if (id === 'hanche' || id === 'ramene') this.aimChar(AIMS.pull, 0.8 * k * wa);
+      else if (id === 'croc' || id === 'jambe') this.aimChar(AIMS.push, 0.8 * k * wa);
+      else if (id === 'balayage') this.aimChar(AIMS.pivot, 0.8 * k * wa);
+      else this.aimChar({ spine: [0, 1, k < 0.7 ? 0.35 : -0.35], chest: [0, 1, k < 0.7 ? 0.3 : -0.45] }, 0.9 * wa);
     }
-    if (p.thrown) this.aimChar(AIMS.slip, 0.6 * p.thrown.k);
+    if (p.thrown) this.aimChar(AIMS.slip, 0.6 * p.thrown.k * (1 - 0.5 * wc));
     // the trunk's lean as drawn (own frame), for the checks
     const chest = this.b.chest; chest.getWorldQuaternion(Q1); V1.copy(Y).applyQuaternion(Q1);
     this.w.group.getWorldQuaternion(Q2); V1.applyQuaternion(Q2.invert());
@@ -370,6 +484,13 @@ export class CombatRig {
     this.wLegs = 0; this.wHands = 0; this.handGap = -1;
     const k = smooth(t / 0.45);
     let turn = 0, lift = 0, pitch = 0;
+    if (this.wClip > 0.5) {
+      // the clip falls (lifted, turned over, on the back or onto the hands): only the way he goes — away from the thrower,
+      // or past him to a side for a fall forward
+      if (f.kind === 'appuis' || id === 'ramene') turn = Math.PI / 2;
+      this.fallYaw = turn * k; g.rotation.y += this.fallYaw; g.updateMatrixWorld(true);
+      return;
+    }
     if (id === 'hanche') { turn = Math.PI; lift = 0.45 * Math.sin(Math.PI * clamp(t / 0.6, 0, 1)); }
     else if (id === 'souleve') { turn = Math.PI; lift = 0.8 * Math.sin(Math.PI * clamp(t / 0.75, 0, 1)); }
     else if (id === 'balayage') { turn = Math.PI / 2; lift = 0.15 * Math.sin(Math.PI * clamp(t / 0.4, 0, 1)); }
