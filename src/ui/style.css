@@ -659,6 +659,16 @@ body.induel .duel-ui.cine.tell::before, body.induel .duel-ui.cine.tell::after { 
   body.induel .duel-ui .cine-techs button { min-height:40px; font-size:13px; }
 }
 
+/* the entrance: the wrestler's name as a broadcast's lower third, while he does his bàkk */
+body.induel .duel-ui .cine-card { position:fixed; left:calc(16px + var(--sa-l,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 190px); display:flex; flex-direction:column; gap:6px; padding:10px 18px 12px 14px;
+  border-left:6px solid #facc15; background:linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.55) 75%, rgba(0,0,0,0)); color:#fff; pointer-events:none; max-width:min(80vw, 420px); }
+body.induel .duel-ui .cine-card b { font:italic 900 clamp(34px, 11vw, 52px)/.95 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:-.01em; color:#facc15; text-shadow:0 3px 0 #a16207; }
+body.induel .duel-ui .cine-card small { font:800 12px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.8); }
+body.induel .duel-ui .cine-card.go { animation:cineCard .5s cubic-bezier(.2,.9,.3,1.1) both; }
+body.induel .duel-ui .cine-card[hidden] { display:none; }
+@keyframes cineCard { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:none; } }
+@media (max-height:500px) and (orientation:landscape) { body.induel .duel-ui .cine-card { bottom:calc(env(safe-area-inset-bottom,0px) + 30px); left:calc(170px + var(--sa-l,0px)); } }
+
 /* the cinematic bout's result, as a fight card: the verdict huge, how, three numbers face to face, the rewards in one line */
 body.induel .duel-ui.rc-on .duel-top, body.induel .duel-ui.rc-on .duel-bars { opacity:0; transition:opacity .3s; }
 body.induel .duel-ui .duel-recap.rc { background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.86) 38%, rgba(0,0,0,.94)); align-items:flex-end; padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px); }

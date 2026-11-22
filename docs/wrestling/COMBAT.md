@@ -8,6 +8,71 @@ Cultural status: **unverified**. Every throw, hold and word here is a movement p
 not the reproduction of a real technique or rule; nothing is claimed authentic. RDA's status is kept (`RDA-INTEGRATION.md`).
 The game's own rules: `docs/LAMB_RULES.md` (« C'est notre jeu, on crée nos règles »), section « 1 bis ».
 
+## 0. Le bëre cinématique — le combat du joueur (22 nov.)
+
+Since 22 Nov the player's own bout (both disciplines, outside the lesson and the drills) is the **cinematic bout**:
+`src/lamb/cinematic.ts` (pure state) driven by `src/lamb/duel.ts` (bodies, camera, HUD). The free bout described from §1 on
+is kept behind **`?cine0`**. Watched bouts, the lesson, the drills, the career, purses, records and the save are unchanged.
+
+### Comment jouer
+**Entrée.** Le sabar de l'entrée ; l'adversaire fait son bàkk (son nom à l'écran), puis toi ; face à face, « BËRE ! ».
+« Passer » va directement au face à face.
+
+**Debout — rien ne presse.** Le joystick te déplace dans le cercle (en sortir : « Sortie », trois sorties = défaite).
+Il tourne, **feinte** et **charge**. Sa charge s'annonce : il se baisse, le bouton s'allume.
+- **Saisir tard dans son annonce** : **CONTRE-SAISIE**, ta prise est la meilleure.
+- **Un pas de côté** : sa charge passe dans le vide (**ESQUIVE**), il trébuche — saisis-le : **BONNE PRISE**.
+- Saisir pendant sa feinte : **MAINS LIÉES**. Trop loin : **RATÉ**, et il arrive. Ne rien faire : il te saisit.
+- Personne n'engage pendant 18 s : l'arbitre crie « Bëre ! » et il vient.
+
+**Empoignade — un rapport de force.** Le joystick pousse (vers lui), tire (loin de lui), tourne (de côté). **Force**
+(maintenu) met ton poids : ça coûte du souffle, relâcher le rend.
+- Tirer quand il pousse le fait basculer vers toi ; pousser quand il tire le met sur les talons. Le couple glisse vers le
+  plus faible : on peut le sortir du cercle.
+- Son déséquilibre se voit à son buste et allume la prise qu'il ouvre : en avant **Hanche**, sur les talons **Croc**, près
+  du bord **Pousser**, épuisé **Soulevé**. Chaque bouton se remplit avec la préparation.
+- Il réagit : il arrête de pousser s'il sent que tu t'en sers, il te tire si tu pousses sans arrêt.
+- Ses attaques s'annoncent (il baisse les hanches, flash rouge) : **Résiste** dans la fenêtre ; tout à la fin,
+  **Contre !** (vert) retourne son attaque. Trop tôt, il le lit et passe.
+
+**La prise.** La jauge monte une fois, lentement (1,5 s) ; la zone est large s'il est bien déséquilibré. Sans préparation, sur
+un homme frais, elle échoue (il résiste ou te contre) : use-le d'abord.
+
+**Mise en scène.** Bandes noires pendant une prise, ralenti à l'impact, la chute rejouée au ralenti sous un autre angle
+(passable), le sabar qui accélère dans l'empoignade. Le résultat : une carte de combat (verdict, méthode, trois chiffres).
+
+### Numbers
+| | |
+| --- | --- |
+| His tell (standing charge, attack in the empoignade) | 1.45 s at level 1 − 0.14 s per level (0.75 s at 6) |
+| Resist window / counter window | the last 0.75 s / 0.36 s of the tell at level 1, −0.08 s / −0.035 s per level |
+| Projection gauge | rises in 1.5 s; zone width 0.10 + 0.32 × set-up |
+| Throw force | (0.62 × set-up + 0.38 × timing) × (0.75 + 0.25 × breath) |
+| Resistance | move's need + 0.04 × (level − 1) + 0.34 × his breath − 0.15 |
+| Passivity call | 18 s without engaging; referee parts an empoignade after 30 s |
+| Entrance | his bàkk 3.2 s, yours 2.8 s, face-off 1.6 s |
+| Sabar | entrance loop, the bout's standing, the fête's (fastest) in the empoignade and a move |
+
+### Win rates (200 simulated bouts per level, `scratchpad` sim, deterministic seeds)
+| Player | L1 | L3 | L5 |
+| --- | --- | --- | --- |
+| attentive (counters late, uses his push, throws the lit move) | 100 % (≈ 30 s) | 100 % (≈ 60 s) | 100 % (≈ 90 s) |
+| sloppy (misses 25 % of the tells, random timing) | ≈ 80 % | ≈ 35 % | ≈ 5 % |
+| masher (presses everything, pushes always) | 0 % | 0 % | 0 % |
+| passive | 0 % | 0 % | 0 % |
+
+### Tests and captures
+- `tests/cineBout.test.ts` (6): counter-grip, his push opening the hip, a throw without set-up failing, a press too early
+  read, mashing / passivity / three sorties losing, the tells by level. Wrestling stack 258 passed; full suite 4 126 passed.
+- `scripts/video-cine.mjs` → `docs/wrestling/cine/cine-bout.mp4` (entrance, dodge, good grip, wrong move countered, counter,
+  counter-grip, hip throw, replay, result). `scripts/shot-cine-recap.mjs` → `docs/wrestling/cine/resultat-*.jpg`.
+- The older browser checks (`check-lamb2`, `check-combat`…) drive the free bout, now behind `?cine0`: they were not re-run on
+  this branch and need that flag in their URL first.
+
+### Left
+The hands at the impact do not touch the other body exactly (the camera and the slow motion hide most of it). The paired
+moves are four (Soulevé, Hanche, Croc, Pousser); more need more paired Meshy clips.
+
 ## 1. Comment jouer (pour le joueur)
 
 Le combat se joue au **joystick** (les pieds, puis le poids du corps) et à **trois gros boutons** (quatre avec frappe).

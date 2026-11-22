@@ -134,6 +134,8 @@ export interface DuelResult {
 }
 
 const R = RULES.sans_frappe;
+/** The cinematic bout's entrance (s): his bàkk until `him`, the player's until `me`, the face-off until `end`. */
+const CINE_INTRO = { him: 3.2, me: 6.0, end: 7.6 };
 const UP = new THREE.Vector3(0, 1, 0), V_DUST = new THREE.Vector3();
 /** The new bout: Saisir held this long is a reach for the belt; Frappe held this long arms the big strike (s, real time: the thumb's). */
 /** The new bout: the third time a wrestler leaves the pit, he loses the bout. */
@@ -331,7 +333,7 @@ export class LambDuel {
   private onHidden = () => { if (document.hidden) this.releaseControls(); };
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
-    if (this.cine && this.cine.phase !== 'fin' && (this.phase === 'fight' || this.phase === 'clinch')) {
+    if ((this.cine && this.cine.phase !== 'fin' && (this.phase === 'fight' || this.phase === 'clinch')) || (this.cineIntro && this.phase === 'intro')) {
       const act = e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter';
       if (act) { e.preventDefault(); this.cineHold = down && !this.paused; }
       if (down && !e.repeat && !this.paused) {
@@ -437,7 +439,7 @@ export class LambDuel {
     // the new bout uses Làmb 2.0's gauges and their phone layout (src/ui/style.css) in both disciplines, with its own buttons
     const d = document.createElement('div'); d.className = this.combat ? 'duel-ui frappe combat' : this.frappe ? 'duel-ui frappe' : 'duel-ui';
     // the cinematic bout's controls from the start (the bout itself is made at the bell: cineOn)
-    if (this.combat && !this.cl && !this.drill && !this.headless && !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('cine0'))) d.classList.add('cine');
+    if (this.combat && !this.cl && !this.drill && !this.headless && !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('cine0'))) { d.classList.add('cine'); this.cineIntro = !this.spectate && this.mode !== 'entrainement'; this.me.pos.x = this.o.x + 1.3; this.ai.pos.x = this.o.x - 1.3; }   // face to face for the shots, near the middle
     // short enough for the header's one line on a phone in portrait (the lesson and the drills avec frappe say which)
     const title = this.lesson || this.cl ? 'Leçon · Coach Ablaye' : this.drill ? 'Exercice · Coach Ablaye'
       : { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
@@ -581,6 +583,7 @@ export class LambDuel {
       cl.innerHTML = `<div class="cine-meter" data-k="cmeter" hidden><i><u data-k="czone"></u><b data-k="cneedle"></b></i></div>
         <div class="cine-techs" data-k="ctechs" hidden>${TECH_ORDER.map((id, n) => `<button data-t="${id}"><s></s><small>${n + 1}</small>${TECHS[id].label}</button>`).join('')}</div>
         <div class="cine-tag" data-k="ctag" hidden>Au ralenti</div>
+        <div class="cine-card" data-k="ccard" hidden><b></b><small></small></div>
         <button class="cine-act" data-k="cact">Saisir</button>`;
       d.appendChild(cl);
       const act = cl.querySelector<HTMLButtonElement>('[data-k=cact]')!;
@@ -642,7 +645,7 @@ export class LambDuel {
       if (step.innerHTML !== html) step.innerHTML = html;
     } else step.hidden = true;
     const cl = this.q('clinch'), brk = this.q('break');
-    if (this.cine) { this.drawCine(); return; }
+    if (this.cine || this.cineIntro) { this.drawCine(); return; }
     if (this.combat) { this.drawCombat(cl, brk); return; }
     if (this.phase === 'clinch') {
       const c = this.clinchState()!;
@@ -683,8 +686,15 @@ export class LambDuel {
    */
   /** The cinematic bout's controls: the one button's word (and its glow when the moment is now), the moves with their set-up, the gauge. */
   private drawCine() {
-    const c = this.cine!, live = this.phase === 'fight' || this.phase === 'clinch';
     const meter = this.q('cmeter'), act = this.q<HTMLButtonElement>('cact'), techs = this.q('ctechs');
+    if (!this.cine) {
+      // the entrance: one small « Passer » (to the face-off), nothing else
+      meter.hidden = true; techs.hidden = true; this.q('ctag').hidden = true;
+      const skip = this.phase === 'intro' && this.phaseT < CINE_INTRO.me;
+      act.hidden = !skip; act.textContent = 'Passer'; act.className = 'cine-act small';
+      return;
+    }
+    const c = this.cine, live = this.phase === 'fight' || this.phase === 'clinch';
     const showMeter = live && c.phase === 'projection';
     meter.hidden = !showMeter;
     if (showMeter) {
@@ -1225,7 +1235,9 @@ export class LambDuel {
       this.dustAt(down.loser, 1);
     }
 
-    if (this.phase === 'intro') {
+    if (this.phase === 'intro' && this.cineIntro) {
+      this.introCine();
+    } else if (this.phase === 'intro') {
       // referee check, kept to plain words (no invented ritual wording)
       // avec frappe, the opponent is introduced first: who he is, in one line
       const lead = this.identity ? 1.3 : 0;
@@ -1569,6 +1581,36 @@ export class LambDuel {
     f.weight = { f: it.stick.f * 0.85, s: it.stick.s * 0.4 };            // charging in commits the weight forward (his leg is there)
   }
 
+  /**
+   * The cinematic bout's entrance: the opponent's bàkk, filmed from the front with his name on screen, then the player's,
+   * then the two face to face and « Bëre ! ». The sabar is the entrance's. The action button skips to the face-off.
+   */
+  private introCine() {
+    const T = CINE_INTRO, t = this.phaseT;
+    if (this.cinePress) { this.cinePress = false; if (t < T.me) this.phaseT = T.me; }
+    this.me.clip = this.ai.clip = 'Prep';
+    const card = this.q('ccard'), who = t < T.him ? 'ai' : t < T.me ? 'me' : null;
+    card.hidden = !who;
+    if (who && card.dataset.who !== who) {
+      card.dataset.who = who; card.classList.remove('go'); void card.offsetWidth; card.classList.add('go');
+      card.querySelector('b')!.textContent = who === 'ai' ? this.style.name : 'Toi';
+      card.querySelector('small')!.textContent = who === 'ai' ? (this.identity ? this.identity.replace(new RegExp(`^${this.style.name}[,·\\s]*`), '') : `${this.style.label} · niveau ${this.level}`) : 'Ton bàkk';
+      if (who === 'ai') crowdCheer(1.6, 0.15); else crowdCheer(2, 0.2);
+    }
+    this.drums.tempo(110);
+    if (t > T.end) { this.phase = 'fight'; this.phaseT = 0; card.hidden = true; this.banner('BËRE !', 'start'); crowdCheer(2.4, 0.3); this.drums.tempo(122); }
+  }
+  /** The entrance's bàkk now: who dances (his clip's time), null at the face-off. */
+  private bakkOf(f: Fighter): { id: import('./combatClips').ClipId; t: number } | null {
+    if (!this.cineIntro || this.phase !== 'intro') return null;
+    const T = CINE_INTRO, t = this.phaseT;
+    if (f === this.ai && t < T.him) return { id: 'victory', t: 0.2 + t };
+    if (f === this.me && t >= T.him && t < T.me) return { id: 'victory', t: 0.2 + t - T.him };
+    return null;
+  }
+  /** The cinematic bout's entrance is played (the player's own bout, not the training's). */
+  private cineIntro = false;
+
   /** The cinematic bout runs this bout (made at the bell: the player's own new bout, not the lesson, a drill or a test host). */
   private cineOn(): boolean {
     if (this.cine) return true;
@@ -1625,6 +1667,8 @@ export class LambDuel {
     if (c.phase === 'scene' && sc && sc.kind === 'throw' && sc.t > sc.impact - 0.45 && sc.t < sc.impact + 0.3) k = 0.4;
     const press = this.cinePress, pick = this.cinePick; this.cinePress = false; this.cinePick = null;
     if (press && c.phase === 'replay') c.skipReplay();
+    // the sabar quickens in the empoignade and a move, and settles standing
+    if (this.mode !== 'entrainement') this.drums.tempo(c.phase === 'empoignade' || c.phase === 'projection' || c.phase === 'scene' ? 126 : 122);
     const ev = c.step(dt * k, { press, hold: this.cineHold, push, turn, pick }, apart, { player: edge(me), opponent: edge(ai) });
     if (ev.banner) this.banner(ev.banner, ev.banner.startsWith('DEHORS') || ev.banner === 'TERRE !' ? 'end' : 'combo');
     if (ev.say) this.said = ev.say;
@@ -1660,6 +1704,7 @@ export class LambDuel {
 
   /** The clip a body plays in the cinematic bout now (null: the standing bout's own posing), and his trunk's lean on top. */
   private cineForce(f: Fighter): { id: import('./combatClips').ClipId; t: number } | null {
+    const bakk = this.bakkOf(f); if (bakk) return bakk;
     const c = this.cine; if (!c) return null;
     const who: Who = f === this.me ? 'player' : 'opponent', sc = c.scene;
     if (sc && (c.phase === 'scene' || c.phase === 'replay' || c.phase === 'fin' || this.phase === 'fall' || this.phase === 'result')) {
@@ -2629,6 +2674,8 @@ export class LambDuel {
     if (dist < 0.75 && this.phase === 'fight') { const push = gap.normalize().multiplyScalar((0.75 - dist) / 2); ai.pos.add(push); me.pos.sub(push); }
     me.facing = Math.atan2(ai.pos.x - me.pos.x, ai.pos.z - me.pos.z);
     ai.facing = Math.atan2(me.pos.x - ai.pos.x, me.pos.z - ai.pos.z);
+    // his bàkk at the entrance: he dances to the camera
+    if (this.bakkOf(ai) && this.view) ai.facing = Math.atan2(this.view.cam.x - ai.pos.x, this.view.cam.z - ai.pos.z);
     this.poseDt += dt; this.gap = dist;
     if (!this.visual) return this.view;
     return this.poseBodies();
@@ -2759,6 +2806,15 @@ export class LambDuel {
     // the cinematic bout's shots: close and turning slowly round the pair in the empoignade (pushed in on his tell, low as
     // a move loads); low, three-quarters from the attacker's front for a move, rising as the man thrown hits the sand; the
     // replay from the other side, lower and closer, sliding round
+    if (this.cineIntro && this.phase === 'intro' && this.phaseT < CINE_INTRO.me) {
+      // the bàkk: low, from the front of the one dancing, turning slowly round him
+      const f = this.phaseT < CINE_INTRO.him ? ai : me, o = f === ai ? me : ai, k = f === ai ? this.phaseT / CINE_INTRO.him : (this.phaseT - CINE_INTRO.him) / (CINE_INTRO.me - CINE_INTRO.him);
+      // (wide of the line between them, so the other man is never in the way)
+      // (both from the player's side of the light: he turns his back to the player and dances to the camera and the stands)
+      const front = (f === ai ? f.pos.clone().sub(o.pos) : o.pos.clone().sub(f.pos)).setY(0).normalize().applyAxisAngle(UP, (f === ai ? 0.35 : 0.75) + 0.45 * k);
+      view = { cam: f.pos.clone().addScaledVector(front, (portrait ? 2.9 : 2.3) - 0.4 * k).setY(0.75 + 0.25 * k), look: f.pos.clone().setY(1.1) };
+      this.camFwd.copy(view.look).sub(view.cam).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
+    }
     const c = this.cine;
     if (c && (this.phase === 'fight' || this.phase === 'clinch') && c.phase !== 'debout') {
       const sc = c.scene;

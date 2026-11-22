@@ -3,7 +3,7 @@
 //   standing — waits; side-steps his first charge (« Esquive ») and grabs him as he stumbles (« Bonne prise »), later
 //   grabs late in his tell (« Contre-saisie »);
 //   empoignade — holds Force and pulls as he pushes, so he falls forward and the hip throw lights; resists his attacks
-//   late in the tell (the first one countered); tries a Croc first, the wrong move (he turns it round); throws the lit Hanche,
+//   late in the tell (the first one countered); tries a Croc first, the wrong move (he turns it round); throws the lit move,
 //   once he is tired, at the gauge's zone; the fall, then its replay.
 // Usage: flock -o /tmp/dakar-browser.lock node scripts/video-cine.mjs <baseUrl> <framesDir> [out.mp4] [maxFrames]
 import { chromium } from 'playwright';
@@ -64,7 +64,7 @@ for (let k = 0; k < +maxF; k++) {
         const at = attacks === 1 ? c.counterFrom + 0.06 : c.holdFrom + 0.1;
         if (c.tellK > at && !pressedTell) { b += 'key("Space");key("Space", true);'; pressedTell = true; holding = false; }
       } else if (!wrongDone && c.open.hanche > 0.35) { hold(false); b += 'key("Digit3");'; wrongDone = true; }     // first, the wrong move: a Croc with him leaning forward
-      else if (c.lit === 'hanche' && c.open.hanche > 0.72 && c.stamina.opponent < 80) { hold(false); b += 'key("Digit2");'; }
+      else if (c.lit && c.open[c.lit] > 0.72 && c.stamina.opponent < 80) { hold(false); b += `key("Digit${['souleve', 'hanche', 'croc', 'pousse'].indexOf(c.lit) + 1}");`; }
       else if (c.plan === 'pousse') { hold(true); b += 'd.duelStick(-1, 0, 0.1);'; }
       else hold(false);
       lastPlan = c.plan;
