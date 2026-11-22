@@ -577,18 +577,35 @@ body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(e
   body.induel .duel-ui.frappe .duel-note { top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 6px); }
 }
 
-/* the new bout (fighting-game HUD): everything at the top, the middle of the screen left to the bodies — the message on one
-   line under the gauges, the Prise a thin bar under it without its words, the rules' line gone */
-body.induel .duel-ui.frappe.combat .duel-note { display:none; }
-body.induel .duel-ui.frappe.combat .duel-msg, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-msg {
-  top:calc(env(safe-area-inset-top,0px) + 126px); font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92vw; }
-body.induel .duel-ui.frappe.combat .duel-clinch, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-clinch {
-  top:calc(env(safe-area-inset-top,0px) + 154px); padding:4px 10px 6px; width:min(70vw, 300px); }
-body.induel .duel-ui.frappe.combat .duel-clinch > em { display:none; }
-body.induel .duel-ui.frappe.combat .duel-clinch > i { margin-top:13px; height:9px; }
+/* the new bout (fighting-game HUD, like the arcade fighters): one row at the top — his name and bars on the left, the clock
+   in the middle, the other's on the right, mirrored; under it only the Prise, a thin tug bar. No title, no rules' line, no
+   running commentary (only the lesson's card speaks); the big banners say what happened. The middle is the bodies'. */
+body.induel .duel-ui.combat .duel-head, body.induel .duel-ui.combat .duel-note, body.induel .duel-ui.combat .duel-legend { display:none; }
+body.induel .duel-ui.combat .duel-top { justify-content:center; }
+body.induel .duel-ui.combat .duel-timer { background:none; font:900 26px/1 system-ui,sans-serif; color:#fde047; text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.6); padding:2px 0; min-width:54px; }
+body.induel .duel-ui.combat .duel-ab { position:absolute; right:0; top:0; min-height:34px; width:34px; padding:0; border-radius:50%; font-size:15px; background:rgba(15,23,42,.55); border-color:rgba(255,255,255,.25); }
+body.induel .duel-ui.combat .duel-bars { top:calc(env(safe-area-inset-top,0px) + 12px); width:calc(100vw - 20px - var(--sa-l,0px) - var(--sa-r,0px)); gap:70px; }
+body.induel .duel-ui.combat .duel-bars > div { background:none; padding:0; border-radius:0; }
+body.induel .duel-ui.combat .duel-bars > div > span { display:block; font:900 13px/1.1 system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; text-shadow:0 1px 0 #000, 0 0 6px rgba(0,0,0,.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.induel .duel-ui.combat .duel-bars > div > i { margin:4px 0 0 0; height:12px; border-radius:2px; border:1.5px solid rgba(0,0,0,.75); background:rgba(127,29,29,.85); box-shadow:0 1px 4px rgba(0,0,0,.5); }
+body.induel .duel-ui.combat .duel-bars > div > i::before, body.induel .duel-ui.combat .duel-bars > div > i.bal::before, body.induel .duel-ui.combat .duel-bars > div > i.cmp::before { content:none; }
+body.induel .duel-ui.combat .duel-bars > div > i > b { background:linear-gradient(#fde047,#eab308); border-radius:0; }
+body.induel .duel-ui.combat .duel-bars > div > i.bal { height:6px; margin-top:3px; background:rgba(15,23,42,.7); }
+body.induel .duel-ui.combat .duel-bars > div > i.bal > b { background:#38bdf8; }
+body.induel .duel-ui.combat .duel-bars > div > i.cmp { display:none; }
+body.induel .duel-ui.combat .duel-bars > div[data-k=aibar] { text-align:right; }
+body.induel .duel-ui.combat .duel-bars > div[data-k=aibar] > i > b { margin-left:auto; }
+body.induel .duel-ui.combat .duel-step[hidden] ~ .duel-msg { display:none; }
+body.induel .duel-ui.combat .duel-msg, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-msg {
+  top:calc(env(safe-area-inset-top,0px) + 76px); font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92vw; }
+body.induel .duel-ui.combat .duel-clinch, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-clinch {
+  top:calc(env(safe-area-inset-top,0px) + 56px); padding:0; background:none; width:min(60vw, 260px); }
+body.induel .duel-ui.combat .duel-clinch > em { display:none; }
+body.induel .duel-ui.combat .duel-clinch > i { margin-top:0; height:7px; border:1px solid rgba(0,0,0,.6); }
+body.induel .duel-ui.combat .duel-clinch > i::before, body.induel .duel-ui.combat .duel-clinch > i::after { content:none; }
 @media (max-height:500px) and (orientation:landscape) {
-  body.induel .duel-ui.frappe.combat .duel-msg, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 58px); font-size:16px; }
-  body.induel .duel-ui.frappe.combat .duel-clinch, body.induel .duel-ui.frappe.combat .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 84px); }
+  body.induel .duel-ui.combat .duel-bars { top:calc(env(safe-area-inset-top,0px) + 8px); width:min(70vw, 620px); }
+  body.induel .duel-ui.combat .duel-clinch, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 50px); left:50%; transform:translateX(-50%); }
 }
 
 /* ============================================================= HUD: only what matters now (UX lane)

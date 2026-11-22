@@ -69,7 +69,9 @@ export interface PoseIn {
   move: { kind: ClinchMove; k: number; side: number } | null;
   throwing: { id: ThrowId; k: number } | null;
   thrown: { id: ThrowId; k: number } | null;
-  fall: { kind: FallKind; throw: ThrowId | null; t: number } | null;
+  fall: { kind: FallKind; throw: ThrowId | null; t: number; force?: number } | null;
+  /** How far the other man is (m), standing. */
+  apart?: number;
   won: boolean; guard: boolean; stagger: number;
   /** How crouched (0 upright … 1 the fighting stance). */
   crouch: number;
@@ -271,8 +273,9 @@ export class CombatRig {
     if (p.fall) {
       const t = p.fall.t, id = p.fall.throw;
       if (p.fall.kind === 'appuis' || id === 'ramene') { pl.play('fall_fwd', { mode: 'driven', from: 0.25, to: 1.45, fade: 0.12 }); pl.at(t / 0.95); }
-      else if (id === 'hanche' || id === 'souleve') {
-        // over the hip in the air (thrown_back's flight), then down on his back as the rule says (fall_back's last second)
+      else if ((p.fall.force ?? 0.5) < 0.4) { pl.play('fall_back', { mode: 'driven', from: 1.25, to: 3.05, fade: 0.15 }); pl.at(t / 1.7); }   // a weak throw: he is put down, backwards
+      else if (id === 'hanche' || id === 'souleve' || (p.fall.force ?? 0) > 0.72) {
+        // a strong throw (or over the hip): lifted, over in the air (thrown_back's flight), slammed on his back (fall_back's last second)
         if (t < 0.75) { pl.play('thrown_back', { mode: 'driven', from: 0.35, to: 1.35, fade: 0.1 }); pl.at(t / 0.75); }
         else { pl.play('fall_back', { mode: 'driven', from: 2.35, to: 3.05, fade: 0.22 }); pl.at((t - 0.75) / 0.6); }
       }
@@ -306,6 +309,9 @@ export class CombatRig {
       if (sp > 0.3 && (p.phase === 'fight' || p.phase === 'intro')) {
         const id: ClipId = along >= -0.1 ? 'walk_fwd' : 'walk_back', c = combatClips()!.get(id)!;
         pl.play(id, { mode: 'loop', fade: 0.2 }); pl.rate(clamp(sp / (c.speed || 0.9), 0.6, 1.7)); this.clipLegs = 1;
+      } else if (p.phase === 'fight' && (p.apart ?? 0) > 1.9) {
+        // apart: standing tall, the fight walk's upright guard swaying a little in place
+        pl.play('walk_fwd', { mode: 'pingpong', from: 0.1, to: 0.35, rate: 0.35, fade: 0.35 }); this.clipLegs = 0;
       } else pl.play('stance', { mode: 'pingpong', from: 0.05, to: 0.85, rate: 0.6, fade: 0.25 });
     }
     pl.tick(dt);

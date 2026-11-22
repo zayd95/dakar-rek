@@ -135,6 +135,8 @@ export interface DuelResult {
 const R = RULES.sans_frappe;
 const UP = new THREE.Vector3(0, 1, 0), V_DUST = new THREE.Vector3();
 /** The new bout: Saisir held this long is a reach for the belt; Frappe held this long arms the big strike (s, real time: the thumb's). */
+/** The new bout: the third time a wrestler leaves the pit, he loses the bout. */
+const SORTIES_LOST = 3;
 const COMBAT_HOLD = { grab: 0.28, strike: 0.22 } as const;
 /** The écurie drills with the new controls: their keys and the controls highlighted (the drills themselves: src/lamb/drills.ts). */
 const COMBAT_DRILL: Record<DrillId, { keys: string; touch: string[] }> = {
@@ -439,7 +441,7 @@ export class LambDuel {
         <div class="duel-timer" data-k="timer"></div>
         <button class="duel-ab" data-k="abandon">Abandonner</button>
       </div>
-      <div class="duel-bars"><div data-k="mebar"><span>Toi <em data-k="meopen"></em></span><i><b data-k="me"></b></i>${states('me')}</div><div data-k="aibar"><span>${this.style.name} <em data-k="aiopen"></em></span><i><b data-k="ai"></b></i>${states('ai')}</div></div>
+      <div class="duel-bars"><div data-k="mebar"><span>${this.combat ? 'Toi' : 'Toi'} <em data-k="meopen"></em></span><i><b data-k="me"></b></i>${states('me')}</div><div data-k="aibar"><span>${this.style.name} <em data-k="aiopen"></em></span><i><b data-k="ai"></b></i>${states('ai')}</div></div>
       ${this.frappe || this.combat ? '<div class="duel-legend"><span class="e">Endurance</span><span class="b">Équilibre</span><span class="c">Sang-froid</span></div>' : ''}
       <div class="duel-note">${RULES[this.discipline].label} · ${RULES_STATUS}${keys}</div>
       <div class="duel-step" data-k="step" hidden></div>
@@ -450,6 +452,7 @@ export class LambDuel {
       <div class="duel-confirm" data-k="confirm" hidden><div><b>Abandonner le combat ?</b><p>Compté comme un abandon, à part des défaites : ce n’est pas une chute, et il n’y a aucune récompense.</p><button data-k="yes">Abandonner</button><button data-k="no">Continuer le combat</button></div></div>
       <div class="duel-recap" data-k="recap" hidden></div>${this.combat ? '<div class="duel-banner" data-k="banner"></div>' : ''}`;
     (d.querySelector('.duel-head b') as HTMLElement).textContent = title;
+    if (this.combat) { const ab = d.querySelector<HTMLElement>('.duel-ab'); if (ab) { ab.textContent = '✕'; ab.setAttribute('aria-label', 'Abandonner'); } }
     (d.querySelector('.duel-head small') as HTMLElement).textContent = sub;
     const st = document.createElement('style');
     st.textContent = `.duel-ui{position:fixed;inset:0;pointer-events:none;z-index:30;font:600 14px system-ui,sans-serif;color:#fff}
@@ -1128,7 +1131,7 @@ export class LambDuel {
       const lead = this.identity ? 1.3 : 0;
       this.msg(this.phaseT < lead ? `Face à toi : ${this.identity}` : this.phaseT < lead + 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
       me.clip = ai.clip = 'Prep';
-      if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); if (this.combat) this.banner('LÀMB !', 'start'); }
+      if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); if (this.combat) this.banner('BËRE !', 'start'); }
     } else if ((this.lesson || this.cl) && this.lessonEnd > 0 && (this.lessonEnd -= dt) <= 0) {
       this.end('entrainement', null);                                       // the lesson is over: the training's recap
     } else if (this.drill && this.drillEnd > 0 && (this.drillEnd -= dt) <= 0) {
@@ -1400,7 +1403,18 @@ export class LambDuel {
     };
     if (o.dodge > 0 || d > def.range + 0.1) { if (o.dodge > 0) o.score.guards++; miss(o.dodge > 0 ? 'Il a reculé : tu es ouvert' : 'Trop loin : tu es ouvert'); return; }
     f.score.grabs++;
-    if (r.kind === 'nuque' && o.guard && o.guardFor < COMBAT.parryFresh && o.open <= 0 && o.stagger <= 0) { o.score.guards++; miss('Paré !'); return; }
+    if (r.kind === 'nuque' && o.guard && o.guardFor < COMBAT.parryFresh && o.open <= 0 && o.stagger <= 0) {
+      o.score.guards++;
+      if (this.combat && !this.cl && !this.drill) {
+        // the new bout: his guard meets the hands — hand in hand, arm against arm, nobody ahead (the empoignade starts even)
+        this.startCombatClinch(f, 'bras', 'guard');
+        f.hold = { kind: 'bras', str: 45 }; o.hold = { kind: 'bras', str: 45 };
+        this.grip = gripAdvantage(this.me.hold, this.ai.hold);
+        this.banner('MAINS LIÉES', 'combo'); this.msg('');
+        return;
+      }
+      miss('Paré !'); return;
+    }
     const entry: Entry = o.stagger > 0 ? 'stagger' : o.open > 0 ? 'open' : o.guard ? 'guard' : r.dur > 0.45 ? 'late' : 'neutral';
     this.startCombatClinch(f, r.kind, entry);
   }
@@ -1420,7 +1434,7 @@ export class LambDuel {
 
   /** A burst of sand at a wrestler's feet (`force` 0…1). */
   private dustAt(f: Fighter, force: number) { if (this.dust) { const p = this.placeOf(f, V_DUST); this.dust.burst(p.x, this.o.y, p.z, force); } }
-  /** A fighting-game banner over the bout (« LÀMB ! », « COMBO ! », « TERRE ! »), restarted each time. */
+  /** A fighting-game banner over the bout (« BËRE ! », « COMBO ! », « TERRE ! »), restarted each time. */
   private banner(text: string, kind: 'start' | 'combo' | 'special' | 'end') {
     this.bannerSaid = text;
     if (this.headless || this.spectate) return;
@@ -1442,11 +1456,21 @@ export class LambDuel {
     const slow = f.guard ? STAND.guardSpeed : f.strike ? 0.4 : 1;
     const a = this.frameOf(f, o);
     const sp = f === this.me ? 2.6 * slow : this.style.speed * Math.min(1.2, 0.8 + 0.1 * this.level) * slow;
-    f.pos.x += (a.fx * it.stick.f + a.lx * it.stick.s) * sp * dt;
-    f.pos.z += (a.fz * it.stick.f + a.lz * it.stick.s) * sp * dt;
+    const tx = (a.fx * it.stick.f + a.lx * it.stick.s) * sp, tz = (a.fz * it.stick.f + a.lz * it.stick.s) * sp;
+    if (this.combat) {
+      // the new bout: the feet speed up and slow down over a fraction of a second (no jump from still to full speed)
+      let v = this.feetVel.get(f); if (!v) { v = new THREE.Vector2(); this.feetVel.set(f, v); }
+      const ease = 1 - Math.exp(-dt * (Math.hypot(tx, tz) > Math.hypot(v.x, v.y) ? 9 : 12));
+      v.x += (tx - v.x) * ease; v.y += (tz - v.y) * ease;
+      f.pos.x += v.x * dt; f.pos.z += v.y * dt;
+    } else { f.pos.x += tx * dt; f.pos.z += tz * dt; }
     f.weight = { f: it.stick.f * 0.85, s: it.stick.s * 0.4 };            // charging in commits the weight forward (his leg is there)
   }
 
+  /** The new bout: each wrestler's footwork speed (eased, m/s on the ground). */
+  private feetVel = new Map<Fighter, THREE.Vector2>();
+  /** How hard the last fall was thrown (0 a push down … 1 lifted and slammed): its thrower's hold, legs and the other's balance. */
+  private fallForce = 0.5;
   private fightCombat(dt: number, breaks: number, quick: number, big: number) {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
@@ -1466,6 +1490,7 @@ export class LambDuel {
       if (it.strike && this.frappe) this.combatStrike(f, it.strike);
       if (it.reach && this.phase === 'fight') this.startReach(f, o, it.reach);
     }
+    if (this.checkSortie()) return;
     let d = ai.pos.distanceTo(me.pos);
     if (this.cl) this.combatLessonHear({ k: 'tick', dist: d });
     // reaches resolve (the one that started first lands first)
@@ -1662,14 +1687,24 @@ export class LambDuel {
       else if (v < -0.12 && f.weight.f >= -0.3) shove(f, { f: -1, s: 0 }, COMBAT.dragLean * -v * dt * braceFactor(f, { f: -1, s: 0 }));
     }
   }
-  /** Out of the circle (not in the lesson or a drill): the referee stops, a point for the one who stayed in, back to the middle. */
+  /** Out of the circle (not in the lesson or a drill); the new bout: the third time out loses (SORTIES_LOST): the referee stops, a point for the one who stayed in, back to the middle. */
   private checkSortie(): boolean {
     if (this.cl || this.drill || this.held || this.mode === 'entrainement') return false;
     for (const [f, o] of [[this.me, this.ai], [this.ai, this.me]] as const) {
       if (Math.hypot(f.pos.x - this.o.x, f.pos.z - this.o.z) <= this.ring - 0.3) continue;
       o.tally.sorties++;
-      this.refereeSaid = f === this.me ? `Sortie ! Point pour ${this.style.name}` : 'Sortie ! Point pour toi';
+      const outs = o.tally.sorties;
+      this.refereeSaid = f === this.me ? `Sortie ${outs}/3` : `${this.style.name} sort ${outs}/3`;
       this.separate(null, 0);
+      for (const v of this.feetVel.values()) v.set(0, 0);
+      if (this.combat && outs >= SORTIES_LOST) {
+        // the third time out of the pit loses the bout
+        this.banner('DEHORS !', 'end');
+        this.me.clip = this.ai.clip = 'Stance'; o.clip = 'Celebrate';
+        this.end('decision', o === this.me ? 'player' : 'opponent');
+        return true;
+      }
+      if (this.combat) this.banner(`SORTIE ${outs}/3`, 'combo');
       this.me.pos.set(this.o.x + 1.1, 0.1, this.o.z); this.ai.pos.set(this.o.x - 1.1, 0.1, this.o.z);
       this.msg(this.refereeSaid, 1.4);
       return true;
@@ -1759,6 +1794,7 @@ export class LambDuel {
   /** A fall in the new bout: the referee calls it (the back on the sand, or the four supports); in the lesson or a drill, they get up. */
   private resolveCombatFall(winner: Fighter, loser: Fighter, fall: FallKind, name: string) {
     this.fallKind = fall; this.throwName = name;
+    this.fallForce = Math.max(0, Math.min(1, 0.55 * (winner.hold.str / 100) + 0.3 * (winner.stamina / 100) + 0.15 * (1 - loser.balance / 100)));
     if (this.drill || this.cl) {
       this.feel('throw', winner === this.me, loser === this.me);
       if (this.drill && loser === this.me) this.drillHear({ k: 'fall' });
@@ -2343,7 +2379,8 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     for (const f of [me, ai]) {
       const off = f.pos.clone().sub(this.o).setY(0);
-      if (off.length() > this.ring) f.pos.copy(this.o).addScaledVector(off.normalize(), this.ring).setY(0.1);
+      const edge = this.combat ? this.ring + 0.6 : this.ring;
+      if (off.length() > edge) f.pos.copy(this.o).addScaledVector(off.normalize(), edge).setY(0.1);
     }
     const gap = ai.pos.clone().sub(me.pos).setY(0), dist = gap.length();
     if (dist < 0.75 && this.phase === 'fight') { const push = gap.normalize().multiplyScalar((0.75 - dist) / 2); ai.pos.add(push); me.pos.sub(push); }
@@ -2415,9 +2452,10 @@ export class LambDuel {
       move: f.move ? { kind: f.move.kind, k: Math.min(1, f.move.t / 0.3), side: f.side } : null,
       throwing: at && at.by === f && at.id ? { id: at.id, k: Math.min(1, at.t / (THROWS[at.id].windup * (f.slow ?? 1))) } : null,
       thrown: at && at.by === o && at.id ? { id: at.id, k: Math.min(1, at.t / (THROWS[at.id].windup * (o.slow ?? 1))) } : null,
-      fall: down ? { kind: this.fallKind ?? 'dos', throw: this.lastThrow?.throw ?? null, t: this.phaseT } : null,
+      fall: down ? { kind: this.fallKind ?? 'dos', throw: this.lastThrow?.throw ?? null, t: this.phaseT, force: this.fallForce } : null,
+      apart: o.pos.distanceTo(f.pos),
       won: this.phase === 'fall' && !down && this.winner !== null && (this.winner === 'player') === (f === this.me),
-      guard: f.guard, stagger: f.stagger, crouch: this.phase === 'intro' ? 0.3 : 1,
+      guard: f.guard, stagger: f.stagger, crouch: this.phase === 'intro' ? 0.3 : this.phase === 'fight' ? Math.max(0.2, Math.min(1, (2.4 - o.pos.distanceTo(f.pos)) / 0.9)) : 1,   // tall while apart, low as he engages
       after: f.rig && this.frappe && this.phase === 'fight' ? () => f.rig!.pose(f, dt) : undefined,   // Làmb 2.0's guard and strikes, on top
     });
   }
