@@ -72,6 +72,8 @@ export interface PoseIn {
   fall: { kind: FallKind; throw: ThrowId | null; t: number; force?: number } | null;
   /** How far the other man is (m), standing. */
   apart?: number;
+  /** The cinematic bout (src/lamb/cinematic.ts): this clip at this time (s), nothing else — the two halves of a paired move are played on one clock. */
+  force?: { id: ClipId; t: number } | null;
   won: boolean; guard: boolean; stagger: number;
   /** How crouched (0 upright … 1 the fighting stance). */
   crouch: number;
@@ -236,6 +238,7 @@ export class CombatRig {
     this.clipLegs = 0;
     if (lib && this.restRoot && this.b.root) { this.b.root.position.copy(this.restRoot.p); this.b.root.quaternion.copy(this.restRoot.q); }
     if (lib) this.baseClip(p);
+    if (p.force && lib) { this.wLegs = 0; this.wHands = 0; this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     this.fallYaw = 0;
     const legsOn = (fighting || (p.phase === 'fall' && !p.won)) && this.clipLegs < 0.5;
@@ -270,7 +273,11 @@ export class CombatRig {
     if (p.phase !== 'fall' && p.phase !== 'result') { this.downWas = false; this.wonT = 0; }
     this.resT = p.phase === 'result' ? this.resT + dt : 0;
     if (p.throwing) this.lastThrow = p.throwing.id;
-    if (p.fall) {
+    if (p.force) {
+      const c = combatClips()?.get(p.force.id);
+      if (c) { pl.play(p.force.id, { mode: 'driven', from: 0, to: c.dur, fade: 0.15 }); pl.at(clamp(p.force.t / c.dur, 0, 1)); }
+      this.clipLegs = 1;
+    } else if (p.fall) {
       const t = p.fall.t, id = p.fall.throw;
       if (p.fall.kind === 'appuis' || id === 'ramene') { pl.play('fall_fwd', { mode: 'driven', from: 0.25, to: 1.45, fade: 0.12 }); pl.at(t / 0.95); }
       else if ((p.fall.force ?? 0.5) < 0.4) { pl.play('fall_back', { mode: 'driven', from: 1.25, to: 3.05, fade: 0.15 }); pl.at(t / 1.7); }   // a weak throw: he is put down, backwards

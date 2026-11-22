@@ -176,9 +176,21 @@ for (const c of lib.clips) {
   if (!id) { console.log('skip', c.name); continue; }
   clips[id] = retarget(lib, 'meshy', c, { inPlace, plant, trim: true });
 }
-for (const m of ['stance', 'hip_throw', 'lift_drop', 'push_drive', 'thrown_back', 'resist_sprawl', 'victory']) {
+// the solo clips, then the paired ones (the cinematic bout: src/lamb/cinematic.ts plays each pair's two clips on one clock,
+// the attacker's « _a » and the receiver's « _b », placed facing each other)
+const RECEIVED = ['thrown_back', 'lift_slam_b', 'hip_b', 'trip_b'];
+for (const m of ['stance', 'hip_throw', 'lift_drop', 'push_drive', 'thrown_back', 'resist_sprawl', 'victory',
+  'lift_slam_a', 'lift_slam_b', 'grip_fight', 'push_a', 'push_b', 'hip_b', 'trip_a', 'trip_b']) {
   const s = fbxTree(`${SRC}/motion/${m}/motion.fbx`);
-  clips[m] = retarget(s, 'smpl', s.clips[0], { inPlace: ['stance', 'push_drive', 'resist_sprawl', 'victory'].includes(m), plant: m !== 'thrown_back' });
+  clips[m] = retarget(s, 'smpl', s.clips[0], { inPlace: ['stance', 'push_drive', 'resist_sprawl', 'victory', 'grip_fight'].includes(m), plant: !RECEIVED.includes(m) });
+}
+// the paired moves' travel on the sand, shortened: the generated falls slide 1–2 m, which takes the man thrown out of the
+// shot (the cinematic bout frames the pair where they stood); the height and every rotation are kept
+for (const id of ['lift_slam_a', 'lift_slam_b', 'push_a', 'push_b', 'hip_b', 'trip_a', 'trip_b']) {
+  const c = clips[id]; if (!c) continue;
+  const b = Buffer.from(c.hips, 'base64'), a = new Int16Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.length));
+  for (let i = 0; i < a.length; i += 3) { a[i] = Math.round(a[i] * 0.35); a[i + 1] = Math.round(a[i + 1] * 0.35); }
+  c.hips = Buffer.from(a.buffer).toString('base64');
 }
 fs.mkdirSync(OUT.replace(/\/[^/]+$/, ''), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify({ source: 'Meshy animation library and text-to-motion (task ids: assets-src/meshy_output/wrestling_anim/tasks.txt, kept out of git), retargeted by scripts/wrestlers/retarget-meshy.mjs', bones: TARGET, restHips: tRestHips.toArray(), clips }));

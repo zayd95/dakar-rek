@@ -608,6 +608,35 @@ body.induel .duel-ui.combat .duel-clinch > i::before, body.induel .duel-ui.comba
   body.induel .duel-ui.combat .duel-clinch, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 50px); left:50%; transform:translateX(-50%); }
 }
 
+/* the cinematic bout: the free bout's buttons and Prise give way to one big action button, the needle's bar over it, and
+   the four moves at the opening */
+body.induel .duel-ui.cine .duel-btns, body.induel .duel-ui.cine .duel-clinch, body.induel .duel-ui.cine .duel-msg { display:none !important; }
+body.induel .duel-ui .cine-layer { display:none; }
+body.induel .duel-ui.cine .cine-layer { display:block; }
+body.induel .duel-ui .cine-act { position:absolute; right:calc(18px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 28px); width:112px; height:112px; border-radius:50%; border:4px solid rgba(0,0,0,.55);
+  background:radial-gradient(circle at 35% 30%, #fef08a, #eab308 60%, #a16207); color:#1c1917; font:900 18px/1 system-ui,sans-serif; letter-spacing:.03em; text-transform:uppercase;
+  box-shadow:0 6px 18px rgba(0,0,0,.5); pointer-events:auto; touch-action:none; -webkit-user-select:none; user-select:none; }
+body.induel .duel-ui .cine-act.on { transform:scale(.92); }
+body.induel .duel-ui .cine-act.defend { background:radial-gradient(circle at 35% 30%, #fecaca, #ef4444 60%, #991b1b); color:#fff; }
+body.induel .duel-ui .cine-meter { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 158px); width:min(84vw, 420px); }
+body.induel .duel-ui .cine-meter > i { position:relative; display:block; height:22px; border-radius:11px; background:rgba(15,23,42,.8); border:2px solid rgba(255,255,255,.35); overflow:hidden; }
+body.induel .duel-ui .cine-meter u { position:absolute; top:0; bottom:0; background:rgba(250,204,21,.55); }
+body.induel .duel-ui .cine-meter.hot u { background:rgba(74,222,128,.85); }
+body.induel .duel-ui .cine-meter.defend u { background:rgba(248,113,113,.6); }
+body.induel .duel-ui .cine-meter.defend.hot u { background:rgba(74,222,128,.85); }
+body.induel .duel-ui .cine-meter b { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; box-shadow:0 0 8px #fff; }
+body.induel .duel-ui .cine-pips { display:flex; justify-content:space-between; font:900 18px/1 system-ui,sans-serif; margin-bottom:6px; text-shadow:0 1px 0 #000; }
+body.induel .duel-ui .cine-pips span:first-child { color:#fde047; } body.induel .duel-ui .cine-pips span:last-child { color:#fca5a5; }
+body.induel .duel-ui .cine-techs { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 30px); display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; width:min(90vw, 420px); }
+body.induel .duel-ui .cine-techs button { pointer-events:auto; min-height:64px; border-radius:16px; border:3px solid rgba(0,0,0,.5); background:linear-gradient(#fde047,#f59e0b); color:#1c1917;
+  font:900 18px/1 system-ui,sans-serif; text-transform:uppercase; box-shadow:0 5px 14px rgba(0,0,0,.45); touch-action:none; }
+body.induel .duel-ui .cine-techs[hidden], body.induel .duel-ui .cine-meter[hidden], body.induel .duel-ui .cine-act[hidden] { display:none; }
+body.induel .duel-ui .cine-techs button small { display:block; font-size:10px; opacity:.6; margin-bottom:3px; }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui .cine-meter { bottom:calc(env(safe-area-inset-bottom,0px) + 24px); width:min(46vw, 420px); }
+  body.induel .duel-ui .cine-techs { bottom:calc(env(safe-area-inset-bottom,0px) + 70px); }
+}
+
 /* ============================================================= HUD: only what matters now (UX lane)
    Always: the wallet and the needs, the place and the time, the phone button, the streak chip, the controls of the mode. Contextual: the job's guidance,
    ONE primary nearby action, the speed and condition at the wheel, a short completion card, an activity's own controls. */

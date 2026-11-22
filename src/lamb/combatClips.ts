@@ -13,7 +13,8 @@ import * as THREE from 'three';
  * (src/lamb/combatRig.ts: the feet planted, the hands on the hold, the springs). Sampling allocates nothing.
  */
 export type ClipId = 'walk_fwd' | 'walk_back' | 'crouch_walk' | 'knock_down' | 'fall_back' | 'fall_fwd' | 'stand_up' | 'stagger'
-  | 'shoulder_throw' | 'grip_throw' | 'stance' | 'hip_throw' | 'lift_drop' | 'push_drive' | 'thrown_back' | 'resist_sprawl' | 'victory';
+  | 'shoulder_throw' | 'grip_throw' | 'stance' | 'hip_throw' | 'lift_drop' | 'push_drive' | 'thrown_back' | 'resist_sprawl' | 'victory'
+  | 'lift_slam_a' | 'lift_slam_b' | 'grip_fight' | 'push_a' | 'push_b' | 'hip_b' | 'trip_a' | 'trip_b';
 
 export interface ClipData {
   id: ClipId; fps: number; frames: number; dur: number;

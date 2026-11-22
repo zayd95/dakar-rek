@@ -31,6 +31,7 @@ import { CombatAi, SIGNATURE, idle as idleIntent, recall, remember, type AiView,
 import { COMBAT_LESSON, combatAdvance, combatCoachLine, combatFeedback, combatHear, combatStepNumber, startCombatLesson, type CombatLesson, type CombatLessonEvent } from './combatLesson';
 import { loadCombatClips, combatClips } from './combatClips';
 import { CombatRig, SandDust } from './combatRig';
+import { CineBout, TECHS, TECH_ORDER, type TechId, type Who } from './cinematic';
 import { STYLE6_IDS, k, type Style6 } from './stand';
 import {
   RULES, RULES_STATUS, OUTCOME_TEXT, boutRewards, breakWindowOpen, clinchStrength, emptyScore, levelFactor, points, refereeDecision,
@@ -330,6 +331,14 @@ export class LambDuel {
   private onHidden = () => { if (document.hidden) this.releaseControls(); };
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
+    if (this.cine && this.cine.phase !== 'fin' && (this.phase === 'fight' || this.phase === 'clinch')) {
+      if (down && !e.repeat && !this.paused) {
+        if (e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter') { e.preventDefault(); this.cinePress = true; }
+        const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (n >= 0) this.cinePick = TECH_ORDER[n];
+      }
+      if (e.code === 'Escape' && down) this.askAbandon(!this.confirmOpen());
+      return;
+    }
     if (this.combat && this.combatKey(e, down)) return;
     if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { if (down && !e.repeat && !this.paused) this.guardTapped = true; this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
     if (!down || e.repeat) return;
@@ -425,6 +434,8 @@ export class LambDuel {
   private buildUi(): HTMLDivElement {
     // the new bout uses Làmb 2.0's gauges and their phone layout (src/ui/style.css) in both disciplines, with its own buttons
     const d = document.createElement('div'); d.className = this.combat ? 'duel-ui frappe combat' : this.frappe ? 'duel-ui frappe' : 'duel-ui';
+    // the cinematic bout's controls from the start (the bout itself is made at the bell: cineOn)
+    if (this.combat && !this.cl && !this.drill && !this.headless && !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('cine0'))) d.classList.add('cine');
     // short enough for the header's one line on a phone in portrait (the lesson and the drills avec frappe say which)
     const title = this.lesson || this.cl ? 'Leçon · Coach Ablaye' : this.drill ? 'Exercice · Coach Ablaye'
       : { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
@@ -562,6 +573,18 @@ export class LambDuel {
       for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) quick.addEventListener(ev, () => { quick.classList.remove('on'); this.quickRelease(); });
     } else if (quick) tap(quick, () => this.quickPresses++);
     if (big) tap(big, () => this.bigPresses++);
+    if (this.combat) {
+      // the cinematic bout's controls (shown once it runs: the class « cine » on the HUD): the needle's bar, one action button, the moves at the opening
+      const cl = document.createElement('div'); cl.className = 'cine-layer';
+      cl.innerHTML = `<div class="cine-meter" data-k="cmeter" hidden><div class="cine-pips"><span data-k="cmine"></span><span data-k="chis"></span></div><i><u data-k="czone"></u><b data-k="cneedle"></b></i></div>
+        <div class="cine-techs" data-k="ctechs" hidden>${TECH_ORDER.map((id, n) => `<button data-t="${id}"><small>${n + 1}</small>${TECHS[id].label}</button>`).join('')}</div>
+        <button class="cine-act" data-k="cact">Saisir</button>`;
+      d.appendChild(cl);
+      const act = cl.querySelector<HTMLButtonElement>('[data-k=cact]')!;
+      act.addEventListener('pointerdown', e => { e.preventDefault(); if (!this.paused) this.cinePress = true; act.classList.add('on'); });
+      for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) act.addEventListener(ev, () => act.classList.remove('on'));
+      cl.querySelectorAll<HTMLButtonElement>('[data-t]').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); if (!this.paused) this.cinePick = b.dataset.t as TechId; }));
+    }
     d.querySelector<HTMLButtonElement>('[data-k=abandon]')!.addEventListener('click', e => { (e.currentTarget as HTMLButtonElement).blur(); this.askAbandon(true); });
     d.querySelector('[data-k=yes]')!.addEventListener('click', () => this.abandon());
     d.querySelector('[data-k=no]')!.addEventListener('click', () => this.askAbandon(false));
@@ -616,6 +639,7 @@ export class LambDuel {
       if (step.innerHTML !== html) step.innerHTML = html;
     } else step.hidden = true;
     const cl = this.q('clinch'), brk = this.q('break');
+    if (this.cine) { this.drawCine(); return; }
     if (this.combat) { this.drawCombat(cl, brk); return; }
     if (this.phase === 'clinch') {
       const c = this.clinchState()!;
@@ -654,6 +678,28 @@ export class LambDuel {
    * The new bout's HUD: the Prise (both holds in words), the buttons' words for now — Saisir / « Jambe ! » standing, the
    * throw the hold gives in the empoignade (lit when it is ready), « Contrer » while he throws, the hold one would go to.
    */
+  /** The cinematic bout's controls: the needle and its lit zone, the beats won, the one button's word, the moves at the opening. */
+  private drawCine() {
+    const c = this.cine!, live = this.phase === 'fight' || this.phase === 'clinch';
+    const meter = this.q('cmeter'), act = this.q<HTMLButtonElement>('cact'), techs = this.q('ctechs');
+    const showMeter = live && (c.phase === 'empoignade' || c.phase === 'projection' || c.phase === 'defense');
+    meter.hidden = !showMeter;
+    if (showMeter) {
+      const z = this.q('czone');
+      if (c.phase === 'projection') { z.style.left = '80%'; z.style.width = '20%'; } else { z.style.left = `${(c.z0 * 100).toFixed(1)}%`; z.style.width = `${((c.z1 - c.z0) * 100).toFixed(1)}%`; }
+      this.q('cneedle').style.left = `${(c.needle * 100).toFixed(1)}%`;
+      meter.classList.toggle('hot', c.phase === 'projection' ? c.needle >= 0.8 : c.inZone);
+      meter.classList.toggle('defend', c.phase === 'defense');
+      const pips = (n: number) => '●'.repeat(n) + '○'.repeat(Math.max(0, CineBout.BEATS - n));
+      this.q('cmine').textContent = c.phase === 'empoignade' ? pips(c.mine) : '';
+      this.q('chis').textContent = c.phase === 'empoignade' ? pips(c.his) : '';
+    }
+    const word = !live ? '' : c.phase === 'debout' ? 'Saisir' : c.phase === 'empoignade' ? 'Force' : c.phase === 'projection' ? 'Projeter' : c.phase === 'defense' ? 'Résiste' : '';
+    act.hidden = !word; if (word && act.textContent !== word) act.textContent = word;
+    act.classList.toggle('defend', c.phase === 'defense');
+    techs.hidden = !(live && c.phase === 'ouverture');
+  }
+
   private drawCombat(cl: HTMLElement, brk: HTMLElement) {
     const me = this.me, ai = this.ai, inClinch = this.phase === 'clinch';
     const set = (k: string, text: string, cls: Record<string, boolean> = {}) => {
@@ -1010,6 +1056,7 @@ export class LambDuel {
       points: { player: combatPoints(this.me.score, this.me.tally, this.ai.tally), opponent: combatPoints(this.ai.score, this.ai.tally, this.me.tally) },
       pair: { v: r2(Math.hypot(this.pairVel.x, this.pairVel.z)), spin: r2(this.pairSpin) },
       body: { player: this.me.look?.info() ?? null, opponent: this.ai.look?.info() ?? null }, clips: !!combatClips(),
+      cine: this.cine ? { phase: this.cine.phase, t: r2(this.cine.t), needle: r2(this.cine.needle), z0: r2(this.cine.z0), z1: r2(this.cine.z1), mine: this.cine.mine, his: this.cine.his, tech: this.cine.tech, force: r2(this.cine.force), sorties: this.cine.sorties, winner: this.cine.winner, scene: this.cine.scene ? { kind: this.cine.scene.kind, by: this.cine.scene.by, t: r2(this.cine.scene.t), result: this.cine.scene.result } : null } : null,
       rematchable: this.rematchable,
       combos: this.combos, banner: this.bannerSaid, dust: this.dust?.grains ?? 0, shake: Math.round(1000 * this.shakeAmp * Math.exp(-9 * this.shakeT)) / 1000,
       combo: at && at.id ? { combo: !!at.combo, special: !!at.special } : null,
@@ -1136,6 +1183,8 @@ export class LambDuel {
       this.end('entrainement', null);                                       // the lesson is over: the training's recap
     } else if (this.drill && this.drillEnd > 0 && (this.drillEnd -= dt) <= 0) {
       this.end('entrainement', null);                                       // the drill is over: its recap
+    } else if ((this.phase === 'fight' || this.phase === 'clinch') && this.cineOn()) {
+      this.cineStep(dt);
     } else if (this.phase === 'fight' && this.combat) {
       if (this.drill) this.drillSetup();
       if ((this.phase as DuelPhase) === 'clinch') return this.frame(dt);
@@ -1467,8 +1516,102 @@ export class LambDuel {
     f.weight = { f: it.stick.f * 0.85, s: it.stick.s * 0.4 };            // charging in commits the weight forward (his leg is there)
   }
 
+  /** The cinematic bout runs this bout (made at the bell: the player's own new bout, not the lesson, a drill or a test host). */
+  private cineOn(): boolean {
+    if (this.cine) return true;
+    if (!this.combat || this.cl || this.drill || this.headless || this.phase !== 'fight') return false;
+    if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('cine0')) return false;
+    this.cine = new CineBout({ level: this.level, seed: Math.floor(this.t * 1000) + 11 });
+    this.ui.classList.add('cine');
+    return true;
+  }
+
+  /** One step of the cinematic bout: the feet while standing, the bout's state, its events, the scene's places. */
+  private cineStep(dt: number) {
+    const c = this.cine!, me = this.me, ai = this.ai;
+    if (this.timeLeft !== Infinity && !this.held && (c.phase === 'debout' || c.phase === 'empoignade')) this.timeLeft -= dt;
+    const edge = (f: Fighter) => this.ring - Math.hypot(f.pos.x - this.o.x, f.pos.z - this.o.z);
+    const apart = me.pos.distanceTo(ai.pos);
+    if (c.phase === 'debout') {
+      // the player walks the pit with the stick (eased); he circles in, and comes all the way when he means to grab
+      const m = this.input.move(), sp = 2.4;
+      const v = this.feetVel.get(me) ?? new THREE.Vector2(); this.feetVel.set(me, v);
+      const tx = (this.camRight.x * m.x + this.camFwd.x * m.y) * sp, tz = (this.camRight.z * m.x + this.camFwd.z * m.y) * sp;
+      const e = 1 - Math.exp(-dt * 9); v.x += (tx - v.x) * e; v.y += (tz - v.y) * e;
+      me.pos.x += v.x * dt; me.pos.z += v.y * dt;
+      const want = c.t > c.aiComeT - 0.7 ? 0.95 : 1.7;
+      const to = me.pos.clone().sub(ai.pos).setY(0), d = to.length();
+      if (d > 1e-3) {
+        to.normalize();
+        const close = Math.max(-1, Math.min(1, (d - want) * 1.5));
+        ai.pos.addScaledVector(to, close * this.style.speed * 0.9 * dt);
+        ai.pos.addScaledVector(new THREE.Vector3(-to.z, 0, to.x), 0.35 * Math.sin(this.t * 0.8) * dt);
+      }
+    } else if (c.phase !== 'scene' && c.phase !== 'fin') {
+      // in the empoignade: chest to chest, the pair's middle kept
+      const mid = me.pos.clone().add(ai.pos).multiplyScalar(0.5), dir = ai.pos.clone().sub(me.pos).setY(0).normalize();
+      if (Number.isFinite(dir.x)) { me.pos.copy(mid).addScaledVector(dir, -0.38).setY(0.1); ai.pos.copy(mid).addScaledVector(dir, 0.38).setY(0.1); }
+    }
+    // a slow motion at the impact of a throw
+    let k = 1;
+    const sc = c.scene;
+    if (sc && sc.kind === 'throw' && sc.t > sc.impact - 0.4 && sc.t < sc.impact + 0.3) k = 0.45;
+    const press = this.cinePress, pick = this.cinePick; this.cinePress = false; this.cinePick = null;
+    const ev = c.step(dt * k, press, pick, apart, { player: edge(me), opponent: edge(ai) });
+    if (ev.banner) this.banner(ev.banner, ev.banner === 'DEHORS !' ? 'end' : 'combo');
+    if (ev.shake) { this.shakeAmp = 0.12 * ev.shake; this.shakeT = 0; }
+    if (ev.cheer) crowdCheer(2.4 * ev.cheer, 0.3);
+    if (ev.fall) { const l = ev.fall === 'player' ? me : ai; this.dustAt(l, 1); this.feel('fall', ev.fall !== 'player', ev.fall === 'player'); }
+    if (ev.out) { for (const v of this.feetVel.values()) v.set(0, 0); me.pos.set(this.o.x + 1.6, 0.1, this.o.z); ai.pos.set(this.o.x - 1.6, 0.1, this.o.z); }
+    // a new scene: the receiver set at its distance in front of the attacker, facing him
+    if (c.scene && c.scene !== this.cineScene) {
+      this.cineScene = c.scene;
+      const a = c.scene.by === 'player' ? me : ai, b = a === me ? ai : me, T = c.scene.tech ? TECHS[c.scene.tech] : null;
+      const dir = b.pos.clone().sub(a.pos).setY(0).normalize();
+      if (Number.isFinite(dir.x)) b.pos.copy(a.pos).addScaledVector(dir, T ? T.gap : 0.7).setY(0.1);
+    }
+    if (c.phase === 'fin' && c.winner) {
+      const side: Side = c.winner === 'player' ? 'player' : 'opponent';
+      if (c.sorties.player >= 3 || c.sorties.opponent >= 3) this.end('decision', side);
+      else { this.fallKind = 'dos'; this.throwName = c.scene?.tech ? TECHS[c.scene.tech].label.toLowerCase() : null; this.end('projection', side); }
+      return;
+    }
+    if (this.timeLeft <= 0 && (c.phase === 'debout' || c.phase === 'empoignade')) {
+      const w = c.decision(); this.end(w ? 'decision' : 'egalite', w ? (w === 'player' ? 'player' : 'opponent') : null);
+    }
+  }
+
+  /** The clip a body plays in the cinematic bout now (null: the standing bout's own posing). */
+  private cineForce(f: Fighter): { id: import('./combatClips').ClipId; t: number } | null {
+    const c = this.cine; if (!c) return null;
+    const who: Who = f === this.me ? 'player' : 'opponent', sc = c.scene;
+    if (sc && (c.phase === 'scene' || this.phase === 'fall' || this.phase === 'result')) {
+      const attacker = sc.by === who, t = Math.min(sc.t, sc.dur);
+      if (this.phase === 'fall' || this.phase === 'result') {
+        // the bout is over: the man thrown stays down, the winner lets it out
+        return attacker ? { id: 'victory', t: (this.phaseT + this.t * 0) % 4.5 + 0.2 } : { id: sc.b, t: 99 };
+      }
+      if (sc.kind === 'resist') return attacker ? { id: sc.a, t: Math.min(t, 0.9) } : { id: 'resist_sprawl', t: 0.4 + t };
+      return { id: attacker ? sc.a : sc.b, t };
+    }
+    if (c.phase === 'empoignade' || c.phase === 'ouverture' || c.phase === 'projection' || c.phase === 'defense') {
+      // hands and heads together: the hand fight, out of step between the two; the one on top drives
+      const lead = c.mine > c.his ? 'player' : c.his > c.mine ? 'opponent' : null;
+      if (c.phase === 'projection' && who === 'player') return { id: 'push_drive', t: 0.35 + (this.t % 2) };
+      if (lead === who && c.phase === 'empoignade') return { id: 'push_drive', t: 0.35 + ((this.t * 0.9) % 2) };
+      return { id: 'grip_fight', t: ((this.t + (who === 'opponent' ? 1.4 : 0)) % 3.6) + 0.2 };
+    }
+    return null;
+  }
+
   /** The new bout: each wrestler's footwork speed (eased, m/s on the ground). */
   private feetVel = new Map<Fighter, THREE.Vector2>();
+  /**
+   * The cinematic bout (src/lamb/cinematic.ts), the player's own new bout outside the lesson and the drills (`?cine0`: the
+   * free bout instead): its state, the press and the move picked this step, the scene the bodies were last placed for.
+   */
+  private cine: CineBout | null = null;
+  private cinePress = false; private cinePick: TechId | null = null; private cineScene: object | null = null;
   /** How hard the last fall was thrown (0 a push down … 1 lifted and slammed): its thrower's hold, legs and the other's balance. */
   private fallForce = 0.5;
   private fightCombat(dt: number, breaks: number, quick: number, big: number) {
@@ -2446,8 +2589,10 @@ export class LambDuel {
    */
   private poseCombat(f: Fighter, o: Fighter, dt: number) {
     const at = this.attempt, down = this.phase === 'fall' && this.outcome === 'projection' && (this.fallFx?.loser === f || this.feelFall?.loser === f);
+    const force = this.cineForce(f);
     f.look!.pose({
-      dt, phase: this.phase, ring: this.o, other: o.w, otherLook: o.look,
+      force,
+      dt, phase: force ? 'scene' : this.phase, ring: this.o, other: o.w, otherLook: o.look,
       lean: lean(f), weight: f.weight, hold: f.hold.kind, holdStr: f.hold.str, reach: f.reach ? { kind: f.reach.kind, k: Math.min(1, f.reach.t / f.reach.dur) } : null,
       move: f.move ? { kind: f.move.kind, k: Math.min(1, f.move.t / 0.3), side: f.side } : null,
       throwing: at && at.by === f && at.id ? { id: at.id, k: Math.min(1, at.t / (THROWS[at.id].windup * (f.slow ?? 1))) } : null,
@@ -2509,6 +2654,26 @@ export class LambDuel {
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();
       this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);           // forward × up
       view = { cam, look: mid.clone().setY(fr.look) };
+    }
+    // the cinematic bout's shots: close and turning slowly round the pair in the empoignade; low, three-quarters from the
+    // attacker's front for a move, rising as the man thrown hits the sand
+    const c = this.cine;
+    if (c && (this.phase === 'fight' || this.phase === 'clinch') && c.phase !== 'debout') {
+      const sc = c.scene;
+      if (sc) {
+        const a = sc.by === 'player' ? me : ai, b = a === me ? ai : me;
+        const ab = b.pos.clone().sub(a.pos).setY(0).normalize(), m = a.pos.clone().add(b.pos).multiplyScalar(0.5);
+        const right = new THREE.Vector3(-ab.z, 0, ab.x);
+        const k = Math.min(1, sc.t / Math.max(0.1, sc.impact)), after = Math.max(0, sc.t - sc.impact);
+        const dir = right.clone().multiplyScalar(0.8).addScaledVector(ab, 0.6).normalize();
+        const dist = (portrait ? 4.2 : 3.3) + 0.6 * Math.min(1, after);
+        view = { cam: m.clone().addScaledVector(dir, dist).setY(0.75 + 0.65 * k), look: m.clone().setY(0.85 - 0.25 * Math.min(1, after)) };
+      } else {
+        const ang = 0.35 * Math.sin(this.t * 0.35);
+        const dir = side.clone().applyAxisAngle(UP, ang);
+        view = { cam: mid.clone().addScaledVector(dir, portrait ? 2.9 : 2.3).setY(1.2), look: mid.clone().setY(1.0) };
+      }
+      this.camFwd.copy(view.look).sub(view.cam).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
     }
     this.view = view;
     // the push towards the pair along the camera's own axis: given apart, so the caller adds it after its own smoothing
