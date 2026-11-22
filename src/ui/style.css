@@ -659,6 +659,50 @@ body.induel .duel-ui.cine.tell::before, body.induel .duel-ui.cine.tell::after { 
   body.induel .duel-ui .cine-techs button { min-height:40px; font-size:13px; }
 }
 
+/* the cinematic bout's result, as a fight card: the verdict huge, how, three numbers face to face, the rewards in one line */
+body.induel .duel-ui.rc-on .duel-top, body.induel .duel-ui.rc-on .duel-bars { opacity:0; transition:opacity .3s; }
+body.induel .duel-ui .duel-recap.rc { background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.86) 38%, rgba(0,0,0,.94)); align-items:flex-end; padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px); }
+body.induel .duel-ui .duel-recap.rc > .rc-card { background:none; border:0; border-radius:0; padding:0 20px; width:min(100vw, 460px); max-height:none; overflow:visible; color:#fff; text-align:center;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif; animation:rcIn .45s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes rcIn { from { opacity:0; transform:translateY(24px) scale(.96); } to { opacity:1; transform:none; } }
+.duel-recap.rc .rc-kick { display:block; font:800 11px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.28em; text-transform:uppercase; color:rgba(255,255,255,.55); }
+.duel-recap.rc .rc-verdict { margin:6px 0 2px; font:italic 900 clamp(52px, 16vw, 78px)/.9 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:-.02em; text-transform:uppercase; color:#facc15;
+  text-shadow:0 4px 0 #a16207, 0 10px 30px rgba(250,204,21,.35); }
+.duel-recap.rc.rc-lost .rc-verdict { color:#ef4444; text-shadow:0 4px 0 #7f1d1d, 0 10px 30px rgba(239,68,68,.35); }
+.duel-recap.rc .rc-names { display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 14px; font:900 20px/1 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:.04em; color:rgba(255,255,255,.45); }
+.duel-recap.rc .rc-names span.w { color:#fff; }
+.duel-recap.rc .rc-names i { font:italic 800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif; color:#facc15; }
+.duel-recap.rc.rc-lost .rc-names i { color:#ef4444; }
+.duel-recap.rc .rc-method { display:inline-flex; flex-direction:column; gap:4px; padding:10px 22px; border-top:2px solid #facc15; border-bottom:2px solid #facc15; margin-bottom:18px; }
+.duel-recap.rc.rc-lost .rc-method { border-color:#ef4444; }
+.duel-recap.rc .rc-method strong { font:italic 900 24px/1 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:.02em; }
+.duel-recap.rc .rc-method small { font:700 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.6); font-variant-numeric:tabular-nums; }
+.duel-recap.rc .rc-stats { display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+.duel-recap.rc .rc-stat { display:grid; grid-template-columns:44px 1fr 44px; align-items:center; row-gap:5px; }
+.duel-recap.rc .rc-stat b { font:900 22px/1 system-ui,-apple-system,"Segoe UI",sans-serif; font-variant-numeric:tabular-nums; }
+.duel-recap.rc .rc-stat b:first-child { text-align:left; } .duel-recap.rc .rc-stat b:last-of-type { text-align:right; }
+.duel-recap.rc .rc-stat span { font:800 11px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.6); }
+.duel-recap.rc .rc-stat i { grid-column:1 / -1; display:flex; gap:3px; height:6px; }
+.duel-recap.rc .rc-stat u { display:block; height:100%; background:#facc15; border-radius:3px 0 0 3px; transition:width .6s; }
+.duel-recap.rc .rc-stat u + u { background:rgba(255,255,255,.28); border-radius:0 3px 3px 0; }
+.duel-recap.rc .rc-chips { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:16px; }
+.duel-recap.rc .rc-chips em { font:800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif; font-style:normal; padding:7px 11px; border-radius:999px; background:rgba(74,222,128,.14); color:#86efac; border:1px solid rgba(74,222,128,.35); }
+.duel-recap.rc .rc-btns { display:flex; gap:10px; }
+.duel-recap.rc .rc-btns button { flex:1; margin:0; padding:16px 10px; border-radius:12px; font:900 15px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.08em; text-transform:uppercase; border:0; }
+.duel-recap.rc .rc-btns button[data-k=continue] { background:#facc15; color:#111; }
+.duel-recap.rc .rc-btns button[data-k=again] { background:transparent; color:#fff; border:2px solid rgba(255,255,255,.5); }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui .duel-recap.rc { align-items:center; padding-bottom:0; background:linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.8)); }
+  body.induel .duel-ui .duel-recap.rc > .rc-card { width:min(94vw, 780px); display:grid; grid-template-columns:1fr 1.1fr; grid-template-rows:auto auto auto 1fr; column-gap:34px; align-items:center;
+    padding:0 calc(16px + env(safe-area-inset-right,0px)) 0 calc(16px + env(safe-area-inset-left,0px)); }
+  .duel-recap.rc .rc-kick, .duel-recap.rc .rc-verdict, .duel-recap.rc .rc-names, .duel-recap.rc .rc-method { grid-column:1; }
+  .duel-recap.rc .rc-stats, .duel-recap.rc .rc-chips, .duel-recap.rc .rc-btns { grid-column:2; }
+  .duel-recap.rc .rc-stats { grid-row:1 / 3; align-self:end; } .duel-recap.rc .rc-chips { grid-row:3; } .duel-recap.rc .rc-btns { grid-row:4; align-self:start; }
+  .duel-recap.rc .rc-verdict { font-size:56px; } .duel-recap.rc .rc-names { margin:6px 0 10px; font-size:16px; }
+  .duel-recap.rc .rc-method { justify-self:center; padding:8px 18px; margin-bottom:0; } .duel-recap.rc .rc-stats { gap:8px; margin-bottom:10px; }
+  .duel-recap.rc .rc-chips { margin-bottom:10px; } .duel-recap.rc .rc-btns button { padding:12px 10px; }
+}
+
 /* ============================================================= HUD: only what matters now (UX lane)
    Always: the wallet and the needs, the place and the time, the phone button, the streak chip, the controls of the mode. Contextual: the job's guidance,
    ONE primary nearby action, the speed and condition at the wheel, a short completion card, an activity's own controls. */

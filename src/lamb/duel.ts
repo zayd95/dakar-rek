@@ -866,6 +866,7 @@ export class LambDuel {
     const opp = r.mode === 'entrainement' ? 'Babacar (partenaire)' : this.identity ?? `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
     const row = (l: string, a: number | string, b: number | string) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
     const box = this.q('recap');
+    if (this.cine) { this.showCineRecap(box, r, mode, opp); return; }
     box.innerHTML = `<div><h2></h2><p data-r="how"></p>
       <table><tr><th>${mode}</th><th>Toi</th><th data-r="opp"></th></tr>
       ${row('Endurance restante', r.stamina.player, r.stamina.opponent)}
@@ -886,6 +887,46 @@ export class LambDuel {
     box.querySelector('[data-r=how]')!.textContent = `${how} · ${opp}`;
     box.querySelector('[data-r=opp]')!.textContent = r.mode === 'entrainement' ? 'Babacar' : this.style.name;
     box.querySelectorAll('li').forEach((li, i) => (li.textContent = r.rewards.lines[i]));
+    box.querySelector('[data-k=continue]')!.addEventListener('click', () => this.finish());
+    box.querySelector('[data-k=again]')?.addEventListener('click', () => { this.rematch = true; this.finish(); });
+    box.hidden = false;
+  }
+  /**
+   * The cinematic bout's result, a fight card's: the verdict big, how it was won, three numbers face to face, the rewards
+   * on one line, two buttons.
+   */
+  private showCineRecap(box: HTMLElement, r: DuelResult, mode: string, opp: string) {
+    const c = this.cine!, won = r.winner === 'player', lost = r.winner === 'opponent';
+    const verdict = r.outcome === 'abandon' ? 'Abandon' : won ? 'Victoire' : lost ? 'Défaite' : 'Match nul';
+    const tech = c.scene?.tech ? TECHS[c.scene.tech].label : null;
+    const method = r.outcome === 'projection' ? (tech ? `Par ${tech.toLowerCase()}` : 'Par projection')
+      : c.sorties.player >= 3 || c.sorties.opponent >= 3 ? 'Par sorties' : r.outcome === 'decision' ? 'Aux points' : r.outcome === 'abandon' ? 'Par abandon' : 'Égalité';
+    const sub = r.outcome === 'projection' ? 'Le dos au sol' : c.sorties.player >= 3 || c.sorties.opponent >= 3 ? 'Trois fois hors du cercle' : `${c.points.player} – ${c.points.opponent}`;
+    const sec = Math.max(0, Math.round(r.seconds)), clock = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    const name = r.mode === 'entrainement' ? 'Babacar' : this.style.name;
+    const bar = (label: string, a: number, b: number) => {
+      const t = Math.max(1, a + b), pa = Math.round((100 * a) / t);
+      return `<div class="rc-stat"><b>${a}</b><span>${label}</span><b>${b}</b><i><u style="width:${pa}%"></u><u style="width:${100 - pa}%"></u></i></div>`;
+    };
+    const chips = r.rewards.lines.filter((l: string) => /[+−-]\s?\d/.test(l)).map((l: string) => `<em>${l.replace(/^(.*?)\s*([+−-]\s?[\d\s]+.*)$/, '$2 $1')}</em>`).join('');
+    box.classList.add('rc');
+    document.body.classList.add('cine-cut');
+    this.ui.classList.add('rc-on');
+    box.classList.toggle('rc-lost', lost);
+    box.innerHTML = `<div class="rc-card">
+      <small class="rc-kick"></small>
+      <h2 class="rc-verdict"></h2>
+      <div class="rc-names"><span class="${won ? 'w' : ''}">Toi</span><i>vs</i><span class="${lost ? 'w' : ''}" data-r="opp"></span></div>
+      <div class="rc-method"><strong></strong><small></small></div>
+      <div class="rc-stats">${bar('Prises', c.stats.player.throws, c.stats.opponent.throws)}${bar('Contres', c.stats.player.counters, c.stats.opponent.counters)}${bar('Endurance', Math.round(c.stamina.player), Math.round(c.stamina.opponent))}</div>
+      ${chips ? `<div class="rc-chips">${chips}</div>` : ''}
+      <div class="rc-btns">${this.rematchable && r.mode !== 'entrainement' && r.outcome !== 'abandon' ? '<button data-k="again">Revanche</button>' : ''}<button data-k="continue">Continuer</button></div></div>`;
+    box.querySelector('.rc-kick')!.textContent = mode.replace(/\s*\(.*\)/, '');
+    box.querySelector('.rc-verdict')!.textContent = verdict;
+    box.querySelector('[data-r=opp]')!.textContent = name;
+    box.querySelector('.rc-method strong')!.textContent = method;
+    box.querySelector('.rc-method small')!.textContent = `${sub} · ${clock}`;
+    void opp;
     box.querySelector('[data-k=continue]')!.addEventListener('click', () => this.finish());
     box.querySelector('[data-k=again]')?.addEventListener('click', () => { this.rematch = true; this.finish(); });
     box.hidden = false;

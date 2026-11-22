@@ -81,6 +81,8 @@ export class CineBout {
   stamina = { player: 100, opponent: 100 };
   points = { player: 0, opponent: 0 };
   sorties = { player: 0, opponent: 0 };
+  /** For the result: moves tried, counters, dodges. */
+  stats = { player: { throws: 0, counters: 0, dodges: 0 }, opponent: { throws: 0, counters: 0, dodges: 0 } };
   winner: Who | null = null;
   tech: TechId | null = null;
   scene: Scene | null = null;
@@ -227,7 +229,7 @@ export class CineBout {
         if (a.t > a.dur) {
           // the lunge lands if he reached you; you stepped away: he misses and stumbles
           if (apart < 1.45) return this.engage(-0.5, 'subie', 'IL TE SAISIT', ev);
-          ev.banner = 'ESQUIVE !'; ev.cheer = 0.4; this.goAi('rate', 1.5, ev);
+          ev.banner = 'ESQUIVE !'; ev.cheer = 0.4; this.stats.player.dodges++; this.goAi('rate', 1.5, ev);
         }
         break;
       case 'rate': if (a.t > a.dur) this.goAi('tourne', this.circleFor(), ev); break;
@@ -272,7 +274,7 @@ export class CineBout {
             if (P.tech === 'pousse') this.play({ kind: 'throw', by: 'player', tech: 'pousse', a: T.a, b: T.b, result: edgeOf.opponent < 1.6 ? 'out' : 'none', counter: true });
             else if (over) this.play({ kind: 'throw', by: 'player', tech: P.tech!, a: T.a, b: T.b, result: 'fall', counter: true });
             else { this.play({ kind: 'resist', by: 'player', tech: P.tech!, a: T.a, b: 'resist_sprawl', result: 'resisted', counter: true }); this.stamina.opponent = Math.max(0, this.stamina.opponent - 25); }
-            ev.banner = 'CONTRE !'; ev.cheer = 0.6; this.said = 'Son attaque retournée';
+            ev.banner = 'CONTRE !'; ev.cheer = 0.6; this.stats.player.counters++; this.said = 'Son attaque retournée';
           }
           else { this.resisted('opponent', P.tech!, ev); ev.banner = 'TU TIENS !'; }
           return;
@@ -353,7 +355,7 @@ export class CineBout {
     const T = TECHS[tech], def: Who = by === 'player' ? 'opponent' : 'player';
     // a fresh man resists more; a spent one goes over
     const resist = T.need + (by === 'player' ? 0.04 * (this.level - 1) : 0) + 0.34 * (this.stamina[def] / 100) - 0.15;
-    this.stamina[by] = Math.max(0, this.stamina[by] - 10);
+    this.stamina[by] = Math.max(0, this.stamina[by] - 10); this.stats[by].throws++;
     if (force >= resist) {
       if (tech === 'pousse') {
         if (edge < 1.6) { this.play({ kind: 'throw', by, tech, a: T.a, b: T.b, result: 'out' }); ev.banner = 'DEHORS !'; this.said = 'Poussé hors du cercle'; }
@@ -366,7 +368,7 @@ export class CineBout {
       // too weak: he turns it round — his attack's tell, short
       this.enter('empoignade'); this.clinchT = 2;
       this.aiPlan = { act: 'attaque', t: 0, dur: Math.max(0.6, this.tellFor() * 0.75), tech: tech === 'souleve' ? 'hanche' : tech };
-      ev.banner = 'IL CONTRE !'; ev.tell = true; this.said = 'Il te contre';
+      ev.banner = 'IL CONTRE !'; ev.tell = true; this.stats.opponent.counters++; this.said = 'Il te contre';
     }
   }
   private resisted(by: Who, tech: TechId, ev: CineEvents) {
