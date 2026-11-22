@@ -134,6 +134,7 @@ export interface DuelResult {
 }
 
 const R = RULES.sans_frappe;
+const smooth01 = (x: number) => { const k = Math.max(0, Math.min(1, x)); return k * k * (3 - 2 * k); };
 /** The cinematic bout's entrance (s): his bàkk until `him`, the player's until `me`, the face-off until `end`. */
 const CINE_INTRO = { him: 3.2, me: 6.0, end: 7.6 };
 const UP = new THREE.Vector3(0, 1, 0), V_DUST = new THREE.Vector3();
@@ -1740,6 +1741,32 @@ export class LambDuel {
     }
     return null;
   }
+  /**
+   * Where the hands go on top of the clip, the two men's together: in the empoignade the one with the upper hand at the
+   * belt (ngemb) and the other over his nape, an even fight hand at the nape and hand on the arm, both; a move's attacker
+   * keeps his hold until it goes, the man taken hangs on to him at the start; let go as he flies.
+   */
+  private cineGrip(f: Fighter): { kind: GripKind; w: number } | null {
+    const c = this.cine; if (!c || this.phase === 'fall' || this.phase === 'result') return null;
+    const who: Who = f === this.me ? 'player' : 'opponent', other: Who = who === 'player' ? 'opponent' : 'player';
+    const TECH_GRIP: Record<TechId, GripKind> = { souleve: 'ceinture', hanche: 'bras', croc: 'ceinture', pousse: 'nuque' };
+    if (c.phase === 'empoignade' || c.phase === 'projection') {
+      if (c.phase === 'projection' && c.tech) return who === 'player' ? { kind: TECH_GRIP[c.tech], w: 0.9 } : { kind: 'nuque', w: 0.75 };
+      const P = c.aiPlan;
+      if (P.act === 'attaque' && P.tech) return who === 'opponent' ? { kind: TECH_GRIP[P.tech], w: 0.9 } : { kind: 'nuque', w: 0.75 };
+      const lead = c.grip > 0.3 ? 'player' : c.grip < -0.3 ? 'opponent' : null;
+      return { kind: lead === who ? 'ceinture' : lead === other ? 'nuque' : 'bras', w: 0.85 };
+    }
+    const sc = c.scene;
+    if (sc && (c.phase === 'scene' || c.phase === 'replay')) {
+      const t = sc.t, attacker = sc.by === who, T = sc.tech ? TECHS[sc.tech] : null;
+      if (sc.kind === 'resist') return attacker ? { kind: sc.tech ? TECH_GRIP[sc.tech] : 'ceinture', w: 0.8 * (1 - smooth01((t - 1.1) / 0.5)) } : { kind: 'nuque', w: 0.6 * (1 - smooth01((t - 0.9) / 0.5)) };
+      if (!T) return null;
+      // the attacker lets go just before the impact, the man thrown a little earlier (his arms go out as he flies)
+      return attacker ? { kind: TECH_GRIP[T.id], w: 0.8 * (1 - smooth01((t - (T.impact - 0.55)) / 0.35)) } : { kind: 'nuque', w: 0.55 * (1 - smooth01((t - (T.impact - 0.95)) / 0.3)) };
+    }
+    return null;
+  }
   /** The trunk's lean drawn on top of the clip in the empoignade (rad: forward into the other, sideways). */
   private cineTilt(f: Fighter): { f: number; s: number } | null {
     const c = this.cine; if (!c || (c.phase !== 'empoignade' && c.phase !== 'projection')) return null;
@@ -2739,7 +2766,7 @@ export class LambDuel {
     const force = this.cineForce(f), cc = this.cine;
     const tensed = !!cc && cc.phase === 'debout' && f === this.ai && (cc.ai.act === 'garde' || cc.ai.act === 'charge');
     f.look!.pose({
-      force, tilt: force ? this.cineTilt(f) : null,
+      force, tilt: force ? this.cineTilt(f) : null, grip: force ? this.cineGrip(f) : null,
       dt, phase: force ? 'scene' : this.phase, ring: this.o, other: o.w, otherLook: o.look,
       lean: lean(f), weight: f.weight, hold: f.hold.kind, holdStr: f.hold.str, reach: f.reach ? { kind: f.reach.kind, k: Math.min(1, f.reach.t / f.reach.dur) } : null,
       move: f.move ? { kind: f.move.kind, k: Math.min(1, f.move.t / 0.3), side: f.side } : null,

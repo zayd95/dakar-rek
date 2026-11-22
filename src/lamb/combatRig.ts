@@ -76,6 +76,8 @@ export interface PoseIn {
   force?: { id: ClipId; t: number } | null;
   /** On top of a forced clip: the trunk leant (rad) forward into the other man (f) and sideways (s) — his balance, seen. */
   tilt?: { f: number; s: number } | null;
+  /** On top of a forced clip: both hands onto the other man (the hold's spots, by IK), at this weight (0…1). */
+  grip?: { kind: GripKind; w: number } | null;
   won: boolean; guard: boolean; stagger: number;
   /** How crouched (0 upright … 1 the fighting stance). */
   crouch: number;
@@ -105,6 +107,8 @@ export class CombatRig {
   private wLegs = 0; private wHands = 0;
   private lastX = NaN; private lastZ = NaN; private vx = 0; private vz = 0;
   /** Checks: steps taken, how far a planted foot slid (m), the hands' distance to their targets, the trunk's lean (rad, own frame), the hips' drop (m). */
+  /** The hold the hands keep (on a forced clip) while they ease out. */
+  private gripKind: GripKind = 'nuque';
   steps = 0; slid = 0; handGap = -1; trunk = { f: 0, s: 0 }; drop = 0; kneeBend = 0;
   /** Checks: the head's height over the sand as drawn (m): a man thrown is seen on the sand. */
   headY = 0;
@@ -243,7 +247,15 @@ export class CombatRig {
     this.clipLegs = 0;
     if (lib && this.restRoot && this.b.root) { this.b.root.position.copy(this.restRoot.p); this.b.root.quaternion.copy(this.restRoot.q); }
     if (lib) this.baseClip(p);
-    if (p.force && lib) { if (p.tilt && p.other) this.tiltTrunk(p.tilt, p.other.group.position); this.wLegs = 0; this.wHands = 0; this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
+    if (p.force && lib) {
+      if (p.tilt && p.other) this.tiltTrunk(p.tilt, p.other.group.position);
+      this.wLegs = 0;
+      // the hands on him, eased in and out (the clip's own arms underneath)
+      const gw = p.grip && p.other ? p.grip.w : 0;
+      this.wHands += clamp(gw - this.wHands, -dt / 0.25, dt / 0.18);
+      if (this.wHands > 0.01 && p.other) { this.gripKind = p.grip?.kind ?? this.gripKind; g.updateMatrixWorld(true); this.hands({ ...p, hold: this.gripKind, reach: null }); }
+      else this.handGap = -1;
+      this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     this.fallYaw = 0;
     const legsOn = (fighting || (p.phase === 'fall' && !p.won)) && this.clipLegs < 0.5;
