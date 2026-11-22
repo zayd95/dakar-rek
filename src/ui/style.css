@@ -627,14 +627,36 @@ body.induel .duel-ui .cine-meter.defend.hot u { background:rgba(74,222,128,.85);
 body.induel .duel-ui .cine-meter b { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; box-shadow:0 0 8px #fff; }
 body.induel .duel-ui .cine-pips { display:flex; justify-content:space-between; font:900 18px/1 system-ui,sans-serif; margin-bottom:6px; text-shadow:0 1px 0 #000; }
 body.induel .duel-ui .cine-pips span:first-child { color:#fde047; } body.induel .duel-ui .cine-pips span:last-child { color:#fca5a5; }
-body.induel .duel-ui .cine-techs { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 30px); display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; width:min(90vw, 420px); }
-body.induel .duel-ui .cine-techs button { pointer-events:auto; min-height:64px; border-radius:16px; border:3px solid rgba(0,0,0,.5); background:linear-gradient(#fde047,#f59e0b); color:#1c1917;
-  font:900 18px/1 system-ui,sans-serif; text-transform:uppercase; box-shadow:0 5px 14px rgba(0,0,0,.45); touch-action:none; }
-body.induel .duel-ui .cine-techs[hidden], body.induel .duel-ui .cine-meter[hidden], body.induel .duel-ui .cine-act[hidden] { display:none; }
-body.induel .duel-ui .cine-techs button small { display:block; font-size:10px; opacity:.6; margin-bottom:3px; }
+body.induel .duel-ui .cine-act.hot { box-shadow:0 0 0 5px #fde047, 0 0 28px 8px rgba(253,224,71,.85); animation:cinePulse .35s ease-in-out infinite alternate; }
+body.induel .duel-ui .cine-act.defend.hot { box-shadow:0 0 0 5px #fca5a5, 0 0 28px 8px rgba(239,68,68,.9); }
+body.induel .duel-ui .cine-act.counter { background:radial-gradient(circle at 35% 30%, #bbf7d0, #22c55e 60%, #166534); color:#052e16; box-shadow:0 0 0 5px #86efac, 0 0 30px 10px rgba(34,197,94,.9); }
+body.induel .duel-ui .cine-act.hold::after { content:'maintenir'; position:absolute; left:0; right:0; bottom:22px; font-size:10px; opacity:.65; letter-spacing:.05em; }
+body.induel .duel-ui .cine-act.small { width:78px; height:78px; font-size:13px; opacity:.8; }
+@keyframes cinePulse { from { transform:scale(1); } to { transform:scale(1.07); } }
+/* the four moves: a column over the action button; each fills with the set-up it has now, the one his balance opens is lit */
+body.induel .duel-ui .cine-techs { position:absolute; right:calc(14px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 152px); display:flex; flex-direction:column; gap:8px; width:120px; }
+body.induel .duel-ui .cine-techs button { position:relative; overflow:hidden; pointer-events:auto; min-height:50px; border-radius:14px; border:3px solid rgba(0,0,0,.5); background:rgba(28,25,23,.78); color:#fef3c7;
+  font:900 15px/1 system-ui,sans-serif; text-transform:uppercase; box-shadow:0 4px 12px rgba(0,0,0,.45); touch-action:none; transition:transform .12s, box-shadow .12s; }
+body.induel .duel-ui .cine-techs button s { position:absolute; left:0; top:0; bottom:0; width:0; background:rgba(234,179,8,.38); text-decoration:none; transition:width .12s linear; pointer-events:none; }
+body.induel .duel-ui .cine-techs button.lit { background:linear-gradient(#fde047,#f59e0b); color:#1c1917; transform:scale(1.06); box-shadow:0 0 0 3px #fff, 0 0 22px 6px rgba(253,224,71,.8); }
+body.induel .duel-ui .cine-techs button.lit s { background:rgba(255,255,255,.35); }
+body.induel .duel-ui .cine-techs button small { position:absolute; left:6px; top:4px; font-size:9px; opacity:.55; }
+body.induel .duel-ui .cine-techs[hidden], body.induel .duel-ui .cine-meter[hidden], body.induel .duel-ui .cine-act[hidden], body.induel .duel-ui .cine-tag[hidden] { display:none; }
+/* the cinema: black bars over a move and its replay, the replay's tag, a red flash on his tell */
+body.induel .duel-ui.cine::before, body.induel .duel-ui.cine::after { content:''; position:fixed; left:0; right:0; height:0; background:#000; z-index:0; pointer-events:none; transition:height .35s ease; }
+body.induel .duel-ui.cine::before { top:0; } body.induel .duel-ui.cine::after { bottom:0; }
+body.induel .duel-ui.cine.letterbox::before, body.induel .duel-ui.cine.letterbox::after { height:9vh; }
+body.induel .duel-ui.cine.letterbox .duel-top { opacity:0; transition:opacity .3s; }
+body.induel.cine-cut #joy { opacity:0; pointer-events:none; transition:opacity .3s; }
+body.induel .duel-ui .cine-tag { position:fixed; left:calc(16px + var(--sa-l,0px)); top:calc(9vh + 10px); font:900 14px/1 system-ui,sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#fff;
+  padding:6px 10px; border-left:4px solid #ef4444; background:rgba(0,0,0,.45); }
+body.induel .duel-ui.cine.tell .cine-layer { animation:cineTell .45s ease-out; }
+body.induel .duel-ui.cine.tell::before, body.induel .duel-ui.cine.tell::after { box-shadow:0 0 60px 30px rgba(239,68,68,.35); }
+@keyframes cineTell { from { filter:drop-shadow(0 0 18px rgba(239,68,68,.9)); } to { filter:none; } }
 @media (max-height:500px) and (orientation:landscape) {
   body.induel .duel-ui .cine-meter { bottom:calc(env(safe-area-inset-bottom,0px) + 24px); width:min(46vw, 420px); }
-  body.induel .duel-ui .cine-techs { bottom:calc(env(safe-area-inset-bottom,0px) + 70px); }
+  body.induel .duel-ui .cine-techs { right:calc(140px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 14px); width:110px; gap:6px; }
+  body.induel .duel-ui .cine-techs button { min-height:40px; font-size:13px; }
 }
 
 /* ============================================================= HUD: only what matters now (UX lane)

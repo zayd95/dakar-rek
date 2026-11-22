@@ -74,6 +74,8 @@ export interface PoseIn {
   apart?: number;
   /** The cinematic bout (src/lamb/cinematic.ts): this clip at this time (s), nothing else — the two halves of a paired move are played on one clock. */
   force?: { id: ClipId; t: number } | null;
+  /** On top of a forced clip: the trunk leant (rad) forward into the other man (f) and sideways (s) — his balance, seen. */
+  tilt?: { f: number; s: number } | null;
   won: boolean; guard: boolean; stagger: number;
   /** How crouched (0 upright … 1 the fighting stance). */
   crouch: number;
@@ -83,6 +85,9 @@ export interface PoseIn {
 
 /** A foot of the stance: where it stands on the ground (world x, z), its heading, and a step under way. */
 interface Planted { x: number; z: number; yaw: number; swing: { fx: number; fz: number; fyaw: number; tx: number; tz: number; tyaw: number; s: number; dur: number } | null }
+
+const TV1 = new THREE.Vector3(), TV2 = new THREE.Vector3(), TUP = new THREE.Vector3(0, 1, 0);
+const TQ1 = new THREE.Quaternion(), TQ2 = new THREE.Quaternion(), TQ3 = new THREE.Quaternion(), TQ4 = new THREE.Quaternion();
 
 export class CombatRig {
   private b = {} as Record<Bone, THREE.Object3D>;
@@ -238,7 +243,7 @@ export class CombatRig {
     this.clipLegs = 0;
     if (lib && this.restRoot && this.b.root) { this.b.root.position.copy(this.restRoot.p); this.b.root.quaternion.copy(this.restRoot.q); }
     if (lib) this.baseClip(p);
-    if (p.force && lib) { this.wLegs = 0; this.wHands = 0; this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
+    if (p.force && lib) { if (p.tilt && p.other) this.tiltTrunk(p.tilt, p.other.group.position); this.wLegs = 0; this.wHands = 0; this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     if (p.fall) { this.fallPose(p); p.after?.(); this.keep(); this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y; return; }
     this.fallYaw = 0;
     const legsOn = (fighting || (p.phase === 'fall' && !p.won)) && this.clipLegs < 0.5;
@@ -257,6 +262,22 @@ export class CombatRig {
     p.after?.();
     this.keep();
     this.headY = this.b.head.getWorldPosition(V1).y - p.ring.y;
+  }
+
+  /** The trunk leant on top of the clip (spine and chest, half each): forward towards `to`, and sideways. */
+  private tiltTrunk(t: { f: number; s: number }, to: THREE.Vector3) {
+    const g = this.w.group, dir = TV1.set(to.x - g.position.x, 0, to.z - g.position.z);
+    if (dir.lengthSq() < 1e-6 || (Math.abs(t.f) < 0.01 && Math.abs(t.s) < 0.01)) return;
+    dir.normalize();
+    const axF = TV2.crossVectors(TUP, dir), q = TQ1.setFromAxisAngle(axF, t.f * 0.5).multiply(TQ2.setFromAxisAngle(dir, t.s * 0.5));
+    g.updateMatrixWorld(true);
+    for (const k of ['spine', 'chest'] as const) {
+      const b = this.b[k]; if (!b || !b.parent) continue;
+      b.parent.getWorldQuaternion(TQ3);
+      // world rotation q applied to the bone: local' = parentWorld⁻¹ · q · parentWorld · local
+      b.quaternion.premultiply(TQ4.copy(TQ3).invert().multiply(q).multiply(TQ3));
+      b.updateMatrixWorld(true);
+    }
   }
 
   /**

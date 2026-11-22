@@ -1,14 +1,18 @@
 // A video of the cinematic bout (docs/wrestling/cine/cine-bout.mp4): the game stepped at 30 fps, phone portrait, Medium,
-// the Roi des Arènes bodies. A scripted player: walks in, wins the hand fight, tries a Soulevé too weak (he resists),
-// loses the next hand fight and holds his attack off (« Résiste »), then wins one more and throws him over the hip.
-// Usage: flock -o /tmp/dakar-browser.lock node scripts/video-cine.mjs <baseUrl> <framesDir> [out.mp4]
+// the Roi des Arènes bodies. A scripted, patient player:
+//   standing — waits; side-steps his first charge (« Esquive ») and grabs him as he stumbles (« Bonne prise »), later
+//   grabs late in his tell (« Contre-saisie »);
+//   empoignade — holds Force and pulls as he pushes, so he falls forward and the hip throw lights; resists his attacks
+//   late in the tell (the first one countered); tries a Croc first, the wrong move (he turns it round); throws the lit Hanche,
+//   once he is tired, at the gauge's zone; the fall, then its replay.
+// Usage: flock -o /tmp/dakar-browser.lock node scripts/video-cine.mjs <baseUrl> <framesDir> [out.mp4] [maxFrames]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
-const [,, base = 'http://127.0.0.1:5311/', dir = 'out/cine', mp4 = 'docs/wrestling/cine/cine-bout.mp4'] = process.argv;
+const [,, base = 'http://127.0.0.1:5311/', dir = 'out/cine', mp4 = 'docs/wrestling/cine/cine-bout.mp4', maxF = '2400', vw = '390', vh = '844'] = process.argv;
 fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+const ctx = await browser.newContext({ viewport: { width: +vw, height: +vh }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
 await ctx.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'medium'); } catch { /* */ } });
 const page = await ctx.newPage(); page.setDefaultTimeout(300000);
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
@@ -20,40 +24,58 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine');
 await page.waitForTimeout(3000);
 const D = (fn, a) => page.evaluate(fn, a);
 let n = 0;
+const banners = [];
 async function frame(before) {
-  await D(b => {
-    const d = window.__dakar, key = c => window.dispatchEvent(new KeyboardEvent('keydown', { code: c }));
+  const b = await D(b => {
+    const d = window.__dakar, key = (c, up) => window.dispatchEvent(new KeyboardEvent(up ? 'keyup' : 'keydown', { code: c }));
     if (b) new Function('d', 'key', b)(d, key);
     d.step(1 / 30); d.render();
     for (const a of document.getAnimations()) { a.pause(); a.currentTime = (a.currentTime ?? 0) + 1000 / 30; }
+    return document.querySelector('.duel-banner, .lamb-banner, [data-k=banner]')?.textContent ?? '';
   }, before ?? '');
+  if (b && banners[banners.length - 1] !== b) banners.push(b);
   await page.screenshot({ path: `${dir}/f${String(n++).padStart(4, '0')}.jpg`, quality: 80 });
 }
 const info = () => D(() => window.__dakar.duelInfo());
 await D(() => window.__dakar.duelStart('amical', 'costaud', 'sans_frappe', 'Gora'));
 await page.waitForFunction(() => !!window.__dakar.duelInfo());
 await D(() => window.__dakar.pause(true));
-// the plan: per round of the hand fight, win it or not; per opening, the move and the force aimed at
-const plan = [{ win: true, tech: 'Digit1', aim: 0.55 }, { win: false }, { win: true, tech: 'Digit2', aim: 0.97 }];
-let round = 0, missed = false;
-for (let k = 0; k < 1500; k++) {
+let wrongDone = false, tells = 0, attacks = 0, pressedTell = false, holding = false, lastAiAct = '', lastPlan = '';
+for (let k = 0; k < +maxF; k++) {
   const i = await info(); if (!i) break;
   const c = i.combat?.cine ?? i.cine;
-  if (i.phase === 'result' || (i.phase === 'fall' && i.phaseT > 4)) { if (n > 0) break; }
+  if (i.phase === 'result' && i.phaseT > 2.5) break;
   let b = '';
-  const p = plan[Math.min(round, plan.length - 1)];
+  const hold = want => { if (want !== holding) { b += `key("Space", ${!want});`; holding = want; } };
   if (c && (i.phase === 'fight' || i.phase === 'clinch')) {
-    const inZone = c.needle >= c.z0 + 0.03 && c.needle <= c.z1 - 0.03;
-    if (c.phase === 'debout') { b = i.dist < 1.45 && k % 20 === 0 ? 'key("Space")' : 'd.duelStick(1, 0, 0.1)'; }
-    if (c.phase === 'empoignade') { if (p.win ? inZone : (!inZone && !missed && c.needle > 0.5)) { b = 'key("Space")'; if (!p.win) missed = true; } }
-    if (c.phase === 'ouverture' && c.t > 0.5) { b = `key("${p.tech}")`; }
-    if (c.phase === 'projection' && c.needle >= p.aim) { b = 'key("Space")'; }
-    if (c.phase === 'defense' && inZone) b = 'key("Space")';
-    if (c.phase === 'scene' && c.scene && c.scene.t < 0.05) { round++; missed = false; }
+    if (c.phase === 'debout') {
+      hold(false);
+      if (c.ai !== lastAiAct && c.ai === 'garde') { tells++; pressedTell = false; }
+      lastAiAct = c.ai;
+      const tellK = c.ai === 'garde' ? c.aiT / c.aiDur : -1;
+      if (c.ai === 'garde' || c.ai === 'charge') {
+        if (tells === 1) b += 'd.duelStick(-0.2, 1, 0.1);';                                // side-step the first charge
+        else if (tellK > c.holdFrom + 0.08 && !pressedTell) { b += 'key("Space");key("Space", true);'; pressedTell = true; }
+      } else if (c.ai === 'rate') { b += i.dist < 1.5 ? 'key("Space");key("Space", true);' : 'd.duelStick(1, 0, 0.1);'; }
+      else b += i.dist > 2.2 ? 'd.duelStick(0.6, 0.2, 0.1);' : 'd.duelStick(0, 0.35, 0.1);';
+    } else if (c.phase === 'empoignade') {
+      if (c.plan === 'attaque') {
+        if (lastPlan !== 'attaque') { attacks++; pressedTell = false; hold(false); }
+        const at = attacks === 1 ? c.counterFrom + 0.06 : c.holdFrom + 0.1;
+        if (c.tellK > at && !pressedTell) { b += 'key("Space");key("Space", true);'; pressedTell = true; holding = false; }
+      } else if (!wrongDone && c.open.hanche > 0.35) { hold(false); b += 'key("Digit3");'; wrongDone = true; }     // first, the wrong move: a Croc with him leaning forward
+      else if (c.lit === 'hanche' && c.open.hanche > 0.72 && c.stamina.opponent < 80) { hold(false); b += 'key("Digit2");'; }
+      else if (c.plan === 'pousse') { hold(true); b += 'd.duelStick(-1, 0, 0.1);'; }
+      else hold(false);
+      lastPlan = c.plan;
+    } else if (c.phase === 'projection') {
+      hold(false); if (c.needle >= (c.z0 + c.z1) / 2) b += 'key("Space");key("Space", true);';
+    } else hold(false);
   }
   await frame(b);
 }
-console.log(JSON.stringify({ frames: n, errors, end: (await info())?.cine ?? (await info())?.combat?.cine }));
+const end = await info();
+console.log(JSON.stringify({ frames: n, errors, banners, end: end?.cine ?? end?.combat?.cine, phase: end?.phase, winner: end?.winner }));
 fs.mkdirSync(mp4.replace(/\/[^/]+$/, ''), { recursive: true });
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '30', '-i', `${dir}/f%04d.jpg`, '-vf', 'scale=390:844', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '28', '-preset', 'veryfast', mp4]);
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '30', '-i', `${dir}/f%04d.jpg`, '-vf', `scale=${vw}:${vh}`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '28', '-preset', 'veryfast', mp4]);
 await browser.close();
