@@ -40,6 +40,14 @@ chest X can be rebuilt from its description as an original optional cosmetic.
 chest X). Stage 6's first fighter is being built by work package W1 on `wp/wrestling-rda`; this plan does not analyse
 those files further.
 
+**Update (17 Nov): the bout itself, phase 1** (`docs/wrestling/COMBAT.md`, branch `wp/wrestling-combat`): the player's own
+bout in both disciplines is now a wrestling fight — holds that trade control for exposure, a balance with a direction seen
+on the bodies, resistance, six throws that each need their set-up, counters, an opponent who reads the body and learns the
+player's habits, the referee's fall rule (the back, the four supports) — behind one switch (`?combat0` gives the old bout).
+It delivers parts of stages 2 (the stance gait, the tells over his head), 4 (sans frappe gets the deep clinch; no held-guard
+draw), 5 (habits, signatures, memory) and 7 (the new bout is the default on that branch); the rest of those stages and
+stage 3 stay for phase 2.
+
 **The plan, in eight stages after a few fixes, each playable and checked on its own** (impact for the player / cost):
 
 | # | Stage | What the player feels | Impact | Cost | Owner decision |

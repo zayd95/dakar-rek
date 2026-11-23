@@ -69,9 +69,12 @@ export class Percussion {
   constructor(_dest?: AudioNode) {}
   start(bpm = 118) {
     if (this.playing) return;
-    ac(); this.playing = true; this.h = sounds?.drums(bpm) ?? null; this.h?.setRhythm(this.rhythmNow);
+    ac(); this.playing = true; this.bpm = bpm; this.h = sounds?.drums(bpm) ?? null; this.h?.setRhythm(this.rhythmNow);
   }
   stop() { this.h?.stop(); this.h = null; this.playing = false; }
+  /** Change the tempo while playing (the arena picks the loop by it: the entrance's, the bout's, the fête's — the fastest). */
+  tempo(bpm: number) { if (this.playing && this.bpm === bpm) return; this.stop(); this.start(bpm); }
+  private bpm = 0;
 }
 
 /** Làmb 2.0: the sound of a strike landing — a dull thud on a hit, a slap on a guard, a short swish on a miss. */

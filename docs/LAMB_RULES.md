@@ -53,6 +53,23 @@ Elles évoluent avec le jeu.
 9. **Récapitulatif** : résultat, manière (projection, décision, nul, abandon), endurance restante, parades, saisies,
    dégagements, points (si décision) et récompenses. Il se ferme avec « Continuer » ou seul après 10 s.
 
+## 1 bis. Le combat (lutte « phase 1 », les deux disciplines) — le combat du joueur sur cette branche
+
+Depuis le paquet « combat » (`docs/wrestling/COMBAT.md`), le combat que le joueur lutte lui-même — amical, classé, chemin du
+lutteur, leçon et exercices de l'écurie — se joue avec des **prises**, un **équilibre qui a une direction**, de la
+**résistance** et des **projections qui demandent leur mise en place**, dans les deux disciplines (avec frappe, les frappes
+restent). Un seul interrupteur (`src/lamb/flag.ts`, `?combat0`) rend le combat d'avant. Les combats regardés (la soirée,
+les préliminaires) restent ceux d'avant. Règles de notre jeu :
+
+| Règle | Choix de jeu |
+| --- | --- |
+| **Chute (fin du combat)** | Le **dos au sol**, ou les **quatre appuis** (les deux mains et les genoux au sol). L'arbitre l'annonce : « Chute : le dos au sol ! » / « Chute : les quatre appuis ! », puis lève le bras du vainqueur. |
+| **Sortie du cercle** | Ce n'est **pas** une chute : l'arbitre arrête, remet les lutteurs au milieu, et donne **2 points** (à la décision) à celui qui est resté dedans. |
+| **Passivité** | Debout, un lutteur qui n'attaque pas (saisie, frappe, projection) pendant 9 s alors que l'autre attaque reçoit un **avertissement** ; chaque avertissement est **1 point pour l'autre**. Tenir la garde ne fait plus un match nul. |
+| **Décision au temps** | Points : parades, saisies, dégagements (1), frappes nettes (1) et déséquilibres (2) avec frappe, projections tentées (1), sorties (2), adversaire amené au bord de la chute (1), avertissements de l'autre (1). Égalité : celui qui a reçu le moins d'avertissements, puis celui qui a tenté le plus de projections ; seulement ensuite match nul. |
+| **Empoignade qui ne mène à rien** | L'arbitre sépare après 10 s (sauf si un lutteur va tomber) et presse ensuite les lutteurs. |
+| **Durée, abandon, récompenses** | Inchangés (90 s, abandon compté à part, aucune récompense en argent ; la carrière et ses bourses inchangées). |
+
 ## 2. Adversaires (fictifs)
 
 La difficulté vient **uniquement du style et du niveau** : jamais de l’argent, de la tenue, des danses, des

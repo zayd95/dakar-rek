@@ -31,7 +31,10 @@ async function open(vp, touch, quality) {
     if (/ws|websocket|8787/i.test(m.text() + url)) return;                               // no presence server here
     errors.push(`${m.text()} ${url}`);
   });
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}${RDA}`, { waitUntil: 'load' });
+  // the bout this check guards is the one before the combat package (src/lamb/flag.ts: the new bout is the default on this
+  // branch); it stays the game's behind ?combat0 and is what the evening's watched bouts fight: kept whole here, and the new
+  // bout has its own check (scripts/check-combat.mjs)
+  await page.goto(`${base}?debug&combat0${touch ? '&touch' : ''}${RDA}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar && window.__dakar.pos().hub, null, { timeout: 60000 });
   if (RDA) { await page.waitForFunction(() => window.__dakar.rda().ready, null, { timeout: 120000 }).catch(() => {}); console.log('RDA', JSON.stringify(await page.evaluate(() => window.__dakar.rda().load))); }
   await page.evaluate(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(16); });
