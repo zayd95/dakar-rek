@@ -29,6 +29,11 @@ export const AIMS = {
   pull: { spine: [0, 1, -0.35], chest: [0, 1, -0.3], head: [0, 1, -0.1] } as Aim,
   pivot: { spine: [0.35, 1, 0.15], chest: [0.45, 1, 0.1], head: [0.25, 1, 0] } as Aim,
   slip: { spine: [-0.3, 1, -0.3], chest: [-0.4, 1, -0.35], head: [-0.3, 1, -0.2] } as Aim,
+  /**
+   * In the empoignade, chest to chest (« Le choc », src/lamb/fx.ts): the upper arms forward and a little out, over his
+   * shoulders, the forearms turned in round his neck and back. Under the push/pull/pivot aims.
+   */
+  grip: { upper_armL: [0.3, 0.2, 1], forearmL: [-0.75, 0.1, 0.65], handL: [-0.85, 0, 0.4], upper_armR: [-0.3, 0.2, 1], forearmR: [0.75, 0.1, 0.65], handR: [0.85, 0, 0.4] } as Aim,
   /** Staggering: off balance, leaning back and sideways, arms out. */
   stagger: { spine: [0.18, 1, -0.38], chest: [0.24, 1, -0.5], head: [0.2, 1, -0.2], upper_armL: [0.85, -0.45, -0.1], forearmL: [0.7, 0.2, 0.3], upper_armR: [-0.85, -0.3, 0.1], forearmR: [-0.6, 0.4, 0.4] } as Aim,
 } as const;
@@ -91,6 +96,9 @@ export class StrikeRig {
     if (s.hitAgo < 0.3) this.apply(AIMS.recoil, 1 - s.hitAgo / 0.3);
   }
   private last: 'quick' | 'big' | null = null;
+
+  /** The empoignade's hold, chest to chest (`w` 0–1: how close the two are); applied before `hold`. */
+  grip(w: number) { if (w > 0.01) this.apply(AIMS.grip, 0.85 * w); }
 
   /** The empoignade: the move being set up shows in the body (`w` 0–1); low balance makes him slip. */
   hold(move: 'push' | 'pull' | 'pivot' | null, w: number, balance: number) {

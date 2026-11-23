@@ -16,7 +16,9 @@ import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4234/';
 const L2 = process.env.LAMB2 === '1';
-const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '');
+// RDABODY=1: the same checks with the Roi des Arènes wrestlers (?rdabody=force: every quality; docs/wrestling/RDA-INTEGRATION.md), output in <outDir>-rda
+const RDA = process.env.RDABODY ? `&rdabody=${process.env.RDABODY === '1' ? 'force' : process.env.RDABODY}` : '';
+const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '') + (RDA ? '-rda' : '');
 fs.mkdirSync(out, { recursive: true });
 const SLOW = Number(process.env.SLOW ?? 3);
 const WALL_R = 21.7;
@@ -35,8 +37,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await context.addInitScript(at => { const real = Date.now.bind(Date), off = at - real(); Date.now = () => real() + off; }, at);
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}${RDA}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.fighter, null, { timeout: 120000 * SLOW });
+  if (RDA) { await page.waitForFunction(() => window.__dakar.rda().ready, null, { timeout: 120000 }).catch(() => {}); console.log('RDA', JSON.stringify(await page.evaluate(() => window.__dakar.rda().load))); }
   const d = (fn, arg) => page.evaluate(fn, arg);
   const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout: timeout * SLOW, polling: 250 }).then(() => true).catch(() => false);
   const shot = async name => {
@@ -134,10 +137,14 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: out through the tunnel and the wrestlers' gate: the path ends`, outside && /Ba beneen yoon/.test(await d(() => document.getElementById('toast')?.textContent ?? '')), JSON.stringify(await d(() => window.__dakar.pos())));
 
   // ---------------------------------------------------------------- the player's own gala night (src/arena/myGala.ts)
-  // every toast of the evening, kept (the ceremony's lines follow each other quickly)
+  // every message of the evening, kept (the ceremony's lines follow each other quickly): the lines on screen, and — since
+  // the quiet screen (src/ui/quiet.ts route, UI V2 step 0) — the quiet log, where a plain notice that does not answer
+  // what the player just did goes (the corner's « Les préliminaires d’abord… », « Prêt : … » after the debug act())
   await d(() => {
     window.__toasts = []; const box = document.getElementById('toast');
-    new MutationObserver(() => { for (const c of box.children) { const m = c.dataset?.msg; if (m && !window.__toasts.includes(m)) window.__toasts.push(m); } }).observe(box, { childList: true });
+    const keep = m => { if (m && !window.__toasts.includes(m)) window.__toasts.push(m); };
+    new MutationObserver(() => { for (const c of box.children) keep(c.dataset?.msg); }).observe(box, { childList: true });
+    setInterval(() => { for (const m of window.__dakar.quietLog?.().entries ?? []) keep(m); }, 200);
   });
   const toasts = () => d(() => window.__toasts.slice());
   // a record from the career first (two ranked wins), so the announcer and the griot have one to read

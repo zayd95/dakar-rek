@@ -56,6 +56,7 @@ export const SITTERS: Record<BodyId, SitterSize> = {
   v4: { hips: 0.5, up: 0.837, down: 0.277, knee: 0.5 },
   meshy_m: { hips: 0.53, up: 0.929, down: 0.297, knee: 0.5 },
   meshy_f: { hips: 0.465, up: 0.897, down: 0.272, knee: 0.47 },
+  rda: { hips: 0.5, up: 0.837, down: 0.277, knee: 0.5 },          // (the Roi des Arènes wrestlers never sit in a car: v4's numbers)
 };
 /**
  * The size of a v4 body dressed in a look, sitting in SitCar (measured on each VTC passenger's look, in the Teranga's back: scripts/check-vtc-ride.mjs

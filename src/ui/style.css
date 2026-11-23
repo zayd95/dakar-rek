@@ -577,6 +577,142 @@ body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(e
   body.induel .duel-ui.frappe .duel-note { top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 6px); }
 }
 
+/* the new bout (fighting-game HUD, like the arcade fighters): one row at the top — his name and bars on the left, the clock
+   in the middle, the other's on the right, mirrored; under it only the Prise, a thin tug bar. No title, no rules' line, no
+   running commentary (only the lesson's card speaks); the big banners say what happened. The middle is the bodies'. */
+body.induel .duel-ui.combat .duel-head, body.induel .duel-ui.combat .duel-note, body.induel .duel-ui.combat .duel-legend { display:none; }
+body.induel .duel-ui.combat .duel-top { justify-content:center; }
+body.induel .duel-ui.combat .duel-timer { background:none; font:900 26px/1 system-ui,sans-serif; color:#fde047; text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.6); padding:2px 0; min-width:54px; }
+body.induel .duel-ui.combat .duel-ab { position:absolute; right:0; top:0; min-height:34px; width:34px; padding:0; border-radius:50%; font-size:15px; background:rgba(15,23,42,.55); border-color:rgba(255,255,255,.25); }
+body.induel .duel-ui.combat .duel-bars { top:calc(env(safe-area-inset-top,0px) + 12px); width:calc(100vw - 20px - var(--sa-l,0px) - var(--sa-r,0px)); gap:70px; }
+body.induel .duel-ui.combat .duel-bars > div { background:none; padding:0; border-radius:0; }
+body.induel .duel-ui.combat .duel-bars > div > span { display:block; font:900 13px/1.1 system-ui,sans-serif; letter-spacing:.04em; text-transform:uppercase; text-shadow:0 1px 0 #000, 0 0 6px rgba(0,0,0,.7); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.induel .duel-ui.combat .duel-bars > div > i { margin:4px 0 0 0; height:12px; border-radius:2px; border:1.5px solid rgba(0,0,0,.75); background:rgba(127,29,29,.85); box-shadow:0 1px 4px rgba(0,0,0,.5); }
+body.induel .duel-ui.combat .duel-bars > div > i::before, body.induel .duel-ui.combat .duel-bars > div > i.bal::before, body.induel .duel-ui.combat .duel-bars > div > i.cmp::before { content:none; }
+body.induel .duel-ui.combat .duel-bars > div > i > b { background:linear-gradient(#fde047,#eab308); border-radius:0; }
+body.induel .duel-ui.combat .duel-bars > div > i.bal { height:6px; margin-top:3px; background:rgba(15,23,42,.7); }
+body.induel .duel-ui.combat .duel-bars > div > i.bal > b { background:#38bdf8; }
+body.induel .duel-ui.combat .duel-bars > div > i.cmp { display:none; }
+body.induel .duel-ui.combat .duel-bars > div[data-k=aibar] { text-align:right; }
+body.induel .duel-ui.combat .duel-bars > div[data-k=aibar] > i > b { margin-left:auto; }
+body.induel .duel-ui.combat .duel-step[hidden] ~ .duel-msg { display:none; }
+body.induel .duel-ui.combat .duel-msg, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-msg {
+  top:calc(env(safe-area-inset-top,0px) + 76px); font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92vw; }
+body.induel .duel-ui.combat .duel-clinch, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-clinch {
+  top:calc(env(safe-area-inset-top,0px) + 56px); padding:0; background:none; width:min(60vw, 260px); }
+body.induel .duel-ui.combat .duel-clinch > em { display:none; }
+body.induel .duel-ui.combat .duel-clinch > i { margin-top:0; height:7px; border:1px solid rgba(0,0,0,.6); }
+body.induel .duel-ui.combat .duel-clinch > i::before, body.induel .duel-ui.combat .duel-clinch > i::after { content:none; }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui.combat .duel-bars { top:calc(env(safe-area-inset-top,0px) + 8px); width:min(70vw, 620px); }
+  body.induel .duel-ui.combat .duel-clinch, body.induel .duel-ui.combat .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 50px); left:50%; transform:translateX(-50%); }
+}
+
+/* the cinematic bout: the free bout's buttons and Prise give way to one big action button, the needle's bar over it, and
+   the four moves at the opening */
+body.induel .duel-ui.cine .duel-btns, body.induel .duel-ui.cine .duel-clinch, body.induel .duel-ui.cine .duel-msg { display:none !important; }
+body.induel .duel-ui .cine-layer { display:none; }
+body.induel .duel-ui.cine .cine-layer { display:block; }
+body.induel .duel-ui .cine-act { position:absolute; right:calc(18px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 28px); width:112px; height:112px; border-radius:50%; border:4px solid rgba(0,0,0,.55);
+  background:radial-gradient(circle at 35% 30%, #fef08a, #eab308 60%, #a16207); color:#1c1917; font:900 18px/1 system-ui,sans-serif; letter-spacing:.03em; text-transform:uppercase;
+  box-shadow:0 6px 18px rgba(0,0,0,.5); pointer-events:auto; touch-action:none; -webkit-user-select:none; user-select:none; }
+body.induel .duel-ui .cine-act.on { transform:scale(.92); }
+body.induel .duel-ui .cine-act.defend { background:radial-gradient(circle at 35% 30%, #fecaca, #ef4444 60%, #991b1b); color:#fff; }
+body.induel .duel-ui .cine-meter { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 158px); width:min(84vw, 420px); }
+body.induel .duel-ui .cine-meter > i { position:relative; display:block; height:22px; border-radius:11px; background:rgba(15,23,42,.8); border:2px solid rgba(255,255,255,.35); overflow:hidden; }
+body.induel .duel-ui .cine-meter u { position:absolute; top:0; bottom:0; background:rgba(250,204,21,.55); }
+body.induel .duel-ui .cine-meter.hot u { background:rgba(74,222,128,.85); }
+body.induel .duel-ui .cine-meter.defend u { background:rgba(248,113,113,.6); }
+body.induel .duel-ui .cine-meter.defend.hot u { background:rgba(74,222,128,.85); }
+body.induel .duel-ui .cine-meter b { position:absolute; top:-2px; bottom:-2px; width:6px; margin-left:-3px; background:#fff; box-shadow:0 0 8px #fff; }
+body.induel .duel-ui .cine-pips { display:flex; justify-content:space-between; font:900 18px/1 system-ui,sans-serif; margin-bottom:6px; text-shadow:0 1px 0 #000; }
+body.induel .duel-ui .cine-pips span:first-child { color:#fde047; } body.induel .duel-ui .cine-pips span:last-child { color:#fca5a5; }
+body.induel .duel-ui .cine-act.hot { box-shadow:0 0 0 5px #fde047, 0 0 28px 8px rgba(253,224,71,.85); animation:cinePulse .35s ease-in-out infinite alternate; }
+body.induel .duel-ui .cine-act.defend.hot { box-shadow:0 0 0 5px #fca5a5, 0 0 28px 8px rgba(239,68,68,.9); }
+body.induel .duel-ui .cine-act.counter { background:radial-gradient(circle at 35% 30%, #bbf7d0, #22c55e 60%, #166534); color:#052e16; box-shadow:0 0 0 5px #86efac, 0 0 30px 10px rgba(34,197,94,.9); }
+body.induel .duel-ui .cine-act.hold::after { content:'maintenir'; position:absolute; left:0; right:0; bottom:22px; font-size:10px; opacity:.65; letter-spacing:.05em; }
+body.induel .duel-ui .cine-act.small { width:78px; height:78px; font-size:13px; opacity:.8; }
+@keyframes cinePulse { from { transform:scale(1); } to { transform:scale(1.07); } }
+/* the four moves: a column over the action button; each fills with the set-up it has now, the one his balance opens is lit */
+body.induel .duel-ui .cine-techs { position:absolute; right:calc(14px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 152px); display:flex; flex-direction:column; gap:8px; width:120px; }
+body.induel .duel-ui .cine-techs button { position:relative; overflow:hidden; pointer-events:auto; min-height:50px; border-radius:14px; border:3px solid rgba(0,0,0,.5); background:rgba(28,25,23,.78); color:#fef3c7;
+  font:900 15px/1 system-ui,sans-serif; text-transform:uppercase; box-shadow:0 4px 12px rgba(0,0,0,.45); touch-action:none; transition:transform .12s, box-shadow .12s; }
+body.induel .duel-ui .cine-techs button s { position:absolute; left:0; top:0; bottom:0; width:0; background:rgba(234,179,8,.38); text-decoration:none; transition:width .12s linear; pointer-events:none; }
+body.induel .duel-ui .cine-techs button.lit { background:linear-gradient(#fde047,#f59e0b); color:#1c1917; transform:scale(1.06); box-shadow:0 0 0 3px #fff, 0 0 22px 6px rgba(253,224,71,.8); }
+body.induel .duel-ui .cine-techs button.lit s { background:rgba(255,255,255,.35); }
+body.induel .duel-ui .cine-techs button small { position:absolute; left:6px; top:4px; font-size:9px; opacity:.55; }
+body.induel .duel-ui .cine-techs[hidden], body.induel .duel-ui .cine-meter[hidden], body.induel .duel-ui .cine-act[hidden], body.induel .duel-ui .cine-tag[hidden] { display:none; }
+/* the cinema: black bars over a move and its replay, the replay's tag, a red flash on his tell */
+body.induel .duel-ui.cine::before, body.induel .duel-ui.cine::after { content:''; position:fixed; left:0; right:0; height:0; background:#000; z-index:0; pointer-events:none; transition:height .35s ease; }
+body.induel .duel-ui.cine::before { top:0; } body.induel .duel-ui.cine::after { bottom:0; }
+body.induel .duel-ui.cine.letterbox::before, body.induel .duel-ui.cine.letterbox::after { height:9vh; }
+body.induel .duel-ui.cine.letterbox .duel-top { opacity:0; transition:opacity .3s; }
+body.induel.cine-cut #joy { opacity:0; pointer-events:none; transition:opacity .3s; }
+body.induel .duel-ui .cine-tag { position:fixed; left:calc(16px + var(--sa-l,0px)); top:calc(9vh + 10px); font:900 14px/1 system-ui,sans-serif; letter-spacing:.2em; text-transform:uppercase; color:#fff;
+  padding:6px 10px; border-left:4px solid #ef4444; background:rgba(0,0,0,.45); }
+body.induel .duel-ui.cine.tell .cine-layer { animation:cineTell .45s ease-out; }
+body.induel .duel-ui.cine.tell::before, body.induel .duel-ui.cine.tell::after { box-shadow:0 0 60px 30px rgba(239,68,68,.35); }
+@keyframes cineTell { from { filter:drop-shadow(0 0 18px rgba(239,68,68,.9)); } to { filter:none; } }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui .cine-meter { bottom:calc(env(safe-area-inset-bottom,0px) + 24px); width:min(46vw, 420px); }
+  body.induel .duel-ui .cine-techs { right:calc(140px + var(--sa-r,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 14px); width:110px; gap:6px; }
+  body.induel .duel-ui .cine-techs button { min-height:40px; font-size:13px; }
+}
+
+/* the entrance: the wrestler's name as a broadcast's lower third, while he does his bàkk */
+body.induel .duel-ui .cine-card { position:fixed; left:calc(16px + var(--sa-l,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 190px); display:flex; flex-direction:column; gap:6px; padding:10px 18px 12px 14px;
+  border-left:6px solid #facc15; background:linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.55) 75%, rgba(0,0,0,0)); color:#fff; pointer-events:none; max-width:min(80vw, 420px); }
+body.induel .duel-ui .cine-card b { font:italic 900 clamp(34px, 11vw, 52px)/.95 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:-.01em; color:#facc15; text-shadow:0 3px 0 #a16207; }
+body.induel .duel-ui .cine-card small { font:800 12px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.8); }
+body.induel .duel-ui .cine-card.go { animation:cineCard .5s cubic-bezier(.2,.9,.3,1.1) both; }
+body.induel .duel-ui .cine-card[hidden] { display:none; }
+@keyframes cineCard { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:none; } }
+@media (max-height:500px) and (orientation:landscape) { body.induel .duel-ui .cine-card { bottom:calc(env(safe-area-inset-bottom,0px) + 30px); left:calc(170px + var(--sa-l,0px)); } }
+
+/* the cinematic bout's result, as a fight card: the verdict huge, how, three numbers face to face, the rewards in one line */
+body.induel .duel-ui.rc-on .duel-top, body.induel .duel-ui.rc-on .duel-bars { opacity:0; transition:opacity .3s; }
+body.induel .duel-ui .duel-recap.rc { background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.86) 38%, rgba(0,0,0,.94)); align-items:flex-end; padding-bottom:calc(env(safe-area-inset-bottom,0px) + 18px); }
+body.induel .duel-ui .duel-recap.rc > .rc-card { background:none; border:0; border-radius:0; padding:0 20px; width:min(100vw, 460px); max-height:none; overflow:visible; color:#fff; text-align:center;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif; animation:rcIn .45s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes rcIn { from { opacity:0; transform:translateY(24px) scale(.96); } to { opacity:1; transform:none; } }
+.duel-recap.rc .rc-kick { display:block; font:800 11px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.28em; text-transform:uppercase; color:rgba(255,255,255,.55); }
+.duel-recap.rc .rc-verdict { margin:6px 0 2px; font:italic 900 clamp(52px, 16vw, 78px)/.9 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:-.02em; text-transform:uppercase; color:#facc15;
+  text-shadow:0 4px 0 #a16207, 0 10px 30px rgba(250,204,21,.35); }
+.duel-recap.rc.rc-lost .rc-verdict { color:#ef4444; text-shadow:0 4px 0 #7f1d1d, 0 10px 30px rgba(239,68,68,.35); }
+.duel-recap.rc .rc-names { display:flex; align-items:center; justify-content:center; gap:14px; margin:10px 0 14px; font:900 20px/1 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:.04em; color:rgba(255,255,255,.45); }
+.duel-recap.rc .rc-names span.w { color:#fff; }
+.duel-recap.rc .rc-names i { font:italic 800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif; color:#facc15; }
+.duel-recap.rc.rc-lost .rc-names i { color:#ef4444; }
+.duel-recap.rc .rc-method { display:inline-flex; flex-direction:column; gap:4px; padding:10px 22px; border-top:2px solid #facc15; border-bottom:2px solid #facc15; margin-bottom:18px; }
+.duel-recap.rc.rc-lost .rc-method { border-color:#ef4444; }
+.duel-recap.rc .rc-method strong { font:italic 900 24px/1 system-ui,-apple-system,"Segoe UI",sans-serif; text-transform:uppercase; letter-spacing:.02em; }
+.duel-recap.rc .rc-method small { font:700 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.6); font-variant-numeric:tabular-nums; }
+.duel-recap.rc .rc-stats { display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+.duel-recap.rc .rc-stat { display:grid; grid-template-columns:44px 1fr 44px; align-items:center; row-gap:5px; }
+.duel-recap.rc .rc-stat b { font:900 22px/1 system-ui,-apple-system,"Segoe UI",sans-serif; font-variant-numeric:tabular-nums; }
+.duel-recap.rc .rc-stat b:first-child { text-align:left; } .duel-recap.rc .rc-stat b:last-of-type { text-align:right; }
+.duel-recap.rc .rc-stat span { font:800 11px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.6); }
+.duel-recap.rc .rc-stat i { grid-column:1 / -1; display:flex; gap:3px; height:6px; }
+.duel-recap.rc .rc-stat u { display:block; height:100%; background:#facc15; border-radius:3px 0 0 3px; transition:width .6s; }
+.duel-recap.rc .rc-stat u + u { background:rgba(255,255,255,.28); border-radius:0 3px 3px 0; }
+.duel-recap.rc .rc-chips { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:16px; }
+.duel-recap.rc .rc-chips em { font:800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif; font-style:normal; padding:7px 11px; border-radius:999px; background:rgba(74,222,128,.14); color:#86efac; border:1px solid rgba(74,222,128,.35); }
+.duel-recap.rc .rc-btns { display:flex; gap:10px; }
+.duel-recap.rc .rc-btns button { flex:1; margin:0; padding:16px 10px; border-radius:12px; font:900 15px/1 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:.08em; text-transform:uppercase; border:0; }
+.duel-recap.rc .rc-btns button[data-k=continue] { background:#facc15; color:#111; }
+.duel-recap.rc .rc-btns button[data-k=again] { background:transparent; color:#fff; border:2px solid rgba(255,255,255,.5); }
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui .duel-recap.rc { align-items:center; padding-bottom:0; background:linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.8)); }
+  body.induel .duel-ui .duel-recap.rc > .rc-card { width:min(94vw, 780px); display:grid; grid-template-columns:1fr 1.1fr; grid-template-rows:auto auto auto 1fr; column-gap:34px; align-items:center;
+    padding:0 calc(16px + env(safe-area-inset-right,0px)) 0 calc(16px + env(safe-area-inset-left,0px)); }
+  .duel-recap.rc .rc-kick, .duel-recap.rc .rc-verdict, .duel-recap.rc .rc-names, .duel-recap.rc .rc-method { grid-column:1; }
+  .duel-recap.rc .rc-stats, .duel-recap.rc .rc-chips, .duel-recap.rc .rc-btns { grid-column:2; }
+  .duel-recap.rc .rc-stats { grid-row:1 / 3; align-self:end; } .duel-recap.rc .rc-chips { grid-row:3; } .duel-recap.rc .rc-btns { grid-row:4; align-self:start; }
+  .duel-recap.rc .rc-verdict { font-size:56px; } .duel-recap.rc .rc-names { margin:6px 0 10px; font-size:16px; }
+  .duel-recap.rc .rc-method { justify-self:center; padding:8px 18px; margin-bottom:0; } .duel-recap.rc .rc-stats { gap:8px; margin-bottom:10px; }
+  .duel-recap.rc .rc-chips { margin-bottom:10px; } .duel-recap.rc .rc-btns button { padding:12px 10px; }
+}
+
 /* ============================================================= HUD: only what matters now (UX lane)
    Always: the wallet and the needs, the place and the time, the phone button, the streak chip, the controls of the mode. Contextual: the job's guidance,
    ONE primary nearby action, the speed and condition at the wheel, a short completion card, an activity's own controls. */

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { GameCtx } from '../game/modules';
 import type { WrestlerLook } from '../core/types';
 import { Wrestler, humanoidReady } from '../actors/humanoid';
+import { buildOf } from '../actors/rdaFlag';
+import { wrestlerById } from '../career/roster';
 import { paChime } from '../lamb/audio';
 import { drumRhythm, hasGestured } from './exteriorAudio';
 import { cornerSides, entranceCues, poseAt, wrestlerPlan, type Cue, type Fighter, type Leg, type Who } from './ceremony';
@@ -30,6 +32,7 @@ export class EntranceCeremony {
     for (const [who, skin, cut] of [['left', 0x5b3420, 'B'], ['right', 0x4e2e1c, 'A']] as const) {
       if (who === o.player) continue;                                       // the player walks out himself
       const h = new Wrestler(skins[who] ?? skin); h.setLook(looks[who], cut);
+      h.setBuild(buildOf(wrestlerById(bill[who].id)?.style));               // an RDA body (?rdabody): heavy for « costaud »
       const plan = wrestlerPlan(cx, cz, who, cs[who]), p = plan[0].path[0];
       h.group.position.set(p.x, 0.1, p.z); parent.add(h.group);
       this.wrestlers.push({ who, h, plan });
