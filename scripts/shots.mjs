@@ -111,9 +111,11 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
   // the player's cinematic bout (src/lamb/cinematic.ts), played by a patient player until the fall: the game paused and
   // stepped at 30 Hz without drawing (a software renderer runs it ~12x slower than real time), the player acting each step —
-  // in reach, a counter-grip late in his charge's tell; pulling as he pushes; holding his attacks off in their window; the
+  // in reach, a counter-grip late in his charge's tell; pulling as he pushes; countering his attacks late in their tell; the
   // lit move thrown at the gauge's zone
   let bout = null;
+  // a long clock: a patient bout is decided by a fall, not by the bell (a draw at 90 s once on a CI runner, run 45102040098)
+  await page.evaluate(() => window.__dakar.duelClock(600));
   for (const t0 = Date.now(); Date.now() - t0 < 200000;) {
     bout = await page.evaluate(() => {
       const d = window.__dakar, w = window.__cinePlayer ??= { held: false, pressed: '' };
@@ -135,7 +137,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
           else if (c.ai === 'tourne' && inf.dist > 2.2) d.duelStick(0.6, 0, 0.05);
           if (c.ai === 'tourne') w.pressed = '';
         } else if (c?.phase === 'empoignade') {
-          if (c.plan === 'attaque') { hold(false); if (c.tellK > c.holdFrom + 0.1 && w.pressed !== 'a') { w.pressed = 'a'; tap('Space'); } }
+          if (c.plan === 'attaque') { hold(false); if (c.tellK > c.counterFrom + 0.05 && w.pressed !== 'a') { w.pressed = 'a'; tap('Space'); } }
           else {
             if (w.pressed === 'a') w.pressed = '';
             if (c.lit && c.open[c.lit] > 0.65) { hold(false); tap(`Digit${['souleve', 'hanche', 'croc', 'pousse'].indexOf(c.lit) + 1}`); }
