@@ -1,0 +1,101 @@
+{
+ "at": "2026-11-07T05:15:01.323Z",
+ "passed": 17,
+ "failed": 0,
+ "static": {
+  "meshes": 231,
+  "tris": 287562
+ },
+ "ring": {
+  "total": 6208,
+  "blocked": 0,
+  "colliders": 500
+ },
+ "results": [
+  {
+   "name": "(low) the Almadies builds, no page error",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(low) every one of the 25 sites has a building at least two storeys tall inside it",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(low) no wall or building stands on a carriageway",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) the Almadies builds, no page error",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) every one of the 25 sites has a building at least two storeys tall inside it",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) no wall or building stands on a carriageway",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) nothing the district drew stands on the pavement round any block",
+   "ok": true,
+   "detail": "{\"total\":6208,\"blocked\":0,\"colliders\":500,\"where\":[]}"
+  },
+  {
+   "name": "(medium) the Ngor residence keeps its door and its entry on the pavement outside its gate",
+   "ok": true,
+   "detail": "[{\"id\":\"almadies:home:residence\",\"name\":\"Résidence de luxe · Pointe de Ngor\",\"x\":-42,\"z\":-5.9},{\"id\":\"almadies:city:residence\",\"name\":\"Résidence de luxe · Pointe de Ngor\",\"x\":-44.6,\"z\":-5.1}]"
+  },
+  {
+   "name": "(medium) nothing solid covers the residence's door",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "(medium) the rooftop restaurant's door stands on the street face of a hotel of the district, in the front half of its lot, facing the street",
+   "ok": true,
+   "detail": "{\"door\":{\"id\":\"almadies:rooftop:almadies\",\"x\":-30,\"z\":-105.1},\"facade\":{\"x\":-30,\"z\":-105.1,\"nx\":0,\"nz\":-1},\"hotel\":\"almadies:0,1:1\"}"
+  },
+  {
+   "name": "(medium) a body walks from the pavement to the rooftop restaurant's door",
+   "ok": true,
+   "detail": "{\"door\":{\"id\":\"almadies:rooftop:almadies\",\"x\":-30,\"z\":-105.1}}"
+  },
+  {
+   "name": "(medium) the rooftop restaurant's name is one lit mesh of five faces, up on the hotel's roof",
+   "ok": true,
+   "detail": "{\"mesh\":{\"verts\":24,\"emissive\":true,\"parent\":\"Group\"},\"sign\":{\"top\":10.17,\"faces\":4}}"
+  },
+  {
+   "name": "(medium) the name is seen from the street and from far: a face looks at each of 42 viewpoints, with nothing solid between",
+   "ok": true,
+   "detail": "[\"the cross street at z -84\",\"the avenue at z -92\",\"the cross street at z -92\",\"the avenue at z -100\",\"the cross street at z -100\"]"
+  },
+  {
+   "name": "(medium) the streetscape stands: palms, kerb palms, benches, beds, lawns and stalls",
+   "ok": true,
+   "detail": "{\"palm\":28,\"lawn\":6,\"bed\":10,\"bench\":14,\"stall\":5,\"crate\":2,\"stool\":2,\"kerb palm\":97}"
+  },
+  {
+   "name": "(medium) the street's seats (the streetscape's benches and stools, the buildings' terraces) are all the city's ambient spots: its people can sit on them",
+   "ok": true,
+   "detail": "{\"streetSeats\":219,\"districtSeats\":149,\"claimedBySpots\":279,\"spots\":69}"
+  },
+  {
+   "name": "(medium) people are drawn at the boutique hotel's door (the doorman, the bellhop, the valet, the terrace's waiter and customers)",
+   "ok": true,
+   "detail": "{\"humanoidsDrawn\":4}"
+  },
+  {
+   "name": "(medium) no page error through the walk",
+   "ok": true,
+   "detail": "[]"
+  }
+ ]
+}

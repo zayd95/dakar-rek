@@ -1,0 +1,370 @@
+{
+  "report": {
+    "desktop": {
+      "build": "gait (stepped 1/60 s)",
+      "gaits": {
+        "walk": {
+          "steps": 5,
+          "slidePerStepCm": 0,
+          "slideWorstCm": 0,
+          "cadenceSpm": 125,
+          "stepM": 0.69,
+          "speed": 1.38,
+          "gait": {
+            "clip": "Walk",
+            "run": 0,
+            "cadenceSpm": 119,
+            "stepM": 0.69,
+            "duty": 0.57,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "walk2": {
+          "steps": 6,
+          "slidePerStepCm": 0,
+          "slideWorstCm": 0,
+          "cadenceSpm": 157,
+          "stepM": 0.74,
+          "speed": 2,
+          "gait": {
+            "clip": "Walk",
+            "run": 0,
+            "cadenceSpm": 156,
+            "stepM": 0.77,
+            "duty": 0.54,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "jog": {
+          "steps": 7,
+          "slidePerStepCm": 1.2,
+          "slideWorstCm": 1.9,
+          "cadenceSpm": 192,
+          "stepM": 1.31,
+          "speed": 4.2,
+          "gait": {
+            "clip": "Jog",
+            "run": 1,
+            "cadenceSpm": 189,
+            "stepM": 1.33,
+            "duty": 0.21,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "sprint": {
+          "steps": 8,
+          "slidePerStepCm": 0.4,
+          "slideWorstCm": 1.7,
+          "cadenceSpm": 209,
+          "stepM": 2.15,
+          "speed": 7.5,
+          "gait": {
+            "clip": "Run",
+            "run": 1,
+            "cadenceSpm": 209,
+            "stepM": 2.15,
+            "duty": 0.13,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "start": {
+        "steps": 3,
+        "slidePerStepCm": 0.4,
+        "slideWorstCm": 1,
+        "cadenceSpm": 196,
+        "stepM": 1.12
+      },
+      "stop": {
+        "steps": 4,
+        "slidePerStepCm": 0.3,
+        "slideWorstCm": 1,
+        "cadenceSpm": 225,
+        "stepM": 0.09,
+        "end": {
+          "moving": false,
+          "feet": [
+            "down",
+            "down"
+          ]
+        }
+      },
+      "turn": {
+        "steps": 4,
+        "slidePerStepCm": 0.6,
+        "slideWorstCm": 1.3,
+        "cadenceSpm": 132,
+        "stepM": 0.36
+      },
+      "turnOnSpot": {
+        "steps": 3,
+        "slidePerStepCm": 0,
+        "slideWorstCm": 0.1,
+        "cadenceSpm": 225,
+        "stepM": 0,
+        "settles": 4
+      }
+    },
+    "phone": {
+      "build": "gait (stepped 1/60 s)",
+      "gaits": {
+        "walk": {
+          "steps": 5,
+          "slidePerStepCm": 0,
+          "slideWorstCm": 0,
+          "cadenceSpm": 125,
+          "stepM": 0.69,
+          "speed": 1.38,
+          "gait": {
+            "clip": "Walk",
+            "run": 0,
+            "cadenceSpm": 119,
+            "stepM": 0.69,
+            "duty": 0.57,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "walk2": {
+          "steps": 6,
+          "slidePerStepCm": 0,
+          "slideWorstCm": 0,
+          "cadenceSpm": 157,
+          "stepM": 0.74,
+          "speed": 2,
+          "gait": {
+            "clip": "Walk",
+            "run": 0,
+            "cadenceSpm": 156,
+            "stepM": 0.77,
+            "duty": 0.54,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "jog": {
+          "steps": 7,
+          "slidePerStepCm": 1.2,
+          "slideWorstCm": 1.9,
+          "cadenceSpm": 192,
+          "stepM": 1.31,
+          "speed": 4.2,
+          "gait": {
+            "clip": "Jog",
+            "run": 1,
+            "cadenceSpm": 189,
+            "stepM": 1.33,
+            "duty": 0.21,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        },
+        "sprint": {
+          "steps": 8,
+          "slidePerStepCm": 0.3,
+          "slideWorstCm": 0.7,
+          "cadenceSpm": 209,
+          "stepM": 2.15,
+          "speed": 7.5,
+          "gait": {
+            "clip": "Run",
+            "run": 1,
+            "cadenceSpm": 209,
+            "stepM": 2.15,
+            "duty": 0.13,
+            "slipped": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "start": {
+        "steps": 3,
+        "slidePerStepCm": 0.5,
+        "slideWorstCm": 1.2,
+        "cadenceSpm": 196,
+        "stepM": 1.12
+      },
+      "stop": {
+        "steps": 4,
+        "slidePerStepCm": 0.3,
+        "slideWorstCm": 1,
+        "cadenceSpm": 225,
+        "stepM": 0.09,
+        "end": {
+          "moving": false,
+          "feet": [
+            "down",
+            "down"
+          ]
+        }
+      },
+      "turn": {
+        "steps": 4,
+        "slidePerStepCm": 0.6,
+        "slideWorstCm": 1.3,
+        "cadenceSpm": 132,
+        "stepM": 0.36
+      },
+      "turnOnSpot": {
+        "steps": 3,
+        "slidePerStepCm": 0,
+        "slideWorstCm": 0.1,
+        "cadenceSpm": 225,
+        "stepM": 0,
+        "settles": 4
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "desktop: walk 1.4 m/s (light push): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":5,\"slidePerStepCm\":0,\"slideWorstCm\":0,\"cadenceSpm\":125,\"stepM\":0.69}"
+    },
+    {
+      "name": "desktop: walk 1.4 m/s (light push): cadence of the speed (105–135 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Walk\",\"run\":0,\"cadenceSpm\":119,\"stepM\":0.69,\"duty\":0.57,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "desktop: walk 2.0 m/s (full push: the default): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":6,\"slidePerStepCm\":0,\"slideWorstCm\":0,\"cadenceSpm\":157,\"stepM\":0.74}"
+    },
+    {
+      "name": "desktop: walk 2.0 m/s (full push: the default): cadence of the speed (135–175 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Walk\",\"run\":0,\"cadenceSpm\":156,\"stepM\":0.77,\"duty\":0.54,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "desktop: jog 4.2 m/s (Shift / « Courir »): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":7,\"slidePerStepCm\":1.2,\"slideWorstCm\":1.9,\"cadenceSpm\":192,\"stepM\":1.31}"
+    },
+    {
+      "name": "desktop: jog 4.2 m/s (Shift / « Courir »): cadence of the speed (172–205 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Jog\",\"run\":1,\"cadenceSpm\":189,\"stepM\":1.33,\"duty\":0.21,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "desktop: sprint 7 m/s (double-tapped Shift / « Courir » twice): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":8,\"slidePerStepCm\":0.4,\"slideWorstCm\":1.7,\"cadenceSpm\":209,\"stepM\":2.15}"
+    },
+    {
+      "name": "desktop: sprint 7 m/s (double-tapped Shift / « Courir » twice): cadence of the speed (185–220 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Run\",\"run\":1,\"cadenceSpm\":209,\"stepM\":2.15,\"duty\":0.13,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "desktop: starting from standing, no sliding",
+      "ok": true,
+      "detail": "{\"steps\":3,\"slidePerStepCm\":0.4,\"slideWorstCm\":1,\"cadenceSpm\":196,\"stepM\":1.12}"
+    },
+    {
+      "name": "desktop: stopping, the feet come together and stay down",
+      "ok": true,
+      "detail": "{\"stop\":{\"steps\":4,\"slidePerStepCm\":0.3,\"slideWorstCm\":1,\"cadenceSpm\":225,\"stepM\":0.09,\"end\":{\"moving\":false,\"feet\":[\"down\",\"down\"]}},\"speed\":3.886560752100499e-24}"
+    },
+    {
+      "name": "desktop: a 90° turn while walking: the planted foot pivots, no skating",
+      "ok": true,
+      "detail": "{\"steps\":4,\"slidePerStepCm\":0.6,\"slideWorstCm\":1.3,\"cadenceSpm\":132,\"stepM\":0.36}"
+    },
+    {
+      "name": "desktop: turning on the spot: the feet step round (no moonwalk)",
+      "ok": true,
+      "detail": "{\"steps\":3,\"slidePerStepCm\":0,\"slideWorstCm\":0.1,\"cadenceSpm\":225,\"stepM\":0,\"settles\":4}"
+    },
+    {
+      "name": "desktop: no page errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: walk 1.4 m/s (light push): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":5,\"slidePerStepCm\":0,\"slideWorstCm\":0,\"cadenceSpm\":125,\"stepM\":0.69}"
+    },
+    {
+      "name": "phone: walk 1.4 m/s (light push): cadence of the speed (105–135 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Walk\",\"run\":0,\"cadenceSpm\":119,\"stepM\":0.69,\"duty\":0.57,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "phone: walk 2.0 m/s (full push: the default): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":6,\"slidePerStepCm\":0,\"slideWorstCm\":0,\"cadenceSpm\":157,\"stepM\":0.74}"
+    },
+    {
+      "name": "phone: walk 2.0 m/s (full push: the default): cadence of the speed (135–175 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Walk\",\"run\":0,\"cadenceSpm\":156,\"stepM\":0.77,\"duty\":0.54,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "phone: jog 4.2 m/s (Shift / « Courir »): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":7,\"slidePerStepCm\":1.2,\"slideWorstCm\":1.9,\"cadenceSpm\":192,\"stepM\":1.31}"
+    },
+    {
+      "name": "phone: jog 4.2 m/s (Shift / « Courir »): cadence of the speed (172–205 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Jog\",\"run\":1,\"cadenceSpm\":189,\"stepM\":1.33,\"duty\":0.21,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "phone: sprint 7 m/s (double-tapped Shift / « Courir » twice): the feet do not slide (< 2 cm a step)",
+      "ok": true,
+      "detail": "{\"steps\":8,\"slidePerStepCm\":0.3,\"slideWorstCm\":0.7,\"cadenceSpm\":209,\"stepM\":2.15}"
+    },
+    {
+      "name": "phone: sprint 7 m/s (double-tapped Shift / « Courir » twice): cadence of the speed (185–220 steps a minute)",
+      "ok": true,
+      "detail": "{\"clip\":\"Run\",\"run\":1,\"cadenceSpm\":209,\"stepM\":2.15,\"duty\":0.13,\"slipped\":[0,0]}"
+    },
+    {
+      "name": "phone: starting from standing, no sliding",
+      "ok": true,
+      "detail": "{\"steps\":3,\"slidePerStepCm\":0.5,\"slideWorstCm\":1.2,\"cadenceSpm\":196,\"stepM\":1.12}"
+    },
+    {
+      "name": "phone: stopping, the feet come together and stay down",
+      "ok": true,
+      "detail": "{\"stop\":{\"steps\":4,\"slidePerStepCm\":0.3,\"slideWorstCm\":1,\"cadenceSpm\":225,\"stepM\":0.09,\"end\":{\"moving\":false,\"feet\":[\"down\",\"down\"]}},\"speed\":3.886560752100499e-24}"
+    },
+    {
+      "name": "phone: a 90° turn while walking: the planted foot pivots, no skating",
+      "ok": true,
+      "detail": "{\"steps\":4,\"slidePerStepCm\":0.6,\"slideWorstCm\":1.3,\"cadenceSpm\":132,\"stepM\":0.36}"
+    },
+    {
+      "name": "phone: turning on the spot: the feet step round (no moonwalk)",
+      "ok": true,
+      "detail": "{\"steps\":3,\"slidePerStepCm\":0,\"slideWorstCm\":0.1,\"cadenceSpm\":225,\"stepM\":0,\"settles\":4}"
+    },
+    {
+      "name": "phone: no page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

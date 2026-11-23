@@ -1,0 +1,242 @@
+[
+ {
+  "name": "desktop: plateau 13h loads",
+  "ok": true,
+  "extra": "draw calls 325, tris 211380"
+ },
+ {
+  "name": "desktop: plateau 21h loads",
+  "ok": true,
+  "extra": "draw calls 347, tris 217860"
+ },
+ {
+  "name": "desktop: corniche 13h loads",
+  "ok": true,
+  "extra": "draw calls 470, tris 311110"
+ },
+ {
+  "name": "desktop: corniche 21h loads",
+  "ok": true,
+  "extra": "draw calls 448, tris 303734"
+ },
+ {
+  "name": "desktop: almadies 13h loads",
+  "ok": true,
+  "extra": "draw calls 295, tris 217954"
+ },
+ {
+  "name": "desktop: almadies 21h loads",
+  "ok": true,
+  "extra": "draw calls 274, tris 208134"
+ },
+ {
+  "name": "desktop: pikine 13h loads",
+  "ok": true,
+  "extra": "draw calls 375, tris 252872"
+ },
+ {
+  "name": "desktop: pikine 21h loads",
+  "ok": true,
+  "extra": "draw calls 382, tris 254928"
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: plateau 13h loads",
+  "ok": true,
+  "extra": "draw calls 296, tris 208422"
+ },
+ {
+  "name": "phone: plateau 21h loads",
+  "ok": true,
+  "extra": "draw calls 276, tris 195890"
+ },
+ {
+  "name": "phone: corniche 13h loads",
+  "ok": true,
+  "extra": "draw calls 469, tris 315542"
+ },
+ {
+  "name": "phone: corniche 21h loads",
+  "ok": true,
+  "extra": "draw calls 459, tris 306046"
+ },
+ {
+  "name": "phone: almadies 13h loads",
+  "ok": true,
+  "extra": "draw calls 265, tris 208306"
+ },
+ {
+  "name": "phone: almadies 21h loads",
+  "ok": true,
+  "extra": "draw calls 291, tris 219422"
+ },
+ {
+  "name": "phone: pikine 13h loads",
+  "ok": true,
+  "extra": "draw calls 344, tris 252200"
+ },
+ {
+  "name": "phone: pikine 21h loads",
+  "ok": true,
+  "extra": "draw calls 343, tris 252508"
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "movement: W moves the character",
+  "ok": true,
+  "extra": "moved 4.2"
+ },
+ {
+  "name": "collision: position stays finite",
+  "ok": true,
+  "extra": "-28,-49"
+ },
+ {
+  "name": "interaction: nearby place detected",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "interior: enter starter room",
+  "ok": true,
+  "extra": "1001.1,-0.3"
+ },
+ {
+  "name": "interior: walls hold the player inside",
+  "ok": true,
+  "extra": "997.3,-2.1"
+ },
+ {
+  "name": "interior: exit back to the street",
+  "ok": true,
+  "extra": "-42.0,-54.5"
+ },
+ {
+  "name": "dibiterie: walk in from the street",
+  "ok": true,
+  "extra": "-50.1 Dibiterie Chez Pathé"
+ },
+ {
+  "name": "maiga: enter the narrow room",
+  "ok": true,
+  "extra": "1040.0 Maïga du marché"
+ },
+ {
+  "name": "monument: stair height",
+  "ok": true,
+  "extra": "6.96"
+ },
+ {
+  "name": "travel: pikine -> corniche",
+  "ok": true,
+  "extra": "corniche"
+ },
+ {
+  "name": "save: written to device storage",
+  "ok": true,
+  "extra": "488 bytes"
+ },
+ {
+  "name": "save: restored after reload",
+  "ok": true,
+  "extra": "wallet 1801, hub corniche"
+ },
+ {
+  "name": "desktop: first suggested beat is Ibou",
+  "ok": true,
+  "extra": "ibou_welcome"
+ },
+ {
+  "name": "desktop: beat choice sets reco_modou via UI",
+  "ok": true,
+  "extra": "reco_modou"
+ },
+ {
+  "name": "desktop: scene entrance runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene training runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene celebration runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene watch runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: Blender wrestler asset loaded",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: entrance completion recorded",
+  "ok": true,
+  "extra": "1"
+ },
+ {
+  "name": "desktop: no page errors (social + scenes)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: first suggested beat is Ibou",
+  "ok": true,
+  "extra": "ibou_welcome"
+ },
+ {
+  "name": "phone: beat choice sets reco_modou via UI",
+  "ok": true,
+  "extra": "reco_modou"
+ },
+ {
+  "name": "phone: scene entrance runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene training runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene celebration runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene watch runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: Blender wrestler asset loaded",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: entrance completion recorded",
+  "ok": true,
+  "extra": "1"
+ },
+ {
+  "name": "phone: no page errors (social + scenes)",
+  "ok": true,
+  "extra": ""
+ }
+]

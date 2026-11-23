@@ -1,0 +1,78 @@
+{
+ "journey": "A",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 14.7,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "a new player: no day worked, no run",
+   "ok": true,
+   "detail": "{\"run\":0,\"best\":0,\"last\":-1,\"lastMs\":0,\"total\":0,\"grace\":1,\"seen\":[]}"
+  },
+  {
+   "name": "the Profile says how a day counts, and no run yet",
+   "ok": true,
+   "detail": "Série · Aucun jour actif Meilleure série : Aucun jour actif · jours actifs en tout : 0 À 2 jours d’affilée Les vendeurs te reconnaissent : accueil plus chaleureux. Comment ça marche Un jour compte qua"
+  },
+  {
+   "name": "on the bike with the job in hand, the goal line gives directions: the next turn and the distance left, to the pick-up",
+   "ok": true,
+   "detail": "{\"g1\":{\"text\":\"↰ À gauche dans 10 m · Maïga du marché 60 m\",\"nav\":true},\"n1\":{\"text\":\"À gauche dans 10 m · Maïga du marché\",\"dist\":\"60 m\"}}"
+  },
+  {
+   "name": "parcel picked up at the kerb of the Maïga: the directions turn to the client",
+   "ok": true,
+   "detail": "{\"text\":\"↰ À gauche dans 10 m · Garage Modou 40 m\",\"nav\":true}"
+  },
+  {
+   "name": "delivered: paid ONCE (one wallet line)",
+   "ok": true,
+   "detail": "{\"paid\":660,\"lines\":[\"Livraison Tiak Tiak → Garage Modou (en retard)\"]}"
+  },
+  {
+   "name": "the card: the job, where to, what it paid, how long, how far, « 1 jour actif · Premier jour actif », one line on how it went",
+   "ok": false,
+   "detail": "🛵 Livré en retard Maïga du marché → Garage Modou Payé 660 F +660 F Durée 2 min 04 s Distance 490 m Série 1 jour actif Premier jour actif ENSUITE Un peu en retard : le client a payé moins. ✕"
+  },
+  {
+   "name": "the card is brief, clear of the stick and the action button, and a tap dismisses it",
+   "ok": false,
+   "detail": "{\"tapped\":false,\"gone\":true,\"over\":false}"
+  },
+  {
+   "name": "the Profile: « 1 jour actif »",
+   "ok": true,
+   "detail": "Série · 1 jour actif Meilleure série : 1 jour actif · jours actifs en tout : 1 · un jour manqué te serait pardonné À 2 jours d’affilée Les vendeurs te reconnaissent : accueil plus chaleureux. Comment "
+  },
+  {
+   "name": "a second delivery the same day pays, and the card says the day is already counted (no farming)",
+   "ok": true,
+   "detail": "🛵 Livraison réussie Maïga du marché → Garage Modou Payé 1 100 F +1 100 F Durée 1 min 06 s Distance 250 m Série 1 jour actif Aujourd’hui est déjà compté ENSUITE Livré à l’heure, sans accroc. ✕"
+  },
+  {
+   "name": "the next day's delivery: the card counts the day: « 2 jours d’affilée »",
+   "ok": true,
+   "detail": "🛵 Livraison réussie Maïga du marché → Garage Modou Payé 1 100 F +1 100 F Durée 1 min 06 s Distance 250 m Série 2 jours d’affilée Jour actif compté ENSUITE Livré à l’heure, sans accroc. ✕"
+  },
+  {
+   "name": "… then a short celebration of the milestone, saying what it opens (the dealers know the player) and that it is never the only way",
+   "ok": true,
+   "detail": "🔥 2 jours d’affilée ! Les vendeurs te reconnaissent : accueil plus chaleureux. Tant que la série tient, sans jamais être la seule façon d’y arriver. ✕"
+  },
+  {
+   "name": "the Profile: « 2 jours d’affilée », the best run, the days worked, what 3 days will open",
+   "ok": true,
+   "detail": "Série · 2 jours d’affilée Meilleure série : 2 jours d’affilée · jours actifs en tout : 2 · un jour manqué te serait pardonné Ce que ta série t’ouvre Les vendeurs te reconnaissent : accueil plus chaleureux. À 3 jours d’affilée Essai sur route d’une citadine (Sarr Auto, Ndiaye Auto) sans attendre · un"
+  },
+  {
+   "name": "saved in the v6 save: the run, the days, the milestones seen",
+   "ok": true,
+   "detail": "{\"run\":2,\"best\":2,\"last\":2,\"lastMs\":867099.8999999996,\"total\":2,\"grace\":1,\"seen\":[2]}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

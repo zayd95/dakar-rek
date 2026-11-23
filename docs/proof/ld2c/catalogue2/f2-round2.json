@@ -1,0 +1,132 @@
+{
+ "base": "http://127.0.0.1:4991/",
+ "pieces": 16,
+ "set": [
+  [
+   "canape_angle_velours",
+   null
+  ],
+  [
+   "pouf_velours",
+   null
+  ],
+  [
+   "table_basse_sculptee",
+   null
+  ],
+  [
+   "aquarium_meuble",
+   null
+  ],
+  [
+   "miroir_soleil",
+   null
+  ],
+  [
+   "candelabre_cristal",
+   null
+  ],
+  [
+   "vase_orchidees",
+   null
+  ],
+  [
+   "bronze_marbre",
+   null
+  ],
+  [
+   "tapis_soie",
+   null
+  ],
+  [
+   "lit_baldaquin",
+   null
+  ],
+  [
+   "paravent_bois",
+   null
+  ],
+  [
+   "masques_sculptes",
+   null
+  ],
+  [
+   "chevet_sculpte",
+   null
+  ],
+  [
+   "console_marbre",
+   null
+  ],
+  [
+   "jarre_herbes",
+   null
+  ],
+  [
+   "attaya_service",
+   null
+  ]
+ ],
+ "perf": {
+  "sejour": {
+   "calls": 30,
+   "tris": 31157
+  },
+  "chambre": {
+   "calls": 28,
+   "tris": 30204
+  },
+  "entree": {
+   "calls": 16,
+   "tris": 24449
+  }
+ },
+ "pictures": [
+  [
+   "f2-sejour-day",
+   343895
+  ],
+  [
+   "f2-chambre-day",
+   262811
+  ],
+  [
+   "f2-entree-day",
+   274850
+  ],
+  [
+   "f2-sejour-night",
+   344974
+  ],
+  [
+   "f2-chambre-night",
+   255866
+  ],
+  [
+   "f2-entree-night",
+   270548
+  ]
+ ],
+ "results": [
+  {
+   "name": "the 16 new pieces are delivered to the F2 and set up",
+   "ok": true,
+   "detail": "[[\"canape_angle_velours\",true],[\"pouf_velours\",true],[\"table_basse_sculptee\",true],[\"aquarium_meuble\",true],[\"miroir_soleil\",true],[\"candelabre_cristal\",true],[\"vase_orchidees\",true],[\"bronze_marbre\",true],[\"tapis_soie\",true],[\"lit_baldaquin\",true],[\"paravent_bois\",true],[\"masques_sculptes\",true],[\"chevet_sculpte\",true],[\"console_marbre\",true],[\"jarre_herbes\",true],[\"attaya_service\",true]]"
+  },
+  {
+   "name": "each room furnished with the new pieces: ≤ 60 draw calls and ≤ 80k triangles (phone page)",
+   "ok": true,
+   "detail": "{\"sejour\":{\"calls\":30,\"tris\":31157},\"chambre\":{\"calls\":28,\"tris\":30204},\"entree\":{\"calls\":16,\"tris\":24449}}"
+  },
+  {
+   "name": "pictures of the séjour, the chambre and the entrée by day and at 21 h, each PNG under 400 kB",
+   "ok": true,
+   "detail": "f2-sejour-day 344 kB, f2-chambre-day 263 kB, f2-entree-day 275 kB, f2-sejour-night 345 kB, f2-chambre-night 256 kB, f2-entree-night 271 kB"
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+PASS: the evening's footballers make two teams on the pitch at 17:30 {"teams":[2,2],"waiting":0,"fans":0,"quality":"low"}
+PASS: the ball moves {"ballTravel":61.8,"ball":{"x":-69.24,"y":0.27,"z":30.81,"h":0.11,"speed":0,"net":1,"visible":true}}
+PASS: the ball is drawn on the grass {"x":-69.24,"y":0.27,"z":30.81,"h":0.11,"speed":0,"net":1,"visible":true}
+PASS: at the frame of a kick, the drawn foot is on the ball {"n":16,"t":25.5,"frame":763,"who":4,"team":1,"kind":"pass","side":1,"x":20.762925888289253,"z":0.8114704630966818,"h":0.11,"reach":0,"speed":8.359828132232494,"to":10,"foot":0.0309}
+PASS: a goal within 180 s of play {"t":107.27,"score":[1,1],"shots":4,"onTarget":4,"saves":1,"goals":[{"t":18.133333333333393,"team":0,"scorer":5,"score":[1,0]},{"t":107.26666666666314,"team":1,"scorer":10,"score":[1,1]}]}
+PASS: the scorer celebrates (Celebrate held) {"id":10,"team":1,"keeper":false,"x":-106.29524973264726,"z":24.508799207710343,"y":0.155,"yaw":-0.526828383175005,"clip":"Celebrate","body":true,"kick":null,"cheer":0.3}
+PASS: his teammates run to him and celebrate {"mates":[{"id":2,"cheer":true,"clip":"Celebrate"},{"id":6,"cheer":true,"clip":"Celebrate"},{"id":8,"cheer":true,"clip":null}],"cheering":5}
+PASS: the spectators on the touchline cheer the goal {"fans":3,"cheering":3}
+PASS: play restarts from the centre spot after the goal {"kickoffs":[{"t":5.87,"dist":0},{"t":31.27,"dist":0.06},{"t":120.93,"dist":1.06}],"phase":"play"}
+PASS: passes go from teammate to teammate {"passes":36,"completed":24,"intercepted":11,"perMinute":{"passes":17.71,"completed":11.81,"goals":0.98,"contacts":62.48}}
+PASS: the foot (hands) is within 10 cm of the ball at every measured contact {"measured":73,"unmeasured":54,"median":0.0305,"p90":0.0314,"max":0.035,"min":0.0274,"byKind":{"touch":{"n":8,"max":0.0313,"mean":0.0308},"trap":{"n":26,"max":0.0337,"mean":0.0301},"tackle":{"n":11,"max":0.0313,"mean":0.0304},"pass":{"n":25,"max":0.035,"mean":0.0295},"shot":{"n":3,"max":0.0308,"mean":0.0307},"save":null}}
+PASS: nearly every contact is measured on a drawn body {"measured":73,"unmeasured":54,"contacts":127,"quality":"low"}
+PASS: a planned contact is seldom missed {"whiffs":0,"contacts":127}
+PASS: the footballers' planted feet barely slide (the legs keep the pace) {"bodies":1,"steps":292,"slipped":0.27803688447444874}
+PASS: every contact had the ball at the contact point (the sim's own reach) []
+touchline, follow camera: {"label":"touchline, follow camera","calls":70,"football":2,"ambient":23,"frameMs":149.1,"footballMs":0.143,"ambientMs":0.565,"updateMs":2.38}
+elevated view: {"label":"elevated view","calls":64,"football":2,"ambient":14,"frameMs":131.6,"footballMs":0.168,"ambientMs":0.311,"updateMs":2.07}
+PASS: near the pitch the frame stays in the low budget (180 draw calls) [{"label":"touchline, follow camera","calls":70,"football":2,"ambient":23,"frameMs":149.1,"footballMs":0.143,"ambientMs":0.565,"updateMs":2.38},{"label":"elevated view","calls":64,"football":2,"ambient":14,"frameMs":131.6,"footballMs":0.168,"ambientMs":0.311,"updateMs":2.07}]
+PASS: the ball and the nets cost at most 4 draw calls [2,2]
+PASS: far from the pitch the match is put away (the people roam as before) and costs next to nothing {"near":false,"active":false,"ms":0}
+PASS: no page errors 
+
+19/19 football checks passed

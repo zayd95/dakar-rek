@@ -1,0 +1,347 @@
+[
+  {
+    "name": "desktop: ☰ opens the phone on the home screen",
+    "ok": true,
+    "detail": "{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+  },
+  {
+    "name": "desktop: the home shows the city time, the FCFA balance and the five destinations",
+    "ok": true,
+    "detail": "Pikine · Jeu. 19:01 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
+  },
+  {
+    "name": "desktop: hook apps shown only with their module",
+    "ok": true,
+    "detail": "profil,notifs,carnet,sante,habitants,travailler,travail,vtc,affaires,arene,portefeuille,credits,logement,maison,biens,carte,quartier,cesoir,actus,meteo,horloge,calcul,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
+  },
+  {
+    "name": "desktop: no movement while the phone is open",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: app portefeuille opens",
+    "ok": true,
+    "detail": "Argent"
+  },
+  {
+    "name": "desktop: app carte opens",
+    "ok": true,
+    "detail": "Carte"
+  },
+  {
+    "name": "desktop: app arene opens",
+    "ok": true,
+    "detail": "Arène"
+  },
+  {
+    "name": "desktop: app carnet opens",
+    "ok": true,
+    "detail": "Carnet"
+  },
+  {
+    "name": "desktop: app actus opens",
+    "ok": true,
+    "detail": "Actus"
+  },
+  {
+    "name": "desktop: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "desktop: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "desktop: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "desktop: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "desktop: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
+    "name": "desktop: app aide opens",
+    "ok": true,
+    "detail": "Aide"
+  },
+  {
+    "name": "desktop: app reglages opens",
+    "ok": true,
+    "detail": "Réglages"
+  },
+  {
+    "name": "desktop: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide",
+    "ok": true,
+    "detail": "{\"hubs\":[\"plateau:60 min\",\"corniche:75 min\",\"almadies:105 min\"],\"card\":{\"text\":\"Plateau · Médina\\n\\n🚶 60 min · gratuit\\n🚌 Car rapide 700 F · ≈ 20 min\\n🛣️ Au volant · 1,4 km\\n\\n🚶 Y aller à pied\\n🚗 Itinéraire en voiture\",\"walks\":1}}"
+  },
+  {
+    "name": "desktop: wallet shows game money and the ledger",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: back returns to the previous screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: sound toggles off and on (saved)",
+    "ok": true,
+    "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "desktop: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf » seulMasquée\"},{\"s\":\"on\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf (merci) »Affichée\"}]"
+  },
+  {
+    "name": "desktop: camera sensitivity setting",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: new game asks for confirmation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: save now (said in the phone)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Escape closes the phone, then W moves the player",
+    "ok": true,
+    "detail": "moved 1.16"
+  },
+  {
+    "name": "desktop: M reopens on the last app",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: quality change inside the room keeps the player inside",
+    "ok": true,
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
+  },
+  {
+    "name": "desktop: exit still leads to the street after the change",
+    "ok": true,
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
+  },
+  {
+    "name": "desktop: Messages tile closes the phone and calls its hook",
+    "ok": true,
+    "detail": "{\"msg\":1,\"open\":false,\"mode\":\"play\"}"
+  },
+  {
+    "name": "desktop: ledger and arena profile hooks are shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: __dakar.journal() opens the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Escape closes the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: new game after confirmation starts from a fresh save",
+    "ok": true,
+    "detail": "wallet 3000"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: ☰ opens the phone on the home screen",
+    "ok": true,
+    "detail": "{\"open\":true,\"screen\":\"home\",\"arg\":null,\"depth\":0,\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+  },
+  {
+    "name": "phone: the home shows the city time, the FCFA balance and the five destinations",
+    "ok": true,
+    "detail": "Pikine · Jeu. 20:33 | Solde 3 000 F | carte,travailler,profil,logement,portefeuille,apps"
+  },
+  {
+    "name": "phone: hook apps shown only with their module",
+    "ok": true,
+    "detail": "profil,notifs,carnet,sante,habitants,travailler,travail,vtc,affaires,arene,portefeuille,credits,logement,maison,biens,carte,quartier,cesoir,actus,meteo,horloge,calcul,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
+  },
+  {
+    "name": "phone: no movement while the phone is open",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: app portefeuille opens",
+    "ok": true,
+    "detail": "Argent"
+  },
+  {
+    "name": "phone: app carte opens",
+    "ok": true,
+    "detail": "Carte"
+  },
+  {
+    "name": "phone: app arene opens",
+    "ok": true,
+    "detail": "Arène"
+  },
+  {
+    "name": "phone: app carnet opens",
+    "ok": true,
+    "detail": "Carnet"
+  },
+  {
+    "name": "phone: app actus opens",
+    "ok": true,
+    "detail": "Actus"
+  },
+  {
+    "name": "phone: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "phone: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "phone: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "phone: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "phone: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
+    "name": "phone: app aide opens",
+    "ok": true,
+    "detail": "Aide"
+  },
+  {
+    "name": "phone: app reglages opens",
+    "ok": true,
+    "detail": "Réglages"
+  },
+  {
+    "name": "phone: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide",
+    "ok": true,
+    "detail": "{\"hubs\":[\"plateau:60 min\",\"corniche:75 min\",\"almadies:105 min\"],\"card\":{\"text\":\"Plateau · Médina\\n\\n🚶 60 min · gratuit\\n🚌 Car rapide 700 F · ≈ 20 min\\n🛣️ Au volant · 1,4 km\\n\\n🚶 Y aller à pied\\n🚗 Itinéraire en voiture\",\"walks\":1}}"
+  },
+  {
+    "name": "phone: wallet shows game money and the ledger",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: back returns to the previous screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: sound toggles off and on (saved)",
+    "ok": true,
+    "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "phone: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf » seulMasquée\"},{\"s\":\"on\",\"t\":\"Traduction du wolofFrançais, expressions en wolof : « Jërëjëf (merci) »Affichée\"}]"
+  },
+  {
+    "name": "phone: camera sensitivity setting",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: new game asks for confirmation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: save now (said in the phone)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Escape closes the phone, then W moves the player",
+    "ok": true,
+    "detail": "moved 1.30"
+  },
+  {
+    "name": "phone: M reopens on the last app",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: quality change inside the room keeps the player inside",
+    "ok": true,
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
+  },
+  {
+    "name": "phone: exit still leads to the street after the change",
+    "ok": true,
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\",\"yaw\":3.491592653589793,\"cam\":3.731592653589793}"
+  },
+  {
+    "name": "phone: Messages tile closes the phone and calls its hook",
+    "ok": true,
+    "detail": "{\"msg\":1,\"open\":false,\"mode\":\"play\"}"
+  },
+  {
+    "name": "phone: ledger and arena profile hooks are shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: __dakar.journal() opens the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Escape closes the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: opening the phone releases a held joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: landscape phone fits the screen, the destinations in view",
+    "ok": true,
+    "detail": "{\"box\":{\"x\":0,\"y\":0,\"width\":844,\"height\":390},\"dock\":{\"x\":369.5625,\"y\":52,\"width\":458.4375,\"height\":268.3125}}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

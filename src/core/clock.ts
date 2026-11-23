@@ -8,13 +8,22 @@ export const CITY_DAY_MS = 24 * 60 * 1000;
 
 export interface CityTime { day: number; hour: number; minute: number; hourFloat: number; isNight: boolean; label: string }
 
+let lastMs = NaN, last: CityTime | null = null;
+/**
+ * The city's time at a device time. The game asks for it many times a frame (every module reads the hour and the day, each
+ * one through the clock): the answer is kept for the millisecond it was made for, and its label (« Jour 3 · 07:05 », which
+ * nothing reads on most frames) is built only when read. Callers only read it.
+ */
 export function cityTimeAt(nowMs: number): CityTime {
+  if (nowMs === lastMs && last) return last;
   const elapsed = Math.max(0, nowMs - CITY_EPOCH_MS);
   const day = Math.floor(elapsed / CITY_DAY_MS) + 1;
   const hourFloat = ((elapsed % CITY_DAY_MS) / CITY_DAY_MS) * 24;
   const hour = Math.floor(hourFloat);
   const minute = Math.floor((hourFloat - hour) * 60);
-  return { day, hour, minute, hourFloat, isNight: hourFloat < 6 || hourFloat >= 19, label: `Jour ${day} · ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}` };
+  const t: CityTime = { day, hour, minute, hourFloat, isNight: hourFloat < 6 || hourFloat >= 19, get label() { return `Jour ${day} · ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`; } };
+  lastMs = nowMs; last = t;
+  return t;
 }
 
 /** Sun elevation factor 0..1 for lighting from a city hour. */

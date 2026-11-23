@@ -1,0 +1,104 @@
+{
+  "source": "Tanzil Project — https://tanzil.net",
+  "edition": "Tanzil Quran Text (Simple, Version 1.1)",
+  "notice": "# PLEASE DO NOT REMOVE OR CHANGE THIS COPYRIGHT BLOCK\n#====================================================================\n#\n#  Tanzil Quran Text (Simple, Version 1.1)\n#  Copyright (C) 2007-2026 Tanzil Project\n#  License: Creative Commons Attribution 3.0\n#\n#  This copy of the Quran text is carefully produced, highly \n#  verified and continuously monitored by a group of specialists \n#  at Tanzil Project.\n#\n#  TERMS OF USE:\n#\n#  - Permission is granted to copy and distribute verbatim copies \n#    of this text, but CHANGING IT IS NOT ALLOWED.\n#\n#  - This Quran text can be used in any website or application, \n#    provided that its source (Tanzil Project) is clearly indicated, \n#    and a link is made to tanzil.net to enable users to keep\n#    track of changes.\n#\n#  - This copyright notice shall be included in all verbatim copies \n#    of the text, and shall be reproduced appropriately in all files \n#    derived from or containing substantial portion of this text.\n#\n#  Please check updates at: http://tanzil.net/updates/\n#\n#====================================================================",
+  "passages": [
+    {
+      "id": "bismillah",
+      "label": "Sourate Al-Fâtiha (1), verset 1",
+      "sura": 1,
+      "suraName": "الفاتحة",
+      "verses": [
+        {
+          "sura": 1,
+          "aya": 1,
+          "text": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+        }
+      ]
+    },
+    {
+      "id": "fatiha",
+      "label": "Sourate Al-Fâtiha (1), versets 1 à 7",
+      "sura": 1,
+      "suraName": "الفاتحة",
+      "verses": [
+        {
+          "sura": 1,
+          "aya": 1,
+          "text": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+        },
+        {
+          "sura": 1,
+          "aya": 2,
+          "text": "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ"
+        },
+        {
+          "sura": 1,
+          "aya": 3,
+          "text": "الرَّحْمَـٰنِ الرَّحِيمِ"
+        },
+        {
+          "sura": 1,
+          "aya": 4,
+          "text": "مَالِكِ يَوْمِ الدِّينِ"
+        },
+        {
+          "sura": 1,
+          "aya": 5,
+          "text": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ"
+        },
+        {
+          "sura": 1,
+          "aya": 6,
+          "text": "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ"
+        },
+        {
+          "sura": 1,
+          "aya": 7,
+          "text": "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ"
+        }
+      ]
+    },
+    {
+      "id": "kursi",
+      "label": "Âyat al-Kursî · sourate Al-Baqara (2), verset 255",
+      "sura": 2,
+      "suraName": "البقرة",
+      "verses": [
+        {
+          "sura": 2,
+          "aya": 255,
+          "text": "اللَّهُ لَا إِلَـٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ"
+        }
+      ]
+    },
+    {
+      "id": "ikhlas",
+      "label": "Sourate Al-Ikhlâs (112), versets 1 à 4",
+      "sura": 112,
+      "suraName": "الإخلاص",
+      "verses": [
+        {
+          "sura": 112,
+          "aya": 1,
+          "text": "قُلْ هُوَ اللَّهُ أَحَدٌ"
+        },
+        {
+          "sura": 112,
+          "aya": 2,
+          "text": "اللَّهُ الصَّمَدُ"
+        },
+        {
+          "sura": 112,
+          "aya": 3,
+          "text": "لَمْ يَلِدْ وَلَمْ يُولَدْ"
+        },
+        {
+          "sura": 112,
+          "aya": 4,
+          "text": "وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ"
+        }
+      ]
+    }
+  ]
+}

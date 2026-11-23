@@ -1,0 +1,251 @@
+{
+  "at": "2026-11-14T06:55:06.627Z",
+  "pages": 2,
+  "bots": {
+    "match10": 8,
+    "match14": 13
+  },
+  "passed": 22,
+  "failed": 0,
+  "notes": {
+    "quote Awa": "Mise de 1 000 F : 1 000 F du portefeuille, par Teranga Money",
+    "quote Moussa": "Mise de 1 000 F : 1 000 F du portefeuille, par Teranga Money",
+    "reconnectStatus": "reconnecting",
+    "bandDuringDrop": [
+      "Rouge 1 – 0 Jaune Reconnexion…",
+      "Rouge 1 – 0 Jaune 1:29 · 1re mi-temps"
+    ],
+    "reloadServerBackS": 1.2,
+    "reloadPageLiveS": 3.5,
+    "taps": {
+      "Awa": {
+        "pass": 5,
+        "dribble": 6,
+        "shot": 5
+      },
+      "Moussa": {
+        "pass": 3,
+        "dribble": 4,
+        "shot": 3
+      }
+    },
+    "pagesInMatch": {
+      "sent": {
+        "Awa": {
+          "pass": 5,
+          "dribble": 6,
+          "shot": 5
+        },
+        "Moussa": {
+          "pass": 1,
+          "dribble": 1,
+          "shot": 1
+        }
+      },
+      "serverEvents": {
+        "Awa": [
+          "shot",
+          "pass"
+        ],
+        "Moussa": []
+      }
+    },
+    "pagePlayersSeen": {
+      "gone": [],
+      "events": [
+        "drop:1@89.8s",
+        "back:1@98.2s",
+        "drop:2@98.9s",
+        "back:2@99.5s"
+      ]
+    },
+    "perf10": {
+      "low": {
+        "started": true,
+        "maxCalls": 78,
+        "avgCalls": 78,
+        "matchBodies": 9,
+        "matchFull": 9,
+        "matchFigures": 0,
+        "streetFull": 9,
+        "streetBudget": 10,
+        "live": true,
+        "budget": 180
+      },
+      "medium": {
+        "started": true,
+        "maxCalls": 154,
+        "avgCalls": 154,
+        "matchBodies": 9,
+        "matchFull": 9,
+        "matchFigures": 0,
+        "streetFull": 0,
+        "streetBudget": 16,
+        "live": true,
+        "budget": 300
+      },
+      "high": {
+        "started": true,
+        "maxCalls": 123,
+        "avgCalls": 123,
+        "matchBodies": 9,
+        "matchFull": 9,
+        "matchFigures": 0,
+        "streetFull": 6,
+        "streetBudget": 26,
+        "live": true,
+        "budget": 420
+      }
+    },
+    "perf14": {
+      "high": {
+        "started": true,
+        "maxCalls": 173,
+        "avgCalls": 172,
+        "matchBodies": 13,
+        "matchFull": 13,
+        "matchFigures": 0,
+        "streetFull": 3,
+        "streetBudget": 26,
+        "live": true,
+        "budget": 420
+      },
+      "medium": {
+        "started": true,
+        "maxCalls": 172,
+        "avgCalls": 171,
+        "matchBodies": 13,
+        "matchFull": 13,
+        "matchFigures": 0,
+        "streetFull": 7,
+        "streetBudget": 16,
+        "live": true,
+        "budget": 300
+      },
+      "low": {
+        "started": true,
+        "maxCalls": 69,
+        "avgCalls": 67,
+        "matchBodies": 13,
+        "matchFull": 10,
+        "matchFigures": 3,
+        "streetFull": 10,
+        "streetBudget": 10,
+        "live": true,
+        "budget": 180
+      }
+    }
+  },
+  "results": [
+    {
+      "name": "0. the local Workers runtime serves the online build; 2 real pages online (presence and account), each its own account",
+      "ok": true,
+      "detail": "tags 6941a7c360ba2df4 733825f2bcc02f1d · loaded in 18 s, 78 s"
+    },
+    {
+      "name": "0b. the scene: both in the Corniche on the street by the pitch, side by side, in the same presence room",
+      "ok": true,
+      "detail": "{\"pitch\":{\"x\":-90,\"z\":30}}"
+    },
+    {
+      "name": "1a. the form: Gratuit · 500 F · 1 000 F · 2 500 F · 5 000 F or typed, 6 · 10 · 14, the two distributions, Public / Privé; the live summary « Cagnotte totale si tous les joueurs participent : 10 000 F », « Gain par gagnant : 2 000 F », « Sans commission »",
+      "ok": true,
+      "detail": "MISE PAR JOUEUR (F CFA) Gratuit 500 F 1 000 F 2 500 F 5 000 F Autre montant NOMBRE DE PARTICIPANTS 6 · 3 contre 3 10 · 5 contre 5 14 · 7 contre 7 RÉPARTITION DES GAINS Équipe gagnante — partage égal Un seul gagnant QUI PEUT JOUER Public Privé · sur invitation Cagnotte totale si tous les joueurs participent : 10 000 F Gain par gagnant : 2 000 F Sans commission ⚽ Organiser le match Terrain de foot · Corniche"
+    },
+    {
+      "name": "1b. « Organiser le match »: the server opened it; the lobby shows « Rouge » and « Jaune », my place (organisateur), the fee and the pool, « Aller au terrain » (19 m from the grass: « Prêt » says why), « Inviter », « Retirer un joueur », « Annuler le match »",
+      "ok": true,
+      "detail": "match 3b5b91bee77ff040 · Grand Camp de Awa Privé Mise 1 000 F · 5 contre 5 · partage égal · privé · Terrain de foot · Corniche Cagnotte totale si tous les joueurs participent : 10 000 F Gain par gagnant : 2 000 F Sans commission Cagnotte maintenant : 0 F (0 mise prise) 1/10 joueurs LES ÉQUIPES Rouge ✏️ 1/5 Awa (toi) · organisateur pas prêt 4 places libres Jaune ✏️ 0/5 5 places libres Mise de 1 000 F : 1 000 F du portefeuille, par Teranga Money Aller au terrain Terrain de foot · Corniche Prêt Va d’abord au terrain de la "
+    },
+    {
+      "name": "2a. « Inviter au Grand Camp » from the street’s player menu: the server’s invitation and an ordinary text message (a 1.0 client reads the text), shown to a 1.0.1 client with « Voir le match »",
+      "ok": true,
+      "detail": "{\"menu\":\"Moussa 👋 Saluer 💬 Message 💸 Envoyer de l’argent 🏠 Inviter chez moi 🤝 Proposer un rendez-vous ⚽ Inviter au Grand Camp 🙏 Remercier 👏 Applaudir 😄 Rire ense\",\"bubble\":\"⚽ Je t’invite à mon Grand Camp au terrain de la Corniche : mise 1 000 F, 5 contre 5 Voir le match 06:46\",\"rawText\":\"Je t’invite à mon Grand Camp au terrain de la Corniche : mise 1 000 F, 5 contre 5 · match 3b5b91bee77ff040\"}"
+    },
+    {
+      "name": "2b. B opens the match from the message: before accepting he sees the fee, the pool if full, the distribution and « privé »; « Rejoindre » gives him a place in the other team (Jaune)",
+      "ok": true,
+      "detail": "Grand Camp de Awa Privé Mise 1 000 F · 5 contre 5 · partage égal · privé · Terrain de foot · Corniche Cagnotte totale si tous les joueurs participent : 10 000 F Gain par gagnant : 2 000 F Sans commission Cagnotte maintenant : 0 F (0 mise prise) 1/10 joueurs LES ÉQUIPES Rouge 1/5 Awa · organisateur p"
+    },
+    {
+      "name": "3. eight bots joined (5 v 5) and are ready: their fees held (« prêt ✓ »), the pool 8 000 F; Awa and Moussa not yet ready",
+      "ok": true,
+      "detail": "Grand Camp de Awa Privé Mise 1 000 F · 5 contre 5 · partage égal · privé · Terrain de foot · Corniche Cagnotte totale si tous les joueurs participent : 10 000 F Gain par gagnant : 2 000 F Sans commission Cagnotte maintenant : 8 000 F (8 mises prises) 10/10 joueurs LES ÉQUIPES Rouge ✏️ 5/5 Awa (toi) · organisateur pas prêt Ibou prêt ✓ Modou prêt ✓ Pape prêt ✓ Cheikh prêt ✓ Jaune ✏️ 5/5 Moussa pas p"
+    },
+    {
+      "name": "4a. both walk to the pitch with the stick (no teleport): now « at the pitch »",
+      "ok": true,
+      "detail": "{\"dA\":3.4025669036069064,\"dB\":2.1591995417475207}"
+    },
+    {
+      "name": "4b. « Prêt » on both pages: the fee shown pending (« en attente du serveur… ») then done (« Mise prise : 1 000 F ») only once the server held it — 1 000 F from the wallet through Teranga Money",
+      "ok": true,
+      "detail": "{\"seen\":{\"Awa\":[\"gc-m wait|Mise de 1 000 F : en attente du serveur…\",\"gc-m ok|Mise prise : 1 000 F · Teranga Money 0 F\"],\"Moussa\":[\"gc-m wait|Mise de 1 000 F : en attente du serveur…\",\"gc-m ok|Mise prise : 1 000 F · Teranga Money 0 F\"]},\"quote\":\"Mise de 1 000 F : 1 000 F du portefeuille, par Teranga Money\"}"
+    },
+    {
+      "name": "5a. kick-off: each page on the pitch at its place (the server’s body, predicted), the action area PASSE · DRIBBLE · TIR and nothing else, the band « Rouge 0 – 0 Jaune » and the clock",
+      "ok": true,
+      "detail": "{\"hud\":{\"act\":\"none\",\"more\":\"none\",\"pad\":[\"↗PASSEE\",\"»DRIBBLEC\",\"🥅TIRF\"],\"band\":\"Rouge\\n0 – 0\\nJaune\\n0:20 · 1re mi-temps\",\"place\":\"none\"},\"me\":{\"x\":-104,\"z\":26},\"pos\":{\"x\":-104,\"z\":26},\"bodies\":9,\"full\":9}"
+    },
+    {
+      "name": "5b. the nine other players drawn from the snapshots (their look, their team’s shirt), the NPCs’ match and kickabout aside, presence avatars of the players not drawn twice",
+      "ok": true,
+      "detail": "{\"bodies\":9,\"full\":9,\"figures\":0,\"presenceDrawn\":0}"
+    },
+    {
+      "name": "5d. the pages play through real taps (two fingers: the stick and a button): each page’s PASSE, DRIBBLE and TIR sent to the server, and the server’s events show the pages’ own passes / shots",
+      "ok": true,
+      "detail": "{\"tapsA\":{\"pass\":4,\"dribble\":4,\"shot\":4},\"tapsB\":{\"pass\":2,\"dribble\":2,\"shot\":2},\"sentA\":{\"pass\":4,\"dribble\":4,\"shot\":4},\"sentB\":{\"pass\":2,\"dribble\":2,\"shot\":2},\"serverEvents\":{\"byA\":2,\"byB\":0},\"traceA\":{\"loops\":19,\"minD\":0.17,\"ran\":35.7},\"traceB\":{\"loops\":28,\"minD\":2.6,\"ran\":148},\"kicksDrawnA\":3}"
+    },
+    {
+      "name": "6. a goal: every page shows the server’s score (the band and the view), the goal said as a moment",
+      "ok": true,
+      "detail": "{\"server\":[1,0],\"shown\":[{\"score\":[1,0],\"band\":\"Rouge 1 – 0 Jaune 1:27 · 1re mi-temps\",\"last\":[\"goal:But des Rouge !\"]},{\"score\":[1,0],\"band\":\"Rouge 1 – 0 Jaune 1:27 · 1re mi-temps\",\"last\":[\"goal:But des Rouge !\"]}]}"
+    },
+    {
+      "name": "7a. A’s socket drops during the match: the band says « Reconnexion… », then the client is back on the pitch by itself",
+      "ok": true,
+      "detail": "{\"reco\":true,\"backA\":true}"
+    },
+    {
+      "name": "7b. B reloads mid-match: the page opens the match’s socket again at once (before the city has loaded); the server has B back on the pitch within 60 s (same place on the roster, not gone); the page draws and plays it again once loaded",
+      "ok": true,
+      "detail": "server: back on the pitch 1.2 s after the reload began (drop 0.7 s) · page live again in 3.5 s (this machine's full reload of the game) · events since: drop,back · {\"sid\":2,\"seat\":{\"on\":true,\"gone\":false}}"
+    },
+    {
+      "name": "8a. full time: the server settled the pool once (the ledger’s row « settled », its payouts = the result’s); each page shows the result and its payout or nothing, as the result says",
+      "ok": true,
+      "detail": "{\"end\":\"win\",\"score\":[3,1],\"winner\":0,\"total\":10000,\"pool\":\"settled\",\"pageMoney\":[{\"name\":\"Awa\",\"payout\":[2000],\"expect\":2000},{\"name\":\"Moussa\",\"payout\":[],\"expect\":0}],\"gone\":[],\"pageEvents\":[\"drop:1@89.8s\",\"back:1@98.2s\",\"drop:2@98.9s\",\"back:2@99.5s\"]}"
+    },
+    {
+      "name": "8b. the result screen (the phone): who won, the score, and my share or my loss as the server wrote it",
+      "ok": true,
+      "detail": "🏆 Victoire ! Les Rouge gagnent Rouge 3 – 1 Jaune Ta part de la cagnotte : 2 000 F Fermer"
+    },
+    {
+      "name": "8c. Teranga Money on each page = the ledger’s balance after the settlement",
+      "ok": true,
+      "detail": "{\"pages\":[2000,0],\"ledger\":[2000,0],\"before\":{\"Awa\":{\"wallet\":53000,\"tm\":0},\"Moussa\":{\"wallet\":53000,\"tm\":0}}}"
+    },
+    {
+      "name": "9a. a 10-player match (page B + 9 bots) on each quality: draw calls within 180 / 300 / 420; the players drawn full or as figures by the street’s shared budget, the nearest first",
+      "ok": true,
+      "detail": "{\"low\":{\"started\":true,\"maxCalls\":78,\"avgCalls\":78,\"matchBodies\":9,\"matchFull\":9,\"matchFigures\":0,\"streetFull\":9,\"streetBudget\":10,\"live\":true,\"budget\":180},\"medium\":{\"started\":true,\"maxCalls\":154,\"avgCalls\":154,\"matchBodies\":9,\"matchFull\":9,\"matchFigures\":0,\"streetFull\":0,\"streetBudget\":16,\"live\":true,\"budget\":300},\"high\":{\"started\":true,\"maxCalls\":123,\"avgCalls\":123,\"matchBodies\":9,\"matchFull\":9,\"matchFigures\":0,\"streetFull\":6,\"streetBudget\":26,\"live\":true,\"budget\":420}}"
+    },
+    {
+      "name": "9b. a 7 v 7 (page A + 13 bots) on each quality: draw calls within 180 / 300 / 420; on Low at most 12 animated bodies with mine (the farthest players as the cheap figure)",
+      "ok": true,
+      "detail": "{\"high\":{\"started\":true,\"maxCalls\":173,\"avgCalls\":172,\"matchBodies\":13,\"matchFull\":13,\"matchFigures\":0,\"streetFull\":3,\"streetBudget\":26,\"live\":true,\"budget\":420},\"medium\":{\"started\":true,\"maxCalls\":172,\"avgCalls\":171,\"matchBodies\":13,\"matchFull\":13,\"matchFigures\":0,\"streetFull\":7,\"streetBudget\":16,\"live\":true,\"budget\":300},\"low\":{\"started\":true,\"maxCalls\":69,\"avgCalls\":67,\"matchBodies\":13,\"matchFull\":10,\"matchFigures\":3,\"streetFull\":10,\"streetBudget\":10,\"live\":true,\"budget\":180}}"
+    },
+    {
+      "name": "9c. the main match was closed and forgotten on both pages after its result (« Fermer »), so each could open the next",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no page errors",
+      "ok": true,
+      "detail": "[{\"Awa\":[]},{\"Moussa\":[]}]"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+ "journey": "G",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 18.5,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "a Lamane Sport on the floor offers « Essayer cette voiture » and the purchase",
+   "ok": true,
+   "detail": "{\"id\":\"suv:floor:0\",\"name\":\"Lamane Sport · rouge\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Essayer cette voiture\",\"all\":[\"Essayer cette voiture\",\"Acheter · 70 000 000 F\"],\"why\":[]}"
+  },
+  {
+   "name": "sitting in the very car from the floor: one car, no copy, nothing paid or owned",
+   "ok": true,
+   "detail": "{\"n0\":[\"suv:floor:0\",\"suv:floor:1\"],\"n1\":[\"suv:floor:0\",\"suv:floor:1\"]}"
+  },
+  {
+   "name": "the salesperson authorises a supervised road test: a worker of five days in a row (not the money: 300 000 F)",
+   "ok": true,
+   "detail": "{\"ok\":true,\"supervised\":true,\"line\":\"Moussa Ndiaye, de Ndiaye Auto, m’a parlé de vous : un travailleur sérieux. Un petit tour encadré aux Almadies, et vous me la ramenez.\",\"saidHeld\":false,\"saidEdge\":false,\"t\":0,\"called\":false}"
+  },
+  {
+   "name": "a loop of the block on the real road (out of the hall, onto the street, round and back)",
+   "ok": true,
+   "detail": "{\"maxZ\":61.59,\"minX\":-122.02,\"maxX\":-58.78}"
+  },
+  {
+   "name": "driven back into its own bay",
+   "ok": true,
+   "detail": "{\"at\":[-88.33,22.86],\"bay\":[-88.3,23]}"
+  },
+  {
+   "name": "walked away: the car is back on the floor in its bay, on display; nothing owned, nothing saved, nothing paid",
+   "ok": true,
+   "detail": "{\"floor\":[[0,\"display\",true],[1,\"display\",true]],\"wallet\":300000}"
+  },
+  {
+   "name": "still one car per bay: no copy left on the road or in the hall",
+   "ok": true,
+   "detail": "[\"suv:floor:1\",\"suv:floor:0\"]"
+  },
+  {
+   "name": "the same paint as before the test",
+   "ok": true,
+   "detail": "rouge → rouge"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

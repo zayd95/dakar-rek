@@ -1,0 +1,136 @@
+{
+ "results": [
+  {
+   "name": "0. two players on the local Workers runtime, each online with their own account",
+   "ok": true
+  },
+  {
+   "name": "the scene: Awa buys the villa (400 000 000 F of game money) and makes it her principal residence",
+   "ok": true
+  },
+  {
+   "name": "the main entrance stands shut and solid before anyone comes; the gate too",
+   "ok": true
+  },
+  {
+   "name": "A1. walking up from the pavement, the door swings open for its owner before she reaches it (the car gate stays shut)",
+   "ok": true
+  },
+  {
+   "name": "A2. she walks through it onto the path, inside the walls",
+   "ok": true
+  },
+  {
+   "name": "A3. « Entrer chez toi » at the front door",
+   "ok": true
+  },
+  {
+   "name": "A4. the way in never touches a bay nor goes behind the car: 716 positions sampled, those inside the walls all on the path (ENTRY_WALK)",
+   "ok": true
+  },
+  {
+   "name": "A5. the door shuts behind her, solid again",
+   "ok": true
+  },
+  {
+   "name": "A6. …and she is in her villa",
+   "ok": true
+  },
+  {
+   "name": "B0. Moussa does not hold the villa and has no invitation to it",
+   "ok": true
+  },
+  {
+   "name": "B1. for a stranger the door stays shut and he stays on the pavement",
+   "ok": true
+  },
+  {
+   "name": "C0. Awa invites Moussa to her villa from Messages, he accepts",
+   "ok": true
+  },
+  {
+   "name": "C1. now the door opens for the invited guest",
+   "ok": true
+  },
+  {
+   "name": "C2. up the path to the front door (never in a bay): « Entrer chez Awa (invité) »",
+   "ok": true
+  },
+  {
+   "name": "C3. …and he is in Awa's villa, her guest",
+   "ok": true
+  },
+  {
+   "name": "no page errors in either game",
+   "ok": true
+  },
+  {
+   "name": "D1. the compound costs at most 25 draw calls, the main entrance 2: {\"compound\":{\"meshes\":13,\"calls\":14,\"tris\":15288},\"entrance\":{\"calls\":2,\"tris\":260,\"stoneTris\":80,\"doorTris\":180}}",
+   "ok": true
+  },
+  {
+   "name": "no page errors on the pictures' page",
+   "ok": true
+  },
+  {
+   "name": "picture after-above-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-door-open.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-guest-at-door.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-stranger-kept-out.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-street-21h.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-street-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-street-wide-21h.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-street-wide-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture after-walker.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-above-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-street-21h.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-street-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-street-wide-21h.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-street-wide-day.png under 400 kB",
+   "ok": true
+  },
+  {
+   "name": "picture before-walker.png under 400 kB",
+   "ok": true
+  }
+ ]
+}

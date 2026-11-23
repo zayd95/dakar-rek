@@ -1,0 +1,212 @@
+{
+ "date": "2026-10-18T05:19:35.938Z",
+ "balanceBefore": 940,
+ "balanceAfter": 940,
+ "spent": 0,
+ "remeshCredits": 5,
+ "rows": [
+  {
+   "id": "modern_sedan",
+   "group": "vehicle",
+   "for": "Modern sedan (stage A) -> catalogue compacte",
+   "prompt": "A compact modern four-door sedan from the 2020s, affordable but stylish, silver-grey metallic paint, clean realistic proportions, long low hood, sloping fastback-style roofline with a short rear deck, sharply creased bodywork with a strong shoulder line, slim angular LED headlights with a sharp light signature, wide lower grille, LED tail lights, about 4.5 m long, 1.8 m wide and 1.4 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "sport_sedan",
+   "group": "vehicle",
+   "for": "Sport sedan (stage B) -> catalogue berline",
+   "prompt": "An elegant modern four-door performance saloon, premium and sporty, dark graphite metallic paint, long hood and short rear deck, low wide stance, sleek coupe-like roofline, wide flared wheel arches, pronounced power-dome lines on the hood, slim LED headlights, wide grille with vertical slats, aggressive lower air intakes, clean upscale detailing, subtle rear lip spoiler, quad exhaust outlets, full-width LED tail light strip, about 5.0 m long, 1.9 m wide and 1.45 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "premium_suv",
+   "group": "vehicle",
+   "for": "Premium SUV (stage C) -> catalogue tout_terrain",
+   "prompt": "A full-size luxury SUV with an upright, prestigious silhouette, deep black metallic paint, tall clamshell hood, flat floating roofline, clean slab sides with minimal creases and a continuous beltline, slim horizontal LED headlights, wide horizontal-bar grille, short overhangs, large flush wheel arches, near-vertical tailgate, slim LED tail light strip, premium proportions and clean surfaces, about 4.9 m long, 2.0 m wide and 1.9 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "attaya_set",
+   "group": "furniture",
+   "for": "Service à attaya complet (brass tray, teapots, glasses, charcoal stove): the home’s tea ritual, premium",
+   "prompt": "A Senegalese attaya tea set on a round brass tray: small charcoal stove, two enamel teapots, six small glasses, low poly game prop, warm brass",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "tabouret_sculpte",
+   "group": "furniture",
+   "for": "Tabouret sculpté en bois (a seat people can use)",
+   "prompt": "A low carved wooden stool from West Africa, solid dark wood, simple geometric carved base, game prop",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "canari_support",
+   "group": "furniture",
+   "for": "Canari d’eau sur son support (decor)",
+   "prompt": "A large terracotta water jar (canari) with a wooden lid sitting on a three-legged iron stand, West African household, game prop",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "pilon_mortier",
+   "group": "furniture",
+   "for": "Pilon et mortier en bois (decor, kitchen)",
+   "prompt": "A large wooden mortar with a tall wooden pestle, West African kitchen, game prop",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "calebasses",
+   "group": "furniture",
+   "for": "Calebasses empilées (decor)",
+   "prompt": "A stack of three decorated calabash bowls with a ladle, West African, game prop",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  },
+  {
+   "id": "fanal_laiton",
+   "group": "furniture",
+   "for": "Fanal en laiton (a lamp)",
+   "prompt": "A brass lantern (fanal) with a glass chimney and a carrying handle, West African, standing on the floor, game prop",
+   "steps": [
+    {
+     "step": 1,
+     "resource": "text-to-3d",
+     "action": "preview",
+     "estimated_credits": 20
+    },
+    {
+     "step": 2,
+     "resource": "text-to-3d",
+     "action": "refine",
+     "estimated_credits": 10
+    }
+   ],
+   "makeEstimate": 30,
+   "withRemesh": 35
+  }
+ ],
+ "totals": {
+  "vehicleBodies": 105,
+  "furniture": 210,
+  "all": 315
+ }
+}

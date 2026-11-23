@@ -1,0 +1,7 @@
+/* The goal line and the delivery line take their job's colour (src/ui/jobMarks.ts): a VTC ride green, a Tiak Tiak delivery orange; the pictogram
+   (🚘 / 📦) leads the line's text, so the job reads without the colour too. */
+body #ui #goal[data-job="vtc"] { box-shadow: inset 4px 0 0 #2fbf71, var(--shadow); }
+body #ui #goal[data-job="vtc"].walk .gi { background: #2fbf71; color: #fff; }
+body #ui #goal[data-job="delivery"] { box-shadow: inset 4px 0 0 #ff8a1c, var(--shadow); }
+body #ui #goal[data-job="delivery"].walk .gi { background: #ff8a1c; color: #fff; }
+body #ui #delivery { box-shadow: inset 4px 0 0 #ff8a1c, var(--shadow); }

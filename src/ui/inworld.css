@@ -1,0 +1,47 @@
+/* In-world activities (src/venues/grillPlay.ts, src/venues/dancePlay.ts): a transparent touch layer over the 3D view, under
+   the HUD's own controls (the action button stays on top: « Arrêter » is always there), small chips anchored to things in
+   the world, and one small result card. Never a panel over the character. */
+.iw { position: fixed; inset: 0; z-index: 1; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  font: 600 14px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #f8fafc; }
+.iw * { box-sizing: border-box; }
+.iw-chip { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); padding: 4px 9px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  background: rgba(12, 22, 38, .78); border: 1px solid rgba(255, 255, 255, .16); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); font-size: 13px; will-change: transform; }
+.iw-chip.turn { background: #f59e0b; color: #1c1917; border-color: #fde68a; animation: iw-pulse .7s ease-in-out infinite alternate; }
+.iw-chip.done { background: #15803d; border-color: #86efac; }
+.iw-chip.burn { background: #b91c1c; border-color: #fca5a5; animation: iw-pulse .35s ease-in-out infinite alternate; }
+.iw-chip.wait { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .7); transform: translate(-50%, -50%);
+  background: conic-gradient(#f59e0b calc(var(--p, 0) * 1%), rgba(12, 22, 38, .75) 0); }
+.iw-say { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); width: max-content; max-width: min(250px, 64vw); padding: 7px 10px; border-radius: 14px 14px 14px 4px;
+  background: #fff; color: #1f2937; font-weight: 600; font-size: 13px; line-height: 1.3; pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); will-change: transform; }
+.iw-say b { color: #b45309; }
+.iw-btn { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); min-width: 132px; min-height: 52px; padding: 0 18px; border: 0; border-radius: 26px;
+  background: #16a34a; color: #fff; font: 800 17px system-ui, -apple-system, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, .35), 0 0 0 3px rgba(255, 255, 255, .5);
+  touch-action: manipulation; cursor: pointer; will-change: transform; }
+.iw-btn:active { transform: translate(-50%, -50%) scale(.96); }
+.iw-head { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); max-width: calc(100vw - 24px);
+  padding: 6px 12px; border-radius: 14px; background: rgba(12, 22, 38, .72); text-align: center; pointer-events: none; }
+.iw-head small { display: block; font-weight: 500; font-size: 12px; opacity: .8; }
+.iw-card { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px; border-radius: 16px; background: rgba(12, 22, 38, .9); border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  pointer-events: none; animation: iw-in .25s ease-out; }
+.iw-card .t { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 15px; }
+.iw-card .q { color: #fde68a; }
+.iw-card .l { margin-top: 4px; font-weight: 500; font-size: 13px; opacity: .92; }
+.iw-card .m { margin-top: 6px; display: flex; gap: 4px; }
+.iw-card .m i { flex: 1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .18); }
+.iw-card .m i.on { background: linear-gradient(90deg, #f59e0b, #22c55e); }
+.iw-card.top { border-color: #fbbf24; }
+/* dance: the two step pads, the count-in, the word for each step */
+.iw-pad { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(12, 22, 38, .42); border: 2px solid rgba(255, 255, 255, .35); font-size: 30px; font-weight: 900; pointer-events: none; transition: transform .08s, background .08s; }
+.iw-pad.l { left: calc(env(safe-area-inset-left, 0px) + 18px); }
+.iw-pad.r { right: calc(env(safe-area-inset-right, 0px) + 18px); }
+.iw-pad.cue { border-color: #fde68a; background: rgba(245, 158, 11, .45); }
+.iw-pad.hit { transform: scale(1.12); background: rgba(34, 197, 94, .6); }
+@media (pointer: fine) and (min-width: 701px) { .iw-pad { bottom: 28px; } }
+.iw-count { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); white-space: nowrap; font-size: 64px; font-weight: 900; text-shadow: 0 4px 18px rgba(0, 0, 0, .6); pointer-events: none; }
+.iw-word { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); font-weight: 900; font-size: 18px; text-shadow: 0 2px 8px rgba(0, 0, 0, .7); pointer-events: none; }
+.iw-word.parfait { color: #fde047; } .iw-word.bien { color: #4ade80; } .iw-word.ok { color: #e0f2fe; } .iw-word.cote { color: #fdba74; } .iw-word.rate { color: #94a3b8; font-size: 15px; }
+.iw-arrow { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); font-size: 34px; font-weight: 900; color: #fde68a; text-shadow: 0 2px 10px rgba(0, 0, 0, .6); pointer-events: none; }
+@keyframes iw-pulse { from { filter: brightness(1); } to { filter: brightness(1.25); transform: translate(-50%, -100%) scale(1.06); } }
+@keyframes iw-in { from { opacity: 0; margin-top: -8px; } to { opacity: 1; margin-top: 0; } }

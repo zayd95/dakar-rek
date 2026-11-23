@@ -1,0 +1,46 @@
+PERF {"after":{"street":{"all":{"calls":63,"tris":109418},"hub":{"calls":47,"tris":87036},"compound":{"calls":10,"tris":6272}},"wide":{"all":{"calls":81,"tris":119350},"hub":{"calls":50,"tris":89072},"compound":{"calls":10,"tris":6272}}}}
+PASS: the villa bought (400 000 000 F) and made the principal residence
+PASS: the gate stands shut, solid, before anyone comes {"k":0,"solid":true,"collider":{"x0":-16.5,"z0":-7.539999999999999,"x1":-11.5,"z1":-7.050000000000001,"h":2.25},"panelX":0}
+PASS: the sale board stays by the gate: « Gérer ton logement », and no « Entrer chez toi » from the pavement {"id":"villa_almadies:panneau:sign","name":"Villa avec piscine","kind":"door","space":"street","primary":"Gérer ton logement","all":["Gérer ton logement"],"why":[]}
+PASS: walking up from the street, the gate slides open for its owner before he reaches it {"g":{"k":1,"solid":false,"collider":{"x0":-16.5,"z0":-7.539999999999999,"x1":-16.45,"z1":-7.050000000000001,"h":2.25},"panelX":-5.3},"p":{"x":-13.766324265437216,"y":0.1,"z":-3.4118695724563834,"hub":"almadies","mode":"play","near":null,"yaw":1.55819346853871,"cam":1.5004824669135572}}
+PASS: he walks through it into the front yard {"x":-14.004963054381603,"y":0.1,"z":-10.344875839417359,"hub":"almadies","mode":"play","near":null,"yaw":2.9807483183707335,"cam":2.9942581912831403}
+PASS: …and it shuts behind him, solid again {"k":0,"solid":true,"collider":{"x0":-16.5,"z0":-7.539999999999999,"x1":-11.5,"z1":-7.050000000000001,"h":2.25},"panelX":0}
+PASS: « Entrer chez toi » at the front door {"id":"villa_almadies:sign","name":"Villa avec piscine","kind":"door","space":"street","primary":"Entrer chez toi","all":["Entrer chez toi","Gérer ton logement"],"why":[]}
+PASS: …and he is in his villa
+PASS: « Se baigner » at the pool's edge {"id":"villa:piscine","name":"La piscine","kind":"spot","space":"home","primary":"Se baigner","all":["Se baigner"],"why":[]}
+PASS: in the water up to the shoulders, swimming round the pool {"i":{"swimming":true,"t":4.1,"seat":{"x":1781.0727782567526,"z":-7.05,"top":-0.005542919602454122,"yaw":1.5707963267948966},"log":{"started":1,"ended":0,"full":0,"gains":null}},"p":{"x":1780.7008262567524,"y":-0.4855429196024541,"z":-7.05,"hub":"almadies","mode":"play","near":null,"yaw":1.5707963267948966,"cam":3.141592653589793},"clip":"Idle"}
+PASS: « Sortir de l'eau » {"id":"villa:piscine:sortir","name":"Dans la piscine","kind":"self","space":"home","primary":"Sortir de l’eau","all":["Sortir de l’eau"],"why":[]}
+PASS: out of the water on the deck, cleaner and in a better mood {"n0":{"faim":69.47733066666603,"energie":84.70599850000136,"moral":70.63833014717808,"social":59.73866533333302,"hygiene":79.80399899999908},"n1":{"faim":69.33199999999918,"energie":83.62425000000171,"moral":74.76676397088843,"social":59.66599999999959,"hygiene":85.74949999999885},"p":{"x":1780.7008262567524,"y":0.1,"z":-7.05,"hub":"almadies","mode":"play","near":null,"yaw":1.5707963267948966,"cam":3.141592653589793}}
+PASS: a swim ends by itself after about twenty seconds {"started":2,"ended":2,"full":1,"gains":{"hygiene":22,"moral":15,"energie":-4}}
+PASS: « Organiser une petite réception » in the salon {"id":"villa:reception:salon","name":"Le salon","kind":"spot","space":"home","primary":"Organiser une petite réception","all":["Organiser une petite réception"],"why":[]}
+PASS: the price first: 150 000 F of ceebu jën, bissap and thiakry
+PASS: « Payer la réception » taps through
+PASS: paid once through the wallet's history {"w0":594700000,"w":594550000,"last":{"at":1793081308880,"label":"Petite réception · Villa · Almadies","amount":-150000}}
+PASS: eight guests, chatting and dancing, music; social up {"running":true,"at":30634.5,"day":1276,"left":2,"where":"terrasse","drawn":true,"draws":1,"log":{"given":1,"ended":0,"guests":8,"where":"terrasse","level":0.55}}
+PASS: two city hours later it ends by itself, the guests gone {"running":false,"at":-1,"day":1276,"left":0,"where":"terrasse","drawn":false,"draws":0,"log":{"given":1,"ended":1,"guests":8,"where":"terrasse","level":0.55}}
+PASS: one a day: the next one waits for tomorrow {"id":"villa:reception:salon","name":"Le salon","kind":"spot","space":"home","primary":"Organiser une petite réception","all":["Organiser une petite réception"],"why":["Une réception par jour · reviens demain"]}
+PASS: the reception's guests cost few draw calls {"draws":1}
+PASS: out of the house, the player stands at the front door, inside the walls {"x":-21,"y":0.1,"z":-13,"hub":"almadies","mode":"play","near":"Villa avec piscine · Almadies","yaw":0.11710874456684671,"cam":0.11710874456684671}
+PASS: « Monter » at the Lamane Sport's door {"id":"suv:parked","name":"Ton Lamane Sport","kind":"vehicle","space":"street","primary":"Monter (conducteur)","all":["Monter (conducteur)"],"why":[]}
+PASS: at the wheel
+PASS: driven in through the gate, into the front yard {"at":{"t":11.433,"x":-14.05,"z":-10.8,"yaw":3.19,"speed":0,"driving":true,"mounting":false,"box":false,"parcel":null,"pad":true,"paddling":false,"rBadge":false,"clip":"Drive"},"g":{"k":1,"solid":false,"collider":{"x0":-16.5,"z0":-7.539999999999999,"x1":-16.45,"z1":-7.050000000000001,"h":2.25},"panelX":-5.3}}
+PASS: « Garer à la villa » at the wheel in the yard, on the driving pad {"id":"suv:ride","name":"Lamane Sport","kind":"self","space":"almadies:car:tout_terrain","primary":"Garer à la villa","all":["Garer à la villa","Sortir du SUV","Changer de vue"],"why":[]}
+PASS: in its bay, nose to the house, and saved there {"i":{"id":"tout_terrain","drive":{"maxSpeed":19.5,"boostSpeed":28.5,"turnRadius":6.4,"grip":8.2,"accel":3.8},"name":"Lamane Sport","price":70000000,"owned":true,"asset":{"uid":"a8","spec":"tout_terrain","how":"owned","since":53999.500000000044,"paid":70000000,"condition":100,"upgrades":[],"leased":false},"record":{"asset":"tout_terrain","hub":"almadies","x":-14.9,"z":-10.7,"yaw":3.142},"here":true,"trial":false,"driving":false,"x":-14.9,"z":-10.7,"yaw":3.141592653589793,"speed":0,"bumps":0,"bought":1,"floor":[{"slot":0,"state":"display","x":-88.3,"z":23,"stand":{"x":-89.2,"z":19.61},"step":{"x":-89.89,"z":22.56},"colour":"rouge","here":true},{"slot":1,"state":"display","x":-84,"z":23,"stand":{"x":-84.9,"z":19.61},"step":{"x":-85.59,"z":22.56},"colour":"noir","here":true}],"entry":false,"exit":false,"door":0.52,"road":{"ok":true,"supervised":false,"line":"","saidHeld":false,"saidEdge":false,"t":0,"called":false},"trialSlot":-1,"returned":false,"seed":0,"paint":null,"cockpit":true,"dealer":{"x":-103,"z":28.6,"delivery":{"x":-73.4,"z":12.2,"yaw":1.5707963267948966},"displays":0,"onSale":null,"card":false},"space":null,"presence":null,"camera":false,"views":["chase","volant","haut"],"view":"chase","solid":true},"rec":{"asset":"tout_terrain","hub":"almadies","x":-14.9,"z":-10.7,"yaw":3.142}}
+PASS: after a reload the Lamane Sport is in its bay {"x":-14.9,"z":-10.7,"yaw":3.142}
+PASS: « Monter » takes it from its bay {"id":"suv:parked","name":"Ton Lamane Sport","kind":"vehicle","space":"street","primary":"Monter (conducteur)","all":["Monter (conducteur)"],"why":[]}
+PASS: …at the wheel again
+PASS: « Garer à la villa » puts it back in its bay {"x":-14.9,"z":-10.7}
+PASS: no error on the owner's page []
+PASS: a player who does not hold the villa: not its owner
+PASS: for him the gate stays shut and he stays on the pavement {"g":{"k":0,"solid":true,"collider":{"x0":-16.5,"z0":-7.539999999999999,"x1":-11.5,"z1":-7.050000000000001,"h":2.25},"panelX":0},"p":{"x":-14,"y":0.1,"z":-6.550000000000001,"hub":"almadies","mode":"play","near":null,"yaw":3.141592653589793,"cam":3.141592653589793}}
+PASS: no error on the visitor's page []
+PASS: picture 01-street-day.png under 400 kB 279 kB
+PASS: picture 02-street-21h.png under 400 kB 289 kB
+PASS: picture 03-helicopter-roof.png under 400 kB 278 kB
+PASS: picture 03b-helicopter-street.png under 400 kB 246 kB
+PASS: picture 04-bays-suv.png under 400 kB 300 kB
+PASS: picture 05-swim.png under 400 kB 173 kB
+PASS: picture 06-reception.png under 400 kB 111 kB
+PASS: picture 06a-reception-price.png under 400 kB 86 kB
+
+43/43 passed

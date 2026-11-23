@@ -1,0 +1,132 @@
+[
+  {
+    "name": "desktop: on a fight evening taxis and moto-taxis bring fans to the arena",
+    "ok": false,
+    "detail": "{\"flows\":[{\"kind\":\"taxi\",\"s\":137,\"speed\":8.5,\"state\":\"drive\",\"x\":-2,\"z\":-48.2311757110723},{\"kind\":\"sedan\",\"s\":43,\"speed\":8.5,\"state\":\"drive\",\"x\":-90.22399999999993,\"z\":-58}],\"fans\":0,\"parked\":5,\"dropS\":117,\"arrived\":2,\"fansOut\":0,\"fansIn\":0,\"left\":0}"
+  },
+  {
+    "name": "desktop: the vehicles keep to the road (never in a building)",
+    "ok": true,
+    "detail": "[{\"kind\":\"taxi\",\"s\":137,\"speed\":8.5,\"state\":\"drive\",\"x\":-2,\"z\":-48.2311757110723},{\"kind\":\"sedan\",\"s\":43,\"speed\":8.5,\"state\":\"drive\",\"x\":-90.22399999999993,\"z\":-58}]"
+  },
+  {
+    "name": "desktop: cars are parked round the block (none on the low setting)",
+    "ok": true,
+    "detail": "5 parked"
+  },
+  {
+    "name": "desktop: the evening car rapide runs, fuller than by day",
+    "ok": true,
+    "detail": "[4,4]"
+  },
+  {
+    "name": "desktop: draw calls by the arena at the evening's peak stay in budget",
+    "ok": true,
+    "detail": "197 draw calls"
+  },
+  {
+    "name": "desktop: after the bouts taxis wait at the kerb and fans come back to them",
+    "ok": true,
+    "detail": "{\"flows\":[{\"kind\":\"sedan\",\"s\":218,\"speed\":8.5,\"state\":\"drive\",\"x\":-2,\"z\":31.99835305958345},{\"kind\":\"sedan\",\"s\":117,\"speed\":0.3,\"state\":\"wait\",\"x\":-15.98306354638521,\"z\":-55.7000197698515},{\"kind\":\"taxi\",\"s\":38,\"speed\":8.5,\"state\":\"drive\",\"x\":-95.32399999999996,\"z\":-58}],\"fans\":2,\"parked\":5,\"dropS\":117,\"arrived\":2,\"fansOut\":0,\"fansIn\":0,\"left\":0}"
+  },
+  {
+    "name": "desktop: in the morning no fight traffic, Ligne 23 back on its day route",
+    "ok": true,
+    "detail": "{\"flows\":0}"
+  },
+  {
+    "name": "desktop: a shower: rain streaks, wet roads, fewer people out, slower cars",
+    "ok": true,
+    "detail": "{\"kind\":\"rain\",\"cloud\":0.85,\"rain\":1,\"wet\":1,\"street\":{\"walkers\":0.35,\"traffic\":0.85,\"speed\":0.7},\"rainVisible\":true}"
+  },
+  {
+    "name": "desktop: after the rain the roads stay wet (no more streaks)",
+    "ok": true,
+    "detail": "{\"wet\":true,\"rain\":false}"
+  },
+  {
+    "name": "desktop: in the morning vendors stand at the crossroads and stops (Touba coffee among them)",
+    "ok": true,
+    "detail": "[[\"touba\",\"carrefour\",true],[\"eau\",\"carrefour\",false],[\"arachides\",\"carrefour\",false],[\"credit\",\"carrefour\",true],[\"touba\",\"carrefour\",true],[\"eau\",\"carrefour\",false],[\"arachides\",\"arrêt Mosquée\",false],[\"credit\",\"carrefour\",false]]"
+  },
+  {
+    "name": "desktop: a coffee from the Touba vendor, 100 F, paid once",
+    "ok": true,
+    "detail": "{\"focus\":{\"id\":\"plateau:vendor:0:stall\",\"name\":\"Café Touba · Cheikh\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Café Touba\",\"all\":[\"Café Touba\"]},\"w0\":3000,\"w1\":2900}"
+  },
+  {
+    "name": "desktop: today's road event (Accrochage) is set up and closed to the passing traffic",
+    "ok": true,
+    "detail": "{\"kind\":\"accident\",\"name\":\"Accrochage\",\"from\":16.515671572128667,\"to\":18.015671572128667,\"on\":true,\"built\":true,\"edge\":{\"ax\":-120,\"az\":-120,\"bx\":-60,\"bz\":-120},\"closed\":true}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: on a fight evening taxis and moto-taxis bring fans to the arena",
+    "ok": true,
+    "detail": "{\"flows\":[{\"kind\":\"taxi\",\"s\":117,\"speed\":0,\"state\":\"away\",\"x\":-15.98306354638521,\"z\":-55.7000197698515},{\"kind\":\"sedan\",\"s\":13,\"speed\":8.5,\"state\":\"drive\",\"x\":-119.97400000000005,\"z\":-58}],\"fans\":1,\"parked\":5,\"dropS\":117,\"arrived\":2,\"fansOut\":1,\"fansIn\":0,\"left\":0}"
+  },
+  {
+    "name": "phone: the vehicles keep to the road (never in a building)",
+    "ok": true,
+    "detail": "[{\"kind\":\"taxi\",\"s\":117,\"speed\":0,\"state\":\"away\",\"x\":-15.98306354638521,\"z\":-55.7000197698515},{\"kind\":\"sedan\",\"s\":13,\"speed\":8.5,\"state\":\"drive\",\"x\":-119.97400000000005,\"z\":-58}]"
+  },
+  {
+    "name": "phone: cars are parked round the block (none on the low setting)",
+    "ok": true,
+    "detail": "5 parked"
+  },
+  {
+    "name": "phone: the evening car rapide runs, fuller than by day",
+    "ok": true,
+    "detail": "[4,2]"
+  },
+  {
+    "name": "phone: draw calls by the arena at the evening's peak stay in budget",
+    "ok": true,
+    "detail": "104 draw calls"
+  },
+  {
+    "name": "phone: after the bouts taxis wait at the kerb and fans come back to them",
+    "ok": true,
+    "detail": "{\"flows\":[{\"kind\":\"sedan\",\"s\":218,\"speed\":8.5,\"state\":\"drive\",\"x\":-2,\"z\":32.30080222695835},{\"kind\":\"taxi\",\"s\":117,\"speed\":0.3,\"state\":\"wait\",\"x\":-15.98306354638521,\"z\":-55.7000197698515},{\"kind\":\"taxi\",\"s\":5,\"speed\":8.3,\"state\":\"drive\",\"x\":-127.62400000000002,\"z\":-58}],\"fans\":3,\"parked\":5,\"dropS\":117,\"arrived\":2,\"fansOut\":1,\"fansIn\":0,\"left\":0}"
+  },
+  {
+    "name": "phone: in the morning no fight traffic, Ligne 23 back on its day route",
+    "ok": true,
+    "detail": "{\"flows\":0}"
+  },
+  {
+    "name": "phone: a shower: rain streaks, wet roads, fewer people out, slower cars",
+    "ok": true,
+    "detail": "{\"kind\":\"rain\",\"cloud\":0.85,\"rain\":1,\"wet\":1,\"street\":{\"walkers\":0.35,\"traffic\":0.85,\"speed\":0.7},\"rainVisible\":true}"
+  },
+  {
+    "name": "phone: after the rain the roads stay wet (no more streaks)",
+    "ok": true,
+    "detail": "{\"wet\":true,\"rain\":false}"
+  },
+  {
+    "name": "phone: in the morning vendors stand at the crossroads and stops (Touba coffee among them)",
+    "ok": true,
+    "detail": "[[\"touba\",\"carrefour\",true],[\"eau\",\"carrefour\",false],[\"arachides\",\"carrefour\",false],[\"credit\",\"carrefour\",true],[\"touba\",\"carrefour\",true],[\"eau\",\"carrefour\",false],[\"arachides\",\"arrêt Mosquée\",false],[\"credit\",\"carrefour\",false]]"
+  },
+  {
+    "name": "phone: a coffee from the Touba vendor, 100 F, paid once",
+    "ok": true,
+    "detail": "{\"focus\":{\"id\":\"plateau:vendor:0:stall\",\"name\":\"Café Touba · Cheikh\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Café Touba\",\"all\":[\"Café Touba\"]},\"w0\":3000,\"w1\":2900}"
+  },
+  {
+    "name": "phone: today's road event (Accrochage) is set up and closed to the passing traffic",
+    "ok": true,
+    "detail": "{\"kind\":\"accident\",\"name\":\"Accrochage\",\"from\":16.515671572128667,\"to\":18.015671572128667,\"on\":true,\"built\":true,\"edge\":{\"ax\":-120,\"az\":-120,\"bx\":-60,\"bz\":-120},\"closed\":true}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

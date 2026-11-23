@@ -1,0 +1,73 @@
+{
+ "base": "http://127.0.0.1:4612/",
+ "parts": [
+  "cockpit"
+ ],
+ "body": {
+  "identity": "femme",
+  "appearance": null,
+  "drawn": null,
+  "body": "meshy_f",
+  "expected": "meshy_f",
+  "stand": null
+ },
+ "failed": 0,
+ "results": [
+  {
+   "name": "teranga: « Vue » with a real finger reaches « Au volant » (portrait)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "teranga portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"teranga-portrait\",\"hidden\":true,\"nearest\":5,\"seenShare\":1,\"dashRow\":0.545,\"outShare\":0.569,\"lane\":\"5m:seen@0.541 6m:seen@0.518 8m:seen@0.489 10m:seen@0.471 12m:seen@0.458 15m:seen@0.446 20m:seen@0.433 30m:seen@0.42 50m:seen@0.41 80m:seen@0.404\",\"eye\":[0.36,1.266,-0.22],\"design\":[0.36,1.24,-0.22],\"sight\":{\"overNose\":13.85,\"nearRoad\":5.13,\"wheelTop\":20.29,\"dashLip\":18.1,\"headroom\":0.194,\"pillar\":0.371,\"header\":0.227,\"wheel\":0.538},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "teranga: « Vue » with a real finger reaches « Au volant » (landscape)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "teranga landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"teranga-landscape\",\"hidden\":true,\"nearest\":5,\"seenShare\":1,\"dashRow\":0.59,\"outShare\":0.565,\"lane\":\"5m:seen@0.582 6m:seen@0.542 8m:seen@0.491 10m:seen@0.46 12m:seen@0.438 15m:seen@0.417 20m:seen@0.395 30m:seen@0.372 50m:seen@0.354 80m:seen@0.344\",\"eye\":[0.36,1.266,-0.22],\"design\":[0.36,1.24,-0.22],\"sight\":{\"overNose\":13.85,\"nearRoad\":5.13,\"wheelTop\":20.29,\"dashLip\":18.1,\"headroom\":0.194,\"pillar\":0.371,\"header\":0.227,\"wheel\":0.538},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "gainde portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"gainde-portrait\",\"hidden\":true,\"nearest\":10,\"seenShare\":1,\"dashRow\":0.502,\"outShare\":0.407,\"lane\":\"5m:hidden@0.562 6m:hidden@0.536 8m:hidden@0.502 10m:seen@0.481 12m:seen@0.467 15m:seen@0.452 20m:seen@0.438 30m:seen@0.424 50m:seen@0.412 80m:seen@0.405\",\"eye\":[0.36,1.417,-0.07],\"design\":[0.36,1.38,-0.07],\"sight\":{\"overNose\":11.04,\"nearRoad\":7.26,\"wheelTop\":20.31,\"dashLip\":19.03,\"headroom\":0.233,\"pillar\":0.646,\"header\":0.473,\"wheel\":0.545},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "gainde landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"gainde-landscape\",\"hidden\":true,\"nearest\":10,\"seenShare\":1,\"dashRow\":0.513,\"outShare\":0.502,\"lane\":\"5m:hidden@0.619 6m:hidden@0.573 8m:hidden@0.514 10m:seen@0.477 12m:seen@0.453 15m:seen@0.428 20m:seen@0.403 30m:seen@0.378 50m:seen@0.358 80m:seen@0.346\",\"eye\":[0.36,1.417,-0.07],\"design\":[0.36,1.38,-0.07],\"sight\":{\"overNose\":11.04,\"nearRoad\":7.26,\"wheelTop\":20.31,\"dashLip\":19.03,\"headroom\":0.233,\"pillar\":0.646,\"header\":0.473,\"wheel\":0.545},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "suv portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"suv-portrait\",\"hidden\":true,\"nearest\":10,\"seenShare\":1,\"dashRow\":0.493,\"outShare\":0.457,\"lane\":\"5m:seen@0.568 6m:hidden@0.54 8m:hidden@0.505 10m:seen@0.483 12m:seen@0.469 15m:seen@0.454 20m:seen@0.439 30m:seen@0.424 50m:seen@0.412 80m:seen@0.405\",\"eye\":[0.36,1.457,-0.05],\"design\":[0.36,1.42,-0.05],\"sight\":{\"overNose\":10.53,\"nearRoad\":7.84,\"wheelTop\":20.31,\"dashLip\":19.03,\"headroom\":0.303,\"pillar\":0.734,\"header\":0.577,\"wheel\":0.545},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "suv landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"suv-landscape\",\"hidden\":true,\"nearest\":10,\"seenShare\":1,\"dashRow\":0.497,\"outShare\":0.513,\"lane\":\"5m:seen@0.628 6m:hidden@0.58 8m:hidden@0.519 10m:seen@0.482 12m:seen@0.457 15m:seen@0.431 20m:seen@0.405 30m:seen@0.38 50m:seen@0.359 80m:seen@0.347\",\"eye\":[0.36,1.457,-0.05],\"design\":[0.36,1.42,-0.05],\"sight\":{\"overNose\":10.53,\"nearRoad\":7.84,\"wheelTop\":20.31,\"dashLip\":19.03,\"headroom\":0.303,\"pillar\":0.734,\"header\":0.577,\"wheel\":0.545},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":2,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "berline portrait: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"berline-portrait\",\"hidden\":true,\"nearest\":8,\"seenShare\":1,\"dashRow\":0.514,\"outShare\":0.355,\"lane\":\"5m:hidden@0.541 6m:hidden@0.518 8m:seen@0.488 10m:seen@0.47 12m:seen@0.458 15m:seen@0.445 20m:seen@0.433 30m:seen@0.42 50m:seen@0.41 80m:seen@0.404\",\"eye\":[0.36,1.251,-0.17],\"design\":[0.36,1.24,-0.17],\"sight\":{\"overNose\":11.36,\"nearRoad\":6.23,\"wheelTop\":17.66,\"dashLip\":16.82,\"headroom\":0.159,\"pillar\":0.482,\"header\":0.324,\"wheel\":0.529},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":0,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "berline landscape: at the wheel the lane ahead is seen through the windscreen from a few metres on (from 10 m at most, all of it to 80 m), the car's dash and bonnet in the lower part of the frame (under 45 % from the top)",
+   "ok": true,
+   "detail": "{\"tag\":\"berline-landscape\",\"hidden\":true,\"nearest\":8,\"seenShare\":1,\"dashRow\":0.533,\"outShare\":0.48,\"lane\":\"5m:hidden@0.581 6m:hidden@0.541 8m:seen@0.49 10m:seen@0.459 12m:seen@0.437 15m:seen@0.416 20m:seen@0.394 30m:seen@0.372 50m:seen@0.354 80m:seen@0.344\",\"eye\":[0.36,1.251,-0.17],\"design\":[0.36,1.24,-0.17],\"sight\":{\"overNose\":11.36,\"nearRoad\":6.23,\"wheelTop\":17.66,\"dashLip\":16.82,\"headroom\":0.159,\"pillar\":0.482,\"header\":0.324,\"wheel\":0.529},\"cabin\":{\"holders\":[\"driver\"],\"eyeInside\":true,\"doorK\":0,\"doorSide\":-1,\"glass\":0,\"glassOn\":false,\"cabin\":false,\"doors\":0,\"doorOpen\":false,\"leafTris\":0}}"
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ],
+ "errors": []
+}

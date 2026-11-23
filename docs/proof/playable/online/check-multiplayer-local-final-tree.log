@@ -1,0 +1,49 @@
+PASS: worker health and protocol 
+page 0 online after 3541 ms
+page 1 online after 48323 ms
+PASS: two independent clients see each other 
+PASS: remote avatar rendered on phone 
+PASS: the studio look travels: A sees B as she made herself (femme, Doré, headwrap, Imprimé, Safran); A sends none {"appB":"f1w23","onA":[null]}
+PASS: movement replicated 
+PASS: écurie colours: B sees the Baobab scarf A wears (presence fan, on the avatar), and no price or inventory with it {"fan":{"e":"baobab","k":"scarf"},"keys":["type","x","y","z","speed","yaw","space","clip","fan","id","name","look","tag","updatedAt"],"gear":{"20906800-9953-406d-bfac-64a834363cbe":"baobab:scarf"}}
+PASS: typing a name keeps the menu open 
+PASS: profile update reconnects without a duplicate player 
+PASS: emote pose shared with the second player 
+PASS: personal home hides the guest avatar from the street 
+PASS: public Maiga interior is shared 
+PASS: hub membership follows travel: plateau 
+PASS: hub membership follows travel: corniche 
+PASS: hub membership follows travel: almadies 
+PASS: hub membership follows travel: pikine 
+RIDE STATE {"t":{"t":15.35,"x":-29.86,"z":-48.72,"yaw":0.95,"speed":0.8,"driving":true,"mounting":false,"box":true,"parcel":false,"pad":false,"paddling":false,"rBadge":false,"clip":"Ride"},"p":{"x":-30.04340281244444,"y":0.5020121115143961,"z":-48.849871093328964,"hub":"pikine","mode":"play","near":null,"yaw":0.95,"cam":0.95},"status":"online"}
+PASS: a rider at speed stays online and the other player sees the rider on a bike {"peers":[["Ride",0]],"bikes":1,"status":"online"}
+PASS: riding above 6 m/s: bike speed > 8, sent speed capped at 6, still online [{"bike":6.69,"sent":0,"status":"online"},{"bike":11,"sent":0,"status":"online"}]
+PASS: A sees B riding fast: Ride pose in the street, one bike drawn, A still online {"bikes":1,"peers":[["Ride","street",0]],"status":"online","visible":1}
+PASS: a passenger in a car rapide is not drawn on a bike (B in the car, A in the street) {"bikes":0,"peers":[["Sit","pikine:rapide:23:0"]],"waitedMs":14,"bSends":{"status":"online","space":"pikine:rapide:23:0","clip":"Sit","phase":"riding"}}
+PASS: network reconnect keeps local money and no duplicate peer 
+PASS: arena: the first player takes a place in the stands {"id":"pikine:arena:stand:0:33","x":46.278308894647495,"z":-23.46790542548257,"top":1.1,"yaw":4.330783093084235,"section":"B","tribune":"honneur"}
+PASS: arena: the second player sees that place taken and sits beside them {"heldOnB":true,"seatB":{"id":"pikine:arena:stand:0:34","x":46.49988267740993,"z":-24.04975028828975,"top":1.1,"yaw":4.366281315158695,"section":"B","tribune":"honneur"}}
+PASS: arena: each sees the other seated in the stands {"both":[true,true],"y":0.62,"top":1.1}
+PASS: arena: the later one joined the earlier one's show: same phase and time {"aheadAt":["prelims",0,2],"same":{"a":["prelims",0,2.4],"b":["prelims",0,2.6]},"followed":{"ref":"637cea7e-926d-4144-a410-0e8eec514a14","follows":1,"held":{"pikine:arena:stand:0:33":"637cea7e-926d-4144-a410-0e8eec514a14"},"main":null,"field":{"d":1935,"p":2,"t":2.5,"i":0}}}
+PASS: arena: a seated player cheers (stands up, arms up) and the other sees it 
+PASS: arena: B sees A's scarf in the stands; in Baobab's section « Encourager » made the neighbours answer {"worn":"echarpe_baobab","owned":["echarpe_baobab"],"field":{"e":"baobab","k":"scarf"},"body":"baobab:scarf","answered":1,"lastAnswer":7,"raised":0,"section":"B","sectionEcurie":"baobab"}
+PASS: arena: one result for both Assane l’emporte par projection ! · Le public : « Daan na ! »⁣ (il a gagné)⁤
+PASS: arena, a friend's own gala: the evening before closed, a fresh one starts with the player seated {"closed":true,"fresh":true,"seat":"pikine:arena:stand:0:33","phase":"filling","day":1936,"prelims":2}
+PASS: arena, a friend's own gala: their presence makes them tonight's main event here, with their public record line {"id":"32b16093-9104-4aad-8c46-1cbe9270b67d","name":"Ndiaga","rec":"Adversaires réputés · 7-2 · Écurie Baobab"}
+PASS: arena, a friend's own gala: after the preliminaries the stands wait for their entrance (not this device's clock) {"phase":"prelims","i":1,"t":[122.1,125.1],"card":"LÀMB Gala de làmb · Arène de Pikine Ndiaga, combat de la soirée"}
+PASS: arena, a friend's own gala: « Entrée de Ndiaga », the announcer calls them with their public line, no wrestler simulated, the card's people wait in their corners {"card":"LÀMB Gala de làmb · Arène de Pikine Entrée de Ndiaga","ceremony":null,"entrance":0,"quiet":true,"toasts":["🎤 L’annonceur : Le combat de la soirée… voici Ndiaga ! (Adversaires réputés · 7-2 · Écurie Baobab)"]}
+PASS: arena, a friend's own gala: past the ceremony's time their bout still waits for them (not this device's clock) {"phase":"entrance","t":43.3}
+PASS: arena, a friend's own gala: « Combat en cours : Ndiaga », seen in the ring in a fighting stance, no duel simulated here {"card":"LÀMB Gala de làmb · Arène de Pikine Combat en cours : Ndiaga","bout":null,"pose":"Stance","at":[1.5,0]}
+PASS: arena, a friend's own gala: their real result as they sent it (« Ndiaga l’emporte par chute ! »), nobody's corner here runs onto the sand, nothing recorded here {"result":"Ndiaga l’emporte par chute ! · Le public : « Daan na ! »⁣ (il a gagné)⁤","phase":"result","won":null,"party":false,"galas":[0,0]}
+PASS: server refuses any other value for « tonight's main event » (arena.m = 2) 
+PASS: remote pose shown: Lie {"637cea7e-926d-4144-a410-0e8eec514a14":"Idle","3ed9dac8-b25c-4da7-9f0f-291f2dc84af0":"Lie"}
+PASS: remote pose shown: SitFloor {"637cea7e-926d-4144-a410-0e8eec514a14":"Idle","3ed9dac8-b25c-4da7-9f0f-291f2dc84af0":"SitFloor"}
+PASS: remote pose shown: Kneel {"637cea7e-926d-4144-a410-0e8eec514a14":"Idle","3ed9dac8-b25c-4da7-9f0f-291f2dc84af0":"Kneel"}
+PASS: remote pose shown: Ride {"637cea7e-926d-4144-a410-0e8eec514a14":"Idle","3ed9dac8-b25c-4da7-9f0f-291f2dc84af0":"Ride"}
+PASS: remote colours shown: a Teranga flag in Fatou's hand {"637cea7e-926d-4144-a410-0e8eec514a14":"baobab:scarf","3ed9dac8-b25c-4da7-9f0f-291f2dc84af0":"teranga:flag"}
+PASS: a look in its shape is relayed, anything else dropped without closing the socket {"am":"f5w15","ba":null}
+PASS: server refuses the colours field with a price in it 
+PASS: server refuses a pose outside the list 
+PASS: full room automatically opens another group 
+PASS: server rejects malformed positions 
+PASS: no browser page errors 

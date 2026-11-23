@@ -1,0 +1,101 @@
+=== gait
+desktop turn on the spot: {"steps":3,"slidePerStepCm":0,"slideWorstCm":0.1,"cadenceSpm":225,"stepM":0,"settles":4}
+PASS: desktop: turning on the spot: the feet step round (no moonwalk) {"steps":3,"slidePerStepCm":0,"slideWorstCm":0.1,"cadenceSpm":225,"stepM":0,"settles":4}
+PASS: desktop: no page errors 
+phone walk 1.4 m/s (light push): {"steps":6,"slidePerStepCm":0,"slideWorstCm":0,"cadenceSpm":147,"stepM":0.66,"speed":1.38,"gait":{"clip":"Walk","run":0,"cadenceSpm":125,"stepM":0.66,"duty":0.57,"slipped":[0,0]}}
+PASS: phone: walk 1.4 m/s (light push): the feet do not slide (< 2 cm a step) {"steps":6,"slidePerStepCm":0,"slideWorstCm":0,"cadenceSpm":147,"stepM":0.66}
+FAIL: phone: walk 1.4 m/s (light push): cadence of the speed (105–135 steps a minute) {"clip":"Walk","run":0,"cadenceSpm":125,"stepM":0.66,"duty":0.57,"slipped":[0,0]}
+phone walk 2.0 m/s (full push: the default): {"steps":7,"slidePerStepCm":0,"slideWorstCm":0,"cadenceSpm":176,"stepM":0.71,"speed":2,"gait":{"clip":"Walk","run":0,"cadenceSpm":164,"stepM":0.73,"duty":0.53,"slipped":[0,0]}}
+PASS: phone: walk 2.0 m/s (full push: the default): the feet do not slide (< 2 cm a step) {"steps":7,"slidePerStepCm":0,"slideWorstCm":0,"cadenceSpm":176,"stepM":0.71}
+FAIL: phone: walk 2.0 m/s (full push: the default): cadence of the speed (135–175 steps a minute) {"clip":"Walk","run":0,"cadenceSpm":164,"stepM":0.73,"duty":0.53,"slipped":[0,0]}
+phone jog 4.2 m/s (Shift / « Courir »): {"steps":8,"slidePerStepCm":0.8,"slideWorstCm":1.6,"cadenceSpm":199,"stepM":1.3,"speed":4.2,"gait":{"clip":"Jog","run":1,"cadenceSpm":191,"stepM":1.32,"duty":0.2,"slipped":[0,0]}}
+PASS: phone: jog 4.2 m/s (Shift / « Courir »): the feet do not slide (< 2 cm a step) {"steps":8,"slidePerStepCm":0.8,"slideWorstCm":1.6,"cadenceSpm":199,"stepM":1.3}
+PASS: phone: jog 4.2 m/s (Shift / « Courir »): cadence of the speed (172–205 steps a minute) {"clip":"Jog","run":1,"cadenceSpm":191,"stepM":1.32,"duty":0.2,"slipped":[0,0]}
+phone sprint 7 m/s (double-tapped Shift / « Courir » twice): {"steps":8,"slidePerStepCm":0.4,"slideWorstCm":1,"cadenceSpm":213,"stepM":2.11,"speed":7.5,"gait":{"clip":"Run","run":1,"cadenceSpm":213,"stepM":2.12,"duty":0.12,"slipped":[0,0]}}
+PASS: phone: sprint 7 m/s (double-tapped Shift / « Courir » twice): the feet do not slide (< 2 cm a step) {"steps":8,"slidePerStepCm":0.4,"slideWorstCm":1,"cadenceSpm":213,"stepM":2.11}
+PASS: phone: sprint 7 m/s (double-tapped Shift / « Courir » twice): cadence of the speed (185–220 steps a minute) {"clip":"Run","run":1,"cadenceSpm":213,"stepM":2.12,"duty":0.12,"slipped":[0,0]}
+phone start: {"steps":4,"slidePerStepCm":0.5,"slideWorstCm":0.8,"cadenceSpm":267,"stepM":0.82} stop: {"steps":2,"slidePerStepCm":0.4,"slideWorstCm":0.7,"cadenceSpm":150,"stepM":0.11,"end":{"moving":false,"feet":["down","down"]}}
+PASS: phone: starting from standing, no sliding {"steps":4,"slidePerStepCm":0.5,"slideWorstCm":0.8,"cadenceSpm":267,"stepM":0.82}
+PASS: phone: stopping, the feet come together and stay down {"stop":{"steps":2,"slidePerStepCm":0.4,"slideWorstCm":0.7,"cadenceSpm":150,"stepM":0.11,"end":{"moving":false,"feet":["down","down"]}},"speed":3.886560752100499e-24}
+phone turn 90° walking: {"steps":4,"slidePerStepCm":0.6,"slideWorstCm":1.5,"cadenceSpm":141,"stepM":0.34}
+PASS: phone: a 90° turn while walking: the planted foot pivots, no skating {"steps":4,"slidePerStepCm":0.6,"slideWorstCm":1.5,"cadenceSpm":141,"stepM":0.34}
+phone turn on the spot: {"steps":3,"slidePerStepCm":0,"slideWorstCm":0.1,"cadenceSpm":225,"stepM":0,"settles":4}
+PASS: phone: turning on the spot: the feet step round (no moonwalk) {"steps":3,"slidePerStepCm":0,"slideWorstCm":0.1,"cadenceSpm":225,"stepM":0,"settles":4}
+PASS: phone: no page errors 
+
+22/26 gait checks passed
+=== sit-stand
+NOTE: pikine:venue:dibiterie:11:P1:1 sat down from -25.59,-48.1; rose to -26.66,-48.10 (1.07 m from it)
+PASS: desktop: pikine:venue:dibiterie:11:P2:0 stands up beside its own seat (0.10 m), nearer to it than to any other chair end -24.76,-40.40 · nearest other seat 1.58 m (pikine:venue:dibiterie:11:P2:1 is 1.48 m from this one)
+PASS: desktop: pikine:venue:dibiterie:11:P2:0 stands up smoothly: no step above 0.35 m in a frame (max 0.10) 5 samples
+NOTE: pikine:venue:dibiterie:11:P2:0 sat down from -25.66,-40.4; rose to -24.76,-40.40 (0.90 m from it)
+PASS: desktop: pikine:venue:dibiterie:11:P2:1 stands up beside its own seat (0.10 m), nearer to it than to any other chair end -26.44,-40.40 · nearest other seat 1.58 m (pikine:venue:dibiterie:11:P2:0 is 1.48 m from this one)
+PASS: desktop: pikine:venue:dibiterie:11:P2:1 stands up smoothly: no step above 0.35 m in a frame (max 0.10) 6 samples
+NOTE: pikine:venue:dibiterie:11:P2:1 sat down from -25.59,-40.4; rose to -26.44,-40.40 (0.85 m from it)
+PASS: desktop: no page errors 
+NOTE: pikine: 4 seats at tables with a neighbour
+PASS: phone: there are chairs at tables to try [{"hub":"pikine","id":"pikine:venue:dibiterie:11:P1:0","x":-24.86,"z":-48.1,"yaw":4.71238898038469},{"hub":"pikine","id":"pikine:venue:dibiterie:11:P1:1","x":-26.34,"z":-48.1,"yaw":1.5707963267948966},{"hub":"pikine","id":"pikine:venue:dibiterie:11:P2:0","x":-24.86,"z":-40.4,"yaw":4.71238898038469}]
+PASS: phone: pikine:venue:dibiterie:11:P1:0 stands up beside its own seat (0.73 m), nearer to it than to any other chair end -24.13,-48.10 · nearest other seat 2.21 m (pikine:venue:dibiterie:11:P1:1 is 1.48 m from this one)
+PASS: phone: pikine:venue:dibiterie:11:P1:0 stands up smoothly: no step above 0.35 m in a frame (max 0.25) 5 samples
+NOTE: pikine:venue:dibiterie:11:P1:0 sat down from -25.61,-48.1; rose to -24.13,-48.10 (1.48 m from it)
+PASS: phone: pikine:venue:dibiterie:11:P1:0 the stick stands the player up, smoothly (max step 0.25 m), and he walks on 11 samples
+PASS: phone: pikine:venue:dibiterie:11:P1:1 stands up beside its own seat (0.76 m), nearer to it than to any other chair end -27.10,-48.10 · nearest other seat 1.86 m (pikine:venue:dibiterie:11:tv-n:0 is 2.08 m from this one)
+PASS: phone: pikine:venue:dibiterie:11:P1:1 stands up smoothly: no step above 0.35 m in a frame (max 0.25) 16 samples
+NOTE: pikine:venue:dibiterie:11:P1:1 sat down from -25.59,-48.1; rose to -27.10,-48.10 (1.51 m from it)
+PASS: phone: pikine:venue:dibiterie:11:P2:0 stands up beside its own seat (0.66 m), nearer to it than to any other chair end -24.20,-40.40 · nearest other seat 2.14 m (pikine:venue:dibiterie:11:P2:1 is 1.48 m from this one)
+PASS: phone: pikine:venue:dibiterie:11:P2:0 stands up smoothly: no step above 0.35 m in a frame (max 0.25) 17 samples
+NOTE: pikine:venue:dibiterie:11:P2:0 sat down from -25.66,-40.4; rose to -24.20,-40.40 (1.46 m from it)
+PASS: phone: pikine:venue:dibiterie:11:P2:1 stands up beside its own seat (0.73 m), nearer to it than to any other chair end -27.07,-40.40 · nearest other seat 2.21 m (pikine:venue:dibiterie:11:P2:0 is 1.48 m from this one)
+PASS: phone: pikine:venue:dibiterie:11:P2:1 stands up smoothly: no step above 0.35 m in a frame (max 0.25) 21 samples
+NOTE: pikine:venue:dibiterie:11:P2:1 sat down from -25.59,-40.4; rose to -27.07,-40.40 (1.48 m from it)
+PASS: phone: no page errors 
+22/22 passed
+=== moto
+PASS: desktop: « Descendre de la moto »: standing beside it, it stays parked there {"me":{"x":97.28,"y":0.1,"z":-5.1499999999999995,"hub":"pikine","mode":"play","near":"Boutique Diallo"},"moto":{"x":97.5,"z":-4.3},"rec":{"asset":"jakarta","hub":"pikine","x":97.5,"z":-4.3,"yaw":1.571}}
+PASS: desktop: after a reload the motorbike is still owned (once, charged once) and parked where it was left {"before":{"x":97.5,"z":-4.3},"after":{"x":97.5,"z":-4.3},"buys":1,"held":1}
+PASS: desktop: reload mid-ride: parked where it was, standing beside it, not riding {"mid":{"x":98.19745444805864,"z":-4.300142052784814},"after":{"x":98.2,"z":-4.3},"me3":{"x":97.9772813303986,"y":0.1,"z":-5.150097227049821,"hub":"pikine","mode":"play","near":"Garage Modou"}}
+PASS: desktop: in another hub it is not there; back in Pikine it waits where it was {"away":false,"back":{"x":98.2,"z":-4.3}}
+PASS: desktop: no page errors 
+PASS: phone: Pikine has the motorbike corner at Garage Modou {"x":110.5,"z":-5.3,"delivery":{"x":103.5,"z":-4.3,"yaw":1.5707963267948966},"displays":2,"onSale":null,"card":false}
+PASS: phone: the dealer counter offers its catalogue {"id":"moto:dealer:till","name":"Motos · Garage Modou","kind":"shop","space":"street","primary":"Voir les articles","all":["Voir les articles"],"why":[]}
+PASS: phone: the catalogue shows the Jakarta with its catalogue price 🏍️Moto JakartaD’occasion · 125 cm³ · se gare où tu la laisses150 000 F
+PASS: phone: a confirmation shows the price and the wallet before paying Acheter la Moto Jakarta ?Prix : 150 000 F · Ton argent : 400 000 F✅Confirmer l’achatD’occasion, livrée devant le garage, prête à rouler−150 000 F↩️Pas maintenan
+PASS: phone: bought once through the asset model: −price, one wallet line, the motorbike delivered at the kerb {"w0":400000,"w1":250000,"lines":[{"at":1792275381269,"label":"Achat : Moto Jakarta","amount":-150000}],"rec":{"asset":"jakarta","hub":"pikine","x":103.5,"z":-4.3,"yaw":1.571},"asset":{"uid":"a2","spec":"jakarta","how":"owned","since":933.2999999999993,"paid":150000,"condition":100,"upgrades":[],"leased":false}}
+PASS: phone: « Biens » lists the motorbike once (not in the listings any more) {"biens":["🚗Moto Jakartaà toi150 000 F"],"ads":[]}
+PASS: phone: it cannot be bought twice item dis
+PASS: phone: walking up to it offers « Monter sur la moto » {"id":"moto:parked","name":"Ta moto Jakarta","kind":"vehicle","space":"street","primary":"Monter sur la moto","all":["Monter sur la moto"],"why":[]}
+PASS: phone: on the motorbike: driver seat (astride, Ride pose), own interaction space, still in the street for the others {"id":"jakarta","name":"Moto Jakarta","price":150000,"owned":true,"asset":{"uid":"a2","spec":"jakarta","how":"owned","since":933.2999999999993,"paid":150000,"condition":100,"upgrades":[],"leased":false},"record":{"asset":"jakarta","hub":"pikine","x":103.5,"z":-4.3,"yaw":1.571},"here":true,"driving":true,"x":103.5,"z":-4.3,"yaw":1.571,"speed":0,"bumps":0,"bought":1,"dealer":{"x":110.5,"z":-5.3,"delivery":{"x":103.5,"z":-4.3,"yaw":1.5707963267948966},"displays":2,"onSale":null,"card":false},"space":"pikine:moto:jakarta","presence":"street","camera":true,"view":"chase","solid":false,"clip":"Ride"}
+FAIL: phone: the throttle moves the motorbike and the card shows the speed 0.0 m, 🏍️ Moto Jakarta · 0 km/h ↑ accélérer · ↓ freiner · ← → tourner
+FAIL: phone: steering right turns the motorbike right 1.57 → 1.57
+FAIL: phone: riding into the block stops at the wall (never inside it) {"x":103.5,"z":-2.3,"bumps":0}
+PASS: phone: a Tiak Tiak delivery is picked up and handed over while riding {"job":"pk_mame_boutique","run":"pickup","picked":"deliver","delivered":1,"riding":true}
+PASS: phone: « Descendre de la moto »: standing beside it, it stays parked there {"me":{"x":97.28,"y":0.1,"z":-5.1499999999999995,"hub":"pikine","mode":"play","near":"Boutique Diallo"},"moto":{"x":97.5,"z":-4.3},"rec":{"asset":"jakarta","hub":"pikine","x":97.5,"z":-4.3,"yaw":1.571}}
+PASS: phone: after a reload the motorbike is still owned (once, charged once) and parked where it was left {"before":{"x":97.5,"z":-4.3},"after":{"x":97.5,"z":-4.3},"buys":1,"held":1}
+PASS: phone: reload mid-ride: parked where it was, standing beside it, not riding {"mid":{"x":97.5,"z":-4.3},"after":{"x":97.5,"z":-4.3},"me3":{"x":97.27982688233996,"y":0.1,"z":-5.149955174265007,"hub":"pikine","mode":"play","near":null}}
+PASS: phone: in another hub it is not there; back in Pikine it waits where it was {"away":false,"back":{"x":97.5,"z":-4.3}}
+PASS: phone: no page errors 
+
+33/36 motorbike checks passed
+=== gestures
+PASS: desktop: the garage shift starts with Modou asking for a tool {"kind":"choose","label":"Passer les outils","round":0,"rounds":4,"results":[],"cursor":0,"zone":[0.4,0.6],"ask":"cric","shown":["tournevis","cric","huile","cle"],"next":null,"pause":false}
+PASS: desktop: then the wheel nuts — a cursor to stop in the green {"kind":"timing","label":"Serrer les écrous","round":0,"rounds":4,"results":[],"cursor":0,"zone":[0.11077542990808098,0.310775429908081],"ask":null,"shown":[],"next":null,"pause":false}
+PASS: desktop: a perfect shift pays the full rate plus the tip, tires, counts {"wallet":2400,"garage":1,"energie":71.8927515000005,"mode":"play","toast":"Aider le mécanicien ✓  Parfait !  +1 200 F  Parfait !  +1 200 F"}
+PASS: desktop: a so-so shift pays less (the play matters) 1475 F
+PASS: desktop: changing a wheel asks for the steps in order ["roue","cric","devisser","baisser","visser"]
+PASS: desktop: the wheel done in order pays the full rate 1800
+PASS: desktop: Escape stops the shift — no pay, the card closes, controls come back {"g":null,"a":null,"wallet":0,"mode":"play","card":false,"phone":false}
+PASS: desktop: at the stall a customer asks for something {"kind":"choose","label":"Servir les clientes","round":0,"rounds":6,"results":[],"cursor":0,"zone":[0.4,0.6],"ask":"tomates","shown":["oignons","citrons","tomates","piment"],"next":null,"pause":false}
+PASS: desktop: serving everyone right pays the stall's full rate (× polyvalence) {"wallet":3600,"mult":1.2,"lines":[["Tenir l’étal · Étal de Sandaga",3600]]}
+PASS: desktop: no page errors 
+PASS: phone: the garage shift starts with Modou asking for a tool {"kind":"choose","label":"Passer les outils","round":0,"rounds":4,"results":[],"cursor":0,"zone":[0.4,0.6],"ask":"cle","shown":["cle","huile","cric","chiffon"],"next":null,"pause":false}
+PASS: phone: then the wheel nuts — a cursor to stop in the green {"kind":"timing","label":"Serrer les écrous","round":0,"rounds":4,"results":[],"cursor":0,"zone":[0.14771379137286333,0.34771379137286335],"ask":null,"shown":[],"next":null,"pause":false}
+PASS: phone: a perfect shift pays the full rate plus the tip, tires, counts {"wallet":2400,"garage":1,"energie":71.88549900000054,"mode":"play","toast":"Aider le mécanicien ✓  Parfait !  +1 200 F  Parfait !  +1 200 F"}
+PASS: phone: a so-so shift pays less (the play matters) 1300 F
+PASS: phone: changing a wheel asks for the steps in order ["cric","devisser","roue","visser","baisser"]
+PASS: phone: the wheel done in order pays the full rate 1800
+PASS: phone: Escape stops the shift — no pay, the card closes, controls come back {"g":null,"a":null,"wallet":0,"mode":"play","card":false,"phone":false}
+PASS: phone: at the stall a customer asks for something {"kind":"choose","label":"Servir les clientes","round":0,"rounds":6,"results":[],"cursor":0,"zone":[0.4,0.6],"ask":"poisson","shown":["oignons","poisson","piment","mangues"],"next":null,"pause":false}
+PASS: phone: serving everyone right pays the stall's full rate (× polyvalence) {"wallet":3600,"mult":1.2,"lines":[["Tenir l’étal · Étal de Sandaga",3600]]}
+PASS: phone: no page errors 
+
+20/20 gesture checks passed

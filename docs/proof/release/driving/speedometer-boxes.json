@@ -1,0 +1,462 @@
+{
+ "390x844": {
+  "viewport": [
+   390,
+   844
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    14,
+    630,
+    80,
+    696
+   ],
+   "text": "33 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "steerpad": [
+     14,
+     734,
+     192,
+     822
+    ],
+    "gas": [
+     307,
+     726,
+     375,
+     826
+    ],
+    "brake": [
+     234,
+     732,
+     298,
+     826
+    ],
+    "horn": [
+     158,
+     640,
+     250,
+     696
+    ],
+    "view": [
+     320,
+     652,
+     376,
+     696
+    ],
+    "minimap": [
+     260,
+     114,
+     380,
+     223
+    ],
+    "menuBtn": [
+     336,
+     10,
+     380,
+     54
+    ],
+    "place": [
+     221,
+     10,
+     328,
+     75
+    ],
+    "stats": [
+     10,
+     10,
+     162,
+     72
+    ]
+   }
+  },
+  "stoppedReads": "0 km/h",
+  "afterSteppingOut": {
+   "speedo": null
+  },
+  "pageErrors": []
+ },
+ "320x568": {
+  "viewport": [
+   320,
+   568
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    14,
+    372,
+    74,
+    432
+   ],
+   "text": "33 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "steerpad": [
+     14,
+     458,
+     122,
+     546
+    ],
+    "gas": [
+     237,
+     450,
+     305,
+     550
+    ],
+    "brake": [
+     164,
+     456,
+     228,
+     550
+    ],
+    "horn": [
+     156,
+     308,
+     248,
+     364
+    ],
+    "view": [
+     250,
+     376,
+     306,
+     420
+    ],
+    "minimap": [
+     190,
+     114,
+     310,
+     223
+    ],
+    "menuBtn": [
+     266,
+     10,
+     310,
+     54
+    ],
+    "place": [
+     152,
+     10,
+     258,
+     75
+    ],
+    "stats": [
+     10,
+     10,
+     148,
+     70
+    ]
+   }
+  },
+  "stoppedReads": "0 km/h",
+  "afterSteppingOut": {
+   "speedo": null
+  },
+  "pageErrors": []
+ },
+ "430x932": {
+  "viewport": [
+   430,
+   932
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    14,
+    710,
+    86,
+    782
+   ],
+   "text": "32 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "steerpad": [
+     14,
+     822,
+     230,
+     910
+    ],
+    "gas": [
+     347,
+     814,
+     415,
+     914
+    ],
+    "brake": [
+     274,
+     820,
+     338,
+     914
+    ],
+    "horn": [
+     198,
+     728,
+     290,
+     784
+    ],
+    "view": [
+     360,
+     740,
+     416,
+     784
+    ],
+    "minimap": [
+     300,
+     114,
+     420,
+     223
+    ],
+    "menuBtn": [
+     376,
+     10,
+     420,
+     54
+    ],
+    "place": [
+     261,
+     10,
+     368,
+     75
+    ],
+    "stats": [
+     10,
+     10,
+     162,
+     72
+    ]
+   }
+  },
+  "stoppedReads": "0 km/h",
+  "afterSteppingOut": {
+   "speedo": null
+  },
+  "pageErrors": []
+ },
+ "844x390": {
+  "viewport": [
+   844,
+   390
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    242,
+    316,
+    302,
+    376
+   ],
+   "text": "33 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "steerpad": [
+     14,
+     280,
+     230,
+     368
+    ],
+    "gas": [
+     761,
+     272,
+     829,
+     372
+    ],
+    "brake": [
+     688,
+     278,
+     752,
+     372
+    ],
+    "horn": [
+     612,
+     186,
+     704,
+     242
+    ],
+    "view": [
+     774,
+     198,
+     830,
+     242
+    ],
+    "minimap": [
+     10,
+     78,
+     116,
+     167
+    ],
+    "menuBtn": [
+     790,
+     8,
+     834,
+     52
+    ],
+    "place": [
+     675,
+     8,
+     782,
+     73
+    ],
+    "stats": [
+     10,
+     8,
+     166,
+     70
+    ]
+   }
+  },
+  "stoppedReads": "0 km/h",
+  "afterSteppingOut": {
+   "speedo": null
+  },
+  "pageErrors": []
+ },
+ "568x320": {
+  "viewport": [
+   568,
+   320
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    242,
+    246,
+    302,
+    306
+   ],
+   "text": "33 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "steerpad": [
+     14,
+     210,
+     230,
+     298
+    ],
+    "gas": [
+     485,
+     202,
+     553,
+     302
+    ],
+    "brake": [
+     412,
+     208,
+     476,
+     302
+    ],
+    "horn": [
+     336,
+     116,
+     428,
+     172
+    ],
+    "view": [
+     498,
+     128,
+     554,
+     172
+    ],
+    "minimap": [
+     10,
+     78,
+     116,
+     167
+    ],
+    "menuBtn": [
+     514,
+     8,
+     558,
+     52
+    ],
+    "place": [
+     399,
+     8,
+     506,
+     73
+    ],
+    "stats": [
+     10,
+     8,
+     166,
+     70
+    ]
+   }
+  },
+  "stoppedReads": "0 km/h",
+  "afterSteppingOut": {
+   "speedo": null
+  },
+  "pageErrors": []
+ },
+ "1280x720d": {
+  "viewport": [
+   1280,
+   720
+  ],
+  "onFoot": {
+   "speedo": null
+  },
+  "atTheWheel": {
+   "speedo": [
+    14,
+    626,
+    86,
+    698
+   ],
+   "text": "35 km/h",
+   "overlapsWith": [],
+   "overlapsWithWhenStopped": [],
+   "others": {
+    "minimap": [
+     12,
+     130,
+     161,
+     304
+    ],
+    "menuBtn": [
+     1226,
+     10,
+     1270,
+     54
+    ],
+    "place": [
+     447,
+     10,
+     833,
+     88
+    ],
+    "stats": [
+     10,
+     10,
+     164,
+     74
+    ],
+    "goal": [
+     10,
+     84,
+     330,
+     125
+    ]
+   }
+  },
+  "stoppedReads": null,
+  "afterSteppingOut": null,
+  "pageErrors": []
+ }
+}

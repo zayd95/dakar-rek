@@ -1,0 +1,17 @@
+/* The compact speedometer (src/transport/speedo.ts): a small disc, the number and « km/h », shown only at the wheel. On the left edge above the steering pad, with a clear gap
+   (the left thumb comes up from the corner: the disc is above its tip, never under it), away from the pedals (right), the minimap and the phone button (top right) and the
+   place and goal lines (top). With no pad (a keyboard) it sits in the bottom-left corner; on a phone held on its side, beside the pad (the last rule). Fixed size, tabular figures, contained: a new number moves and repaints nothing else. */
+#speedo { display: none; position: absolute; z-index: 5; left: calc(14px + var(--sa-l)); bottom: calc(22px + var(--sa-b));
+  --d: clamp(60px, min(17vw, 19vh), 72px); width: var(--d); height: var(--d); box-sizing: border-box; border-radius: 50%;
+  flex-direction: column; align-items: center; justify-content: center; gap: 1px; pointer-events: none; contain: strict; user-select: none; -webkit-user-select: none;
+  background: rgba(17, 24, 39, .8); color: #fff; box-shadow: 0 3px 10px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(255, 255, 255, .32); }
+#speedo.on { display: flex; }
+#speedo b { font: 800 calc(var(--d) * .38)/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+#speedo span { font: 700 calc(var(--d) * .16)/1 system-ui, sans-serif; color: rgba(255, 255, 255, .78); letter-spacing: .2px; }
+/* with the driving pad on the screen: above the steering pad (88 px tall, 22 px from the bottom: ridePad.css), the gap growing with the screen's height (a phone held upright has room, one on its side less) */
+body.ridepad #speedo { bottom: calc(22px + 88px + clamp(14px, 4.5vh, 40px) + var(--sa-b)); }
+/* a phone held on its side: the left column is full there (the wallet, the delivery card, the minimap, then the pad: src/ui/style.css), so the disc goes beside the steering
+   pad's right end, low, where a car's own speedometer is: right of where the left thumb slides, left of the pedals, under the line the speech bubbles stand on (76 px) */
+@media (max-height: 500px) and (orientation: landscape) {
+  body.ridepad #speedo { --d: 60px; left: calc(14px + 216px + 12px + var(--sa-l)); bottom: calc(14px + var(--sa-b)); }
+}

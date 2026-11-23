@@ -1,0 +1,24 @@
+{
+ "planeBoards": 46,
+ "planeBoardsMB": 13.52,
+ "textures": 133,
+ "totalMB": 43.4,
+ "canvasMB": 42.35,
+ "signTextures": 33,
+ "signMB": 6.1,
+ "atlasMB": 36.25,
+ "atlases": [
+  "Cloth_Tee 64×64",
+  "Cloth_DressTop 64×64",
+  "Cloth_DressTop 64×64",
+  "Cloth_Tee 64×64",
+  "Cloth_DressTop 64×64",
+  "body 1024×512",
+  "body 512×256",
+  "beam 64×128",
+  "map 512×160",
+  "map 512×160",
+  "Cloth_DressTop 64×64",
+  "Cloth_DressTop 64×64"
+ ]
+}

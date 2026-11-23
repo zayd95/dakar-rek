@@ -1,0 +1,48 @@
+{
+ "quality": "medium",
+ "results": {
+  "medina-street-walk": {
+   "frameMedian": 216.6,
+   "frameP95": 333.3,
+   "callsMax": 64,
+   "trisMax": 75912
+  },
+  "medina-z60-walk": {
+   "frameMedian": 266.7,
+   "frameP95": 333.3,
+   "callsMax": 106,
+   "trisMax": 109472
+  },
+  "medina-high": {
+   "frameMedian": 300,
+   "frameP95": 383.3,
+   "callsMax": 76,
+   "trisMax": 94350
+  },
+  "diallo-forecourt": {
+   "frameMedian": 249.9,
+   "frameP95": 299.9,
+   "callsMax": 58,
+   "trisMax": 73750
+  },
+  "comptoir-arcade": {
+   "frameMedian": 233.4,
+   "frameP95": 316.7,
+   "callsMax": 45,
+   "trisMax": 74206
+  },
+  "mosque-street": {
+   "frameMedian": 266.7,
+   "frameP95": 333.4,
+   "callsMax": 77,
+   "trisMax": 96862
+  },
+  "plateau-office-street": {
+   "frameMedian": 250,
+   "frameP95": 350,
+   "callsMax": 66,
+   "trisMax": 106112
+  }
+ },
+ "errors": []
+}

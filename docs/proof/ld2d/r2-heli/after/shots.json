@@ -1,0 +1,89 @@
+{
+ "base": "a static build of this branch (after) or of 628c45f (before)",
+ "tag": "after",
+ "model": {
+  "draws": 4,
+  "tris": 10220,
+  "materials": [
+   "MeshPhysicalMaterial",
+   "MeshStandardMaterial"
+  ],
+  "position": [
+   -22.4,
+   6.9,
+   -18.6
+  ],
+  "yaw": -1.571
+ },
+ "turntable": {
+  "footprint": {
+   "w": 8.19,
+   "d": 8.57,
+   "h": 3.05
+  },
+  "cost": {
+   "draws": 4,
+   "tris": 10220
+  }
+ },
+ "roofCalls": {
+  "calls": 25,
+  "tris": 31100,
+  "home": "toit"
+ },
+ "errors": [],
+ "pictures": [
+  [
+   "street-street-day",
+   214198
+  ],
+  [
+   "street-high-day",
+   338732
+  ],
+  [
+   "street-roof-day",
+   260117
+  ],
+  [
+   "street-street-night",
+   187930
+  ],
+  [
+   "street-high-night",
+   318263
+  ],
+  [
+   "street-roof-night",
+   201270
+  ],
+  [
+   "turntable",
+   305169
+  ],
+  [
+   "roof-terrace-ne-day",
+   251780
+  ],
+  [
+   "roof-terrace-se-day",
+   269337
+  ],
+  [
+   "roof-terrace-sw-day",
+   225850
+  ],
+  [
+   "roof-terrace-ne-night",
+   214516
+  ],
+  [
+   "roof-terrace-se-night",
+   225656
+  ],
+  [
+   "roof-terrace-sw-night",
+   183901
+  ]
+ ]
+}

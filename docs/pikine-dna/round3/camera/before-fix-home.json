@@ -1,0 +1,70 @@
+{
+ "sum": {
+  "route": "home",
+  "samples": 195,
+  "triangles": 9802,
+  "cameraHeight": [
+   5.1,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 4,
+  "minLens": 0.16,
+  "viewBlockedFrames": 0,
+  "errors": 0
+ },
+ "flagged": [
+  {
+   "n": 55,
+   "x": -37.6,
+   "z": -59.3,
+   "cam": [
+    -27.53,
+    5.1,
+    -59.05
+   ],
+   "body": 0,
+   "ahead": 0,
+   "near": 0.49
+  },
+  {
+   "n": 56,
+   "x": -38.1,
+   "z": -59.4,
+   "cam": [
+    -28.06,
+    5.1,
+    -59.07
+   ],
+   "body": 0,
+   "ahead": 0,
+   "near": 0.16
+  },
+  {
+   "n": 166,
+   "x": -60.8,
+   "z": -24.1,
+   "cam": [
+    -61.26,
+    5.1,
+    -34.1
+   ],
+   "body": 0,
+   "ahead": 0,
+   "near": 0.19
+  },
+  {
+   "n": 167,
+   "x": -60.7,
+   "z": -23.5,
+   "cam": [
+    -61.23,
+    5.1,
+    -33.57
+   ],
+   "body": 0,
+   "ahead": 0,
+   "near": 0.47
+  }
+ ]
+}

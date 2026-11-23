@@ -1,0 +1,20 @@
+PASS: (low) the Almadies builds, no page error []
+PASS: (low) every one of the 25 sites has a building at least two storeys tall inside it []
+PASS: (low) no wall or building stands on a carriageway []
+PASS: (medium) the Almadies builds, no page error []
+PASS: (medium) every one of the 25 sites has a building at least two storeys tall inside it []
+PASS: (medium) no wall or building stands on a carriageway []
+PASS: (medium) nothing the district drew stands on the pavement round any block {"total":6208,"blocked":0,"colliders":500,"where":[]}
+PASS: (medium) the Ngor residence keeps its door and its entry on the pavement outside its gate [{"id":"almadies:home:residence","name":"Résidence de luxe · Pointe de Ngor","x":-42,"z":-5.9},{"id":"almadies:city:residence","name":"Résidence de luxe · Pointe de Ngor","x":-44.6,"z":-5.1}]
+PASS: (medium) nothing solid covers the residence's door []
+PASS: (medium) the rooftop restaurant's door stands on the street face of a hotel of the district, in the front half of its lot, facing the street {"door":{"id":"almadies:rooftop:almadies","x":-30,"z":-105.1},"facade":{"x":-30,"z":-105.1,"nx":0,"nz":-1},"hotel":"almadies:0,1:1"}
+PASS: (medium) a body walks from the pavement to the rooftop restaurant's door {"door":{"id":"almadies:rooftop:almadies","x":-30,"z":-105.1}}
+FAIL: (medium) the rooftop restaurant's name is one lit mesh of five faces, up on the hotel's roof {"mesh":{"verts":24,"emissive":true,"parent":"Group"},"sign":{"top":10.17,"faces":4}}
+FAIL: (medium) the name is seen from the street and from far: a face looks at each of 42 viewpoints, with nothing solid between ["the cross street at z -84","the avenue at z -92","the cross street at z -92","the avenue at z -100","the cross street at z -100"]
+PASS: (medium) the streetscape stands: palms, kerb palms, benches, beds, lawns and stalls {"palm":28,"lawn":6,"bed":10,"bench":14,"stall":5,"crate":2,"stool":2,"kerb palm":97}
+PASS: (medium) the street's seats (the streetscape's benches and stools, the buildings' terraces) are all the city's ambient spots: its people can sit on them {"streetSeats":219,"districtSeats":149,"claimedBySpots":279,"spots":69}
+PASS: (medium) people are drawn at the boutique hotel's door (the doorman, the bellhop, the valet, the terrace's waiter and customers) {"humanoidsDrawn":5}
+FAIL: (medium) the district stays within +95 k triangles of the villa branch's hub (round 3: the life on the ground and the streetscape) {"now":{"meshes":231,"tris":287562},"was":{"meshes":174,"tris":184520},"dTris":103042}
+FAIL: (medium) the district stays within +10 meshes (draw calls) of the villa branch's hub {"now":231,"was":174,"dMeshes":57}
+PASS: (medium) no page error through the walk []
+15/19 passed

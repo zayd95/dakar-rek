@@ -1,0 +1,192 @@
+{
+  "base": "http://127.0.0.1:38291/",
+  "checkedAt": "2026-10-08T01:57:19.593Z",
+  "checks": [
+    {
+      "name": "desktop: corniche contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "desktop: corniche service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: corniche has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: almadies contains new active places",
+      "ok": true,
+      "detail": "6 places"
+    },
+    {
+      "name": "desktop: almadies service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: almadies has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: plateau contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "desktop: plateau service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: plateau has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: pikine contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "desktop: pikine service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: pikine has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: Corniche crossing connects to the fishing beach",
+      "ok": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "name": "desktop: directory sets a walking destination",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: fishing service pays and consumes energy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: an exhausted player cannot take the fishing job",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: mall purchase debits once and feeds the player",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: the mall entrance can be walked through",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: no JavaScript errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: corniche contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "phone: corniche service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: corniche has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: almadies contains new active places",
+      "ok": true,
+      "detail": "6 places"
+    },
+    {
+      "name": "phone: almadies service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: almadies has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: plateau contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "phone: plateau service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: plateau has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: pikine contains new active places",
+      "ok": true,
+      "detail": "4 places"
+    },
+    {
+      "name": "phone: pikine service positions are reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: pikine has residents at its new places",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: Corniche crossing connects to the fishing beach",
+      "ok": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "name": "phone: directory sets a walking destination",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: fishing service pays and consumes energy",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: an exhausted player cannot take the fishing job",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: mall purchase debits once and feeds the player",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: no JavaScript errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": []
+}

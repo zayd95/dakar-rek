@@ -1,0 +1,44 @@
+05:59:10 boot
+PASS: a new evening: nothing of M4 is remembered yet {"al_terrasse_seen":0,"al_danses_seen":0}
+PASS: the Terrasse de Ngor has a door in the Almadies streets, and Awa Sy stands on its terrace {"door":{"id":"almadies:rooftop:almadies","x":-30,"z":-105.1},"awa":{"x":3319.2,"z":-3.4,"doorId":"almadies:rooftop:almadies"}}
+05:59:26 car at {"x":-86,"z":-115.7} → {"x":-30,"z":-115.7} horizontal road
+PASS: driven with the pedal stick into the marked Terrasse visitor bay (centre inside its painted lines) and parked within 25 m of the door {"at":[-29.2,-109.3],"bay":[-30,-109.5],"door":[-30,-105.1]}
+PASS: stepped out: the car stays where it was left, saved as parked in Almadies {"asset":"teranga","hub":"almadies","x":-29.23,"z":-109.25,"yaw":0.202}
+PASS: from the car to the terrace’s door on foot: nothing in the way 0.79 m left, at {"x":-30.08536682211138,"y":0.1,"z":-105.46581955780819,"hub":"almadies","mode":"play","near":"Terrasse de Ngor","yaw":0.22563706107391895,"cam":0.2273650206178492}, car {"t":31.766,"x":-29.23,"z":-109.25,"yaw":0.2,"speed":0,"driving":false,"mounting":false,"box":false,"parcel":null,"pad":false,"paddling":false,"rBadge":false,"clip":"Drive"}
+PASS: « Entrer » is offered at the door 
+PASS: up on the terrace 
+PASS: the bar offers « Commander » {"dBar":0.2838829292431915,"pos":{"x":3322.2030700835094,"y":0.1,"z":-3.0907092102936384,"hub":"almadies","mode":"menu","near":null,"yaw":3.4651418900679345,"cam":3.4651468381434354},"focus":null}
+PASS: the order is a real activity: 6 000 F paid once, at the start 500000 → 494000
+PASS: not fed while it is prepared 
+PASS: the guest walked to a table, sat, and the plate is on the table, close to the seat {"seat":[3322.15,0.19999999999999996],"meal":{"prop":"poisson","x":3321.64,"y":0.5,"z":1,"bites":1,"lifting":false}}
+PASS: the last bite feeds (faim up), money untouched after the start, the meal counted once {"faim":86.67513066666665,"wallet":494000,"terrasse":1}
+PASS: the evening knows it: dinner is a stage {"al_terrasse_seen":1,"al_danses_seen":0,"terrasse":1,"al_dine_night":1277}
+PASS: « Se lever » from the table 
+PASS: « Parler à Awa » is offered beside her 
+PASS: the first time she introduces herself and asks what brings the guest (short, three answers, no wall of text) Awa Sy · hôtesse · Terrasse de NgorBonsoir, bienvenue à la Terrasse de Ngor. Je suis Awa, je m’occupe de la terrasse. Qu’est-ce qui t’amène ce soir ?🌅Rien de spécial, juste une soirée🤝Je fête un bon
+PASS: her answer follows the guest’s choice and sends them on to La Vague (21 h) Awa Sy · hôtesse · Terrasse de NgorUn bon travail, ça se fête. Tu ne seras pas seul à cette table. La Vague ouvre à 21 h. Dîne tranquillement, puis descends danser : dis à Lamine que tu viens de chez 
+PASS: a real word: social and mood rise once, the choice is remembered, she is a known face {"soc":[58.75113199999862,66.74091066666529],"al":{"al_terrasse_seen":1,"al_danses_seen":0,"terrasse":1,"al_dine_night":1277,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1277,"al_talk_night":1277,"al_toast":2},"rel":2}
+PASS: the walking marker now points to La Vague almadies:city:club
+PASS: asking again the same evening gives nothing more (no farming): social unchanged, still one stage, one visit counted {"soc":[66.74091066666529,66.7002466666653],"visits":1}
+PASS: the stairs offer to go down {"dStairs":0.3908542302403782,"stairsFocus":{"id":"almadies:rooftop:out","name":"Sortir","kind":"door","space":"almadies:rooftop:almadies","primary":"Descendre","all":["Descendre"],"why":[]},"pos":{"x":3324.924486738118,"y":0.1,"z":4.469108523804795,"hub":"almadies","mode":"play","near":"Sortir","yaw":-5.778744943966394,"cam":0.5018497925758026}}
+PASS: at the club’s door: « Entrer » 
+PASS: the fee is shown before anything is paid La Vague · entréeLamine : « Ce soir, c’est Rap galsen. L’entrée, c’est 2 000 F, une seule fois pour toute la nuit : tu peux sortir et revenir. »🎟️Payer 2 000 F
+PASS: paid once (2 000 F): the rope is lifted for the night 
+PASS: on the floor: « Danser » 
+PASS: one dance counted by La Vague, and the evening knows it {"al_terrasse_seen":1,"al_danses_seen":1,"terrasse":1,"al_dine_night":1277,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1277,"al_talk_night":1277,"al_toast":2,"club:almadies:venue:club:danses":1,"al_dance_night":1277}
+PASS: the way out of the club 
+PASS: one card: a first evening in Almadies — dinner, Awa, the dance, « une soirée complète » 🌙Ta première soirée à Almadies🍽️ Dîner à la Terrasse de Ngor💬 Awa Sy se souviendra de toi💃 La Vague : tu as danséUne soirée complète. Rentre bien !✕
+PASS: counted once: one evening, the card is not shown again {"al_terrasse_seen":1,"al_danses_seen":1,"terrasse":1,"al_dine_night":1277,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1277,"al_talk_night":1277,"al_toast":2,"club:almadies:venue:club:danses":1,"al_dance_night":1277,"al_end_night":1277,"al_last_mask":7,"al_evenings":1}
+PASS: the taxi rank by La Vague offers « Prendre un taxi » 
+PASS: the taxi home: the fare paid once, one ledger line, in the Corniche {"menu":["🚕Plateau · MédinaPlateau · Mé","🚕Corniche · Fann · MamellesCo","🚕Arène de PikinePikine · Guéd","🚕Mermoz · Sacré-CœurMermoz · ","↩️Pas maintenant"],"paid":2500}
+PASS: the evening card was not shown a second time, and the evening count is still 1 {"al_terrasse_seen":1,"al_danses_seen":1,"terrasse":1,"al_dine_night":1277,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1277,"al_talk_night":1277,"al_toast":2,"club:almadies:venue:club:danses":1,"al_dance_night":1277,"al_end_night":1277,"al_last_mask":7,"al_evenings":1}
+PASS: back in Almadies the car is still exactly where it was parked (one car, not a copy) {"was":[-29.23,-109.25],"now":[-29.23,-109.25]}
+PASS: climbing the stairs on a later evening, Awa remembers what the guest said and did (a bon travail; danced) Ce soir à l’arène de Pikine : combat de quartier · portes 17 h · billet 1 000 F au guichetAwa Sy : « Tu fêtais un bon travail, la dernière fois. Ça continue ? Et Lamine m’a dit que tu avais fait danser La Vague. »Awa Sy : « Tu fêtais un bon travail, la dernière fois. Ça continue ? Et Lamine m’a dit que tu avais fait danser La Vague. »
+PASS: her words are not the first evening’s: she recognises the guest and offers a coffee on the house Awa Sy · hôtesse · Terrasse de NgorTu fêtais un bon travail, la dernière fois. Ça continue ? Et Lamine m’a dit que tu avais fait danser La Vague.☕Un café Touba🙂Oui, ça va bien🌙Et après le dîner ?👋À
+PASS: the coffee is free: nothing charged, and it is the house’s gift once an evening 489500 → 489500
+PASS: a second word the same evening has no coffee 
+PASS: after a reload the memory is there: the evenings, the choice, the meeting, nothing counted again {"before":{"al_terrasse_seen":2,"al_danses_seen":1,"terrasse":2,"al_dine_night":1278,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1278,"al_talk_night":1278,"al_toast":2,"club:almadies:venue:club:danses":1,"al_dance_night":1277,"al_end_night":1277,"al_last_mask":7,"al_evenings":1,"al_gift_night":1278},"after":{"al_terrasse_seen":2,"al_danses_seen":1,"terrasse":2,"al_dine_night":1278,"al_awa_met":30644,"al_awa_met_night":1277,"al_awa_seen_night":1278,"al_talk_night":1278,"al_toast":2,"club:almadies:venue:club:danses":1,"al_dance_night":1277,"al_end_night":1277,"al_last_mask":7,"al_evenings":1,"al_gift_night":1278}}
+PASS: and it only wrote al_ counters (no new save field) 
+PASS: no JavaScript errors 
+
+40/40 M4 journey checks passed

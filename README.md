@@ -11,7 +11,9 @@ npm install
 npm run dev        # desktop: http://localhost:5173 · phone on the same Wi-Fi: http://<your-computer-ip>:5173
 npm run build      # typecheck + production build in dist/
 npm run preview    # serve the production build
-npm test           # unit tests (clock, save, needs, relationships, beats)
+npm test           # unit tests (clock, save, needs, relationships, beats, arena sightlines)
+npm run dev:online # game + multiplayer Worker at http://127.0.0.1:8787
+npm run check:online # two-client checks with local Durable Objects
 ```
 
 Add `?debug` to the URL for the test hooks (`window.__dakar`). Add `?touch` on a desktop browser to show the touch controls.
@@ -31,3 +33,5 @@ Add `?debug` to the URL for the test hooks (`window.__dakar`). Add `?touch` on a
 - `prototypes/` — earlier La Vie (2D) and Rue (3D driving) prototypes, kept for reuse
 
 Guest saves live in the browser on one device. Transferable money will be server-authoritative (PostgreSQL ledger) once the backend exists.
+
+Multiplayer presence, profiles, shared public interiors and reconnects are implemented in `src/multiplayer/` and `server/worker.ts`. Cloudflare serves the game and WebSockets on one origin. Deployment and the launch checks are documented in [docs/LAUNCH.md](docs/LAUNCH.md); visual production targets are in [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).

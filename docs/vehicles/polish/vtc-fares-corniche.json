@@ -1,0 +1,563 @@
+[
+ {
+  "h": 6,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Café Touba · Parcelles",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 6,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Gargote Chez Fatou",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 6,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Salle de sport · Corniche",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 7,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Gare de Pikine",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 7,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Café Touba · Sandaga",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 7,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Salle de sport · Corniche",
+  "dest": "Gargote des étudiants",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 8,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Banque Teranga",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 8,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Place de la Médina",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 8,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Gargote des étudiants",
+  "dest": "Café Touba · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 9,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Boutique Diallo",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 9,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Gargote Chez Fatou",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 9,
+  "to": "corniche",
+  "fare": 1500,
+  "from": "Gargote des étudiants",
+  "dest": "Ateliers de Soumbédioune",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 10,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Gargote Mame Diarra",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 10,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Place de la Médina",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 10,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Gargote des étudiants",
+  "dest": "Café Touba · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 11,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Café Touba · Parcelles",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 11,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Gargote Chez Fatou",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 11,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Café Touba · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 12,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Gare de Pikine",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 12,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Place de la Médina",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 12,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Ateliers de Soumbédioune",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 13,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Banque Teranga",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 13,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Salle de sport · Corniche",
+  "dest": "Place de la Médina",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 13,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Place des étudiants · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 14,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Banque Teranga",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 14,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Café Touba · Sandaga",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 14,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Café Touba · Fann",
+  "dest": "Gargote des étudiants",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 15,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Gargote Mame Diarra",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 15,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Gargote Chez Fatou",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 15,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Gargote des étudiants",
+  "dest": "Café Touba · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 16,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Boutique Diallo",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 16,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Café Touba · Fann",
+  "dest": "Dakar Réparation",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 16,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Café Touba · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 17,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Grand-place de Pikine",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 17,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Marché Sandaga",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 17,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Ateliers de Soumbédioune",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 18,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Grand-place de Pikine",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 18,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Dakar Réparation",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 18,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Salle de sport · Corniche",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 19,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Maïga du marché",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 19,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Salle de sport · Corniche",
+  "dest": "Café Touba · Sandaga",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 19,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Salle de sport · Corniche",
+  "dest": "Ateliers de Soumbédioune",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 20,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Gare de Pikine",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 20,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Dakar Réparation",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 20,
+  "to": "corniche",
+  "fare": 1500,
+  "from": "Café Touba · Fann",
+  "dest": "Place des étudiants · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 21,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Gargote des étudiants",
+  "dest": "Banque Teranga",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 21,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Place des étudiants · Fann",
+  "dest": "Marché Sandaga",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 21,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Place des étudiants · Fann",
+  "hubs": [
+   "corniche"
+  ]
+ },
+ {
+  "h": 22,
+  "to": "pikine",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Maïga du marché",
+  "hubs": [
+   "corniche",
+   "almadies",
+   "pikine"
+  ]
+ },
+ {
+  "h": 22,
+  "to": "plateau",
+  "fare": 4000,
+  "from": "Ateliers de Soumbédioune",
+  "dest": "Place de la Médina",
+  "hubs": [
+   "corniche",
+   "plateau"
+  ]
+ },
+ {
+  "h": 22,
+  "to": "corniche",
+  "fare": 1000,
+  "from": "Café Touba · Fann",
+  "dest": "Gargote des étudiants",
+  "hubs": [
+   "corniche"
+  ]
+ }
+]

@@ -1,0 +1,77 @@
+{
+  "at": "2026-11-01T06:58:19.650Z",
+  "passed": 14,
+  "failed": 0,
+  "results": [
+    {
+      "name": "0. two players on the local Workers runtime: presence and the account online in both pages, two accounts (two device keys)",
+      "ok": true,
+      "extra": "{\"a\":\"62ea2e66deb4b701\",\"b\":\"ab7cc7cd07e9c3e1\"}"
+    },
+    {
+      "name": "0b. the scene: Awa owns and lives in the Résidence Jàmm’s F2 (furnished), Moussa has cash; both stand by her door and see each other (same presence room)",
+      "ok": true,
+      "extra": "{\"wallet\":63000}"
+    },
+    {
+      "name": "1. private messages: Awa finds Moussa « à côté de toi » and writes (sent ✓); his badge shows 1, the list shows her line; he reads it and answers; she reads it",
+      "ok": true,
+      "extra": "En ligne ✏️ Nouveau message A Awa 06:53 Salut Moussa ! Tu es où ? 1 🔒 Tes conversations sont gardées sur le serveur du jeu pour te suivre d’un appareil à l’autre. Aucun message ne peut payer quoi que"
+    },
+    {
+      "name": "2a. Awa’s request « 5 000 F · Pour le taxi » reaches Moussa as a card with « Payer » / « Refuser »",
+      "ok": true,
+      "extra": "🧾 DEMANDE D’ARGENT Awa te demande 5 000 F « Pour le taxi » À payer Payer Refuser 06:54"
+    },
+    {
+      "name": "2b. the confirmation says how it is paid: 5 000 F from his wallet (Teranga Money empty), then today’s limits",
+      "ok": true,
+      "extra": "Payer la demande Fermer 💸 Envoyer 5 000 F à Awa ? « Pour le taxi » Depuis Teranga Money 0 F Depuis ton portefeuille 5 000 F Teranga Money après 0 F Portefeuille après 58 000 F Limites du jour Envoyé aujourd’hui : 0 F sur 500 000 F Rechargé aujourd’hui : 0 F sur 500 000 F Reçu aujourd’hui : 0 F sur "
+    },
+    {
+      "name": "2c. a real double tap: ONE operation on the server’s ledger, with the confirmation’s id and the request; his wallet −5 000 F exactly; her Teranga Money +5 000 F exactly",
+      "ok": true,
+      "extra": "{\"paysB\":[{\"id\":\"4560823c-44db-4301-8264-1f88bbb63df6\",\"kind\":\"pay\",\"at\":1793516109098,\"amount\":5000,\"note\":\"Pour le taxi\",\"from\":\"ab7cc7cd07e9c3e1\",\"to\":\"62ea2e66deb4b701\",\"fund\":5000,\"req\":\"6b46f29b-16c3-451a-a6a5-87bc51b552db\"}],\"paysA\":[{\"id\":\"4560823c-44db-4301-8264-1f88bbb63df6\",\"kind\":\"pay\",\"at\":1793516109098,\"amount\":5000,\"note\":\"Pour le taxi\",\"from\":\"ab7cc7cd07e9c3e1\",\"to\":\"62ea2e66deb4b701\",\"fund\":5000,\"req\":\"6b46f29b-16c3-451a-a6a5-87bc51b552db\"}],\"walletB0\":63000,\"walletB1\":58000,\"balA\":{\"amount\":5000,\"at\":1793516109131,\"fresh\":true},\"balB\":{\"amount\":0,\"at\":1793516109130,\"fresh\":tr"
+    },
+    {
+      "name": "2d. both see the completed transaction: the request « Payée ✓ » on both sides, the outcome said to Moussa",
+      "ok": true,
+      "extra": "{\"a\":\"paid\",\"b\":\"paid\",\"payOut\":\"Payer la demande Fermer ✅ 5 000 F envoyés à Awa Teranga Money : 0 F · portefeuille 58 000 F OK\"}"
+    },
+    {
+      "name": "2e. paying the same request again (a new operation id) is refused by the server, and nothing moves",
+      "ok": true,
+      "extra": "{\"ok\":false,\"reason\":\"request-closed\",\"text\":\"Cette demande est déjà réglée ou fermée.\"}"
+    },
+    {
+      "name": "3. after both reload: her Teranga Money 5 000 F and his wallet as saved (−5 000 F), one transfer in both server histories, the conversation intact, nothing pending",
+      "ok": true,
+      "extra": "{\"balA\":{\"amount\":5000,\"at\":1793516121446,\"fresh\":true},\"walletB\":58000,\"saveB\":58000,\"convSame\":true,\"pending\":0}"
+    },
+    {
+      "name": "4. « Inviter chez moi » (her F2) reaches Moussa; he accepts on the card (« Acceptée » on her side too) and « Y aller » guides him to her door",
+      "ok": true,
+      "extra": "{\"invSheet\":\"Inviter chez moi Fermer 🏠 Appartement F2 · Résidence Jàmm Pikine · Moussa sera guidé jusqu’à ta porte Peut s’asseoir et utiliser la télé Sinon, visite seulemen\",\"dest\":\"pikine:pin:visit\"}"
+    },
+    {
+      "name": "5a. Moussa walks to her door (joystick) and is offered « Entrer chez Awa (invité) »",
+      "ok": true,
+      "extra": "{\"dist\":0.8728971421680277,\"atDoor\":{\"id\":\"visit:62ea2e66deb4b701\",\"name\":\"Chez Awa\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer chez Awa (invité)\",\"all\":[\"Entrer chez Awa (invité)\"],\"why\":[]}}"
+    },
+    {
+      "name": "5b. both in her home: her space and his are `home:<her tag>`, her furniture drawn for him (same pieces), and each one’s game draws the other inside",
+      "ok": true,
+      "extra": "{\"spaceA\":\"home:62ea2e66deb4b701\",\"spaceB\":\"home:62ea2e66deb4b701\",\"piecesA\":4,\"piecesB\":4,\"seesB\":true,\"seesA\":true}"
+    },
+    {
+      "name": "6. a meeting « Grand-place de Pikine » at a city time (« À NN h », sent as server ms): Moussa accepts; both there in its window → met on both sides, the card shown",
+      "ok": true,
+      "extra": "{\"meet\":{\"id\":\"66faf77c-7b41-4c59-b1a3-ecf762eee52f\",\"k\":\"meet\",\"from\":\"62ea2e66deb4b701\",\"at\":1793516246472,\"place\":{\"id\":\"pikine:city:square\",\"hub\":\"pikine\",\"name\":\"Grand-place de Pikine\",\"icon\":\"🫖\"},\"when\":1793516400000,\"state\":\"open\",\"here\":[]},\"meetClock\":\"12:00\",\"met\":true,\"metB\":true,\"cardA\":true,\"cardB\":true}"
+    },
+    {
+      "name": "no page errors in either game",
+      "ok": true,
+      "extra": "{\"a\":[],\"b\":[]}"
+    }
+  ]
+}

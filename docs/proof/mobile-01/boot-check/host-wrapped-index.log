@@ -1,0 +1,9 @@
+PASS: version.json is served next to the page and names the playtest commit and the accepted candidate 804a19f4-20261107-apercu <- 92a6e2cf
+PASS: the frame meter is on from the start and names the place "2 img/s · 95 % < 121 ms · Almadies · à pied\n233 Mo"
+PASS: memory shows on the meter (JS heap in Chrome, the renderer's own counts elsewhere) "2 img/s · 95 % < 121 ms · Almadies · à pied\n233 Mo"
+PASS: no boot-error box on screen
+PASS: the GLB models came from the bundle (this host serves no .glb) and the vehicles loaded as models, not stand-ins
+PASS: nothing was refused by the policy, nothing failed to load, no uncaught error []
+PASS: a district change (almadies → corniche) is timed and shown on the meter "quartier 388 ms (pire image 1067)"
+PASS: no uncaught error across the change []
+all passed

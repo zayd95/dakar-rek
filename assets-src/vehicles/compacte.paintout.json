@@ -1,0 +1,72 @@
+[
+ {
+  "id": "front_emblem",
+  "note": "grille emblem: filled with the grille below it",
+  "n": 93,
+  "box": [
+   -0.9512,
+   -0.0785,
+   -0.0336,
+   -0.9116,
+   -0.0157,
+   0.0336
+  ],
+  "fillUv": [
+   0.0735,
+   0.608
+  ]
+ },
+ {
+  "id": "front_plate",
+  "note": "plate and its frame: filled with the dark bumper around it",
+  "n": 113,
+  "box": [
+   -0.9559,
+   -0.1686,
+   -0.1221,
+   -0.9204,
+   -0.0912,
+   0.1285
+  ],
+  "colour": [
+   22,
+   23,
+   25
+  ]
+ },
+ {
+  "id": "rear_emblem",
+  "note": "boot emblem: filled with the paint around it",
+  "n": 117,
+  "box": [
+   0.9156,
+   0.0821,
+   -0.0301,
+   0.9208,
+   0.1389,
+   0.0267
+  ],
+  "fillUv": [
+   0.5744,
+   0.6875
+  ]
+ },
+ {
+  "id": "rear_plate",
+  "note": "plate and lettering: filled with the boot paint around it",
+  "n": 117,
+  "box": [
+   0.8803,
+   -0.0108,
+   -0.1234,
+   0.9186,
+   0.0701,
+   0.1457
+  ],
+  "colour": [
+   163,
+   164,
+   166
+  ]
+ }
+]

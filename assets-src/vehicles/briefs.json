@@ -1,0 +1,246 @@
+{
+  "_about": "The player-owned car lineup (decided 2026-10-18): three ORIGINAL, UNBRANDED designs inspired by a class of real car (never copied: no logos, badges, lettering or plates, and no brand names in any prompt). The modern sedan has its OWN identity (`compacte`: catalogue entry, name, texts, module definition; the old `clando` is retired and migrated to it for existing owners); the sport sedan and the SUV fill the existing `berline` and `tout_terrain` entries (decided 2026-10-18). Each keeps the game's ownership, driving, save, cameras and wheel system: the body is fitted to that slot's kit target (assets-src/vehicles/target-*.json) by scripts/vehicles/prepare-vehicle-glb.mjs. Player-owned only: no NPC vehicle is generated. Nothing is generated until `released` is true AND the step is approved in the environment (scripts/meshy/stage-a.mjs).",
+  "briefs": [
+    {
+      "id": "modern_sedan",
+      "stage": "A",
+      "released": true,
+      "order": 1,
+      "title": "Modern sedan",
+      "inspiredBy": "a 2020s Hyundai Elantra (class and proportions only)",
+      "slot": {
+        "asset": "compacte",
+        "catalogue": "Berline moderne · price PROVISIONAL (economy pass) · tier 2 · its own catalogue entry `compacte`",
+        "kit": "sedan seed 14 (silver-grey)",
+        "target": "target-compacte.json",
+        "dealer": "Ndiaye Auto · Plateau"
+      },
+      "role": "affordable but stylish: the first car a player can own, attractive but not luxury-tier",
+      "colour": "silver-grey metallic (the slot's silver)",
+      "prompt": "A compact modern four-door sedan from the 2020s, affordable but stylish, silver-grey metallic paint, clean realistic proportions, long low hood, sloping fastback-style roofline with a short rear deck, sharply creased bodywork with a strong shoulder line, slim angular LED headlights with a sharp light signature, wide lower grille, LED tail lights, about 4.5 m long, 1.8 m wide and 1.4 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+      "look": [
+        "sharp, slim, angular headlights",
+        "clean realistic compact-sedan proportions",
+        "crisp shoulder line, fastback-ish roof",
+        "plain but tidy: no chrome, no flares"
+      ],
+      "silhouette": [
+        [
+          -2.25,
+          0.3
+        ],
+        [
+          -2.25,
+          0.8
+        ],
+        [
+          -1.7,
+          0.97
+        ],
+        [
+          -1.15,
+          1.0
+        ],
+        [
+          -0.75,
+          1.38
+        ],
+        [
+          -0.35,
+          1.41
+        ],
+        [
+          0.45,
+          1.41
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          2.0,
+          0.86
+        ],
+        [
+          2.25,
+          0.72
+        ],
+        [
+          2.25,
+          0.3
+        ],
+        [
+          1.8,
+          0.17
+        ],
+        [
+          -1.8,
+          0.17
+        ]
+      ],
+      "delivered": "2026-10-18: generated (35 credits), integrated, playable; see docs/assets/VEHICLE_LINEUP.md 1c"
+    },
+    {
+      "id": "sport_sedan",
+      "stage": "B",
+      "released": false,
+      "order": 2,
+      "title": "Sport sedan",
+      "inspiredBy": "a modern Mercedes-AMG sedan (class and proportions only)",
+      "slot": {
+        "asset": "berline",
+        "catalogue": "Berline neuve · 14 000 000 F · tier 3 (marked « soon » until it can be driven)",
+        "kit": "luxury seed 1",
+        "target": "target-berline.json",
+        "dealer": "to choose (a second lot of the Plateau showroom, or Almadies)"
+      },
+      "role": "more premium and sporty: must clearly read as an upgrade over the modern sedan at a glance",
+      "colour": "dark graphite metallic",
+      "prompt": "An elegant modern four-door performance saloon, premium and sporty, dark graphite metallic paint, long hood and short rear deck, low wide stance, sleek coupe-like roofline, wide flared wheel arches, pronounced power-dome lines on the hood, slim LED headlights, wide grille with vertical slats, aggressive lower air intakes, clean upscale detailing, subtle rear lip spoiler, quad exhaust outlets, full-width LED tail light strip, about 5.0 m long, 1.9 m wide and 1.45 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+      "look": [
+        "longer, lower, wider than the modern sedan",
+        "bigger wheel arches (kit wheel radius 0.35 against 0.31)",
+        "elegant coupe-like roofline, stronger road presence",
+        "cleaner, richer detailing: slatted grille, hood lines, rear light strip"
+      ],
+      "silhouette": [
+        [
+          -2.575,
+          0.32
+        ],
+        [
+          -2.575,
+          0.84
+        ],
+        [
+          -2.0,
+          1.0
+        ],
+        [
+          -1.45,
+          1.1
+        ],
+        [
+          -0.7,
+          1.38
+        ],
+        [
+          0.0,
+          1.45
+        ],
+        [
+          0.55,
+          1.43
+        ],
+        [
+          1.15,
+          1.0
+        ],
+        [
+          2.2,
+          0.88
+        ],
+        [
+          2.575,
+          0.7
+        ],
+        [
+          2.575,
+          0.32
+        ],
+        [
+          2.1,
+          0.17
+        ],
+        [
+          -2.1,
+          0.17
+        ]
+      ]
+    },
+    {
+      "id": "premium_suv",
+      "stage": "C",
+      "released": false,
+      "order": 3,
+      "title": "Premium SUV",
+      "inspiredBy": "a modern Range Rover (class and proportions only)",
+      "slot": {
+        "asset": "tout_terrain",
+        "catalogue": "4 × 4 de luxe · 75 000 000 F · tier 4 (marked « soon » until it can be driven)",
+        "kit": "suv seed 6",
+        "target": "target-tout-terrain.json",
+        "dealer": "to choose (Almadies, premium)"
+      },
+      "role": "luxury SUV, the top-tier ownership goal: upright, prestigious, strong presence",
+      "colour": "deep black metallic",
+      "prompt": "A full-size luxury SUV with an upright, prestigious silhouette, deep black metallic paint, tall clamshell hood, flat floating roofline, clean slab sides with minimal creases and a continuous beltline, slim horizontal LED headlights, wide horizontal-bar grille, short overhangs, large flush wheel arches, near-vertical tailgate, slim LED tail light strip, premium proportions and clean surfaces, about 4.9 m long, 2.0 m wide and 1.9 m tall. Original design, no badges, no logos, no lettering, no number plate text, symmetrical, game asset, neutral studio pose. IMPORTANT: car body only. The four wheel arches are EMPTY and dark. No wheels, no tyres, no rims, no brake discs, no suspension, no ground shadow.",
+      "look": [
+        "tallest and most upright of the three (1.90 m)",
+        "largest wheels (kit radius 0.39) and most ground clearance",
+        "flat roof, clean slab surfaces, minimal ornament",
+        "dark, quiet, expensive: presence from proportion, not decoration"
+      ],
+      "silhouette": [
+        [
+          -2.425,
+          0.45
+        ],
+        [
+          -2.425,
+          1.55
+        ],
+        [
+          -2.3,
+          1.82
+        ],
+        [
+          -2.1,
+          1.89
+        ],
+        [
+          0.9,
+          1.9
+        ],
+        [
+          1.25,
+          1.82
+        ],
+        [
+          1.4,
+          1.2
+        ],
+        [
+          2.425,
+          1.08
+        ],
+        [
+          2.425,
+          0.5
+        ],
+        [
+          2.0,
+          0.3
+        ],
+        [
+          -2.0,
+          0.3
+        ]
+      ]
+    }
+  ],
+  "steps": {
+    "preview": {
+      "credits": 20,
+      "what": "initial preview, standard model, default geometry resolution (the Ultra 2k/4k pass is billed on top and not used)"
+    },
+    "refine": {
+      "credits": 10,
+      "what": "colour texture on the approved preview (no PBR maps: the game is Lambert)"
+    },
+    "remesh": {
+      "credits": 5,
+      "what": "15 000 triangles on the approved refine (the game build simplifies to its own budget)"
+    }
+  }
+}

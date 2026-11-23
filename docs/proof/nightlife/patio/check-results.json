@@ -1,0 +1,312 @@
+{
+ "quality": "medium",
+ "total": 61,
+ "failed": 0,
+ "results": [
+  {
+   "name": "Le Patio is built on the night street’s site, beside La Vague (which is still there, and listed before it: the checks that look for « the club » find La Vague)",
+   "ok": true,
+   "detail": "{\"types\":[\"club\",\"patio\",\"traversee\",\"rooftop\"],\"patio\":{\"x\":-109,\"z\":-147},\"club\":{\"x\":-36,\"z\":-144}}"
+  },
+  {
+   "name": "it has its door, floor, bar, lounge, DJ and exit, six stools, six salon seats, a VIP corner",
+   "ok": true,
+   "detail": "floor bar lounge dj exit door"
+  },
+  {
+   "name": "it is one of the neighbourhood’s spots (« Le Patio · bar et club »)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "its building is a few merged batches: at most 12 draw calls and 40 000 triangles on this quality",
+   "ok": true,
+   "detail": "{\"meshes\":12,\"tris\":11200}"
+  },
+  {
+   "name": "La Vague works as before: its terrace is its own space, its recipe still 21 h – 5 h",
+   "ok": true,
+   "detail": "La Vague · terrasse dansante 5 stools"
+  },
+  {
+   "name": "at 11:00 the place is closed: the gate is shut (leaves drawn, no rope), nobody inside, a delivery at the door",
+   "ok": true,
+   "detail": "day bodies=livreur"
+  },
+  {
+   "name": "at the door by day the reason is shown (« Fermé · ouvre à 20 h »), nothing is charged",
+   "ok": true,
+   "detail": "Fermé · ouvre à 20 hFermé · ouvre à 20 h"
+  },
+  {
+   "name": "the shut gate is solid: a real thumb walking at it stops in front of it",
+   "ok": true,
+   "detail": "z -134.4 → -136.5 (the wall is at -137.0)"
+  },
+  {
+   "name": "the promenade’s lane past the gate is clear: a real thumb walks the whole frontage, west end to east end",
+   "ok": true,
+   "detail": "0.29 m short, at x 12.1"
+  },
+  {
+   "name": "at night the door offers « Entrer » and a word with the doorman",
+   "ok": true,
+   "detail": "Entrer | Parler au videur"
+  },
+  {
+   "name": "before paying, the rope and the gate stop a real thumb: nobody walks in without the door",
+   "ok": true,
+   "detail": "z -135.5 → -135.5 (the gate’s wall is at -137.0)"
+  },
+  {
+   "name": "the age and the fee are shown before anything is paid (18 ans minimum, 3 000 F, une seule fois)",
+   "ok": true,
+   "detail": "Le Patio · entréeBoubacar : « Bonsoir. 18 ans minimum, pièce d’identité si on te la demande. Ce soir, c’est Coupé-décalé. L’entrée, c’est 3 000 F, une seule fois pour toute la nuit : tu peux sortir fu"
+  },
+  {
+   "name": "paid once, 3 000 F exactly, one ledger line: the rope is lifted for the night",
+   "ok": true,
+   "detail": "wallet 500000 → 497000, ledger +1"
+  },
+  {
+   "name": "paying again is not offered: the door only offers a word with the doorman",
+   "ok": true,
+   "detail": "Parler au videur"
+  },
+  {
+   "name": "nothing else was charged while it was shown or paid (the wallet moved by the one fee)",
+   "ok": true,
+   "detail": "497000"
+  },
+  {
+   "name": "through the arched gate on foot into the courtyard: its own presence space, the rope gone",
+   "ok": true,
+   "detail": "0.64 m short, space almadies:venue:patio"
+  },
+  {
+   "name": "the courtyard has its people at 22:00: staff and patrons, not a crowd (the humanoid budget)",
+   "ok": true,
+   "detail": "10 bodies: videur,barman,dj,serveur,tonton,aminata,cheikh,marieme,fatou,rokhaya"
+  },
+  {
+   "name": "the doorman checks from his post, the barwoman is behind the bar, the DJ on his booth",
+   "ok": true,
+   "detail": "videur,barman,dj,serveur,tonton,aminata,cheikh,marieme,fatou,rokhaya"
+  },
+  {
+   "name": "at the bar the menu is offered: beer, cocktails and spirits mixes AND soft drinks, juice, water, with Coumba",
+   "ok": true,
+   "detail": "Bière glacée | Mojito | Dakar Sunset | Gin tonic | Whisky coca | Bissap glacé | Jus de bouye | Jus de gingembre | Soda | Virgin Sunset | Eau fraîche | Parler à Coumba"
+  },
+  {
+   "name": "« Bière glacée » costs 1500 F, paid once at the start, one ledger line, on a free stool (never a patron’s)",
+   "ok": true,
+   "detail": "497000 → 495500, ledger +1, almadies:venue:patio:tabouret:3, menu 11 priced rows"
+  },
+  {
+   "name": "« Bissap glacé » costs 1000 F, paid once at the start, one ledger line, on a free stool (never a patron’s)",
+   "ok": true,
+   "detail": "495500 → 494500, ledger +1, almadies:venue:patio:tabouret:3, menu 11 priced rows"
+  },
+  {
+   "name": "a table drink at the bar’s price (1 200 F): the player sits at a free sofa, the waiter walks over with it, one ledger line",
+   "ok": true,
+   "detail": "494500 → 493300, almadies:venue:patio:banquette:rue:1"
+  },
+  {
+   "name": "the bar’s counters are the club helper’s: only `club:almadies:venue:patio:*` keys were written",
+   "ok": true,
+   "detail": "{\"paid\":1552,\"nights\":1,\"dances\":0,\"requests\":0}"
+  },
+  {
+   "name": "a patron is around to talk to (Fatou, at the floor’s edge, her birthday): « Parler », her name and her words, French with everyday Wolof",
+   "ok": true,
+   "detail": "Fatou · Le PatioFatou : « Hé ! Moi c’est Fatou, et c’est mon anniversaire : vingt-huit ans ! Avec les filles, on danse jusqu’à ce qu’il fasse jour. »🎂Joyeux anniversaire !👯Vous ê"
+  },
+  {
+   "name": "and every row of her sheet is a word: none carries a price",
+   "ok": true,
+   "detail": "🎂Joyeux anniversaire ! | 👯Vous êtes nombreuses ? | 💃On danse ? | 🙂Pas maintenant, merci | 👋Bonne soirée"
+  },
+  {
+   "name": "she answers a topic",
+   "ok": true,
+   "detail": "Fatou · Le Patio« Jërëjëf (merci) ! Mes amies m’ont caché leur surprise toute la semaine. Un gâteau au bar à minuit, paraît-il. Je fais semb"
+  },
+  {
+   "name": "a no is received gracefully: « Pas de souci du tout, c’est ta soirée aussi ! », the sheet stays as it was (no one turns cold)",
+   "ok": true,
+   "detail": "Fatou · Le Patio« Pas de souci du tout, c’est ta soirée aussi ! Reviens quand tu en as envie, on sera là. »🎂Joyeux anniversaire !👯Vous êtes nombreuses ?💃On d"
+  },
+  {
+   "name": "talking to her moved no money and wrote no ledger line",
+   "ok": true,
+   "detail": "493300 → 493300"
+  },
+  {
+   "name": "Rokhaya, who works the night there, says so herself and that « on peut juste parler »",
+   "ok": true,
+   "detail": "Rokhaya · Le PatioRokhaya : « Bonsoir. Moi c’est Rokhaya. Je travaille ici la nuit, tout le monde sait ce que je fais : je ne m’en cache pas. Si ce n’est pas ce que tu cherches, aucun problème, on peut juste parler. »🌙T"
+  },
+  {
+   "name": "she talks about the job as a job (hours, tiredness, her children’s school), without shame and without a price",
+   "ok": true,
+   "detail": "Rokhaya · Le Patio« C’est un travail comme un autre : des horaires, de la fatigue, des jours faciles et des jours durs. Je l’ai choisi pour payer l’école de mes deux enfants. Le jour je suis maman, la"
+  },
+  {
+   "name": "she talks about the police and how to stay safe: « on a le droit de dire non, à n’importe qui »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "DECLINED: « Aucun problème, vraiment. Je ne force personne et personne ne me force. » — graceful, no insistence, no question, the choices unchanged",
+   "ok": true,
+   "detail": "Rokhaya · Le Patio« Aucun problème, vraiment. Je ne force personne et personne ne me force. On peut parler d’autre chose, ou tu peux profiter de la soirée, c’est très bien aussi. »🌙Ton travail de nuit👧Tes enfants🚓Et l"
+  },
+  {
+   "name": "and a no costs nothing and changes nothing: no money, no ledger line, no counter, no need",
+   "ok": true,
+   "detail": "wallet 493300 → 493300"
+  },
+  {
+   "name": "« Bonne soirée » closes with her goodbye",
+   "ok": true,
+   "detail": "Rokhaya : « Ba beneen yoon » (à la prochaine) · « Passe une belle nuit. »Rokhaya : « Ba beneen yoon » (à la prochaine) · « Passe une belle nuit. »"
+  },
+  {
+   "name": "the whole talk with the worker moved no money and wrote no ledger line",
+   "ok": true,
+   "detail": "493300"
+  },
+  {
+   "name": "standing idle in the open walk at midnight-ish, someone walks over, and says it with a line",
+   "ok": true,
+   "detail": "rokhaya: Rokhaya : « Bonsoir ! Il y a de la place à côté de moi si tu veux discuter un moment. Aucune obligation. »Rokhaya : « Bonsoir ! Il y a de la place à côté de moi si tu veux discuter un moment. Aucune obligation. »"
+  },
+  {
+   "name": "she comes to about a metre and a half, to the player’s side, and « Parler » is offered",
+   "ok": true,
+   "detail": "2.29 m, focus almadies:venue:patio:client:rokhaya"
+  },
+  {
+   "name": "ignored, she goes back to her place and does not follow the player",
+   "ok": true,
+   "detail": "4.8 m from the player; walked over {\"rokhaya\":1}"
+  },
+  {
+   "name": "she never walks over twice in a night",
+   "ok": true,
+   "detail": "{\"rokhaya\":1,\"fatou\":1}"
+  },
+  {
+   "name": "on the floor « Danser » is offered (no contest, no price), in the courtyard’s space",
+   "ok": true,
+   "detail": "Danser"
+  },
+  {
+   "name": "the dance is the existing in-world dance (rings, pads, the body dancing), on Le Patio’s own track map: 100 bpm, 0.6 s a beat (La Vague’s is 120 bpm)",
+   "ok": true,
+   "detail": "{\"clip\":\"Dance_A\",\"pads\":2,\"beatSec\":0.6,\"clock\":\"audio\",\"section\":\"B\"}"
+  },
+  {
+   "name": "Le Patio’s music is playing its own file as the dance’s clock when the audio runs (else the page clock): fetched, decoded, not La Vague’s",
+   "ok": true,
+   "detail": "{\"available\":true,\"decoded\":true,\"failed\":false,\"playing\":true,\"level\":1,\"muffle\":0,\"clock\":\"audio\",\"beat\":599.745}"
+  },
+  {
+   "name": "the dance’s head line and cards never use La Vague’s words (no sabar, no drums’ solo)",
+   "ok": true,
+   "detail": "\"Le pas de côtéLe roulement des congas : un pas de plus\""
+  },
+  {
+   "name": "the dance is free: the wallet is unchanged, the dance counts (club:almadies:venue:patio:danses)",
+   "ok": true,
+   "detail": "wallet 493300 → 493300, dances 1"
+  },
+  {
+   "name": "the DJ’s request costs 500 F exactly, one ledger line, and he answers",
+   "ok": true,
+   "detail": "493300 → 492800"
+  },
+  {
+   "name": "the smokers’ door opens onto the promenade: a real thumb walks in through it, once paid, and climbs onto the raised deck",
+   "ok": true,
+   "detail": "y 0.34, 0.62 m short"
+  },
+  {
+   "name": "people stand at the terrace’s high tables (Cheikh at 22:00, Ousseynou later)",
+   "ok": true,
+   "detail": "[\"cheikh\"]"
+  },
+  {
+   "name": "from the courtyard the deck is reached by its steps (the ground follows)",
+   "ok": true,
+   "detail": "y 0.34"
+  },
+  {
+   "name": "« Sortir » by the gate puts the player on the promenade (its space left) and the doorman says goodnight",
+   "ok": true,
+   "detail": "Boubacar : « Ñibbil ak jàmm » (rentre bien) · « Reviens quand tu veux. »Boubacar : « Ñibbil ak jàmm » (rentre bien) · « Reviens quand tu veux. »"
+  },
+  {
+   "name": "a regular (three nights out) is offered « Entrer · habitué » and comes in free the next night: no money, no ledger line, the night counted",
+   "ok": true,
+   "detail": "Entrer · habitué: 492800 → 492800"
+  },
+  {
+   "name": "at 02:00 (the peak) the people are there — security, bar, DJ, waiter, two at the rope, the floor’s dancers — within the humanoid budget",
+   "ok": true,
+   "detail": "10: videur,barman,dj,serveur,file0,file1,fatou,seynabou,rokhaya,ousseynou"
+  },
+  {
+   "name": "Le Patio’s music is its own file or nothing: its file is there, it asks for it (muffled, behind the walls, at the gate) and it is never La Vague’s file",
+   "ok": true,
+   "detail": "{\"fileThere\":true,\"file\":\"assets/audio/music/le-patio.mp3\",\"available\":true,\"asked\":0.4666666666666666,\"muffle\":0.608,\"playing\":true,\"decoded\":true,\"lavague\":\"assets/audio/music/la-vague.mp3\"}"
+  },
+  {
+   "name": "the dance floor’s lights keep the tempo of the music map on their own (tiles lit), the beams are on",
+   "ok": true,
+   "detail": "{\"beams\":2,\"tile\":[190,7,82,255]}"
+  },
+  {
+   "name": "the rope stands at the door for a guest who has not paid: gate shut, rope drawn",
+   "ok": true,
+   "detail": "admitted false rope true"
+  },
+  {
+   "name": "at dawn the crowd thins (staff and the last regulars), no queue",
+   "ok": true,
+   "detail": "7"
+  },
+  {
+   "name": "at 19:00 the staff set up (doorman, barwoman, DJ), the gate is still shut, the sign half lit",
+   "ok": true,
+   "detail": "videur,barman,dj"
+  },
+  {
+   "name": "at 20:30 the first guests: staff and a few regulars, the doorman at his post",
+   "ok": true,
+   "detail": "8"
+  },
+  {
+   "name": "the venue’s own cost on every view measured is at most 12 draw calls and 40 000 triangles (shadow pass included)",
+   "ok": true,
+   "detail": "{\"the gate from the road, night\":{\"calls\":14,\"tris\":11228},\"down the street, night\":{\"calls\":10,\"tris\":11172},\"inside the courtyard, night\":{\"calls\":13,\"tris\":11224},\"toward La Vague, night (the Patio behind)\":{\"calls\":12,\"tris\":10660},\"the gate from the road, day\":{\"calls\":9,\"tris\":10902}}"
+  },
+  {
+   "name": "on Low Le Patio keeps its rules with fewer bodies (at most 8 at the peak) and no more draw calls than on Medium",
+   "ok": true,
+   "detail": "{\"npcs\":7,\"draw\":{\"meshes\":11,\"tris\":8964}}"
+  },
+  {
+   "name": "no page errors on Low",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "desktop: the garage shift starts with Modou asking for a tool",
+    "ok": true,
+    "detail": "{\"kind\":\"choose\",\"label\":\"Passer les outils\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0,\"zone\":[0.4,0.6],\"ask\":\"chiffon\",\"shown\":[\"marteau\",\"huile\",\"chiffon\",\"cle\"],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "desktop: then the wheel nuts — a cursor to stop in the green",
+    "ok": true,
+    "detail": "{\"kind\":\"timing\",\"label\":\"Serrer les écrous\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0,\"zone\":[0.5751017842270402,0.7751017842270401],\"ask\":null,\"shown\":[],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "desktop: a perfect shift pays the full rate plus the tip, tires, counts",
+    "ok": true,
+    "detail": "{\"wallet\":2400,\"garage\":1,\"energie\":71.86200000000065,\"mode\":\"play\",\"toast\":\"Aider le mécanicien ✓  Parfait !  +1 200 F  Parfait !  +1 200 F\"}"
+  },
+  {
+    "name": "desktop: a so-so shift pays less (the play matters)",
+    "ok": true,
+    "detail": "1300 F"
+  },
+  {
+    "name": "desktop: changing a wheel asks for the steps in order",
+    "ok": true,
+    "detail": "[\"cric\",\"devisser\",\"visser\",\"baisser\",\"roue\"]"
+  },
+  {
+    "name": "desktop: the wheel done in order pays the full rate",
+    "ok": true,
+    "detail": "1800"
+  },
+  {
+    "name": "desktop: Escape stops the shift — no pay, the card closes, controls come back",
+    "ok": true,
+    "detail": "{\"g\":null,\"a\":null,\"wallet\":0,\"mode\":\"play\",\"card\":false,\"phone\":false}"
+  },
+  {
+    "name": "desktop: at the stall a customer asks for something",
+    "ok": true,
+    "detail": "{\"kind\":\"choose\",\"label\":\"Servir les clientes\",\"round\":0,\"rounds\":6,\"results\":[],\"cursor\":0,\"zone\":[0.4,0.6],\"ask\":\"oignons\",\"shown\":[\"piment\",\"citrons\",\"oignons\",\"poisson\"],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "desktop: serving everyone right pays the stall's full rate (× polyvalence)",
+    "ok": true,
+    "detail": "{\"wallet\":3600,\"mult\":1.2,\"lines\":[[\"Tenir l’étal · Étal de Sandaga\",3600]]}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the garage shift starts with Modou asking for a tool",
+    "ok": true,
+    "detail": "{\"kind\":\"choose\",\"label\":\"Passer les outils\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0,\"zone\":[0.4,0.6],\"ask\":\"huile\",\"shown\":[\"huile\",\"tournevis\",\"cric\",\"chiffon\"],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "phone: then the wheel nuts — a cursor to stop in the green",
+    "ok": true,
+    "detail": "{\"kind\":\"timing\",\"label\":\"Serrer les écrous\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0,\"zone\":[0.6868458378194274,0.8868458378194274],\"ask\":null,\"shown\":[],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "phone: a perfect shift pays the full rate plus the tip, tires, counts",
+    "ok": true,
+    "detail": "{\"wallet\":2400,\"garage\":1,\"energie\":71.87625150000058,\"mode\":\"play\",\"toast\":\"Aider le mécanicien ✓  Parfait !  +1 200 F  Parfait !  +1 200 F\"}"
+  },
+  {
+    "name": "phone: a so-so shift pays less (the play matters)",
+    "ok": true,
+    "detail": "1300 F"
+  },
+  {
+    "name": "phone: changing a wheel asks for the steps in order",
+    "ok": true,
+    "detail": "[\"cric\",\"visser\",\"baisser\",\"devisser\",\"roue\"]"
+  },
+  {
+    "name": "phone: the wheel done in order pays the full rate",
+    "ok": true,
+    "detail": "1800"
+  },
+  {
+    "name": "phone: Escape stops the shift — no pay, the card closes, controls come back",
+    "ok": true,
+    "detail": "{\"g\":null,\"a\":null,\"wallet\":0,\"mode\":\"play\",\"card\":false,\"phone\":false}"
+  },
+  {
+    "name": "phone: at the stall a customer asks for something",
+    "ok": true,
+    "detail": "{\"kind\":\"choose\",\"label\":\"Servir les clientes\",\"round\":0,\"rounds\":6,\"results\":[],\"cursor\":0,\"zone\":[0.4,0.6],\"ask\":\"mangues\",\"shown\":[\"oignons\",\"arachides\",\"mangues\",\"poisson\"],\"next\":null,\"pause\":false}"
+  },
+  {
+    "name": "phone: serving everyone right pays the stall's full rate (× polyvalence)",
+    "ok": true,
+    "detail": "{\"wallet\":3600,\"mult\":1.2,\"lines\":[[\"Tenir l’étal · Étal de Sandaga\",3600]]}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

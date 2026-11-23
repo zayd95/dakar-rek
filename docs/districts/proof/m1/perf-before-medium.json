@@ -1,0 +1,39 @@
+{
+ "quality": "medium",
+ "after": false,
+ "results": {
+  "vdn-drive": {
+   "callsMax": 63,
+   "trisMax": 48122
+  },
+  "brt-approach": {
+   "callsMax": 205,
+   "trisMax": 246091
+  },
+  "brt-aerial": {
+   "callsMax": 183,
+   "trisMax": 230601
+  },
+  "sacrecoeur-walk": {
+   "callsMax": 50,
+   "trisMax": 154763
+  },
+  "sacrecoeur-drive": {
+   "callsMax": 52,
+   "trisMax": 159911
+  },
+  "mermoz-walk": {
+   "callsMax": 54,
+   "trisMax": 153845
+  },
+  "mermoz-drive": {
+   "callsMax": 54,
+   "trisMax": 153763
+  },
+  "mermoz-filaos": {
+   "callsMax": 62,
+   "trisMax": 161107
+  }
+ },
+ "errors": []
+}

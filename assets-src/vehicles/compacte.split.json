@@ -1,0 +1,52 @@
+{
+ "_about": "Stage A: the generated modern sedan (Meshy preview -> refine -> remesh 15k, assets-src/meshy_output/modern_sedan/, private) cut into a body and four wheels, badges and plates painted out. Radius is in the source's own units (the model is 1.90 long).",
+ "source": "../meshy_output/modern_sedan/remesh.glb",
+ "rotateY": 90,
+ "out": "../meshy_output/modern_sedan/split.glb",
+ "wheels": {
+  "radius": 0.158,
+  "contact": 0.02,
+  "margin": 0.004,
+  "lateralPad": 0.04
+ },
+ "paintOut": "compacte.paintout.json",
+ "relax": [
+  {
+   "id": "front_plate_zone",
+   "box": [
+    -0.99,
+    -0.2,
+    -0.17,
+    -0.88,
+    -0.085,
+    0.17
+   ],
+   "iterations": 0
+  },
+  {
+   "id": "rear_plate_zone",
+   "box": [
+    0.86,
+    -0.03,
+    -0.16,
+    0.97,
+    0.09,
+    0.17
+   ],
+   "iterations": 0
+  },
+  {
+   "id": "rear_bumper",
+   "box": [
+    0.84,
+    -0.2,
+    -0.2,
+    0.97,
+    -0.03,
+    0.2
+   ],
+   "iterations": 4,
+   "lambda": 0.4
+  }
+ ]
+}

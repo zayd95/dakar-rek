@@ -1,0 +1,231 @@
+{
+ "id": "compacte",
+ "standIn": false,
+ "provenance": {
+  "name": "Meshy text-to-3D, Stage A of the player-owned lineup (modern sedan): preview 01a14f1e-e984-7255-9109-4efc44219108, refine 01a14f21-3914-76c6-89f9-7b95abc0f673, remesh 01a14f22-c605-7513-8f6a-ad5d2d03a6f0 (35 credits)",
+  "licence": "Generated for the game's owner with the owner's Meshy account; Meshy's plan terms apply (not re-verified here). Original, unbranded design inspired by a class of car; badges and plates painted out (compacte.paintout.json).",
+  "prompt": "assets-src/vehicles/briefs.json modern_sedan",
+  "note": "The raw Meshy files stay private (assets-src/meshy_output/, git-excluded). Steps to rebuild: split-fused-body.mjs compacte.split.json, then this manifest."
+ },
+ "source": "assets-src/meshy_output/modern_sedan/split.glb",
+ "sourceSha256": "722def2a91c1940f0db1fb2f251e43609cd40c639814deacfed6b5f5d945c02b",
+ "kit": {
+  "kind": "sedan",
+  "seed": 14
+ },
+ "wheelFit": "own",
+ "length": 4.5,
+ "width": 2.095,
+ "bodyWidth": 1.78,
+ "height": 1.473,
+ "stretch": {
+  "x": 2.399,
+  "y": 2.373,
+  "z": 2.373,
+  "anisotropy": 1.01
+ },
+ "wheels": [
+  {
+   "id": "rl",
+   "x": 0.775,
+   "y": 0.392,
+   "z": -1.265,
+   "r": 0.392,
+   "width": 0.262,
+   "steer": false,
+   "bottom": 0
+  },
+  {
+   "id": "fl",
+   "x": 0.78,
+   "y": 0.392,
+   "z": 1.331,
+   "r": 0.391,
+   "width": 0.251,
+   "steer": true,
+   "bottom": 0.001
+  },
+  {
+   "id": "rr",
+   "x": -0.775,
+   "y": 0.393,
+   "z": -1.306,
+   "r": 0.393,
+   "width": 0.257,
+   "steer": false,
+   "bottom": 0
+  },
+  {
+   "id": "fr",
+   "x": -0.779,
+   "y": 0.375,
+   "z": 1.349,
+   "r": 0.373,
+   "width": 0.248,
+   "steer": true,
+   "bottom": 0.002
+  }
+ ],
+ "headRoom": 0.176,
+ "interior": false,
+ "body": {
+  "min": [
+   -1.048,
+   0.165,
+   -2.25
+  ],
+  "max": [
+   1.048,
+   1.473,
+   2.25
+  ]
+ },
+ "tris": 7606,
+ "drawCalls": 5,
+ "textures": [
+  {
+   "size": [
+    1024,
+    1024
+   ],
+   "kB": 252
+  }
+ ],
+ "bytes": 1195296,
+ "checks": [
+  {
+   "name": "wheels found in the source",
+   "ok": true,
+   "value": "4"
+  },
+  {
+   "name": "wheel axles lie along X (after rotateY)",
+   "ok": true,
+   "value": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "width squeeze 2.4 x 2.37 x 2.37 (anisotropy 1.01 <= 1.12)",
+   "ok": true,
+   "value": 1.01
+  },
+  {
+   "name": "four wheels, separate nodes (axle > wheel), named fl fr rl rr",
+   "ok": true,
+   "value": "rl fl rr fr"
+  },
+  {
+   "name": "rl: its own hub (0.775, 0.392, -1.265) within 0.12 m of the kit axle (0.76, -1.32), radius 0.392 m within 0.25-0.42 (kit 0.31), tyre bottom on the ground (2 cm)",
+   "ok": true,
+   "value": {
+    "id": "rl",
+    "x": 0.775,
+    "y": 0.392,
+    "z": -1.265,
+    "r": 0.392,
+    "width": 0.262,
+    "steer": false,
+    "bottom": 0
+   }
+  },
+  {
+   "name": "fl: its own hub (0.78, 0.392, 1.331) within 0.12 m of the kit axle (0.76, 1.36), radius 0.391 m within 0.25-0.42 (kit 0.31), tyre bottom on the ground (2 cm)",
+   "ok": true,
+   "value": {
+    "id": "fl",
+    "x": 0.78,
+    "y": 0.392,
+    "z": 1.331,
+    "r": 0.391,
+    "width": 0.251,
+    "steer": true,
+    "bottom": 0.001
+   }
+  },
+  {
+   "name": "rr: its own hub (-0.775, 0.393, -1.306) within 0.12 m of the kit axle (-0.76, -1.32), radius 0.393 m within 0.25-0.42 (kit 0.31), tyre bottom on the ground (2 cm)",
+   "ok": true,
+   "value": {
+    "id": "rr",
+    "x": -0.775,
+    "y": 0.393,
+    "z": -1.306,
+    "r": 0.393,
+    "width": 0.257,
+    "steer": false,
+    "bottom": 0
+   }
+  },
+  {
+   "name": "fr: its own hub (-0.779, 0.375, 1.349) within 0.12 m of the kit axle (-0.76, 1.36), radius 0.373 m within 0.25-0.42 (kit 0.31), tyre bottom on the ground (2 cm)",
+   "ok": true,
+   "value": {
+    "id": "fr",
+    "x": -0.779,
+    "y": 0.375,
+    "z": 1.349,
+    "r": 0.373,
+    "width": 0.248,
+    "steer": true,
+    "bottom": 0.002
+   }
+  },
+  {
+   "name": "overall length 4.5 m = the kit's 4.5 (2 cm); body width without mirrors 1.78 m = 1.78 (4 cm); height 1.47 m within 6 cm of 1.43; ground at y = 0; centred",
+   "ok": true,
+   "value": {
+    "size": [
+     2.095,
+     1.473,
+     4.5
+    ],
+    "withMirrorsWidth": 2.095
+   }
+  },
+  {
+   "name": "front axles (steer) are the +z pair",
+   "ok": true
+  },
+  {
+   "name": "head room at the driver seat: roof 1.44 m over the eye at 1.26 m (>= 0.10 m)",
+   "ok": true,
+   "value": {
+    "roof": 1.436,
+    "eye": 1.26,
+    "headRoom": 0.176
+   }
+  },
+  {
+   "name": "triangles 7606 <= 8000",
+   "ok": true,
+   "value": 7606
+  },
+  {
+   "name": "draw calls 5 <= 6 (one per primitive: body + 4 wheels)",
+   "ok": true,
+   "value": 5
+  },
+  {
+   "name": "textures <= 1024 px",
+   "ok": true,
+   "value": [
+    {
+     "size": [
+      1024,
+      1024
+     ],
+     "kB": 252
+    }
+   ]
+  },
+  {
+   "name": "file 1167 kB <= 1300 kB",
+   "ok": true,
+   "value": 1167
+  }
+ ]
+}

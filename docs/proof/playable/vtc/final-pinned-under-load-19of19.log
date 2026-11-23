@@ -1,0 +1,21 @@
+ride {"hour":8,"from":"Boutique Diallo","to":"Grande Mosquée · Plateau","fare":3500,"hubs":["pikine","plateau"]}
+PASS: « Courses VTC » on the phone: the Pikine → Plateau ride accepted with a tap; fare fixed, saved {"id":"V1","fare":3500}
+PASS: the pick-up is marked as a VTC ride: the green pin and car badge, its kerb bay on the road, the minimap and the goal line say « vtc » {"job":"vtc","bay":{"x":-115.7,"z":82,"yaw":3.141592653589793},"pin":"#2fbf71","mm":"vtc","goal":"vtc"}
+PASS: at the kerb: the passenger is a person on the pavement, walking to the car {"phase":"walk","person":{"x":-113.49,"z":82.05,"seated":false,"inCar":false,"local":{"x":0,"y":0,"z":0,"yaw":0,"s":1},"clip":"Walk","side":-1,"seat":null,"place":null},"car":{"t":16.083,"x":-115.32,"z":80.55,"yaw":2.8,"speed":0,"driving":true,"mounting":false,"box":false,"parcel":null,"pad":true,"paddling":false,"rBadge":false,"clip":"Drive"}}
+PASS: the passenger sits in the car's right rear seat (the seat is taken, they ride in it) {"stage":"aboard","seat":"rearR","person":{"x":-114.26,"z":82.15,"seated":true,"inCar":true,"local":{"x":-0.42,"y":0.1711,"z":-0.92,"yaw":0,"s":0.9068},"clip":"SitCar","side":-1,"seat":"rearR","place":{"origin":0.1711,"scale":0.9068,"hips":0.6245,"head":1.388,"soles":0.23}},"events":["accept:V1:pikine>plateau","board:V1:teranga:rearR"]}
+PASS: getting in is played out: to the rear door, the door opens (fully), in, seated {"phases":"wait>walk>wait>walk>open>in>seated","doorMax":1}
+PASS: the passenger and the driver are inside the Teranga: heads under its roof, shoes over its floor {"cabin":{"front":{"roof":1.42,"floor":0.21,"legroom":1.09},"rear":{"roof":1.418,"floor":0.21,"legroom":0.51}},"passenger":[1.379,0.233,0.9068],"driver":[1.39,0.256,0.9253,"meshy_m"]}
+PASS: the passenger is seen through the glass while riding (the door shut) {"holders":["driver","vtc"],"eyeInside":false,"doorK":0,"doorSide":-1,"glass":2,"glassOn":true,"cabin":true,"doors":1,"doorOpen":false,"leafTris":1172}
+PASS: reloaded mid-ride: the passenger is still sitting in the car (one person, the same ride) {"trip":"V1","stage":"aboard","person":{"x":0,"z":0,"seated":true,"inCar":true,"local":{"x":-0.42,"y":0.1711,"z":-0.92,"yaw":0,"s":0.9068},"clip":"SitCar","side":-1,"seat":"rearR","place":{"origin":0.1711,"scale":0.9068,"hips":0.6245,"head":1.388,"soles":0.23}},"persons":1}
+PASS: back at the wheel, the passenger has not moved from the back seat {"x":0,"z":0,"seated":true,"inCar":true,"local":{"x":-0.42,"y":0.1711,"z":-0.92,"yaw":0,"s":0.9068},"clip":"SitCar","side":-1,"seat":"rearR","place":{"origin":0.1711,"scale":0.9068,"hips":0.6245,"head":1.388,"soles":0.23}}
+PASS: in the Plateau with the passenger aboard: the same ride, the person came with the car (rebuilt once, never copied) {"person":{"x":0,"z":0,"seated":true,"inCar":true,"local":{"x":-0.42,"y":0.1711,"z":-0.92,"yaw":0,"s":0.9068},"clip":"SitCar","side":-1,"seat":"rearR","place":{"origin":0.1711,"scale":0.9068,"hips":0.6245,"head":1.388,"soles":0.23}},"persons":1,"rebuilt":0}
+PASS: a street route to the drop-off exists from where the road ends {"at":[-63.3,-161.05,0.04],"drop":{"x":-30,"z":-55.7,"yaw":1.5707963267948966}}
+PASS: a cross-district trip driven normally does not wear the car out (no garage needed after it) {"before":100,"after":100,"impacts":[],"at":{"x":-29.83,"z":-55.68}}
+PASS: at the drop-off the passenger gets out and walks off; the fare is paid ONCE (one wallet line) {"paid":3500,"fare":3500,"lines":1,"events":["paid:V1:3500","stepped-out"]}
+PASS: getting out is played out on the pavement side: the door opens, out, onto the pavement {"phases":"seated>unseat>out>gone","events":["paid:V1:3500","stepped-out","faded"]}
+PASS: the passenger walked off along the pavement and faded only once well away or out of view (never at the door) {"leftAt":{"walked":8.1,"camDist":10.4,"seen":false},"walked":9.43992000000004}
+PASS: the passenger walked away and is gone; nobody left in the car {"persons":0,"phase":"gone"}
+PASS: reloaded after the payment: no ride in hand, nothing paid twice {"wallet":503500,"trips":1}
+PASS: never more than one passenger in the scene during the whole ride 354 samples, max 1
+PASS: no JavaScript error 
+19/19 passed

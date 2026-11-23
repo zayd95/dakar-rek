@@ -54,7 +54,7 @@ export const drum: Pose = (c, t) => {            // percussionist
 };
 
 export const EMOTES: Emote[] = [
-  { id: 'pas1', label: 'Pas de danse 1 (provisoire)', pose: danceA, seconds: 5, reviewed: false },
-  { id: 'pas2', label: 'Pas de danse 2 (provisoire)', pose: danceB, seconds: 5, reviewed: false },
+  { id: 'pas1', label: 'Pas de danse 1', pose: danceA, seconds: 5, reviewed: false },
+  { id: 'pas2', label: 'Pas de danse 2', pose: danceB, seconds: 5, reviewed: false },
   { id: 'fete', label: 'Célébration', pose: celebrate, seconds: 4, reviewed: false },
 ];

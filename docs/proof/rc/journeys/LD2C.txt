@@ -1,0 +1,29 @@
+PASS: at the Résidence Jàmm's sign, a tap opens its sheet: buy or rent the F2 (9 m × 7 m, 63 m²: entrée, séjour, cuisine, chambre, salle de bain) {"title":"Appartement F2","items":["🔑Acheter63 m² sur un étage, 5 pièces à meubler, cuisine et salle de bain · ou à louer : +213 F / h−15 000 000 F","📝Louer250 F chaque heure en ville · tu rends les clés quand tu veux6 000 F / jour","🚪VisiterEntrer voir le logement, vide","✕"]}
+PASS: rented by touch: the F2 is the player's, rented [["chambre_pikine","given"],["appart_jamm","rented"]]
+PASS: moved in: the F2 is the principal residence 
+PASS: inside: the F2 built from its floor plan, in the entrée, the inner doors shut {"plan":"f2_jamm","room":"entree","doors":[{"id":"sejour-cuisine","open":false,"k":0,"blocks":false},{"id":"degagement-chambre","open":false,"k":0,"blocks":false},{"id":"degagement-sdb","open":false,"k":0,"blocks":false}],"light":{"room":"entree","x":3.13,"z":2.43},"hole":{"on":true,"k":0.6000000000000001,"between":1,"seen":1},"night":0}
+PASS: walked through the real rooms with the joystick (22 legs): entrée → séjour → cuisine → séjour → dégagement → chambre → dégagement → salle de bain → entrée []
+PASS: every room visited entree,sejour,cuisine,degagement,chambre,sdb
+PASS: the kitchen's, the bedroom's and the bathroom's doors opened as the player came through {"sejour-cuisine":1,"degagement-chambre":1,"degagement-sdb":1}
+PASS: never inside a wall, a fitting or a door (132 samples, closest 0.300 m), and the player always seen {"inside":0,"hidden":0}
+PASS: at the street door the action is « Sortir » {"id":"pikine:in:door:appart_jamm","name":"Sortir","kind":"door","space":"home","primary":"Sortir","all":["Sortir"],"why":[]}
+PASS: « Sortir » by a tap: back in the street 
+PASS: five pieces bought at Keur Meubles by touch, delivered to the F2 [["canape_wax",{"x":-1.33,"z":0.5,"rot":0}],["table_basse",{"x":-2.83,"z":0.32,"rot":0}],["tele_plate",{"x":-4.16,"z":1.73,"rot":1}],["lit_bois",{"x":-2.12,"z":-1.98,"rot":3}],["armoire_bois",{"x":-2.73,"z":-0.37,"rot":2}]]
+PASS: « Aménager » opens the placement mode, with the room chips {"id":"home:self","name":"Appartement F2","kind":"self","space":"home","primary":"Aménager","all":["Aménager","Commander
+PASS: séjour: the table_basse placed by touch at its spot, saved {"uid":"a4","spec":"table_basse","at":{"x":-2.25,"z":1.5,"rot":0},"room":"sejour"}
+PASS: séjour: the canape_wax placed by touch at its spot, saved {"uid":"a3","spec":"canape_wax","at":{"x":-2.25,"z":0.5,"rot":0},"room":"sejour"}
+PASS: séjour: the tele_plate placed by touch at its spot, saved {"uid":"a5","spec":"tele_plate","at":{"x":-2.25,"z":3,"rot":2},"room":"sejour"}
+PASS: chambre: the lit_bois placed by touch at its spot, saved {"uid":"a6","spec":"lit_bois","at":{"x":-2.75,"z":-2.25,"rot":0},"room":"chambre"}
+PASS: chambre: the armoire_bois placed by touch at its spot, saved {"uid":"a7","spec":"armoire_bois","at":{"x":-3.5,"z":-0.5,"rot":2},"room":"chambre"}
+PASS: in a doorway (where the bedroom's door swings) the wardrobe is refused, said plainly, and its spot kept {"why":"Il faut laisser la porte s’ouvrir","before":{"x":-3.5,"z":-0.5,"rot":2},"after":{"x":-3.5,"z":-0.5,"rot":2}}
+PASS: two rooms furnished: three pieces in the séjour, two in the chambre [{"uid":"a3","spec":"canape_wax","at":{"x":-2.25,"z":0.5,"rot":0},"room":"sejour"},{"uid":"a4","spec":"table_basse","at":{"x":-2.25,"z":1.5,"rot":0},"room":"sejour"},{"uid":"a5","spec":"tele_plate","at":{"x":-2.25,"z":3,"rot":2},"room":"sejour"},{"uid":"a6","spec":"lit_bois","at":{"x":-2.75,"z":-2.25,"rot":0},"room":"chambre"},{"uid":"a7","spec":"armoire_bois","at":{"x":-3.5,"z":-0.5,"rot":2},"roo
+PASS: left the F2 by its street door {"f2":{"id":"pikine:in:door:appart_jamm","name":"Sortir","kind":"door","space":"home","primary":"Sortir","all":["Sortir"],"why":[]},"exitAt":false}
+PASS: after a reload: still renting and living in the F2 
+PASS: after a reload: the same five pieces at the same places and turns [{"uid":"a3","spec":"canape_wax","at":{"x":-2.25,"z":0.5,"rot":0}},{"uid":"a4","spec":"table_basse","at":{"x":-2.25,"z":1.5,"rot":0}},{"uid":"a5","spec":"tele_plate","at":{"x":-2.25,"z":3,"rot":2}},{"uid":"a6","spec":"lit_bois","at":{"x":-2.75,"z":-2.25,"rot":0}},{"uid":"a7","spec":"armoire_bois","at":{"x":-3.5,"z":-0.5,"rot":2}}]
+PASS: … each in its room, valid under the plan, every room still reachable [["canape_wax","sejour",null],["table_basse","sejour",null],["tele_plate","sejour",null],["lit_bois","chambre",null],["armoire_bois","chambre",null]]
+PASS: … and the models stand there [{"uid":"a3","spec":"canape_wax","model":"kit_canape_wax","x":1657.75,"z":0.5,"yaw":0},{"uid":"a4","spec":"table_basse","model":"kit_table_basse","x":1657.75,"z":1.5,"yaw":0},{"uid":"a5","spec":"tele_plate","model":"kit_tele_plate","x":1657.75,"z":3,"yaw":3.141592653589793},{"uid":"a6","spec":"lit_bois","model":"kit_lit_bois","x":1657.25,"z":-2.25,"yaw":0},{"uid":"a7","spec":"armoire_bois","model"
+PASS: bought by touch at the sign: the F2 is the player's, owned {"sheet":["🔑Acheter63 m² sur un étage, 5 pièces à meubler, cuisine et salle de bain · ou à louer : +213 F / h−15 000 000 F","📝Louer250 F chaque heure en ville · tu rends les clés quand tu veux6 000 F / jour","🚪VisiterEntrer voir le logement, vide"],"homes":[["chambre_pikine","given"],["appart_jamm","owned"]]}
+PASS: entered the bought F2: the same walkable apartment {"plan":"f2_jamm","room":"entree","doors":[{"id":"sejour-cuisine","open":false,"k":0,"blocks":false},{"id":"degagement-chambre","open":false,"k":0,"blocks":false},{"id":"degagement-sdb","open":false,"k":0,"blocks":false}],"light":{"room":"entree","x":3.13,"z":2.43},"hole":{"on":false,"k":0.30000000000000004,"between":0,"seen":1},"night":0}
+PASS: and out again 
+PASS: no page errors 
+28/28 passed

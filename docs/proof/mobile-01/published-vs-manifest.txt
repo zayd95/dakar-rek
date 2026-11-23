@@ -1,0 +1,11 @@
+Artifact https://claude.ai/artifact/BQPT4s4sbbARMrWLAoAGnT, version 1794073637-9ce7 (66 files published: the 64 of the build manifest, the 2 data files version.json and build-manifest.json beside it, and index.html).
+The artifact service's own SHA-256 of its stored copy, read back with the Artifact tool, against build-manifest.json (commit 804a19f40fe6b83d7a10e844e618ebee7653ef18):
+
+MATCH assets/index-DJDIreEt.js      f3502153da4a60b9412f6a21234d5eda0e80e8ca02b20d3ff939706c523c04dc  3641228 bytes
+MATCH assets/glb-bundle.json        6622ecf03fe0e51cd70769e833fda97725586f97785e862f182e8ca4d6bd0754  12754282 bytes
+MATCH assets/index-9KSOV-u4.css     c5e665a2f156655f8023d73c33103d62efbac8c1f39e4606eb132b90663c235a  171076 bytes
+MATCH assets/owned-BnHH9wNG.js      a366235e5127608973433c3abfdf9bfaedbbf2437fd3d567199669b06c24dfba  159358 bytes
+MATCH assets/start-C6APxtEN.js      fcd4ee29426ecf49599b30296063068dca6e835525479beba139ffb144fb5f02  5465 bytes
+
+index.html is stored inside the host's own document wrapper (sha256 cdbc36226509eccf31b24efab605a46c9085b87331b60a40fe66a195271c64d0 as stored); the boot check was repeated on that exact stored file
+(boot-check/host-wrapped-index.log): all passed. All other 60 supporting files (the 64 of the manifest less index.html and the 5 hashed above, plus version.json and build-manifest.json) were published from the same folder in the same call; the stored size of every one of the 65 files the service lists (index.html aside) equals the size in the manifest: no mismatch, none missing (a size comparison, not a hash).

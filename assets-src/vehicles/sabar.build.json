@@ -1,0 +1,109 @@
+{
+  "id": "sabar",
+  "name": "Sabar 600",
+  "provenance": {
+    "name": "Meshy text-to-3D (owner-authorised credits, 16 Nov 2026): preview 01a1e283-6404-772c-a16f-a4c2dcbceedb (the second of two previews), refine 01a1e288-4764-7498-81f0-d170875f5da1",
+    "licence": "Generated for the game's owner with the owner's Meshy account; Meshy's plan terms apply (not re-verified here). Original, unbranded design: no brand, badge, lettering or plate; the tank's round cap and the tail's plate hugger are painted plain (paintout).",
+    "prompt": "Supersport road motorcycle, original design, upright on both wheels. Full fairing enclosing the engine down to a belly pan, sharp nose with two slim angular headlights, small tinted windscreen, clip-on handlebars set low under the windscreen, mirrors mounted on the fairing, long sculpted fuel tank, very slim raised tail cowl with a pointed tail light, rear-set footpegs, short exhaust under the engine, upside-down fork, black three-spoke alloy wheels with wide tyres. Glossy white bodywork with bold red panels. No rider, no side stand, no number plate, no logos, no lettering. Game asset.",
+    "note": "The raw Meshy files stay private (assets-src/meshy_output/, git-excluded). A first preview (01a1e27e-4e1f-754c-bb2e-40654fe9642d, a half-faired sport-tourer with raised bars) and a remesh of the refine (01a1e28a-fa99-7236-a34e-325b5b011d24, it lost the windscreen) were not used. Rebuild: node scripts/vehicles/build-sport-moto.mjs"
+  },
+  "source": "../meshy_output/sport_moto/20261116_035458_sport-moto_01a1e27e/refine.glb",
+  "out": "public/assets/vehicles/sabar.glb",
+  "rotateY": 90,
+  "length": 2.0,
+  "wheels": {
+    "halfWidth": 0.07,
+    "margin": 0.012,
+    "tris": 0
+  },
+  "fork": {
+    "legs": [
+      0.065,
+      0.125
+    ],
+    "reach": 0.11,
+    "guard": 0.1,
+    "halfWidth": 0.13
+  },
+  "bars": {
+    "halfWidth": [
+      0.07,
+      0.37
+    ],
+    "dy": [
+      -0.15,
+      0.06
+    ],
+    "dz": [
+      -0.14,
+      0.1
+    ]
+  },
+  "simplifyTris": 0,
+  "textureMax": 1024,
+  "textureQuality": 84,
+  "paintout": [
+    {
+      "what": "the tank's round cap (a winged badge)",
+      "at": [
+        0,
+        1.0,
+        0.08
+      ],
+      "r": 0.2,
+      "minY": 0.94,
+      "paintShare": 0,
+      "centroid": true
+    },
+    {
+      "what": "a lettered decal on each flank of the fairing",
+      "at": [
+        0.19,
+        0.73,
+        0.48
+      ],
+      "r": 0.16,
+      "minX": 0.13,
+      "mirror": true
+    },
+    {
+      "what": "lettering on the nose, under the windscreen",
+      "at": [
+        0,
+        0.95,
+        0.64
+      ],
+      "r": 0.08,
+      "minY": 0.9
+    },
+    {
+      "what": "lettering on each side of the tail",
+      "at": [
+        0.1,
+        0.9,
+        -0.65
+      ],
+      "r": 0.14,
+      "minX": 0.06,
+      "mirror": true
+    }
+  ],
+  "paints": [
+    {
+      "id": "rouge-blanc",
+      "name": "rouge et blanc",
+      "primary": "#c3121e",
+      "accent": "#f2f2ee"
+    },
+    {
+      "id": "jaune-noir",
+      "name": "jaune et noir",
+      "primary": "#f2b705",
+      "accent": "#17181b"
+    }
+  ],
+  "cull": {
+    "res": 640,
+    "azimuths": 16
+  }
+}

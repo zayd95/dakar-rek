@@ -1,0 +1,145 @@
+{
+ "id": "rafet",
+ "standIn": false,
+ "name": "Rafet",
+ "provenance": {
+  "name": "Authored in code by scripts/vehicles/author (models.ts « rafet »): an original design that reads as a current sporty five-door city hatch (claw lamps, fang lights, black arches)",
+  "licence": "Original work made for this game; no third-party model, texture or photograph is used. The reference photographs only guided proportions and character.",
+  "tools": "three.js (geometry), sharp (atlas from SVG), @gltf-transform/core (GLB): local and free; no paid generation",
+  "sourceSha256": "287bf139df6e1bbf8ad64cebd509b611ba7e05e60ac68bc57fc1e436dbb7958d"
+ },
+ "kit": {
+  "kind": "sedan",
+  "model": "rafet"
+ },
+ "wheelFit": "own",
+ "length": 4.079,
+ "width": 2.075,
+ "bodyWidth": 1.745,
+ "height": 1.46,
+ "wheels": [
+  {
+   "id": "fl",
+   "x": 0.74,
+   "y": 0.31,
+   "z": 1.33,
+   "r": 0.31,
+   "width": 0.205,
+   "steer": true,
+   "bottom": 0
+  },
+  {
+   "id": "fr",
+   "x": -0.74,
+   "y": 0.31,
+   "z": 1.33,
+   "r": 0.31,
+   "width": 0.205,
+   "steer": true,
+   "bottom": 0
+  },
+  {
+   "id": "rl",
+   "x": 0.74,
+   "y": 0.31,
+   "z": -1.21,
+   "r": 0.31,
+   "width": 0.205,
+   "steer": false,
+   "bottom": 0
+  },
+  {
+   "id": "rr",
+   "x": -0.74,
+   "y": 0.31,
+   "z": -1.21,
+   "r": 0.31,
+   "width": 0.205,
+   "steer": false,
+   "bottom": 0
+  }
+ ],
+ "interior": false,
+ "door": {
+  "hinge": [
+   0.8725,
+   0,
+   0.62
+  ],
+  "zF": 0.62,
+  "zR": -0.35
+ },
+ "body": {
+  "min": [
+   -1.038,
+   0.19,
+   -2.039
+  ],
+  "max": [
+   1.038,
+   1.46,
+   2.04
+  ]
+ },
+ "tris": 13064,
+ "drawCalls": 9,
+ "parts": {
+  "shell": 5202,
+  "decals": 3554,
+  "cabin": 1636,
+  "door": 468,
+  "wheel": 530
+ },
+ "textures": [
+  {
+   "size": [
+    1024,
+    1024
+   ],
+   "kB": 33
+  }
+ ],
+ "bytes": 284108,
+ "checks": [
+  {
+   "name": "body length 4.060 m = the kit's 4.06 (2 cm; 4.079 m with the plates and lamps)",
+   "ok": true
+  },
+  {
+   "name": "body width without mirrors 1.745 m = the kit's 1.745 (2 cm)",
+   "ok": true
+  },
+  {
+   "name": "height 1.46 m within 6 cm of the kit's roof 1.43",
+   "ok": true
+  },
+  {
+   "name": "head room at the driver: roof 1.42 m over the eye at 1.24 m (>= 0.10 m)",
+   "ok": true
+  },
+  {
+   "name": "four wheels, separate nodes (axle > wheel), named fl fr rl rr, on the kit axles, tyres on the ground",
+   "ok": true
+  },
+  {
+   "name": "the driver's door cut between z -0.35 and 0.62 (the kit's), hinged at its front edge",
+   "ok": true
+  },
+  {
+   "name": "triangles drawn 11428 <= 13000 (13064 with the cabin, shown only while the door is open)",
+   "ok": true
+  },
+  {
+   "name": "draw calls 9 <= 9 (body 2, door 2, wheels 4; the cabin's 1 only while the door is open)",
+   "ok": true
+  },
+  {
+   "name": "file 277 kB <= 1300 kB",
+   "ok": true
+  },
+  {
+   "name": "no badge, emblem, lettering or plate number: grille and plates blank, every texture drawn by atlasSvg()",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,192 @@
+{
+ "note": "At the wheel, one paused frame each (window.__dakar.drawCalls(), tris(), <car>.interior().tris), headless Chromium + SwiftShader at medium quality: not a phone. The frame totals move with the street (traffic, people) between runs; the interior is 3 meshes both times.",
+ "before": {
+  "teranga-portrait": {
+   "view": "volant",
+   "calls": 91,
+   "tris": 172506,
+   "interiorTris": 1122
+  },
+  "teranga-landscape": {
+   "view": "volant",
+   "calls": 185,
+   "tris": 215462,
+   "interiorTris": 1122
+  },
+  "gainde-portrait": {
+   "view": "volant",
+   "calls": 104,
+   "tris": 117801,
+   "interiorTris": 1122
+  },
+  "gainde-landscape": {
+   "view": "volant",
+   "calls": 133,
+   "tris": 133220,
+   "interiorTris": 1122
+  },
+  "suv-portrait": {
+   "view": "volant",
+   "calls": 84,
+   "tris": 116996,
+   "interiorTris": 1122
+  },
+  "suv-landscape": {
+   "view": "volant",
+   "calls": 125,
+   "tris": 161159,
+   "interiorTris": 1122
+  },
+  "errors": []
+ },
+ "after": {
+  "teranga-portrait": {
+   "view": "volant",
+   "calls": 97,
+   "tris": 177562,
+   "interiorTris": 3304
+  },
+  "teranga-landscape": {
+   "view": "volant",
+   "calls": 170,
+   "tris": 207870,
+   "interiorTris": 3304
+  },
+  "gainde-portrait": {
+   "view": "volant",
+   "calls": 109,
+   "tris": 122835,
+   "interiorTris": 3328
+  },
+  "gainde-landscape": {
+   "view": "volant",
+   "calls": 139,
+   "tris": 140320,
+   "interiorTris": 3328
+  },
+  "suv-portrait": {
+   "view": "volant",
+   "calls": 84,
+   "tris": 119112,
+   "interiorTris": 3328
+  },
+  "suv-landscape": {
+   "view": "volant",
+   "calls": 132,
+   "tris": 169459,
+   "interiorTris": 3328
+  },
+  "errors": []
+ },
+ "interiorShare": {
+  "note": "The same paused frame drawn with and without the interior (its own draw calls and triangles).",
+  "before": {
+   "teranga-portrait": {
+    "with": {
+     "calls": 93,
+     "tris": 171700
+    },
+    "without": {
+     "calls": 90,
+     "tris": 170578
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 1122,
+    "interiorTris": 1122
+   },
+   "teranga-landscape": {
+    "with": {
+     "calls": 172,
+     "tris": 206010
+    },
+    "without": {
+     "calls": 169,
+     "tris": 204888
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 1122,
+    "interiorTris": 1122
+   },
+   "gainde-portrait": {
+    "with": {
+     "calls": 108,
+     "tris": 122023
+    },
+    "without": {
+     "calls": 105,
+     "tris": 120901
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 1122,
+    "interiorTris": 1122
+   },
+   "gainde-landscape": {
+    "with": {
+     "calls": 137,
+     "tris": 139164
+    },
+    "without": {
+     "calls": 134,
+     "tris": 138042
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 1122,
+    "interiorTris": 1122
+   }
+  },
+  "after": {
+   "teranga-portrait": {
+    "with": {
+     "calls": 94,
+     "tris": 173662
+    },
+    "without": {
+     "calls": 91,
+     "tris": 170358
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 3304,
+    "interiorTris": 3304
+   },
+   "teranga-landscape": {
+    "with": {
+     "calls": 173,
+     "tris": 207956
+    },
+    "without": {
+     "calls": 170,
+     "tris": 204652
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 3304,
+    "interiorTris": 3304
+   },
+   "gainde-portrait": {
+    "with": {
+     "calls": 106,
+     "tris": 119783
+    },
+    "without": {
+     "calls": 103,
+     "tris": 116455
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 3328,
+    "interiorTris": 3328
+   },
+   "gainde-landscape": {
+    "with": {
+     "calls": 134,
+     "tris": 135240
+    },
+    "without": {
+     "calls": 131,
+     "tris": 131912
+    },
+    "interiorCalls": 3,
+    "interiorTrisDrawn": 3328,
+    "interiorTris": 3328
+   }
+  }
+ }
+}

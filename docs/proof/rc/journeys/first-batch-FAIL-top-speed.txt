@@ -1,0 +1,9 @@
+PASS: a thumb on the middle of the gas pedal takes the car past the town cruising speed (68 km/h = 19 m/s), not half of it {"kmh":134,"x":77}
+attempt 2 stopped: stalled {"info":{"driving":true,"bumps":6,"speed":0,"x":-563.5885276530969,"z":6
+attempt 3 stopped: stalled {"info":{"driving":true,"bumps":6,"speed":0,"x":-283.10025989409235,"z":
+attempts 4 crashed 2
+FAIL: on the open road with the toe down the Teranga passes 130 km/h (a script that talks to the page between frames is the driver: a person goes faster, the cars reach 150–200: tests/ridePadControls.test.ts) {"kmh":121}
+PASS: and it keeps to the road on the run that got through (never wildly off the carriageway: a page at 5 fps steers in 8 m steps at that speed) {"maxLat":6.7}
+FAIL: the district changed in the middle of the road at that speed {"hub0":"pikine","hub1":"pikine"}
+PASS: no page errors []
+3/5 passed

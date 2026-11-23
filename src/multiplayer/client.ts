@@ -1,0 +1,208 @@
+import type { HubId } from '../core/types';
+import { nickname, lookIndex, recordTag, appearanceCode, parseBall, BALL_FEATURE, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck, type BallRelay, type BallWire } from './protocol';
+import type { ChatRequest, ReportRequest } from './chatRules';
+
+export type ConnectionState = 'solo' | 'connecting' | 'online' | 'reconnecting' | 'offline';
+export interface Profile { name: string; look: number }
+export class PresenceClient {
+  readonly peers = new Map<string, Peer>();
+  id = ''; room = 0; count = 0; status: ConnectionState = 'solo';
+  onChange: () => void = () => {};
+  /** Chat traffic (chat module). Presence keeps working when nobody listens. */
+  onChat: (message: ChatMessage) => void = () => {};
+  onChatAck: (ack: ChatAck) => void = () => {};
+  onReportAck: (target: string, ok: boolean) => void = () => {};
+  /** The kickabout ball's states from the others of the room (validated again here); none from servers without it. */
+  onBall: (message: BallRelay) => void = () => {};
+  /** What the server relays beyond presence and chat (`welcome.features`, additive to v1): 'ball'. */
+  readonly features = new Set<string>();
+  private socket: WebSocket | null = null;
+  private hub: HubId | null = null;
+  private requestedRoom: number | null = null;
+  private retry = 0; private handshake = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
+  private lastSentAt = 0; private lastMove = ''; private latest: Move | null = null; private clockOffset = 0;
+  /** When the server last answered a ping: on the device's clock, and on the page's monotonic clock (a device clock set back leaves the first behind). */
+  private lastPong = 0; private lastPongMono = 0;
+  /** The device clock and the page's monotonic clock when the offset was last checked (0: no server time known yet on this page). */
+  private wallAt = 0; private monoAt = 0;
+  constructor(public profile: Profile, private enabled: boolean, private endpoint?: string) {
+    addEventListener('online', () => { if (this.hub && this.enabled && this.status !== 'online') this.open(); });
+    addEventListener('offline', () => { if (this.enabled) { this.stopSocket(); this.setStatus('offline'); } });
+    addEventListener('pagehide', () => this.stopSocket());
+    addEventListener('pageshow', e => { if (e.persisted && this.hub && this.enabled) this.open(); });
+  }
+  join(hub: HubId, room: number | null = null) {
+    if (hub === this.hub && room === this.requestedRoom && this.socket) return;
+    this.hub = hub; this.requestedRoom = room; this.latest = null; this.lastMove = '';
+    this.retryAttempt = 0;
+    if (this.enabled) this.open(); else this.setStatus('solo');
+  }
+  /** Public sporting record shown under the name (« Undercards · 3-1 · Écurie Baobab »); sent once when it changes. */
+  record: string | undefined = undefined;
+  setRecord(rec: string | null) {
+    const next = rec ? recordTag(rec) : undefined;
+    if (next === this.record) return;
+    this.record = next;
+    if (this.status === 'online' && this.socket?.readyState === WebSocket.OPEN) { try { this.socket.send(JSON.stringify({ type: 'rec', rec: next ?? null })); } catch { /* sent again on reconnect (URL) */ } }
+  }
+  /** The studio's look (src/actors/appearance.ts encodeAppearance), sent with the connection only: `reconnect` false when a profile change follows and reconnects anyway. */
+  appearance: string | undefined = undefined;
+  setAppearance(code: string | null, reconnect = true) {
+    const next = appearanceCode(code);
+    if (next === this.appearance) return;
+    this.appearance = next;
+    if (reconnect && this.hub && this.enabled) this.open();
+  }
+  setProfile(profile: Profile) {
+    this.profile = { name: nickname(profile.name), look: lookIndex(profile.look) };
+    if (this.hub && this.enabled) this.open();
+  }
+  /** The last move this device published (sent when online), for the checks: what friends receive. */
+  get lastPublished(): Move | null { return this.latest; }
+  publish(move: Move, now = performance.now()) {
+    this.latest = move;
+    if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN || now - this.lastSentAt < SEND_INTERVAL_MS) return;
+    const encoded = JSON.stringify({ ...move, x: +move.x.toFixed(3), y: +move.y.toFixed(3), z: +move.z.toFixed(3), yaw: +move.yaw.toFixed(3), speed: +move.speed.toFixed(2) });
+    if (encoded === this.lastMove) return;
+    this.socket.send(encoded); this.lastMove = encoded; this.lastSentAt = now;
+  }
+  /** Sends a chat request on the open socket; false when offline (the caller keeps it pending and resends with the same id). */
+  sendChat(request: ChatRequest): boolean { return this.sendRaw(request); }
+  sendReport(request: ReportRequest): boolean { return this.sendRaw(request); }
+  /** A kickabout ball state, when the server relays it (never to a server that would not know the type). */
+  sendBall(state: BallWire): boolean { return this.features.has(BALL_FEATURE) && this.sendRaw(state); }
+  private sendRaw(payload: ChatRequest | ReportRequest | BallWire) {
+    if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
+    try { this.socket.send(JSON.stringify(payload)); return true; } catch { return false; }
+  }
+  /**
+   * A server time stamped on a live message is a lower bound of the clock offset (the message left before it arrived);
+   * the welcome's, read late by a busy page, is one too: the offset only rises towards the truth, by at most 5 s.
+   */
+  private refineClock(serverMs: unknown) {
+    if (typeof serverMs !== 'number' || !Number.isFinite(serverMs)) return;
+    this.followDevice();
+    const o = serverMs - Date.now();
+    if (o > this.clockOffset && o - this.clockOffset < 5000) this.clockOffset = o;
+  }
+  /**
+   * A device clock moved by hand (forward or back) moves `Date.now()` but not the page's monotonic clock: the difference is taken out of the offset at once, so the
+   * server's time goes on as it was until the server answers again (a reconnection's welcome sets the offset afresh). The monthly economy reads this time
+   * (src/economy/calendar.ts): it never sees the jump (it used to for up to 20 s after a jump forward, until the heartbeat reconnected, and for good after a jump back).
+   */
+  private followDevice() {
+    const wall = Date.now(), mono = performance.now();
+    if (this.monoAt) { const jump = wall - this.wallAt - (mono - this.monoAt); if (Math.abs(jump) > 2000) this.clockOffset -= jump; }
+    this.wallAt = wall; this.monoAt = mono;
+  }
+  /**
+   * The server's time (ms): once it is known on this page, while online and while reconnecting (the time it gave, gone on by the page's own clock); the device's
+   * before the first welcome, offline and solo.
+   */
+  serverNow() {
+    if (!this.monoAt || this.status === 'offline' || this.status === 'solo') return Date.now();
+    this.followDevice();
+    return Date.now() + this.clockOffset;
+  }
+  private open() {
+    this.stopSocket();
+    if (!this.hub || !navigator.onLine) { this.setStatus('offline'); return; }
+    const generation = this.generation;
+    this.setStatus(this.retryAttempt ? 'reconnecting' : 'connecting');
+    const url = new URL(this.endpoint || '/api/presence', location.href);
+    url.protocol = url.protocol === 'https:' || url.protocol === 'wss:' ? 'wss:' : 'ws:';
+    url.searchParams.set('hub', this.hub); url.searchParams.set('name', this.profile.name); url.searchParams.set('look', String(this.profile.look));
+    if (this.record) url.searchParams.set('rec', this.record);
+    if (this.appearance) url.searchParams.set('app', this.appearance);
+    const key = deviceChatKey(); if (key) url.searchParams.set('key', key);
+    if (this.requestedRoom) url.searchParams.set('room', String(this.requestedRoom));
+    let ws: WebSocket;
+    try { ws = new WebSocket(url); } catch { this.scheduleRetry(); return; }
+    this.socket = ws;
+    // Bound both transport establishment and the server's welcome response.
+    this.handshake = window.setTimeout(() => {
+      if (generation === this.generation && this.socket === ws) this.scheduleRetry();
+    }, 8000);
+    ws.onmessage = event => {
+      if (generation !== this.generation) return;
+      if (event.data === 'pong') { this.lastPong = Date.now(); this.lastPongMono = performance.now(); return; }
+      let message: ServerMessage; try { message = JSON.parse(event.data as string) as ServerMessage; } catch { return; }
+      if (message.type === 'welcome') {
+        if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
+        clearTimeout(this.handshake); this.handshake = 0;
+        this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now(); this.wallAt = Date.now(); this.monoAt = performance.now() || 1;
+        this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now(); this.lastPongMono = performance.now();
+        this.features.clear(); if (Array.isArray(message.features)) for (const f of message.features) if (typeof f === 'string') this.features.add(f);
+        for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
+        this.setStatus('online');
+        if (this.latest) this.publish(this.latest);
+        this.heartbeat = window.setInterval(() => {
+          if (Date.now() - this.lastPong > 65000 || performance.now() - this.lastPongMono > 65000) { ws.close(); return; }   // either clock: a phone back from sleep (its page clock may have stood still), or a device clock set back (« now − last pong » negative)
+          if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+        }, 20000);
+      } else if (message.type === 'peer') {
+        if (message.peer.id !== this.id) this.peers.set(message.peer.id, message.peer);
+        this.refineClock(message.peer.updatedAt);
+      } else if (message.type === 'leave') {
+        this.peers.delete(message.id); this.count = message.count; this.onChange();
+      } else if (message.type === 'count') { this.count = message.count; this.onChange(); }
+      else if (message.type === 'chat') { if (message.from !== this.id) this.onChat(message); }
+      else if (message.type === 'chat-ack') this.onChatAck(message);
+      else if (message.type === 'report-ack') this.onReportAck(message.target, message.ok);
+      else if (message.type === 'ball') {
+        const from = (message as { from?: unknown }).from, b = parseBall(message, this.serverNow());
+        this.refineClock((message as { s?: unknown }).s);
+        if (b && typeof from === 'string' && from !== this.id && this.peers.has(from)) this.onBall({ ...b, from });
+      }
+    };
+    ws.onclose = () => { if (generation === this.generation) this.scheduleRetry(); };
+    ws.onerror = () => { /* close drives the retry; no effect on local saves or gameplay */ };
+  }
+  private scheduleRetry() {
+    this.stopSocket(); this.setStatus(navigator.onLine ? 'reconnecting' : 'offline');
+    if (!navigator.onLine || !this.hub) return;
+    const delay = Math.min(15000, 600 * 2 ** Math.min(this.retryAttempt++, 5)) + Math.random() * 300;
+    this.retry = window.setTimeout(() => this.open(), delay);
+  }
+  private stopSocket() {
+    this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); this.retry = this.handshake = this.heartbeat = 0;
+    if (this.socket) { this.socket.onclose = null; this.socket.close(); this.socket = null; }
+    this.peers.clear(); this.features.clear(); this.id = ''; this.count = 0; this.room = 0; this.lastMove = ''; this.onChange();
+  }
+  private setStatus(status: ConnectionState) { this.status = status; this.onChange(); }
+}
+
+let chatKey: string | null | undefined;
+/** Private random key for this device; the server only shares a hash of it, so mute/block survive reconnects. */
+export function deviceChatKey(): string | null {
+  if (chatKey !== undefined) return chatKey;
+  const fresh = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const saved = localStorage.getItem('dakarrek.chat.key');
+    if (saved && /^[a-f0-9]{32}$/.test(saved)) return (chatKey = saved);
+    chatKey = fresh(); localStorage.setItem('dakarrek.chat.key', chatKey);
+  } catch { chatKey ??= typeof crypto?.getRandomValues === 'function' ? fresh() : null; }
+  return chatKey;
+}
+
+/**
+ * 1.0.1 — the name of a player who never chose one: a first name of the city, always the same for the same save (from its guest id), instead of
+ * « Dakarois 4F2A » (a fragment of an id nobody can read or say). The character studio still asks for the player's own.
+ */
+export const DEFAULT_NAMES = ['Awa', 'Moussa', 'Fatou', 'Ibou', 'Aïda', 'Modou', 'Khady', 'Cheikh', 'Ndeye', 'Pape', 'Astou', 'Omar', 'Coumba', 'Lamine', 'Mame', 'Babacar',
+  'Sokhna', 'Aliou', 'Bineta', 'Demba', 'Rama', 'Malick', 'Yacine', 'Assane'] as const;
+export function defaultName(guestId: string): string {
+  const h = [...guestId].reduce((n, c) => (Math.imul(n, 31) + c.charCodeAt(0)) >>> 0, 7);
+  return DEFAULT_NAMES[h % DEFAULT_NAMES.length];
+}
+/** The 1.0 default (« Dakarois 4F2A »), wherever it was kept. */
+const OLD_DEFAULT = /^Dakarois( [0-9A-F]{4})?$/;
+/** A name the player did not choose (the default of this save, or the 1.0 one): the studio starts from an empty field. */
+export const isDefaultName = (name: string, guestId: string) => OLD_DEFAULT.test(name) || name === defaultName(guestId);
+export function loadProfile(storage: Storage | null, guestId: string): Profile {
+  try { const saved = JSON.parse(storage?.getItem('dakarrek.presence.profile') ?? 'null') as Profile | null;
+    if (saved) { const name = nickname(saved.name); return { name: OLD_DEFAULT.test(name) ? defaultName(guestId) : name, look: lookIndex(saved.look) }; }
+  } catch { /* private browsing or corrupt profile */ }
+  const hash = [...guestId].reduce((n, c) => n + c.charCodeAt(0), 0);
+  return { name: defaultName(guestId), look: hash % 6 };
+}

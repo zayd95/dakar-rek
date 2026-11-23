@@ -1,0 +1,40 @@
+TOTAL meshes 98, triangles 202122
+  10 meshes   149570 tris  (unnamed) | BufferGeometry | MeshLambertMaterial vcol
+   6 meshes    17604 tris  (unnamed) | BufferGeometry | MeshLambertMaterial map emissive vcol
+   1 meshes     8456 tris  (unnamed) | BufferGeometry | MeshBasicMaterial vcol
+   4 meshes     4920 tris  (unnamed) | BufferGeometry | MeshLambertMaterial emissive vcol
+   1 meshes     4882 tris  helicopter-paint | BufferGeometry | MeshPhysicalMaterial vcol
+   2 meshes     3724 tris  body | BufferGeometry | MeshLambertMaterial map emissive vcol
+   1 meshes     3050 tris  helicopter-metal | BufferGeometry | MeshStandardMaterial vcol
+   1 meshes     2718 tris  villa-facade:trim | BufferGeometry | MeshLambertMaterial vcol
+   1 meshes     1560 tris  shallows | BufferGeometry | MeshLambertMaterial transp emissive vcol
+   1 meshes     1548 tris  helicopter-satin | BufferGeometry | MeshStandardMaterial vcol
+   1 meshes      740 tris  helicopter-glass | BufferGeometry | MeshPhysicalMaterial transp vcol
+   1 meshes      604 tris  villa-facade:lights | BufferGeometry | MeshBasicMaterial transp vcol
+   1 meshes      586 tris  (unnamed) | BufferGeometry | MeshBasicMaterial map transp
+   1 meshes      576 tris  villa-facade:render | BufferGeometry | MeshLambertMaterial emissive vcol
+   1 meshes      340 tris  villa-gate | BufferGeometry | MeshLambertMaterial vcol
+   1 meshes      250 tris  villa-facade:stone | BufferGeometry | MeshLambertMaterial vcol
+   2 meshes      228 tris  far | BufferGeometry | MeshLambertMaterial map emissive vcol
+   1 meshes      180 tris  villa-entrance-door | BufferGeometry | MeshLambertMaterial vcol
+   1 meshes      140 tris  villa-facade:glass | BufferGeometry | MeshLambertMaterial transp
+   2 meshes      116 tris  (unnamed) | BufferGeometry | MeshLambertMaterial transp vcol
+  49 meshes       98 tris  (unnamed) | PlaneGeometry | MeshLambertMaterial map emissive
+   1 meshes       80 tris  villa-entrance | BufferGeometry | MeshLambertMaterial vcol
+   2 meshes       56 tris  glass | BufferGeometry | MeshLambertMaterial transp vcol
+   1 meshes       48 tris  prestige_glass | BufferGeometry | MeshLambertMaterial transp emissive
+   1 meshes       40 tris  villa-facade:glazing | BufferGeometry | MeshLambertMaterial emissive vcol
+   2 meshes        4 tris  beam | BufferGeometry | MeshBasicMaterial map transp
+   1 meshes        2 tris  (unnamed) | PlaneGeometry | MeshLambertMaterial
+   1 meshes        2 tris  (unnamed) | PlaneGeometry | MeshLambertMaterial emissive
+TOTAL meshes 98, triangles 202122
+  10 meshes   149570 tris  (unnamed) | BufferGeometry | MeshLambertMaterial vcol
+   6 meshes    17604 tris  (unnamed) | BufferGeometry | MeshLambertMaterial map emissive vcol
+   1 meshes     8456 tris  (unnamed) | BufferGeometry | MeshBasicMaterial vcol
+   4 meshes     4920 tris  (unnamed) | BufferGeometry | MeshLambertMaterial emissive vcol
+   1 meshes     4882 tris  helicopter-paint | BufferGeometry | MeshPhysicalMaterial vcol
+   2 meshes     3724 tris  body | BufferGeometry | MeshLambertMaterial map emissive vcol
+   1 meshes     3050 tris  helicopter-metal | BufferGeometry | MeshStandardMaterial vcol
+   1 meshes     2718 tris  villa-facade:trim | BufferGeometry | MeshLambertMaterial vcol
+   1 meshes     1560 tris  shallows | BufferGeometry | MeshLambertMaterial transp emissive vcol
+   1 meshes     1548 tris  helicopter-satin | BufferGeometry | MeshStandardMaterial vcol

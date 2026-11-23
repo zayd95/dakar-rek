@@ -1,0 +1,183 @@
+import type { Batch } from './batch';
+import type { KeepClear } from './types';
+import { rng } from '../core/rng';
+import {
+  ALLEY_RECT, CAR_COLOURS, VENUE_D, VENUE_W, WARM,
+  binta, cafeSet, clubAlley, comptoir, festoon, lampPole, lounge, parkedCar, phare, type StripKit,
+} from './hospitalityStrip';
+
+/**
+ * The Almadies' night street (docs/districts/ALMADIES-NIGHTLIFE.md): the beach side of the coast road, across from the boutique hotel and the resort, from Le Patio at the west end to
+ * Le Comptoir de Ngor beside the alley, with La Vague behind its alley. East of the alley the sand is the Plage de Ngor's (src/world/ngorBeach.ts, the owner's 27 Oct wish: the beach first, then
+ * the embarkation), so in the combined game the street ends at the alley: the four M4 venues stand side by side west of it (their solid footprints 0.3 m apart), and the east block of the first
+ * integration (a second car park, and Lounge 221 and Le Comptoir on the sand the beach has) is not drawn. It is the M4 team's hospitality strip (Lounge 221, Le Comptoir de Ngor, Chez Binta, Café du Phare and the
+ * lit alley, src/world/hospitalityStrip.ts) turned to face the road and moved off the two sea-front blocks, which LD2.0-E's hotels and villas have again; Le Patio is the courtyard club of
+ * src/venues/patio.ts, the Terrasse de Ngor the boutique hotel's roof. The pirogues pulled up on the sand east of x 11 stay where the Embarcadère has them.
+ *
+ * From the road to the sea (z grows toward the road; the carriageway's north edge is z −127):
+ *   − 127 … − 133.2   the car parks: a metre of asphalt apron, then two rows of painted bays, nose to the beach, open to the road (a car drives straight in and reverses out; one that
+ *                      stops a metre short is still off the carriageway): « PARKING DU PATIO » in the west, with a gap for the taxis' dépose-minute bay in front of Le Patio's gate,
+ *                      and the hotel's, the Terrasse's and La Vague's visitors park in its east end, by the alley
+ *   − 133.2 … − 137   the promenade: an ochre walk along the venues' fronts, lamp poles and festoons, café sets at the doors whose chairs are the street's seats
+ *   − 137 …           the venues' fronts (the buildings, a courtyard behind the gate of Le Patio), the beach and the sea behind them
+ * No marking lies on the carriageway; the bays are on the sand verge, so a car in one is out of every traffic lane. The NPC cars leave runs of free bays by every door.
+ *
+ * It only adds merged primitives, seats and colliders. It draws nothing from the generator's own random stream: local streams feed the parked cars and the alley's murals.
+ */
+
+/** The carriageway's north edge, the car parks' open side, and the line of the venues' fronts (La Vague's gate is on it). */
+export const ROAD_EDGE_Z = -127, APRON = 1.0, BAY_DEPTH = 4.8, WALK_Z0 = -133.2, FRONT_Z = -137;
+export const BAY_W = 2.6;
+/** The car park's extent along the road: Le Patio's at the west end, the hotel's, the Terrasse's and La Vague's visitors' by the alley at the east end. */
+export const LOTS = {
+  west: { name: 'PARKING · LE PATIO · LA VAGUE · HÔTEL', x0: -122, x1: -53 },
+} as const;
+/** Where Le Patio stands: the club's local frame (VenueKit: the gate toward +z, the sea toward −z), its centre and half extents. The gate is on the venues' front line. */
+export const PATIO_SITE = { x: -109, z: FRONT_Z - 10, yaw: 0, halfW: 14, halfD: 10 } as const;
+/** The venues of the M4 strip, by centre, west to east: they face the road. Each is 12.2 m wide with a 12.7 m solid footprint; packed from Le Patio's east edge (x −95) to the alley's mural wall (x −40.8). */
+export const NIGHT_VENUES = [
+  { kind: 'binta', cx: -88.35 }, { kind: 'phare', cx: -75.35 }, { kind: 'lounge', cx: -62.35 }, { kind: 'comptoir', cx: -49.35 },
+] as const;
+type VenueKind = typeof NIGHT_VENUES[number]['kind'];
+const BUILD: Record<VenueKind, (k: StripKit, x: number, z: number) => void> = { binta, phare, lounge, comptoir };
+/** The dépose-minute bay (taxis and drop-offs), a gap in the west car park right in front of Le Patio's gate: guests are let out at the door. */
+export const DROP_BAY = { x0: -114, x1: -104 };
+
+/** The ground the night street owns: the street dressing (billboards, stalls, parked traffic, palms) keeps off, and the digest tests leave it out of the « rest of the Almadies ». */
+export const NIGHT_RECTS = {
+  west: { x0: -124, z0: -158, x1: -52.5, z1: ROAD_EDGE_Z },
+  /** Le Comptoir de Ngor's ground beside the alley (its front, the promenade before it and the sand behind it; the alley's own ground is `ALLEY_RECT`). */
+  comptoir: { x0: -56, z0: -158, x1: -41.5, z1: WALK_Z0 },
+} as const;
+/** A zebra across the coast road from the alley's mouth to the hotel's forecourt gap: the way between the night street and the boutique hotel (the road's other crossings are at its junctions). */
+export const ZEBRA = { x: -30, z0: -126.2, z1: -113.8 };
+/** The crossing's ground: no parked car stands on it (the digest tests leave it out too). */
+export const ZEBRA_RECT = { x0: -32.5, z0: -127, x1: -27.5, z1: -113.4 };
+export const NIGHT_KEEP_CLEAR: KeepClear[] = [
+  { x0: LOTS.west.x0 - 1, z0: -133.6, x1: LOTS.west.x1 + 1, z1: -122.5, why: 'almadies_car_park' },
+  { x0: NIGHT_RECTS.west.x0, z0: -158, x1: NIGHT_RECTS.west.x1, z1: -133.6, why: 'almadies_night_street' },
+  { x0: NIGHT_RECTS.comptoir.x0, z0: -158, x1: NIGHT_RECTS.comptoir.x1, z1: -133.6, why: 'almadies_night_street' },
+  { ...ALLEY_RECT, why: 'almadies_alley' },
+  { ...ZEBRA_RECT, why: 'almadies_crossing' },
+];
+/** Whether a point of the beach is on ground the night street owns (a margin for the trunks' crowns). */
+export const inNightStreet = (x: number, z: number, m = 0.5) => [NIGHT_RECTS.west, NIGHT_RECTS.comptoir].some(r => x > r.x0 - m && x < r.x1 + m && z > r.z0 - m && z < r.z1 + m);
+
+/**
+ * The kit turned half a turn about (cx, cz): a venue drawn facing −z comes out facing +z, the road. Every primitive's position is mirrored through the centre and its yaw gains π
+ * (a primitive's own tilt and roll are local to it, so they stay): the same building, the other way round.
+ */
+export function turned(k: StripKit, cx: number, cz: number): StripKit {
+  const mx = (x: number) => 2 * cx - x, mz = (z: number) => 2 * cz - z;
+  type B = Batch;
+  const wrap = (b: B): B => ({
+    box: (w: number, h: number, d: number, x: number, y: number, z: number, c: number, r = 0) => b.box(w, h, d, mx(x), y, mz(z), c, r + Math.PI),
+    slab: (w: number, h: number, d: number, x: number, y: number, z: number, c: number, r = 0, t = 0, ro = 0) => b.slab(w, h, d, mx(x), y, mz(z), c, r + Math.PI, t, ro),
+    flat: (w: number, d: number, x: number, y: number, z: number, c: number, r = 0) => b.flat(w, d, mx(x), y, mz(z), c, r + Math.PI),
+    facade: (w: number, h: number, d: number, x: number, y: number, z: number, c: number, r = 0) => b.facade(w, h, d, mx(x), y, mz(z), c, r + Math.PI),
+    cyl: (rt: number, rb: number, h: number, x: number, y: number, z: number, c: number, seg = 8, rot: [number, number, number] = [0, 0, 0]) => b.cyl(rt, rb, h, mx(x), y, mz(z), c, seg, [rot[0], rot[1] + Math.PI, rot[2]]),
+    blob: (r: number, x: number, y: number, z: number, c: number, sy = 1, d = 1) => b.blob(r, mx(x), y, mz(z), c, sy, d),
+    sphere: (r: number, x: number, y: number, z: number, c: number, half = false) => b.sphere(r, mx(x), y, mz(z), c, half),
+  } as unknown as B);
+  return {
+    ...k,
+    plain: wrap(k.plain), glass: wrap(k.glass), metal: wrap(k.metal), lampBulbs: wrap(k.lampBulbs), lampPosts: wrap(k.lampPosts), leaves: wrap(k.leaves), trunks: wrap(k.trunks), tin: wrap(k.tin), tileRoof: wrap(k.tileRoof),
+    canopies: { push: (...c: StripKit['canopies']) => k.canopies.push(...c.map(o => ({ ...o, x: mx(o.x), z: mz(o.z) }))) } as unknown as StripKit['canopies'],
+    people: { push: (...p: StripKit['people']) => k.people.push(...p.map(o => ({ ...o, x: mx(o.x), z: mz(o.z), yaw: o.yaw + Math.PI }))) } as unknown as StripKit['people'],
+    seats: k.seats && ({ push: (...q: NonNullable<StripKit['seats']>) => k.seats!.push(...q.map(o => ({ ...o, x: mx(o.x), z: mz(o.z), yaw: o.yaw + Math.PI, table: o.table && { ...o.table, x: mx(o.table.x), z: mz(o.table.z) } }))), get length() { return k.seats!.length; } } as unknown as NonNullable<StripKit['seats']>),
+    addSign: (text, bg, fg, x, y, z, rotY, w, h) => k.addSign(text, bg, fg, mx(x), y, mz(z), rotY + Math.PI, w, h),
+    solidC: (x, z, w, d, h) => k.solidC(mx(x), mz(z), w, d, h),
+    pool: (x, z, r, y) => k.pool(mx(x), mz(z), r, y),
+  };
+}
+
+// ---------------------------------------------------------------- the car parks and the promenade
+/** A row of painted bays along the road's north edge, open to the carriageway: asphalt, lines, wheel stops, NPC cars that leave open the bays within `r` metres of each door `[x, r]` of `free` (a player drives in on an arc and needs the neighbours clear), and a sign at each end. */
+function bayRow(k: StripKit, x0: number, x1: number, name: string, seed: number, free: [number, number][], gap: [number, number] | null = null) {
+  const { plain, G } = k, R = rng(seed), top = G + 0.045, y = G + 0.005;
+  const n = Math.floor((x1 - x0) / BAY_W), w = n * BAY_W, bx0 = x0 + ((x1 - x0) - w) / 2, zFront = ROAD_EDGE_Z - APRON, zBack = zFront - BAY_DEPTH;
+  plain.box(w + 0.6, 0.035, ROAD_EDGE_Z - zBack + 0.3, bx0 + w / 2, y - 0.015, (ROAD_EDGE_Z + zBack - 0.3) / 2, 0x4a4d52);   // the asphalt, apron and bays, on the sand verge
+  for (let i = 0; i <= n; i++) { const lx = bx0 + i * BAY_W; if (gap && lx > gap[0] + 0.05 && lx < gap[1] - 0.05) continue; plain.box(0.1, 0.012, BAY_DEPTH - 0.1, lx, top, (zFront + zBack) / 2 + 0.05, 0xf2f2ec); }   // bay lines (none across the dépose-minute bay)
+  if (gap) { plain.box(gap[0] - bx0, 0.012, 0.1, (bx0 + gap[0]) / 2, top, zBack + 0.05, 0xf2f2ec); plain.box(bx0 + w - gap[1], 0.012, 0.1, (gap[1] + bx0 + w) / 2, top, zBack + 0.05, 0xf2f2ec); }
+  else plain.box(w, 0.012, 0.1, bx0 + w / 2, top, zBack + 0.05, 0xf2f2ec);                                                 // the row's back line
+  const bays: { x: number; z: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const cx = bx0 + (i + 0.5) * BAY_W;
+    if (gap && cx + BAY_W / 2 > gap[0] && cx - BAY_W / 2 < gap[1]) continue;                                              // the dépose-minute bay: no painted bay here
+    bays.push({ x: cx, z: zBack + 2.4 });
+    plain.box(1.5, 0.11, 0.16, cx, top, zBack + 0.45, 0x8d8f93);                                                           // the wheel stop (a visual: nothing solid at the back)
+  }
+  // NPC cars: about two bays in five, never the bays nearest a door (`free`) and never every bay of a stretch
+  const cars = bays.filter((b, i) => i % 3 !== 1 && !free.some(([f, r]) => Math.abs(f - b.x) < r) && R() < 0.72);
+  for (const b of cars) parkedCar(k, b.x + (R() - 0.5) * 0.2, b.z + (R() - 0.5) * 0.3, -1, CAR_COLOURS[Math.floor(R() * CAR_COLOURS.length)], R() < 0.25);
+  // the sign: a board on two posts at each end of the row, facing the road, lit at night
+  for (const ex of [bx0 - 0.9, bx0 + w + 0.9]) {
+    plain.box(0.22, 4.2, 0.22, ex - 1.9, G, zBack - 0.6, 0x23527f); plain.box(0.22, 4.2, 0.22, ex + 1.9, G, zBack - 0.6, 0x23527f);
+    plain.box(4.4, 0.95, 0.2, ex, G + 3.35, zBack - 0.6, 0x23527f);
+    k.addSign(name, '#0d3d8c', '#ffffff', ex, G + 3.8, zBack - 0.47, 0, 4.1, 0.82);
+    k.solidC(ex - 1.9, zBack - 0.6, 0.3, 0.3, 4.2); k.solidC(ex + 1.9, zBack - 0.6, 0.3, 0.3, 4.2);
+  }
+  const taken = new Set(cars);
+  return { n, bx0, w, cars: cars.length, bays: bays.map(b => ({ x: +b.x.toFixed(2), z: +b.z.toFixed(2), free: !taken.has(b) })) };
+}
+
+/** Where the promenade's lamp poles stand (in the gaps between the venues' fronts and the café sets): a string of festoons runs from each to the next. */
+const POLES = { west: [-118, -94, -82, -69, -56] };
+/** The café sets on the promenade, in front of the doors: the chairs face the street, and are the street's seats. */
+const TABLES = [-98.5, -92, -85, -79, -72, -65.5, -59, -53.6];
+const TABLE_Z = -135.2;
+
+/** The ochre walk along the venues' fronts, with its lamp poles and the festoons that run from pole to pole. */
+function promenade(k: StripKit, x0: number, x1: number, poles: number[]) {
+  const { plain, G } = k, z0 = FRONT_Z, z1 = WALK_Z0, top = G + 0.035;
+  plain.box(x1 - x0, 0.035, z1 - z0, (x0 + x1) / 2, G, (z0 + z1) / 2, 0xb99a74);
+  for (let x = x0 + 7.7; x < x1 - 1; x += 7.7) plain.box(0.12, 0.018, z1 - z0, x, top, (z0 + z1) / 2, 0xd8c9ab);              // joints
+  poles.forEach((x, i) => {
+    lampPole(k, x, z1 - 0.6, 4.9);
+    if (i + 1 < poles.length) festoon(k, x, 4.7, z1 - 0.6, poles[i + 1], 4.7, z1 - 0.6, 0.55, [WARM, 0xffc46b], 0.8);
+  });
+}
+
+/** The dépose-minute bay: a yellow-hatched kerb strip beside the road with a TAXI sign, where a taxi waits and the club's guests are let out. */
+function dropBay(k: StripKit) {
+  const { plain, G } = k, cx = (DROP_BAY.x0 + DROP_BAY.x1) / 2, w = DROP_BAY.x1 - DROP_BAY.x0, top = G + 0.045;
+  plain.box(w, 0.035, 3.4, cx, G - 0.01, ROAD_EDGE_Z - 1.7, 0x4a4d52);
+  for (let i = 0; i < 7; i++) plain.box(0.16, 0.012, 3.2, DROP_BAY.x0 + 0.8 + i * (w - 1.6) / 6, top, ROAD_EDGE_Z - 1.7, 0xf2c230, Math.PI / 8);
+  plain.box(w, 0.012, 0.1, cx, top, ROAD_EDGE_Z - 3.4, 0xf2f2ec);
+  plain.box(0.14, 3.4, 0.14, DROP_BAY.x1 - 0.4, G, ROAD_EDGE_Z - 3.9, 0x2b2b2b);
+  k.addSign('TAXIS · DÉPOSE · LE PATIO', '#f2c230', '#1a1a1a', DROP_BAY.x1 - 0.4, G + 3.0, ROAD_EDGE_Z - 3.8, 0, 2.6, 0.6);
+  k.solidC(DROP_BAY.x1 - 0.4, ROAD_EDGE_Z - 3.9, 0.2, 0.2, 3.4);
+  parkedCar(k, DROP_BAY.x0 + 3.2, ROAD_EDGE_Z - 2.4, -1, 0xf2c230, false);                                                       // a taxi waiting (solid, as every parked car)
+}
+
+function zebra(k: StripKit) {
+  if (k.lite) return;                                                                       // as the junctions' (src/world/builder.ts): not on Low
+  for (let z = ZEBRA.z0; z <= ZEBRA.z1 + 0.01; z += 1.1) k.plain.flat(2.4, 0.55, ZEBRA.x, 0.085, z, 0xeeeae0);
+}
+
+/**
+ * Builds the night street into the hub's batches: the car parks, the promenade, the four venues turned toward the road and the alley to La Vague. Le Patio is its own venue module
+ * (src/venues/patio.ts) and the Terrasse de Ngor the hotel's roof: neither is drawn here.
+ */
+export interface NightStreetInfo {
+  /** Every painted bay by centre (the car's middle when it is in), with whether an NPC car stands in it: the player's cars park in the free ones. */
+  bays: { x: number; z: number; lot: 'west'; free: boolean }[];
+  venues: { kind: string; cx: number; front: number }[];
+  patio: typeof PATIO_SITE; dropBay: typeof DROP_BAY; cars: number;
+}
+export function buildNightStreet(k: StripKit): NightStreetInfo {
+  const venues: NightStreetInfo['venues'] = [];
+  const w = bayRow(k, LOTS.west.x0, LOTS.west.x1, LOTS.west.name, k.seed * 31 + 3, [[PATIO_SITE.x, 18], [-88.35, 2.6], [-75.35, 2.6], [-62.35, 8], [-53, 2]], [DROP_BAY.x0, DROP_BAY.x1]);
+  dropBay(k); zebra(k);
+  promenade(k, LOTS.west.x0, NIGHT_RECTS.comptoir.x1, POLES.west);                                  // as far as Le Comptoir's front, beside the alley
+  TABLES.forEach((tx, i) => cafeSet(turned(k, tx, TABLE_Z), tx, TABLE_Z, [0xb94f36, 0x1e6fd9, 0x2a6fb0][i % 3]));
+  for (const v of NIGHT_VENUES) {
+    const cz = FRONT_Z - VENUE_D / 2, kt = turned(k, v.cx, cz), t = v.kind;
+    BUILD[t](kt, v.cx, cz);
+    if (t !== 'lounge') kt.people.push({ x: v.cx + 1.0, z: cz - VENUE_D / 2 - 3.0, yaw: Math.PI, clip: 'Talk' });
+    kt.solidC(v.cx, cz, VENUE_W + 0.5, VENUE_D + 0.5, t === 'lounge' ? 6.4 : t === 'phare' ? 5.0 : t === 'binta' ? 4.2 : 4.6);
+    venues.push({ kind: t, cx: v.cx, front: FRONT_Z });
+  }
+  clubAlley(k);
+  return { bays: w.bays.map(b => ({ ...b, lot: 'west' as const })), venues, patio: PATIO_SITE, dropBay: DROP_BAY, cars: w.cars };
+}

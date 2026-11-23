@@ -1,0 +1,137 @@
+[
+  {
+    "name": "A 1a. a Tiak delivery is paid once (the same run never paid again)",
+    "ok": true,
+    "detail": "{\"paid\":1200,\"gained\":1200}"
+  },
+  {
+    "name": "A 1b. its work card first, no lead over it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "A 1c. then one lead from the real situation (Pape Sarr for a car: never a promised loan)",
+    "ok": true,
+    "detail": "🚗Une voiture à créditTu travailles sérieusement. Pape Sarr fait crédit aux gens qu’il connaît : va te présenter à Sarr Auto, il te dira ce qu’il attend.Y allerPlus tard✕"
+  },
+  {
+    "name": "A 1d. « Plus tard » closes it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "A 2a. the phone's home shows « Mes pistes »; the leads are real ones: the savings account, the first business (70 000 F in hand)",
+    "ok": true,
+    "detail": "Une voiture à crédit · Ta première affaire · Mettre de côté · Arranger chez toi"
+  },
+  {
+    "name": "A 2b. « Y aller » marks the Banque Teranga of Pikine",
+    "ok": true,
+    "detail": "pikine:city:bank"
+  },
+  {
+    "name": "A 3a. an account opened at the counter and 25 000 F deposited: the wallet −25 000, the savings +25 000, nothing created or lost",
+    "ok": true,
+    "detail": "{\"m0\":{\"wallet\":71200,\"savings\":0,\"ledger\":2},\"m1\":{\"wallet\":46200,\"savings\":25000,\"ledger\":3}}"
+  },
+  {
+    "name": "A 3b. the goal « Bana-bana » at the real price of a table (50 000 F)",
+    "ok": true,
+    "detail": "{\"amount\":50000,\"label\":\"Bana-bana\"}"
+  },
+  {
+    "name": "A 4. her advice is the rules' own for this state: the table within reach of wallet + savings, Pape Sarr never promised",
+    "ok": true,
+    "detail": "Avec 71 200 F entre portefeuille et épargne, une Table de bana-bana (50 000 F, environ 400 F par heure en ville) est à ta portée. | Objectif Bana-bana : 25 000 F sur 50 000 F, encore 25 000 F à mettre de côté. | Pour un crédit voiture, Pape Sarr veut d’abord mieux te connaître : rends-lui quelques services à Sarr Auto (Pikine)."
+  },
+  {
+    "name": "A 4b. 10 000 F withdrawn from the phone: back in the wallet, out of the savings",
+    "ok": true,
+    "detail": "{\"m4\":{\"wallet\":46200,\"savings\":25000,\"ledger\":3},\"m4b\":{\"wallet\":56200,\"savings\":15000,\"ledger\":4}}"
+  },
+  {
+    "name": "A 5a. « Ta première affaire » leads to the table in the world (its place, not just an app)",
+    "ok": true,
+    "detail": "{\"place\":{\"id\":\"pikine:bana\",\"hub\":\"pikine\",\"name\":\"Table de bana-bana\"}}"
+  },
+  {
+    "name": "A 5b. the table bought once at its price: −50 000 F, one bana unit owned",
+    "ok": true,
+    "detail": "{\"w5\":56200,\"after\":6200,\"owned\":{\"bana\":1}}"
+  },
+  {
+    "name": "A 6a. customers served and the till paid once: + the recette, one « Recette » line; the sheet's calculation is the money",
+    "ok": true,
+    "detail": "{\"served\":4,\"sales\":2000,\"cost\":1400,\"paid\":2000,\"profit\":600}"
+  },
+  {
+    "name": "A 6b. the table's hourly income as before: an in-game hour of play later, one « Revenus » line of 400 F",
+    "ok": true,
+    "detail": "{\"at\":1792893087956,\"label\":\"Revenus · Table de bana-bana\",\"amount\":406}"
+  },
+  {
+    "name": "A R. reload: the wallet, the account and its history, the table, the leads and what is owned, as they were",
+    "ok": true,
+    "detail": "{\"drift\":0,\"ledger\":[10,10],\"diff\":[]}"
+  },
+  {
+    "name": "A no JavaScript errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "B 1a. a Tiak delivery is paid once (the same run never paid again)",
+    "ok": true,
+    "detail": "{\"paid\":1200,\"gained\":1200}"
+  },
+  {
+    "name": "B 1b. its work card first, no lead over it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "B 1c. then one lead from the real situation (Pape Sarr for a car: never a promised loan)",
+    "ok": true,
+    "detail": "🚗Une voiture à créditTu travailles sérieusement. Pape Sarr fait crédit aux gens qu’il connaît : va te présenter à Sarr Auto, il te dira ce qu’il attend.Y allerPlus tard✕"
+  },
+  {
+    "name": "B 1d. « Plus tard » closes it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "B 2. every lead in the phone set aside with « Pas maintenant »",
+    "ok": true,
+    "detail": "{\"n0\":4,\"n\":0}"
+  },
+  {
+    "name": "B 3. work goes on: another delivery paid once",
+    "ok": true,
+    "detail": "{\"paid\":2200}"
+  },
+  {
+    "name": "B 4. no lead offered again for the same situation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "B 5. nothing is locked behind a lead: the bana-bana is open to whoever pays (Affaires)",
+    "ok": true,
+    "detail": "{\"price\":50000,\"locked\":null}"
+  },
+  {
+    "name": "B R. reload: the wallet, the account and its history, the table, the leads and what is owned, as they were",
+    "ok": true,
+    "detail": "{\"drift\":0,\"ledger\":[3,3],\"diff\":[]}"
+  },
+  {
+    "name": "B R2. after the reload no ignored lead comes back",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "B no JavaScript errors",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -1,0 +1,23 @@
+{
+ "journey": "F",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 0.9,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "« Frein » held at a standstill: after a short pause the rider pushes it backwards with the feet",
+   "ok": true,
+   "detail": "{\"t\":0.9,\"z\":19.99,\"v\":-0.09,\"paddling\":true,\"clip\":\"RidePaddle\",\"r\":false}"
+  },
+  {
+   "name": "a slow walk at most, the « RidePaddle » pose, no « R »",
+   "ok": true,
+   "detail": "{\"minV\":-0.85,\"sample\":[{\"t\":1.1,\"z\":19.95,\"v\":-0.27,\"paddling\":true,\"clip\":\"RidePaddle\",\"r\":false},{\"t\":1.1,\"z\":19.95,\"v\":-0.27,\"paddling\":true,\"clip\":\"RidePaddle\",\"r\":false}]}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

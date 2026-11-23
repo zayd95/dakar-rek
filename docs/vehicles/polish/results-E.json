@@ -1,0 +1,48 @@
+{
+ "journey": "E",
+ "base": "http://127.0.0.1:4517/",
+ "minutes": 6.7,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "on the Jakarta: the next turn and the distance to the Maïga",
+   "ok": true,
+   "detail": "{\"text\":\"↰ À gauche dans 10 m · Maïga du marché 60 m\",\"nav\":true}"
+  },
+  {
+   "name": "the parcel aboard: the directions lead to the way out of Pikine toward the Almadies, the whole distance left",
+   "ok": true,
+   "detail": "{\"g1\":{\"text\":\"↱ À droite dans 10 m · Restaurant Le Pointe · Almadies 1,9 km\",\"nav\":true},\"local\":{\"x\":-127,\"z\":-60,\"name\":\"Route vers Almadies\"}}"
+  },
+  {
+   "name": "on the road: « Tout droit sur la route · Restaurant Le Pointe » and the kilometres left",
+   "ok": true,
+   "detail": "[\"↑ Tout droit sur la route · Restaurant Le Pointe · Almadies 1,7 km\",\"↑ Tout droit sur la route · Restaurant Le Pointe · Almadies 1,7 km\"]"
+  },
+  {
+   "name": "in the Almadies, the street directions to the restaurant take over (survived the crossing)",
+   "ok": true,
+   "detail": "{\"hub\":\"almadies\",\"g2\":{\"text\":\"↑ Tout droit sur la route · Restaurant Le Pointe · Almadies 260 m\",\"nav\":true}}"
+  },
+  {
+   "name": "handed over at the Restaurant Le Pointe: paid once",
+   "ok": true,
+   "detail": "{\"paid\":6825,\"lines\":[\"Livraison Tiak Tiak → Restaurant Le Pointe · Almadies\"]}"
+  },
+  {
+   "name": "the card: Maïga → Le Pointe, the pay, the time, the distance in km, the run, one line",
+   "ok": true,
+   "detail": "🛵 Livraison réussie Maïga du marché → Restaurant Le Pointe · Almadies Payé 6 825 F +6 825 F Durée 4 min 23 s Distance 2,0 km Série 1 jour actif Premier jour actif ENSUITE Livré à l’heure, sans accroc. ✕"
+  },
+  {
+   "name": "the directions clear after the delivery",
+   "ok": true,
+   "detail": "{\"text\":\"➜\",\"nav\":false}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

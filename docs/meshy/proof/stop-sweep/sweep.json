@@ -1,0 +1,1050 @@
+{
+ "v4": {
+  "jog": [
+   {
+    "off": 0,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 5.62
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.896,
+    "pelvisRest": 0.948,
+    "dip_cm": 5.1,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 6.45
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.919,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.6,
+    "settleStepsUntilFrame": 38,
+    "maxSurfaceSpeedAfter10f": 3.66
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.912,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.5,
+    "settleStepsUntilFrame": 60,
+    "maxSurfaceSpeedAfter10f": 5.2
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 46,
+    "maxSurfaceSpeedAfter10f": 4.6
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.881,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.7,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 6.91
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.92,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.6,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 4.03
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 9.09
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 5.54
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.858,
+    "pelvisRest": 0.948,
+    "dip_cm": 9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 6.98
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.906,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.2,
+    "settleStepsUntilFrame": 42,
+    "maxSurfaceSpeedAfter10f": 5.41
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 5.44
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.915,
+    "pelvisRest": 0.946,
+    "dip_cm": 3.1,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 6.28
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.914,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.4,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 7.1
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.884,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.4,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 8.13
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.883,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.5,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 8.34
+   }
+  ],
+  "walk": [
+   {
+    "off": 0,
+    "pelvisMin": 0.938,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.7,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.53
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.936,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.1,
+    "settleStepsUntilFrame": 39,
+    "maxSurfaceSpeedAfter10f": 2.49
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.932,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.5,
+    "settleStepsUntilFrame": 37,
+    "maxSurfaceSpeedAfter10f": 3.08
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.821,
+    "pelvisRest": 0.948,
+    "dip_cm": 12.6,
+    "settleStepsUntilFrame": 56,
+    "maxSurfaceSpeedAfter10f": 6.73
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.924,
+    "pelvisRest": 0.947,
+    "dip_cm": 2.3,
+    "settleStepsUntilFrame": 38,
+    "maxSurfaceSpeedAfter10f": 4.43
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 57,
+    "maxSurfaceSpeedAfter10f": 6.94
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.849,
+    "pelvisRest": 0.948,
+    "dip_cm": 9.9,
+    "settleStepsUntilFrame": 57,
+    "maxSurfaceSpeedAfter10f": 7.53
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.881,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.7,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 5.54
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.905,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.3,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 5.99
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.92,
+    "pelvisRest": 0.948,
+    "dip_cm": 2.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 4.1
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.948,
+    "dip_cm": 1,
+    "settleStepsUntilFrame": 34,
+    "maxSurfaceSpeedAfter10f": 3.58
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.933,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.5,
+    "settleStepsUntilFrame": 50,
+    "maxSurfaceSpeedAfter10f": 3.72
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.93,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.7,
+    "settleStepsUntilFrame": 50,
+    "maxSurfaceSpeedAfter10f": 3.54
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.928,
+    "pelvisRest": 0.946,
+    "dip_cm": 1.8,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 3.97
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.925,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.1,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 4.53
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.58
+   }
+  ]
+ },
+ "v4s93": {
+  "jog": [
+   {
+    "off": 0,
+    "pelvisMin": 0.865,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.3,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 6.27
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.915,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.3,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 7.85
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.905,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.3,
+    "settleStepsUntilFrame": 61,
+    "maxSurfaceSpeedAfter10f": 6.89
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.876,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.2,
+    "settleStepsUntilFrame": 59,
+    "maxSurfaceSpeedAfter10f": 6.42
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 4.71
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.876,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.1,
+    "settleStepsUntilFrame": 49,
+    "maxSurfaceSpeedAfter10f": 5.21
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 5.67
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.809,
+    "pelvisRest": 0.948,
+    "dip_cm": 13.9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 4.98
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.859,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 6.56
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.908,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.9,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 4.95
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.916,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.2,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 5.78
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.912,
+    "pelvisRest": 0.947,
+    "dip_cm": 3.4,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 6.68
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.911,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.7,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 7.78
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.891,
+    "pelvisRest": 0.948,
+    "dip_cm": 5.7,
+    "settleStepsUntilFrame": 49,
+    "maxSurfaceSpeedAfter10f": 8.43
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.859,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.8,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 8.66
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.815,
+    "pelvisRest": 0.948,
+    "dip_cm": 13.3,
+    "settleStepsUntilFrame": 46,
+    "maxSurfaceSpeedAfter10f": 8.53
+   }
+  ],
+  "walk": [
+   {
+    "off": 0,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 5.32
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 6.08
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.839,
+    "pelvisRest": 0.948,
+    "dip_cm": 10.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 6.2
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.875,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.3,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 5.31
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.888,
+    "pelvisRest": 0.948,
+    "dip_cm": 6,
+    "settleStepsUntilFrame": 60,
+    "maxSurfaceSpeedAfter10f": 4.95
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.919,
+    "pelvisRest": 0.948,
+    "dip_cm": 2.8,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 4.13
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.928,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.9,
+    "settleStepsUntilFrame": 42,
+    "maxSurfaceSpeedAfter10f": 3.2
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.935,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.3,
+    "settleStepsUntilFrame": 40,
+    "maxSurfaceSpeedAfter10f": 2.54
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.8,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.27
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.8,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.04
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.944,
+    "pelvisRest": 0.948,
+    "dip_cm": 0.4,
+    "settleStepsUntilFrame": 30,
+    "maxSurfaceSpeedAfter10f": 2.64
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 4.66
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.947,
+    "pelvisRest": 0.947,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.67
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.66
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.939,
+    "pelvisRest": 0.948,
+    "dip_cm": 0.9,
+    "settleStepsUntilFrame": 36,
+    "maxSurfaceSpeedAfter10f": 3.59
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.58
+   }
+  ]
+ },
+ "homme": {
+  "jog": [
+   {
+    "off": 0,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 6.56
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.896,
+    "pelvisRest": 0.948,
+    "dip_cm": 5.1,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 5.11
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.919,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.6,
+    "settleStepsUntilFrame": 38,
+    "maxSurfaceSpeedAfter10f": 2.99
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.912,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.5,
+    "settleStepsUntilFrame": 60,
+    "maxSurfaceSpeedAfter10f": 4.26
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 46,
+    "maxSurfaceSpeedAfter10f": 5.3
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.881,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.7,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 5.69
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.92,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.6,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 4.71
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 6.97
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 4.98
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.858,
+    "pelvisRest": 0.948,
+    "dip_cm": 9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 6.31
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.906,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.2,
+    "settleStepsUntilFrame": 42,
+    "maxSurfaceSpeedAfter10f": 5.43
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 6.36
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.915,
+    "pelvisRest": 0.946,
+    "dip_cm": 3.1,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 7.31
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.914,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.4,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 8.24
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.884,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.4,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 9.37
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.883,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.5,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 9.63
+   }
+  ],
+  "walk": [
+   {
+    "off": 0,
+    "pelvisMin": 0.938,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.7,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.13
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.936,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.1,
+    "settleStepsUntilFrame": 39,
+    "maxSurfaceSpeedAfter10f": 2.33
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.932,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.5,
+    "settleStepsUntilFrame": 37,
+    "maxSurfaceSpeedAfter10f": 2.85
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.821,
+    "pelvisRest": 0.948,
+    "dip_cm": 12.6,
+    "settleStepsUntilFrame": 56,
+    "maxSurfaceSpeedAfter10f": 5.57
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.924,
+    "pelvisRest": 0.947,
+    "dip_cm": 2.3,
+    "settleStepsUntilFrame": 38,
+    "maxSurfaceSpeedAfter10f": 3.81
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 57,
+    "maxSurfaceSpeedAfter10f": 5.6
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.849,
+    "pelvisRest": 0.948,
+    "dip_cm": 9.9,
+    "settleStepsUntilFrame": 57,
+    "maxSurfaceSpeedAfter10f": 6.06
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.881,
+    "pelvisRest": 0.948,
+    "dip_cm": 6.7,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 4.52
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.905,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.3,
+    "settleStepsUntilFrame": 45,
+    "maxSurfaceSpeedAfter10f": 5.5
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.92,
+    "pelvisRest": 0.948,
+    "dip_cm": 2.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 3.73
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.948,
+    "dip_cm": 1,
+    "settleStepsUntilFrame": 34,
+    "maxSurfaceSpeedAfter10f": 3.22
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.933,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.5,
+    "settleStepsUntilFrame": 50,
+    "maxSurfaceSpeedAfter10f": 3.06
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.93,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.7,
+    "settleStepsUntilFrame": 50,
+    "maxSurfaceSpeedAfter10f": 2.86
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.928,
+    "pelvisRest": 0.946,
+    "dip_cm": 1.8,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 3.34
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.925,
+    "pelvisRest": 0.946,
+    "dip_cm": 2.1,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 3.92
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.23
+   }
+  ]
+ },
+ "femme": {
+  "jog": [
+   {
+    "off": 0,
+    "pelvisMin": 0.861,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.7,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 7.12
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.915,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.3,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 9.28
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.905,
+    "pelvisRest": 0.948,
+    "dip_cm": 4.3,
+    "settleStepsUntilFrame": 61,
+    "maxSurfaceSpeedAfter10f": 8.23
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.876,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.2,
+    "settleStepsUntilFrame": 59,
+    "maxSurfaceSpeedAfter10f": 7.71
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 44,
+    "maxSurfaceSpeedAfter10f": 5.75
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.876,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.1,
+    "settleStepsUntilFrame": 49,
+    "maxSurfaceSpeedAfter10f": 5.4
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 6.84
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.809,
+    "pelvisRest": 0.948,
+    "dip_cm": 13.9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 5.2
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.859,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.9,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 5.85
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.908,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.9,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 6.02
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.916,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.2,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 6.93
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.912,
+    "pelvisRest": 0.947,
+    "dip_cm": 3.4,
+    "settleStepsUntilFrame": 41,
+    "maxSurfaceSpeedAfter10f": 7.94
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.911,
+    "pelvisRest": 0.948,
+    "dip_cm": 3.7,
+    "settleStepsUntilFrame": 63,
+    "maxSurfaceSpeedAfter10f": 9.19
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.891,
+    "pelvisRest": 0.948,
+    "dip_cm": 5.7,
+    "settleStepsUntilFrame": 49,
+    "maxSurfaceSpeedAfter10f": 9.91
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.859,
+    "pelvisRest": 0.948,
+    "dip_cm": 8.8,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 10.17
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.815,
+    "pelvisRest": 0.948,
+    "dip_cm": 13.3,
+    "settleStepsUntilFrame": 46,
+    "maxSurfaceSpeedAfter10f": 10.03
+   }
+  ],
+  "walk": [
+   {
+    "off": 0,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 4.25
+   },
+   {
+    "off": 1,
+    "pelvisMin": 0.8,
+    "pelvisRest": 0.948,
+    "dip_cm": 14.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 4.76
+   },
+   {
+    "off": 2,
+    "pelvisMin": 0.839,
+    "pelvisRest": 0.948,
+    "dip_cm": 10.8,
+    "settleStepsUntilFrame": 58,
+    "maxSurfaceSpeedAfter10f": 5.6
+   },
+   {
+    "off": 3,
+    "pelvisMin": 0.875,
+    "pelvisRest": 0.948,
+    "dip_cm": 7.3,
+    "settleStepsUntilFrame": 48,
+    "maxSurfaceSpeedAfter10f": 4.83
+   },
+   {
+    "off": 4,
+    "pelvisMin": 0.888,
+    "pelvisRest": 0.948,
+    "dip_cm": 6,
+    "settleStepsUntilFrame": 60,
+    "maxSurfaceSpeedAfter10f": 3.77
+   },
+   {
+    "off": 5,
+    "pelvisMin": 0.919,
+    "pelvisRest": 0.948,
+    "dip_cm": 2.8,
+    "settleStepsUntilFrame": 43,
+    "maxSurfaceSpeedAfter10f": 3.55
+   },
+   {
+    "off": 6,
+    "pelvisMin": 0.928,
+    "pelvisRest": 0.948,
+    "dip_cm": 1.9,
+    "settleStepsUntilFrame": 42,
+    "maxSurfaceSpeedAfter10f": 2.81
+   },
+   {
+    "off": 7,
+    "pelvisMin": 0.935,
+    "pelvisRest": 0.947,
+    "dip_cm": 1.3,
+    "settleStepsUntilFrame": 40,
+    "maxSurfaceSpeedAfter10f": 2.09
+   },
+   {
+    "off": 8,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.8,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 1.99
+   },
+   {
+    "off": 9,
+    "pelvisMin": 0.937,
+    "pelvisRest": 0.945,
+    "dip_cm": 0.8,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 1.54
+   },
+   {
+    "off": 10,
+    "pelvisMin": 0.944,
+    "pelvisRest": 0.948,
+    "dip_cm": 0.4,
+    "settleStepsUntilFrame": 30,
+    "maxSurfaceSpeedAfter10f": 2.18
+   },
+   {
+    "off": 11,
+    "pelvisMin": 0.917,
+    "pelvisRest": 0.947,
+    "dip_cm": 3,
+    "settleStepsUntilFrame": 28,
+    "maxSurfaceSpeedAfter10f": 3.79
+   },
+   {
+    "off": 12,
+    "pelvisMin": 0.947,
+    "pelvisRest": 0.947,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.18
+   },
+   {
+    "off": 13,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.09
+   },
+   {
+    "off": 14,
+    "pelvisMin": 0.939,
+    "pelvisRest": 0.948,
+    "dip_cm": 0.9,
+    "settleStepsUntilFrame": 36,
+    "maxSurfaceSpeedAfter10f": 3.25
+   },
+   {
+    "off": 15,
+    "pelvisMin": 0.946,
+    "pelvisRest": 0.946,
+    "dip_cm": 0,
+    "settleStepsUntilFrame": 0,
+    "maxSurfaceSpeedAfter10f": 2.04
+   }
+  ]
+ }
+}

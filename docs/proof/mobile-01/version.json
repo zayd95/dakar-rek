@@ -1,0 +1,40 @@
+{
+  "name": "Dakar Rek · playtest preview (MOBILE-01)",
+  "commit": "804a19f40fe6b83d7a10e844e618ebee7653ef18",
+  "buildId": "804a19f4-20261107-apercu",
+  "baseCommit": "92a6e2cf5e2c2ee322774fdcd2d6887142eaf152",
+  "baseIsAcceptedCandidate": "PR #88 (integration/playable-20261107)",
+  "branch": "mobile-01/device-playtest",
+  "builtAtUtc": "2026-11-07T17:37:50.493Z",
+  "node": "v22.23.4",
+  "dirty": false,
+  "showcase": true,
+  "measureOnByDefault": true,
+  "changedFilesVsCandidate": [
+    "M .gitignore",
+    "A scripts/build-preview.mjs",
+    "A scripts/check-preview.mjs",
+    "M src/core/build.ts",
+    "M src/core/frameStats.ts",
+    "M src/main.ts",
+    "M src/ui/betaInfo.ts",
+    "M src/ui/frameMeter.ts",
+    "M tests/frameStats.test.ts",
+    "A vite.preview.config.ts"
+  ],
+  "numstatVsCandidate": [
+    "1\t0\t.gitignore",
+    "76\t0\tscripts/build-preview.mjs",
+    "84\t0\tscripts/check-preview.mjs",
+    "7\t0\tsrc/core/build.ts",
+    "102\t4\tsrc/core/frameStats.ts",
+    "10\t2\tsrc/main.ts",
+    "3\t3\tsrc/ui/betaInfo.ts",
+    "8\t2\tsrc/ui/frameMeter.ts",
+    "72\t2\ttests/frameStats.test.ts",
+    "53\t0\tvite.preview.config.ts"
+  ],
+  "files": 64,
+  "bytes": 23365216,
+  "manifestSha256": "5e285497a06ebed0be6fec6a5c80798853efad65cf79476ba8c22f64ca9bc8c9"
+}

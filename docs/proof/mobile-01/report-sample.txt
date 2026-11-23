@@ -1,0 +1,21 @@
+# Sample of the report « Signaler un problème » copies, from the playtest build served locally (headless Chromium, software renderer: the NUMBERS MEAN NOTHING, the shape is what this shows).
+# Taken 7 Nov 2026 on build 804a19f4-20261107-apercu after two direct district changes (Almadies -> Corniche -> Almadies).
+
+Dakar Rek bêta · build 804a19f4-20261107-apercu · candidat accepté 92a6e2cf
+Date : 2026-11-07 17:53 UTC
+Écran : 390×844 @1x portrait · qualité high
+Appareil : Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+Lieu : almadies (-33, 37) · 0 min de jeu
+Fluidité mesurée sur cet appareil (ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftSh) :
+Almadies · à pied : 3 images/s en moyenne · 95 % des images sous 121 ms · pire 1417 ms · 32 à-coups (> 50 ms) · jusqu’à 87 appels et 261 k triangles · 14 s mesurées
+Mémoire maintenant : tas JS 374 Mo sur 4192 · 134 géométries · 673 textures · 54 programmes
+Mémoire au plus haut : tas JS 395 Mo sur 4192 · 134 géométries · 673 textures · 54 programmes
+Changements de quartier :
+- (démarrage) → Almadies (direct) : 1356 ms de chargement · plus long bloc 1356 ms · pire image jusqu’à 2 s après 0 ms
+- Almadies → Corniche (direct) : 331 ms de chargement · plus long bloc 331 ms · pire image jusqu’à 2 s après 1500 ms
+- Corniche → Almadies (direct) : 1185 ms de chargement · plus long bloc 1185 ms · pire image jusqu’à 2 s après 1417 ms
+
+Ce que je faisais :
+Ce qui s’est passé :
+Ce que j’attendais :
+(une capture d’écran ou une vidéo aide beaucoup)

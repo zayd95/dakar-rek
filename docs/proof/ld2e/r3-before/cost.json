@@ -1,0 +1,40 @@
+{
+ "label": "before",
+ "at": "2026-10-27T22:44:05.972Z",
+ "cost": {
+  "buildSeconds": 14.1,
+  "gare-garden-day": {
+   "calls": 98,
+   "tris": 216308
+  },
+  "square-garden-day": {
+   "calls": 67,
+   "tris": 188302
+  },
+  "square-eye-day": {
+   "calls": 56,
+   "tris": 183474
+  },
+  "residence-ngor-day": {
+   "calls": 76,
+   "tris": 190764
+  },
+  "gare-garden-night": {
+   "calls": 110,
+   "tris": 213572
+  },
+  "square-garden-night": {
+   "calls": 78,
+   "tris": 194366
+  },
+  "square-eye-night": {
+   "calls": 53,
+   "tris": 179520
+  },
+  "residence-ngor-night": {
+   "calls": 88,
+   "tris": 192138
+  }
+ },
+ "errors": []
+}

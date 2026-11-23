@@ -1,0 +1,88 @@
+{
+ "label": "before",
+ "at": "2026-10-28T00:37:54.973Z",
+ "cost": {
+  "buildSeconds": 14.2,
+  "sign-street-near-day": {
+   "calls": 83,
+   "tris": 239942
+  },
+  "sign-street-east-day": {
+   "calls": 107,
+   "tris": 242160
+  },
+  "sign-road-far-east-day": {
+   "calls": 76,
+   "tris": 225506
+  },
+  "sign-road-far-west-day": {
+   "calls": 95,
+   "tris": 227994
+  },
+  "sign-avenue-day": {
+   "calls": 70,
+   "tris": 220936
+  },
+  "sign-cross-street-day": {
+   "calls": 60,
+   "tris": 208436
+  },
+  "sign-beach-day": {
+   "calls": 142,
+   "tris": 263172
+  },
+  "sign-aerial-day": {
+   "calls": 132,
+   "tris": 252641
+  },
+  "sign-door-day": {
+   "calls": 120,
+   "tris": 266120
+  },
+  "sign-door-near-day": {
+   "calls": 102,
+   "tris": 232564
+  },
+  "sign-street-near-night": {
+   "calls": 56,
+   "tris": 219518
+  },
+  "sign-street-east-night": {
+   "calls": 91,
+   "tris": 231428
+  },
+  "sign-road-far-east-night": {
+   "calls": 59,
+   "tris": 213936
+  },
+  "sign-road-far-west-night": {
+   "calls": 82,
+   "tris": 216882
+  },
+  "sign-avenue-night": {
+   "calls": 81,
+   "tris": 225546
+  },
+  "sign-cross-street-night": {
+   "calls": 74,
+   "tris": 211036
+  },
+  "sign-beach-night": {
+   "calls": 147,
+   "tris": 266256
+  },
+  "sign-aerial-night": {
+   "calls": 138,
+   "tris": 254009
+  },
+  "sign-door-night": {
+   "calls": 124,
+   "tris": 268890
+  },
+  "sign-door-near-night": {
+   "calls": 108,
+   "tris": 235556
+  }
+ },
+ "errors": []
+}

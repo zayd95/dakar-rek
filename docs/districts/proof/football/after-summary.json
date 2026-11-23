@@ -1,0 +1,137 @@
+{
+ "log": {
+  "straight": {
+   "walk": {
+    "max": 0.57,
+    "within1": 1,
+    "touchesPerS": 2.5,
+    "pace": 1.9
+   },
+   "jog": {
+    "max": 0.56,
+    "within1": 1,
+    "touchesPerS": 2.9,
+    "pace": 3.2
+   },
+   "sprint": {
+    "max": 0.54,
+    "within1": 1,
+    "touchesPerS": 4.1,
+    "pace": 7
+   }
+  },
+  "turns": {
+   "45°": {
+    "max": 0.61,
+    "within1_6": 1
+   },
+   "90°": {
+    "max": 0.62,
+    "within1_6": 1
+   },
+   "−90°": {
+    "max": 0.62,
+    "within1_6": 1
+   },
+   "180°": {
+    "max": 0.74,
+    "within1_6": 1
+   }
+  },
+  "slalom": {
+   "within1_6": 1,
+   "max": 0.62
+  },
+  "stops": {
+   "a jog": {
+    "ballPace": 0,
+    "dist": 0.83
+   },
+   "a sprint": {
+    "ballPace": 0,
+    "dist": 0.73
+   }
+  },
+  "pass": {
+   "startPace": 10.9,
+   "travelled40f": 6.86,
+   "maxJumpOverPace": 0.001,
+   "bodyTouches": 0
+  },
+  "regain": {
+   "ballPace": 0,
+   "dist": 0.79
+  }
+ },
+ "marks": [
+  [
+   0,
+   "acquire"
+  ],
+  [
+   4.333,
+   "dribble walk"
+  ],
+  [
+   7.967,
+   "dribble jog"
+  ],
+  [
+   11.4,
+   "dribble sprint"
+  ],
+  [
+   14.633,
+   "turn 45°"
+  ],
+  [
+   19.867,
+   "turn 90°"
+  ],
+  [
+   25.1,
+   "turn −90°"
+  ],
+  [
+   30.333,
+   "turn 180°"
+  ],
+  [
+   35.567,
+   "slalom"
+  ],
+  [
+   44.8,
+   "stop from a jog"
+  ],
+  [
+   50.733,
+   "stop from a sprint"
+  ],
+  [
+   55.667,
+   "pass"
+  ],
+  [
+   61.283,
+   "regain"
+  ],
+  [
+   69.583,
+   "shot (goal)"
+  ],
+  [
+   79.083,
+   "shot (wide)"
+  ],
+  [
+   87.083,
+   "leave"
+  ]
+ ],
+ "checks": {
+  "total": 24,
+  "failed": 0
+ },
+ "frames": 5315
+}

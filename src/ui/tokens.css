@@ -1,0 +1,34 @@
+/*
+ * Shared UI tokens (docs/UI-PRIMITIVES.md). The reference is the Tiak Tiak delivery card: white rounded cards on the grey sheet,
+ * a big green price, one yellow button with a darker edge. They are defined on `body` (not :root) so the `var(--row)`, `var(--ink)`…
+ * they borrow resolve with the night overrides of `body.theme-night` (src/ui/theme.css): one set of names, both scenes.
+ * Components use these names, never a literal colour, so a state (hover, pressed, selected, disabled) cannot go white-on-white.
+ */
+body {
+  /* spacing: a 4-point scale */
+  --ui-s1: 4px; --ui-s2: 8px; --ui-s3: 12px; --ui-s4: 16px; --ui-s5: 24px;
+  /* shape */
+  --ui-r-sm: 12px; --ui-r-md: 16px; --ui-r-card: 22px; --ui-r-pill: 999px;
+  --ui-tap: 48px;                                      /* smallest touch target of a row or button */
+  /* type (the sheet's font stack, style.css --font) */
+  --ui-t-title: 17px; --ui-t-body: 16px; --ui-t-small: 13px; --ui-t-price: 17px; --ui-t-price-xl: 28px;
+  --ui-w-label: 700; --ui-w-price: 850;
+  /* surfaces and ink: borrowed from style.css / theme.css, so they follow the scene */
+  --ui-sheet: var(--surface-2); --ui-card: var(--row); --ui-line: var(--sep);
+  --ui-ink: var(--ink); --ui-ink-2: var(--ink-2); --ui-ink-3: var(--ink-3);
+  --ui-gain: var(--gain); --ui-cost: var(--ink); --ui-warn: var(--warn);
+  --ui-tile: var(--surface-2);                         /* the icon tile and the pills on a card */
+  /* states of a row or a card: a tint over the card, never a fixed colour */
+  --ui-hover: rgba(60, 60, 67, .07); --ui-press: rgba(60, 60, 67, .15); --ui-selected: rgba(255, 200, 61, .26);
+  --ui-ring: var(--sun-deep);
+  --ui-star: #e0a100;                                  /* the gold star of an objective: 3:1 or better on the card, day (#fff) and night (#2c2c2e) */
+  /* the one primary button (yellow, dark ink, a darker edge) */
+  --ui-btn-bg: var(--sun); --ui-btn-ink: #2b2000; --ui-btn-edge: var(--sun-deep);
+  --ui-btn-shadow: 0 3px 0 var(--ui-btn-edge), 0 8px 16px rgba(240, 168, 0, .25);
+  --ui-card-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 6px 18px rgba(0, 0, 0, .08), inset 0 0 0 1px var(--sep);
+}
+body.theme-night {
+  --ui-star: #ffc83d;
+  --ui-hover: rgba(255, 255, 255, .08); --ui-press: rgba(255, 255, 255, .16); --ui-selected: rgba(255, 200, 61, .22);
+  --ui-card-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--sep);
+}

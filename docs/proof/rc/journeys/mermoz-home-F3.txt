@@ -1,0 +1,14 @@
+05:28:04 boot
+PASS: nothing of the Résidence is held yet 
+PASS: at the board by the gate, the home is offered {"id":"f3_filaos:sign","name":"Appartement F3","kind":"door","space":"street","primary":"Voir le logement","all":["Voir le logement"],"why":[]}
+PASS: « Voir le logement » opens the home: its name, the price and the rent Appartement F3Logement · Mermoz · Résidence Les Filaos🏠 Au sixième étage, sur la rue des filaos : entrée, séjour, cuisine, deux chambres, salle de bain, et la brise du soir au balconMermoz · Résidence Les Filaos · 83 m²
+PASS: the visit puts the player inside the apartment, far from the street (its own slot) {"x":1904,"z":3,"hub":"mermoz"}
+PASS: « Sortir » comes out by the building’s door just inside the gate {"x":68.5,"z":-35.6}
+PASS: « Louer » asks first: the rent by the day and by the hour, three days unpaid, then the keys Louer : Appartement F3Vérifie avant de confirmer :Loyer11 000 F / jour · soit 458 F chaque heure en villePayéau fil du jeu, pendant que tu joues (rien hors ligne)DébloqueEn faire ton domicile principal, y mettre tes meubles, cuisiner et te doucher chez toiImpa
+PASS: rented: the lease is held and nothing is paid at once {"how":"rented","wallet":100000000}
+05:30:47 after renting: sheet Appartement F3Logement · Mermoz · Résidence Les Filaos🏠 Au sixième étage, sur la rue des filaos : entrée, séjour, cuisine, deux chambres, salle de bain, et la brise du soir au balconMermoz · Résidenc [{"text":"🚪Entrer chez toi","off":false},{"text":"⭐Définir comme domicile principalTu y vis, on t’y livre ; tes meubles suivent et s’installent où il y a de la place (0 pièces)","off":false},{"text":"⭐Ventilateur au plafondSeul un bien à toi s’améliore−45 000 F","off":true},{"text":"⭐Peinture neuveSeul un bien à toi s’améliore−120 000 F","off":true},{"text":"🗝️Rendre les clésLe loyer s’arrête ; tes meubles reviennent chez toi","off":false}]
+PASS: moved in: the F3 is the principal residence {"home":"a2","uid":"a2"}
+PASS: « Entrer chez toi » from the board leads inside {"x":1904}
+PASS: after a reload: still the tenant of the same lease, back at the building’s door (or still inside) {"how":"rented","x":69}
+PASS: no JavaScript errors 
+11/11 Mermoz home checks passed

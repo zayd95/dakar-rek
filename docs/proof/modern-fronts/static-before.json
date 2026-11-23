@@ -1,0 +1,42 @@
+{
+ "plateau": {
+  "meshes": 50,
+  "tris": 68224
+ },
+ "plateau-lite": {
+  "meshes": 50,
+  "tris": 54824
+ },
+ "corniche": {
+  "meshes": 35,
+  "tris": 76722
+ },
+ "corniche-lite": {
+  "meshes": 35,
+  "tris": 63032
+ },
+ "almadies": {
+  "meshes": 77,
+  "tris": 117622
+ },
+ "almadies-lite": {
+  "meshes": 77,
+  "tris": 85864
+ },
+ "pikine": {
+  "meshes": 68,
+  "tris": 134143
+ },
+ "pikine-lite": {
+  "meshes": 68,
+  "tris": 106350
+ },
+ "mermoz": {
+  "meshes": 23,
+  "tris": 118237
+ },
+ "mermoz-lite": {
+  "meshes": 23,
+  "tris": 70887
+ }
+}

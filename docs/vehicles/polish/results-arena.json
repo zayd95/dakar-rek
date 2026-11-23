@@ -1,0 +1,48 @@
+{
+ "journey": "arena",
+ "base": "http://127.0.0.1:4518/",
+ "minutes": 6.2,
+ "renderer": "headless Chromium + SwiftShader (not a phone)",
+ "results": [
+  {
+   "name": "the zone's two ends are drawn: a line of bollards and a sign « ZONE PIÉTONNE » at each end of the street",
+   "ok": true,
+   "detail": "{\"meshes\":2,\"visible\":true}"
+  },
+  {
+   "name": "car, junction 1 (x = 0) beside the zone: driven straight through, never slowed by anything unseen",
+   "ok": true,
+   "detail": "{\"end\":[-2.1,-19.91],\"slowest\":3.93,\"where\":[-2.1,-63.21],\"rapideAhead\":null,\"impacts\":[]}"
+  },
+  {
+   "name": "car, junction 2 (x = 60) beside the zone: driven straight through, never slowed by anything unseen",
+   "ok": true,
+   "detail": "{\"end\":[57.9,-19.53],\"slowest\":3.76,\"where\":[57.9,-62.1],\"rapideAhead\":null,\"impacts\":[]}"
+  },
+  {
+   "name": "car, toward the gate: it stops with its bumper at the line of bollards (x = 15.5), held by them and nothing else",
+   "ok": true,
+   "detail": "{\"x\":13.52,\"z\":-57.93,\"why\":{\"why\":\"footprint:2\",\"foot\":{\"x\":30,\"z\":-60.15,\"yaw\":0,\"hl\":7.149999999999999,\"hw\":14.5},\"rect\":null}}"
+  },
+  {
+   "name": "Jakarta: in by the kerb, past its guarded places, between two posts of the east line into the zone",
+   "ok": true,
+   "detail": "{\"end\":[39.84,-55.72],\"minX\":39.84}"
+  },
+  {
+   "name": "Jakarta: in the zone, held only by what is drawn there (a stall, the queue's crowd barriers), never by the zone itself",
+   "ok": true,
+   "detail": "{\"x\":39.84,\"why\":{\"why\":\"collider:574\",\"foot\":null,\"rect\":{\"x0\":37.15,\"z0\":-56.2,\"x1\":38.85,\"z1\":-55.2,\"h\":1}}}"
+  },
+  {
+   "name": "Jakarta: straight through the junction west of the zone, never slowed (no knock, never below 0.8 m/s, as the car)",
+   "ok": true,
+   "detail": "{\"end\":[-2.1,-24.23],\"slowest\":3.48,\"where\":[-2.1,-62.65],\"rapideAhead\":null,\"impacts\":[]}"
+  },
+  {
+   "name": "no JavaScript error",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

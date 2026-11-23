@@ -1,0 +1,1351 @@
+{
+ "init": {
+  "v4": true,
+  "meshy_m": true,
+  "meshy_f": true,
+  "loadMs": {
+   "v4": 54.7,
+   "meshy_m": 77.4,
+   "meshy_f": 55.5
+  },
+  "downloadKB": {
+   "v4": 601,
+   "meshy_m": 1136,
+   "meshy_f": 1456
+  }
+ },
+ "cases": {
+  "v4_m": {
+   "onFoot": {
+    "walk": {
+     "speed": 1.4,
+     "travelled": 11.2,
+     "steps": 16,
+     "soleClearance_m": {
+      "p5": -0.026,
+      "median": -0.019,
+      "p95": 0.003
+     },
+     "penetrationMax_m": 0.028,
+     "armSwing_m": {
+      "L": 0.554,
+      "R": 0.554
+     },
+     "pelvisRange_m": 0.066,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Walk"
+     ]
+    },
+    "jog": {
+     "speed": 3.8,
+     "travelled": 30.4,
+     "steps": 25,
+     "soleClearance_m": {
+      "p5": -0.033,
+      "median": -0.019,
+      "p95": -0.009
+     },
+     "penetrationMax_m": 0.037,
+     "armSwing_m": {
+      "L": 0.454,
+      "R": 0.454
+     },
+     "pelvisRange_m": 0.055,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Jog"
+     ]
+    },
+    "run": {
+     "speed": 5.8,
+     "travelled": 46.4,
+     "steps": 26,
+     "soleClearance_m": {
+      "p5": -0.037,
+      "median": -0.019,
+      "p95": -0.014
+     },
+     "penetrationMax_m": 0.041,
+     "armSwing_m": {
+      "L": 0.445,
+      "R": 0.445
+     },
+     "pelvisRange_m": 0.067,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Run"
+     ]
+    }
+   },
+   "footShape": {
+    "L_ankleAboveSole": 0.109,
+    "L_heelBehindAnkle": -0.036,
+    "L_toeAheadOfAnkle": 0.178,
+    "L_soleLength": 0.142,
+    "L_width": 0.09,
+    "R_ankleAboveSole": 0.109,
+    "R_heelBehindAnkle": -0.036,
+    "R_toeAheadOfAnkle": 0.178,
+    "R_soleLength": 0.142,
+    "R_width": 0.09
+   },
+   "sitStand": {
+    "seated": {
+     "hipsBone_m": 0.018,
+     "seatContact_m": -0.099,
+     "feetToFloor_m": -0.078,
+     "thighSlope_deg": -5.03
+    },
+    "backToStanding": {
+     "hips_m": 0.002,
+     "feet_m": 0.002,
+     "clip": "Idle"
+    },
+    "standingFeetToFloor_m": -0.021
+   },
+   "ride": {
+    "seeds": [
+     2,
+     4,
+     5,
+     8,
+     9
+    ],
+    "palmTipToGrip_m": {
+     "median": 0.053,
+     "max": 0.053
+    },
+    "handMeshToGrip_m": {
+     "median": 0.011,
+     "max": 0.011
+    },
+    "footBoneToPeg_m": {
+     "median": 0.04,
+     "max": 0.04
+    },
+    "footMeshToPeg_m": {
+     "median": 0.024,
+     "max": 0.024
+    },
+    "hipsAboveSaddle_m": {
+     "min": 0.02,
+     "max": 0.02
+    },
+    "rows": [
+     {
+      "seed": 2,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.011
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.024,
+       0.024
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 4,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.011
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.024,
+       0.024
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 5,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.011
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.024,
+       0.024
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 8,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.011
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.024,
+       0.024
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 9,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.011
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.024,
+       0.024
+      ],
+      "hipsAboveSaddle_m": 0.02
+     }
+    ]
+   },
+   "gestures": {
+    "mouthTargetVsMesh_m": 0.091,
+    "mouthTargetDy_m": 0.088,
+    "mouthTargetDz_m": 0.023,
+    "wristReachError_m": 0.009,
+    "fingersToMeshMouth_m": 0.101,
+    "fingersToGameMouth_m": 0.015,
+    "armsUpHandY_m": [
+     1.949,
+     1.949
+    ],
+    "heldObject": {
+     "gripToNearestHandVertex_m": 0.02,
+     "handVerticesWithin2cm": 1
+    }
+   },
+   "transitions": {
+    "idle": {
+     "maxSpeed_mps": 0.163,
+     "p99_mps": 0.163
+    },
+    "idle→walk": {
+     "maxSpeed_mps": 4.831,
+     "p99_mps": 4.783
+    },
+    "walk→run": {
+     "maxSpeed_mps": 9.962,
+     "p99_mps": 7.687
+    },
+    "run→stop": {
+     "maxSpeed_mps": 9.244,
+     "p99_mps": 9.244
+    },
+    "talk": {
+     "maxSpeed_mps": 3.94,
+     "p99_mps": 3.94
+    },
+    "sit": {
+     "maxSpeed_mps": 3.843,
+     "p99_mps": 3.843
+    },
+    "stand": {
+     "maxSpeed_mps": 10.264,
+     "p99_mps": 10.264
+    },
+    "dance": {
+     "maxSpeed_mps": 10.81,
+     "p99_mps": 10.81
+    },
+    "celebrate": {
+     "maxSpeed_mps": 10.795,
+     "p99_mps": 10.795
+    },
+    "back to idle": {
+     "maxSpeed_mps": 8.98,
+     "p99_mps": 8.98
+    }
+   },
+   "cost": {
+    "drawCallsPerBody": 10,
+    "trianglesPerBody": 5324,
+    "skinnedVertices": 2787,
+    "bones": 20,
+    "geometryKB": 151,
+    "textureMB": 0,
+    "jsMsPerBodyPerFrame": 0.018,
+    "crowd40": {
+     "drawCalls": 400,
+     "triangles": 212960,
+     "softwareRenderMs": 6.55
+    }
+   }
+  },
+  "v4_f": {
+   "onFoot": {
+    "walk": {
+     "speed": 1.4,
+     "travelled": 11.2,
+     "steps": 16,
+     "soleClearance_m": {
+      "p5": -0.025,
+      "median": -0.018,
+      "p95": 0.004
+     },
+     "penetrationMax_m": 0.028,
+     "armSwing_m": {
+      "L": 0.535,
+      "R": 0.535
+     },
+     "pelvisRange_m": 0.066,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Walk"
+     ]
+    },
+    "jog": {
+     "speed": 3.8,
+     "travelled": 30.4,
+     "steps": 25,
+     "soleClearance_m": {
+      "p5": -0.034,
+      "median": -0.018,
+      "p95": -0.01
+     },
+     "penetrationMax_m": 0.036,
+     "armSwing_m": {
+      "L": 0.439,
+      "R": 0.439
+     },
+     "pelvisRange_m": 0.056,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Jog"
+     ]
+    },
+    "run": {
+     "speed": 5.8,
+     "travelled": 46.4,
+     "steps": 26,
+     "soleClearance_m": {
+      "p5": -0.035,
+      "median": -0.018,
+      "p95": -0.014
+     },
+     "penetrationMax_m": 0.039,
+     "armSwing_m": {
+      "L": 0.42,
+      "R": 0.42
+     },
+     "pelvisRange_m": 0.068,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Run"
+     ]
+    }
+   },
+   "footShape": {
+    "L_ankleAboveSole": 0.103,
+    "L_heelBehindAnkle": -0.035,
+    "L_toeAheadOfAnkle": 0.171,
+    "L_soleLength": 0.137,
+    "L_width": 0.086,
+    "R_ankleAboveSole": 0.103,
+    "R_heelBehindAnkle": -0.035,
+    "R_toeAheadOfAnkle": 0.171,
+    "R_soleLength": 0.137,
+    "R_width": 0.086
+   },
+   "sitStand": {
+    "seated": {
+     "hipsBone_m": -0.007,
+     "seatContact_m": -0.137,
+     "feetToFloor_m": -0.074,
+     "thighSlope_deg": -4.977
+    },
+    "backToStanding": {
+     "hips_m": 0.002,
+     "feet_m": 0.002,
+     "clip": "Idle"
+    },
+    "standingFeetToFloor_m": -0.02
+   },
+   "ride": {
+    "seeds": [
+     2,
+     4,
+     5,
+     8,
+     9
+    ],
+    "palmTipToGrip_m": {
+     "median": 0.065,
+     "max": 0.065
+    },
+    "handMeshToGrip_m": {
+     "median": 0.023,
+     "max": 0.023
+    },
+    "footBoneToPeg_m": {
+     "median": 0.032,
+     "max": 0.032
+    },
+    "footMeshToPeg_m": {
+     "median": 0.025,
+     "max": 0.025
+    },
+    "hipsAboveSaddle_m": {
+     "min": -0.005,
+     "max": -0.005
+    },
+    "rows": [
+     {
+      "seed": 2,
+      "palmTipToGrip_m": [
+       0.065,
+       0.065
+      ],
+      "handMeshToGrip_m": [
+       0.023,
+       0.023
+      ],
+      "footBoneToPeg_m": [
+       0.032,
+       0.032
+      ],
+      "footMeshToPeg_m": [
+       0.025,
+       0.025
+      ],
+      "hipsAboveSaddle_m": -0.005
+     },
+     {
+      "seed": 4,
+      "palmTipToGrip_m": [
+       0.065,
+       0.065
+      ],
+      "handMeshToGrip_m": [
+       0.023,
+       0.023
+      ],
+      "footBoneToPeg_m": [
+       0.032,
+       0.032
+      ],
+      "footMeshToPeg_m": [
+       0.025,
+       0.025
+      ],
+      "hipsAboveSaddle_m": -0.005
+     },
+     {
+      "seed": 5,
+      "palmTipToGrip_m": [
+       0.065,
+       0.065
+      ],
+      "handMeshToGrip_m": [
+       0.023,
+       0.023
+      ],
+      "footBoneToPeg_m": [
+       0.032,
+       0.032
+      ],
+      "footMeshToPeg_m": [
+       0.025,
+       0.025
+      ],
+      "hipsAboveSaddle_m": -0.005
+     },
+     {
+      "seed": 8,
+      "palmTipToGrip_m": [
+       0.065,
+       0.065
+      ],
+      "handMeshToGrip_m": [
+       0.023,
+       0.023
+      ],
+      "footBoneToPeg_m": [
+       0.032,
+       0.032
+      ],
+      "footMeshToPeg_m": [
+       0.025,
+       0.025
+      ],
+      "hipsAboveSaddle_m": -0.005
+     },
+     {
+      "seed": 9,
+      "palmTipToGrip_m": [
+       0.065,
+       0.065
+      ],
+      "handMeshToGrip_m": [
+       0.023,
+       0.023
+      ],
+      "footBoneToPeg_m": [
+       0.032,
+       0.032
+      ],
+      "footMeshToPeg_m": [
+       0.025,
+       0.025
+      ],
+      "hipsAboveSaddle_m": -0.005
+     }
+    ]
+   },
+   "gestures": {
+    "mouthTargetVsMesh_m": 0.089,
+    "mouthTargetDy_m": 0.085,
+    "mouthTargetDz_m": 0.028,
+    "wristReachError_m": 0.009,
+    "fingersToMeshMouth_m": 0.099,
+    "fingersToGameMouth_m": 0.014,
+    "armsUpHandY_m": [
+     1.875,
+     1.875
+    ],
+    "heldObject": {
+     "gripToNearestHandVertex_m": 0.018,
+     "handVerticesWithin2cm": 1
+    }
+   },
+   "transitions": {
+    "idle": {
+     "maxSpeed_mps": 0.163,
+     "p99_mps": 0.163
+    },
+    "idle→walk": {
+     "maxSpeed_mps": 4.898,
+     "p99_mps": 4.817
+    },
+    "walk→run": {
+     "maxSpeed_mps": 8.984,
+     "p99_mps": 6.775
+    },
+    "run→stop": {
+     "maxSpeed_mps": 10.517,
+     "p99_mps": 10.517
+    },
+    "talk": {
+     "maxSpeed_mps": 3.94,
+     "p99_mps": 3.94
+    },
+    "sit": {
+     "maxSpeed_mps": 3.843,
+     "p99_mps": 3.843
+    },
+    "stand": {
+     "maxSpeed_mps": 10.264,
+     "p99_mps": 10.264
+    },
+    "dance": {
+     "maxSpeed_mps": 10.81,
+     "p99_mps": 10.81
+    },
+    "celebrate": {
+     "maxSpeed_mps": 10.795,
+     "p99_mps": 10.795
+    },
+    "back to idle": {
+     "maxSpeed_mps": 8.979,
+     "p99_mps": 8.979
+    }
+   },
+   "cost": {
+    "drawCallsPerBody": 10,
+    "trianglesPerBody": 5516,
+    "skinnedVertices": 2885,
+    "bones": 20,
+    "geometryKB": 156,
+    "textureMB": 0,
+    "jsMsPerBodyPerFrame": 0.011,
+    "crowd40": {
+     "drawCalls": 400,
+     "triangles": 220640,
+     "softwareRenderMs": 217.642
+    }
+   }
+  },
+  "meshy_m": {
+   "onFoot": {
+    "walk": {
+     "speed": 1.4,
+     "travelled": 11.2,
+     "steps": 16,
+     "soleClearance_m": {
+      "p5": -0.019,
+      "median": 0,
+      "p95": 0.001
+     },
+     "penetrationMax_m": 0.023,
+     "armSwing_m": {
+      "L": 0.554,
+      "R": 0.554
+     },
+     "pelvisRange_m": 0.066,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Walk"
+     ]
+    },
+    "jog": {
+     "speed": 3.8,
+     "travelled": 30.4,
+     "steps": 25,
+     "soleClearance_m": {
+      "p5": -0.029,
+      "median": 0,
+      "p95": 0.002
+     },
+     "penetrationMax_m": 0.035,
+     "armSwing_m": {
+      "L": 0.454,
+      "R": 0.454
+     },
+     "pelvisRange_m": 0.055,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Jog"
+     ]
+    },
+    "run": {
+     "speed": 5.8,
+     "travelled": 46.4,
+     "steps": 26,
+     "soleClearance_m": {
+      "p5": -0.034,
+      "median": 0,
+      "p95": 0.002
+     },
+     "penetrationMax_m": 0.039,
+     "armSwing_m": {
+      "L": 0.445,
+      "R": 0.445
+     },
+     "pelvisRange_m": 0.067,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Run"
+     ]
+    }
+   },
+   "footShape": {
+    "L_ankleAboveSole": 0.09,
+    "L_heelBehindAnkle": 0.061,
+    "L_toeAheadOfAnkle": 0.178,
+    "L_soleLength": 0.239,
+    "L_width": 0.138,
+    "R_ankleAboveSole": 0.089,
+    "R_heelBehindAnkle": 0.065,
+    "R_toeAheadOfAnkle": 0.178,
+    "R_soleLength": 0.243,
+    "R_width": 0.125
+   },
+   "sitStand": {
+    "seated": {
+     "hipsBone_m": 0.048,
+     "seatContact_m": -0.113,
+     "feetToFloor_m": -0.031,
+     "thighSlope_deg": -5.03
+    },
+    "backToStanding": {
+     "hips_m": 0.002,
+     "feet_m": 0.002,
+     "clip": "Idle"
+    },
+    "standingFeetToFloor_m": -0.002
+   },
+   "ride": {
+    "seeds": [
+     2,
+     4,
+     5,
+     8,
+     9
+    ],
+    "palmTipToGrip_m": {
+     "median": 0.053,
+     "max": 0.053
+    },
+    "handMeshToGrip_m": {
+     "median": 0.013,
+     "max": 0.013
+    },
+    "footBoneToPeg_m": {
+     "median": 0.04,
+     "max": 0.04
+    },
+    "footMeshToPeg_m": {
+     "median": 0.034,
+     "max": 0.034
+    },
+    "hipsAboveSaddle_m": {
+     "min": 0.02,
+     "max": 0.02
+    },
+    "rows": [
+     {
+      "seed": 2,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.013
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.023,
+       0.034
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 4,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.013
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.023,
+       0.034
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 5,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.013
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.023,
+       0.034
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 8,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.013
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.023,
+       0.034
+      ],
+      "hipsAboveSaddle_m": 0.02
+     },
+     {
+      "seed": 9,
+      "palmTipToGrip_m": [
+       0.053,
+       0.053
+      ],
+      "handMeshToGrip_m": [
+       0.011,
+       0.013
+      ],
+      "footBoneToPeg_m": [
+       0.04,
+       0.04
+      ],
+      "footMeshToPeg_m": [
+       0.023,
+       0.034
+      ],
+      "hipsAboveSaddle_m": 0.02
+     }
+    ]
+   },
+   "gestures": {
+    "mouthTargetVsMesh_m": 0.021,
+    "mouthTargetDy_m": 0,
+    "mouthTargetDz_m": 0.02,
+    "wristReachError_m": 0.077,
+    "fingersToMeshMouth_m": 0.014,
+    "fingersToGameMouth_m": 0.024,
+    "armsUpHandY_m": [
+     1.949,
+     1.949
+    ],
+    "heldObject": {
+     "gripToNearestHandVertex_m": 0.006,
+     "handVerticesWithin2cm": 6
+    }
+   },
+   "transitions": {
+    "idle": {
+     "maxSpeed_mps": 0.169,
+     "p99_mps": 0.169
+    },
+    "idle→walk": {
+     "maxSpeed_mps": 5.082,
+     "p99_mps": 4.739
+    },
+    "walk→run": {
+     "maxSpeed_mps": 10.314,
+     "p99_mps": 7.691
+    },
+    "run→stop": {
+     "maxSpeed_mps": 10.657,
+     "p99_mps": 10.657
+    },
+    "talk": {
+     "maxSpeed_mps": 4.48,
+     "p99_mps": 4.48
+    },
+    "sit": {
+     "maxSpeed_mps": 4.09,
+     "p99_mps": 4.09
+    },
+    "stand": {
+     "maxSpeed_mps": 9.712,
+     "p99_mps": 9.712
+    },
+    "dance": {
+     "maxSpeed_mps": 11.836,
+     "p99_mps": 11.836
+    },
+    "celebrate": {
+     "maxSpeed_mps": 11.885,
+     "p99_mps": 11.885
+    },
+    "back to idle": {
+     "maxSpeed_mps": 9.852,
+     "p99_mps": 9.852
+    }
+   },
+   "cost": {
+    "drawCallsPerBody": 1,
+    "trianglesPerBody": 12482,
+    "skinnedVertices": 14419,
+    "bones": 20,
+    "geometryKB": 3734,
+    "textureMB": 5.32,
+    "jsMsPerBodyPerFrame": 0.009,
+    "crowd40": {
+     "drawCalls": 40,
+     "triangles": 499280,
+     "softwareRenderMs": 1.25
+    }
+   }
+  },
+  "meshy_f": {
+   "onFoot": {
+    "walk": {
+     "speed": 1.4,
+     "travelled": 11.2,
+     "steps": 17,
+     "soleClearance_m": {
+      "p5": -0.015,
+      "median": 0,
+      "p95": 0.003
+     },
+     "penetrationMax_m": 0.02,
+     "armSwing_m": {
+      "L": 0.52,
+      "R": 0.52
+     },
+     "pelvisRange_m": 0.066,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Walk"
+     ]
+    },
+    "jog": {
+     "speed": 3.8,
+     "travelled": 30.4,
+     "steps": 25,
+     "soleClearance_m": {
+      "p5": -0.024,
+      "median": 0,
+      "p95": 0.003
+     },
+     "penetrationMax_m": 0.03,
+     "armSwing_m": {
+      "L": 0.428,
+      "R": 0.428
+     },
+     "pelvisRange_m": 0.057,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Jog"
+     ]
+    },
+    "run": {
+     "speed": 5.8,
+     "travelled": 46.4,
+     "steps": 27,
+     "soleClearance_m": {
+      "p5": -0.032,
+      "median": 0,
+      "p95": 0.003
+     },
+     "penetrationMax_m": 0.036,
+     "armSwing_m": {
+      "L": 0.403,
+      "R": 0.403
+     },
+     "pelvisRange_m": 0.069,
+     "footSlip_m": {
+      "L": 0,
+      "R": 0
+     },
+     "clips": [
+      "Run"
+     ]
+    }
+   },
+   "footShape": {
+    "L_ankleAboveSole": 0.082,
+    "L_heelBehindAnkle": 0.032,
+    "L_toeAheadOfAnkle": 0.166,
+    "L_soleLength": 0.197,
+    "L_width": 0.101,
+    "R_ankleAboveSole": 0.084,
+    "R_heelBehindAnkle": 0.038,
+    "R_toeAheadOfAnkle": 0.166,
+    "R_soleLength": 0.204,
+    "R_width": 0.105
+   },
+   "sitStand": {
+    "seated": {
+     "hipsBone_m": -0.017,
+     "seatContact_m": -0.139,
+     "feetToFloor_m": -0.056,
+     "thighSlope_deg": -5.03
+    },
+    "backToStanding": {
+     "hips_m": 0.002,
+     "feet_m": 0.002,
+     "clip": "Idle"
+    },
+    "standingFeetToFloor_m": -0.002
+   },
+   "ride": {
+    "seeds": [
+     2,
+     4,
+     5,
+     8,
+     9
+    ],
+    "palmTipToGrip_m": {
+     "median": 0.076,
+     "max": 0.076
+    },
+    "handMeshToGrip_m": {
+     "median": 0.054,
+     "max": 0.054
+    },
+    "footBoneToPeg_m": {
+     "median": 0.028,
+     "max": 0.028
+    },
+    "footMeshToPeg_m": {
+     "median": 0.03,
+     "max": 0.03
+    },
+    "hipsAboveSaddle_m": {
+     "min": -0.015,
+     "max": -0.015
+    },
+    "rows": [
+     {
+      "seed": 2,
+      "palmTipToGrip_m": [
+       0.076,
+       0.076
+      ],
+      "handMeshToGrip_m": [
+       0.044,
+       0.054
+      ],
+      "footBoneToPeg_m": [
+       0.028,
+       0.028
+      ],
+      "footMeshToPeg_m": [
+       0.03,
+       0.026
+      ],
+      "hipsAboveSaddle_m": -0.015
+     },
+     {
+      "seed": 4,
+      "palmTipToGrip_m": [
+       0.076,
+       0.076
+      ],
+      "handMeshToGrip_m": [
+       0.044,
+       0.054
+      ],
+      "footBoneToPeg_m": [
+       0.028,
+       0.028
+      ],
+      "footMeshToPeg_m": [
+       0.03,
+       0.026
+      ],
+      "hipsAboveSaddle_m": -0.015
+     },
+     {
+      "seed": 5,
+      "palmTipToGrip_m": [
+       0.076,
+       0.076
+      ],
+      "handMeshToGrip_m": [
+       0.044,
+       0.054
+      ],
+      "footBoneToPeg_m": [
+       0.028,
+       0.028
+      ],
+      "footMeshToPeg_m": [
+       0.03,
+       0.026
+      ],
+      "hipsAboveSaddle_m": -0.015
+     },
+     {
+      "seed": 8,
+      "palmTipToGrip_m": [
+       0.076,
+       0.076
+      ],
+      "handMeshToGrip_m": [
+       0.044,
+       0.054
+      ],
+      "footBoneToPeg_m": [
+       0.028,
+       0.028
+      ],
+      "footMeshToPeg_m": [
+       0.03,
+       0.026
+      ],
+      "hipsAboveSaddle_m": -0.015
+     },
+     {
+      "seed": 9,
+      "palmTipToGrip_m": [
+       0.076,
+       0.076
+      ],
+      "handMeshToGrip_m": [
+       0.044,
+       0.054
+      ],
+      "footBoneToPeg_m": [
+       0.028,
+       0.028
+      ],
+      "footMeshToPeg_m": [
+       0.03,
+       0.026
+      ],
+      "hipsAboveSaddle_m": -0.015
+     }
+    ]
+   },
+   "gestures": {
+    "mouthTargetVsMesh_m": 0.091,
+    "mouthTargetDy_m": 0,
+    "mouthTargetDz_m": 0.02,
+    "wristReachError_m": 0.076,
+    "fingersToMeshMouth_m": 0.03,
+    "fingersToGameMouth_m": 0.046,
+    "armsUpHandY_m": [
+     1.842,
+     1.842
+    ],
+    "heldObject": {
+     "gripToNearestHandVertex_m": 0.02,
+     "handVerticesWithin2cm": 0
+    }
+   },
+   "transitions": {
+    "idle": {
+     "maxSpeed_mps": 0.17,
+     "p99_mps": 0.17
+    },
+    "idle→walk": {
+     "maxSpeed_mps": 5.43,
+     "p99_mps": 4.821
+    },
+    "walk→run": {
+     "maxSpeed_mps": 6.585,
+     "p99_mps": 6.214
+    },
+    "run→stop": {
+     "maxSpeed_mps": 14.333,
+     "p99_mps": 14.333
+    },
+    "talk": {
+     "maxSpeed_mps": 4.311,
+     "p99_mps": 4.311
+    },
+    "sit": {
+     "maxSpeed_mps": 4.129,
+     "p99_mps": 4.129
+    },
+    "stand": {
+     "maxSpeed_mps": 10.27,
+     "p99_mps": 10.27
+    },
+    "dance": {
+     "maxSpeed_mps": 12.224,
+     "p99_mps": 12.224
+    },
+    "celebrate": {
+     "maxSpeed_mps": 12.379,
+     "p99_mps": 12.379
+    },
+    "back to idle": {
+     "maxSpeed_mps": 10.038,
+     "p99_mps": 10.038
+    }
+   },
+   "cost": {
+    "drawCallsPerBody": 1,
+    "trianglesPerBody": 12528,
+    "skinnedVertices": 21625,
+    "bones": 20,
+    "geometryKB": 5564,
+    "textureMB": 5.32,
+    "jsMsPerBodyPerFrame": 0.008,
+    "crowd40": {
+     "drawCalls": 40,
+     "triangles": 501120,
+     "softwareRenderMs": 0.85
+    }
+   }
+  }
+ },
+ "switching": {
+  "switches": 60,
+  "errors": 0,
+  "log": [],
+  "createMs": {
+   "v4": {
+    "median": 0.5,
+    "max": 0.8
+   },
+   "meshy_m": {
+    "median": 0.3,
+    "max": 0.4
+   },
+   "meshy_f": {
+    "median": 0.2,
+    "max": 0.3
+   }
+  },
+  "totalSeconds": 0.12,
+  "geometriesBefore": 14,
+  "geometriesAfter": 14,
+  "texturesBefore": 908,
+  "texturesAfter": 908,
+  "fallback": {
+   "notLoadedBodyGot": "v4",
+   "missingFileLoadResult": false,
+   "missingFileBodyGot": "v4",
+   "reloadResult": true,
+   "reloadedBodyGot": "meshy_f"
+  }
+ },
+ "lodVariants": {
+  "meshy_m_low.glb": {
+   "load": {
+    "ok": true,
+    "ms": 30.1,
+    "kb": 656
+   },
+   "cost": {
+    "drawCallsPerBody": 1,
+    "trianglesPerBody": 6240,
+    "skinnedVertices": 7710,
+    "bones": 20,
+    "geometryKB": 1994,
+    "textureMB": 1.33,
+    "jsMsPerBodyPerFrame": 0.012,
+    "crowd40": {
+     "drawCalls": 40,
+     "triangles": 249600,
+     "softwareRenderMs": 1.117
+    }
+   },
+   "onFootRun": {
+    "speed": 5.8,
+    "travelled": 46.4,
+    "steps": 26,
+    "soleClearance_m": {
+     "p5": -0.033,
+     "median": 0,
+     "p95": 0.002
+    },
+    "penetrationMax_m": 0.038,
+    "armSwing_m": {
+     "L": 0.445,
+     "R": 0.445
+    },
+    "pelvisRange_m": 0.067,
+    "footSlip_m": {
+     "L": 0,
+     "R": 0
+    },
+    "clips": [
+     "Run"
+    ]
+   }
+  },
+  "meshy_f_low.glb": {
+   "load": {
+    "ok": true,
+    "ms": 28.6,
+    "kb": 1383
+   },
+   "cost": {
+    "drawCallsPerBody": 1,
+    "trianglesPerBody": 12528,
+    "skinnedVertices": 21625,
+    "bones": 20,
+    "geometryKB": 5564,
+    "textureMB": 1.33,
+    "jsMsPerBodyPerFrame": 0.01,
+    "crowd40": {
+     "drawCalls": 40,
+     "triangles": 501120,
+     "softwareRenderMs": 1.017
+    }
+   },
+   "onFootRun": {
+    "speed": 5.8,
+    "travelled": 46.4,
+    "steps": 27,
+    "soleClearance_m": {
+     "p5": -0.032,
+     "median": 0,
+     "p95": 0.003
+    },
+    "penetrationMax_m": 0.036,
+    "armSwing_m": {
+     "L": 0.403,
+     "R": 0.403
+    },
+    "pelvisRange_m": 0.069,
+    "footSlip_m": {
+     "L": 0,
+     "R": 0
+    },
+    "clips": [
+     "Run"
+    ]
+   }
+  }
+ },
+ "pageErrors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found)"
+ ]
+}

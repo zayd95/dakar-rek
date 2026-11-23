@@ -1,0 +1,133 @@
+{
+ "old": {
+  "pieces": 10,
+  "bought": [
+   [
+    "canape_wax",
+    true
+   ],
+   [
+    "table_basse",
+    true
+   ],
+   [
+    "tele_plate",
+    true
+   ],
+   [
+    "lit_bois",
+    true
+   ],
+   [
+    "armoire_bois",
+    true
+   ],
+   [
+    "chaise_bois",
+    true
+   ],
+   [
+    "plante",
+    true
+   ],
+   [
+    "radio",
+    true
+   ],
+   [
+    "tapis",
+    true
+   ],
+   [
+    "lampadaire",
+    true
+   ]
+  ],
+  "rooms": {
+   "centre": {
+    "calls": 17,
+    "tris": 16800,
+    "ms": 83.4
+   },
+   "front": {
+    "calls": 13,
+    "tris": 16528,
+    "ms": 88.8
+   },
+   "back": {
+    "calls": 16,
+    "tris": 16720,
+    "ms": 89.1
+   }
+  },
+  "errors": []
+ },
+ "new": {
+  "pieces": 10,
+  "bought": [
+   [
+    "canape_wax",
+    true
+   ],
+   [
+    "table_basse",
+    true
+   ],
+   [
+    "tele_plate",
+    true
+   ],
+   [
+    "lit_bois",
+    true
+   ],
+   [
+    "armoire_bois",
+    true
+   ],
+   [
+    "chaise_bois",
+    true
+   ],
+   [
+    "plante",
+    true
+   ],
+   [
+    "radio",
+    true
+   ],
+   [
+    "tapis",
+    true
+   ],
+   [
+    "lampadaire",
+    true
+   ]
+  ],
+  "rooms": {
+   "sejour": {
+    "calls": 21,
+    "tris": 23064,
+    "ms": 120.5
+   },
+   "chambre": {
+    "calls": 23,
+    "tris": 23602,
+    "ms": 104.8
+   },
+   "entree": {
+    "calls": 14,
+    "tris": 22512,
+    "ms": 107.9
+   },
+   "cuisine": {
+    "calls": 17,
+    "tris": 22796,
+    "ms": 93.6
+   }
+  },
+  "errors": []
+ }
+}

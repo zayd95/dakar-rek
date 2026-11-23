@@ -1,0 +1,67 @@
+import type { Affordance, Target, TargetSource } from './types';
+
+/**
+ * One contextual interaction system for the whole world. Every frame it asks each source for the targets in reach and
+ * focuses the best one: the closest, slightly preferring what is in front of the player, plus the target's bias.
+ */
+export class Interactions {
+  focus: Target | null = null;
+  private sources: TargetSource[] = [];
+  private buf: Target[] = [];
+
+  add(source: TargetSource) { this.remove(source.name); this.sources.push(source); return source; }
+  remove(name: string) { this.sources = this.sources.filter(s => s.name !== name); }
+
+  /**
+   * Picks the focused target. `facing` is the player's yaw (forward = sin/cos of it, as everywhere in the game). `feet` (LD2.0-D, indoors): the
+   * height of the player's feet; a target whose prompt stands on another floor of the home is not in reach.
+   */
+  update(space: string, x: number, z: number, facing: number, feet?: number): Target | null {
+    const buf = this.buf; buf.length = 0;
+    let from = -1, to = 0;
+    for (const s of this.sources) {
+      const i = buf.length; s.collect(space, x, z, buf);
+      if (from < 0 && s.exclusive?.()) { from = i; to = buf.length; }
+    }
+    if (from >= 0) { buf.copyWithin(0, from, to); buf.length = to - from; }          // a source holding the button: its targets only
+    this.focus = pickTarget(buf, space, x, z, facing, feet);
+    return this.focus;
+  }
+
+  /**
+   * The focus for an action pressed now: the frame's, else picked here. No focus is kept while a sheet is up (main.ts),
+   * and the frame that picks it again may not have run yet when the button is pressed right after the sheet closes
+   * (« Annuler », then the window again: a slow renderer draws a few frames a second) — the action must not be lost.
+   */
+  current(space: string, x: number, z: number, facing: number, feet?: number): Target | null { return this.focus ?? this.update(space, x, z, facing, feet); }
+
+  /** The action the main button runs: the first affordance that is available. */
+  primary(target: Target | null = this.focus): Affordance | null { return primaryOf(target); }
+  /** All affordances of the focused target (for the context sheet). */
+  all(target: Target | null = this.focus): Affordance[] { return target ? target.affordances() : []; }
+}
+
+/**
+ * Ranking used by Interactions (exported for tests): distance + bias + up to 0.8 m when the target is behind. With `feet` (the height of the player's
+ * feet indoors, LD2.0-D), a target whose prompt height `y` is not between just below the feet and 3 m above them is on another floor: skipped.
+ */
+export function pickTarget(list: readonly Target[], space: string, x: number, z: number, facing: number, feet?: number): Target | null {
+  let best: Target | null = null, bestScore = Infinity;
+  const fx = Math.sin(facing), fz = Math.cos(facing);
+  for (const t of list) {
+    if (t.space !== space) continue;
+    if (feet !== undefined && t.y !== undefined && (t.y < feet - 0.6 || t.y > feet + 3.0)) continue;
+    const dx = t.x - x, dz = t.z - z, d = Math.hypot(dx, dz);
+    if (d > t.radius) continue;
+    const ahead = d > 0.01 ? (dx * fx + dz * fz) / d : 1;          // 1 in front, −1 behind
+    const score = d + (t.bias ?? 0) + (1 - ahead) * 0.4;
+    if (score < bestScore) { bestScore = score; best = t; }
+  }
+  return best;
+}
+
+export function primaryOf(target: Target | null): Affordance | null {
+  if (!target) return null;
+  const list = target.affordances();
+  return list.find(a => !a.disabled) ?? list[0] ?? null;
+}

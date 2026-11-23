@@ -1,0 +1,21 @@
+PASS: 0. two players on the local Workers runtime, each online with their own account 
+PASS: the scene: Awa buys the villa for 400 000 000 F of game money (the catalogue's price) and makes it her principal residence 
+PASS: 1a. walking up from the street, the main entrance opens for its owner (the car gate stays shut); she walks up the path and it shuts behind her 
+PASS: 1b. « Entrer chez toi » at the front door 
+PASS: 1c. inside the villa, on the ground floor, in the entrée 
+PASS: 2. the ground floor toured with the joystick: entrée, salon, the pool garden, salle à manger, cuisine, hall 
+PASS: 3. up the first flight to the first floor: the landing, the salon familial, the master suite 
+PASS: 4. up the second flight to the roof terrace, by the helicopter: « Regarder l'hélicoptère » (no flight: it comes with the airport) 
+PASS: 5. down both flights to the pool: « Se baigner » at its edge, swims where the joystick says (the stroke), treads at rest, « Sortir de l'eau », cleaner 
+PASS: 6. the Lamane Sport: « Monter » in the street, driven in through the gate, « Garer à la villa »: in its bay and saved there 
+PASS: 7a. the Collection Almadies delivered and set out by the game in the villa (salon, salle à manger, suite) 
+PASS: 7b. « Aménager »: the bouclé armchair chosen and moved with the editor's buttons, « Poser »: saved at its new spot 
+PASS: 8a. « Inviter chez moi » from Messages names the villa; Moussa accepts and « Y aller » guides him there 
+PASS: 8b. the main entrance opens for the invited guest; up the path, at the front door « Entrer chez Awa (invité) » 
+PASS: 8c. both in the villa: her furniture drawn for him (the same pieces), and each one's game draws the other there 
+PASS: 9. after a reload: the villa still hers and her home, every piece where she left it (the armchair at its new spot), the Lamane Sport in its bay 
+PASS: no page errors in either game 
+video: /tmp/claude-0/rc/ld2d/villa-playthrough.mp4 9047 kB
+PERF {"rdc":{"calls":17,"tris":24258},"etage":{"calls":22,"tris":24650},"toit":{"calls":29,"tris":32184},"furnished":{"calls":23,"tris":27714}}
+17/17 passed
+exit=0

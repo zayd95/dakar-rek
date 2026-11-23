@@ -1,0 +1,391 @@
+{
+ "base": "http://127.0.0.1:4980/",
+ "quality": "medium",
+ "at": "2026-10-31T23:47:23.637Z",
+ "hours": {
+  "2": {
+   "live": 0,
+   "onTheNightStreet": 0,
+   "sitting": 0,
+   "atPlaces": {},
+   "venues": {
+    "club": {
+     "moment": "peak",
+     "open": true,
+     "npcs": 67,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "peak",
+     "open": true,
+     "npcs": 10,
+     "queue": null,
+     "people": 10
+    }
+   }
+  },
+  "8": {
+   "live": 23,
+   "onTheNightStreet": 9,
+   "sitting": 2,
+   "atPlaces": {
+    "sea:beach:-120": 4,
+    "place:almadies:night:phare": 2,
+    "sea:beach:-58": 3
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "day",
+     "open": false,
+     "npcs": 1,
+     "queue": null,
+     "people": 1
+    }
+   }
+  },
+  "11": {
+   "live": 19,
+   "onTheNightStreet": 2,
+   "sitting": 1,
+   "atPlaces": {
+    "place:almadies:night:binta": 1,
+    "seats:night:seat": 1
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "day",
+     "open": false,
+     "npcs": 1,
+     "queue": null,
+     "people": 1
+    }
+   }
+  },
+  "13": {
+   "live": 16,
+   "onTheNightStreet": 8,
+   "sitting": 6,
+   "atPlaces": {
+    "place:almadies:night:binta": 3,
+    "place:almadies:night:phare": 3,
+    "place:almadies:night:comptoir": 2
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "day",
+     "open": false,
+     "npcs": 1,
+     "queue": null,
+     "people": 1
+    }
+   }
+  },
+  "15": {
+   "live": 13,
+   "onTheNightStreet": 7,
+   "sitting": 6,
+   "atPlaces": {
+    "place:almadies:night:phare": 2,
+    "place:almadies:night:binta": 3,
+    "place:almadies:night:comptoir": 2
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "day",
+     "open": false,
+     "npcs": 1,
+     "queue": null,
+     "people": 1
+    }
+   }
+  },
+  "17": {
+   "live": 31,
+   "onTheNightStreet": 10,
+   "sitting": 1,
+   "atPlaces": {
+    "place:almadies:night:binta": 1,
+    "seats:night:seat": 1,
+    "sea:beach:-120": 3,
+    "sea:beach:-58": 3,
+    "place:almadies:night:phare": 1,
+    "place:almadies:night:comptoir": 1
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "day",
+     "open": false,
+     "npcs": 1,
+     "queue": null,
+     "people": 1
+    }
+   }
+  },
+  "19": {
+   "live": 37,
+   "onTheNightStreet": 15,
+   "sitting": 1,
+   "atPlaces": {
+    "place:almadies:night:binta": 1,
+    "sea:beach:-120": 6,
+    "seats:night:seat": 1,
+    "sea:beach:-58": 5,
+    "place:almadies:night:comptoir": 1,
+    "place:almadies:night:phare": 1
+   },
+   "venues": {
+    "club": {
+     "moment": "closed",
+     "open": false,
+     "npcs": 0,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "setup",
+     "open": false,
+     "npcs": 3,
+     "queue": null,
+     "people": 3
+    }
+   }
+  },
+  "21": {
+   "live": 33,
+   "onTheNightStreet": 15,
+   "sitting": 7,
+   "atPlaces": {
+    "place:almadies:night:binta": 3,
+    "sea:beach:-120": 3,
+    "place:almadies:night:comptoir": 3,
+    "seats:night:seat": 1,
+    "place:almadies:night:phare": 3,
+    "sea:beach:-58": 2
+   },
+   "venues": {
+    "club": {
+     "moment": "early",
+     "open": true,
+     "npcs": 14,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "early",
+     "open": true,
+     "npcs": 8,
+     "queue": null,
+     "people": 8
+    }
+   }
+  },
+  "23": {
+   "live": 11,
+   "onTheNightStreet": 1,
+   "sitting": 1,
+   "atPlaces": {
+    "seats:night:seat": 1
+   },
+   "venues": {
+    "club": {
+     "moment": "warm",
+     "open": true,
+     "npcs": 36,
+     "queue": null,
+     "people": null
+    },
+    "patio": {
+     "moment": "warm",
+     "open": true,
+     "npcs": 10,
+     "queue": null,
+     "people": 10
+    }
+   }
+  }
+ },
+ "spots": [
+  {
+   "id": "place:almadies:venue:club",
+   "tags": [
+    "club"
+   ],
+   "x": -37.5,
+   "z": -144.4,
+   "seats": 11
+  },
+  {
+   "id": "place:almadies:venue:patio",
+   "tags": [
+    "club"
+   ],
+   "x": -113,
+   "z": -147.1,
+   "seats": 16
+  },
+  {
+   "id": "place:almadies:night:binta",
+   "tags": [
+    "eat"
+   ],
+   "x": -86.5,
+   "z": -135.6,
+   "seats": 4
+  },
+  {
+   "id": "place:almadies:night:comptoir",
+   "tags": [
+    "eat"
+   ],
+   "x": 4,
+   "z": -135.6,
+   "seats": 4
+  },
+  {
+   "id": "place:almadies:night:phare",
+   "tags": [
+    "cafe",
+    "eat"
+   ],
+   "x": -72.5,
+   "z": -135.6,
+   "seats": 4
+  },
+  {
+   "id": "place:almadies:night:lounge",
+   "tags": [
+    "place"
+   ],
+   "x": -12,
+   "z": -135.6,
+   "seats": 2
+  },
+  {
+   "id": "sea:beach:-120",
+   "tags": [
+    "beachwalk"
+   ],
+   "x": -91,
+   "z": -141,
+   "seats": 0
+  },
+  {
+   "id": "sea:beach:-58",
+   "tags": [
+    "beachwalk"
+   ],
+   "x": -20,
+   "z": -141,
+   "seats": 0
+  },
+  {
+   "id": "seats:night:seat",
+   "tags": [
+    "bench"
+   ],
+   "x": -98.5,
+   "z": -135.2,
+   "seats": 2
+  }
+ ],
+ "places": [
+  {
+   "id": "almadies:night:binta",
+   "name": "Chez Binta",
+   "type": "restaurant",
+   "hours": [
+    11,
+    24
+   ],
+   "anchors": [
+    {
+     "x": -86.5,
+     "z": -135.6
+    }
+   ]
+  },
+  {
+   "id": "almadies:night:comptoir",
+   "name": "Le Comptoir de Ngor",
+   "type": "restaurant",
+   "hours": [
+    11,
+    23
+   ],
+   "anchors": [
+    {
+     "x": 4,
+     "z": -135.6
+    }
+   ]
+  },
+  {
+   "id": "almadies:night:phare",
+   "name": "Café du Phare",
+   "type": "cafe",
+   "hours": [
+    7,
+    22
+   ],
+   "anchors": [
+    {
+     "x": -72.5,
+     "z": -135.6
+    }
+   ]
+  },
+  {
+   "id": "almadies:night:lounge",
+   "name": "Lounge 221",
+   "type": "bar",
+   "hours": [
+    19,
+    3
+   ],
+   "anchors": [
+    {
+     "x": -12,
+     "z": -135.6
+    }
+   ]
+  }
+ ],
+ "chairs": 32,
+ "errors": []
+}
