@@ -66,7 +66,8 @@ await place(b, start.x + 2.2, start.z);
 await a.waitForFunction(id => window.__dakar.focus()?.id === 'peer:' + id, idB, { timeout: 40000 }).catch(async () => console.log('focus is', await focusId(a), JSON.stringify(await a.evaluate(() => window.__dakar.pos()))));
 check('next to each other, the other player is a target: « Saluer »', (await focusId(a)) === 'peer:' + idB);
 if (shots) await a.screenshot({ path: `${shots}/social-prompt.png` });
-await a.evaluate(() => window.__dakar.act());
+const greet = async p => { await p.evaluate(() => window.__dakar.act()); await p.waitForSelector('#modal.on button.item:not(.close)', T); await p.click('#modal.on button.item:not(.close)'); };   // 1.0.1: the button opens the player's menu, « Saluer » first
+await greet(a);
 check('A sees what they did', await waitToast(a, /Tu salues Awa/), JSON.stringify(await toasts(a)));
 check('B is told, in particular, that A greets them', await waitToast(b, /Moussa te salue/), JSON.stringify(await toasts(b)));
 await b.waitForFunction(id => window.__dakar.social().glyphs[id] === 'on', idA, T).catch(() => {});
@@ -78,7 +79,7 @@ check('the gesture is brief: the glyph is gone a few seconds later', (await soci
 
 // 3. replying, and not spamming
 await b.waitForFunction(id => window.__dakar.focus()?.id === 'peer:' + id, idA, T);
-await b.evaluate(() => { window.__dakar.act(); window.__dakar.act(); });                    // the second one right away
+await greet(b); await greet(b);                                                             // the second one right away
 check('a second gesture right away is refused politely (rate limit)', await waitToast(b, /Doucement/, 8000), JSON.stringify(await toasts(b)));
 check('B answers, A is told', await waitToast(a, /Awa te salue/), JSON.stringify(await toasts(a)));
 
@@ -96,7 +97,7 @@ check('within the radius B sees it (without being told: it was not meant for the
 // 5. blocking: B blocks A (chat panel); A's gestures vanish for B, and A is no longer a target
 await place(b, start.x + 2.2, start.z); await sleep(3500);
 await b.waitForFunction(id => window.__dakar.focus()?.id === 'peer:' + id, idA, T);
-await b.click('#chatBtn'); await b.click('.chat-tabs button[data-tab="dm"]'); await b.locator('.chat-person-open', { hasText: 'Moussa' }).click(); await b.click('.chat-block');
+await b.evaluate(() => window.__dakarChat.open('near')); await b.click('.chat-tabs button[data-tab="dm"]'); await b.locator('.chat-person-open', { hasText: 'Moussa' }).click(); await b.click('.chat-block');
 await b.waitForFunction(() => window.__dakar.presence().visible === 0, null, T);
 await b.click('.chat-close').catch(() => {});
 await sleep(800);
@@ -105,7 +106,7 @@ await sleep(2600);
 await a.evaluate(() => window.__dakar.socialEmote('salut'));
 await sleep(2500);
 check('blocked: A’s gesture is not shown to B (and A is on B’s hidden list)', !(await social(b)).glyphs[idA] && (await social(b)).hidden.includes(idA), JSON.stringify(await social(b)));
-await b.click('#chatBtn'); await b.click('.chat-tabs button[data-tab="dm"]'); await b.locator('.chat-person-open', { hasText: 'Moussa' }).click(); await b.click('.chat-block');
+await b.evaluate(() => window.__dakarChat.open('near')); await b.click('.chat-tabs button[data-tab="dm"]'); await b.locator('.chat-person-open', { hasText: 'Moussa' }).click(); await b.click('.chat-block');
 await b.waitForFunction(() => window.__dakar.presence().visible === 1, null, T);
 await b.click('.chat-close').catch(() => {});
 check('unblocked: A is visible and a target again', true);

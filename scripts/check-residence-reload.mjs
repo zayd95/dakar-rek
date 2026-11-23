@@ -1,5 +1,5 @@
 // The persistence release blocker, end to end on a phone page (390 × 844, real touches): buy the Teranga, park it in front of the Cité Jàmm, buy the
-// family house through its sheet and make it the principal residence (« Définir comme domicile principal »), furnish it, move and turn a piece in
+// family house through its sheet and make it the principal residence (« Les clés sont à toi » › « Emménager » › the family room kept), furnish it, move and turn a piece in
 // « Aménager », then LEAVE AND COME BACK (the page left from inside the house and opened again) — the house, the residence, every piece with its spot and turn, the car
 // where it was left, the wallet and the spawn come back. Then « Ma chambre »'s options, the save card (honest status, copy), an import into a wiped
 // browser, and a browser whose storage refuses every write (never shown as saved).
@@ -49,20 +49,23 @@ try {
   const rec0 = await d(() => window.__dakar.teranga.info().record);
   check('the Teranga is bought and parked where it was left, beside the Cité Jàmm house', rec0 && rec0.hub === 'pikine' && Math.hypot(rec0.x - SPOT.x, rec0.z - SPOT.z) < 1.5, JSON.stringify(rec0));
 
-  // the family house through its sheet: buy, then the decision « Définir comme domicile principal ? »
+  // the family house through its sheet: buy, then the purchase sequence (1.0.1): « Les clés sont à toi » › « Emménager » › the family room's choice
   await d(() => window.__dakar.assetSheet('maison_cite')); await page.waitForSelector('#modal.on .item');
   await pick(page, 'Acheter');
   check('the purchase asks for one confirmation', /^Acheter : /.test(await title(page)), await title(page));
   await pick(page, 'Acheter');
   const ask = await title(page), askText = await d(() => document.querySelector('#modal.on .panel')?.textContent ?? '');
   await page.screenshot({ path: `${out}/1-domicile-principal.png` });
-  check('right after buying: « Définir comme domicile principal ? », with « Plus tard »', /Définir comme domicile principal/.test(ask) && (await items(page)).some(i => /Plus tard/.test(i.text)), ask);
-  check('the question says where furniture goes either way, and that the family keeps the room', /Keur Meubles livrera ici|pièces te suivent/.test(askText) && /la famille te la garde/.test(askText), askText.slice(0, 240));
+  check('right after buying: « Les clés sont à toi » · « Emménager maintenant ? », with « Plus tard »', /Les clés sont à toi/.test(ask) && /Emménager maintenant/.test(askText) && (await items(page)).some(i => /Plus tard/.test(i.text)), ask);
+  check('the question says where furniture goes', /Keur Meubles livrera ici|pièces te suivent/.test(askText), askText.slice(0, 240));
   const e1 = await d(() => window.__dakar.estate());
   check('bought, not yet the principal residence', e1.home !== 'maison_cite' && e1.assets.some(a => a.spec === 'maison_cite' && a.how === 'owned'), `home=${e1.home}`);
-  await pick(page, 'Définir comme domicile principal');
+  await pick(page, 'Emménager');
+  const leaveText = await d(() => document.querySelector('#modal.on .panel')?.textContent ?? '');
+  check('« Emménager » asks about the family room first: the family keeps it by default', /Et ta chambre/.test(leaveText) && /La famille te la garde/.test(leaveText), leaveText.slice(0, 240));
+  await pick(page, 'Garder comme chambre familiale');
   const e2 = await d(() => window.__dakar.estate());
-  check('« Définir comme domicile principal » makes the house the home', e2.home === 'maison_cite', `home=${e2.home}`);
+  check('« Emménager » › « Garder comme chambre familiale » makes the house the home', e2.home === 'maison_cite', `home=${e2.home}`);
   await d(() => window.__dakar.hud?.closeModal?.()); await page.keyboard.press('Escape').catch(() => {});
 
   // the « Maison » app names it
@@ -87,11 +90,17 @@ try {
   const chair = e3.assets.find(a => a.spec === 'chaise_bois');
   await d(uid => window.__dakar.placer.select(uid), chair.uid);
   await d(() => { window.__dakar.placer.rotate(); window.__dakar.placer.rotate(); window.__dakar.placer.rotate(); });
-  await d(() => window.__dakar.placer.move(0.5, 0)); await d(() => window.__dakar.placer.put());
+  // moved to the nearest spot of the editor's grid where the house's rules let it stand turned (the chair is delivered into a corner of the salon: half a
+  // metre east, as this check first did, is outside the room — « Ce meuble ne tient pas dans la pièce » — so the editor's own verdict picks the spot)
+  const moved = await d(at => {
+    const P = window.__dakar.placer, steps = [[0, -1], [0, 1], [-1, 0], [1, 0], [0, -2], [0, 2], [-2, 0], [2, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+    for (const [i, j] of steps) { P.moveTo(at.x + i * 0.5, at.z + j * 0.5); const v = P.info(); if (!v.why && (Math.abs(v.pending.x - at.x) > 0.2 || Math.abs(v.pending.z - at.z) > 0.2)) return { to: v.pending, put: P.put() }; }
+    return { to: null, put: false, why: P.info().why };
+  }, target.at);
   await page.waitForTimeout(500);
   await d(() => window.__dakar.placer.close()); await page.waitForTimeout(800);
   const e4 = await d(() => window.__dakar.estate()), chair4 = e4.assets.find(a => a.uid === chair.uid);
-  check('« Aménager »: the chair moved (on the editor\'s grid) and turned three quarters', chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && chair4.at.x > target.at.x, JSON.stringify({ before: target.at, after: chair4.at }));
+  check('« Aménager »: the chair moved (on the editor\'s grid, where the house\'s rules let it stand) and turned three quarters', moved.put === true && chair4.at && chair4.at.rot === (((target.at?.rot ?? 0) + 3) % 4) && Math.hypot(chair4.at.x - target.at.x, chair4.at.z - target.at.z) > 0.2 && Math.abs(chair4.at.x - moved.to.x) < 0.01 && Math.abs(chair4.at.z - moved.to.z) < 0.01, JSON.stringify({ before: target.at, after: chair4.at, moved }));
   await page.screenshot({ path: `${out}/3-amenage.png` });
   // what the page holds when it is left: the save written on the way out (the house's upkeep is counted each in-game hour, so the wallet is read there)
   await d(() => window.dispatchEvent(new Event('pagehide')));

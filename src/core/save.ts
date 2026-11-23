@@ -1,9 +1,10 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, OnlinePending, OnlineSave, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, BanaResult, BanaSession, BanaState, BankState, BankTx, BankTxKind, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, OnlinePending, OnlineSave, MonthlyLease, Placement, PlayDays, SaveData, StreakState, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 import { appearanceOf } from '../actors/appearance';
 import { newPistes, pistesOf } from '../economy/pistes';
+import { ECONOMY } from '../economy/config';
 
 /**
  * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
@@ -49,6 +50,13 @@ export const EXTRA_FIELDS_V3 = [...EXTRA_FIELDS, 'bank', 'pistes', 'bana', 'onli
  * the fields it knows, so without `online`: a top-up it would drop (reserved from the wallet, not yet answered by the server) comes back from this one.
  */
 export const EXTRAS_V4_KEY = 'dakarrek.guest.save.v6.extras.4';
+/**
+ * The monthly contracts (1.0.1), kept a second time: the `lease` of each home rented by the month, `assets.owed` and `assets.settled`. The 1.0 client rebuilds
+ * `assets` without them when it writes the save (a rollback, or a 1.0 tab left open), which wiped the contract and its debts and put the F2 back on the per-day
+ * rent. Only 1.0.1 clients and later know this key. Every 1.0.1 save writes `assets.settled` (an empty list included): a save without it was written by an
+ * older client, and only then is this backup read (`restoreMonthly`).
+ */
+export const EXTRAS_V5_KEY = 'dakarrek.guest.save.v6.extras.5';
 type ExtraField = typeof EXTRA_FIELDS_V3[number];
 /** Teranga Money operations waiting for the server's answer, and settled op ids remembered (a refund or a withdrawal is never applied twice). */
 export const ONLINE_PENDING_MAX = 50;
@@ -101,7 +109,7 @@ export function suggestedAvatar(store: KV | null): Avatar | null {
 export function newAssets(playedMs: number): AssetsState {
   return {
     list: [starterRoom(1, playedMs)], seq: 1, home: 'a1',
-    clockMs: playedMs, payMs: playedMs, carryIn: 0, carryOut: 0, earned: 0, spent: 0, arrears: 0, adUntil: 0,
+    clockMs: playedMs, payMs: playedMs, carryIn: 0, carryOut: 0, earned: 0, spent: 0, arrears: 0, adUntil: 0, settled: [],
   };
 }
 const starterRoom = (n: number, since: number): AssetState =>
@@ -362,6 +370,8 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
     if (typeof x.basis === 'number' && x.basis > 0) asset.basis = money(x.basis);
     if (asset.how === 'rented' && typeof x.rate === 'number' && x.rate > 0) asset.rate = money(x.rate);
     if (typeof x.home === 'string' && UID.test(x.home)) { asset.home = x.home; asset.at = placementOf(x.at); }
+    const lease = asset.how === 'rented' ? leaseOf(x.lease, playedMs) : null;
+    if (lease) { asset.lease = lease; delete asset.rate; }
     list.push(asset);
   }
   // furniture whose home is gone (or points at another piece of furniture) has nowhere to stand: it is dropped
@@ -370,12 +380,38 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
   if (!kept.some(x => x.spec === STARTER_HOME)) kept.unshift(starterRoom(nextSeq(kept), playedMs));
   const seq = Math.max(Math.floor(num(a.seq, 0)), nextSeq(kept) - 1);
   const home = typeof a.home === 'string' && kept.some(x => x.uid === a.home && !x.home) ? a.home : kept.find(x => x.spec === STARTER_HOME)!.uid;
-  return {
+  const out: AssetsState = {
     list: kept, seq, home, clockMs: clock(a.clockMs), payMs: clock(a.payMs),
     carryIn: clamp(num(a.carryIn, 0), 0, MONEY_MAX), carryOut: clamp(num(a.carryOut, 0), 0, MONEY_MAX),
     earned: money(num(a.earned, 0)), spent: money(num(a.spent, 0)), arrears: money(num(a.arrears, 0)),
     adUntil: clamp(num(a.adUntil, 0), 0, playedMs + 30 * 86_400_000),
   };
+  // 1.0.1, monthly contracts (src/economy/monthly.ts): what ended contracts left unpaid, and the keys of the last settlements. Absent in older saves.
+  if (num(a.owed, 0) > 0) out.owed = money(num(a.owed, 0));
+  out.settled = Array.isArray(a.settled) ? settledOf(a.settled) : [];                 // always written (EXTRAS_V5_KEY: a save without it is an older client's)
+  // a pack's pieces must still be furniture of that home
+  for (const h of kept) if (h.lease?.pack) { h.lease.pack = h.lease.pack.filter(u => kept.some(f => f.uid === u && f.home === h.uid)); if (!h.lease.pack.length) delete h.lease.pack; }
+  return out;
+}
+const settledOf = (v: unknown[]) => v.filter((k): k is string => typeof k === 'string' && /^rent:a\d{1,9}:\d{1,6}$/.test(k)).slice(-32);
+/** A monthly contract of a rented home (1.0.1): null when absent or malformed (the lease is then a per-day one, as before). */
+function leaseOf(v: unknown, playedMs: number): MonthlyLease | null {
+  if (!v || typeof v !== 'object') return null;
+  const x = v as Record<string, unknown>;
+  const lag = typeof x.lag === 'number' && Number.isFinite(x.lag) && x.lag > 0 ? x.lag : 0;      // dates moved back by a clock set back (src/economy/monthly.ts `rebase`)
+  if (typeof x.start !== 'number' || !Number.isFinite(x.start) || x.start + lag <= 0 || typeof x.rent !== 'number' || !(x.rent > 0)) return null;
+  const k = clamp(Math.floor(num(x.k, 0)), 0, 100_000), mode = x.mode === 'sublet' || x.mode === 'furnished' ? x.mode : 'live';
+  const L: MonthlyLease = {
+    start: x.start, k, rent: money(x.rent), charges: money(num(x.charges, 0)), mode,
+    acc: clamp(num(x.acc, 0), 0, MONEY_MAX), accAt: Math.max(x.start, num(x.accAt, x.start)), debt: money(num(x.debt, 0)), playAt: clamp(num(x.playAt, playedMs), 0, playedMs),
+  };
+  if (x.next === 'live' && mode !== 'live') L.next = 'live';
+  if (x.notice === true) L.notice = true;
+  if (Array.isArray(x.pack)) { const pack = [...new Set((x.pack as unknown[]).filter((u): u is string => typeof u === 'string' && UID.test(u)))].slice(0, 32); if (pack.length) L.pack = pack; }
+  const last = x.last as Record<string, unknown> | null;
+  if (last && typeof last === 'object') L.last = { k: clamp(Math.floor(num(last.k, 0)), 0, 100_000), occ: clamp(Math.round(num(last.occ, 0)), 0, 100), revenue: money(num(last.revenue, 0)), cost: money(num(last.cost, 0)) };
+  if (lag) L.lag = lag;
+  return L;
 }
 /** v3 / v4 → v5: the starter room, its furniture (stored; the game puts each piece back at its usual spot) and the ventures. */
 function assetsFromV4(business: unknown, furniture: string[], playedMs: number): AssetsState {
@@ -454,6 +490,18 @@ function tourOf(v: unknown): TourRun | null {
   if (late.length !== leg) return null;                    // the stops served and the leg being served must agree
   return { id: t.id, order: [p, q], leg, departed: t.departed === true, limitS, pay, late };
 }
+/** The most any delivery pays (an express between the two furthest districts, ECONOMY.tiak.band): the cap of a run this file knows nothing about. */
+const TIAK_PAY_TOP = Math.round(ECONOMY.tiak.band.away.max * ECONOMY.tiak.band.express.pay);
+let jobPayCap: (routeId: string) => number = () => TIAK_PAY_TOP;
+/**
+ * What a run in hand may carry as its pay at most, by route id. Set by src/economy/jobs.ts, which knows the routes (this file cannot import them: they read
+ * the road graph, which reads the catalogue, which reads this file); until then, the top of the delivery band.
+ */
+export const setJobPayCap = (f: (routeId: string) => number) => { jobPayCap = f; };
+/**
+ * The deliveries. A run in hand keeps the pay fixed when it was accepted, but never more than its route pays (1.0.1: an edited save could carry any
+ * pay); a tour's two stops are held under the top of the delivery band (and under what each client pays at hand-over, src/economy/tour.ts).
+ */
 function jobsOf(v: unknown): JobsState {
   const j = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const done = Array.isArray(j.done) ? (j.done as unknown[]).filter((d): d is string => typeof d === 'string').slice(-DONE_JOBS_MAX) : [];
@@ -462,10 +510,10 @@ function jobsOf(v: unknown): JobsState {
   if (a && typeof a.runId === 'string' && typeof a.routeId === 'string' && HUB_IDS.includes(a.hub as HubId) && !done.includes(a.runId)) {
     active = {
       runId: a.runId, routeId: a.routeId, hub: a.hub as HubId, stage: a.stage === 'pickup' ? 'pickup' : 'deliver',
-      pay: Math.max(0, Math.round(num(a.pay, 0))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
+      pay: Math.min(jobPayCap(a.routeId), TIAK_PAY_TOP, Math.max(0, Math.round(num(a.pay, 0)))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
     };
     const t = tourOf(a.tour);
-    if (t) active.tour = t;
+    if (t) { t.pay = [Math.min(t.pay[0], TIAK_PAY_TOP), Math.min(t.pay[1], TIAK_PAY_TOP)]; active.tour = t; }
     else if (a.tour !== undefined) active = null;          // a tour this build cannot read: dropped, nothing paid
   }
   return { active, done, seq: Math.max(0, Math.floor(num(j.seq, 0))) };
@@ -522,6 +570,8 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
   for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY]) { try { store?.setItem(key, extras); } catch { /* full storage: the save itself was written */ } }
   const v3 = JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), ...Object.fromEntries(EXTRA_FIELDS_V3.map(k => [k, data[k]])) });
   for (const key of [EXTRAS_V3_KEY, EXTRAS_V4_KEY]) { try { store?.setItem(key, v3); } catch { /* full storage */ } }
+  const st = data.assets, monthly = { leases: st.list.filter(a => a.lease).map(a => ({ uid: a.uid, spec: a.spec, lease: a.lease })), owed: st.owed ?? 0, settled: st.settled ?? [] };
+  try { store?.setItem(EXTRAS_V5_KEY, JSON.stringify({ guestId: data.guestId, savedAt: Date.now(), monthly })); } catch { /* full storage */ }
   return ok;
 }
 /**
@@ -533,7 +583,8 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
   const missing: ExtraField[] = EXTRA_FIELDS_V3.filter(k => raw[k] === undefined);
   const rawLoans = (raw.loans as { list?: Record<string, unknown>[] } | undefined)?.list ?? [];
   const lostShare = rawLoans.some(l => l && typeof l === 'object' && l.share === undefined);
-  if (!missing.length && !lostShare) return [];
+  const monthly = restoreMonthly(store, raw, data);
+  if (!missing.length && !lostShare) return (restoredExtras = monthly ? ['monthly'] : []);
   // both backups of this guest, newest first; each field is taken from the newest one that has it (an older client may have rewritten the first without it)
   const backups: { raw: Record<string, unknown>; back: SaveData }[] = [];
   for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY, EXTRAS_V4_KEY]) {
@@ -565,8 +616,39 @@ function restoreExtras(store: KV, raw: Record<string, unknown>, data: SaveData):
     else data.streak = back.streak;
     out.push(k);
   }
+  if (monthly) out.push('monthly');
   restoredExtras = out;
   return out;
+}
+/**
+ * The monthly contracts after an older client (EXTRAS_V5_KEY): for a save that lacks `assets.settled` (the 1.0 client wrote it) and a backup of the same guest.
+ * A home still rented gets its contract back as it stood (its arrears, its months settled, its pack: the pieces still in the home; lived in by the player
+ * meanwhile, it is no longer on offer); the contract of a home that is no longer rented (handed back, taken back or bought with that client) ended there, and
+ * what it owed is owed (as every way out of a contract does). What ended contracts left unpaid (`owed`) and the settlement keys come back. What that client did
+ * with the wallet is kept. True when something came back.
+ */
+function restoreMonthly(store: KV, raw: Record<string, unknown>, data: SaveData): boolean {
+  const ra = raw.assets as Record<string, unknown> | undefined;
+  if (!ra || typeof ra !== 'object' || ra.settled !== undefined) return false;          // this client wrote it (or a save from before the assets)
+  let b: Record<string, unknown> | null = null;
+  try { b = JSON.parse(store.getItem(EXTRAS_V5_KEY) ?? 'null') as Record<string, unknown> | null; } catch { b = null; }
+  const m = b && b.guestId === data.guestId ? b.monthly as Record<string, unknown> | null : null;
+  if (!m || typeof m !== 'object') return false;
+  const st = data.assets;
+  let owed = money(num(m.owed, 0)), back = false;
+  for (const e of Array.isArray(m.leases) ? (m.leases as unknown[]).slice(0, ASSETS_MAX) : []) {
+    const x = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>, L = leaseOf(x.lease, data.playedMs);
+    if (!L || typeof x.uid !== 'string') continue;
+    const a = st.list.find(h => h.uid === x.uid && h.spec === x.spec);
+    if (!a || a.how !== 'rented' || a.lease) { owed += L.debt; continue; }             // ended with that client: its arrears are owed
+    if (L.pack) { L.pack = L.pack.filter(u => st.list.some(f => f.uid === u && f.home === a.uid)); if (!L.pack.length) delete L.pack; }
+    if (st.home === a.uid && L.mode !== 'live') { L.mode = 'live'; delete L.next; }   // the player lives there now: no tenant any more
+    a.lease = L; delete a.rate; back = true;
+  }
+  if (owed > (st.owed ?? 0)) { st.owed = owed; back = true; }
+  const keys = Array.isArray(m.settled) ? settledOf(m.settled as unknown[]) : [];
+  if (keys.length) st.settled = settledOf([...new Set([...keys, ...(st.settled ?? [])])]);
+  return back;
 }
 /**
  * New Game: forget the v6 save and never carry an older one over again (they stay in the storage, for an older client). The marker is
@@ -581,6 +663,6 @@ export function clearSave(store: KV | null) {
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
-  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY, EXTRAS_V4_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
+  for (const key of [EXTRAS_KEY, EXTRAS_V2_KEY, EXTRAS_V3_KEY, EXTRAS_V4_KEY, EXTRAS_V5_KEY]) { try { store.removeItem(key); } catch { /* ignore: a new game has a new guest id, never matched */ } }
   if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }

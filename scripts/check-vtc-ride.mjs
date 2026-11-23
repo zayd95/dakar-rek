@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, pilot, boardVehicle } from './lib/realTouch.mjs';
 import { driveRoad } from './lib/roadDrive.mjs';
-import { route, runUp, closedZones } from './lib/gridRoute.mjs';
+import { route, runUp, closedZones, pullOut } from './lib/gridRoute.mjs';
 
 const [base = 'http://127.0.0.1:4421/', out = '/tmp/claude-0/veh/journey-e'] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
@@ -112,7 +112,9 @@ check('back at the wheel, the passenger has not moved from the back seat', still
 // out of Pikine on the road to the Plateau
 const hpTrip0 = await d(() => { window.__dakar.teranga.feelReset?.(); return window.__dakar.teranga.health(); });   // (the impacts of the trip are listed if it wears the car)
 const a1 = await AT();
-const toMouth = route({ x: a1.x, z: a1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) });
+// out of the passenger's kerb bay into the lane first, as a driver does (the cars parked further along the kerb are passed, not driven into), then to the road's mouth
+const out1 = pullOut(a1), from1 = out1.length ? out1[out1.length - 1] : a1;
+const toMouth = [...out1, ...(route({ x: from1.x, z: from1.z, yaw: a1.yaw }, { x: -60, z: 140 }, { cruise: 7, avoid: await closedZones(page) }) ?? [])];
 await pilot(page, t, 'teranga', toMouth, { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
 // (cruise 9 m/s, was 11: the cars pick up twice as fast since the release tuning, and this driver looks at the road once or twice a second on a headless page; at 11 m/s it

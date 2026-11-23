@@ -53,18 +53,28 @@ const p0 = await AT();
 const gapW = Math.abs(floor[1].x - floor[0].x) - 4.1;
 await shot('nose-in-gap');
 const brk = await t.centre('#ridepad .rp-brake');
+// every frame the game draws, after its update: the bike and whether the brake pedal is down (the release is judged from the frame the game saw it)
+await d(() => { window.__pad = []; const f = () => { const a = window.__dakar.moto.at(); if (a) window.__pad.push({ t: a.t, z: a.z, v: a.speed, down: !!document.querySelector('#ridepad .rp-brake.down') }); if (!window.__padStop && window.__pad.length < 6000) requestAnimationFrame(f); }; requestAnimationFrame(f); });
 await t.down(1, brk.x, brk.y);
 // timed on the game's own clock (`t`, seconds of simulation): a loaded headless renderer runs the game slower than the wall clock
 const trace = []; const s0 = (await AT()).t; let shotMid = false;
 for (;;) { const a = await AT(), ts = a.t - s0; trace.push({ t: +ts.toFixed(2), z: a.z, v: a.speed, paddling: a.paddling, clip: a.clip, r: a.rBadge }); if (!shotMid && a.paddling && p0.z - a.z > 1) { shotMid = true; await page.screenshot({ path: `${out}/${String(++shotN).padStart(2, '0')}-paddling.png` }); } if (p0.z - a.z > 3.2 || ts > 12) break; await page.waitForTimeout(80); }
 await t.up(1);
 await page.waitForFunction(() => { const a = window.__dakar.moto.at(); return Math.abs(a.speed) < 0.05 && a.clip === 'Ride'; }, null, { timeout: 20000 }).catch(() => {});
-const p1 = await AT(), released = trace[trace.length - 1];
+const p1 = await AT(), pad = await d(() => { window.__padStop = true; return window.__pad; });
+// the last frame drawn with the pedal down: from the next one the game knows it was let go (the harness's own last look comes earlier by a
+// loaded machine's touch latency, which made this slide anything from 0.14 to 0.25 m for the same game)
+const released = pad.filter(s => s.down).at(-1) ?? trace[trace.length - 1];
 const first = trace.find(s => s.v < -0.05), minV = Math.min(...trace.map(s => s.v));
-check('the brake held at a standstill: nothing for a short deliberate pause (0.7 s of game time), then the bike moves backwards', first && first.t >= 0.6, JSON.stringify(first));
-check('pushed with the feet: a slow walk at most (never an engine reverse)', minV < -0.4 && minV >= -0.9, `min ${minV.toFixed(2)} m/s`);
+// the hold as the game counts it (src/transport/controls.ts REVERSE_DELAY, 0.55 s since the 1.0 driving pass; 0.7 when this check was written): a whole frame
+// of hold from the first frame the pedal is down, so it starts at the last frame drawn with the pedal up, and ends at the first frame moving backwards
+const d0 = pad.findIndex(s => s.down), up0 = d0 > 0 ? pad[d0 - 1] : null, back = d0 >= 0 ? pad.slice(d0).find(s => s.v < -0.05) : null;
+const hold = up0 && back ? +(back.t - up0.t).toFixed(2) : null;
+check('the brake held at a standstill: nothing for a short deliberate pause (0.55 s of game time), then the bike moves backwards', hold !== null && hold >= 0.54, JSON.stringify({ hold, lastUp: up0, firstBack: back, harnessFirstLook: first }));
+// a slow walk: PADDLE_SPEED, 1.15 m/s since the 1.0 driving pass (8ac1e7f0: 0.85 before, when this bound was written), src/transport/controls.ts
+check('pushed with the feet: a slow walk at most (never an engine reverse)', minV < -0.4 && minV >= -1.2, `min ${minV.toFixed(2)} m/s`);
 check('the rider\'s legs come down (the « RidePaddle » pose) while it moves backwards, and no « R » shows', trace.filter(s => s.v < -0.2).every(s => s.paddling && s.clip === 'RidePaddle' && !s.r), JSON.stringify(trace.filter(s => s.v < -0.2).slice(0, 3)));
-check('the brake let go: it stops at once (within a few centimetres) and the rider sits normally again', Math.abs(p1.speed) < 0.05 && !p1.paddling && p1.clip === 'Ride' && Math.abs(p1.z - released.z) < 0.25, JSON.stringify({ v: p1.speed, clip: p1.clip, slid: +(released.z - p1.z).toFixed(2) }));
+check('the brake let go: it stops at once (within a few centimetres of the last frame with the pedal down) and the rider sits normally again', Math.abs(p1.speed) < 0.05 && !p1.paddling && p1.clip === 'Ride' && Math.abs(p1.z - released.z) < 0.25, JSON.stringify({ v: p1.speed, clip: p1.clip, slid: +(released.z - p1.z).toFixed(2), atRelease: released, frames: pad.length, lastLook: trace[trace.length - 1] }));
 const felt = await d(() => window.__dakar.moto.feel());
 check(`backed out of a gap ${gapW.toFixed(1)} m wide without touching either car, and the cars did not move`, p0.z - p1.z > 2.2 && felt.impacts.length === 0, JSON.stringify({ backed: +(p0.z - p1.z).toFixed(2), impacts: felt.impacts }));
 await shot('backed-out');
@@ -87,10 +97,15 @@ await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneIn
 await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
 await t.tap('#phone [data-app="travail"]'); await page.waitForSelector('#modal.on', T);
 await shot('jobs-app');
-const card = page.locator('#modal .dcard', { hasText: 'Ndeye' }).first();
-await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(400); await shot('jobs-app-plateau');
-const cb = await card.boundingBox(); await t.down(5, cb.x + cb.width / 2, cb.y + cb.height / 2); await page.waitForTimeout(60); await t.up(5);
-await page.waitForFunction(() => window.__dakar.activeJob()?.routeId === 'x_pk_pl_diallo_ndeye', null, { timeout: 20000 });
+// 1.0.1: the phone lists the district's rolling board (scripts/check-tiak-everywhere.mjs taps its cards); Boutique Diallo's regular run to Atelier Ndeye is on it only some hours.
+// When its card is there it is tapped; otherwise the board is closed and the same run is taken through the debug hook (said in the line below), the ride itself unchanged.
+const card = page.locator('#modal .dcard[data-route="x_pk_pl_diallo_ndeye"], #modal .dcard[data-route="t:pikine.diallo>plateau.ndeye"]').first();
+const onBoard = await card.count() > 0;
+if (onBoard) { await card.scrollIntoViewIfNeeded(); await page.waitForTimeout(400); await shot('jobs-app-plateau'); const cb = await card.boundingBox(); await t.down(5, cb.x + cb.width / 2, cb.y + cb.height / 2); await page.waitForTimeout(60); await t.up(5); }
+else { await d(() => { window.__dakar.phoneClose?.(); document.querySelector('#modal.on .close')?.click(); }); await page.waitForTimeout(400); await d(() => window.__dakar.acceptJob('x_pk_pl_diallo_ndeye', false)); }
+console.log(`the run to Atelier Ndeye: ${onBoard ? 'tapped on the board' : 'not on this hour\'s board, taken through the debug hook'}`);
+await page.waitForFunction(() => /diallo.*ndeye/.test(window.__dakar.activeJob()?.routeId ?? ''), null, { timeout: 20000 });
+await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 20000 }).catch(() => {});
 const wallet0 = await d(() => window.__dakar.state.wallet);
 check('« Travail » on the phone: the parcel for the Plateau taken with a tap (go and fetch it first)', (await d(() => window.__dakar.activeJob()))?.stage === 'pickup');
 const places = await d(() => window.__dakar.cityPlaces());

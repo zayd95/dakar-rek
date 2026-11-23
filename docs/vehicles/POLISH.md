@@ -204,7 +204,7 @@ cockpit adds five draw calls. The Plateau's views draw 7–12 more calls; Pikine
   and none of them is a stop the game made.
 - **The sound films** show the balance between sounds as the page makes them, not what a phone's speaker does. The Jakarta's film is incomplete (above).
 - The radio is synthesised in the browser: three stations of generated music and talk-like voice, not real broadcasts.
-- The optional sport motorbike was not made; Ouakam, Mermoz and Sacré-Cœur are not on the boards.
+- The optional sport motorbike was not made in this pass (it came with 1.0.1: the Sabar 600, `docs/vehicles/SPORT_MOTO.md`); Ouakam, Mermoz and Sacré-Cœur are not on the boards.
 - **Tests that did not pass, all named above**: journey A's first card (late, then gone), B's parking 2.9 m off, C's later runs, the Almadies drive
   that met a car rapide, `check-prestige-suv`, `check-trial`'s floor half. None is a stop the game made; each is the test's driver, a test's own
   pattern, this machine's load, or a check older than PR #63's floors.

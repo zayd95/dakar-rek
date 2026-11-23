@@ -114,10 +114,12 @@ export class Sheet {
     const list = el('div', variant === 'shop' ? 'list ui-stack' : 'list');
     for (const it of items) list.appendChild(variant === 'shop' ? this.shopItem(it) : this.row(it, kind === 'quick'));
     p.append(list);
-    p.scrollTop = 0;
     this.box.classList.remove('tall');
     this.box.style.transform = '';
     this.root.classList.add('on');
+    // at the top once it is shown: a closed #modal is display:none, and the browser keeps a hidden panel's offset and gives it back when it shows
+    // again, so a reset made while it was hidden was lost (the next sheet opened scrolled where the last one was left: 1.0.1, found by Tiak Tiak)
+    p.scrollTop = 0;
     afterRender?.(p);
   }
 

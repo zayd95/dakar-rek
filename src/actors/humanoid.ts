@@ -12,6 +12,8 @@ import { fitEyes } from './eyes';
 import type { Appearance } from './appearance';
 import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
 import { PRAYER_POSES, PRAY_SEATED, deriveSalam, type PrayerClip } from './prayerPoses';
+import { RdaParts, validRdaScene } from './rdaLook';
+import type { Build, RdaPartsOn } from './rdaFlag';
 import { SWIM_POSES, assembleSwimClips, type SwimClip } from './swimStroke';
 
 /**
@@ -27,7 +29,7 @@ import { SWIM_POSES, assembleSwimClips, type SwimClip } from './swimStroke';
  */
 export const HAND_REST = 0.4;
 export function handClosure(clip: string | null): number {
-  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'Drive') return 1;
+  if (clip === 'Ride' || clip === 'RidePaddle' || clip === 'RideSport' || clip === 'Drive') return 1;
   if (clip === 'Grab') return 0.75;
   if (clip?.startsWith('Pray')) return 0.12;
   if (clip === 'Celebrate' || clip === 'Dance_A' || clip === 'Dance_B') return 0.3;
@@ -37,7 +39,7 @@ export function handClosure(clip: string | null): number {
 }
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip | PrayerClip | SwimClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
-export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | CarClip;
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle' | 'RideSport' | CarClip;
 /**
  * In a car (src/transport/cabinFit.ts): 'SitCar' a passenger, the back against a reclined seat and the legs out in front, hands on the thighs (far lower
  * than the chair Sit, whose upright back and hanging shins put the head through a hatch's roof and the shoes under its sills); 'Drive' the same body
@@ -64,7 +66,7 @@ export const humanoidReady = () => !!template;
  * sockets and clips of character_v4.glb, so the gait, the pose solvers, the strike rig and the gestures run on it unchanged. A body that
  * is not loaded (or failed to load) falls back to the v4 body: `new Humanoid(look, 'meshy_m')` never throws when v4 is ready.
  */
-export type BodyId = 'v4' | 'meshy_m' | 'meshy_f';
+export type BodyId = 'v4' | 'meshy_m' | 'meshy_f' | 'rda';
 const bodies: Partial<Record<BodyId, Template>> = {};
 /**
  * What differs between a body's mesh and the shared rig, in four numbers (measured by proof/meshy/harness.ts against the v4 control):
@@ -79,12 +81,16 @@ export const BODY_FIT: Record<BodyId, BodyFit> = {
   v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0, idleArms: null },
   meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08, idleArms: { elbow: 16, fwd: 4 } },
   meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115, idleArms: { elbow: 16, fwd: 4 } },
+  /** The Roi des Arènes wrestlers (src/actors/rdaLook.ts): drawn by `Wrestler` only, at the wrestler's scale (setWrestler); a hand with fingers. */
+  rda: { scale: 1, sitLift: 0, handExtra: 0.06, mouth: { fwd: 0.11, up: -0.035 }, scarfDrop: 0.06, idleArms: null },
 };
 export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
   try {
     const res = await fetch(url);
     if (!res.ok) return false;
-    bodies[id] = finishTemplate(await new GLTFLoader().parseAsync(await res.arrayBuffer(), ''), BODY_FIT[id].sitLift, BODY_FIT[id]);
+    const gltf = await new GLTFLoader().parseAsync(await res.arrayBuffer(), '');
+    if (id === 'rda' && !validRdaScene(gltf.scene)) return false;          // a file that is not the expected body: v4 stays
+    bodies[id] = finishTemplate(gltf, BODY_FIT[id].sitLift, BODY_FIT[id]);
     return true;
   } catch { return false; }
 }
@@ -282,6 +288,20 @@ export const POSES: Record<PoseClip, PoseDef> = {
     },
     palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
     reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
+  },
+  // astride the sport motorbike (src/transport/sportMoto.ts, the Sabar 600): tucked forward over the tank, the hands down and out on the clip-ons, the knees
+  // against the tank, the feet up and back on the rear-set pegs; the neck lifted so the eyes look up the road (SABAR_RIDER: the grips and pegs in this space)
+  RideSport: {
+    hipsY: 0.5, hips: [0.12, 0, 0],
+    aim: {
+      spine: [0, 1, 0.62], chest: [0, 1, 0.8], neck: [0, 1, 0.42], head: [0, 1, 0.08],
+      upper_armL: [0.45, -0.88, 0.14], forearmL: [-0.12, -0.13, 0.98], handL: [-0.05, -0.25, 1],
+      upper_armR: [-0.45, -0.88, 0.14], forearmR: [0.12, -0.13, 0.98], handR: [0.05, -0.25, 1],
+      thighL: [0.2, -0.38, 0.9], shinL: [-0.06, -0.8, -0.6], footL: [0.04, -0.25, 1],
+      thighR: [-0.2, -0.38, 0.9], shinR: [0.06, -0.8, -0.6], footR: [-0.04, -0.25, 1],
+    },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },
+    reach: { L: [0.31, 0.67, 0.64], R: [-0.31, 0.67, 0.64], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.6, -1, -0.2] },   // the Sabar's clip-ons (sportMoto.ts SABAR_RIDER.grips)
   },
   // in a car seat (chair convention: the origin SIT_HIPS under the cushion): the back reclined about 25°, the thighs nearly level, the shins down and
   // forward under the seat ahead, so the shoes are a hand lower than the hips, not a shin; the head upright, looking ahead; hands on the thighs
@@ -743,6 +763,30 @@ export class Humanoid {
 
   /** The recolour and hair variants of a Meshy body (the character creator); null on v4. */
   private meshy: MeshyLook | null = null;
+  /** The Roi des Arènes body's materials and switches (its physique, its accessory pieces); null on every other body. */
+  readonly rda: RdaParts | null = null;
+  /** The wrestling attire last put on (setWrestler), to dress again when an RDA piece switch changes. */
+  protected dressed: { look: WrestlerLook; cut: 'A' | 'B' } | null = null;
+  /** The top of the meshes shown, in the rest pose (rig units; -1: to measure again, after a change of dress). */
+  private topRest = -1;
+  /**
+   * How high the top of this body stands above its feet (m, at its drawn scale): the highest of the meshes it shows now
+   * (the head and its hair: v4's wrestler 2.09 m, the Roi des Arènes body 1.94 m), from their rest-pose bounds, measured once
+   * per dress. The duel frames its close-up on it and the checks read the head there (src/lamb/duel.ts).
+   */
+  headTop(): number {
+    if (this.topRest < 0) {
+      let top = 0;
+      this.root.traverse(o => {
+        const m = o as THREE.SkinnedMesh;
+        if (!m.isSkinnedMesh || !m.visible) return;                          // (the socket placeholders are small rigid props)
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        top = Math.max(top, m.geometry.boundingBox!.max.y);
+      });
+      this.topRest = top;
+    }
+    return this.topRest * this.group.scale.y;
+  }
   /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
   setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
   /** Barefoot (the mosque's hall): v4 hides its shoe meshes; a Meshy body, whose shoes are baked into its shell, paints them as feet. */
@@ -790,6 +834,7 @@ export class Humanoid {
     this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
     const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
     let shell: THREE.Mesh | null = null, shellU: MeshyUniforms | null = null;
+    const rdaMeshes: THREE.Mesh[] = [];
     this.root.traverse(o => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -799,6 +844,7 @@ export class Humanoid {
       if (m.morphTargetDictionary) { this.morphed.push(m); if (m.morphTargetDictionary.grip !== undefined) this.gripMesh = m; }
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
+      else if (this.body === 'rda') rdaMeshes.push(m);                                         // its skin, face and pieces: src/actors/rdaLook.ts
       else if (this.body !== 'v4' && src.map) { const mm = makeMeshyMaterial(src.map, this.body === 'meshy_f'); m.material = mm.mat; shell = m; shellU = mm.u; }   // a body that carries its own texture (the creator's recolour is in its shader)
       else if (src.name.startsWith('Skin')) m.material = this.skinMat;
       else if (src.name === 'Hair') m.material = hair;
@@ -808,6 +854,7 @@ export class Humanoid {
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of t.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (shell && shellU) this.meshy = new MeshyLook(this.root, this.bone('head'), shell, shellU);
+    if (this.body === 'rda') { this.rda = new RdaParts(this.root, rdaMeshes, this.skinMat.color); this.rda.redress = () => { if (this.dressed) this.setWrestler(this.dressed.look, this.dressed.cut); }; }
     if (look) this.setLook(look);
     if (this.body !== 'v4') this.group.scale.setScalar(this.fit.scale);
   }
@@ -828,6 +875,7 @@ export class Humanoid {
 
   /** City clothing. */
   setLook(l: PersonLook) {
+    this.topRest = -1;
     const vest = this.vestOn; if (vest) this.setVest(false);               // refitted below to what the new look wears on its trunk
     this.clearAccessories();
     this.setSkin(l.skin);
@@ -865,6 +913,7 @@ export class Humanoid {
   /** Wrestling attire: ngemb (cut A short, B long with knot) and accessories on sockets. Cosmetic only. */
   setWrestler(look: WrestlerLook, cut: 'A' | 'B' = 'A', skin?: number) {
     if (skin !== undefined) this.setSkin(skin);
+    this.dressed = { look, cut }; this.topRest = -1;
     const tex = ngembTexture(look.ngembColor, look.ngembPattern).clone();
     tex.flipY = false; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1); tex.needsUpdate = true;
     const mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
@@ -875,6 +924,7 @@ export class Humanoid {
     this.clearAccessories();
     for (const id of look.accessories) {
       const a = ACCESSORIES.find(x => x.id === id); if (!a) continue;
+      if (this.rda?.replaces(a.socket)) continue;                            // the RDA arm and waist pieces stand for these placeholders
       const node = this.root.getObjectByName(SOCKET_NODE[a.socket]); if (!node) continue;
       const g = a.socket === 'waist' ? new THREE.CylinderGeometry(0.21, 0.21, 0.05, 12) : a.socket === 'neck' ? new THREE.TorusGeometry(0.09, 0.016, 6, 12) : new THREE.CylinderGeometry(0.085, 0.085, 0.06, 10);
       const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: a.color }));
@@ -1079,7 +1129,7 @@ export class Humanoid {
   seekClip(phase: number) { const a = this.current; if (a) a.time = phase * a.getClip().duration; }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
-  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.setVest(false); this.meshy?.dispose(); this.group.removeFromParent(); }
+  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.setVest(false); this.meshy?.dispose(); this.rda?.dispose(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */
@@ -1089,13 +1139,28 @@ export class Humanoid {
  * 20 mixer updates a second, and the wrestlers are what the player is watching: two to four bodies, a negligible cost.
  */
 export class Wrestler extends Humanoid {
-  constructor(skin = 0x5b3420) { super(); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); this.fullRate = true; }
+  /**
+   * The Roi des Arènes body when it is loaded (behind `?rdabody`, src/actors/rdaFlag.ts: src/main.ts loads it for the quality, or drops it),
+   * else the v4 body as always. Every clip, the gait, StrikeRig and the poses run on either (the same 20 bones).
+   */
+  constructor(skin = 0x5b3420, body: 'rda' | 'v4' = bodyReady('rda') ? 'rda' : 'v4') { super(undefined, body); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); this.fullRate = true; liveW.add(new WeakRef(this)); }
+  /** The physique (an RDA body: its heavy or athletic morph and pieces; the v4 body: unchanged). */
+  setBuild(b: Build) { this.rda?.setBuild(b); return this; }
+  /** The RDA accessory switches for this wrestler (defaults: src/actors/rdaFlag.ts); dressed again so the look's placeholders follow. */
+  setRdaParts(p: Partial<RdaPartsOn>) { if (!this.rda) return this; this.rda.setParts(p); this.rda.redress?.(); return this; }
   override reset() { super.reset(); this.fullRate = true; }
   setLook(look: PersonLook | WrestlerLook, cut: 'A' | 'B' = 'A') {
     if ('ngembColor' in look) this.setWrestler(look, cut); else super.setLook(look);
   }
 }
 export const wrestlerReady = humanoidReady;
+/** Every wrestler made (weakly held): the debug API lists those drawn now (src/main.ts `wrestlers`). */
+const liveW = new Set<WeakRef<Wrestler>>();
+export function liveWrestlers(): Wrestler[] {
+  const out: Wrestler[] = [];
+  for (const r of liveW) { const w = r.deref(); if (!w) liveW.delete(r); else out.push(w); }
+  return out;
+}
 
 // ---------------------------------------------------------------- looks for the crowd and the cast
 const SKINS = [0x3b2216, 0x4e2e1c, 0x5b3420, 0x6b3f25, 0x7a4a2c, 0x45291a];

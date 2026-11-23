@@ -16,7 +16,7 @@ describe('message notices and the badge', () => {
     f.say('a11ce0000000a001', 'Au marché'); await vi.advanceTimersByTimeAsync(20);
     f.as('Moussa').pay(1500, 'Merci');
     await vi.advanceTimersByTimeAsync(1);
-    expect(toasts).toEqual(['💬 Awa : Tu es où ?', '💬 Moussa : 1 500 F reçus']);
+    expect(toasts).toEqual(['💬 Awa : Tu es où ?', '💸 1 500 F reçus de Moussa']);   // 1.0.1: money received has its own notice
     expect(messagesBadge()).toBe(3);
     stop(); f.as('Awa').say('Allô ?'); await vi.advanceTimersByTimeAsync(1);
     expect(toasts).toHaveLength(2);

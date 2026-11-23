@@ -30,7 +30,7 @@ async function waitHttp(url, proc, ms = 90000) {
 const state = page => page.evaluate(() => window.__dakarChat.state());
 const conv = (s, key) => s.history[key] ?? [];
 async function openChat(page, tab = 'near') {
-  if (!(await state(page)).open) await page.click('#chatBtn');
+  if (!(await state(page)).open) await page.evaluate(() => window.__dakarChat.open('near'));   // (1.0.1: the HUD's button opens Messages; the proximity panel is Messages › « À proximité »)
   await page.click(`.chat-tabs button[data-tab="${tab}"]`);
 }
 let lastSaid = '';
@@ -160,7 +160,7 @@ try {
   // ---- the proximity draft is kept; private messages are the phone's Messages (LD2.0-B: persistent conversations on the player's account)
   await b.click('.chat-tabs button[data-tab="near"]');
   await b.fill('#chatInput', 'Brouillon pas fini');
-  await b.click('.chat-close'); await b.click('#chatBtn');
+  await b.click('.chat-close'); await b.evaluate(() => window.__dakarChat.open('near'));
   check('draft kept after closing and reopening the panel', (await b.inputValue('#chatInput')) === 'Brouillon pas fini');
   await b.fill('#chatInput', '');
   const tagOf = page => page.waitForFunction(() => window.__dakar.account()?.me?.tag).then(h => h.jsonValue());
@@ -178,7 +178,7 @@ try {
   await a.waitForFunction(id => window.__dakar.account().convs().some(c => c.last?.id === id), dmId, { timeout: 30000 });
   check('private message delivered to the recipient only, with an unread badge', (await a.waitForFunction(() => document.querySelector('#chatBtn .chat-badge')?.textContent !== '', null, { timeout: 10000 }).then(() => true, () => false)) && !conv(await state(a), 'near').some(e => e.text.startsWith('Rendez-vous')));
   await b.evaluate(() => window.__dakar.phoneClose());
-  await a.click('#chatBtn'); await a.click('.chat-tabs button[data-tab="dm"]');
+  await a.evaluate(() => window.__dakarChat.open('near')); await a.click('.chat-tabs button[data-tab="dm"]');
   await a.waitForFunction(() => window.__dakar.phoneInfo().screen === 'messages');
   await a.waitForTimeout(600); await a.locator(`#phone .mg-conv[data-tag="${tagB}"]`).click();
   await a.waitForFunction(() => document.querySelector('#phone .mg-log')?.innerText.includes('Rendez-vous au Maïga'));
@@ -197,7 +197,7 @@ try {
     (await a.evaluate(() => window.__dakar.presence().peers[0].tag)) === tagB && await copies(a, tagB) === 1 && await copies(b, tagA) === 1);
 
   // ---- over-long and rate-limited messages: rejected with a visible status
-  if (!(await state(b)).open) await b.click('#chatBtn');
+  if (!(await state(b)).open) await b.evaluate(() => window.__dakarChat.open('near'));
   await b.click('.chat-tabs button[data-tab="near"]');
   await b.evaluate(n => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(n + 50); f.dispatchEvent(new Event('input')); }, CHAT_MAX);
   await b.press('#chatInput', 'Enter');
@@ -213,7 +213,7 @@ try {
 
   // ---- mute hides bubbles and messages; block hides the avatar; report confirmed
   // the panel's profile of a player: their name in the proximity log (mute, block, report; « message privé » is the phone's)
-  await a.click('#chatBtn'); await a.click('.chat-tabs button[data-tab="near"]');
+  await a.evaluate(() => window.__dakarChat.open('near')); await a.click('.chat-tabs button[data-tab="near"]');
   await a.locator('.chat-log .chat-author', { hasText: 'Awa' }).last().click();
   await a.click('.chat-mute');
   await b.waitForTimeout(10500);                             // let the rate-limit window pass
@@ -239,7 +239,7 @@ try {
   await b.screenshot({ path: `${SHOTS}/desktop-bubble.png` });
   // Real lifetime: a new bubble lasts 6 s and then disappears.
   await a.evaluate(() => window.__dakarChat.bubbleSeconds(6));
-  await b.click('#chatBtn'); await say(b, 'À tout à l’heure');
+  await b.evaluate(() => window.__dakarChat.open('near')); await say(b, 'À tout à l’heure');
   await a.waitForFunction(id => window.__dakarChat.state().bubbles.some(x => x.owner === id && x.left <= 6.01), bId2);
   const t0 = Date.now();
   await a.waitForFunction(id => !window.__dakarChat.state().bubbles.some(x => x.owner === id), bId2, { timeout: 30000 });

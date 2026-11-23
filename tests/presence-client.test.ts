@@ -126,3 +126,73 @@ describe('presence connection lifecycle', () => {
     expect(FakeSocket.instances).toHaveLength(1);
   });
 });
+
+/**
+ * 1.0.1 review (finding 4): the economy's clock is the server's while online (src/economy/calendar.ts `econNow` reads `serverNow`). A device clock moved by hand
+ * moves `Date.now()` (here `vi.setSystemTime`) but not the page's monotonic clock (`performance.now`, driven here): the server's time must not follow it.
+ */
+describe('the server\'s time while online, when the device clock is moved', () => {
+  const YEAR = 365 * 86_400_000;
+  let mono = 0;
+  /** Time passes on both clocks together, half a second at a time (a timer that fires reads the page's clock at its own moment). */
+  const pass = (ms: number) => { for (let left = ms; left > 0; left -= 500) { const d = Math.min(500, left); mono += d; vi.advanceTimersByTime(d); } };
+  beforeEach(() => {
+    vi.useFakeTimers(); vi.spyOn(Math, 'random').mockReturnValue(0); vi.spyOn(performance, 'now').mockImplementation(() => mono); mono = 5000;
+    listeners = new Map(); network = { onLine: true }; FakeSocket.instances = [];
+    vi.stubGlobal('window', globalThis); vi.stubGlobal('navigator', network);
+    vi.stubGlobal('location', { href: 'https://game.example/' }); vi.stubGlobal('WebSocket', FakeSocket);
+    vi.stubGlobal('addEventListener', (name: string, listener: (event: { persisted?: boolean }) => void) => { listeners.set(name, [...(listeners.get(name) ?? []), listener]); });
+  });
+  afterEach(() => { event('pagehide'); vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  /** Online, the server 3 s ahead of the device: returns the server's time at that moment. */
+  function online(client: PresenceClient, at = 3000) {
+    const socket = FakeSocket.instances.at(-1)!; socket.open();
+    const time = Date.now() + at;
+    socket.message({ type: 'welcome', version: 1, id: 'me', hub: 'pikine', room: 3, count: 1, time, peers: [] });
+    expect(client.status).toBe('online');
+    return time;
+  }
+
+  it('set forward a year: the server\'s time goes on as it was, through the heartbeat\'s reconnection, until the next welcome', () => {
+    const client = join(), t0 = online(client);
+    expect(client.serverNow()).toBe(t0);
+    pass(10_000); expect(client.serverNow()).toBe(t0 + 10_000);
+    vi.setSystemTime(Date.now() + YEAR);                                    // the device clock a year ahead
+    expect(client.serverNow()).toBe(t0 + 10_000);
+    for (let i = 0; i < 40; i++) { pass(500); expect(client.serverNow()).toBe(t0 + 10_500 + i * 500); }   // the 20 s heartbeat closes the socket (no pong for « 65 s »): reconnecting
+    expect(client.status).toBe('reconnecting');
+    pass(1000); expect(client.serverNow()).toBe(t0 + 31_000);
+    const t1 = online(client, 3000 - YEAR);                                  // the server answers again: its own time
+    expect(client.serverNow()).toBe(t1);
+    expect(Math.abs(t1 - (t0 + 31_000))).toBeLessThan(1000);
+  });
+  it('set back a year: the heartbeat still finds a server gone quiet, and a server that answers keeps the socket', () => {
+    const client = join(); online(client);
+    const socket = FakeSocket.instances.at(-1)!;
+    pass(2000); vi.setSystemTime(Date.now() - YEAR);
+    pass(58_000); expect(client.status).toBe('online');                     // 60 s of page time without a pong: not yet
+    pass(20_000); expect(client.status).toBe('reconnecting');               // 80 s: closed (with the device's clock, « now − last pong » stayed negative: never)
+    expect(socket.close).toHaveBeenCalled();
+    pass(1000); const next = FakeSocket.instances.at(-1)!; expect(next).not.toBe(socket);
+    online(client); vi.setSystemTime(Date.now() - YEAR);
+    for (let i = 0; i < 10; i++) { pass(20_000); next.onmessage?.({ data: 'pong' }); }   // a server that answers every ping
+    expect(client.status).toBe('online'); expect(next.close).not.toHaveBeenCalled();
+  });
+  it('set back a year: the server\'s time does not go back (and a peer\'s time stamp does not drag it)', () => {
+    const client = join(), t0 = online(client);
+    pass(2000); vi.setSystemTime(Date.now() - YEAR);
+    expect(client.serverNow()).toBe(t0 + 2000);
+    FakeSocket.instances.at(-1)!.message({ type: 'peer', peer: { id: 'p2', name: 'Awa', look: 1, x: 0, y: 0, z: 0, yaw: 0, speed: 0, space: 'street', clip: 'Idle', updatedAt: t0 + 2000 } });
+    pass(3000); expect(client.serverNow()).toBe(t0 + 5000);
+  });
+  it('small differences between the two clocks are not taken for a jump; before the first welcome, offline and solo it is the device\'s time', () => {
+    const client = join();
+    expect(client.serverNow()).toBe(Date.now());                            // no server time known yet
+    const t0 = online(client);
+    vi.setSystemTime(Date.now() + 800); expect(client.serverNow()).toBe(t0 + 800);   // under 2 s: the device's own correction is followed
+    network.onLine = false; event('offline');
+    expect(client.status).toBe('offline'); expect(client.serverNow()).toBe(Date.now());
+    const solo = new PresenceClient({ name: 'Awa', look: 2 }, false); solo.join('pikine');
+    expect(solo.serverNow()).toBe(Date.now());
+  });
+});

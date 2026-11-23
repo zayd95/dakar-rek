@@ -44,6 +44,11 @@ export interface Target {
   bias?: number;
   /** Current affordances; the first available one is the primary action. */
   affordances(): Affordance[];
+  /**
+   * The action button opens the list of affordances instead of running the first (1.0.1: another player — greet, write, send money, invite: one menu,
+   * src/multiplayer/social.ts). The button then reads `menu` (« Awa »), with this icon.
+   */
+  menu?: { label: string; icon: string };
 }
 
 /** A module that knows some targets (seats, people, vehicles, shops…). Called every frame with the player's position. */

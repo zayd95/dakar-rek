@@ -50,6 +50,12 @@ export interface AssetSpec {
   upgrades?: Upgrade[];
   /** Content still to come (never a permission): why it cannot be bought or used yet. */
   soon?: string;
+  /**
+   * A home rented by the economic month (1.0.1, src/economy/monthly.ts): rent and charges per month (F), what a tenant of the city pays for it empty
+   * (`sublet`) and furnished (`furnished`) at full occupancy, the price of its furnishing pack. Its listing leads with the monthly rent; `rent` (per
+   * city day) is kept for the leases signed before 1.0.1, which run on unchanged.
+   */
+  monthly?: { rent: number; charges: number; sublet: number; furnished: number; pack: number };
 }
 
 // ------------------------------------------------------------------ homes: room → apartment → house → villa → luxury residence
@@ -70,7 +76,7 @@ export const HOMES: HomeSpec[] = [
   { id: STARTER_HOME, kind: 'home', name: 'Ta chambre · Pikine', what: 'La chambre que la famille te prête, en face de la Cité Jàmm', hub: 'pikine', where: 'Pikine', size: 29, tier: 1,
     upgrades: [{ id: 'moustiquaire', name: 'Moustiquaire', what: 'Des nuits sans moustiques : +8 énergie au réveil', price: 6_000, comfort: 8 }], home: { level: 'room', w: 6, d: 4.8, door: 'pikine:home:11', floor: 'tiles' } },
   { id: 'appart_jamm', kind: 'home', name: 'Appartement F2 · Résidence Jàmm', what: 'Entrée, séjour, cuisine, chambre et salle de bain, au premier étage', price: 15_000_000, rent: 6_000, income: letIncome(6_000),
-    hub: 'pikine', place: 'jamm', where: 'Pikine · Cité Jàmm', size: 63, tier: 2, upgrades: COMFORT, home: { level: 'apartment', w: 9, d: 7, door: 'pikine:home:jamm', floor: 'tiles' } },
+    monthly: ECONOMY.monthly.f2, hub: 'pikine', place: 'jamm', where: 'Pikine · Cité Jàmm', size: 63, tier: 2, upgrades: COMFORT, home: { level: 'apartment', w: 9, d: 7, door: 'pikine:home:jamm', floor: 'tiles' } },
   { id: 'maison_cite', kind: 'home', name: 'Maison familiale · Cité Jàmm', what: 'Une maison avec cour, grand salon et cuisine, au bout de la cité', price: 150_000_000, rent: 16_700, income: letIncome(16_700), upkeep: 100,
     hub: 'pikine', place: 'maison', where: 'Pikine · Cité Jàmm', size: 216, tier: 3, upgrades: [...COMFORT, { id: 'clim', name: 'Climatisation', what: 'Fraîcheur toute l’année : +15 énergie au réveil, loyer +15 %', price: 650_000, comfort: 15, rentMult: 1.15 }],
     home: { level: 'house', w: 12, d: 9, door: 'pikine:home:maison', floor: 'marble' } },
@@ -122,6 +128,8 @@ const DRIVE_SOON = 'Arrive avec la conduite (transports, vague 2)';
 export const VEHICLES: AssetSpec[] = [
   // drivable (src/transport/ownedModule.ts): sold at a dealer corner of their hub (or here), delivered at its kerb
   { id: 'jakarta', kind: 'vehicle', name: 'Moto Jakarta', what: 'D’occasion · la moto des livreurs et des clandos à deux roues', price: 150_000, tier: 1, where: 'Garage Modou · Pikine' },
+  // the sport motorbike (src/transport/sportMoto.ts): one model in two colourways, rouge et blanc at Garage Modou, jaune et noir at Ndiaye Auto
+  { id: 'sabar', kind: 'vehicle', name: 'Sabar 600', what: 'Moto sportive carénée, neuve : rouge et blanc à Pikine, jaune et noir au Plateau', price: 2_000_000, tier: 2, where: 'Garage Modou · Pikine ou Ndiaye Auto · Plateau' },
   // the modern sedan (Stage A of the player-owned lineup, docs/assets/VEHICLE_LINEUP.md). The price is a PROVISIONAL placeholder: the economy balance pass sets it (it is not the old car's)
   // the player cars with a body of their own (src/transport/modelCars.ts; original designs, the game's names): prices PROVISIONAL like the others
   { id: 'teranga', kind: 'vehicle', name: 'Teranga', what: 'Citadine moderne, toit noir : la première voiture du quartier, parfaite pour les courses VTC', price: 4_000_000, tier: 2, where: 'Sarr Auto · Pikine' },

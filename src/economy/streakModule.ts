@@ -2,7 +2,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import { relate } from '../venues/venue';
 import { phoneHooks } from '../ui/phoneHooks';
 import { PERK_TEXT, STREAK, advancePlay, creditWork, perks, runLabel, runOf, type Credit, type WorkKind } from './streak';
-import { workCard, type Card, type WorkDone } from './workCard';
+import { workCard, type Card, type CardAction, type WorkDone } from './workCard';
 import { radio } from '../transport/radio';
 
 /**
@@ -10,7 +10,8 @@ import { radio } from '../transport/radio';
  *   – Every frame: the player's day moves on when the city day changes (while playing, or on coming back).
  *   – `note(kind)`: a piece of real work was paid or done (a delivery, a VTC ride, a shift, a dealer's errand, a repayment, a bout). Called by the systems
  *     that pay it, after they paid it once.
- *   – `done(work)`: a Tiak or VTC job is finished and paid: the card (what, where, paid, how long, how far, the run, one line on how it went). It never pays.
+ *   – `done(work)`: a Tiak or VTC job is finished and paid: the card (what, where, paid, how long, how far, the run, one line on how it went, and for a
+ *     delivery the next run nearby as one button). It never pays.
  *   – A milestone (2, 3, 5, 7 days) gets its short card once the job's card is gone, saying what it opens. At 3 days, Pape Sarr's trust rises once.
  * The distance of a job is measured here: the player's way (on foot, ridden or driven) from the moment the job is seen in hand.
  */
@@ -67,7 +68,7 @@ class StreakModule implements GameModule {
   private pendingMilestone: Credit | null = null;
   private carding = false;
   /** A Tiak or VTC job finished and paid: the day is noted and the card shown. `key`: the job's own key (`tiak:<run>`, `vtc:<id>`). */
-  done(key: string, w: Omit<WorkDone, 'ms' | 'metres' | 'bumps'> & { ms?: number }, extra: Card['rows'] = []) {
+  done(key: string, w: Omit<WorkDone, 'ms' | 'metres' | 'bumps'> & { ms?: number }, extra: Card['rows'] = [], action?: CardAction) {
     const ctx = this.ctx; if (!ctx) return;
     const o = this.open.get(key); this.open.delete(key);
     const work: WorkDone = { ...w, ms: w.ms ?? (o ? ctx.state.data.playedMs - o.ms : 0), metres: o ? this.meter - o.m : 0, bumps: o ? this.bumps - o.bumps : 0 };
@@ -76,11 +77,13 @@ class StreakModule implements GameModule {
     const card = workCard(work, c, runOf(ctx.state.data), extra);
     this.log.cards.push({ title: card.title, rows: card.rows.map(r => `${r.k}: ${r.v}${r.note ? ` (${r.note})` : ''}`), next: card.next });
     if (this.log.cards.length > 20) this.log.cards.shift();
-    ctx.hud.boutCard(card, 7000);
+    if (action) card.action = action;                                               // the next job nearby, in one tap: the card stays a little longer
+    const cardMs = action ? 12000 : 7000;
+    ctx.hud.boutCard(card, cardMs);
     radio.duck(0.45, 3.5);                                                          // the car's radio steps back while the card speaks
     this.carding = false;
     this.flushMilestone();
-    for (const f of workDoneListeners) f(w.kind, 7000);
+    for (const f of workDoneListeners) f(w.kind, cardMs);
   }
 
   private flushMilestone() {

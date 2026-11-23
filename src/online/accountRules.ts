@@ -1,4 +1,4 @@
-import type { InviteItem, Item, MeetItem, MoneyLimits, Tag } from './protocol';
+import type { InviteItem, Item, LedgerOp, MeetItem, MoneyLimits, PayItem, Tag } from './protocol';
 
 /**
  * The rules of a player's account (docs/ld2/LD2_B_CONTRACT.md « The account »), pure so vitest checks them without the Workers runtime: what a
@@ -19,6 +19,32 @@ export const STATEFUL: ReadonlySet<Item['k']> = new Set(['ask', 'invite', 'meet'
 export function deliveryOf(item: Item, o: { blocked: boolean; known: boolean }): 'store' | 'drop' {
   if (!o.blocked || o.known || item.k === 'pay' || item.k === 'ask') return 'store';
   return 'drop';
+}
+/**
+ * A send's conversation item (its id is the ledger operation's): what the sender's account writes and forwards, and what the recipient's account rebuilds
+ * from the ledger at its next connection when that delivery never came (1.0.1: the ledger is the authority, the card must not depend on the outbox).
+ */
+export function payItemOf(op: LedgerOp): PayItem | null {
+  if (op.kind !== 'pay' || !op.from || !op.to) return null;
+  return { id: op.id, k: 'pay', from: op.from, at: op.at, amount: op.amount, op: op.id, ...(op.note ? { note: op.note } : {}), ...(op.req ? { req: op.req } : {}) };
+}
+
+// ------------------------------------------------------------------ the outbox between accounts
+/** Retries back off from 10 s to 10 min; after this many, a delivery is no longer dropped: it is PARKED (1.0.1). */
+export const OUTBOX_TRIES = 40;
+/** A parked delivery is tried again this often, and at once when its sender or its recipient connects. */
+export const OUTBOX_PARK_MS = 6 * 3_600_000;
+/** A parked item is given up (and logged) once it is this old; a parked signal without a date after this many more tries. */
+export const OUTBOX_KEEP_MS = 30 * 86_400_000, OUTBOX_PARK_TRIES = 120;
+/**
+ * What becomes of an outbox row whose delivery just failed for the `tries`-th time: when it is tried next, or null (given up). An item for another
+ * account (`deliver`) and a block's effects (`blockedBy`) are never dropped while they still matter; « the visit ended » is only worth saying soon.
+ */
+export function outboxRetry(tries: number, now: number, o: { kind: 'deliver' | 'visitEnd' | 'blockedBy'; at?: number }): { next: number; parked: boolean } | null {
+  if (tries < OUTBOX_TRIES) return { next: now + Math.min(600_000, 5_000 * 2 ** Math.min(tries, 7)), parked: false };
+  if (o.kind === 'visitEnd') return null;
+  if (o.kind === 'deliver' && o.at !== undefined ? now - o.at > OUTBOX_KEEP_MS : tries >= OUTBOX_TRIES + OUTBOX_PARK_TRIES) return null;
+  return { next: now + OUTBOX_PARK_MS, parked: true };
 }
 /** When the recipient blocked the sender: text and locations go through without being delivered; everything else is refused, 'unavailable'. */
 export const silentWhenBlocked = (kind: 'say' | 'loc' | 'pay' | 'ask' | 'invite' | 'meet') => kind === 'say' || kind === 'loc';
@@ -157,8 +183,8 @@ export function refusalText(reason: string, limits: MoneyLimits): string {
     'not-found': 'Introuvable : c’est peut-être déjà effacé.',
     closed: 'Ce n’est plus possible : c’est déjà réglé, fermé ou passé.',
     'too-large': 'Trop long.',
-    pending: 'Pas encore de réponse du serveur : ce sera confirmé à la reconnexion, jamais compté deux fois.',
-    timeout: 'Pas de réponse du serveur : réessaie.',
+    pending: 'Le serveur n’a pas encore répondu. Ce sera confirmé ou annulé tout seul, jamais compté deux fois.',
+    timeout: 'Pas de réponse du serveur. Regarde la conversation avant de réessayer.',
     save: 'Impossible d’enregistrer la partie sur cet appareil : rien n’a été envoyé ni débité.',
     solo: 'Messages n’est pas disponible dans cette version du jeu.',
     empty: 'Message vide.',

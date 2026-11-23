@@ -14,6 +14,8 @@ import { Cast, type Role as CastRole } from './cast';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
 import { VagueMusic } from './vagueMusic';
 import { VAGUE_TRACK } from './vagueTrack';
+import { VenueLife } from './venueLife';
+import { PATIO_KEEP, PATIO_LIFE, placed } from './lifePlans';
 import { PATIO_TRACK } from './patioTrack';
 import { DancePlay, type DanceStage } from './dancePlay';
 import { registerInWorld } from '../activity/inWorld';
@@ -196,6 +198,18 @@ export function buildPatio(env: VenueEnv): Venue {
       }
     },
   };
+  // the courtyard's crowd (1.0.1): people who come in by the gate, meet, dance at the rim of the floor, talk, take a stool, and leave — on the night's hours, as figures within the body budget
+  const corners = [at(-HW + 0.1, -ZB + 0.1), at(HW - 0.1, -ZB + 0.1), at(-HW + 0.1, ZF + 0.9), at(HW - 0.1, ZF + 0.9)];
+  let lifeSeen = false;
+  const lifePlan = placed(PATIO_LIFE, at, site.yaw);
+  const life = new VenueLife({
+    ctx, name: 'patio', parent: ctx.extra, plan: { ...lifePlan, spots: lifePlan.spots.map(sp => (sp.seat ? { ...sp, seat: `${id}:${sp.seat}` } : sp)) },
+    // the gate's leaves and the rope stop the player who has not paid, never the guests
+    colliders: () => world.colliders.filter(c => !mainGate.includes(c) && !smokeGate.includes(c)),
+    area: { x0: Math.min(...corners.map(c => c.x)), x1: Math.max(...corners.map(c => c.x)), z0: Math.min(...corners.map(c => c.z)), z1: Math.max(...corners.map(c => c.z)) },
+    y: (x, z) => Math.max(F, 0.1 + world.heightAt(x, z)), active: () => lifeSeen,                        // (the raised smokers' terrace and the VIP corner: the ground there is higher)
+    keep: PATIO_KEEP.map(c => ({ ...c, ...at(c.x, c.z) })),
+  });
   const dance = new DancePlay({ ctx, music, crowd: stage, here: () => inPatio, spot: () => { const p = at(DANCE_FLOOR.x, DANCE_FLOOR.z); return { x: p.x, z: p.z, yaw: site.yaw }; }, track: PATIO_TRACK, words: PATIO_DANCE });
   const unregister = registerInWorld(dance);
 
@@ -362,6 +376,7 @@ export function buildPatio(env: VenueEnv): Venue {
     }
     if (!table && served) { served = null; cast.walkTo('serveur', [at(WAITER_HOME.x, WAITER_HOME.z)], site.yaw + Math.PI / 2, 'Idle', 1.6); }
     approaches(dt, open, m);
+    lifeSeen = seen && open; life.update(dt);
     cast.update(dt, ctx.camera.position, lite ? 45 : 70, sp === 'street' || sp === SPACE, ctx.player.pos);
     quiet += dt;
     if (inPatio && open && (m === 'peak' || m === 'warm') && quiet > 40 && !later.length && !ctx.activities.current) { ctx.toast(djDrop(drops++)); quiet = 0; }   // a drop of the DJ's now and then
@@ -383,7 +398,7 @@ export function buildPatio(env: VenueEnv): Venue {
     space: () => (inPatio ? SPACE : null),
     camera: dt => dance.camera(dt),
     dispose() {
-      unregister(); dance.dispose(); music.dispose(); if (musicNow === music) musicNow = null; ctx.interactions.remove('patio-people'); cast.dispose(); k.dispose();
+      unregister(); life.dispose(); dance.dispose(); music.dispose(); if (musicNow === music) musicNow = null; ctx.interactions.remove('patio-people'); cast.dispose(); k.dispose();
       world.heightAt = baseHeight; setGate([...mainGate, ...smokeGate], false); later.length = 0; inPatio = false;
     },
     debug: () => {
@@ -397,7 +412,7 @@ export function buildPatio(env: VenueEnv): Venue {
         entrance: at(0, ZF + 2.2), inside: at(0, ZF - 2.5), floor: at(DANCE_FLOOR.x, DANCE_FLOOR.z), door: at(parts.at.door.x, parts.at.door.z), terrace: at(9.5, 6.4), zone: APPROACH_ZONE,
         counters: { paid: counter(ctx, keys.paid), nights: counter(ctx, keys.nights), dances: counter(ctx, keys.dances), requests: counter(ctx, keys.requests) },
         music: { ...music.info(), ownTrack, asked: music.want.level }, dance: dance.info(), draw: draw(), tris: parts.tris, regularAt: PATIO_REGULAR,
-        colliders: parts.accounts.length, tile: Array.from(tiles.slice(0, 4)), seatsFree: k.seats.filter(s => !s.occupant).length, talkersMet: [...met],
+        life: life.info(), colliders: parts.accounts.length, tile: Array.from(tiles.slice(0, 4)), seatsFree: k.seats.filter(s => !s.occupant).length, talkersMet: [...met],
         heightOnTerrace: world.heightAt(at(9.9, 6.5).x, at(9.9, 6.5).z), seatIds: SEAT_IDS.salon,
       };
     },

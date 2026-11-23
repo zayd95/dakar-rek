@@ -109,9 +109,10 @@ export function tonightPage(i: TonightInput): TonightSection[] {
       if (i.ride) go.push({ icon: '🚐', label: 'Car rapide · Ligne 23, arrêt « Arène »', detail: `${fcfaText(i.ride.fare)} · monte à l’arrêt ${i.ride.stop}, à ${metres(i.ride.dist)}`, go: 'stop' });
     } else go.push({ icon: '🗺️', label: 'Va à Pikine', detail: `Tu es à ${i.hub} : change de quartier par la Carte, puis ligne 23, arrêt « Arène »`, open: 'carte' });
     if (!i.gate?.inside) for (const v of i.vehicles) {
-      if (v.riding) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: `${v.label} : tu es dessus`, detail: v.key === 'moto' ? 'Parking motos gardé à côté de l’entrée' : 'Gare-la près de l’arène' });
-      else if (v.dist !== null) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `${v.f === false ? 'Garé' : 'Garée'} à ${metres(v.dist)}`, go: v.key });
-      else if (v.hub) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `${v.key === 'suv' ? 'Garé' : 'Garée'} à ${v.hub}` });
+      const bike = v.key === 'moto' || v.key === 'sabar';                     // the Jakarta and the Sabar 600 go to the guarded motorbike parking
+      if (v.riding) go.push({ icon: bike ? '🏍️' : '🚗', label: `${v.label} : tu es dessus`, detail: bike ? 'Parking motos gardé à côté de l’entrée' : 'Gare-la près de l’arène' });
+      else if (v.dist !== null) go.push({ icon: bike ? '🏍️' : '🚗', label: v.label, detail: `${v.f === false ? 'Garé' : 'Garée'} à ${metres(v.dist)}`, go: v.key });
+      else if (v.hub) go.push({ icon: bike ? '🏍️' : '🚗', label: v.label, detail: `${v.key === 'suv' ? 'Garé' : 'Garée'} à ${v.hub}` });
     }
     out.push({ title: 'Y aller', rows: go });
   }

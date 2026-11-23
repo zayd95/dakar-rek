@@ -11,7 +11,7 @@ import type { Step } from '../economy/progress';
  */
 export interface ObjectiveMarks { npcs: ReadonlySet<string>; specials: ReadonlySet<string> }
 
-const STEP_SPECIALS: Record<string, string> = { goal_tiak: 'jobs', goal_pickup: 'jobs', goal_deliver: 'jobs', goal_buy: 'shop' };
+const STEP_SPECIALS: Record<string, string> = { goal_tiak: 'jobs', goal_pickup: 'jobs', goal_deliver: 'jobs', goal_buy: 'shop', pouce_meuble: 'shop', pouce_quartiers: 'jobs' };
 
 /** The marks of the current objective: the first lead (the one the goal line and the Carnet suggest), or nothing. */
 export function objectiveMarks(lead: Beat | Step | null | undefined): ObjectiveMarks {

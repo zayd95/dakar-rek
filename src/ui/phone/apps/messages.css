@@ -14,10 +14,10 @@
 @keyframes mgBlink { 50% { opacity:.35; } }
 #phone .mg-list { margin-top:14px; border-radius:var(--pk-r); background:var(--ios-card); overflow:hidden; }
 #phone .mg-list > .pk-empty { border-radius:0; }
-#phone .mg-conv { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:74px; margin:0; padding:10px 14px; border:0; background:var(--ios-card);
+#phone .mg-conv, #phone .mg-near-go { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:74px; margin:0; padding:10px 14px; border:0; background:var(--ios-card);
   color:var(--ios-ink); font:inherit; text-align:left; cursor:pointer; }
 #phone .mg-conv + .mg-conv::before { content:''; position:absolute; top:0; right:0; left:74px; border-top:1px solid var(--ios-sep); }
-#phone .mg-conv:active { background-image:linear-gradient(var(--pk-press), var(--pk-press)); }
+#phone .mg-conv:active, #phone .mg-near-go:active { background-image:linear-gradient(var(--pk-press), var(--pk-press)); }
 #phone .mg-conv.blocked .mg-av { filter:grayscale(1); opacity:.6; }
 #phone .mg-conv-tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
 #phone .mg-conv-top, #phone .mg-conv-bot { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
@@ -105,6 +105,17 @@
 #phone .k-pay .mg-kind { color:#e0e7ff; }
 #phone .k-pay .mg-title { font-size:24px; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
 #phone .k-pay .mg-state { background:rgba(255,255,255,.22); color:#fff; }
+/* a send waiting for the server, or refused: not the « done » blue */
+#phone .k-pay.sending .mg-card { background:#e9e9ee; color:var(--ios-ink); box-shadow:none; border:1.5px dashed #b9b9c3; }
+#phone .k-pay.failed .mg-card { background:#fde4e1; color:#9b1c13; box-shadow:none; }
+#phone .k-pay.sending .mg-kind, #phone .k-pay.failed .mg-kind { color:inherit; opacity:.8; }
+#phone .k-pay.sending .mg-state { background:#fff1c2; color:#6b4a00; } #phone .k-pay.failed .mg-state { background:#fff; color:#9b1c13; }
+#phone .mg-out.wait i { animation:mgBlink 1.6s ease-in-out infinite; }
+#phone .mg-nearrow:empty { display:none; }
+/* (not a conversation: its own class, the conversations' look, rounded on its own above the list) */
+#phone .mg-near-go { margin-top:14px; border-radius:var(--pk-r); }
+#phone .mg-av-near { background:#fde68a; font-size:20px; font-style:normal; }
+body.theme-night #phone .k-pay.sending .mg-card { background:#2c2c2e; color:#f5f5f7; border-color:#55555c; }
 
 /* the composer: « + », the field, « Envoyer » */
 #phone .mg-note { flex:none; margin:6px 4px 0; font-size:13.5px; line-height:1.35; color:var(--pk-warn); }
@@ -233,3 +244,7 @@ body.theme-night #phone .mg-dot { box-shadow:0 0 0 2.5px #1c1c1e; }
 
 /* the shell's app badges (src/ui/phone.ts `badges`): on « Toutes les apps » of the home screen, the sum of its apps' counts */
 #phone .hm-tile > .ph-badge.app-n { top:10px; right:10px; left:auto; }
+/* 1.0.1 Grand Camp: an invitation's text, and « Voir le match » under it (src/ui/phone/apps/campText.ts parseCampInvite) */
+#phone .mg-b .mg-camp { display:block; margin:6px 0 2px; min-height:44px; padding:8px 16px; border:0; border-radius:999px; background:var(--pk-sun); color:var(--pk-sun-ink); font:700 15px/1.2 var(--ph-font); box-shadow:0 2px 0 var(--pk-sun-deep); cursor:pointer; }
+#phone .mg-b.me .mg-camp { margin-left:auto; }
+#phone .mg-b .mg-camp:active { transform:translateY(1px); }

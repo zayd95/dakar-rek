@@ -34,7 +34,7 @@ function bout(seed: number) {
     return info();
   };
   const grab = (i: Info) => { if (i.phase === 'fight') { if (i.dist > 1.4) walkIn(); else duel.pressGrab(); } };
-  return { duel, info, run, grab };
+  return { duel, info, run, grab, walkIn };
 }
 
 describe('làmb 2.0 · the checks’ set-up hold (opponent, clock and referee held still)', () => {
@@ -77,6 +77,25 @@ describe('làmb 2.0 · the checks’ set-up hold (opponent, clock and referee he
       expect(end.winner).toBe('player');
       expect(end.lastThrow).toEqual({ by: 'player', result: 'fall' });
       expect(end.timeLeft).toBe(t0);
+    });
+  }
+  for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    it(`seed ${seed}: the guard step — held, he takes no hold of a raised guard; his strike, thrown into it in reach, is guarded and counted`, () => {
+      const { duel, info, run, walkIn } = bout(seed);
+      run(i => i.phase === 'fight');
+      duel.debugHold(true); duel.setGuard(true);
+      // into his reach, the guard up (a free Gora would often grab here: a guard stops strikes, not a grab)
+      const near = run(i => i.phase !== 'fight' || i.dist <= 1.6, 20, () => walkIn());
+      expect(near.phase).toBe('fight');
+      expect(near.score.opponent.grabs ?? 0).toBe(0);
+      const g0 = near.score.player.guards as number, s0 = near.stamina.player as number;
+      expect(duel.debugAiStrike('big')).toBe(true);
+      const gd = run(i => i.phase !== 'fight' || (i.score.player.guards as number) > g0, 5);
+      expect(gd.phase).toBe('fight');
+      expect(gd.score.player.guards).toBe(g0 + 1);
+      expect(gd.lastStrike).toMatchObject({ by: 'opponent', kind: 'big', result: 'guarded' });
+      expect(gd.stamina.player).toBeLessThan(s0);                                     // the guard pays for it in endurance
+      expect(info().balance.player).toBeGreaterThan(50);
     });
   }
   it('let go, the opponent fights again and the clock runs', () => {
