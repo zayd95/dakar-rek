@@ -109,20 +109,54 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // làmb bout against a local opponent: grabbing and pushing in the empoignade wins, the result is recorded
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.duel(); });
   await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
-  // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
+  // the player's cinematic bout (src/lamb/cinematic.ts), played by a patient player until the fall: the game paused and
+  // stepped at 30 Hz without drawing (a software renderer runs it ~12x slower than real time), the player acting each step —
+  // in reach, a counter-grip late in his charge's tell; pulling as he pushes; holding his attacks off in their window; the
+  // lit move thrown at the gauge's zone
   let bout = null;
-  for (const t0 = Date.now(); Date.now() - t0 < 200000;) {             // 90 s once stopped at 96 % of the clinch (run 38006915021)
-    const inf = await page.evaluate(() => window.__dakar.duelInfo());
-    if (!inf) break;
-    bout = inf;
-    if (inf.phase === 'fall' || inf.phase === 'result') break;
-    await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100);
+  for (const t0 = Date.now(); Date.now() - t0 < 200000;) {
+    bout = await page.evaluate(() => {
+      const d = window.__dakar, w = window.__cinePlayer ??= { held: false, pressed: '' };
+      const key = (code, up = false) => window.dispatchEvent(new KeyboardEvent(up ? 'keyup' : 'keydown', { code }));
+      const tap = code => { key(code); key(code, true); };
+      const hold = on => { if (on !== w.held) { w.held = on; key('Space', !on); } };
+      d.pause(true);
+      let inf = null;
+      for (let n = 0; n < 300; n++) {
+        inf = d.duelInfo();
+        if (!inf || inf.phase === 'fall' || inf.phase === 'result') break;
+        const c = inf.combat?.cine;
+        if (c?.phase === 'debout') {
+          hold(false);
+          const tellId = `${c.aiDur}`;
+          if (c.ai === 'garde' && inf.dist > 1.6) d.duelStick(1, 0, 0.05);
+          else if (c.ai === 'garde' && c.tellK > c.holdFrom + 0.08 && w.pressed !== tellId) { w.pressed = tellId; tap('Space'); }
+          else if (c.ai === 'rate') { if (inf.dist < 1.5) tap('Space'); else d.duelStick(1, 0, 0.05); }
+          else if (c.ai === 'tourne' && inf.dist > 2.2) d.duelStick(0.6, 0, 0.05);
+          if (c.ai === 'tourne') w.pressed = '';
+        } else if (c?.phase === 'empoignade') {
+          if (c.plan === 'attaque') { hold(false); if (c.tellK > c.holdFrom + 0.1 && w.pressed !== 'a') { w.pressed = 'a'; tap('Space'); } }
+          else {
+            if (w.pressed === 'a') w.pressed = '';
+            if (c.lit && c.open[c.lit] > 0.65) { hold(false); tap(`Digit${['souleve', 'hanche', 'croc', 'pousse'].indexOf(c.lit) + 1}`); }
+            else if (c.plan === 'pousse') { hold(true); d.duelStick(-1, 0, 0.05); }
+            else hold(false);
+          }
+        } else if (c?.phase === 'projection') { hold(false); if (c.needle >= (c.z0 + c.z1) / 2) tap('Space'); }
+        else hold(false);
+        d.step(1 / 30);
+      }
+      if (!inf || inf.phase === 'fall' || inf.phase === 'result') { hold(false); d.pause(false); }
+      return inf;
+    });
+    if (!bout || bout.phase === 'fall' || bout.phase === 'result') break;
   }
+  await page.evaluate(() => window.__dakar.pause(false));
   // the fall, the result and the way back to play run on game time: on a slow CI runner (well under 10 fps, frames capped
   // at 0.1 s) that took more than 120 s of wall clock once (run 37864249615), so wait for the outcome itself, up to 4 min
   await page.waitForFunction(() => window.__dakar.duelInfo() === null && window.__dakar.pos().mode === 'play', null, { timeout: 240000 }).catch(() => {});
   const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
-  check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
+  check('lamb: the player\'s bout, played to a win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
   // monument stair: standing half-way up puts the player well above the street
   await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
   await page.waitForTimeout(400);
