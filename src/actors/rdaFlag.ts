@@ -1,14 +1,17 @@
 /**
- * The Roi des Arènes wrestler bodies (docs/wrestling/RDA-INTEGRATION.md): behind a switch while they are measured. Without it every
- * wrestler is the v4 `Wrestler`, exactly as before. Pure resolution, read once per page (like src/lamb/flag.ts).
+ * The Roi des Arènes wrestler bodies (docs/wrestling/RDA-INTEGRATION.md): **the default** on the Medium and High qualities (the
+ * owner's release of 23 Nov 2026, decision 1 (b)); Low keeps the v4 `Wrestler`, which is also the fallback while the file loads or if
+ * it fails. Pure resolution, read once per page (like src/lamb/flag.ts).
  *
- * - `?rdabody` (or `localStorage['dakarrek.rdabody'] = '1'`, the dev setting): the RDA bodies on the medium and high qualities; low keeps v4.
+ * - by default (or `?rdabody`, or `localStorage['dakarrek.rdabody'] = '1'`): the RDA bodies on the medium and high qualities; low keeps v4.
  * - `?rdabody=force` (or the stored `'force'`): on every quality, low included (measurements only).
  * - `?rdabody=0` (or the stored `'0'`): off. The address wins over the stored choice.
  * - Accessory pieces (owner decision, off by default): `?rdaparts=arms,chest` (or `localStorage['dakarrek.rdaparts']`): `arms` the arm and
  *   waist sets (one switch: they replace the look's arm and waist placeholders), `chest` the chest X (its own switch).
  */
 export type RdaMode = 'off' | 'on' | 'force';
+/** The game's default: the RDA bodies on Medium and High. */
+export const RDA_DEFAULT: RdaMode = 'on';
 export type Build = 'athletic' | 'heavy';
 export interface RdaPartsOn { armsWaist: boolean; chest: boolean }
 export type RdaLevel = 'high' | 'medium';
@@ -16,7 +19,7 @@ export type RdaLevel = 'high' | 'medium';
 export function resolveRdaBody(search: string, stored: string | null): RdaMode {
   const q = new URLSearchParams(search);
   const read = (v: string | null): RdaMode | null => v === null ? null : v === '0' || v === 'off' ? 'off' : v === 'force' ? 'force' : 'on';
-  return read(q.has('rdabody') ? q.get('rdabody') : null) ?? read(stored) ?? 'off';
+  return read(q.has('rdabody') ? q.get('rdabody') : null) ?? read(stored) ?? RDA_DEFAULT;
 }
 export function resolveRdaParts(search: string, stored: string | null): RdaPartsOn {
   const q = new URLSearchParams(search), v = q.has('rdaparts') ? q.get('rdaparts') ?? '' : stored ?? '';

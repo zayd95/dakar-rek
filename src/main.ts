@@ -1987,7 +1987,7 @@ let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
   const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde', 'sabar'])]);
-  void loadRdaBodies();                                                         // (behind ?rdabody; never waited on)
+  void loadRdaBodies();                                                         // (the default on Medium and High; never waited on)
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
     name: isDefaultName(presence.profile.name, state.data.guestId) ? '' : presence.profile.name }) : null;

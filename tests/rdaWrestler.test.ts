@@ -249,7 +249,7 @@ describe('the checks\' detached-vertex measure (src/actors/rdaLook.ts rigidDrift
 
 describe('the switch (src/actors/rdaFlag.ts)', () => {
   it('off unless asked; ?rdabody for medium and high; force for every quality; the address wins over the stored choice', () => {
-    expect(resolveRdaBody('', null)).toBe('off');
+    expect(resolveRdaBody('', null)).toBe('on');                     // the default since the 1.0.1 release (Medium and High; Low keeps v4)
     expect(resolveRdaBody('?rdabody', null)).toBe('on'); expect(resolveRdaBody('?debug&rdabody=force', null)).toBe('force');
     expect(resolveRdaBody('?rdabody=0', '1')).toBe('off'); expect(resolveRdaBody('', '1')).toBe('on'); expect(resolveRdaBody('', 'force')).toBe('force');
     expect(rdaWanted('low', 'on')).toBe(false); expect(rdaWanted('medium', 'on')).toBe(true); expect(rdaWanted('low', 'force')).toBe(true); expect(rdaWanted('high', 'off')).toBe(false);
