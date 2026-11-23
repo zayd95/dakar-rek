@@ -17,9 +17,15 @@ import type { VehicleSpec } from './vehicleKit';
  * the file is missing or fails to load the procedural model is used as before.
  */
 export interface GlbWheel { spin: THREE.Object3D; steer: THREE.Object3D | null; r: number }
-export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number }
+/**
+ * `fork`: a two-wheeler's front end (scripts/vehicles/build-sport-moto.mjs), a node whose own +Y is the raked steering axis: turned about it, it carries
+ * the fork legs, the mudguard, the clip-ons and the front wheel (whose axle does not steer by itself).
+ */
+export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number; fork: THREE.Object3D | null }
 
-interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null; far2: THREE.Object3D | null }
+interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null; far2: THREE.Object3D | null;
+  /** Other colourways of the same body (the sidecar's `paints` after the first): a texture each, laid on the body's paint in place of its own (null: not loaded). */
+  paints: (THREE.Texture | null)[] }
 /** Beyond this distance an authored body is drawn as its far model: the same shell and details merged into two meshes, wheels fixed (8 draw calls → 2). */
 export const FAR_LOD = 38;
 /** Beyond this one, the far model coarser still: its vertices gathered on a grid of CLUSTER metres (a car across a district is a few pixels; it keeps its paint). */
@@ -51,8 +57,11 @@ export async function preloadGlbVehicles(ids: readonly string[], base = import.m
       try {
         const gltf = await new GLTFLoader().loadAsync(`${base}assets/vehicles/${id}.glb`);
         // the sidecar of the pipeline says whether the cabin is hollow; without it the model is taken as a solid shell (no « at the wheel » view)
-        const side = await fetch(`${base}assets/vehicles/${id}.json`).then(r => r.ok ? r.json() : null, () => null) as { interior?: boolean } | null;
-        prepared.set(id, prepare(gltf.scene, side?.interior === true)); failures.delete(id);
+        const side = await fetch(`${base}assets/vehicles/${id}.json`).then(r => r.ok ? r.json() : null, () => null) as { interior?: boolean; paints?: { texture: string }[] } | null;
+        const p = prepare(gltf.scene, side?.interior === true);
+        // its other colourways: one texture each next to the GLB (a missing one keeps the first colourway: never a blank body)
+        p.paints = await Promise.all((side?.paints ?? []).slice(1).map(c => new THREE.TextureLoader().loadAsync(`${base}assets/vehicles/${c.texture}`).then(t => paintTexture(t, p.scene), () => null)));
+        prepared.set(id, p); failures.delete(id);
         return;
       } catch (e) {
         failures.set(id, String((e as Error)?.message ?? e));
@@ -86,7 +95,27 @@ export function prepare(scene: THREE.Object3D, interior = false): Prepared {
     if (/^axle_/.test(o.name)) wheels.push({ id: o.name.slice(5), r: o.userData.r ?? 0.3, steer: !!o.userData.steer });
   });
   const far = farModel(scene);
-  return { scene, wheels, tris, drawCalls, interior, far, far2: far && coarse(far) };
+  return { scene, wheels, tris, drawCalls, interior, far, far2: far && coarse(far), paints: [] };
+}
+
+/** A colourway's texture, set up as GLTFLoader set up the body's own (glTF's UV origin, sRGB, its filtering). */
+function paintTexture(t: THREE.Texture, scene: THREE.Object3D): THREE.Texture {
+  let own: THREE.Texture | null = null;
+  scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.MeshLambertMaterial | undefined; if (!own && m && !Array.isArray(m) && m.map) own = m.map; });
+  t.flipY = false; t.colorSpace = THREE.SRGBColorSpace;
+  if (own) { const o = own as THREE.Texture; t.wrapS = o.wrapS; t.wrapT = o.wrapT; t.minFilter = o.minFilter; t.magFilter = o.magFilter; t.anisotropy = o.anisotropy; }
+  t.userData.shared = true; t.needsUpdate = true;
+  return t;
+}
+const coats = new Map<string, THREE.Material>();
+/** Lays colourway texture `t` on every textured material under `g` (one material per source material and colourway, shared by every copy). */
+function repaint(g: THREE.Object3D, t: THREE.Texture) {
+  g.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh || Array.isArray(m.material) || !(m.material as THREE.MeshLambertMaterial).map) return;
+    const key = `${m.material.uuid}:${t.uuid}`; let c = coats.get(key);
+    if (!c) { c = m.material.clone(); (c as THREE.MeshLambertMaterial).map = t; c.userData.shared = true; coats.set(key, c); }
+    m.material = c;
+  });
 }
 
 /** Float copies of a geometry's attributes (quantised normals and uvs become plain floats), so pieces from different meshes merge. */
@@ -169,14 +198,14 @@ export function rigOf(root: THREE.Object3D, steerMax = 0.6): GlbRig {
     const spin = o.getObjectByName(`wheel_${o.name.slice(5)}`);
     if (spin) wheels.push({ spin, steer: o.userData.steer ? o : null, r: o.userData.r ?? 0.3 });
   });
-  return { wheels, angle: 0, steerMax };
+  return { wheels, angle: 0, steerMax, fork: root.getObjectByName('fork') ?? null };
 }
 
 /**
  * A fresh copy of the prepared model for this vehicle, ready to take the kit vehicle's place: same group name and spec,
  * wheels rigged. null when the flag is off or the model is not there (the caller builds the kit model).
  */
-export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
+export function glbVehicle(id: string, kit: VehicleSpec, paint = 0): THREE.Group | null {
   const p = enabled ? prepared.get(id) : null;
   if (!p) return null;
   const g = new THREE.Group(); g.name = `glb_${id}`;
@@ -188,6 +217,8 @@ export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
     g.add(lod);
   } else g.add(body);
   g.userData.vehicleSpec = kit;
+  const coat = paint > 0 ? p.paints[paint - 1] : null;          // another colourway of the same body (a motorbike sold in two paints: src/transport/sportMoto.ts)
+  if (coat) repaint(g, coat);
   const rig = rigOf(g, kit.drive.steerMax);
   g.userData.glbRig = rig;
   // a body with its own driver's door (scripts/vehicles/author): the kit's door code swings it about its hinge, and the cabin behind it is drawn only while it is open
@@ -231,8 +262,9 @@ export function animateGlbRig(rig: GlbRig, speed: number, steer: number, dt: num
     w.spin.rotation.x = (w.spin.rotation.x + (speed * dt) / w.r) % (Math.PI * 2);
     if (w.steer) w.steer.rotation.y = s;
   }
+  if (rig.fork) rig.fork.rotation.y = s;                          // a motorbike's whole front end, about its raked axis
   rig.angle = s;
 }
 
 /** Stats of a prepared model (checks, reports). */
-export const glbStats = (id: string) => { const p = prepared.get(id); return p ? { tris: p.tris, drawCalls: p.drawCalls, wheels: p.wheels } : null; };
+export const glbStats = (id: string) => { const p = prepared.get(id); return p ? { tris: p.tris, drawCalls: p.drawCalls, wheels: p.wheels, paints: 1 + p.paints.filter(Boolean).length, fork: !!p.scene.getObjectByName('fork') } : null; };

@@ -128,6 +128,8 @@ const DRIVE_SOON = 'Arrive avec la conduite (transports, vague 2)';
 export const VEHICLES: AssetSpec[] = [
   // drivable (src/transport/ownedModule.ts): sold at a dealer corner of their hub (or here), delivered at its kerb
   { id: 'jakarta', kind: 'vehicle', name: 'Moto Jakarta', what: 'D’occasion · la moto des livreurs et des clandos à deux roues', price: 150_000, tier: 1, where: 'Garage Modou · Pikine' },
+  // the sport motorbike (src/transport/sportMoto.ts): one model in two colourways, rouge et blanc at Garage Modou, jaune et noir at Ndiaye Auto
+  { id: 'sabar', kind: 'vehicle', name: 'Sabar 600', what: 'Moto sportive carénée, neuve : rouge et blanc à Pikine, jaune et noir au Plateau', price: 2_000_000, tier: 2, where: 'Garage Modou · Pikine ou Ndiaye Auto · Plateau' },
   // the modern sedan (Stage A of the player-owned lineup, docs/assets/VEHICLE_LINEUP.md). The price is a PROVISIONAL placeholder: the economy balance pass sets it (it is not the old car's)
   // the player cars with a body of their own (src/transport/modelCars.ts; original designs, the game's names): prices PROVISIONAL like the others
   { id: 'teranga', kind: 'vehicle', name: 'Teranga', what: 'Citadine moderne, toit noir : la première voiture du quartier, parfaite pour les courses VTC', price: 4_000_000, tier: 2, where: 'Sarr Auto · Pikine' },

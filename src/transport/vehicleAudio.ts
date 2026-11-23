@@ -35,13 +35,16 @@ const IGNITION = 0.12;
 /** What a car's cabin lets through of its own engine (the engine's gain; the tone and the tyre noise are shut in as well). */
 const CABIN = 0.5;
 
-export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
+export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto' | 'sport', EngineProfile> = {
   sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 40, lpIdle: 2400, lpTop: 4600, air: 3, excite: 0.35 },
   // the dear cars (the berline, the Lamane Sport and the Gaïndé): deeper (the loops played slower), smoother (a lower, softer top end, a fifth gear), a touch quieter
   luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.74, 1.25], revRate: [0.8, 1.45], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.019, swell: 0.9, hp: 40, lpIdle: 1500, lpTop: 3000, air: 1.5, excite: 0.25 },
   suv: { start: 'start-car', startRate: 0.9, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.66, 1.18], revRate: [0.7, 1.4], xf: [0.3, 0.72], gears: 5, level: 1, drive: 0.021, swell: 0.9, hp: 32, lpIdle: 1600, lpTop: 3200, air: 2, excite: 0.35 },
   // the Jakarta: about 3.5 dB under what it was (a small 125 cc, heard over the street, never over it)
   moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.0165, swell: 0.5, hp: 230, lpIdle: 3600, lpTop: 5200, air: 5, excite: 0.45 },
+  // the Sabar 600 (src/transport/sportMoto.ts): the Jakarta's recordings for a bigger engine: a lower idle, revs that climb higher and brighter through six
+  // gears, a little more body under the note and more swell with the throttle; still under a car's level, a presence in the street, never over it
+  sport: { start: 'start-car', startRate: 1.15, catchAt: 0.68, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.25, 2.5], revRate: [1.3, 3.1], xf: [0.18, 0.5], gears: 6, level: 0.92, drive: 0.0175, swell: 0.7, hp: 150, lpIdle: 3000, lpTop: 6200, air: 4.5, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -63,6 +66,7 @@ export const HORNS: Record<keyof typeof PROFILES, HornVoice> = {
   luxury: { sample: 'horn-car', rate: 0.94, hp: 200, peakHz: 1200, peakDb: 2, level: 0.46 },
   suv: { sample: 'horn-car', rate: 0.84, hp: 180, peakHz: 1100, peakDb: 3, level: 0.52 },
   moto: { sample: 'horn-moto', rate: 1, hp: 380, peakHz: 1800, peakDb: 3, level: 0.4 },
+  sport: { sample: 'horn-moto', rate: 0.9, hp: 330, peakHz: 1700, peakDb: 3, level: 0.42 },                       // the motorbike's horn, a touch lower
 };
 export const hornFor = (kit: string): HornVoice => HORNS[(kit in HORNS ? kit : 'sedan') as keyof typeof HORNS];
 

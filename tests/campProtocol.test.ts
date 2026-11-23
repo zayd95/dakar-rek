@@ -5,8 +5,10 @@ import { SHORT } from '../src/districts/matchRules';
 import { PITCH } from '../src/game/footballSim';
 import {
   CAMP_BODY, CAMP_CURB, CAMP_FEE_MAX, CAMP_MATCH, CAMP_MAX_FRAME, CAMP_RATE, CAMP_SIZES, CAMP_TEAM_NAMES, campFullPool, campKickoffSpot, campRate, campTeamName,
-  campWinnerShare, decodeSnap, encodeSnap, isMatchId, newMatchId, parseCampClient, parseCampServer, parseTerms, stepBody, wrapAngle, type CampBody, type CampSnapshot,
+  campWinnerShare, decodeSnap, encodeSnap, isMatchId, isRequestId, newMatchId, newRequestId, parseCampClient, parseCampServer, parseTerms, stepBody, wrapAngle,
+  type CampBody, type CampSnapshot,
 } from '../src/multiplayer/campProtocol';
+import { campPayoutOp } from '../src/online/campLedger';
 
 /**
  * 1.0.1 Grand Camp (docs/release/GRAND-CAMP-RULES-1.0.1.md): the wire contract between a client and its match object. Every incoming frame strictly
@@ -83,6 +85,19 @@ describe('Grand Camp protocol: client frames', () => {
     expect(why({ type: 'invite', id: ID, tags: [] })).toBe('invalid:id');
     expect(why({ type: 'invite', id: ID, tags: Array(21).fill(T) })).toBe('invalid:id');
     expect(why([])).toBe('invalid'); expect(why(null)).toBe('invalid'); expect(why('join')).toBe('invalid');
+  });
+  it('a request id is a uuid made on the device, nothing else: never a shape of the server’s own ids (a payout, a hold, a release)', () => {
+    // a crafted « Prêt » id equal to an opponent's payout op once locked a whole pool (the review's C1): refused here, before the match sees it
+    const forged = [campPayoutOp('a1b2c3d4e5f60718', T), `h-a1b2c3d4e5f60718-${T}-1`, `r-a1b2c3d4e5f60718-${T}-1`, 'A'.repeat(64), 'hold-other-press', '0f1e2d3c4b5a69788796a5b4c3d2e1f0'];
+    for (const id of forged) { expect(isRequestId(id)).toBe(false); expect(why({ type: 'ready', id })).toBe('invalid'); }
+    for (const id of [ID, ID.toUpperCase(), '00000000-0000-4000-8000-000000000004']) expect(isRequestId(id)).toBe(true);
+    const made = new Set(Array.from({ length: 50 }, () => newRequestId()));
+    expect(made.size).toBe(50);
+    for (const id of made) expect(isRequestId(id)).toBe(true);
+    // a browser without crypto.randomUUID (older Safari): still a uuid, from getRandomValues
+    const c = globalThis.crypto as Crypto & { randomUUID?: unknown }, own = Object.prototype.hasOwnProperty.call(c, 'randomUUID'), had = c.randomUUID;
+    try { Object.defineProperty(c, 'randomUUID', { value: undefined, configurable: true }); expect(isRequestId(newRequestId())).toBe(true); }
+    finally { if (own) Object.defineProperty(c, 'randomUUID', { value: had, configurable: true }); else delete (c as unknown as Record<string, unknown>).randomUUID; }
   });
   it('the stick: a move vector no longer than the full stick (longer is an impossible move), a finite facing, an action with a power 0…1', () => {
     expect(ok({ type: 'in', s: 7, mx: 0.6, mz: -0.8, f: 1 })).toEqual({ type: 'in', s: 7, mx: 0.6, mz: -0.8, f: 1 });

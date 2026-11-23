@@ -42,7 +42,7 @@ export interface VehicleSeat {
   /** Door used to reach it. */
   door: string;
   /** Pose held there when it is not the chair Sit (motorbikes: 'Ride'); copied to the interaction seat. */
-  clip?: 'Ride' | 'RidePaddle';
+  clip?: 'Ride' | 'RidePaddle' | 'RideSport';
 }
 export interface VehicleDoor {
   id: string;
@@ -202,20 +202,20 @@ interface AnimState { spin: number; lean: number; lod: THREE.LOD | null; body: T
 export function animateVehicle(group: THREE.Object3D, speed: number, steer: number, dt: number) {
   const spec = group.userData.vehicleSpec as VehicleSpec | undefined; if (!spec) return;
   const glb = group.userData.glbRig as GlbRig | undefined;                       // a prepared GLB body: its own separate wheels (src/actors/glbVehicle.ts)
-  if (glb) { animateGlbRig(glb, speed, steer, dt); return; }
   let st = group.userData.kitAnim as AnimState | undefined;
   if (!st) {
     const lod = (group.children.find(c => (c as THREE.LOD).isLOD) as THREE.LOD | undefined) ?? null;
-    const near = lod ? lod.levels[0].object : group.children.find(c => c.name === 'near') ?? null;
-    st = { spin: 0, lean: 0, lod, body: (near?.getObjectByName('body') as THREE.Mesh | undefined) ?? null, u: null };
+    const near = glb ? null : lod ? lod.levels[0].object : group.children.find(c => c.name === 'near') ?? null;
+    st = { spin: 0, lean: 0, lod: glb ? null : lod, body: (near?.getObjectByName('body') as THREE.Mesh | undefined) ?? null, u: null };
     group.userData.kitAnim = st;
   }
   const d = spec.drive, s = THREE.MathUtils.clamp(steer, -d.steerMax, d.steerMax);
   if (d.lean > 0) {                                                              // lean into the turn, about the ground line
     const target = THREE.MathUtils.clamp(-s * Math.abs(speed) * 0.09, -d.lean, d.lean);
     st.lean += (target - st.lean) * Math.min(1, dt * 5);
-    (st.lod ?? group).rotation.z = st.lean;
+    (glb ? group.children[0] ?? group : st.lod ?? group).rotation.z = st.lean;     // a two-wheeler with a body of its own (src/transport/sportMoto.ts) leans the same way
   }
+  if (glb) { animateGlbRig(glb, speed, steer, dt); return; }
   if (!st.body || (st.lod && st.lod.getCurrentLevel() !== 0)) return;            // far model: nothing to turn
   if (!st.u) {
     const base = vehicleMaterials().body, own = base.clone();

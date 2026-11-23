@@ -138,8 +138,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   // the evening is over (the next morning): everyone gone, the stalls stop selling
   await d(() => { window.__dakar.arenaOutDay(3); window.__dakar.setHour(11); });
   await until(() => !window.__dakar.arenaOut().event, null, 15000);
+  // the drums fade out and their loop is let go after a few seconds of silence (src/arena/soundscape.ts LoopChannel), as 50 m away above
+  await until(() => { const a = window.__dakar.arenaOut().audio; return !a.playing && a.want.drums === 0; }, null, 20000);
   s = await info();
-  check(`${label}: the next morning: quiet, the drums stop, the road reopens`, !s.event && s.drawn === 0 && s.vendors.length === 0 && !s.audio.playing && !s.traffic.closed, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length, audio: s.audio.playing, closed: s.traffic.closed }));
+  check(`${label}: the next morning: quiet, the drums stop, the road reopens`, !s.event && s.drawn === 0 && s.vendors.length === 0 && !s.audio.playing && s.audio.want.drums === 0 && !s.traffic.closed, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length, audio: s.audio.playing, want: s.audio.want.drums, closed: s.traffic.closed }));
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await page.context().close();
 }

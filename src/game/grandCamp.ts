@@ -92,10 +92,10 @@ class GrandCamp implements GameModule {
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
-    this.dropBodies();
+    this.dropBodies(); this.freeBall();                                    // (main.ts only removed the last district's `extra`: its ball is freed here)
     const sp = hub.id === CAMP_HUB ? hubLayout(hub.id).specials.find(s => s.kind === 'pitch') : undefined;
     this.pitch = sp ? { x: sp.x, z: sp.z } : null;
-    this.group = null; this.ball = null; this.view = null;
+    this.group = null; this.view = null;
     if (!sp) return;
     const g = new THREE.Group(); g.name = 'grand_camp';
     g.userData.lodPrio = 0.45;                                              // the street's humanoid budget draws the match's players first (src/social/ambientLife.ts)
@@ -114,11 +114,15 @@ class GrandCamp implements GameModule {
     if (!ctx || !this.pitch || ctx.world()?.id !== CAMP_HUB || ctx.space() !== 'street') return false;
     return this.edgeDist(ctx.player.pos.x, ctx.player.pos.z) <= m;
   }
-  /** Whether the match draws this player itself (their presence avatar then is not drawn: no second body). */
+  /** A match of mine is played here now (main.ts shows the crown over my head: the other players are drawn by the match, not by presence). */
+  get playing() { return this.live; }
+  /**
+   * Whether the match draws this player itself (their presence avatar then is not drawn: no second body): only while they are on its pitch — one who
+   * dropped or left after kick-off is still on the roster but has no body here, and presence draws them again.
+   */
   drawsTag(tag: string | undefined): boolean {
-    if (!this.live || !tag) return false;
-    const r = campSession.client?.state.roster;
-    return !!r && r.some(x => x.tag === tag && x.tag !== campSession.client?.state.me);
+    const c = campSession.client;
+    return this.live && !!tag && !!c && tag !== c.state.me && c.onPitch(tag);
   }
 
   // ------------------------------------------------------------------ the frame
@@ -216,6 +220,7 @@ class GrandCamp implements GameModule {
     const match = l.match;
     ctx.hud.offer({ icon: v.icon, title: v.title, line: [v.score, ...v.lines].filter(Boolean).join(' · '), keep: true,
       actions: [{ label: 'Voir le résultat', primary: true, run: () => { phoneHooks.openPhone?.(`grandcamp:${match}`); } }] }, 20000);
+    campSession.shown(match);                                              // shown: the device is free for the next Grand Camp (the card keeps the link)
   }
 
   // ------------------------------------------------------------------ the bodies
@@ -386,7 +391,8 @@ class GrandCamp implements GameModule {
     const b = this.band; if (!b) return;
     const c = campSession.client, v = this.view;
     const recent = !!c?.state.result && performance.now() - this.overAt < 10_000;
-    const show = !!c && !!l && l.match === campSession.mine && (playing || (l.state === 'over' && (recent || !c.state.result)) && this.wasOrIs());
+    const ours = !!l && (l.match === campSession.mine || l.match === this.resultShown);           // (a match whose result was shown is no longer `mine`)
+    const show = !!c && ours && (playing || (l!.state === 'over' && (recent || !c.state.result)) && this.wasOrIs());
     if (!show) { if (b.classList.contains('on')) { b.classList.remove('on'); this.bandKey = ''; } return; }
     if (!b.isConnected) document.getElementById('ui')?.appendChild(b);
     const net = c!.state.status === 'open' ? '' : 'Reconnexion…';
@@ -402,7 +408,7 @@ class GrandCamp implements GameModule {
     b.setAttribute('aria-label', `${scoreText(l!.teams, sc as [number, number])} · ${st}`);
     b.classList.add('on');
   }
-  private wasOrIs() { return this.live || this.wasPlay || this.resultShown === campSession.mine || !!campSession.client?.state.roster; }
+  private wasOrIs() { return this.live || this.wasPlay || (!!this.resultShown && this.resultShown === campSession.client?.state.match) || !!campSession.client?.state.roster; }
 
   // ------------------------------------------------------------------ cleaning up
   private dropBody(b: Body) {
@@ -416,6 +422,13 @@ class GrandCamp implements GameModule {
     h.dispose();
   }
   private dropBodies() { for (const b of this.bodies.values()) this.dropBody(b); this.bodies.clear(); }
+  /** The ball of the district being left: its geometry, material and texture are its own (football.ts ballMesh). */
+  private freeBall() {
+    const b = this.ball; if (!b) return;
+    this.ball = null; b.removeFromParent();
+    const m = b.material as THREE.MeshLambertMaterial;
+    b.geometry.dispose(); m.map?.dispose(); m.dispose();
+  }
 
   // ------------------------------------------------------------------ checks (window.__dakar, ?debug)
   debug(): Record<string, unknown> {

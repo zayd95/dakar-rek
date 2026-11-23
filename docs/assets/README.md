@@ -26,7 +26,9 @@ A generated car is one fused shell with its wheels on it: `scripts/vehicles/spli
 
 Runtime (`src/actors/glbVehicle.ts`): loads the GLB, makes its materials Lambert (the game's cheap lighting), rigs the wheels, and `animateVehicle` (called every frame by the owned vehicle) delegates to the rig. The model takes the kit vehicle's group and `vehicleSpec`, so night lamps, minimap and the rest are unchanged. **Used by default**; `?vehicleModel=kit` on a local / preview host forces the procedural model for comparison, and a missing file falls back to it. At the wheel (« Au volant ») every car gets the **car interior** (`src/transport/carInterior.ts`: built from the car's own numbers in the car's frame, three meshes, about 1 100 triangles, drawn only in that view); a solid shell (no cabin of its own) is not drawn from inside, an authored body keeps its shell (its bonnet and mirrors show through the glass): no camera is ever dropped.
 
-Not yet handled: two-wheelers (the fork and handlebar must steer: a fused shell cannot do it without a manual cut), a far LOD, paint variants, lamps of the model's own.
+Not yet handled for cars: a far LOD, paint variants, lamps of the model's own.
+
+Two-wheelers: `scripts/vehicles/build-sport-moto.mjs` (the Sabar 600, `docs/vehicles/SPORT_MOTO.md`) cuts a fused Meshy motorbike by geometry alone: each wheel found by a circle fitted to its tread and cut out to spin; the steering axis fitted to the fork legs and the front end (fork, mudguard, clip-ons, front wheel) on a node `steer` (its +Y the axis) > `fork`, turned by `src/actors/glbVehicle.ts`; badge-like marks painted plain; triangles never seen from outside dropped; colourways as textures (`paints` in the sidecar). The rider's pose (`RideSport`) and the grips and pegs are calibrated to that model, not to the kit's 125 cc.
 
 ## Furniture: `scripts/furniture/`
 

@@ -9,7 +9,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot, restoredExtras, suggestedAvatar } from './core/save';
 import { holdSaves, initSaveHealth, reportWrite, saveHealth, saveLine, saveMirror, savesHeld } from './core/saveHealth';
 import { backupOf, exportCode, importSave, undoImport } from './core/saveTransfer';
-import { debugApiFor, isTestHost, readTestParams } from './core/testParams';
+import { debugApiFor, dropWorkInHand, isTestHost, readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { openStudio, type StudioResult } from './ui/characterStudio';
 import { appearanceOf, defaultAppearance, encodeAppearance } from './actors/appearance';
@@ -700,7 +700,7 @@ function corridorStep(dt: number) {
  */
 function corridorSwap(sw: Swap) {
   const w = world!, b = w.bounds;
-  rehomeOnRoad(state.data, sw.from, sw.to, sw.dx, sw.dz, (x, z) => inRect(b, x, z));                         // vehicles parked on the road follow the frame (every model)
+  rehomeOnRoad(state.data, sw, (x, z) => inRect(b, x, z));                                                     // vehicles parked on this road follow the frame (every model)
   for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
   corridors.prepare(sw.road);
   pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
@@ -1944,7 +1944,7 @@ function frameStep(now: number, dt: number, draw = true) {
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing, eating at a table): a narrow list, anything else is Idle
   // (a Meshy body dances through its v4 stand-in, src/actors/playerBody.ts: what others see is the stand-in's pose)
   const shown = proxy && ngembBody ? ngembBody : playerBody;
-  const seen = shown?.clipName ? prayerPresence(shown.clipName) ?? shown.clipName : null;     // a prayer posture: standing or kneeling
+  const seen = shown?.clipName ? prayerPresence(shown.clipName) ?? (shown.clipName === 'RideSport' ? 'Ride' : shown.clipName) : null;     // a prayer posture: standing or kneeling; on the sport motorbike, others see a rider
   const clip = mode !== 'scene' && seen && PRESENCE_CLIPS.includes(seen as PresenceClip) ? seen as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
@@ -1953,7 +1953,7 @@ function frameStep(now: number, dt: number, draw = true) {
   presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }
     : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
-  selfMarker.update(pos, 1.9, remoteAvatars.size > 0 && space !== 'scene' && !lambScene, camera, innerHeight);
+  selfMarker.update(pos, 1.9, (remoteAvatars.size > 0 || grandCamp.playing) && space !== 'scene' && !lambScene, camera, innerHeight);   // (a Grand Camp match draws its players itself)
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing, inside ? pos.y : undefined) : (interactions.focus = null);
@@ -1986,7 +1986,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
+  const loading = Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde', 'sabar'])]);
   void loadRdaBodies();                                                         // (behind ?rdabody; never waited on)
   // a new game opens on the studio straight away: the welcome and the name need nothing loaded, the bodies load while the name is typed
   const studio = creating ? openStudio({ mode: 'new', low: quality === 'low', suggested: suggestedAvatar(store), origin: HUB_NAMES[state.data.hub].split(' · ')[0],
@@ -2003,6 +2003,7 @@ async function start() {
   const welcome = () => {
     if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
     else if (restored.includes('loans') && state.data.loans.list.some(l => l.status === 'open')) hud.toast('Tes crédits en cours ont été retrouvés : la partie avait été ouverte avec une version plus ancienne du jeu.');
+    else if (restored.includes('monthly')) hud.toast('Ton bail au mois a été retrouvé (et ce qui restait dû) : la partie avait été ouverte avec une version plus ancienne du jeu.');
   };
   // 1.0.1: the first launch on this device flies in over Pikine once the character is made (src/game/opening.ts); the welcome comes with the HUD, when it lands
   if (openingWanted({ made: !!made, debug: DEBUG, forced: TEST.intro, seen: openingSeen() })) opening.play(ctx, { done: welcome });
@@ -2258,5 +2259,9 @@ if (DEBUG) {
     ...(testHost ? economy.debug() : {}),
   };
   if (testHost) for (const m of MODULES) Object.assign(api, m.debug?.(ctx));
-  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api);
+  // the public game: a teleport drops the delivery or ride in hand (unpaid) and the walking marker first, so a jump never reaches a drop-off, a kerb or a marked vehicle
+  (window as unknown as Record<string, unknown>).__dakar = debugApiFor(location.hostname, api, () => {
+    destination = null;
+    if (dropWorkInHand(state.data)) { hud.toast('Saut de test : la livraison ou la course en cours est annulée, rien n’est payé.'); if (world) saveNow(); }
+  });
 }

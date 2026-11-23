@@ -21,7 +21,8 @@ import type { Step } from './progress';
  *   a repeated event. Several steps found at once (an older save) are paid together, one wallet line each, one notice.
  * - No step is met by an action that pays more than it costs and can be undone: work, a meal, a match, finding a parked vehicle cost or pay
  *   nothing back; furniture cannot be resold; a home bought loses 10 % at once on resale; the F2's lease costs its first month (60 000 F), more
- *   than its step pays. A rental by the day (handed back at once for almost nothing) does not count.
+ *   than its step pays. A rental by the day (handed back at once for almost nothing) does not count. A home let is met by the first rent a tenant
+ *   actually pays (`loyers:percus`), not by the offer: one F2 lease cannot meet « logement » and « location » at its signature.
  * - The steps that need the network (Teranga Money, the Grand Camp) are met offline too (a deposit at the Banque Teranga, a neighbourhood match on
  *   the same pitch), and any step done early is paid at once: the ladder never stalls. The goal line shows the first step not yet done.
  */
@@ -51,6 +52,8 @@ export const POUCE_COUNTERS = {
   sent: 'teranga:envois', cashed: 'teranga:retraits',
   /** A Grand Camp joined (the server's yes): for the Grand Camp's screens to count (not in this build). */
   camp: 'camp:matchs',
+  /** A tenant's rent received: the F2 sublet's at its settlement (src/economy/monthly.ts), an owned home let's at the city hour's payout (src/economy/assets.ts accrue). */
+  rent: 'loyers:percus',
 } as const;
 
 export const POUCE: readonly PouceStep[] = [
@@ -71,16 +74,17 @@ export const POUCE: readonly PouceStep[] = [
     done: s => c(s, 'terrasse') >= 1 || Object.entries(s.data.counters).some(([k, v]) => v > 0 && /^club:.+:(soirees|nuit)$/.test(k)) },
   { id: 'teranga', label: 'Un envoi ou un retrait Teranga Money', amount: 35_000, online: 'sans réseau : un premier dépôt à la Banque Teranga',
     hint: () => 'un envoi ou un retrait Teranga Money (ou, sans réseau, un dépôt à la Banque Teranga)',
-    done: s => c(s, POUCE_COUNTERS.sent) >= 1 || c(s, POUCE_COUNTERS.cashed) >= 1 || s.data.bank.opened >= 0 },
+    done: s => c(s, POUCE_COUNTERS.sent) >= 1 || c(s, POUCE_COUNTERS.cashed) >= 1 || s.data.bank.savings > 0 || s.data.bank.tx.some(t => t.kind === 'deposit' && t.amount > 0) },   // a real deposit, not the free opening
   { id: 'logement', label: 'Locataire au mois ou propriétaire', amount: 45_000,
     hint: () => 'loue le F2 au mois (Résidence Jàmm) ou achète un logement',
     done: s => homes(s).some(a => a.how === 'owned' || !!a.lease) },
   { id: 'camp', label: 'Un match au terrain de la Corniche', amount: 50_000, online: 'sans réseau : un match de quartier au même terrain',
     hint: () => 'un match au terrain de la Corniche (un Grand Camp, ou un match de quartier)',
     done: s => c(s, 'ft_matches') >= 1 || c(s, POUCE_COUNTERS.camp) >= 1 },
-  { id: 'location', label: 'Un logement mis en location', amount: 70_000,
-    hint: s => (homes(s).some(a => a.how === 'owned' || a.lease) ? 'mets un logement en location (sa fiche, dans « Biens »)' : 'mets un logement en location : loue d’abord le F2, ou achète'),
-    done: s => homes(s).some(a => (a.how === 'owned' && a.leased) || (!!a.lease && a.lease.mode !== 'live')) },
+  { id: 'location', label: 'Un premier loyer de locataire', amount: 70_000,
+    hint: s => (homes(s).some(a => (a.how === 'owned' && a.leased) || (!!a.lease && a.lease.mode !== 'live')) ? 'un premier loyer de ton locataire : le F2 sous-loué paie à l’échéance du mois, un logement à toi dans l’heure'
+      : homes(s).some(a => a.how === 'owned' || a.lease) ? 'mets un logement en location (sa fiche, dans « Biens ») : le premier loyer reçu compte' : 'mets un logement en location : loue d’abord le F2, ou achète'),
+    done: s => c(s, POUCE_COUNTERS.rent) >= 1 },
 ];
 /** The whole ladder (F). */
 export const POUCE_TOTAL = POUCE.reduce((t, p) => t + p.amount, 0);

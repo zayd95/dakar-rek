@@ -33,7 +33,7 @@ export function vehicleOfMark(id: string | null | undefined): VehicleAsset | nul
   return isVehicleAsset(a) ? a : null;
 }
 /** One pictogram per model, on the maps and in the list. */
-export const VEHICLE_ICON: Record<VehicleAsset, string> = { jakarta: '🏍️', tiak: '🛵', compacte: '🚗', teranga: '🚗', rafet: '🚗', berline: '🚘', gainde: '🚙', tout_terrain: '🚙' };
+export const VEHICLE_ICON: Record<VehicleAsset, string> = { jakarta: '🏍️', sabar: '🏍️', tiak: '🛵', compacte: '🚗', teranga: '🚗', rafet: '🚗', berline: '🚘', gainde: '🚙', tout_terrain: '🚙' };
 
 /** One vehicle's whereabouts, or null when the player does not have it (or, for the lent motorbike, when none stands in the loaded district). */
 export function vehicleEntry(s: GameState, a: VehicleAsset, hubNow: HubId | null, live: LiveVehicle | null): VehicleEntry | null {

@@ -69,7 +69,7 @@ export class OnlineAccount implements OnlineApi {
   status: OnlineStatus;
   private cache: Cache;
   private socket: WebSocket | null = null;
-  private retry = 0; private handshake = 0; private heartbeat = 0; private homeTimer = 0; private retryAttempt = 0; private generation = 0; private lastPong = 0;
+  private retry = 0; private handshake = 0; private heartbeat = 0; private homeTimer = 0; private retryAttempt = 0; private generation = 0; private lastPong = 0; private lastPongMono = 0;
   private clockOffset = 0; private live = false;
   private where: { hub: HubId | null; room: number } = { hub: null, room: 0 };
   private seenMap = new Map<Tag, Seen>();
@@ -414,17 +414,17 @@ export class OnlineAccount implements OnlineApi {
     this.drain();
     return true;
   }
-  /** Sends what waits, never more than SEND_RATE frames in a second (the rest goes a little later, in order). */
+  /** Sends what waits, never more than SEND_RATE frames in a second (the rest goes a little later, in order). The second is the page's own (`performance.now`): a device clock set back cannot hold the window full. */
   private drain() {
     clearTimeout(this.backlogT); this.backlogT = 0;
-    const now = Date.now();
+    const now = performance.now();
     this.sentAt = this.sentAt.filter(t => now - t < 1000);
     while (this.backlog.length && this.sentAt.length < SEND_RATE) {
       if (this.socket?.readyState !== WebSocket.OPEN) { this.backlog = []; return; }
       try { this.socket.send(this.backlog.shift()!); } catch { this.backlog = []; return; }
-      this.sentAt.push(Date.now());                            // each frame's own time: a busy page takes milliseconds over a burst, and the window must count them
+      this.sentAt.push(performance.now());                     // each frame's own time: a busy page takes milliseconds over a burst, and the window must count them
     }
-    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (Date.now() - this.sentAt[0]) + 1));
+    if (this.backlog.length) this.backlogT = window.setTimeout(() => this.drain(), Math.max(20, 1000 - (performance.now() - this.sentAt[0]) + 1));
   }
 
   // ================================================================== the socket
@@ -447,7 +447,7 @@ export class OnlineAccount implements OnlineApi {
     this.handshake = window.setTimeout(() => { if (generation === this.generation && this.socket === ws) this.scheduleRetry(); }, 8000);
     ws.onmessage = e => {
       if (generation !== this.generation) return;
-      if (e.data === 'pong') { this.lastPong = Date.now(); return; }
+      if (e.data === 'pong') { this.lastPong = Date.now(); this.lastPongMono = performance.now(); return; }
       let raw: unknown; try { raw = JSON.parse(e.data as string); } catch { return; }
       const m = parseServerMessage(raw); if (m) this.onMessage(m, ws);
     };
@@ -510,7 +510,7 @@ export class OnlineAccount implements OnlineApi {
     clearTimeout(this.handshake); this.handshake = 0;
     if (this.cache.tag && this.cache.tag !== m.tag) { const keep = this.cache.migrated; this.cache = emptyCache(); this.cache.migrated = keep; }   // another account on this device (an imported key)
     this.cache.tag = m.tag; this.cache.code = m.code; this.cache.limits = m.limits; this.cache.today = m.today;
-    this.clockOffset = m.time - Date.now(); this.retryAttempt = 0; this.lastPong = Date.now();
+    this.clockOffset = m.time - Date.now(); this.retryAttempt = 0; this.lastPong = Date.now(); this.lastPongMono = performance.now();
     const o = this.d.state.data.online;
     o.tag = m.tag; noteBalance(this.d.state, m.balance);
     // the list: the server's, with any conversation only this device holds (an older one, or one with messages still to send)
@@ -521,7 +521,7 @@ export class OnlineAccount implements OnlineApi {
     this.live = true;
     this.setStatus('online');
     this.heartbeat = window.setInterval(() => {
-      if (Date.now() - this.lastPong > 65000) { ws.close(); return; }
+      if (Date.now() - this.lastPong > 65000 || performance.now() - this.lastPongMono > 65000) { ws.close(); return; }   // either clock: a phone back from sleep (its page clock may have stood still), or a device clock set back (« now − last pong » negative)
       if (ws.readyState === WebSocket.OPEN) ws.send('ping');
     }, 20000);
     if (this.where.hub !== null || this.where.room) this.sendRaw({ type: 'where', ...this.where });

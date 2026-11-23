@@ -14,9 +14,12 @@ import { addOwned, holds } from '../economy/assets';
  * Every vehicle the player can have, cheapest first: THE list (the road swap, the phone's « Mes véhicules », the maps and the tests read this one; src/transport/fleet.ts
  * has the module of each). 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold.
  */
-export const VEHICLE_ASSETS = ['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as const;
+export const VEHICLE_ASSETS = ['jakarta', 'sabar', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as const;
 export type VehicleAsset = (typeof VEHICLE_ASSETS)[number];
 export const isVehicleAsset = (id: string): id is VehicleAsset => (VEHICLE_ASSETS as readonly string[]).includes(id);
+/** The two-wheelers among them (the Jakarta, the Sabar 600, the lent Tiak bike): never a car for a VTC ride or a car loan's advice. */
+export const MOTO_ASSETS: readonly VehicleAsset[] = ['jakarta', 'sabar', 'tiak'];
+export const isMotoAsset = (id: string) => (MOTO_ASSETS as readonly string[]).includes(id);
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;
@@ -63,18 +66,43 @@ export function forgetIfSold(s: GameState, id: VehicleAsset): boolean {
 }
 
 /**
- * The player has crossed the middle of a road between two districts (src/main.ts corridorSwap): the district at the other end becomes the loaded one, its frame being this one's
- * moved by (dx, dz). Every vehicle left parked out on that road (outside the streets of `from`: `inDistrict` is false there) is re-homed to the new frame, at the same place of
- * the world. Every model, the lent motorbike included.
+ * The crossing of a road's middle, as src/road/host.ts `CorridorHost.watch` reports it (its `Swap`): the road (its ground in its own frame, and where each district's
+ * frame stands from it), the district left, the one loaded next, and what to add to a position of `from`'s frame to get it in `to`'s.
  */
-export function rehomeOnRoad(data: SaveData, from: HubId, to: HubId, dx: number, dz: number, inDistrict: (x: number, z: number) => boolean): VehicleAsset[] {
-  const moved: VehicleAsset[] = [];
+export interface RoadCrossing {
+  road: { ground: { contains(x: number, z: number, r: number): boolean }; offset(hub: HubId): { x: number; z: number } };
+  from: HubId; to: HubId; dx: number; dz: number;
+}
+/**
+ * The player has crossed the middle of a road between two districts (src/main.ts corridorSwap): the district at the other end becomes the loaded one. Every vehicle left
+ * parked out on THAT road (outside the streets of `from`, where `inDistrict` is false, and on the crossed road's ground) is re-homed to the new frame, at the same place of
+ * the world. Every model, the lent motorbike included. Pikine, the Plateau and the Corniche have two roads each: a vehicle left on the other one stays where it is (1.0 and
+ * the 1.0.1 candidate moved it too, 1 km out into the next district, where no ground could hold it).
+ */
+export function rehomeOnRoad(data: SaveData, sw: RoadCrossing, inDistrict: (x: number, z: number) => boolean): VehicleAsset[] {
+  const moved: VehicleAsset[] = [], f = sw.road.offset(sw.from);
   for (const a of VEHICLE_ASSETS) {
     const p = parked(data, a);
-    if (!p || p.hub !== from || inDistrict(p.x, p.z)) continue;
-    park(data, { ...p, hub: to, x: p.x + dx, z: p.z + dz }); moved.push(a);
+    if (!p || p.hub !== sw.from || inDistrict(p.x, p.z) || !sw.road.ground.contains(p.x - f.x, p.z - f.z, 0)) continue;
+    park(data, { ...p, hub: sw.to, x: p.x + sw.dx, z: p.z + sw.dz }); moved.push(a);
   }
   return moved;
+}
+
+/**
+ * A record whose spot is on none of its district's ground (`onGround`: its streets, or one of the roads that leave it, in its frame) cannot be reached: a save hit by the
+ * road swap above before 1.0.1 has its vehicle there. At load the record is dropped, so the vehicle waits at its dealer's kerb again (the module delivers it there, as one
+ * bought from « Biens »; its paint is kept) and the lent motorbike at the Tiak Tiak counter. `only`: this model alone. Returns the vehicles sent back (the caller says so).
+ */
+export function returnStranded(data: SaveData, onGround: (hub: HubId, x: number, z: number) => boolean, only?: VehicleAsset): VehicleAsset[] {
+  const out: VehicleAsset[] = [];
+  for (const a of only ? [only] : VEHICLE_ASSETS) {
+    const p = parked(data, a);
+    if (!p || (Number.isFinite(p.x) && Number.isFinite(p.z) && onGround(p.hub, p.x, p.z))) continue;
+    for (const f of ['hub', 'x', 'z', 'yaw']) delete data.counters[key(a, f)];
+    out.push(a);
+  }
+  return out;
 }
 
 /**

@@ -1,0 +1,145 @@
+{
+ "id": "sabar",
+ "name": "Sabar 600",
+ "provenance": {
+  "name": "Meshy text-to-3D (owner-authorised credits, 16 Nov 2026): preview 01a1e283-6404-772c-a16f-a4c2dcbceedb (the second of two previews), refine 01a1e288-4764-7498-81f0-d170875f5da1",
+  "licence": "Generated for the game's owner with the owner's Meshy account; Meshy's plan terms apply (not re-verified here). Original, unbranded design: no brand, badge, lettering or plate; the tank's round cap and the tail's plate hugger are painted plain (paintout).",
+  "prompt": "Supersport road motorcycle, original design, upright on both wheels. Full fairing enclosing the engine down to a belly pan, sharp nose with two slim angular headlights, small tinted windscreen, clip-on handlebars set low under the windscreen, mirrors mounted on the fairing, long sculpted fuel tank, very slim raised tail cowl with a pointed tail light, rear-set footpegs, short exhaust under the engine, upside-down fork, black three-spoke alloy wheels with wide tyres. Glossy white bodywork with bold red panels. No rider, no side stand, no number plate, no logos, no lettering. Game asset.",
+  "note": "The raw Meshy files stay private (assets-src/meshy_output/, git-excluded). A first preview (01a1e27e-4e1f-754c-bb2e-40654fe9642d, a half-faired sport-tourer with raised bars) and a remesh of the refine (01a1e28a-fa99-7236-a34e-325b5b011d24, it lost the windscreen) were not used. Rebuild: node scripts/vehicles/build-sport-moto.mjs"
+ },
+ "source": "assets-src/meshy_output/sport_moto/20261116_035458_sport-moto_01a1e27e/refine.glb",
+ "sourceSha256": "246a2fdfe87fc8cd3e2aec7fb460460bc9afc737ce40e37e46dee63c12768d24",
+ "kit": {
+  "kind": "moto",
+  "model": "sabar"
+ },
+ "length": 2,
+ "width": 0.886,
+ "height": 1.306,
+ "wheels": [
+  {
+   "id": "fr",
+   "y": 0.332,
+   "z": 0.664,
+   "r": 0.334,
+   "tread": 0.233,
+   "steer": true
+  },
+  {
+   "id": "rr",
+   "y": 0.33,
+   "z": -0.661,
+   "r": 0.33,
+   "tread": 0.217,
+   "steer": false
+  }
+ ],
+ "steer": {
+  "pivot": [
+   0,
+   0.9766,
+   0.3401
+  ],
+  "axis": [
+   0,
+   0.885,
+   -0.4656
+  ],
+  "rake": 0.4844
+ },
+ "bars": {
+  "y": 1.049,
+  "z": 0.371
+ },
+ "parts": {
+  "body": 7842,
+  "wheel_fr": 2319,
+  "wheel_rr": 1866,
+  "front_end": 2072
+ },
+ "paints": [
+  {
+   "id": "rouge-blanc",
+   "name": "rouge et blanc",
+   "primary": "#c3121e",
+   "accent": "#f2f2ee",
+   "texture": "embedded",
+   "kB": 207
+  },
+  {
+   "id": "jaune-noir",
+   "name": "jaune et noir",
+   "primary": "#f2b705",
+   "accent": "#17181b",
+   "texture": "sabar.jaune-noir.jpg",
+   "kB": 228
+  }
+ ],
+ "interior": false,
+ "tris": 14099,
+ "drawCalls": 4,
+ "bytes": 880204,
+ "checks": [
+  {
+   "name": "fr: a separate wheel (axle_fr > wheel_fr), hub at y 0.332 = its radius 0.334 (2 cm), tyre on the ground (2 cm), radius 0.28-0.36 m",
+   "ok": true,
+   "value": {
+    "hub": [
+     0,
+     0.3324,
+     0.6639
+    ],
+    "r": 0.334,
+    "bottom": 0
+   }
+  },
+  {
+   "name": "rr: a separate wheel (axle_rr > wheel_rr), hub at y 0.33 = its radius 0.33 (2 cm), tyre on the ground (2 cm), radius 0.28-0.36 m",
+   "ok": true,
+   "value": {
+    "hub": [
+     0,
+     0.3296,
+     -0.6606
+    ],
+    "r": 0.33,
+    "bottom": 0.004
+   }
+  },
+  {
+   "name": "wheelbase 1.32 m (a sport bike: 1.3-1.5 m)",
+   "ok": true,
+   "value": 1.324
+  },
+  {
+   "name": "steering axis raked 27.8° (20-30°), passing within 6 cm of the front hub",
+   "ok": true,
+   "value": {
+    "pivot": [
+     0,
+     0.9766,
+     0.3401
+    ]
+   }
+  },
+  {
+   "name": "the front end (fork, mudguard, clip-ons) turns about it: node steer > fork > (front_end, axle_fr > wheel_fr)",
+   "ok": true,
+   "value": 2072
+  },
+  {
+   "name": "overall 2 x 0.89 x 1.31 m (L x W x H), on the ground, centred",
+   "ok": true
+  },
+  {
+   "name": "triangles 14099 <= 16500",
+   "ok": true,
+   "value": 14099
+  },
+  {
+   "name": "file 860 kB <= 1300 kB, draw calls 4 (one material)",
+   "ok": true,
+   "value": 860
+  }
+ ]
+}

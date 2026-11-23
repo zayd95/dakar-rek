@@ -232,7 +232,7 @@ export class Social extends DurableObject<SocialEnv> {
     this.openCamp(); const store = this.campStore(), now = Date.now();
     return this.ctx.storage.transactionSync(() => campRelease(store, r, now));
   }
-  async campSettle(r: { match: string; outcome: CampOutcomeRow; terms?: CampTermsRow }): Promise<CampSettleResult> {
+  async campSettle(r: { match: string; outcome: CampOutcomeRow; terms?: CampTermsRow; roster?: Tag[] }): Promise<CampSettleResult> {
     this.openCamp(); const store = this.campStore(), now = Date.now();
     return this.ctx.storage.transactionSync(() => campSettle(store, r, now));
   }

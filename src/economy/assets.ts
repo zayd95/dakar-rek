@@ -168,7 +168,10 @@ export function accrue(s: GameState): number {
   const dueIn = Math.floor(st.carryIn + 1e-6), dueOut = Math.floor(st.carryOut + 1e-6);   // float dust never costs a franc
   st.carryIn = Math.max(0, st.carryIn - dueIn); st.carryOut = Math.max(0, st.carryOut - dueOut);
   let net = 0;
-  if (dueIn > 0) { const paid = s.addMoney(dueIn, incomeLabel(s)); st.earned += paid; net += paid; }
+  if (dueIn > 0) {
+    const paid = s.addMoney(dueIn, incomeLabel(s)); st.earned += paid; net += paid;
+    if (st.list.some(a => a.leased && specOf(a.spec)?.kind === 'home' && incomeWith(a, false) > 0)) s.count('loyers:percus');   // a tenant's rent came in with it (« Coups de pouce », src/economy/pouce.ts)
+  }
   const owe = dueOut + st.arrears;
   if (owe > 0) {
     const taken = -s.addMoney(-owe, st.arrears > 0 ? `${chargeLabel(s)} (avec l’arriéré)` : chargeLabel(s));

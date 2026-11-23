@@ -154,6 +154,8 @@ const WHY: Record<string, string> = { unready: '« Pas prêt »', leave: 'tu as 
 export function moneyLine(m: CampMoneyView): MoneyLine {
   const amt = F(m.amount);
   if (m.state === 'pending') return { tone: 'wait', text: m.step === 'hold' ? `Mise de ${amt} : en attente du serveur…` : m.step === 'release' ? `Remboursement de ${amt} : en attente du serveur…` : 'En attente du serveur…' };
+  // a release the ledger could not do yet: the server returns the fee by itself (never « nothing was taken »)
+  if (m.state === 'failed' && m.step === 'release') return { tone: 'warn', text: `Mise de ${amt} pas encore rendue : le serveur réessaie tout seul.` };
   if (m.state === 'failed') return { tone: 'warn', text: `${m.step === 'hold' ? 'Mise refusée' : 'Refusé'} : ${m.text ?? campRefusalText(m.reason ?? '')}` };
   switch (m.step) {
     case 'hold': return { tone: 'ok', text: m.amount > 0 ? `Mise prise : ${amt}${m.balance !== undefined ? ` · Teranga Money ${F(m.balance)}` : ''}` : 'Prêt (match gratuit)' };

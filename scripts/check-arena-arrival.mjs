@@ -9,6 +9,7 @@
 // ONLY=desktop or ONLY=phone runs one viewport.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { realTouch } from './lib/realTouch.mjs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/';
 const out = process.argv[3] ?? 'docs/screenshots/arena-arrival';
@@ -30,12 +31,22 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
   const until = (fn, arg, ms = 60000) => page.waitForFunction(fn, arg, { timeout: ms }).then(() => true).catch(() => false);
   const ready = () => until(() => window.__dakar.pos().mode === 'play', null, 60000);
-  /** Hold a key (desktop) or push the joystick (phone: dy −1 up / +1 down) until `fn` holds in the page or `ms` passes. */
+  const tr = touch ? await realTouch(page) : null;
+  /**
+   * Hold a key (desktop) or, on the phone, a real finger until `fn` holds in the page or `ms` passes: on foot the joystick (dy −1 up / +1 down); on the moto the ride pad's
+   * pedals (src/transport/ridePad.ts: the joystick does not drive), the gas (dy −1) or the brake (dy +1: a stopped moto backs up while it is held).
+   */
   const hold = async (key, dy, fn, arg, ms) => {
     if (!touch) { await page.keyboard.down(key); await until(fn, arg, ms); await page.keyboard.up(key); return; }
-    const j = await d(() => { const r = document.getElementById('joy').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-    await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x, j.y + dy * 42, { steps: 4 });
-    await until(fn, arg, ms); await page.mouse.up();
+    if (await d(() => window.__dakar.moto.info().driving)) {
+      await until(() => document.body.classList.contains('ridepad'), null, 10000);                              // the pad shows a frame after the rider is seated
+      const r = await d(sel => { const e = document.querySelector(sel).getBoundingClientRect(); return { x: e.left + e.width / 2, top: e.top, h: e.height }; }, dy < 0 ? '#ridepad .rp-gas' : '#ridepad .rp-brake');
+      await tr.down(1, r.x, r.top + (dy < 0 ? 0.25 : 0.5) * r.h);                                               // the gas's upper part: a gentle throttle in the rows
+      await until(fn, arg, ms); await tr.up(1); return;
+    }
+    const j = await tr.centre('#joy');
+    await tr.down(1, j.x, j.y); await tr.move(1, j.x, j.y + dy * 42, 4);
+    await until(fn, arg, ms); await tr.up(1);
   };
   // the lines as read: the gloss's invisible markers (U+2063 / U+2064) out, French typography's no-break spaces as spaces
   const plain = s => s.replace(/[\u2063\u2064]/g, '').replace(/[\u00a0\u202f]/g, ' ');

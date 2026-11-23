@@ -316,6 +316,11 @@ export interface MonthlyLease {
   playAt: number;
   /** The last settlement, for the phone: the month it closed, its occupancy (0–100), what came in and what the next month cost. */
   last?: { k: number; occ: number; revenue: number; cost: number };
+  /**
+   * How far (ms) `start` and `accAt` were moved back because the clock read more than a month behind the month in hand (src/economy/monthly.ts `rebase`): given back
+   * when the clock comes back to the contract's own dates. Absent: the contract's own dates.
+   */
+  lag?: number;
 }
 /** Furniture placement in a home: metres from the home interior's centre, quarter turns (0 faces +z, the door side). */
 export interface Placement { x: number; z: number; rot: number }
