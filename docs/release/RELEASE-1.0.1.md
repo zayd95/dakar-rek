@@ -44,6 +44,23 @@ Branch `release-1.0.1` (from the published 1.0, `450febda`), draft pull request 
 - **No preview URL can be built from this branch.** Workers Builds uses `wrangler versions upload` on non-production branches, which cannot apply a Durable Object class change; the check « Workers Builds: dakar-rek » fails on #92 for that reason only. A preview would need a separate staging Worker deployed with the owner's Cloudflare account.
 - CI: the game checks run on `ubuntu-24.04` (GitHub's `ubuntu-latest` moved to 26.04, where Playwright 1.56 cannot install Chromium).
 
+## Publication, 23 November 2026 (with Roi des Arènes)
+
+The owner asked for one complete game: #95 (the cinematic bout) merged into `wp/wrestling`, #94 (the wrestling) into
+`release-1.0.1`, then #92 into `wip/visual-pass` (merge commit `3691b1a8`). In the normal game, with no address flag: the
+player's bout is the cinematic bëre (`src/lamb/cinematic.ts`, docs/wrestling/COMBAT.md §0) and the Roi des Arènes bodies
+are the wrestlers on Medium and High (Low keeps v4, also the fallback; the accessory pieces stay off). Làmb 2.0 « avec
+frappe » stays behind `?lamb2` (docs/LAMB2.md: not declared finished).
+
+Checked on the integrated commit `4ce05ae6`: unit 4 196 passed; Game checks (build, unit, city, online, launch) green; in the
+browser Tiak Tiak tour 58/58, buying a home 60/60, the sport motorbike 44/44, living venues 67/67, arena visit 126/126,
+the evening 18/18, messages 43/43, Grand Camp 25/25, Teranga Money 22/22, the RDA fighter 16/16; a 1.0 save (vehicles,
+wallet) carried over, reloaded, rolled back and returned 9/9; the bout on a phone viewport: Medium about 180 draw calls,
+High about 195 (as measured when the bodies were integrated).
+
+The merge commit reached `wip/visual-pass` at 21:24 UTC but the public address still served `450febda` 30 minutes later (no
+production build for it, as on 12 November): this commit is pushed to `wip/visual-pass` to make Workers Builds publish.
+
 ## Rollback
 
 Branch `rollback/production-before-release-1.0.1` (standby draft PR zayd95/dakar-rek#93): the 1.0 game plus an empty `GrandCamp` (`server/campStub.ts`), its binding and the `v3-grand-camp` entry, because once v3 is applied a deployment must still declare the class (deleting it would destroy its storage). `wrangler deploy --dry-run` passes. Entry fees still held at rollback time stay in the ledger's Grand Camp tables, untouched, until a later release returns them.
