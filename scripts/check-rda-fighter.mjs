@@ -33,7 +33,9 @@ async function open(qs, route = null) {
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error' && !/ws|websocket|8787|car_rapide|404|Failed to load resource/i.test(m.text() + m.location().url)) errors.push(m.text()); });
-  await page.goto(`${base}?debug&touch&lamb2${qs}`, { waitUntil: 'load' });
+  // `cine0`: the free bout, whose poses (stand, clinch, throw) are what these captures compare; the player's cinematic bout
+  // (src/lamb/cinematic.ts) is checked in scripts/shots.mjs and scripts/video-cine.mjs
+  await page.goto(`${base}?debug&touch&lamb2&cine0${qs}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar && window.__dakar.pos().hub && window.__dakar.arena, null, { timeout: 90000 * SLOW });
   return { ctx, page, errors };
 }
@@ -77,7 +79,7 @@ const intoClinch = page => until(page, i => !i || i.phase !== 'fight', async i =
 
 /** One evening's moments on one set of bodies: `tag` 'v4' or 'rda'. Returns the captures and (rda) the samples. */
 async function evening(tag) {
-  const flag = tag === 'rda' ? '&rdabody&rdaparts=arms,chest' : '';
+  const flag = tag === 'rda' ? '&rdabody&rdaparts=arms,chest' : '&rdabody=0';     // (the RDA bodies are the default since 1.0.1: v4 is asked for)
   const { ctx, page, errors } = await open(flag);
   const S = sampler(), caps = {};
   const sample = async () => { if (tag === 'rda') S.add(await rda(page)); };
@@ -86,7 +88,7 @@ async function evening(tag) {
     check('rda: the medium file loads and validates (behind ?rdabody, the phone\'s quality)', ready && r.load?.ok && r.load.level === 'medium', r.load);
   } else {
     const r = await rda(page);
-    check('v4: without ?rdabody nothing is loaded and nothing changes', r.mode === 'off' && !r.ready && !r.load, { mode: r.mode, ready: r.ready });
+    check('v4: with ?rdabody=0 nothing is loaded and nothing changes', r.mode === 'off' && !r.ready && !r.load, { mode: r.mode, ready: r.ready });
   }
   // the entrance on a fight evening (src/arena/entrance.ts): the left wrestler walks out of the tunnel
   await d(page, () => { const x = window.__dakar; x.teleport('pikine'); x.setHour(18); });
